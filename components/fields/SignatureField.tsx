@@ -1,0 +1,74 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import type { FormField } from '@/lib/supabase'
+import { Pen, Trash2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ReactSignatureCanvas = dynamic(() => import('react-signature-canvas'), { ssr: false }) as any
+
+interface SigCanvas {
+  toDataURL: (type?: string) => string
+  clear: () => void
+  isEmpty: () => boolean
+}
+
+interface Props {
+  field: FormField
+  value: string
+  onChange: (v: unknown) => void
+}
+
+export default function SignatureField({ field: _field, value, onChange }: Props) {
+  const sigRef = useRef<SigCanvas | null>(null)
+  const [signed, setSigned] = useState(false)
+
+  const handleEnd = () => {
+    if (sigRef.current && !sigRef.current.isEmpty()) {
+      onChange(sigRef.current.toDataURL('image/png'))
+      setSigned(true)
+    }
+  }
+
+  const handleClear = () => {
+    sigRef.current?.clear()
+    onChange('')
+    setSigned(false)
+  }
+
+  return (
+    <div>
+      <div className="border-2 border-gray-200 rounded-[8px] overflow-hidden bg-white">
+        <ReactSignatureCanvas
+          ref={sigRef}
+          onEnd={handleEnd}
+          canvasProps={{
+            width: 600,
+            height: 180,
+            className: 'w-full touch-none',
+            style: { maxWidth: '100%' },
+          }}
+          penColor="#1a1a2e"
+        />
+      </div>
+      <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <Pen size={12} />
+          <span>Draw your signature above</span>
+        </div>
+        {signed && (
+          <button
+            onClick={handleClear}
+            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+          >
+            <Trash2 size={12} />
+            Clear
+          </button>
+        )}
+      </div>
+      {value && (
+        <p className="mt-1 text-xs text-green-600">Signature captured</p>
+      )}
+    </div>
+  )
+}

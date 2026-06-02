@@ -1,0 +1,71 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const { data, error } = await supabaseAdmin
+    .from('forms')
+    .select('*, categories(*), form_fields(*), notification_rules(*)')
+    .eq('id', params.id)
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const body = await req.json()
+    const { title, description, category_id, slug, is_active, success_message, fields, notification_rules } = body
+
+    // Update form
+    const { error: formError } = await supabaseAdmin
+      .from('forms')
+      .update({ title, description, category_id, slug, is_active, success_message, updated_at: new Date().toISOString() })
+      .eq('id', params.id)
+
+    if (formError) return NextResponse.json({ error: formError.message }, { status: 500 })
+
+    // Replace fields
+    if (fields !== undefined) {
+      await supabaseAdmin.from('form_fields').delete().eq('form_id', params.id)
+      if (fields.length > 0) {
+        const fieldRows = fields.map((f: Record<string, unknown>, i: number) => ({
+          form_id: params.id,
+          label: f.label,
+          field_type: f.field_type,
+          placeholder: f.placeholder || null,
+          options: f.options || null,
+          is_required: f.is_required || false,
+          sort_order: i,
+        }))
+        await supabaseAdmin.from('form_fields').insert(fieldRows)
+      }
+    }
+
+    // Replace notification rules
+    if (notification_rules !== undefined) {
+      await supabaseAdmin.from('notification_rules').delete().eq('form_id', params.id)
+      if (notification_rules.length > 0) {
+        const ruleRows = notification_rules.map((r: Record<string, unknown>) => ({
+          form_id: params.id,
+          recipient_email: r.recipient_email,
+          recipient_name: r.recipient_name || null,
+          send_on_submit: true,
+          email_subject: r.email_subject || null,
+        }))
+        await supabaseAdmin.from('notification_rules').insert(ruleRows)
+      }
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('Update form error:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const { error } = await supabaseAdmin.from('forms').delete().eq('id', params.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
