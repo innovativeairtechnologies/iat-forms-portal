@@ -104,7 +104,7 @@ export async function sendSubmissionEmail(
 </html>`
 
   await resend.emails.send({
-    from: 'IAT Forms <noreply@resend.dev>',
+    from: 'IAT Forms <onboarding@resend.dev>',
     to: rule.recipient_email,
     subject,
     html,

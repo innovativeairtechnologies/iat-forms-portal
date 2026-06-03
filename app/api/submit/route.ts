@@ -44,11 +44,14 @@ export async function POST(req: NextRequest) {
     const fields: FormField[] = fieldsResult.data || []
     const rules: NotificationRule[] = rulesResult.data || []
 
-    // Send emails (non-blocking on failure)
+    // Send notification emails (non-blocking — submission succeeds even if email fails)
+    if (rules.length === 0) {
+      console.log(`[submit] No notification rules for form "${form.title}" — no email sent`)
+    }
     for (const rule of rules) {
-      sendSubmissionEmail(rule, submission, form as Form, fields).catch((err) =>
-        console.error('Email send failed:', err)
-      )
+      sendSubmissionEmail(rule, submission, form as Form, fields)
+        .then(() => console.log(`[submit] Email sent to ${rule.recipient_email} for "${form.title}"`))
+        .catch((err) => console.error(`[submit] Email to ${rule.recipient_email} failed:`, err))
     }
 
     return NextResponse.json({ success: true, id: submission.id })
