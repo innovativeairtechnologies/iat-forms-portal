@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Disable the client-side Router Cache for dynamic pages so admin tabs
+    // always fetch fresh data instead of serving a stale 30-second snapshot.
+    staleTimes: {
+      dynamic: 0,
+    },
+  },
   images: {
     remotePatterns: [
       {

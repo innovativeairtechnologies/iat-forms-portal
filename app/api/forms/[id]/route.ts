@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAdminAuth } from '@/lib/api-auth'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const err = requireAdminAuth(); if (err) return err
   const { data, error } = await supabaseAdmin
     .from('forms')
     .select('*, categories(*), form_fields(*), notification_rules(*)')
@@ -13,11 +15,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const err = requireAdminAuth(); if (err) return err
   try {
     const body = await req.json()
     const { title, description, category_id, slug, is_active, success_message, fields, notification_rules } = body
 
-    // Update form
     const { error: formError } = await supabaseAdmin
       .from('forms')
       .update({ title, description, category_id, slug, is_active, success_message, updated_at: new Date().toISOString() })
@@ -25,7 +27,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     if (formError) return NextResponse.json({ error: formError.message }, { status: 500 })
 
-    // Replace fields
     if (fields !== undefined) {
       await supabaseAdmin.from('form_fields').delete().eq('form_id', params.id)
       if (fields.length > 0) {
@@ -42,7 +43,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-    // Replace notification rules
     if (notification_rules !== undefined) {
       await supabaseAdmin.from('notification_rules').delete().eq('form_id', params.id)
       if (notification_rules.length > 0) {
@@ -65,6 +65,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const err = requireAdminAuth(); if (err) return err
   const { error } = await supabaseAdmin.from('forms').delete().eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })

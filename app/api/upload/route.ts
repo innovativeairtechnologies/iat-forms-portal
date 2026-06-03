@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAdminAuth } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
+  const err = requireAdminAuth(); if (err) return err
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
@@ -10,8 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    const maxSize = 10 * 1024 * 1024 // 10MB
-    if (file.size > maxSize) {
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
     }
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid file type' }, { status: 400 })
     }
 
-    const ext = file.name.split('.').pop()
+    const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)

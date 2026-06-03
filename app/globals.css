@@ -26,6 +26,14 @@
   --text-muted: #6b7280;
 }
 
+/* Dashboard hero — light and dark gradients */
+.hero-gradient {
+  background: linear-gradient(135deg, #f0faf4 0%, #fafffe 50%, #f0f9ff 100%);
+}
+.dark .hero-gradient {
+  background: linear-gradient(135deg, #0c1a2e 0%, #0d1f35 40%, #0a1f18 100%);
+}
+
 @layer base {
   * { box-sizing: border-box; }
 

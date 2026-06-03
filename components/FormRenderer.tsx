@@ -7,7 +7,7 @@ import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import SelectChipField from './fields/SelectChipField'
 import FileField from './fields/FileField'
 import SignatureField from './fields/SignatureField'
-import ThemeToggle from './ThemeToggle'
+import PublicHeader from './PublicHeader'
 
 interface Props {
   form: Form
@@ -129,31 +129,36 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] dark:bg-gray-950 py-10 px-4">
-      {/* Theme toggle — fixed top-right */}
-      <div className="fixed top-4 right-4 z-10">
-        <ThemeToggle className="bg-white/80 dark:bg-gray-900/80 shadow-card-sm backdrop-blur-sm border border-gray-100 dark:border-gray-800" />
-      </div>
+    <div className="min-h-screen bg-[#f5f5f7] dark:bg-gray-950">
+      <PublicHeader formTitle={form.title} />
 
-      <div className="max-w-2xl mx-auto space-y-4">
-        {/* Header card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card px-7 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#f0faf4] dark:bg-[#089447]/20 flex items-center justify-center flex-shrink-0">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M2 4h12M2 8h8M2 12h10" stroke="#089447" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
+      <div className="py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card overflow-hidden">
+            {/* Form header */}
+            <div className="px-7 pt-7 pb-6 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-8 h-8 rounded-lg bg-[#f0faf4] dark:bg-[#089447]/20 flex items-center justify-center flex-shrink-0">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 4h12M2 8h8M2 12h10" stroke="#089447" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <h1 className="text-[20px] font-bold text-[#0a0a0b] dark:text-white tracking-tight leading-tight">
+                  {form.title}
+                </h1>
+              </div>
+              {form.description && (
+                <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed mt-2 pl-11">
+                  {form.description}
+                </p>
+              )}
             </div>
-            <h1 className="text-[20px] font-bold text-[#0a0a0b] dark:text-white tracking-tight">{form.title}</h1>
-          </div>
-          {form.description && (
-            <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed mt-3">{form.description}</p>
-          )}
-        </div>
 
-        {/* Form card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card px-7 py-7">
-          {formBody}
+            {/* Fields */}
+            <div className="px-7 py-7">
+              {formBody}
+            </div>
+          </div>
         </div>
       </div>
     </div>

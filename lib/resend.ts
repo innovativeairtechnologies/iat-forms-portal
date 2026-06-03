@@ -3,6 +3,24 @@ import type { Submission, Form, FormField, NotificationRule } from './supabase'
 
 export const resend = new Resend(process.env.RESEND_API_KEY)
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function isSafeUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 export async function sendSubmissionEmail(
   rule: NotificationRule,
   submission: Submission,
@@ -23,24 +41,25 @@ export async function sendSubmissionEmail(
       let displayValue = '—'
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) {
-          displayValue = value.join(', ')
+          displayValue = value.map((v) => escapeHtml(String(v))).join(', ')
         } else if (typeof value === 'string' && value.startsWith('data:image')) {
           displayValue = '<em>[Signature captured]</em>'
-        } else if (typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'))) {
-          displayValue = `<a href="${value}" style="color:#089447;">${value}</a>`
+        } else if (typeof value === 'string' && isSafeUrl(value)) {
+          const escaped = escapeHtml(value)
+          displayValue = `<a href="${escaped}" style="color:#089447;">${escaped}</a>`
         } else {
-          displayValue = String(value)
+          displayValue = escapeHtml(String(value))
         }
       }
       return `
         <tr>
-          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#333;width:35%;vertical-align:top;white-space:nowrap;">${field.label}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#333;width:35%;vertical-align:top;white-space:nowrap;">${escapeHtml(field.label)}</td>
           <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;color:#555;vertical-align:top;">${displayValue}</td>
         </tr>`
     })
     .join('')
 
-  const subject = rule.email_subject || `New submission: ${form.title}`
+  const subject = escapeHtml(rule.email_subject || `New submission: ${form.title}`)
 
   const html = `
 <!DOCTYPE html>
@@ -53,7 +72,7 @@ export async function sendSubmissionEmail(
         <tr>
           <td style="background:#1a1a2e;padding:24px 32px;">
             <p style="margin:0;color:#fff;font-size:13px;opacity:0.7;letter-spacing:0.05em;text-transform:uppercase;">Industrial Air Technology</p>
-            <h1 style="margin:4px 0 0;color:#fff;font-size:22px;font-weight:700;">${form.title}</h1>
+            <h1 style="margin:4px 0 0;color:#fff;font-size:22px;font-weight:700;">${escapeHtml(form.title)}</h1>
           </td>
         </tr>
         <tr>
@@ -70,7 +89,7 @@ export async function sendSubmissionEmail(
         </tr>
         <tr>
           <td style="padding:16px 32px 32px;">
-            <a href="${submissionUrl}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View in Admin Portal</a>
+            <a href="${escapeHtml(submissionUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View in Admin Portal</a>
           </td>
         </tr>
         <tr>

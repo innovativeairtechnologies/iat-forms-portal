@@ -168,7 +168,7 @@ export default function FormsPortal({ categories, forms }: Props) {
                 onClick={() => setActiveCategory(tab.name)}
                 className={`flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-all ${
                   activeCategory === tab.name
-                    ? 'border-[#0a0a0b] dark:border-white text-[#0a0a0b] dark:text-white'
+                    ? 'border-[#089447] text-[#089447]'
                     : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-200 dark:hover:border-gray-600'
                 }`}
               >

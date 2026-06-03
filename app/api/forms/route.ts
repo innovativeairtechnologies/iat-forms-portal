@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAdminAuth } from '@/lib/api-auth'
 
 export async function GET() {
+  const err = requireAdminAuth(); if (err) return err
   const { data, error } = await supabaseAdmin
     .from('forms')
     .select('*, categories(*), form_fields(*)')
@@ -12,11 +14,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const err = requireAdminAuth(); if (err) return err
   try {
     const body = await req.json()
     const { title, description, category_id, slug, success_message, fields, notification_rules } = body
 
-    // Create form
     const { data: form, error: formError } = await supabaseAdmin
       .from('forms')
       .insert({ title, description, category_id, slug, success_message })
@@ -27,7 +29,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: formError?.message || 'Failed to create form' }, { status: 500 })
     }
 
-    // Insert fields
     if (fields && fields.length > 0) {
       const fieldRows = fields.map((f: Record<string, unknown>, i: number) => ({
         form_id: form.id,
@@ -41,7 +42,6 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin.from('form_fields').insert(fieldRows)
     }
 
-    // Insert notification rules
     if (notification_rules && notification_rules.length > 0) {
       const ruleRows = notification_rules.map((r: Record<string, unknown>) => ({
         form_id: form.id,

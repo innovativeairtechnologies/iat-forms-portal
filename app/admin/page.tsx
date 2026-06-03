@@ -23,13 +23,13 @@ async function getData() {
       .limit(8),
     supabaseAdmin
       .from('submissions')
-      .select('data,submitted_at')
+      .select('data,submitted_at,form_title')
       .order('submitted_at', { ascending: false })
       .limit(500),
   ])
 
-  // Aggregate unique submitters from raw data
-  const map = new Map<string, { name: string; email: string; count: number; lastSeen: string }>()
+  // Aggregate unique submitters — sorted desc so first encounter = most recent submission
+  const map = new Map<string, { name: string; email: string; count: number; lastSeen: string; lastForm: string }>()
   for (const sub of allForPeople || []) {
     const name = String(
       sub.data?.['Employee Name'] || sub.data?.['Full Name'] || sub.data?.['Name'] || 'Anonymous'
@@ -39,7 +39,7 @@ async function getData() {
     )
     const key = email || name
     if (!map.has(key)) {
-      map.set(key, { name, email, count: 0, lastSeen: sub.submitted_at })
+      map.set(key, { name, email, count: 0, lastSeen: sub.submitted_at, lastForm: sub.form_title || '' })
     }
     map.get(key)!.count++
   }
@@ -102,14 +102,14 @@ export default async function AdminDashboard() {
       {/* Panel header */}
       <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-0.5">
-          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">People</h2>
+          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">Recent Submissions</h2>
           {people.length > 0 && (
             <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full tabular-nums">
               {people.length}
             </span>
           )}
         </div>
-        <p className="text-[11px] text-gray-400">Recent form submitters</p>
+        <p className="text-[11px] text-gray-400">Sorted by activity</p>
       </div>
 
       {/* Submitter list */}
@@ -151,6 +151,9 @@ export default async function AdminDashboard() {
                     {person.email && (
                       <p className="text-[11px] text-gray-400 truncate">{person.email}</p>
                     )}
+                    {person.lastForm && (
+                      <p className="text-[10px] text-[#089447]/70 truncate mt-0.5">{person.lastForm}</p>
+                    )}
                   </div>
                   <span className="flex-shrink-0 text-[10px] font-bold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full tabular-nums">
                     {person.count}
@@ -178,21 +181,21 @@ export default async function AdminDashboard() {
       <div className="p-6 space-y-5">
 
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl" style={{ background: 'linear-gradient(135deg, #0c1a2e 0%, #0d1f35 40%, #0a1f18 100%)' }}>
+        <div className="hero-gradient relative overflow-hidden rounded-2xl border border-[#089447]/10 dark:border-transparent">
           <div
-            className="pointer-events-none absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-25 blur-3xl"
+            className="pointer-events-none absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-20 dark:opacity-25 blur-3xl"
             style={{ background: 'radial-gradient(circle, #089447 0%, transparent 70%)' }}
           />
           <div
-            className="pointer-events-none absolute bottom-0 left-1/3 w-64 h-48 rounded-full opacity-10 blur-3xl"
+            className="pointer-events-none absolute bottom-0 left-1/3 w-64 h-48 rounded-full opacity-[0.07] dark:opacity-10 blur-3xl"
             style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}
           />
           <div className="relative px-8 py-8 sm:py-10">
-            <p className="text-[11px] font-bold text-[#34d399] uppercase tracking-widest mb-3">{today}</p>
-            <h1 className="text-[26px] sm:text-[30px] font-bold text-white leading-tight tracking-tight mb-2">
+            <p className="text-[11px] font-bold text-[#089447] dark:text-[#34d399] uppercase tracking-widest mb-3">{today}</p>
+            <h1 className="text-[26px] sm:text-[30px] font-bold text-[#0a0a0b] dark:text-white leading-tight tracking-tight mb-2">
               Welcome back, Admin
             </h1>
-            <p className="text-[14px] text-gray-400 mb-6 max-w-sm leading-relaxed">
+            <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6 max-w-sm leading-relaxed">
               Manage employee forms, review submissions, and stay on top of your organization.
             </p>
             <div className="flex flex-wrap items-center gap-3">
@@ -205,7 +208,7 @@ export default async function AdminDashboard() {
               </Link>
               <Link
                 href="/admin/submissions"
-                className="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-300 hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
               >
                 View Submissions
                 <ArrowRight size={14} />
