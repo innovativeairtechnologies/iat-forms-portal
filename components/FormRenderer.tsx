@@ -1,82 +1,60 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
 import type { Form, FormField } from '@/lib/supabase'
-import TextField from './fields/TextField'
-import TextareaField from './fields/TextareaField'
+import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import SelectChipField from './fields/SelectChipField'
-import DateField from './fields/DateField'
 import FileField from './fields/FileField'
 import SignatureField from './fields/SignatureField'
-import NumberField from './fields/NumberField'
-import { ChevronDown, ArrowLeft } from 'lucide-react'
+import ThemeToggle from './ThemeToggle'
 
 interface Props {
   form: Form
   fields: FormField[]
+  embedded?: boolean
 }
 
-export default function FormRenderer({ form, fields }: Props) {
+export default function FormRenderer({ form, fields, embedded = false }: Props) {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, unknown>>({})
-  const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [direction, setDirection] = useState(1)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const currentField = fields[currentStep]
-  const isLastStep = currentStep === fields.length - 1
-  const progress = fields.length > 0 ? ((currentStep + 1) / fields.length) * 100 : 0
+  const handleChange = useCallback((label: string, value: unknown) => {
+    setAnswers((prev) => ({ ...prev, [label]: value }))
+    setErrors((prev) => { const next = { ...prev }; delete next[label]; return next })
+  }, [])
 
-  const handleAnswer = useCallback((value: unknown) => {
-    setAnswers((prev) => ({ ...prev, [currentField.label]: value }))
-    setError(null)
-  }, [currentField])
-
-  const validate = useCallback(() => {
-    if (!currentField) return true
-    const val = answers[currentField.label]
-    if (currentField.is_required) {
-      if (val === undefined || val === null || val === '') return false
-      if (Array.isArray(val) && val.length === 0) return false
-    }
-    if (currentField.field_type === 'email' && val) {
-      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRe.test(String(val))) {
-        setError('Please enter a valid email address.')
-        return false
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+    fields.forEach((field) => {
+      if (!field.is_required) return
+      const val = answers[field.label]
+      if (val === undefined || val === null || val === '') {
+        newErrors[field.label] = 'This field is required.'
+      } else if (Array.isArray(val) && val.length === 0) {
+        newErrors[field.label] = 'Please select at least one option.'
+      } else if (field.field_type === 'email' && val) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(val))) {
+          newErrors[field.label] = 'Please enter a valid email address.'
+        }
       }
-    }
-    return true
-  }, [currentField, answers])
+    })
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
-  const goNext = useCallback(async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!validate()) {
-      if (!error) setError('This field is required.')
+      const firstError = document.querySelector('[data-field-error]')
+      firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    setError(null)
-    if (isLastStep) {
-      await handleSubmit()
-    } else {
-      setDirection(1)
-      setCurrentStep((s) => s + 1)
-    }
-  }, [validate, isLastStep, error])
-
-  const goBack = useCallback(() => {
-    if (currentStep > 0) {
-      setDirection(-1)
-      setCurrentStep((s) => s - 1)
-      setError(null)
-    }
-  }, [currentStep])
-
-  const handleSubmit = async () => {
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const res = await fetch('/api/submit', {
         method: 'POST',
@@ -84,189 +62,165 @@ export default function FormRenderer({ form, fields }: Props) {
         body: JSON.stringify({ form_id: form.id, data: answers }),
       })
       if (!res.ok) throw new Error('Submission failed')
+      if (embedded) {
+        window.parent.postMessage({ type: 'iat-form-success', slug: form.slug }, '*')
+      }
       router.push(`/forms/${form.slug}/success`)
     } catch {
-      setError('Something went wrong. Please try again.')
+      setSubmitError('Something went wrong. Please try again.')
       setSubmitting(false)
     }
   }
 
-  // Keyboard navigation
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        const tag = (e.target as HTMLElement).tagName
-        if (tag === 'TEXTAREA') return
-        if (['INPUT', 'BUTTON', 'A'].includes(tag) || (e.target as HTMLElement).contentEditable === 'true') {
-          if (tag !== 'BUTTON') {
-            e.preventDefault()
-            goNext()
-          }
-        } else {
-          e.preventDefault()
-          goNext()
-        }
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [goNext])
+  const formBody = (
+    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      {fields.map((field) => (
+        <FieldRow
+          key={field.id}
+          field={field}
+          value={answers[field.label]}
+          error={errors[field.label]}
+          onChange={(v) => handleChange(field.label, v)}
+        />
+      ))}
 
-  // Auto-advance for single-select chips
-  const handleChipSelect = useCallback((value: unknown) => {
-    setAnswers((prev) => ({ ...prev, [currentField.label]: value }))
-    setError(null)
-    if (currentField.field_type === 'radio' || currentField.field_type === 'select') {
-      setTimeout(() => {
-        if (!isLastStep) {
-          setDirection(1)
-          setCurrentStep((s) => s + 1)
-        }
-      }, 350)
-    }
-  }, [currentField, isLastStep])
+      {submitError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 rounded-xl text-red-600 dark:text-red-400 text-[13px]">
+          <AlertCircle size={15} className="flex-shrink-0" />
+          {submitError}
+        </div>
+      )}
 
-  if (!currentField) return null
+      <div className="pt-2">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[14px] font-semibold px-7 py-3 rounded-xl transition-colors disabled:opacity-50 shadow-sm"
+        >
+          {submitting ? (
+            <><Loader2 size={16} className="animate-spin" />Submitting…</>
+          ) : (
+            <><CheckCircle size={16} />Submit</>
+          )}
+        </button>
+        <p className="text-[12px] text-gray-400 mt-2">
+          Fields marked <span className="text-[#089447]">*</span> are required.
+        </p>
+      </div>
+    </form>
+  )
 
-  const variants = {
-    enter: (d: number) => ({ opacity: 0, y: d > 0 ? 40 : -40 }),
-    center: { opacity: 1, y: 0 },
-    exit: (d: number) => ({ opacity: 0, y: d > 0 ? -40 : 40 }),
+  if (embedded) {
+    return (
+      <div className="min-h-screen bg-transparent py-6 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-5">
+            <h1 className="text-[22px] font-bold text-[#0a0a0b] dark:text-white tracking-tight">{form.title}</h1>
+            {form.description && (
+              <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">{form.description}</p>
+            )}
+          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card px-7 py-7">
+            {formBody}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col" ref={containerRef}>
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <span className="text-sm font-semibold text-[#1a1a2e]">{form.title}</span>
-        <span className="text-xs text-gray-400">
-          {currentStep + 1} / {fields.length}
-        </span>
+    <div className="min-h-screen bg-[#f5f5f7] dark:bg-gray-950 py-10 px-4">
+      {/* Theme toggle — fixed top-right */}
+      <div className="fixed top-4 right-4 z-10">
+        <ThemeToggle className="bg-white/80 dark:bg-gray-900/80 shadow-card-sm backdrop-blur-sm border border-gray-100 dark:border-gray-800" />
       </div>
 
-      {/* Progress bar */}
-      <div className="h-0.5 bg-gray-100">
-        <motion.div
-          className="h-full bg-[#0a7cff]"
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.3 }}
-        />
-      </div>
-
-      {/* Question area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <div className="w-full max-w-2xl">
-          <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-              key={currentStep}
-              custom={direction}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-              {/* Step number */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold text-[#0a7cff] bg-[#e8f2ff] px-2 py-0.5 rounded">
-                  {currentStep + 1}
-                </span>
-                {currentField.is_required && (
-                  <span className="text-xs text-gray-400">Required</span>
-                )}
-              </div>
-
-              {/* Question label */}
-              <h2 className="text-2xl font-bold text-[#1a1a2e] mb-1 leading-snug">
-                {currentField.label}
-                {currentField.is_required && <span className="text-[#0a7cff] ml-1">*</span>}
-              </h2>
-
-              {/* Field */}
-              <div className="mt-6">
-                {renderField(currentField, answers[currentField.label], handleAnswer, handleChipSelect)}
-              </div>
-
-              {/* Error */}
-              {error && (
-                <p className="mt-3 text-sm text-red-500">{error}</p>
-              )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-3 mt-8">
-                {currentStep > 0 && (
-                  <button
-                    onClick={goBack}
-                    className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <ArrowLeft size={16} />
-                    Back
-                  </button>
-                )}
-                <button
-                  onClick={goNext}
-                  disabled={submitting}
-                  className="flex items-center gap-2 bg-[#1a1a2e] hover:bg-[#0f0f20] text-white text-sm font-semibold px-6 py-3 rounded-[8px] transition-colors disabled:opacity-60"
-                >
-                  {submitting ? 'Submitting…' : isLastStep ? 'Submit' : 'OK'}
-                  {!isLastStep && !submitting && (
-                    <ChevronDown size={16} className="rotate-[-90deg]" />
-                  )}
-                </button>
-              </div>
-
-              {!isLastStep && (
-                <p className="mt-3 text-xs text-gray-400">
-                  Press <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 font-mono text-[11px]">Enter ↵</kbd> to continue
-                </p>
-              )}
-            </motion.div>
-          </AnimatePresence>
+      <div className="max-w-2xl mx-auto space-y-4">
+        {/* Header card */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card px-7 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#f0faf4] dark:bg-[#089447]/20 flex items-center justify-center flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M2 8h8M2 12h10" stroke="#089447" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h1 className="text-[20px] font-bold text-[#0a0a0b] dark:text-white tracking-tight">{form.title}</h1>
+          </div>
+          {form.description && (
+            <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed mt-3">{form.description}</p>
+          )}
         </div>
-      </div>
 
-      {/* Bottom progress dots */}
-      <div className="flex justify-center gap-1.5 pb-6">
-        {fields.map((_, i) => (
-          <div
-            key={i}
-            className={`w-1.5 h-1.5 rounded-full transition-all ${
-              i === currentStep ? 'bg-[#0a7cff] w-4' : i < currentStep ? 'bg-[#0a7cff] opacity-40' : 'bg-gray-200'
-            }`}
-          />
-        ))}
+        {/* Form card */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card px-7 py-7">
+          {formBody}
+        </div>
       </div>
     </div>
   )
 }
 
-function renderField(
-  field: FormField,
-  value: unknown,
-  onChange: (v: unknown) => void,
-  onChipSelect: (v: unknown) => void
-) {
-  switch (field.field_type) {
-    case 'text':
-      return <TextField field={field} value={value as string} onChange={onChange} />
-    case 'email':
-      return <TextField field={field} value={value as string} onChange={onChange} type="email" />
-    case 'number':
-      return <NumberField field={field} value={value as string} onChange={onChange} />
-    case 'textarea':
-      return <TextareaField field={field} value={value as string} onChange={onChange} />
-    case 'select':
-    case 'radio':
-      return <SelectChipField field={field} value={value as string} onChange={onChipSelect} multi={false} />
-    case 'checkbox':
-      return <SelectChipField field={field} value={value as string[]} onChange={onChange} multi={true} />
-    case 'date':
-      return <DateField field={field} value={value as string} onChange={onChange} />
-    case 'file':
-      return <FileField field={field} value={value as string} onChange={onChange} />
-    case 'signature':
-      return <SignatureField field={field} value={value as string} onChange={onChange} />
-    default:
-      return <TextField field={field} value={value as string} onChange={onChange} />
-  }
+function FieldRow({
+  field, value, error, onChange,
+}: {
+  field: FormField
+  value: unknown
+  error?: string
+  onChange: (v: unknown) => void
+}) {
+  const inputClass = (hasError: boolean) =>
+    `w-full border rounded-xl px-4 py-2.5 text-[14px] text-[#0a0a0b] dark:text-gray-100 outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-white dark:bg-gray-800 ${
+      hasError
+        ? 'border-red-300 dark:border-red-700 bg-red-50/40 dark:bg-red-950/20 focus:border-red-400 focus:ring-2 focus:ring-red-400/10'
+        : 'border-gray-200 dark:border-gray-700 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10'
+    }`
+
+  return (
+    <div data-field-error={error ? 'true' : undefined} className="space-y-1.5">
+      <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300">
+        {field.label}
+        {field.is_required && <span className="text-[#089447] ml-1">*</span>}
+      </label>
+
+      {field.field_type === 'text' && (
+        <input type="text" value={String(value || '')} onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || ''} className={inputClass(!!error)} />
+      )}
+      {field.field_type === 'email' && (
+        <input type="email" value={String(value || '')} onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || 'name@company.com'} className={inputClass(!!error)} />
+      )}
+      {field.field_type === 'number' && (
+        <input type="number" value={String(value || '')} onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || '0'} className={inputClass(!!error)} />
+      )}
+      {field.field_type === 'textarea' && (
+        <textarea value={String(value || '')} onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || ''} rows={4}
+          className={`${inputClass(!!error)} resize-none`} />
+      )}
+      {field.field_type === 'date' && (
+        <input type="date" value={String(value || '')} onChange={(e) => onChange(e.target.value)}
+          className={`${inputClass(!!error)} w-auto`} />
+      )}
+      {(field.field_type === 'select' || field.field_type === 'radio') && (
+        <SelectChipField field={field} value={value as string} onChange={onChange} multi={false} />
+      )}
+      {field.field_type === 'checkbox' && (
+        <SelectChipField field={field} value={value as string[]} onChange={onChange} multi={true} />
+      )}
+      {field.field_type === 'file' && (
+        <FileField field={field} value={value as string} onChange={onChange} />
+      )}
+      {field.field_type === 'signature' && (
+        <SignatureField field={field} value={value as string} onChange={onChange} />
+      )}
+
+      {error && (
+        <p className="text-[12px] text-red-500 flex items-center gap-1">
+          <AlertCircle size={12} className="flex-shrink-0" />{error}
+        </p>
+      )}
+    </div>
+  )
 }

@@ -1,12 +1,32 @@
+export const dynamic = 'force-dynamic'
+
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
 import { formatDateTime } from '@/lib/utils'
-import { Mail, MailOpen } from 'lucide-react'
+import { Inbox, ChevronLeft, ChevronRight } from 'lucide-react'
+import FilterSelect from './FilterSelect'
+import SearchBar from './SearchBar'
+import ExportButton from './ExportButton'
+import { Suspense } from 'react'
 
 interface SearchParams {
   form_id?: string
   is_read?: string
+  status?: string
   page?: string
+  search?: string
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  open: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+  in_progress: 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400',
+  resolved: 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  open: 'Open',
+  in_progress: 'In Progress',
+  resolved: 'Resolved',
 }
 
 async function getSubmissions(searchParams: SearchParams) {
@@ -21,13 +41,15 @@ async function getSubmissions(searchParams: SearchParams) {
     .range(offset, offset + limit - 1)
 
   if (searchParams.form_id) query = query.eq('form_id', searchParams.form_id)
-  if (searchParams.is_read !== undefined) query = query.eq('is_read', searchParams.is_read === 'true')
+  if (searchParams.is_read) query = query.eq('is_read', searchParams.is_read === 'true')
+  if (searchParams.status) query = query.eq('status', searchParams.status)
+  if (searchParams.search) {
+    const term = `%${searchParams.search}%`
+    query = query.or(`form_title.ilike.${term},data::text.ilike.${term}`)
+  }
 
   const { data, count } = await query
-  const { data: forms } = await supabaseAdmin
-    .from('forms')
-    .select('id,title')
-    .order('title')
+  const { data: forms } = await supabaseAdmin.from('forms').select('id,title').order('title')
 
   return { submissions: data || [], count: count || 0, forms: forms || [], page, limit }
 }
@@ -35,125 +57,178 @@ async function getSubmissions(searchParams: SearchParams) {
 export default async function SubmissionsPage({ searchParams }: { searchParams: SearchParams }) {
   const { submissions, count, forms, page, limit } = await getSubmissions(searchParams)
   const totalPages = Math.ceil(count / limit)
+  const activeForm = forms.find((f: { id: string; title: string }) => f.id === searchParams.form_id)
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1a1a2e]">Submissions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{count} total</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white border border-gray-200 rounded-[8px] p-4 mb-4 flex flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Form</label>
-          <FilterSelect
-            name="form_id"
-            current={searchParams.form_id}
-            options={[{ value: '', label: 'All Forms' }, ...forms.map((f: { id: string; title: string }) => ({ value: f.id, label: f.title }))]}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</label>
-          <FilterSelect
-            name="is_read"
-            current={searchParams.is_read}
-            options={[
-              { value: '', label: 'All' },
-              { value: 'false', label: 'Unread' },
-              { value: 'true', label: 'Read' },
-            ]}
+    <div className="flex-1 overflow-auto">
+      {/* Header */}
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Inbox</p>
+            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">
+              {activeForm ? activeForm.title : 'All Submissions'}
+            </h1>
+            <p className="text-[13px] text-gray-400 mt-0.5">
+              {count} {count === 1 ? 'submission' : 'submissions'}
+              {searchParams.search && ` matching "${searchParams.search}"`}
+            </p>
+          </div>
+          <ExportButton
+            formId={searchParams.form_id}
+            isRead={searchParams.is_read}
+            search={searchParams.search}
+            formTitle={activeForm?.title}
           />
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-[8px] overflow-hidden">
-        {submissions.length === 0 ? (
-          <div className="py-16 text-center text-gray-400 text-sm">No submissions found</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-6"></th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Form</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Submitted</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {submissions.map((sub: { id: string; form_title: string | null; submitted_at: string; is_read: boolean }) => (
-                <tr key={sub.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-4">
-                    {sub.is_read
-                      ? <MailOpen size={15} className="text-gray-300" />
-                      : <Mail size={15} className="text-[#0a7cff]" />
-                    }
-                  </td>
-                  <td className="px-5 py-4">
-                    <Link
-                      href={`/admin/submissions/${sub.id}`}
-                      className={`hover:text-[#0a7cff] transition-colors ${sub.is_read ? 'text-gray-600' : 'font-semibold text-[#1a1a2e]'}`}
-                    >
-                      {sub.form_title || '—'}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-4 text-gray-500">{formatDateTime(sub.submitted_at)}</td>
-                  <td className="px-5 py-4">
-                    {sub.is_read ? (
-                      <span className="text-xs text-gray-400">Read</span>
-                    ) : (
-                      <span className="text-xs font-semibold text-[#0a7cff] bg-[#e8f2ff] px-2 py-0.5 rounded">Unread</span>
-                    )}
-                  </td>
+      <div className="p-8">
+        {/* Filter + search bar */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-card px-5 py-3.5 mb-4 flex flex-wrap items-center gap-4">
+          <Suspense>
+            <SearchBar current={searchParams.search} />
+          </Suspense>
+          <div className="w-px h-4 bg-gray-100 dark:bg-gray-800" />
+          <div className="flex items-center gap-2.5">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
+            <FilterSelect
+              name="form_id"
+              current={searchParams.form_id}
+              options={[{ value: '', label: 'All Forms' }, ...forms.map((f: { id: string; title: string }) => ({ value: f.id, label: f.title }))]}
+            />
+          </div>
+          <div className="w-px h-4 bg-gray-100 dark:bg-gray-800" />
+          <div className="flex items-center gap-2.5">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Status</span>
+            <FilterSelect
+              name="status"
+              current={searchParams.status}
+              options={[
+                { value: '', label: 'All Statuses' },
+                { value: 'open', label: 'Open' },
+                { value: 'in_progress', label: 'In Progress' },
+                { value: 'resolved', label: 'Resolved' },
+              ]}
+            />
+          </div>
+          <div className="w-px h-4 bg-gray-100 dark:bg-gray-800" />
+          <div className="flex items-center gap-2.5">
+            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Read</span>
+            <FilterSelect
+              name="is_read"
+              current={searchParams.is_read}
+              options={[
+                { value: '', label: 'All' },
+                { value: 'false', label: 'Unread' },
+                { value: 'true', label: 'Read' },
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+          {submissions.length === 0 ? (
+            <div className="py-20 text-center">
+              <Inbox size={28} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
+              <p className="text-[14px] font-medium text-gray-400">
+                {searchParams.search ? `No results for "${searchParams.search}"` : 'No submissions found'}
+              </p>
+              <p className="text-[12px] text-gray-300 dark:text-gray-600 mt-1">Try adjusting your filters</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-50 dark:border-gray-800">
+                  <th className="px-6 py-3.5 text-left w-4"></th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Submitter</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Submitted</th>
+                  <th className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                {submissions.map((sub: { id: string; form_title: string | null; submitted_at: string; is_read: boolean; data: Record<string, unknown> }) => {
+                  const submitterName = sub.data?.['Employee Name'] || sub.data?.['Full Name'] || sub.data?.['Name'] || null
+                  const submitterEmail = sub.data?.['Employee Email'] || sub.data?.['Email'] || sub.data?.['Email Address'] || null
+                  const initials = submitterName
+                    ? String(submitterName).split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
+                    : '?'
+                  return (
+                    <tr key={sub.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className={`w-2 h-2 rounded-full ${sub.is_read ? 'bg-transparent' : 'bg-[#089447]'}`} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <Link href={`/admin/submissions/${sub.id}`} className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-gray-400 dark:text-gray-500">
+                            {initials}
+                          </div>
+                          <div>
+                            <p className={`text-[13px] ${sub.is_read ? 'text-gray-600 dark:text-gray-400' : 'font-semibold text-gray-900 dark:text-white'} group-hover:text-[#089447] transition-colors`}>
+                              {String(submitterName || 'Anonymous')}
+                            </p>
+                            {submitterEmail && (
+                              <p className="text-[11px] text-gray-400">{String(submitterEmail)}</p>
+                            )}
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 text-[12px] font-medium text-gray-600 dark:text-gray-400">
+                          {sub.form_title || '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-500 dark:text-gray-400">{formatDateTime(sub.submitted_at)}</td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const s = (sub as { status?: string }).status || 'open'
+                            return (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_STYLES[s] || STATUS_STYLES.open}`}>
+                                {STATUS_LABELS[s] || 'Open'}
+                              </span>
+                            )
+                          })()}
+                          {!sub.is_read && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#089447] flex-shrink-0" title="Unread" />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-[12px] text-gray-400">Page {page} of {totalPages} · {count} total</p>
+            <div className="flex items-center gap-1.5">
+              {page > 1 && (
+                <Link
+                  href={`?page=${page - 1}${searchParams.form_id ? `&form_id=${searchParams.form_id}` : ''}${searchParams.is_read ? `&is_read=${searchParams.is_read}` : ''}${searchParams.search ? `&search=${searchParams.search}` : ''}`}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                >
+                  <ChevronLeft size={13} /> Prev
+                </Link>
+              )}
+              {page < totalPages && (
+                <Link
+                  href={`?page=${page + 1}${searchParams.form_id ? `&form_id=${searchParams.form_id}` : ''}${searchParams.is_read ? `&is_read=${searchParams.is_read}` : ''}${searchParams.search ? `&search=${searchParams.search}` : ''}`}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                >
+                  Next <ChevronRight size={13} />
+                </Link>
+              )}
+            </div>
+          </div>
         )}
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`?page=${p}${searchParams.form_id ? `&form_id=${searchParams.form_id}` : ''}${searchParams.is_read ? `&is_read=${searchParams.is_read}` : ''}`}
-              className={`w-8 h-8 flex items-center justify-center rounded-[6px] text-sm font-medium ${
-                p === page ? 'bg-[#1a1a2e] text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0a7cff]'
-              }`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
     </div>
-  )
-}
-
-function FilterSelect({ name, current, options }: { name: string; current?: string; options: { value: string; label: string }[] }) {
-  return (
-    <form>
-      <select
-        name={name}
-        defaultValue={current || ''}
-        onChange={(e) => {
-          const url = new URL(window.location.href)
-          if (e.target.value) url.searchParams.set(name, e.target.value)
-          else url.searchParams.delete(name)
-          url.searchParams.delete('page')
-          window.location.href = url.toString()
-        }}
-        className="border border-gray-200 rounded-[6px] px-3 py-1.5 text-sm text-[#1a1a2e] outline-none focus:border-[#0a7cff]"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </form>
   )
 }

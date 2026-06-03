@@ -19,7 +19,7 @@ export default function DateField({ field, value, onChange }: Props) {
       type="date"
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
-      className="border-2 border-gray-200 focus:border-[#0a7cff] rounded-[8px] bg-transparent text-base text-[#1a1a2e] outline-none px-4 py-3 transition-colors"
+      className="border-2 border-gray-200 focus:border-[#089447] rounded-[8px] bg-transparent text-base text-[#1a1a2e] outline-none px-4 py-3 transition-colors"
     />
   )
 }

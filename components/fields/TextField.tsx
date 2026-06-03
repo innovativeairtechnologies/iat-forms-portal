@@ -21,7 +21,7 @@ export default function TextField({ field, value, onChange, type = 'text' }: Pro
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder={field.placeholder || (type === 'email' ? 'name@company.com' : 'Type your answer…')}
-      className="w-full border-0 border-b-2 border-gray-200 focus:border-[#0a7cff] bg-transparent text-xl text-[#1a1a2e] placeholder-gray-300 outline-none py-2 transition-colors"
+      className="w-full border-0 border-b-2 border-gray-100 focus:border-[#089447] bg-transparent text-[22px] font-medium text-[#0a0a0b] placeholder-gray-200 outline-none py-2 transition-colors tracking-tight"
     />
   )
 }

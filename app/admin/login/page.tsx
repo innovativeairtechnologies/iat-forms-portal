@@ -58,7 +58,7 @@ export default function AdminLoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoFocus
                   placeholder="Enter admin password"
-                  className="w-full border border-gray-200 rounded-[8px] px-4 py-2.5 text-sm text-[#1a1a2e] outline-none focus:border-[#0a7cff] pr-10"
+                  className="w-full border border-gray-200 rounded-[8px] px-4 py-2.5 text-sm text-[#1a1a2e] outline-none focus:border-[#089447] pr-10"
                 />
                 <button
                   type="button"

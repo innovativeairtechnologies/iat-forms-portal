@@ -16,17 +16,19 @@ type BuilderField = Omit<FormField, 'id' | 'form_id' | 'created_at'> & { _id: st
 type BuilderRule = Omit<NotificationRule, 'id' | 'form_id' | 'created_at'> & { _id: string }
 
 const FIELD_TYPES: { type: FormField['field_type']; label: string; icon: LucideIcon }[] = [
-  { type: 'text', label: 'Short Text', icon: Type },
-  { type: 'email', label: 'Email', icon: Mail },
-  { type: 'number', label: 'Number', icon: Hash },
-  { type: 'textarea', label: 'Long Text', icon: AlignLeft },
-  { type: 'select', label: 'Dropdown', icon: ListOrdered },
-  { type: 'radio', label: 'Single Choice', icon: ToggleLeft },
-  { type: 'checkbox', label: 'Multi Choice', icon: CheckSquare },
-  { type: 'date', label: 'Date', icon: Calendar },
-  { type: 'file', label: 'File Upload', icon: Upload },
-  { type: 'signature', label: 'Signature', icon: Pen },
+  { type: 'text',      label: 'Short Text',   icon: Type },
+  { type: 'email',     label: 'Email',         icon: Mail },
+  { type: 'number',    label: 'Number',        icon: Hash },
+  { type: 'textarea',  label: 'Long Text',     icon: AlignLeft },
+  { type: 'select',    label: 'Dropdown',      icon: ListOrdered },
+  { type: 'radio',     label: 'Single Choice', icon: ToggleLeft },
+  { type: 'checkbox',  label: 'Multi Choice',  icon: CheckSquare },
+  { type: 'date',      label: 'Date',          icon: Calendar },
+  { type: 'file',      label: 'File Upload',   icon: Upload },
+  { type: 'signature', label: 'Signature',     icon: Pen },
 ]
+
+const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 outline-none focus:border-[#089447] dark:focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
 
 let idCounter = 0
 const uid = () => `field-${++idCounter}`
@@ -153,42 +155,44 @@ export default function FormBuilder({ categories, initialForm }: Props) {
 
   return (
     <div className="flex h-[calc(100vh-0px)]">
-      {/* Left: Field Palette */}
-      <aside className="w-52 bg-white border-r border-gray-200 flex flex-col overflow-y-auto flex-shrink-0">
-        <div className="px-4 pt-4 pb-3 border-b border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Add Field</p>
+
+      {/* Left: Field palette */}
+      <aside className="w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto flex-shrink-0">
+        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Add Field</p>
         </div>
-        <div className="p-3 space-y-1.5">
+        <div className="p-3 space-y-0.5">
           {FIELD_TYPES.map((ft) => (
             <button
               key={ft.type}
               onClick={() => addField(ft.type)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-sm text-[#1a1a2e] hover:bg-[#e8f2ff] hover:text-[#0a7cff] transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-sm text-gray-600 dark:text-gray-400 hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 hover:text-[#089447] transition-colors text-left"
             >
-              <ft.icon size={14} />
+              <ft.icon size={14} className="flex-shrink-0" />
               {ft.label}
             </button>
           ))}
         </div>
       </aside>
 
-      {/* Center: Form Preview */}
+      {/* Center: Canvas */}
       <div className="flex-1 flex flex-col overflow-hidden">
+
         {/* Toolbar */}
-        <div className="bg-white border-b border-gray-200 px-5 py-3 flex items-center gap-3">
-          <div className="flex-1">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-5 py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
             <input
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Form title…"
-              className="text-base font-bold text-[#1a1a2e] outline-none placeholder-gray-300 w-full"
+              className="text-base font-bold text-gray-900 dark:text-white outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600 w-full bg-transparent"
             />
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-xs text-gray-400">Slug:</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">Slug:</span>
               <input
                 value={slug}
                 onChange={(e) => setSlug(slugify(e.target.value))}
-                className="text-xs text-gray-500 font-mono outline-none bg-transparent border-b border-transparent focus:border-gray-300"
+                className="text-xs text-gray-500 dark:text-gray-400 font-mono outline-none bg-transparent border-b border-transparent focus:border-gray-300 dark:focus:border-gray-600"
               />
             </div>
           </div>
@@ -196,7 +200,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
             href={slug ? `/forms/${slug}` : '#'}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#0a7cff] transition-colors"
+            className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-[#089447] transition-colors flex-shrink-0"
           >
             <Eye size={14} />
             Preview
@@ -204,36 +208,41 @@ export default function FormBuilder({ categories, initialForm }: Props) {
           <button
             onClick={save}
             disabled={saving}
-            className="flex items-center gap-2 bg-[#0a7cff] hover:bg-[#0066dd] text-white text-sm font-semibold px-4 py-2 rounded-[8px] transition-colors disabled:opacity-60"
+            className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-sm font-semibold px-4 py-2 rounded-[8px] transition-colors disabled:opacity-60 flex-shrink-0"
           >
             <Save size={15} />
             {saving ? 'Saving…' : 'Save Form'}
           </button>
         </div>
+
         {saveError && (
-          <div className="bg-red-50 border-b border-red-200 px-5 py-2 text-sm text-red-600">{saveError}</div>
+          <div className="bg-red-50 dark:bg-red-950/40 border-b border-red-200 dark:border-red-900/50 px-5 py-2 text-sm text-red-600 dark:text-red-400">
+            {saveError}
+          </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Scrollable canvas */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+
           {/* Form meta */}
-          <div className="bg-white border border-gray-200 rounded-[8px] p-5 mb-4 space-y-3">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Description</label>
+              <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional form description…"
                 rows={2}
-                className="w-full border border-gray-200 rounded-[6px] px-3 py-2 text-sm outline-none focus:border-[#0a7cff] resize-none"
+                className={`${inputCls} resize-none`}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Category</label>
+                <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Category</label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full border border-gray-200 rounded-[6px] px-3 py-2 text-sm outline-none focus:border-[#0a7cff]"
+                  className={inputCls}
                 >
                   <option value="">No category</option>
                   {categories.map((c) => (
@@ -242,11 +251,11 @@ export default function FormBuilder({ categories, initialForm }: Props) {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Success Message</label>
+                <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Success Message</label>
                 <input
                   value={successMessage}
                   onChange={(e) => setSuccessMessage(e.target.value)}
-                  className="w-full border border-gray-200 rounded-[6px] px-3 py-2 text-sm outline-none focus:border-[#0a7cff]"
+                  className={inputCls}
                 />
               </div>
             </div>
@@ -258,7 +267,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
               {(provided) => (
                 <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
                   {fields.length === 0 && (
-                    <div className="border-2 border-dashed border-gray-200 rounded-[8px] py-12 text-center text-gray-400 text-sm">
+                    <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl py-12 text-center text-sm text-gray-400 dark:text-gray-600">
                       Add a field from the left panel to get started
                     </div>
                   )}
@@ -269,21 +278,25 @@ export default function FormBuilder({ categories, initialForm }: Props) {
                           ref={prov.innerRef}
                           {...prov.draggableProps}
                           onClick={() => setSelectedFieldId(field._id === selectedFieldId ? null : field._id)}
-                          className={`bg-white border rounded-[8px] px-4 py-3 cursor-pointer transition-all flex items-center gap-3 ${
+                          className={`bg-white dark:bg-gray-900 border rounded-xl px-4 py-3 cursor-pointer transition-all flex items-center gap-3 ${
                             snapshot.isDragging ? 'shadow-lg' : ''
-                          } ${selectedFieldId === field._id ? 'border-[#0a7cff] shadow-[0_0_0_2px_#e8f2ff]' : 'border-gray-200 hover:border-gray-300'}`}
+                          } ${
+                            selectedFieldId === field._id
+                              ? 'border-[#089447] shadow-[0_0_0_2px_rgba(8,148,71,0.1)]'
+                              : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
+                          }`}
                         >
-                          <div {...prov.dragHandleProps} className="text-gray-300 hover:text-gray-500 flex-shrink-0">
+                          <div {...prov.dragHandleProps} className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0">
                             <GripVertical size={16} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-[#1a1a2e] truncate">{field.label}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{field.label}</p>
                             <p className="text-xs text-gray-400 capitalize">{field.field_type}{field.is_required ? ' · Required' : ''}</p>
                           </div>
-                          <ChevronRight size={14} className={`text-gray-300 transition-transform ${selectedFieldId === field._id ? 'rotate-90' : ''}`} />
+                          <ChevronRight size={14} className={`text-gray-300 dark:text-gray-600 transition-transform flex-shrink-0 ${selectedFieldId === field._id ? 'rotate-90' : ''}`} />
                           <button
                             onClick={(e) => { e.stopPropagation(); removeField(field._id) }}
-                            className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
+                            className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors flex-shrink-0"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -297,53 +310,54 @@ export default function FormBuilder({ categories, initialForm }: Props) {
             </Droppable>
           </DragDropContext>
 
-          {/* Notification Rules */}
-          <div className="mt-6 bg-white border border-gray-200 rounded-[8px] p-5">
+          {/* Email notifications */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Bell size={16} className="text-gray-400" />
-                <h3 className="text-sm font-semibold text-[#1a1a2e]">Email Notifications</h3>
+                <Bell size={15} className="text-gray-400 dark:text-gray-500" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Email Notifications</h3>
               </div>
-              <button onClick={addRule} className="flex items-center gap-1 text-xs text-[#0a7cff] hover:underline">
+              <button onClick={addRule} className="flex items-center gap-1 text-xs font-medium text-[#089447] hover:underline">
                 <Plus size={12} />
                 Add recipient
               </button>
             </div>
             {rules.length === 0 && (
-              <p className="text-sm text-gray-400">No notification recipients. Add one above.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">No notification recipients. Add one above.</p>
             )}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {rules.map((rule) => (
-                <div key={rule._id} className="flex items-center gap-3">
+                <div key={rule._id} className="flex items-center gap-2.5">
                   <input
                     value={rule.recipient_email}
                     onChange={(e) => updateRule(rule._id, { recipient_email: e.target.value })}
                     placeholder="email@company.com"
                     type="email"
-                    className="flex-1 border border-gray-200 rounded-[6px] px-3 py-2 text-sm outline-none focus:border-[#0a7cff]"
+                    className={inputCls}
                   />
                   <input
                     value={rule.email_subject || ''}
                     onChange={(e) => updateRule(rule._id, { email_subject: e.target.value || null })}
                     placeholder="Custom subject (optional)"
-                    className="flex-1 border border-gray-200 rounded-[6px] px-3 py-2 text-sm outline-none focus:border-[#0a7cff]"
+                    className={inputCls}
                   />
-                  <button onClick={() => removeRule(rule._id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                  <button onClick={() => removeRule(rule._id)} className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors flex-shrink-0">
                     <X size={15} />
                   </button>
                 </div>
               ))}
             </div>
           </div>
+
         </div>
       </div>
 
-      {/* Right: Field Settings */}
+      {/* Right: Field settings panel */}
       {selectedField && (
-        <aside className="w-72 bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0">
-          <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Field Settings</p>
-            <button onClick={() => setSelectedFieldId(null)} className="text-gray-400 hover:text-gray-600">
+        <aside className="w-72 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 overflow-y-auto flex-shrink-0">
+          <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Field Settings</p>
+            <button onClick={() => setSelectedFieldId(null)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
               <X size={15} />
             </button>
           </div>
@@ -356,6 +370,8 @@ export default function FormBuilder({ categories, initialForm }: Props) {
 
 function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u: Partial<BuilderField>) => void }) {
   const hasOptions = ['select', 'radio', 'checkbox'].includes(field.field_type)
+
+  const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 outline-none focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
 
   const updateOption = (i: number, val: string) => {
     const opts = [...(field.options || [])]
@@ -373,30 +389,30 @@ function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u:
   return (
     <div className="p-5 space-y-5">
       <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Label</label>
+        <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Label</label>
         <input
           value={field.label}
           onChange={(e) => onUpdate({ label: e.target.value })}
-          className="w-full border border-gray-200 rounded-[6px] px-3 py-2 text-sm outline-none focus:border-[#0a7cff]"
+          className={inputCls}
         />
       </div>
 
       {!['signature', 'file', 'date', 'radio', 'checkbox', 'select'].includes(field.field_type) && (
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Placeholder</label>
+          <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Placeholder</label>
           <input
             value={field.placeholder || ''}
             onChange={(e) => onUpdate({ placeholder: e.target.value || null })}
-            className="w-full border border-gray-200 rounded-[6px] px-3 py-2 text-sm outline-none focus:border-[#0a7cff]"
+            className={inputCls}
           />
         </div>
       )}
 
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Required</label>
+        <label className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Required</label>
         <button
           onClick={() => onUpdate({ is_required: !field.is_required })}
-          className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none ${field.is_required ? 'bg-[#0a7cff]' : 'bg-gray-200'}`}
+          className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none ${field.is_required ? 'bg-[#089447]' : 'bg-gray-200 dark:bg-gray-700'}`}
         >
           <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${field.is_required ? 'translate-x-4' : 'translate-x-0'}`} />
         </button>
@@ -404,16 +420,16 @@ function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u:
 
       {hasOptions && (
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Options</label>
+          <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Options</label>
           <div className="space-y-1.5">
             {(field.options || []).map((opt, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
                   value={opt}
                   onChange={(e) => updateOption(i, e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-[6px] px-2.5 py-1.5 text-sm outline-none focus:border-[#0a7cff]"
+                  className={inputCls}
                 />
-                <button onClick={() => removeOption(i)} className="text-gray-300 hover:text-red-500 transition-colors">
+                <button onClick={() => removeOption(i)} className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors flex-shrink-0">
                   <X size={13} />
                 </button>
               </div>
@@ -421,7 +437,7 @@ function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u:
           </div>
           <button
             onClick={addOption}
-            className="mt-2 flex items-center gap-1 text-xs text-[#0a7cff] hover:underline"
+            className="mt-2 flex items-center gap-1 text-xs font-medium text-[#089447] hover:underline"
           >
             <Plus size={12} /> Add option
           </button>

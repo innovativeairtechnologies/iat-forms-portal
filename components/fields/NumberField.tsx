@@ -20,7 +20,7 @@ export default function NumberField({ field, value, onChange }: Props) {
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder={field.placeholder || '0'}
-      className="w-full border-0 border-b-2 border-gray-200 focus:border-[#0a7cff] bg-transparent text-xl text-[#1a1a2e] placeholder-gray-300 outline-none py-2 transition-colors"
+      className="w-full border-0 border-b-2 border-gray-200 focus:border-[#089447] bg-transparent text-xl text-[#1a1a2e] placeholder-gray-300 outline-none py-2 transition-colors"
     />
   )
 }

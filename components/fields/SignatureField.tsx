@@ -43,10 +43,8 @@ export default function SignatureField({ field: _field, value, onChange }: Props
           ref={sigRef}
           onEnd={handleEnd}
           canvasProps={{
-            width: 600,
-            height: 180,
             className: 'w-full touch-none',
-            style: { maxWidth: '100%' },
+            style: { width: '100%', height: '160px', display: 'block' },
           }}
           penColor="#1a1a2e"
         />

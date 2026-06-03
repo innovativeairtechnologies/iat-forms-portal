@@ -27,7 +27,7 @@ export async function sendSubmissionEmail(
         } else if (typeof value === 'string' && value.startsWith('data:image')) {
           displayValue = '<em>[Signature captured]</em>'
         } else if (typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'))) {
-          displayValue = `<a href="${value}" style="color:#0a7cff;">${value}</a>`
+          displayValue = `<a href="${value}" style="color:#089447;">${value}</a>`
         } else {
           displayValue = String(value)
         }
@@ -70,7 +70,7 @@ export async function sendSubmissionEmail(
         </tr>
         <tr>
           <td style="padding:16px 32px 32px;">
-            <a href="${submissionUrl}" style="display:inline-block;background:#0a7cff;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View in Admin Portal</a>
+            <a href="${submissionUrl}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View in Admin Portal</a>
           </td>
         </tr>
         <tr>

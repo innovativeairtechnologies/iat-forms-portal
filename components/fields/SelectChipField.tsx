@@ -32,7 +32,7 @@ export default function SelectChipField({ field, value, onChange, multi }: Props
   }
 
   return (
-    <div className="flex flex-wrap gap-2.5">
+    <div className="flex flex-wrap gap-2">
       {options.map((opt) => {
         const selected = isSelected(opt)
         return (
@@ -40,13 +40,13 @@ export default function SelectChipField({ field, value, onChange, multi }: Props
             key={opt}
             type="button"
             onClick={() => toggle(opt)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-[8px] text-sm font-medium border-2 transition-all ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-[8px] text-[13px] font-medium border transition-all duration-150 ${
               selected
-                ? 'bg-[#0a7cff] border-[#0a7cff] text-white'
-                : 'bg-white border-gray-200 text-[#1a1a2e] hover:border-[#0a7cff] hover:text-[#0a7cff]'
+                ? 'bg-[#0a0a0b] dark:bg-white border-[#0a0a0b] dark:border-white text-white dark:text-gray-900 shadow-card-sm'
+                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 hover:text-[#0a0a0b] dark:hover:text-gray-100'
             }`}
           >
-            {selected && <Check size={14} />}
+            {selected && <Check size={13} strokeWidth={2.5} />}
             {opt}
           </button>
         )

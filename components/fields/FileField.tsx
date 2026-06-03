@@ -64,18 +64,18 @@ export default function FileField({ field, value, onChange }: Props) {
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
         onClick={() => inputRef.current?.click()}
-        className="border-2 border-dashed border-gray-200 hover:border-[#0a7cff] rounded-[8px] p-8 text-center cursor-pointer transition-colors"
+        className="border-2 border-dashed border-gray-200 hover:border-[#089447] rounded-[8px] p-8 text-center cursor-pointer transition-colors"
       >
         {uploading ? (
           <div className="flex flex-col items-center gap-2">
-            <Loader2 className="w-8 h-8 text-[#0a7cff] animate-spin" />
+            <Loader2 className="w-8 h-8 text-[#089447] animate-spin" />
             <p className="text-sm text-gray-500">Uploading…</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
             <Upload className="w-8 h-8 text-gray-300" />
             <p className="text-sm text-gray-500">
-              Drag & drop or <span className="text-[#0a7cff] font-medium">browse</span>
+              Drag & drop or <span className="text-[#089447] font-medium">browse</span>
             </p>
             <p className="text-xs text-gray-400">PNG, JPG, GIF, PDF · max 10MB</p>
           </div>
