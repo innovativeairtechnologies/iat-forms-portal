@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import {
-  GripVertical, Plus, Trash2, Save, ChevronRight, X,
+  GripVertical, Plus, Trash2, Save, ChevronRight, X, Check, Pencil,
   Type, AlignLeft, Hash, Mail, ListOrdered, CheckSquare,
   Calendar, Upload, Pen, ToggleLeft, Bell, Eye
 } from 'lucide-react'
@@ -59,6 +59,8 @@ export default function FormBuilder({ categories, initialForm }: Props) {
   const [rules, setRules] = useState<BuilderRule[]>(
     (initialForm?.notification_rules || []).map((r) => ({ ...r, _id: uid() }))
   )
+  // Track which rule rows are in "edit" mode — new rules start editing, saved ones start as chips
+  const [editingRuleIds, setEditingRuleIds] = useState<Set<string>>(new Set())
 
   const selectedField = fields.find((f) => f._id === selectedFieldId) || null
 
@@ -94,14 +96,27 @@ export default function FormBuilder({ categories, initialForm }: Props) {
   }
 
   const addRule = () => {
-    setRules((prev) => [...prev, { _id: uid(), recipient_email: '', recipient_name: null, send_on_submit: true, email_subject: null }])
+    const id = uid()
+    setRules((prev) => [...prev, { _id: id, recipient_email: '', recipient_name: null, send_on_submit: true, email_subject: null }])
+    setEditingRuleIds((prev) => { const s = new Set(prev); s.add(id); return s })
   }
 
   const updateRule = (id: string, updates: Partial<BuilderRule>) => {
     setRules((prev) => prev.map((r) => r._id === id ? { ...r, ...updates } : r))
   }
 
-  const removeRule = (id: string) => setRules((prev) => prev.filter((r) => r._id !== id))
+  const confirmRule = (id: string) => {
+    setEditingRuleIds((prev) => { const s = new Set(prev); s.delete(id); return s })
+  }
+
+  const editRule = (id: string) => {
+    setEditingRuleIds((prev) => { const s = new Set(prev); s.add(id); return s })
+  }
+
+  const removeRule = (id: string) => {
+    setRules((prev) => prev.filter((r) => r._id !== id))
+    setEditingRuleIds((prev) => { const s = new Set(prev); s.delete(id); return s })
+  }
 
   const handleTitleChange = (val: string) => {
     setTitle(val)
@@ -154,7 +169,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-0px)]">
+    <div className="flex h-full">
 
       {/* Left: Field palette */}
       <aside className="w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto flex-shrink-0">
@@ -325,27 +340,64 @@ export default function FormBuilder({ categories, initialForm }: Props) {
             {rules.length === 0 && (
               <p className="text-sm text-gray-400 dark:text-gray-500">No notification recipients. Add one above.</p>
             )}
-            <div className="space-y-2.5">
-              {rules.map((rule) => (
-                <div key={rule._id} className="flex items-center gap-2.5">
-                  <input
-                    value={rule.recipient_email}
-                    onChange={(e) => updateRule(rule._id, { recipient_email: e.target.value })}
-                    placeholder="email@company.com"
-                    type="email"
-                    className={inputCls}
-                  />
-                  <input
-                    value={rule.email_subject || ''}
-                    onChange={(e) => updateRule(rule._id, { email_subject: e.target.value || null })}
-                    placeholder="Custom subject (optional)"
-                    className={inputCls}
-                  />
-                  <button onClick={() => removeRule(rule._id)} className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors flex-shrink-0">
-                    <X size={15} />
-                  </button>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {rules.map((rule) => {
+                const isEditing = editingRuleIds.has(rule._id) || !rule.recipient_email
+
+                if (!isEditing) {
+                  return (
+                    <div key={rule._id} className="flex items-center gap-2.5 bg-[#f0faf4] dark:bg-[#089447]/10 border border-[#089447]/25 rounded-lg px-3 py-2.5">
+                      <Check size={13} className="text-[#089447] flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200 truncate">{rule.recipient_email}</p>
+                        {rule.email_subject && (
+                          <p className="text-[11px] text-gray-400 truncate">Subject: {rule.email_subject}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => editRule(rule._id)}
+                        title="Edit"
+                        className="text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => removeRule(rule._id)}
+                        title="Remove"
+                        className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors flex-shrink-0"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={rule._id} className="flex items-center gap-2.5">
+                    <input
+                      value={rule.recipient_email}
+                      onChange={(e) => updateRule(rule._id, { recipient_email: e.target.value })}
+                      placeholder="email@company.com"
+                      type="email"
+                      className={inputCls}
+                      autoFocus={!rule.recipient_email}
+                    />
+                    <input
+                      value={rule.email_subject || ''}
+                      onChange={(e) => updateRule(rule._id, { email_subject: e.target.value || null })}
+                      placeholder="Custom subject (optional)"
+                      className={inputCls}
+                    />
+                    <button
+                      onClick={() => rule.recipient_email.trim() ? confirmRule(rule._id) : removeRule(rule._id)}
+                      title={rule.recipient_email.trim() ? 'Confirm' : 'Remove'}
+                      className={`flex-shrink-0 transition-colors ${rule.recipient_email.trim() ? 'text-[#089447] hover:text-[#077a3c]' : 'text-gray-300 dark:text-gray-600 hover:text-red-500'}`}
+                    >
+                      {rule.recipient_email.trim() ? <Check size={15} /> : <X size={15} />}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
