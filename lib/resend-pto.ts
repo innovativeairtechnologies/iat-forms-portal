@@ -3,7 +3,9 @@ import type { Employee, TimeOffRequest } from './supabase'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'IAT Portal <onboarding@resend.dev>'
-const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/^https?:\/\/https?:\/\//, 'https://')
+const APP_URL = process.env.NODE_ENV === 'development'
+  ? 'http://localhost:3000'
+  : 'https://iat-forms-portal-lime.vercel.app'
 
 function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
