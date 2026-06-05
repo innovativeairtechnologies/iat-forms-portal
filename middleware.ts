@@ -28,10 +28,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Protect /employee/* except the login page itself
+  // Protect /employee/* except public entry points
   if (
     pathname.startsWith('/employee') &&
     !pathname.startsWith('/employee/login') &&
+    !pathname.startsWith('/employee/welcome') &&
     !user
   ) {
     const loginUrl = request.nextUrl.clone()

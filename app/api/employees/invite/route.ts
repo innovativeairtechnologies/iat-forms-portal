@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     data: { name: name || email.split('@')[0] },
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/employee/profile`,
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?type=invite`,
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
