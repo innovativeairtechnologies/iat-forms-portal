@@ -27,6 +27,50 @@ export type Form = {
   submission_count?: number
 }
 
+export type Employee = {
+  id: string
+  email: string
+  name: string
+  avatar_url: string | null
+  job_title: string | null
+  department: string | null
+  phone: string | null
+  bio: string | null
+  pto_balance: number
+  sick_balance: number
+  pto_accrual_rate: number
+  sick_accrual_rate: number
+  hire_date: string | null
+  is_admin: boolean
+  created_at: string
+}
+
+export type TimeOffRequest = {
+  id: string
+  employee_id: string
+  type: 'pto' | 'sick'
+  hours_requested: number
+  start_date: string
+  end_date: string
+  notes: string | null
+  status: 'pending' | 'approved' | 'denied'
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+  employees?: Employee
+  reviewer?: Employee
+}
+
+export type AccrualLog = {
+  id: string
+  employee_id: string
+  type: 'pto' | 'sick'
+  hours_delta: number
+  reason: 'scheduled' | 'manual_adjustment' | 'request_approved' | 'request_denied'
+  note: string | null
+  created_at: string
+}
+
 export type FormField = {
   id: string
   form_id: string

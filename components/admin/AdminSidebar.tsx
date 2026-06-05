@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Inbox, FileText, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight,
+  LayoutDashboard, Inbox, FileText, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight, Users, CalendarClock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -11,9 +11,11 @@ import Image from 'next/image'
 import ThemeToggle from '@/components/ThemeToggle'
 
 const NAV = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/admin/submissions', label: 'Submissions', icon: Inbox },
-  { href: '/admin/forms', label: 'Forms', icon: FileText },
+  { href: '/admin',              label: 'Dashboard',   icon: LayoutDashboard, exact: true },
+  { href: '/admin/submissions',  label: 'Submissions', icon: Inbox },
+  { href: '/admin/forms',        label: 'Forms',       icon: FileText },
+  { href: '/admin/employees',    label: 'Employees',   icon: Users },
+  { href: '/admin/requests',     label: 'Time Off',    icon: CalendarClock },
 ]
 
 interface Props {
