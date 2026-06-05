@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { User, Calendar, LogOut, Menu, X } from 'lucide-react'
+import { User, Calendar, LogOut, Menu, X, Users } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -10,8 +10,9 @@ import type { Employee } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/employee/profile',  label: 'My Profile',  icon: User },
-  { href: '/employee/requests', label: 'Time Off',     icon: Calendar },
+  { href: '/employee/profile',   label: 'My Profile',  icon: User     },
+  { href: '/employee/requests',  label: 'Time Off',    icon: Calendar },
+  { href: '/employee/directory', label: 'Directory',   icon: Users    },
 ]
 
 export default function EmployeeShell({ employee, children }: { employee: Employee; children: React.ReactNode }) {
