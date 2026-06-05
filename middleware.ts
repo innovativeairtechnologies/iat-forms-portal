@@ -23,25 +23,21 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Refresh the session — must happen before any redirect checks
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
-  // Protect all /employee/* routes except /employee/login
-  if (pathname.startsWith('/employee') && pathname !== '/employee/login') {
-    if (!user) {
-      const loginUrl = request.nextUrl.clone()
-      loginUrl.pathname = '/employee/login'
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
-  }
-
-  // Redirect logged-in users away from the login page
-  if (pathname === '/employee/login' && user) {
-    const profileUrl = request.nextUrl.clone()
-    profileUrl.pathname = '/employee/profile'
-    return NextResponse.redirect(profileUrl)
+  // Protect /employee/* except the login page itself
+  if (
+    pathname.startsWith('/employee') &&
+    !pathname.startsWith('/employee/login') &&
+    !user
+  ) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/employee/login'
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   return supabaseResponse

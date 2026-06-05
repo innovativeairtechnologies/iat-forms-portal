@@ -16,7 +16,12 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
     .eq('id', user.id)
     .single()
 
-  if (!employee) redirect('/employee/login')
+  // If the auth user has no employee row yet (e.g. invite not fully set up),
+  // sign them out so the middleware doesn't loop them back here
+  if (!employee) {
+    await supabase.auth.signOut()
+    redirect('/employee/login')
+  }
 
   return <EmployeeShell employee={employee}>{children}</EmployeeShell>
 }
