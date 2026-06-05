@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServer } from '@/lib/supabase-server'
+import { isAdminAuthenticated } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendRequestDecisionToEmployee } from '@/lib/resend-pto'
 
@@ -7,18 +7,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createSupabaseServer()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // Verify caller is an admin (Supabase auth user)
-  const { data: reviewer } = await supabaseAdmin
-    .from('employees')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!reviewer?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // Admin portal uses cookie-based auth, not Supabase auth
+  if (!isAdminAuthenticated()) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { decision } = await req.json() as { decision: 'approved' | 'denied' }
   if (!['approved', 'denied'].includes(decision)) {
@@ -33,7 +25,9 @@ export async function POST(
     .eq('status', 'pending')
     .single()
 
-  if (!request) return NextResponse.json({ error: 'Request not found or already reviewed' }, { status: 404 })
+  if (!request) {
+    return NextResponse.json({ error: 'Request not found or already reviewed' }, { status: 404 })
+  }
 
   // Fetch the employee
   const { data: employee } = await supabaseAdmin
@@ -44,17 +38,17 @@ export async function POST(
 
   if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
 
-  // Update request status
+  // Update request status (no reviewed_by since admin has no Supabase user ID)
   await supabaseAdmin
     .from('time_off_requests')
-    .update({ status: decision, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+    .update({ status: decision, reviewed_at: new Date().toISOString() })
     .eq('id', params.id)
 
-  // Deduct balance and log if approved
+  // Approve: deduct balance and log
   if (decision === 'approved') {
-    const balanceField = request.type === 'pto' ? 'pto_balance' : 'sick_balance'
-    const currentBalance = request.type === 'pto' ? employee.pto_balance : employee.sick_balance
-    const newBalance = Math.max(0, currentBalance - request.hours_requested)
+    const balanceField    = request.type === 'pto' ? 'pto_balance' : 'sick_balance'
+    const currentBalance  = request.type === 'pto' ? employee.pto_balance : employee.sick_balance
+    const newBalance      = Math.max(0, currentBalance - request.hours_requested)
 
     await supabaseAdmin
       .from('employees')
@@ -65,10 +59,10 @@ export async function POST(
       .from('accrual_log')
       .insert({
         employee_id: employee.id,
-        type: request.type,
+        type:        request.type,
         hours_delta: -request.hours_requested,
-        reason: 'request_approved',
-        note: `Request ${params.id} approved by ${reviewer.name || reviewer.email}`,
+        reason:      'request_approved',
+        note:        `Request approved by admin`,
       })
   }
 
