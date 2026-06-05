@@ -22,6 +22,7 @@ export default function WelcomePage() {
   const supabase = createSupabaseBrowser()
 
   const [employee, setEmployee] = useState<Employee | null>(null)
+  const [loadError, setLoadError] = useState('')
   const [step, setStep]         = useState<'password' | 'profile'>('password')
 
   // Password step
@@ -39,12 +40,23 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/employee/login'); return }
-      const { data } = await supabase.from('employees').select('*').eq('id', user.id).single()
+      // getSession() reads from local storage — no network round-trip
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/employee/login'); return }
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
       if (data) {
         setEmployee(data)
         setProfile(p => ({ ...p, name: data.name || '' }))
+      } else {
+        // Row missing or RLS blocked — surface the error instead of spinning forever
+        console.error('Employee load error:', error)
+        setLoadError('Could not load your account. Please contact your admin.')
       }
     }
     load()
@@ -88,8 +100,19 @@ export default function WelcomePage() {
 
   if (!employee) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 size={22} className="text-[#089447] animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
+        {loadError ? (
+          <div className="text-center px-6 max-w-sm">
+            <p className="text-[15px] font-semibold text-gray-800 mb-2">Something went wrong</p>
+            <p className="text-[13px] text-gray-400">{loadError}</p>
+            <button onClick={() => router.push('/employee/login')}
+              className="mt-4 text-[13px] text-[#089447] hover:underline">
+              Back to login
+            </button>
+          </div>
+        ) : (
+          <Loader2 size={22} className="text-[#089447] animate-spin" />
+        )}
       </div>
     )
   }
