@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Filter } from 'lucide-react'
+import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TimeOffRequest, Employee } from '@/lib/supabase'
 

@@ -66,8 +66,8 @@ export async function POST(
       })
   }
 
-  // Email the employee
-  sendRequestDecisionToEmployee(employee, request, decision).catch(console.error)
+  // Email the employee — awaited so Vercel doesn't kill the function before Resend fires
+  await sendRequestDecisionToEmployee(employee, request, decision).catch(console.error)
 
   return NextResponse.json({ ok: true })
 }

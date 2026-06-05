@@ -53,19 +53,18 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Notify admins — pull from employees table, fall back to env var
-  supabaseAdmin
+  // Notify admins — awaited so Vercel doesn't kill the function before Resend fires
+  const { data: admins } = await supabaseAdmin
     .from('employees')
     .select('email')
     .eq('is_admin', true)
-    .then(({ data: admins }) => {
-      const emails = admins?.map(a => a.email) ?? []
-      // Always include the fallback admin email if set
-      const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
-      if (fallback && !emails.includes(fallback)) emails.push(fallback)
-      if (!emails.length) return
-      sendRequestNotificationToAdmins(emails, employee, request).catch(console.error)
-    })
+
+  const adminEmails = admins?.map(a => a.email) ?? []
+  const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
+  if (fallback && !adminEmails.includes(fallback)) adminEmails.push(fallback)
+  if (adminEmails.length) {
+    await sendRequestNotificationToAdmins(adminEmails, employee, request).catch(console.error)
+  }
 
   return NextResponse.json({ request }, { status: 201 })
 }
