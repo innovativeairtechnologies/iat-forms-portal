@@ -49,19 +49,21 @@ export default function RequestsQueueClient({ requests }: { requests: RequestWit
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="flex-1 overflow-auto">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-[22px] font-bold text-gray-900">Time Off Requests</h1>
-          <p className="text-[13px] text-gray-400 mt-0.5">
-            {pendingCount > 0 ? `${pendingCount} pending review` : 'All caught up'}
-          </p>
-        </div>
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
+        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Time Off Requests</h1>
+        <p className="text-[13px] text-gray-400 mt-0.5">
+          {pendingCount > 0 ? `${pendingCount} pending review` : 'All caught up'}
+        </p>
       </div>
 
+      <div className="p-8">
+
       {/* Filter tabs */}
-      <div className="flex items-center gap-1 mb-5 border-b border-gray-100">
+      <div className="flex items-center gap-1 mb-5 border-b border-gray-100 dark:border-gray-800">
         {(['pending', 'approved', 'denied', 'all'] as Filter[]).map(f => {
           const count = f === 'all' ? requests.length : requests.filter(r => r.status === f).length
           return (
@@ -172,6 +174,7 @@ export default function RequestsQueueClient({ requests }: { requests: RequestWit
           </AnimatePresence>
         </div>
       )}
+      </div>{/* p-8 */}
     </div>
   )
 }

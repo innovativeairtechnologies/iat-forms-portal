@@ -72,29 +72,34 @@ export default function EmployeesClient({ employees }: { employees: Employee[] }
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <>
+    <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-[22px] font-bold text-gray-900">Employees</h1>
-          <p className="text-[13px] text-gray-400 mt-0.5">{employees.length} total</p>
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">People</p>
+            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Employees</h1>
+            <p className="text-[13px] text-gray-400 mt-0.5">{employees.length} {employees.length === 1 ? 'employee' : 'employees'}</p>
+          </div>
+          <button onClick={openModal}
+            className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
+            <UserPlus size={15} />Add Employee
+          </button>
         </div>
-        <button onClick={openModal}
-          className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
-          <UserPlus size={15} />Add Employee
-        </button>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-5">
-        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employees…"
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-[13px] text-gray-800 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300" />
-      </div>
+      <div className="p-8">
+        {/* Search */}
+        <div className="relative mb-5">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employees…"
+            className="w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl pl-9 pr-4 py-2.5 text-[13px] text-gray-800 dark:text-gray-200 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 shadow-card" />
+        </div>
 
       {/* Employee list */}
-      <div className="bg-white rounded-2xl border border-gray-150 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-12 text-center">
             <User size={28} className="text-gray-200 mx-auto mb-2" />
@@ -127,6 +132,7 @@ export default function EmployeesClient({ employees }: { employees: Employee[] }
           ))
         )}
       </div>
+      </div>{/* p-8 */}
 
       {/* Create employee modal */}
       <AnimatePresence>
@@ -253,6 +259,7 @@ export default function EmployeesClient({ employees }: { employees: Employee[] }
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </div>{/* flex-1 */}
+    </>
   )
 }
