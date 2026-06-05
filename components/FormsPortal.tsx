@@ -6,6 +6,7 @@ import Image from 'next/image'
 import {
   Search, ChevronRight, Settings2, X,
   Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen,
+  ChevronDown, ArrowUpRight,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
@@ -28,7 +29,24 @@ const ICON_COLORS: Record<string, string> = {
   'tool':             'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-500',
 }
 
+const CARD_ACCENT: Record<string, string> = {
+  'clock':           'group-hover:border-blue-200 dark:group-hover:border-blue-800',
+  'clipboard-check': 'group-hover:border-amber-200 dark:group-hover:border-amber-800',
+  'user-plus':       'group-hover:border-violet-200 dark:group-hover:border-violet-800',
+  'send':            'group-hover:border-sky-200 dark:group-hover:border-sky-800',
+  'tool':            'group-hover:border-emerald-200 dark:group-hover:border-emerald-800',
+}
+
 const FALLBACK_ICON_COLOR = 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
+const FALLBACK_CARD_ACCENT = 'group-hover:border-gray-300 dark:group-hover:border-gray-600'
+
+type SortOption = 'most-used' | 'a-z' | 'z-a'
+
+const SORT_LABELS: Record<SortOption, string> = {
+  'most-used': 'Most Used',
+  'a-z':       'A → Z',
+  'z-a':       'Z → A',
+}
 
 interface Props {
   categories: Category[]
@@ -36,10 +54,11 @@ interface Props {
 }
 
 export default function FormsPortal({ categories, forms }: Props) {
-  const [search, setSearch] = useState('')
+  const [search, setSearch]               = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({})
-  const [openSlug, setOpenSlug] = useState<string | null>(null)
+  const [categorySort, setCategorySort]   = useState<Record<string, SortOption>>({})
+  const [openSlug, setOpenSlug]           = useState<string | null>(null)
 
   const visibleCategories = categories.filter((c) =>
     forms.some((f) => f.category_id === c.id)
@@ -79,6 +98,16 @@ export default function FormsPortal({ categories, forms }: Props) {
 
   const toggleCategory = (id: string) => {
     setOpenCategories((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const getSortedForms = (catForms: typeof forms, catId: string) => {
+    const sort = categorySort[catId] ?? 'most-used'
+    return [...catForms].sort((a, b) => {
+      if (sort === 'most-used') return (b.submission_count ?? 0) - (a.submission_count ?? 0)
+      if (sort === 'a-z')       return a.title.localeCompare(b.title)
+      if (sort === 'z-a')       return b.title.localeCompare(a.title)
+      return 0
+    })
   }
 
   return (
@@ -206,14 +235,17 @@ export default function FormsPortal({ categories, forms }: Props) {
             )}
           </AnimatePresence>
 
-          {/* Grouped by category — collapsible */}
+          {/* Grouped by category — collapsible with card grid */}
           {showGrouped && grouped && grouped.map(({ category, forms: catForms }) => {
-            const isOpen = !!openCategories[category.id]
+            const isOpen       = !!openCategories[category.id]
+            const sort         = categorySort[category.id] ?? 'most-used'
             const IconComponent = (category.icon && ICON_MAP[category.icon]) || FolderOpen
-            const iconColor = (category.icon && ICON_COLORS[category.icon]) || FALLBACK_ICON_COLOR
+            const iconColor    = (category.icon && ICON_COLORS[category.icon]) || FALLBACK_ICON_COLOR
+            const sortedForms  = getSortedForms(catForms, category.id)
 
             return (
               <div key={category.id} className="border-b border-gray-100 dark:border-gray-800">
+                {/* Accordion header */}
                 <button
                   onClick={() => toggleCategory(category.id)}
                   className="w-full flex items-center gap-3 py-4 -mx-2 px-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900/70 transition-colors group"
@@ -239,6 +271,7 @@ export default function FormsPortal({ categories, forms }: Props) {
                   </motion.div>
                 </button>
 
+                {/* Accordion body */}
                 <AnimatePresence initial={false}>
                   {isOpen && (
                     <motion.div
@@ -249,15 +282,28 @@ export default function FormsPortal({ categories, forms }: Props) {
                       transition={{ duration: 0.22, ease: 'easeInOut' }}
                       style={{ overflow: 'hidden' }}
                     >
-                      <div className="border-t border-gray-100 dark:border-gray-800 mb-2">
-                        {catForms.map((form, i) => (
-                          <FormRow
-                            key={form.id}
-                            form={form}
-                            isLast={i === catForms.length - 1}
-                            onOpen={setOpenSlug}
+                      <div className="pt-1 pb-5">
+                        {/* Sort bar */}
+                        <div className="flex items-center justify-end mb-3">
+                          <SortDropdown
+                            value={sort}
+                            onChange={(val) =>
+                              setCategorySort((prev) => ({ ...prev, [category.id]: val }))
+                            }
                           />
-                        ))}
+                        </div>
+
+                        {/* Card grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {sortedForms.map((form) => (
+                            <FormCard
+                              key={form.id}
+                              form={form}
+                              categoryIcon={category.icon}
+                              onOpen={setOpenSlug}
+                            />
+                          ))}
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -268,21 +314,23 @@ export default function FormsPortal({ categories, forms }: Props) {
 
           {/* Flat list (single category tab or search results) */}
           {!showGrouped && filtered.length > 0 && (
-            <div className="border-t border-gray-100 dark:border-gray-800 mt-6">
+            <div className="mt-6">
               {search && (
                 <p className="text-[12px] text-gray-400 py-4">
                   {filtered.length} result{filtered.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
                 </p>
               )}
-              {filtered.map((form, i) => (
-                <FormRow
-                  key={form.id}
-                  form={form}
-                  showCategory={!!search}
-                  isLast={i === filtered.length - 1}
-                  onOpen={setOpenSlug}
-                />
-              ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filtered.map((form) => (
+                  <FormCard
+                    key={form.id}
+                    form={form}
+                    categoryIcon={form.categories?.icon ?? null}
+                    showCategory={!!search}
+                    onOpen={setOpenSlug}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -291,43 +339,95 @@ export default function FormsPortal({ categories, forms }: Props) {
   )
 }
 
-function FormRow({
+/* ─── Sort Dropdown ─────────────────────────────────────────── */
+
+function SortDropdown({
+  value,
+  onChange,
+}: {
+  value: SortOption
+  onChange: (v: SortOption) => void
+}) {
+  return (
+    <div className="relative inline-flex items-center">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as SortOption)}
+        onClick={(e) => e.stopPropagation()}
+        className="appearance-none cursor-pointer text-[12px] font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border-0 rounded-lg pl-3 pr-7 py-1.5 outline-none transition-colors"
+      >
+        {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
+          <option key={opt} value={opt}>
+            {SORT_LABELS[opt]}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={11}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
+      />
+    </div>
+  )
+}
+
+/* ─── Form Card ─────────────────────────────────────────────── */
+
+function FormCard({
   form,
+  categoryIcon,
   showCategory = false,
-  isLast = false,
   onOpen,
 }: {
   form: Form & { categories?: Category }
+  categoryIcon: string | null
   showCategory?: boolean
-  isLast?: boolean
   onOpen: (slug: string) => void
 }) {
+  const IconComponent = (categoryIcon && ICON_MAP[categoryIcon]) || FolderOpen
+  const iconColor     = (categoryIcon && ICON_COLORS[categoryIcon]) || FALLBACK_ICON_COLOR
+  const cardAccent    = (categoryIcon && CARD_ACCENT[categoryIcon]) || FALLBACK_CARD_ACCENT
+
   return (
     <button
       onClick={() => onOpen(form.slug)}
-      className={`group w-full text-left flex items-center gap-4 py-3.5 ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''} hover:bg-gray-50/60 dark:hover:bg-gray-900/60 -mx-6 px-6 transition-colors`}
+      className={`group relative w-full text-left bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-800 rounded-2xl p-4 transition-all duration-150 hover:shadow-md dark:hover:shadow-gray-900 hover:-translate-y-px ${cardAccent}`}
     >
-      <div className="flex-1 min-w-0 pl-11">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[14px] font-medium text-[#0a0a0b] dark:text-gray-100 group-hover:text-[#089447] dark:group-hover:text-[#089447] transition-colors leading-snug">
-            {form.title}
-          </span>
-          {showCategory && form.categories?.name && (
-            <span className="text-[11px] text-gray-400 bg-gray-100 dark:bg-gray-800 dark:text-gray-400 px-2 py-0.5 rounded-md flex-shrink-0 hidden sm:inline">
-              {form.categories.name}
-            </span>
-          )}
+      {/* Icon + arrow row */}
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+          <IconComponent size={17} strokeWidth={1.7} />
         </div>
-        {form.description && (
-          <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-0.5 truncate leading-snug">
-            {form.description}
-          </p>
+        <ArrowUpRight
+          size={15}
+          className="text-gray-200 dark:text-gray-700 group-hover:text-[#089447] transition-colors mt-0.5 flex-shrink-0"
+        />
+      </div>
+
+      {/* Title */}
+      <p className="text-[13.5px] font-semibold text-[#0a0a0b] dark:text-gray-100 group-hover:text-[#089447] transition-colors leading-snug mb-1">
+        {form.title}
+      </p>
+
+      {/* Description */}
+      {form.description && (
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-snug line-clamp-2">
+          {form.description}
+        </p>
+      )}
+
+      {/* Footer meta */}
+      <div className="flex items-center gap-2 mt-3">
+        {showCategory && form.categories?.name && (
+          <span className="text-[11px] text-gray-400 bg-gray-100 dark:bg-gray-800 dark:text-gray-400 px-2 py-0.5 rounded-md">
+            {form.categories.name}
+          </span>
+        )}
+        {(form.submission_count ?? 0) > 0 && (
+          <span className="text-[11px] text-gray-300 dark:text-gray-600 tabular-nums">
+            {form.submission_count} submission{form.submission_count !== 1 ? 's' : ''}
+          </span>
         )}
       </div>
-      <ChevronRight
-        size={15}
-        className="text-gray-200 dark:text-gray-700 group-hover:text-[#089447] flex-shrink-0 transition-colors"
-      />
     </button>
   )
 }

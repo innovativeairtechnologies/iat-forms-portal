@@ -24,6 +24,7 @@ export type Form = {
   created_at: string
   updated_at: string
   categories?: Category
+  submission_count?: number
 }
 
 export type FormField = {
