@@ -7,6 +7,8 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { Employee } from '@/lib/supabase'
+// supabase browser client used for auth.updateUser only
+
 
 // ── Password requirement definitions ──────────────────────────────────────────
 const REQUIREMENTS = [
@@ -40,24 +42,15 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const load = async () => {
-      // getSession() reads from local storage — no network round-trip
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/employee/login'); return }
-
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-
-      if (data) {
-        setEmployee(data)
-        setProfile(p => ({ ...p, name: data.name || '' }))
-      } else {
-        // Row missing or RLS blocked — surface the error instead of spinning forever
-        console.error('Employee load error:', error)
-        setLoadError('Could not load your account. Please contact your admin.')
+      const res = await fetch('/api/employees/me')
+      if (res.status === 401) { router.push('/employee/login'); return }
+      const json = await res.json()
+      if (!res.ok) {
+        setLoadError(json.error || 'Could not load your account. Please contact your admin.')
+        return
       }
+      setEmployee(json.employee)
+      setProfile(p => ({ ...p, name: json.employee.name || '' }))
     }
     load()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
