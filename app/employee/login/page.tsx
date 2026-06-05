@@ -21,14 +21,20 @@ export default function EmployeeLoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
     if (authError) {
       setError('Incorrect email or password. Please try again.')
       setLoading(false)
       return
     }
-    const redirect = searchParams.get('redirect') || '/employee/profile'
-    router.push(redirect)
+    // First-time login: send to welcome/onboarding
+    const setupComplete = data.user?.user_metadata?.setup_complete
+    if (!setupComplete) {
+      router.push('/employee/welcome')
+    } else {
+      const redirect = searchParams.get('redirect') || '/employee/profile'
+      router.push(redirect)
+    }
     router.refresh()
   }
 

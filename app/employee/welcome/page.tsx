@@ -67,8 +67,11 @@ export default function WelcomePage() {
     setSaving(true)
     setError('')
 
-    // Set the password
-    const { error: pwErr } = await supabase.auth.updateUser({ password })
+    // Set the password and mark setup as complete in auth metadata
+    const { error: pwErr } = await supabase.auth.updateUser({
+      password,
+      data: { setup_complete: true },
+    })
     if (pwErr) { setError(pwErr.message); setSaving(false); return }
 
     // Save profile
