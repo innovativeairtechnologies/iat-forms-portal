@@ -72,7 +72,7 @@ export async function sendRequestNotificationToAdmins(
     ? `⚠️ ${label} Request – Insufficient Balance (${esc(employee.name)})`
     : `New ${label} Request from ${esc(employee.name)}`
 
-  await Promise.all(
+  const results = await Promise.all(
     adminEmails.map((to) =>
       resend.emails.send({
         from: FROM,
@@ -82,6 +82,10 @@ export async function sendRequestNotificationToAdmins(
       })
     )
   )
+  results.forEach((r, i) => {
+    if (r.error) console.error(`[resend] failed to ${adminEmails[i]}:`, r.error)
+    else console.log(`[resend] sent to ${adminEmails[i]}: id=${r.data?.id}`)
+  })
 }
 
 // ── Employee notification on approval/denial ──────────────────────────────────
@@ -108,10 +112,12 @@ export async function sendRequestDecisionToEmployee(
     }
     <a href="${esc(APP_URL)}/employee/requests" style="display:inline-block;background:${color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View My Requests</a>`
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: FROM,
     to: employee.email,
     subject: `Your ${label} Request Has Been ${approved ? 'Approved' : 'Denied'}`,
     html: shell(headerBg, `${label} Request ${approved ? 'Approved ✓' : 'Denied'}`, body),
   })
+  if (result.error) console.error(`[resend] decision email failed to ${employee.email}:`, result.error)
+  else console.log(`[resend] decision email sent to ${employee.email}: id=${result.data?.id}`)
 }

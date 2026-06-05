@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
   const adminEmails = admins?.map(a => a.email) ?? []
   const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
   if (fallback && !adminEmails.includes(fallback)) adminEmails.push(fallback)
+  console.log(`[requests] notifying admins: ${adminEmails.join(', ') || 'NONE'}`)
   if (adminEmails.length) {
     await sendRequestNotificationToAdmins(adminEmails, employee, request).catch(console.error)
   }
