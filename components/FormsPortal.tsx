@@ -58,6 +58,7 @@ export default function FormsPortal({ categories, forms }: Props) {
   const [activeCategory, setActiveCategory] = useState('all')
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({})
   const [categorySort, setCategorySort]   = useState<Record<string, SortOption>>({})
+  const [flatSort, setFlatSort]           = useState<SortOption>('most-used')
   const [openSlug, setOpenSlug]           = useState<string | null>(null)
 
   const visibleCategories = categories.filter((c) =>
@@ -79,6 +80,15 @@ export default function FormsPortal({ categories, forms }: Props) {
     }
     return result
   }, [forms, activeCategory, search])
+
+  const sortedFlat = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      if (flatSort === 'most-used') return (b.submission_count ?? 0) - (a.submission_count ?? 0)
+      if (flatSort === 'a-z')       return a.title.localeCompare(b.title)
+      if (flatSort === 'z-a')       return b.title.localeCompare(a.title)
+      return 0
+    })
+  }, [filtered, flatSort])
 
   const showGrouped = activeCategory === 'all' && !search.trim()
 
@@ -315,13 +325,18 @@ export default function FormsPortal({ categories, forms }: Props) {
           {/* Flat list (single category tab or search results) */}
           {!showGrouped && filtered.length > 0 && (
             <div className="mt-6">
-              {search && (
-                <p className="text-[12px] text-gray-400 py-4">
-                  {filtered.length} result{filtered.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
-                </p>
-              )}
+              <div className="flex items-center justify-between mb-3">
+                {search ? (
+                  <p className="text-[12px] text-gray-400">
+                    {filtered.length} result{filtered.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <SortDropdown value={flatSort} onChange={setFlatSort} />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filtered.map((form) => (
+                {sortedFlat.map((form) => (
                   <FormCard
                     key={form.id}
                     form={form}
