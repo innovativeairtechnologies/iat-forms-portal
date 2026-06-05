@@ -431,18 +431,13 @@ function FormCard({
       )}
 
       {/* Footer meta */}
-      <div className="flex items-center gap-2 mt-3">
-        {showCategory && form.categories?.name && (
+      {showCategory && form.categories?.name && (
+        <div className="mt-3">
           <span className="text-[11px] text-gray-400 bg-gray-100 dark:bg-gray-800 dark:text-gray-400 px-2 py-0.5 rounded-md">
             {form.categories.name}
           </span>
-        )}
-        {(form.submission_count ?? 0) > 0 && (
-          <span className="text-[11px] text-gray-300 dark:text-gray-600 tabular-nums">
-            {form.submission_count} submission{form.submission_count !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </button>
   )
 }
