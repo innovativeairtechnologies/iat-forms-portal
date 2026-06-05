@@ -6,7 +6,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import {
   GripVertical, Plus, Trash2, Save, ChevronRight, X, Check, Pencil,
   Type, AlignLeft, Hash, Mail, ListOrdered, CheckSquare,
-  Calendar, Upload, Pen, ToggleLeft, Bell, Eye
+  Calendar, Upload, Pen, ToggleLeft, Bell, Eye, SeparatorHorizontal,
 } from 'lucide-react'
 import type { Form, FormField, NotificationRule, Category } from '@/lib/supabase'
 import { slugify } from '@/lib/utils'
@@ -24,8 +24,9 @@ const FIELD_TYPES: { type: FormField['field_type']; label: string; icon: LucideI
   { type: 'radio',     label: 'Single Choice', icon: ToggleLeft },
   { type: 'checkbox',  label: 'Multi Choice',  icon: CheckSquare },
   { type: 'date',      label: 'Date',          icon: Calendar },
-  { type: 'file',      label: 'File Upload',   icon: Upload },
-  { type: 'signature', label: 'Signature',     icon: Pen },
+  { type: 'file',           label: 'File Upload',    icon: Upload },
+  { type: 'signature',      label: 'Signature',      icon: Pen },
+  { type: 'section_header', label: 'Section Header', icon: SeparatorHorizontal },
 ]
 
 const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 outline-none focus:border-[#089447] dark:focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
@@ -305,8 +306,18 @@ export default function FormBuilder({ categories, initialForm }: Props) {
                             <GripVertical size={16} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{field.label}</p>
-                            <p className="text-xs text-gray-400 capitalize">{field.field_type}{field.is_required ? ' · Required' : ''}</p>
+                            {field.field_type === 'section_header' ? (
+                              <div className="flex items-center gap-2">
+                                <div className="h-px flex-1 bg-[#089447]/30" />
+                                <p className="text-xs font-bold text-[#089447] uppercase tracking-widest truncate">{field.label}</p>
+                                <div className="h-px flex-1 bg-[#089447]/30" />
+                              </div>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{field.label}</p>
+                                <p className="text-xs text-gray-400 capitalize">{field.field_type}{field.is_required ? ' · Required' : ''}</p>
+                              </>
+                            )}
                           </div>
                           <ChevronRight size={14} className={`text-gray-300 dark:text-gray-600 transition-transform flex-shrink-0 ${selectedFieldId === field._id ? 'rotate-90' : ''}`} />
                           <button
@@ -449,7 +460,7 @@ function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u:
         />
       </div>
 
-      {!['signature', 'file', 'date', 'radio', 'checkbox', 'select'].includes(field.field_type) && (
+      {!['signature', 'file', 'date', 'radio', 'checkbox', 'select', 'section_header'].includes(field.field_type) && (
         <div>
           <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Placeholder</label>
           <input
@@ -460,15 +471,17 @@ function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u:
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Required</label>
-        <button
-          onClick={() => onUpdate({ is_required: !field.is_required })}
-          className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none ${field.is_required ? 'bg-[#089447]' : 'bg-gray-200 dark:bg-gray-700'}`}
-        >
-          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${field.is_required ? 'translate-x-4' : 'translate-x-0'}`} />
-        </button>
-      </div>
+      {field.field_type !== 'section_header' && (
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Required</label>
+          <button
+            onClick={() => onUpdate({ is_required: !field.is_required })}
+            className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none ${field.is_required ? 'bg-[#089447]' : 'bg-gray-200 dark:bg-gray-700'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${field.is_required ? 'translate-x-4' : 'translate-x-0'}`} />
+          </button>
+        </div>
+      )}
 
       {hasOptions && (
         <div>

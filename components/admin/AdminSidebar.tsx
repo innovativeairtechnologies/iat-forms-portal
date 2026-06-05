@@ -37,7 +37,7 @@ export default function AdminSidebar({ unreadCount }: Props) {
       {/* ── Desktop sidebar ── */}
       <aside
         className={cn(
-          'hidden md:flex bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-col flex-shrink-0 min-h-screen overflow-hidden',
+          'hidden md:flex bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-col flex-shrink-0 h-screen sticky top-0 overflow-hidden',
           'transition-[width] duration-200 ease-in-out',
           collapsed ? 'w-16' : 'w-[220px]',
         )}
@@ -78,7 +78,7 @@ export default function AdminSidebar({ unreadCount }: Props) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-1 space-y-0.5">
+        <nav className="flex-1 px-2 py-1 space-y-0.5 overflow-y-auto">
           {!collapsed && (
             <p className="text-[10px] font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest px-2 pb-2">
               Menu

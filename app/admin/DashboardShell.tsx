@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Bell, Plus } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import DashboardSearch from './DashboardSearch'
 
 interface Props {
@@ -11,6 +12,21 @@ interface Props {
 }
 
 export default function DashboardShell({ children, panel, unreadCount }: Props) {
+  const [avatarInitials, setAvatarInitials] = useState('A')
+
+  useEffect(() => {
+    const update = () => {
+      const name = localStorage.getItem('admin_display_name')
+      if (name?.trim()) {
+        setAvatarInitials(
+          name.trim().split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+        )
+      }
+    }
+    update()
+    window.addEventListener('admin-profile-updated', update)
+    return () => window.removeEventListener('admin-profile-updated', update)
+  }, [])
   return (
     <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
@@ -51,7 +67,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
             title="Your profile"
             className="ml-1 w-8 h-8 rounded-full bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[12px] font-bold hover:opacity-75 transition-opacity ring-2 ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600"
           >
-            A
+            {avatarInitials}
           </Link>
         </div>
 
@@ -70,7 +86,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
             href="/admin/profile"
             className="w-8 h-8 rounded-full bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[12px] font-bold hover:opacity-75 transition-opacity"
           >
-            A
+            {avatarInitials}
           </Link>
         </div>
       </div>

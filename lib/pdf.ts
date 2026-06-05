@@ -19,7 +19,7 @@ export async function generateSubmissionPDF(
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('Industrial Air Technology', margin, 16)
+  doc.text('Innovative Air Technologies', margin, 16)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
   doc.text(submission.form_title || 'Form Submission', margin, 30)

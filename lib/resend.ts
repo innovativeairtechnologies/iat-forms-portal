@@ -71,7 +71,7 @@ export async function sendSubmissionEmail(
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);max-width:600px;">
         <tr>
           <td style="background:#1a1a2e;padding:24px 32px;">
-            <p style="margin:0;color:#fff;font-size:13px;opacity:0.7;letter-spacing:0.05em;text-transform:uppercase;">Industrial Air Technology</p>
+            <p style="margin:0;color:#fff;font-size:13px;opacity:0.7;letter-spacing:0.05em;text-transform:uppercase;">Innovative Air Technologies</p>
             <h1 style="margin:4px 0 0;color:#fff;font-size:22px;font-weight:700;">${escapeHtml(form.title)}</h1>
           </td>
         </tr>

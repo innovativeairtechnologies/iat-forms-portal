@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
 import ThemeToggle from './ThemeToggle'
+import StepFormModal from './StepFormModal'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   'clock':            Clock,
@@ -38,6 +39,7 @@ export default function FormsPortal({ categories, forms }: Props) {
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({})
+  const [openSlug, setOpenSlug] = useState<string | null>(null)
 
   const visibleCategories = categories.filter((c) =>
     forms.some((f) => f.category_id === c.id)
@@ -197,6 +199,13 @@ export default function FormsPortal({ categories, forms }: Props) {
             </div>
           )}
 
+          {/* Step form modal */}
+          <AnimatePresence>
+            {openSlug && (
+              <StepFormModal slug={openSlug} onClose={() => setOpenSlug(null)} />
+            )}
+          </AnimatePresence>
+
           {/* Grouped by category — collapsible */}
           {showGrouped && grouped && grouped.map(({ category, forms: catForms }) => {
             const isOpen = !!openCategories[category.id]
@@ -246,6 +255,7 @@ export default function FormsPortal({ categories, forms }: Props) {
                             key={form.id}
                             form={form}
                             isLast={i === catForms.length - 1}
+                            onOpen={setOpenSlug}
                           />
                         ))}
                       </div>
@@ -270,6 +280,7 @@ export default function FormsPortal({ categories, forms }: Props) {
                   form={form}
                   showCategory={!!search}
                   isLast={i === filtered.length - 1}
+                  onOpen={setOpenSlug}
                 />
               ))}
             </div>
@@ -284,15 +295,17 @@ function FormRow({
   form,
   showCategory = false,
   isLast = false,
+  onOpen,
 }: {
   form: Form & { categories?: Category }
   showCategory?: boolean
   isLast?: boolean
+  onOpen: (slug: string) => void
 }) {
   return (
-    <Link
-      href={`/forms/${form.slug}`}
-      className={`group flex items-center gap-4 py-3.5 ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''} hover:bg-gray-50/60 dark:hover:bg-gray-900/60 -mx-6 px-6 transition-colors`}
+    <button
+      onClick={() => onOpen(form.slug)}
+      className={`group w-full text-left flex items-center gap-4 py-3.5 ${!isLast ? 'border-b border-gray-100 dark:border-gray-800' : ''} hover:bg-gray-50/60 dark:hover:bg-gray-900/60 -mx-6 px-6 transition-colors`}
     >
       <div className="flex-1 min-w-0 pl-11">
         <div className="flex items-center gap-2.5">
@@ -315,6 +328,6 @@ function FormRow({
         size={15}
         className="text-gray-200 dark:text-gray-700 group-hover:text-[#089447] flex-shrink-0 transition-colors"
       />
-    </Link>
+    </button>
   )
 }

@@ -30,7 +30,7 @@ export type FormField = {
   id: string
   form_id: string
   label: string
-  field_type: 'text' | 'email' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'file' | 'signature' | 'number'
+  field_type: 'text' | 'email' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'file' | 'signature' | 'number' | 'section_header'
   placeholder: string | null
   options: string[] | null
   is_required: boolean

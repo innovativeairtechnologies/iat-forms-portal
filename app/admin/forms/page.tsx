@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
-import { Plus, ExternalLink } from 'lucide-react'
+import { Plus, ExternalLink, Sparkles } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import FormsListClient from './FormsListClient'
 import DuplicateButton from './DuplicateButton'
@@ -62,13 +62,22 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
               {activeCategory !== 'all' && ` in ${activeCategory}`}
             </p>
           </div>
-          <Link
-            href="/admin/forms/new"
-            className="flex items-center gap-2 bg-[#1a1a2e] hover:bg-[#111126] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-card-sm"
-          >
-            <Plus size={15} />
-            New Form
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/forms/ai"
+              className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-card-sm"
+            >
+              <Sparkles size={15} />
+              Build with AI
+            </Link>
+            <Link
+              href="/admin/forms/new"
+              className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-card-sm"
+            >
+              <Plus size={15} />
+              New Form
+            </Link>
+          </div>
         </div>
 
         {/* Category tabs */}
@@ -100,7 +109,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
             <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400 mb-1">No forms in this category</p>
             <Link
               href="/admin/forms/new"
-              className="inline-flex items-center gap-2 bg-[#1a1a2e] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-colors mt-3"
+              className="inline-flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-colors mt-3"
             >
               <Plus size={14} /> Create Form
             </Link>

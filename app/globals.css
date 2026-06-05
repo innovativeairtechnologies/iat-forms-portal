@@ -26,13 +26,62 @@
   --text-muted: #6b7280;
 }
 
-/* Dashboard hero — light and dark gradients */
+/* Dashboard hero — light, dark, and green gradients */
 .hero-gradient {
   background: linear-gradient(135deg, #f0faf4 0%, #fafffe 50%, #f0f9ff 100%);
 }
 .dark .hero-gradient {
   background: linear-gradient(135deg, #0c1a2e 0%, #0d1f35 40%, #0a1f18 100%);
 }
+/*
+  ── IAT Green Theme (disabled) ────────────────────────────────────────────────
+  To re-enable:
+    1. Uncomment this entire block
+    2. Uncomment the 'green' entry in ThemeProvider.tsx
+    3. Uncomment the IAT option in ThemeToggle.tsx
+
+html.green .hero-gradient { background: linear-gradient(135deg, #0e2f1e 0%, #102d20 50%, #0c2318 100%); }
+html.green { color-scheme: dark; --bg: #06130e; --surface: #0c1f16; --border: rgba(8,148,71,0.15); --text-primary: #f9fafb; --text-secondary: #9ca3af; --text-muted: #6b7280; }
+html.green body, html.green .bg-\[\#F7F6F3\] { background-color: #06130e; }
+html.green .bg-white    { background-color: #0c1f16; }
+html.green .bg-gray-50  { background-color: #0e2419; }
+html.green .bg-gray-100 { background-color: #112a1e; }
+html.green .bg-\[\#f0faf4\] { background-color: rgba(8,148,71,0.15); }
+html.green .border-gray-100 { border-color: #1c3e2b; }
+html.green .border-gray-200 { border-color: #224934; }
+html.green .border-black\/\[0\.08\] { border-color: rgba(8,148,71,0.15); }
+html.green .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: #1a3826; }
+html.green .shadow-card { box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 2px 12px rgba(0,0,0,0.3); }
+html.green .hover\:bg-gray-50\/80:hover { background-color: rgba(8,148,71,0.07); }
+html.green .hover\:bg-gray-50:hover     { background-color: rgba(8,148,71,0.07); }
+html.green .hover\:bg-gray-100:hover    { background-color: rgba(8,148,71,0.12); }
+html.green .text-gray-900  { color: #f9fafb; }
+html.green .text-gray-800  { color: #f3f4f6; }
+html.green .text-gray-700  { color: #e5e7eb; }
+html.green .text-gray-600  { color: #d1d5db; }
+html.green .text-gray-500  { color: #9ca3af; }
+html.green .text-gray-400  { color: #6b7280; }
+html.green .text-gray-300  { color: #4b5563; }
+html.green .text-\[\#0a0a0b\] { color: #f9fafb; }
+html.green .placeholder\:text-gray-300::placeholder { color: #4b5563; }
+html.green .bg-blue-100    { background-color: rgba(59,130,246,0.15); }
+html.green .bg-violet-100  { background-color: rgba(139,92,246,0.15); }
+html.green .bg-rose-100    { background-color: rgba(244,63,94,0.15); }
+html.green .bg-amber-100   { background-color: rgba(251,191,36,0.15); }
+html.green .bg-emerald-100 { background-color: rgba(52,211,153,0.15); }
+html.green .bg-sky-100     { background-color: rgba(14,165,233,0.15); }
+html.green .bg-pink-100    { background-color: rgba(236,72,153,0.15); }
+html.green .bg-indigo-100  { background-color: rgba(8,148,71,0.15); }
+html.green .text-blue-600   { color: #60a5fa; }
+html.green .text-violet-600 { color: #a78bfa; }
+html.green .text-rose-600   { color: #fb7185; }
+html.green .text-amber-600  { color: #fbbf24; }
+html.green .text-amber-700  { color: #fbbf24; }
+html.green .text-emerald-600 { color: #34d399; }
+html.green .text-sky-600    { color: #38bdf8; }
+html.green .text-pink-600   { color: #f472b6; }
+html.green .text-indigo-600 { color: #4ade80; }
+  ────────────────────────────────────────────────────────────────────────────── */
 
 @layer base {
   * { box-sizing: border-box; }
