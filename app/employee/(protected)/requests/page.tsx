@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { Plus, Calendar, Clock, ChevronDown, X, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Plus, Calendar, Clock, X, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TimeOffRequest, Employee } from '@/lib/supabase'
 
@@ -19,7 +18,6 @@ function formatDate(d: string) {
 }
 
 export default function RequestsPage() {
-  const supabase = createSupabaseBrowser()
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [requests, setRequests] = useState<RequestWithEmployee[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -35,16 +33,20 @@ export default function RequestsPage() {
   })
 
   const load = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const [{ data: emp }, { data: reqs }] = await Promise.all([
-      supabase.from('employees').select('*').eq('id', user.id).single(),
-      supabase.from('time_off_requests').select('*, employees(*)').eq('employee_id', user.id).order('created_at', { ascending: false }),
+    const [empRes, reqRes] = await Promise.all([
+      fetch('/api/employees/me'),
+      fetch('/api/requests'),
     ])
-    if (emp) setEmployee(emp)
-    if (reqs) setRequests(reqs as RequestWithEmployee[])
+    if (empRes.ok) {
+      const { employee } = await empRes.json()
+      setEmployee(employee)
+    }
+    if (reqRes.ok) {
+      const { requests } = await reqRes.json()
+      setRequests(requests)
+    }
     setLoading(false)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => { load() }, [load])
 

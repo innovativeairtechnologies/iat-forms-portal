@@ -1,13 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Save, Clock, Calendar, User, Phone, Building2, Briefcase, FileText } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 
 export default function ProfilePage() {
-  const supabase = createSupabaseBrowser()
   const [employee, setEmployee] = useState<Employee | null>(null)
   const [form, setForm] = useState({ name: '', job_title: '', department: '', phone: '', bio: '' })
   const [saving, setSaving] = useState(false)
@@ -15,35 +13,33 @@ export default function ProfilePage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase.from('employees').select('*').eq('id', user.id).single()
-      if (data) {
-        setEmployee(data)
+    fetch('/api/employees/me')
+      .then(r => r.json())
+      .then(({ employee }) => {
+        if (!employee) return
+        setEmployee(employee)
         setForm({
-          name:       data.name       || '',
-          job_title:  data.job_title  || '',
-          department: data.department || '',
-          phone:      data.phone      || '',
-          bio:        data.bio        || '',
+          name:       employee.name       || '',
+          job_title:  employee.job_title  || '',
+          department: employee.department || '',
+          phone:      employee.phone      || '',
+          bio:        employee.bio        || '',
         })
-      }
-    }
-    load()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+      })
+  }, [])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!employee) return
     setSaving(true)
     setError('')
-    const { error: err } = await supabase
-      .from('employees')
-      .update(form)
-      .eq('id', employee.id)
+    const res = await fetch('/api/employees/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
     setSaving(false)
-    if (err) { setError('Failed to save changes.'); return }
+    if (!res.ok) { setError('Failed to save changes.'); return }
     setEmployee(prev => prev ? { ...prev, ...form } : prev)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
