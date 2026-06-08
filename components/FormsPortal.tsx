@@ -97,7 +97,7 @@ export default function FormsPortal({ categories, forms }: Props) {
   const [activeCategory, setActive]       = useState('all')
   const [sort, setSort]                   = useState<SortOption>('most-used')
   const [openSlug, setOpenSlug]           = useState<string | null>(null)
-  const [collapsed, setCollapsed]         = useState<Record<string, boolean>>({})
+  const [expanded, setExpanded]           = useState<Record<string, boolean>>({})
 
   const visibleCategories = categories.filter((c) => forms.some((f) => f.category_id === c.id))
 
@@ -237,8 +237,8 @@ export default function FormsPortal({ categories, forms }: Props) {
           {showGrouped && grouped && grouped.map(({ category, forms: catForms }) => {
             const Icon      = getIcon(category.icon)
             const colors    = getColors(category.icon)
-            const isOpen    = !collapsed[category.id]
-            const toggle    = () => setCollapsed((p) => ({ ...p, [category.id]: !p[category.id] }))
+            const isOpen    = !!expanded[category.id]
+            const toggle    = () => setExpanded((p) => ({ ...p, [category.id]: !p[category.id] }))
 
             return (
               <section key={category.id}>
