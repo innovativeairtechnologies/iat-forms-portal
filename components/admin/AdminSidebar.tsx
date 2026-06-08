@@ -143,7 +143,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
               )}
             >
               <Plus size={15} className="flex-shrink-0 text-gray-400 dark:text-gray-500" />
-              {!collapsed && <span className="flex-1">+ New Form</span>}
+              {!collapsed && <span className="flex-1">New Form</span>}
             </Link>
           </div>
         </nav>
