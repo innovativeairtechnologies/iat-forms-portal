@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Inbox, FileText, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight, Users, CalendarClock, TrendingUp, UserCircle,
+  LayoutDashboard, Inbox, FileText, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight, Users, CalendarClock, TrendingUp, UserCircle, Ticket,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -17,6 +17,7 @@ const NAV = [
   { href: '/admin/employees',    label: 'Employees',   icon: Users },
   { href: '/admin/requests',     label: 'Time Off',    icon: CalendarClock },
   { href: '/admin/accrual',      label: 'Accrual',     icon: TrendingUp },
+  { href: '/admin/tickets',      label: 'Tickets',     icon: Ticket },
 ]
 
 interface Props {

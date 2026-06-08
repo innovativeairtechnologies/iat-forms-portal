@@ -101,3 +101,31 @@ export type Submission = {
   submitted_at: string
   is_read: boolean
 }
+
+export type Ticket = {
+  id: string
+  ticket_number: string
+  customer_name: string
+  customer_company: string | null
+  customer_email: string
+  customer_phone: string | null
+  serial_number: string
+  model_number: string
+  voltage: string
+  problem_description: string
+  pre_cooling: boolean | null
+  pre_cooling_type: string | null
+  pre_cooling_working: boolean | null
+  post_cooling: boolean | null
+  post_cooling_type: string | null
+  post_cooling_working: boolean | null
+  airflow_balanced: boolean | null
+  process_airflow_cfm: string | null
+  react_airflow_cfm: string | null
+  react_heat_working: boolean | null
+  react_heat_setpoint: boolean | null
+  seals_good: boolean | null
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  notes: string | null
+  created_at: string
+}
