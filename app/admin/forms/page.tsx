@@ -208,17 +208,16 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
   return (
     <>
       {showHeaders && (
-        <div className="grid grid-cols-[1fr_80px_100px_160px] items-center px-6 py-3 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+        <div className="grid grid-cols-[1fr_80px_auto] items-center px-6 py-3 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-center">Active</span>
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-right hidden sm:block">Created</span>
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-right">Actions</span>
         </div>
       )}
     <ul className="divide-y divide-gray-50 dark:divide-gray-800/60">
       {forms.map((form) => (
         <li key={form.id}
-          className="group grid grid-cols-[1fr_80px_100px_160px] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors">
+          className="group grid grid-cols-[1fr_80px_auto] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors">
 
           {/* Form name + meta */}
           <div className="flex items-center gap-3 min-w-0 pr-4">
@@ -242,13 +241,6 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
           {/* Active toggle */}
           <div className="flex items-center justify-center">
             <FormsListClient formId={form.id} isActive={form.is_active} />
-          </div>
-
-          {/* Created */}
-          <div className="text-right hidden sm:block">
-            <span className="text-[12px] text-gray-400">
-              {new Date(form.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
           </div>
 
           {/* Actions */}
