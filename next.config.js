@@ -16,6 +16,18 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/support',
+        destination: 'https://iat-ticketing.vercel.app/',
+      },
+      {
+        source: '/support/:path*',
+        destination: 'https://iat-ticketing.vercel.app/:path*',
+      },
+    ]
+  },
   async headers() {
     return [
       {
