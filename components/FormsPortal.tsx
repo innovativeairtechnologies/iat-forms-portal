@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Search, X, Settings2, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ChevronDown,
+  Search, X, Settings2, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ChevronDown, Activity,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
@@ -232,35 +232,66 @@ function FormCard({ form, onOpen, showCategory = false }: {
   onOpen: (slug: string) => void
   showCategory?: boolean
 }) {
-  const Icon = getIcon(form.categories?.icon)
+  const Icon  = getIcon(form.categories?.icon)
+  const count = form.submission_count ?? 0
+  const isNew = form.created_at
+    ? Date.now() - new Date(form.created_at).getTime() < 30 * 24 * 60 * 60 * 1000
+    : false
 
   return (
     <button
       onClick={() => onOpen(form.slug)}
-      className="group w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 flex flex-col h-[160px] overflow-hidden shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+      className="group w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col h-[205px] shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
     >
-      {/* Icon + optional category pill */}
-      <div className="flex items-start justify-between gap-2 mb-auto">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
-          <Icon size={16} strokeWidth={1.8} />
-        </div>
-        {showCategory && form.categories?.name && (
-          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex-shrink-0">
-            {form.categories.name}
+      {/* ── Top decorative zone ── */}
+      <div className="relative h-[95px] flex-shrink-0 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-center overflow-hidden">
+        {/* Large watermark icon */}
+        <Icon
+          size={96}
+          strokeWidth={0.75}
+          className="text-gray-900 dark:text-white opacity-[0.055] dark:opacity-[0.07] select-none"
+        />
+        {/* New badge */}
+        {isNew && (
+          <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#089447] text-white">
+            New
           </span>
         )}
       </div>
 
-      {/* Title + description pinned to bottom */}
-      <div className="mt-auto">
-        <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-[#089447] transition-colors">
-          {form.title}
+      {/* ── Bottom content zone ── */}
+      <div className="flex flex-col flex-1 px-4 pt-3 pb-3">
+        {/* Icon + title */}
+        <div className="flex items-start gap-2.5 mb-1.5">
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 mt-px">
+            <Icon size={12} strokeWidth={1.8} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="text-[13px] font-semibold text-gray-900 dark:text-white leading-tight group-hover:text-[#089447] transition-colors line-clamp-1">
+                {form.title}
+              </p>
+              {showCategory && form.categories?.name && (
+                <span className="text-[9px] font-semibold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                  {form.categories.name}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 line-clamp-1 leading-relaxed pl-[34px] flex-1">
+          {form.description || ' '}
         </p>
-        {form.description && (
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 line-clamp-1">
-            {form.description}
-          </p>
-        )}
+
+        {/* Stat row */}
+        <div className="flex items-center gap-1.5 pt-2.5 mt-auto border-t border-gray-100 dark:border-gray-800">
+          <Activity size={11} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums">
+            {count.toLocaleString()} {count === 1 ? 'response' : 'responses'}
+          </span>
+        </div>
       </div>
     </button>
   )
