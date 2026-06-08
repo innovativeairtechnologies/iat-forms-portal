@@ -7,7 +7,7 @@ export default async function AccrualPage() {
   const [{ data: employees }, { data: log }] = await Promise.all([
     supabaseAdmin
       .from('employees')
-      .select('id, name, email, job_title, pto_balance, sick_balance, pto_accrual_rate, sick_accrual_rate')
+      .select('*')
       .order('name'),
     supabaseAdmin
       .from('accrual_log')
