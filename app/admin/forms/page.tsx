@@ -31,31 +31,6 @@ type FormShape = {
   description: string | null; categories: { id: string; name: string } | null
 }
 
-// Row patterns for a 3-column grid. Non-repeating 8-row cycle keeps the layout
-// from feeling mechanical while guaranteeing no empty grid cells.
-const ROW_PATTERNS: number[][] = [
-  [2, 1],       // wide-left  · narrow-right
-  [1, 1, 1],    // three equal
-  [1, 2],       // narrow-left · wide-right
-  [1, 1, 1],    // three equal
-  [2, 1],       // wide-left  · narrow-right
-  [1, 1, 1],    // three equal
-  [1, 2],       // narrow-left · wide-right
-  [1, 1, 1],    // three equal
-]
-
-function buildLayout(forms: FormShape[]): { form: FormShape; span: 1 | 2 }[] {
-  const result: { form: FormShape; span: 1 | 2 }[] = []
-  let fi = 0
-  let pi = 0
-  while (fi < forms.length) {
-    for (const span of ROW_PATTERNS[pi % ROW_PATTERNS.length]) {
-      if (fi < forms.length) result.push({ form: forms[fi++], span: span as 1 | 2 })
-    }
-    pi++
-  }
-  return result
-}
 
 export default async function FormsListPage({ searchParams }: { searchParams: SearchParams }) {
   const { forms, countByForm, categories } = await getData()
@@ -70,8 +45,6 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
     const name = f.categories?.name || 'Uncategorized'
     countByCategory[name] = (countByCategory[name] || 0) + 1
   })
-
-  const layout = buildLayout(filtered)
 
   return (
     <div className="flex-1 overflow-auto">
@@ -122,18 +95,17 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {layout.map(({ form, span }) => (
-              <div key={form.id} className={span === 2 ? 'sm:col-span-2 lg:col-span-2' : 'sm:col-span-1 lg:col-span-1'}>
-                <FormCard
-                  form={form}
-                  count={countByForm[form.id] || 0}
-                  showCategory={activeCategory === 'all'}
-                  wide={span === 2}
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {filtered.map((form: FormShape) => (
+              <FormCard
+                key={form.id}
+                form={form}
+                count={countByForm[form.id] || 0}
+                showCategory={activeCategory === 'all'}
+              />
             ))}
           </div>
+
         )}
       </div>
     </div>
@@ -142,50 +114,29 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
 // ─── FormCard ─────────────────────────────────────────────────────────────────
 
-function FormCard({ form, count, showCategory, wide }: {
-  form: FormShape; count: number; showCategory: boolean; wide: boolean
+function FormCard({ form, count, showCategory }: {
+  form: FormShape; count: number; showCategory: boolean
 }) {
   return (
     <div className="group bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card hover:shadow-card-hover hover:border-gray-200 dark:hover:border-gray-700 transition-all overflow-hidden flex flex-col h-full">
 
       {/* ── Visual area ── */}
-      <div className={`relative overflow-hidden flex-shrink-0 ${
-        wide
-          ? 'h-[130px] bg-[#f0faf4] dark:bg-[#089447]/10'
-          : 'h-[118px] bg-[#f8f9fa] dark:bg-gray-800'
-      }`}>
-
-        {/* Subtle green shimmer on wide cards */}
-        {wide && (
-          <div className="pointer-events-none absolute -top-6 right-8 w-36 h-36 rounded-full blur-3xl opacity-40 bg-[#089447]/20" />
-        )}
+      <div className="relative h-[118px] overflow-hidden flex-shrink-0 bg-[#f8f9fa] dark:bg-gray-800">
 
         {/* Form field mock */}
         <div className="absolute left-5 right-[80px] top-5 space-y-[6px]">
           {([62, 84, 48] as number[]).map((w, i) => (
-            <div key={i} className={`h-5 rounded-md flex items-center px-2 ${
-              wide
-                ? 'bg-[#089447]/10 dark:bg-[#089447]/20'
-                : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600'
-            }`}>
-              <div className={`h-[4px] rounded-full ${
-                wide ? 'bg-[#089447]/30' : 'bg-gray-200 dark:bg-gray-600'
-              }`} style={{ width: `${w}%` }} />
+            <div key={i} className="h-5 rounded-md flex items-center px-2 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
+              <div className="h-[4px] rounded-full bg-gray-200 dark:bg-gray-600" style={{ width: `${w}%` }} />
             </div>
           ))}
-          <div className={`h-5 rounded-md flex items-center justify-center ${
-            wide ? 'bg-[#089447]/25 dark:bg-[#089447]/30' : 'bg-[#089447]/80'
-          }`}>
+          <div className="h-5 rounded-md flex items-center justify-center bg-[#089447]/80">
             <div className="h-[4px] w-8 rounded-full bg-white/60" />
           </div>
         </div>
 
         {/* Submission count */}
-        <div className={`absolute top-4 right-4 rounded-xl text-center px-2.5 py-2 min-w-[50px] ${
-          wide
-            ? 'bg-white/80 dark:bg-gray-900/80 shadow-card border border-[#089447]/10 dark:border-[#089447]/20'
-            : 'bg-white dark:bg-gray-900 shadow-card border border-gray-100 dark:border-gray-700'
-        }`}>
+        <div className="absolute top-4 right-4 rounded-xl text-center px-2.5 py-2 min-w-[50px] bg-white dark:bg-gray-900 shadow-card border border-gray-100 dark:border-gray-700">
           <p className="text-[20px] font-bold leading-none tabular-nums text-gray-800 dark:text-white">{count}</p>
           <p className="text-[9px] uppercase tracking-wider mt-0.5 text-gray-400">{count === 1 ? 'response' : 'responses'}</p>
         </div>
