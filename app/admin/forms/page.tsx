@@ -26,31 +26,52 @@ async function getData() {
   return { forms: forms || [], countByForm, categories: categories || [] }
 }
 
-// Span logic: 4-col grid, rows of 3 forms alternate [wide, norm, norm] ↔ [norm, norm, wide]
-function spanClass(i: number) {
-  const g = Math.floor(i / 3)
-  const p = i % 3
-  if (g % 2 === 0 && p === 0) return 'lg:col-span-2'
-  if (g % 2 === 1 && p === 2) return 'lg:col-span-2'
-  return 'lg:col-span-1'
+type FormShape = {
+  id: string; title: string; slug: string; is_active: boolean;
+  description: string | null; categories: { id: string; name: string } | null
 }
-function isFeatured(i: number) {
-  return spanClass(i) === 'lg:col-span-2'
+
+// Row patterns for a 3-column grid. Non-repeating 8-row cycle keeps the layout
+// from feeling mechanical while guaranteeing no empty grid cells.
+const ROW_PATTERNS: number[][] = [
+  [2, 1],       // wide-left  · narrow-right
+  [1, 1, 1],    // three equal
+  [1, 2],       // narrow-left · wide-right
+  [1, 1, 1],    // three equal
+  [2, 1],       // wide-left  · narrow-right
+  [1, 1, 1],    // three equal
+  [1, 2],       // narrow-left · wide-right
+  [1, 1, 1],    // three equal
+]
+
+function buildLayout(forms: FormShape[]): { form: FormShape; span: 1 | 2 }[] {
+  const result: { form: FormShape; span: 1 | 2 }[] = []
+  let fi = 0
+  let pi = 0
+  while (fi < forms.length) {
+    for (const span of ROW_PATTERNS[pi % ROW_PATTERNS.length]) {
+      if (fi < forms.length) result.push({ form: forms[fi++], span: span as 1 | 2 })
+    }
+    pi++
+  }
+  return result
 }
 
 export default async function FormsListPage({ searchParams }: { searchParams: SearchParams }) {
   const { forms, countByForm, categories } = await getData()
 
   const activeCategory = searchParams.category || 'all'
-  const filtered = activeCategory === 'all'
+  const filtered: FormShape[] = activeCategory === 'all'
     ? forms
-    : forms.filter((f: { categories: { name: string } | null }) => f.categories?.name === activeCategory)
+    : forms.filter((f: FormShape) => f.categories?.name === activeCategory)
 
   const countByCategory: Record<string, number> = {}
-  forms.forEach((f: { categories: { name: string } | null }) => {
+  forms.forEach((f: FormShape) => {
     const name = f.categories?.name || 'Uncategorized'
     countByCategory[name] = (countByCategory[name] || 0) + 1
   })
+
+  const layout = buildLayout(filtered)
 
   return (
     <div className="flex-1 overflow-auto">
@@ -78,7 +99,6 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
           </div>
         </div>
 
-        {/* Category tabs */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           <CategoryTab label="All" count={forms.length} href="/admin/forms" active={activeCategory === 'all'} />
           {categories.map((cat: { id: string; name: string }) => (
@@ -102,18 +122,14 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {filtered.map((form: {
-              id: string; title: string; slug: string; is_active: boolean;
-              created_at: string; description: string | null;
-              categories: { id: string; name: string } | null
-            }, i: number) => (
-              <div key={form.id} className={spanClass(i)}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {layout.map(({ form, span }) => (
+              <div key={form.id} className={span === 2 ? 'sm:col-span-2 lg:col-span-2' : 'sm:col-span-1 lg:col-span-1'}>
                 <FormCard
                   form={form}
                   count={countByForm[form.id] || 0}
                   showCategory={activeCategory === 'all'}
-                  featured={isFeatured(i)}
+                  wide={span === 2}
                 />
               </div>
             ))}
@@ -126,69 +142,56 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
 // ─── FormCard ─────────────────────────────────────────────────────────────────
 
-type FormShape = {
-  id: string; title: string; slug: string; is_active: boolean;
-  description: string | null; categories: { id: string; name: string } | null
-}
-
-function FormCard({ form, count, showCategory, featured }: {
-  form: FormShape; count: number; showCategory: boolean; featured: boolean
+function FormCard({ form, count, showCategory, wide }: {
+  form: FormShape; count: number; showCategory: boolean; wide: boolean
 }) {
   return (
     <div className="group bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card hover:shadow-card-hover hover:border-gray-200 dark:hover:border-gray-700 transition-all overflow-hidden flex flex-col h-full">
 
       {/* ── Visual area ── */}
-      <div className={`relative h-[152px] overflow-hidden flex-shrink-0 ${
-        featured
-          ? 'bg-gradient-to-br from-[#089447] to-[#054e27]'
-          : 'bg-[#f8f9fa] dark:bg-gray-800'
+      <div className={`relative overflow-hidden flex-shrink-0 ${
+        wide
+          ? 'h-[130px] bg-[#f0faf4] dark:bg-[#089447]/10'
+          : 'h-[118px] bg-[#f8f9fa] dark:bg-gray-800'
       }`}>
 
-        {/* Featured: decorative glows + dot grid */}
-        {featured && (
-          <>
-            <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full blur-2xl opacity-30 bg-emerald-200" />
-            <div className="pointer-events-none absolute -bottom-6 left-4 w-28 h-28 rounded-full blur-2xl opacity-20 bg-emerald-400" />
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.08]"
-              style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '14px 14px' }}
-            />
-          </>
+        {/* Subtle green shimmer on wide cards */}
+        {wide && (
+          <div className="pointer-events-none absolute -top-6 right-8 w-36 h-36 rounded-full blur-3xl opacity-40 bg-[#089447]/20" />
         )}
 
-        {/* Form field illustration */}
-        <div className="absolute left-5 right-[86px] top-5 space-y-[7px]">
-          {([65, 88, 52] as number[]).map((w, i) => (
-            <div key={i} className={`h-[22px] rounded-lg flex items-center px-2.5 ${
-              featured ? 'bg-white/[0.18]' : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600'
+        {/* Form field mock */}
+        <div className="absolute left-5 right-[80px] top-5 space-y-[6px]">
+          {([62, 84, 48] as number[]).map((w, i) => (
+            <div key={i} className={`h-5 rounded-md flex items-center px-2 ${
+              wide
+                ? 'bg-[#089447]/10 dark:bg-[#089447]/20'
+                : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600'
             }`}>
-              <div className={`h-[5px] rounded-full ${featured ? 'bg-white/50' : 'bg-gray-200 dark:bg-gray-600'}`} style={{ width: `${w}%` }} />
+              <div className={`h-[4px] rounded-full ${
+                wide ? 'bg-[#089447]/30' : 'bg-gray-200 dark:bg-gray-600'
+              }`} style={{ width: `${w}%` }} />
             </div>
           ))}
-          <div className={`h-[22px] rounded-lg flex items-center justify-center mt-1 ${
-            featured ? 'bg-white/30' : 'bg-[#089447]'
+          <div className={`h-5 rounded-md flex items-center justify-center ${
+            wide ? 'bg-[#089447]/25 dark:bg-[#089447]/30' : 'bg-[#089447]/80'
           }`}>
-            <div className={`h-[5px] w-10 rounded-full ${featured ? 'bg-white/70' : 'bg-white/60'}`} />
+            <div className="h-[4px] w-8 rounded-full bg-white/60" />
           </div>
         </div>
 
-        {/* Submission count badge */}
-        <div className={`absolute top-4 right-4 rounded-2xl text-center px-3 py-2 min-w-[56px] ${
-          featured
-            ? 'bg-white/[0.18] backdrop-blur-sm'
+        {/* Submission count */}
+        <div className={`absolute top-4 right-4 rounded-xl text-center px-2.5 py-2 min-w-[50px] ${
+          wide
+            ? 'bg-white/80 dark:bg-gray-900/80 shadow-card border border-[#089447]/10 dark:border-[#089447]/20'
             : 'bg-white dark:bg-gray-900 shadow-card border border-gray-100 dark:border-gray-700'
         }`}>
-          <p className={`text-[22px] font-bold leading-none tabular-nums ${featured ? 'text-white' : 'text-gray-800 dark:text-white'}`}>
-            {count}
-          </p>
-          <p className={`text-[9px] uppercase tracking-wider mt-0.5 ${featured ? 'text-white/70' : 'text-gray-400'}`}>
-            {count === 1 ? 'response' : 'responses'}
-          </p>
+          <p className="text-[20px] font-bold leading-none tabular-nums text-gray-800 dark:text-white">{count}</p>
+          <p className="text-[9px] uppercase tracking-wider mt-0.5 text-gray-400">{count === 1 ? 'response' : 'responses'}</p>
         </div>
 
-        {/* Inactive pill */}
         {!form.is_active && (
-          <div className="absolute bottom-3 left-4 text-[10px] font-semibold bg-black/20 text-white px-2 py-0.5 rounded-full">
+          <div className="absolute bottom-2.5 left-4 text-[10px] font-semibold bg-black/10 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
             Inactive
           </div>
         )}
@@ -196,7 +199,6 @@ function FormCard({ form, count, showCategory, featured }: {
 
       {/* ── Content area ── */}
       <div className="flex flex-col flex-1 p-5">
-        {/* Category + status dot */}
         <div className="flex items-center gap-2 mb-2.5 min-h-[18px]">
           {showCategory && form.categories?.name && (
             <Link href={`/admin/forms?category=${encodeURIComponent(form.categories.name)}`}
