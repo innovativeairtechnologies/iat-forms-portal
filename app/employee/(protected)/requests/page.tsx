@@ -78,7 +78,7 @@ export default function RequestsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-[24px] font-bold text-gray-900">Time Off Requests</h1>
+          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white">Time Off Requests</h1>
           <p className="text-[14px] text-gray-400 mt-0.5">Submit and track your PTO & sick time</p>
         </div>
         <button onClick={() => setShowForm(true)}
@@ -90,18 +90,18 @@ export default function RequestsPage() {
       {/* Balance summary */}
       {employee && (
         <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="bg-white rounded-xl border border-gray-150 px-4 py-3 flex items-center gap-3">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center flex-shrink-0"><Calendar size={15} /></div>
             <div>
               <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide">PTO</p>
-              <p className="text-[18px] font-bold text-gray-900 leading-none">{employee.pto_balance}<span className="text-[12px] font-normal text-gray-400 ml-1">hrs</span></p>
+              <p className="text-[18px] font-bold text-gray-900 dark:text-white leading-none">{employee.pto_balance}<span className="text-[12px] font-normal text-gray-400 ml-1">hrs</span></p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-150 px-4 py-3 flex items-center gap-3">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center flex-shrink-0"><Clock size={15} /></div>
             <div>
               <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Sick</p>
-              <p className="text-[18px] font-bold text-gray-900 leading-none">{employee.sick_balance}<span className="text-[12px] font-normal text-gray-400 ml-1">hrs</span></p>
+              <p className="text-[18px] font-bold text-gray-900 dark:text-white leading-none">{employee.sick_balance}<span className="text-[12px] font-normal text-gray-400 ml-1">hrs</span></p>
             </div>
           </div>
         </div>
@@ -115,10 +115,10 @@ export default function RequestsPage() {
             onClick={() => setShowForm(false)}>
             <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
               transition={{ duration: 0.2 }}
-              className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6"
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[16px] font-semibold text-gray-900">New Time Off Request</h2>
+                <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">New Time Off Request</h2>
                 <button onClick={() => setShowForm(false)} className="text-gray-300 hover:text-gray-500 transition-colors"><X size={18} /></button>
               </div>
 
@@ -145,7 +145,7 @@ export default function RequestsPage() {
                   <input type="number" min="0.5" step="0.5" value={form.hours_requested}
                     onChange={e => setForm(f => ({ ...f, hours_requested: e.target.value }))}
                     placeholder="8"
-                    className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all" />
+                    className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all" />
                   {willOverdraw && form.hours_requested && (
                     <p className="text-[12px] text-amber-600 mt-1.5 flex items-center gap-1.5">
                       <AlertCircle size={12} />You&apos;re requesting more than your available balance.
@@ -158,12 +158,12 @@ export default function RequestsPage() {
                   <div>
                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Start Date</label>
                     <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-                      className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all" />
+                      className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all" />
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">End Date</label>
                     <input type="date" value={form.end_date} min={form.start_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-                      className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all" />
+                      className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all" />
                   </div>
                 </div>
 
@@ -193,8 +193,8 @@ export default function RequestsPage() {
           <div className="w-5 h-5 border-2 border-[#089447] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : requests.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-150 p-10 text-center">
-          <Calendar size={32} className="text-gray-200 mx-auto mb-3" />
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-10 text-center">
+          <Calendar size={32} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
           <p className="text-[14px] text-gray-400">No requests yet. Click &ldquo;New Request&rdquo; to get started.</p>
         </div>
       ) : (
@@ -203,14 +203,14 @@ export default function RequestsPage() {
             const s = STATUS_STYLES[req.status]
             const Icon = s.icon
             return (
-              <div key={req.id} className="bg-white rounded-2xl border border-gray-150 p-5">
+              <div key={req.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${req.type === 'pto' ? 'bg-blue-50 text-blue-500' : 'bg-amber-50 text-amber-500'}`}>
                       {req.type === 'pto' ? <Calendar size={16} /> : <Clock size={16} />}
                     </div>
                     <div>
-                      <p className="text-[14px] font-semibold text-gray-800">
+                      <p className="text-[14px] font-semibold text-gray-800 dark:text-white">
                         {req.type === 'pto' ? 'PTO' : 'Sick Time'} · {req.hours_requested} hrs
                       </p>
                       <p className="text-[12px] text-gray-400 mt-0.5">

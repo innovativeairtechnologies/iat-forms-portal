@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Search, X, Settings2, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ChevronDown,
+  Search, X, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ChevronDown,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
@@ -85,12 +85,7 @@ export default function FormsPortal({ categories, forms }: Props) {
               <span className="text-[15px] text-gray-500 dark:text-gray-400 font-medium">Forms</span>
             </div>
           </Link>
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <Link href="/admin" className="flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors px-2 py-2">
-              <Settings2 size={13} />Admin
-            </Link>
-          </div>
+          <ThemeToggle />
         </div>
       </header>
 

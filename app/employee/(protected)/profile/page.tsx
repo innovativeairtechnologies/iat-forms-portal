@@ -64,63 +64,63 @@ export default function ProfilePage() {
           {initials}
         </div>
         <div>
-          <h1 className="text-[24px] font-bold text-gray-900 leading-tight">{employee.name || 'Your Profile'}</h1>
+          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight">{employee.name || 'Your Profile'}</h1>
           <p className="text-[14px] text-gray-400 mt-0.5">{employee.email}</p>
         </div>
       </div>
 
       {/* Balance cards */}
       <div className="grid grid-cols-2 gap-4 mb-10">
-        <div className="bg-white rounded-2xl border border-gray-150 p-5">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center">
               <Calendar size={15} />
             </div>
             <span className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">PTO Balance</span>
           </div>
-          <p className="text-[32px] font-bold text-gray-900 leading-none">{employee.pto_balance}<span className="text-[16px] font-medium text-gray-400 ml-1">hrs</span></p>
+          <p className="text-[32px] font-bold text-gray-900 dark:text-white leading-none">{employee.pto_balance}<span className="text-[16px] font-medium text-gray-400 ml-1">hrs</span></p>
           <p className="text-[12px] text-gray-400 mt-1">+{employee.pto_accrual_rate} hrs / pay period</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-150 p-5">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
               <Clock size={15} />
             </div>
             <span className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">Sick Balance</span>
           </div>
-          <p className="text-[32px] font-bold text-gray-900 leading-none">{employee.sick_balance}<span className="text-[16px] font-medium text-gray-400 ml-1">hrs</span></p>
+          <p className="text-[32px] font-bold text-gray-900 dark:text-white leading-none">{employee.sick_balance}<span className="text-[16px] font-medium text-gray-400 ml-1">hrs</span></p>
           <p className="text-[12px] text-gray-400 mt-1">+{employee.sick_accrual_rate} hrs / pay period</p>
         </div>
       </div>
 
       {/* Editable profile form */}
-      <div className="bg-white rounded-2xl border border-gray-150 p-6">
-        <h2 className="text-[15px] font-semibold text-gray-800 mb-5">Personal Information</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+        <h2 className="text-[15px] font-semibold text-gray-800 dark:text-white mb-5">Personal Information</h2>
 
         <form onSubmit={save} className="space-y-5">
           <Field icon={User} label="Full Name">
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="Jane Doe"
-              className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300" />
+              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
           </Field>
 
           <Field icon={Briefcase} label="Job Title">
             <input value={form.job_title} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))}
               placeholder="HVAC Technician"
-              className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300" />
+              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
           </Field>
 
           <Field icon={Building2} label="Department">
             <input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
               placeholder="Field Services"
-              className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300" />
+              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
           </Field>
 
           <Field icon={Phone} label="Phone">
             <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
               placeholder="(555) 000-0000" type="tel"
-              className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300" />
+              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
           </Field>
 
           <Field icon={FileText} label="Bio / Hobbies">

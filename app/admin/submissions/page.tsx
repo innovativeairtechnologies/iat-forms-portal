@@ -7,6 +7,7 @@ import { Inbox, ChevronLeft, ChevronRight } from 'lucide-react'
 import FilterSelect from './FilterSelect'
 import SearchBar from './SearchBar'
 import ExportButton from './ExportButton'
+import PullReportButton from './PullReportButton'
 import { Suspense } from 'react'
 
 interface SearchParams {
@@ -74,12 +75,17 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
               {searchParams.search && ` matching "${searchParams.search}"`}
             </p>
           </div>
-          <ExportButton
-            formId={searchParams.form_id}
-            isRead={searchParams.is_read}
-            search={searchParams.search}
-            formTitle={activeForm?.title}
-          />
+          <div className="flex items-center gap-2">
+            {activeForm && (
+              <PullReportButton formId={activeForm.id} formTitle={activeForm.title} />
+            )}
+            <ExportButton
+              formId={searchParams.form_id}
+              isRead={searchParams.is_read}
+              search={searchParams.search}
+              formTitle={activeForm?.title}
+            />
+          </div>
         </div>
       </div>
 

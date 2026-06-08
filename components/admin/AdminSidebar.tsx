@@ -3,12 +3,11 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Inbox, FileText, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight, Users, CalendarClock, TrendingUp,
+  LayoutDashboard, Inbox, FileText, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight, Users, CalendarClock, TrendingUp, UserCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import ThemeToggle from '@/components/ThemeToggle'
 
 const NAV = [
   { href: '/admin',              label: 'Dashboard',   icon: LayoutDashboard, exact: true },
@@ -28,12 +27,25 @@ export default function AdminSidebar({ unreadCount }: Props) {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [adminName, setAdminName] = useState('')
+
+  useEffect(() => {
+    const update = () => {
+      const name = localStorage.getItem('admin_display_name')
+      setAdminName(name?.trim() || '')
+    }
+    update()
+    window.addEventListener('admin-profile-updated', update)
+    return () => window.removeEventListener('admin-profile-updated', update)
+  }, [])
 
   const logout = async () => {
     await fetch('/api/admin/auth', { method: 'DELETE' })
     router.push('/login')
     router.refresh()
   }
+
+  const displayName = adminName || 'Admin'
 
   return (
     <>
@@ -110,13 +122,11 @@ export default function AdminSidebar({ unreadCount }: Props) {
                 />
                 {!collapsed && <span className="flex-1">{item.label}</span>}
 
-                {/* Expanded badge */}
                 {!collapsed && item.href === '/admin/submissions' && unreadCount > 0 && (
                   <span className="text-[10px] font-bold text-white bg-[#089447] min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
-                {/* Collapsed dot badge */}
                 {collapsed && item.href === '/admin/submissions' && unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#089447] border-2 border-white dark:border-gray-900" />
                 )}
@@ -133,14 +143,14 @@ export default function AdminSidebar({ unreadCount }: Props) {
             <Link
               href="/admin/forms/new"
               onClick={() => setMobileOpen(false)}
-              title={collapsed ? 'New Form' : undefined}
+              title={collapsed ? '+ New Form' : undefined}
               className={cn(
                 'flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all',
                 collapsed && 'justify-center',
               )}
             >
               <Plus size={15} className="flex-shrink-0 text-gray-400 dark:text-gray-500" />
-              {!collapsed && <span className="flex-1">New Form</span>}
+              {!collapsed && <span className="flex-1">+ New Form</span>}
             </Link>
           </div>
         </nav>
@@ -149,9 +159,13 @@ export default function AdminSidebar({ unreadCount }: Props) {
         <div className="p-2 border-t border-gray-100 dark:border-gray-800 space-y-0.5">
           {collapsed ? (
             <>
-              <div className="flex items-center justify-center py-2">
-                <ThemeToggle />
-              </div>
+              <Link
+                href="/admin/profile"
+                title={`Welcome, ${displayName}`}
+                className="w-full flex items-center justify-center px-2.5 py-2.5 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#089447] dark:hover:text-[#089447] transition-all"
+              >
+                <UserCircle size={15} />
+              </Link>
               <button
                 onClick={logout}
                 title="Sign Out"
@@ -162,10 +176,14 @@ export default function AdminSidebar({ unreadCount }: Props) {
             </>
           ) : (
             <>
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500">Appearance</span>
-                <ThemeToggle />
-              </div>
+              {/* Profile link */}
+              <Link
+                href="/admin/profile"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#089447] dark:hover:text-[#089447] transition-all"
+              >
+                <UserCircle size={15} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                <span className="flex-1 truncate">Welcome, {displayName}</span>
+              </Link>
               <button
                 onClick={logout}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-all"
@@ -192,7 +210,6 @@ export default function AdminSidebar({ unreadCount }: Props) {
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-          <ThemeToggle />
           <button onClick={() => setMobileOpen(true)} className="text-gray-600 dark:text-gray-400 p-1">
             <Menu size={20} />
           </button>
@@ -256,16 +273,20 @@ export default function AdminSidebar({ unreadCount }: Props) {
                   className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all"
                 >
                   <Plus size={15} className="text-gray-400 dark:text-gray-500" />
-                  New Form
+                  + New Form
                 </Link>
               </div>
             </nav>
 
             <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-0.5">
-              <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500">Appearance</span>
-                <ThemeToggle />
-              </div>
+              <Link
+                href="/admin/profile"
+                onClick={() => setMobileOpen(false)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#089447] dark:hover:text-[#089447] transition-all"
+              >
+                <UserCircle size={15} className="text-gray-300 dark:text-gray-600" />
+                Welcome, {displayName}
+              </Link>
               <button
                 onClick={logout}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-all"

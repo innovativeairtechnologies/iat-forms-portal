@@ -9,9 +9,9 @@ import type { TimeOffRequest, Employee } from '@/lib/supabase'
 type RequestWithEmployee = TimeOffRequest & { employees: Employee }
 
 const STATUS_STYLES = {
-  pending:  { icon: AlertCircle,  cls: 'bg-amber-50 text-amber-600 border-amber-200',  label: 'Pending'  },
-  approved: { icon: CheckCircle2, cls: 'bg-green-50 text-green-600 border-green-200',  label: 'Approved' },
-  denied:   { icon: XCircle,      cls: 'bg-red-50 text-red-500 border-red-200',        label: 'Denied'   },
+  pending:  { icon: AlertCircle,  cls: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',  label: 'Pending'  },
+  approved: { icon: CheckCircle2, cls: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800',  label: 'Approved' },
+  denied:   { icon: XCircle,      cls: 'bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-200 dark:border-red-800',              label: 'Denied'   },
 }
 
 function formatDate(d: string) {
@@ -82,8 +82,8 @@ export default function RequestsQueueClient({ requests }: { requests: RequestWit
       )}
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-150 p-12 text-center">
-          <Calendar size={32} className="text-gray-200 mx-auto mb-3" />
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-12 text-center">
+          <Calendar size={32} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
           <p className="text-[14px] text-gray-400">No {filter !== 'all' ? filter : ''} requests.</p>
         </div>
       ) : (
@@ -99,17 +99,17 @@ export default function RequestsQueueClient({ requests }: { requests: RequestWit
               return (
                 <motion.div key={req.id}
                   initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
-                  className={`bg-white rounded-2xl border p-5 transition-all ${insufficient && req.status === 'pending' ? 'border-amber-200' : 'border-gray-150'}`}>
+                  className={`bg-white dark:bg-gray-900 rounded-2xl border p-5 transition-all ${insufficient && req.status === 'pending' ? 'border-amber-200 dark:border-amber-800' : 'border-gray-100 dark:border-gray-800'}`}>
 
                   {/* Top row */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
                       {/* Employee avatar */}
-                      <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
                         {employee?.name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
                       </div>
                       <div>
-                        <p className="text-[14px] font-semibold text-gray-800">{employee?.name || employee?.email}</p>
+                        <p className="text-[14px] font-semibold text-gray-800 dark:text-white">{employee?.name || employee?.email}</p>
                         <p className="text-[12px] text-gray-400">{employee?.job_title || 'Employee'}</p>
                       </div>
                     </div>
@@ -120,33 +120,33 @@ export default function RequestsQueueClient({ requests }: { requests: RequestWit
 
                   {/* Details */}
                   <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-gray-50 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Type</p>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Type</p>
                       <div className="flex items-center gap-1.5">
                         {req.type === 'pto' ? <Calendar size={13} className="text-blue-500" /> : <Clock size={13} className="text-amber-500" />}
-                        <p className="text-[13px] font-semibold text-gray-700">{req.type === 'pto' ? 'PTO' : 'Sick Time'}</p>
+                        <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{req.type === 'pto' ? 'PTO' : 'Sick Time'}</p>
                       </div>
                     </div>
-                    <div className="bg-gray-50 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Hours</p>
-                      <p className={`text-[13px] font-semibold ${insufficient ? 'text-amber-600' : 'text-gray-700'}`}>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Hours</p>
+                      <p className={`text-[13px] font-semibold ${insufficient ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-gray-200'}`}>
                         {req.hours_requested} hrs
                         {insufficient && <span className="text-[10px] ml-1">(⚠️ over)</span>}
                       </p>
                     </div>
-                    <div className="bg-gray-50 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Balance</p>
-                      <p className="text-[13px] font-semibold text-gray-700">{balance ?? '—'} hrs</p>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Balance</p>
+                      <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{balance ?? '—'} hrs</p>
                     </div>
-                    <div className="bg-gray-50 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Dates</p>
-                      <p className="text-[12px] font-medium text-gray-700">{formatDate(req.start_date)}</p>
-                      <p className="text-[11px] text-gray-400">→ {formatDate(req.end_date)}</p>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Dates</p>
+                      <p className="text-[12px] font-medium text-gray-700 dark:text-gray-200">{formatDate(req.start_date)}</p>
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500">→ {formatDate(req.end_date)}</p>
                     </div>
                   </div>
 
                   {req.notes && (
-                    <p className="mt-3 text-[13px] text-gray-400 bg-gray-50 rounded-xl px-4 py-2.5 italic">&ldquo;{req.notes}&rdquo;</p>
+                    <p className="mt-3 text-[13px] text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-2.5 italic">&ldquo;{req.notes}&rdquo;</p>
                   )}
 
                   {/* Actions */}
