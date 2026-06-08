@@ -2,5 +2,11 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "devCommand": "next dev",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/accrue-pto",
+      "schedule": "0 8 1,15 * *"
+    }
+  ]
 }
