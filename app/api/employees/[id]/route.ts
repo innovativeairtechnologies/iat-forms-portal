@@ -42,5 +42,12 @@ export async function PATCH(
   const { error } = await supabaseAdmin.from('employees').update(update).eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Keep profiles.role in sync when is_admin changes
+  if ('is_admin' in update) {
+    await supabaseAdmin
+      .from('profiles')
+      .upsert({ id: params.id, role: update.is_admin ? 'admin' : 'employee' })
+  }
+
   return NextResponse.json({ ok: true })
 }

@@ -21,7 +21,7 @@ function generatePassword() {
   return (core + rest).split('').sort(() => Math.random() - 0.5).join('')
 }
 
-export default function EmployeesClient({ employees }: { employees: Employee[] }) {
+export default function EmployeesClient({ employees }: { employees: (Employee & { role?: 'admin' | 'employee' })[] }) {
   const router = useRouter()
   const [search, setSearch]     = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -115,8 +115,8 @@ export default function EmployeesClient({ employees }: { employees: Employee[] }
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-[14px] font-medium text-gray-800 group-hover:text-[#089447] transition-colors">{emp.name || '—'}</p>
-                  {emp.is_admin && (
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full border border-violet-200">
+                  {emp.role === 'admin' && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 rounded-full border border-violet-200 dark:border-violet-800">
                       <Shield size={9} />Admin
                     </span>
                   )}
