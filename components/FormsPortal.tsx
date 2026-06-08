@@ -4,9 +4,9 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Search, X, Settings2, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ArrowUpRight,
+  Search, X, Settings2, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ArrowUpRight, ChevronDown,
 } from 'lucide-react'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
 import ThemeToggle from './ThemeToggle'
 import StepFormModal from './StepFormModal'
@@ -93,10 +93,11 @@ interface Props {
 }
 
 export default function FormsPortal({ categories, forms }: Props) {
-  const [search, setSearch]         = useState('')
-  const [activeCategory, setActive] = useState('all')
-  const [sort, setSort]             = useState<SortOption>('most-used')
-  const [openSlug, setOpenSlug]     = useState<string | null>(null)
+  const [search, setSearch]               = useState('')
+  const [activeCategory, setActive]       = useState('all')
+  const [sort, setSort]                   = useState<SortOption>('most-used')
+  const [openSlug, setOpenSlug]           = useState<string | null>(null)
+  const [collapsed, setCollapsed]         = useState<Record<string, boolean>>({})
 
   const visibleCategories = categories.filter((c) => forms.some((f) => f.category_id === c.id))
 
@@ -234,24 +235,52 @@ export default function FormsPortal({ categories, forms }: Props) {
 
           {/* Grouped view — All tab, no search */}
           {showGrouped && grouped && grouped.map(({ category, forms: catForms }) => {
-            const Icon   = getIcon(category.icon)
-            const colors = getColors(category.icon)
+            const Icon      = getIcon(category.icon)
+            const colors    = getColors(category.icon)
+            const isOpen    = !collapsed[category.id]
+            const toggle    = () => setCollapsed((p) => ({ ...p, [category.id]: !p[category.id] }))
+
             return (
               <section key={category.id}>
-                <div className="flex items-center gap-3 mb-4">
+                <button
+                  onClick={toggle}
+                  className="w-full flex items-center gap-3 mb-4 group"
+                >
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${colors.iconBg} ${colors.iconText}`}>
                     <Icon size={15} strokeWidth={1.8} />
                   </div>
-                  <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{category.name}</h2>
+                  <h2 className="text-[15px] font-bold text-gray-900 dark:text-white group-hover:text-[#089447] transition-colors">
+                    {category.name}
+                  </h2>
                   <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600 tabular-nums">
                     {catForms.length} {catForms.length === 1 ? 'form' : 'forms'}
                   </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {catForms.map((form) => (
-                    <FormCard key={form.id} form={form} colors={colors} categoryName={category.name} onOpen={setOpenSlug} />
-                  ))}
-                </div>
+                  <motion.div
+                    animate={{ rotate: isOpen ? 0 : -90 }}
+                    transition={{ duration: 0.18, ease: 'easeInOut' }}
+                    className="ml-auto flex-shrink-0"
+                  >
+                    <ChevronDown size={15} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors" />
+                  </motion.div>
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-1">
+                        {catForms.map((form) => (
+                          <FormCard key={form.id} form={form} colors={colors} categoryName={category.name} onOpen={setOpenSlug} />
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </section>
             )
           })}
