@@ -189,7 +189,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
         ) : (
           /* Flat category view */
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
-            <FormsList forms={categoryFiltered} countByForm={countByForm} showCategory={false} />
+            <FormsList forms={categoryFiltered} countByForm={countByForm} showCategory={false} showHeaders />
           </div>
         )}
       </div>
@@ -199,12 +199,22 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
 // ─── FormsList ────────────────────────────────────────────────────────────────
 
-function FormsList({ forms, countByForm, showCategory }: {
+function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
   forms: FormShape[]
   countByForm: Record<string, number>
   showCategory: boolean
+  showHeaders?: boolean
 }) {
   return (
+    <>
+      {showHeaders && (
+        <div className="grid grid-cols-[1fr_80px_100px_160px] items-center px-6 py-3 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-center">Active</span>
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-right hidden sm:block">Created</span>
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-right">Actions</span>
+        </div>
+      )}
     <ul className="divide-y divide-gray-50 dark:divide-gray-800/60">
       {forms.map((form) => (
         <li key={form.id}
@@ -265,6 +275,7 @@ function FormsList({ forms, countByForm, showCategory }: {
         </li>
       ))}
     </ul>
+    </>
   )
 }
 
