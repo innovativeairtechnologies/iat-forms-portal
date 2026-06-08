@@ -29,7 +29,6 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DashboardShell({ children, panel, unreadCount }: Props) {
-  const [avatarInitials, setAvatarInitials] = useState('A')
   const [adminName, setAdminName] = useState('')
   const [bellOpen, setBellOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -39,12 +38,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
   useEffect(() => {
     const update = () => {
       const name = localStorage.getItem('admin_display_name')
-      if (name?.trim()) {
-        setAdminName(name.trim())
-        setAvatarInitials(
-          name.trim().split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-        )
-      }
+      if (name?.trim()) setAdminName(name.trim())
     }
     update()
     window.addEventListener('admin-profile-updated', update)
@@ -190,15 +184,6 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
             <Plus size={13} />
             New Form
           </Link>
-
-          {/* Profile avatar */}
-          <Link
-            href="/admin/profile"
-            title={adminName ? `${adminName} — Profile` : 'Your profile'}
-            className="ml-1 w-8 h-8 rounded-full bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[12px] font-bold hover:opacity-75 transition-opacity ring-2 ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600"
-          >
-            {avatarInitials}
-          </Link>
         </div>
 
         {/* Small screens */}
@@ -212,12 +197,6 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#089447] border border-white dark:border-gray-900" />
             )}
-          </Link>
-          <Link
-            href="/admin/profile"
-            className="w-8 h-8 rounded-full bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[12px] font-bold hover:opacity-75 transition-opacity"
-          >
-            {avatarInitials}
           </Link>
         </div>
       </div>

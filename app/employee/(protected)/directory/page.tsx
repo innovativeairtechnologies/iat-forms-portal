@@ -46,44 +46,49 @@ export default function DirectoryPage() {
   }, [])
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="flex-1 overflow-auto">
 
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Team Directory</h1>
-        <p className="text-[14px] text-gray-400 mt-0.5">
-          {loading ? '…' : `${employees.length} people at IAT`}
+      {/* Page header */}
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Team</p>
+        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Directory</h1>
+        <p className="text-[13px] text-gray-400 mt-0.5">
+          {loading ? 'Loading…' : `${employees.length} ${employees.length === 1 ? 'person' : 'people'} at IAT`}
         </p>
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center h-60">
-          <div className="w-5 h-5 border-2 border-[#089447] border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      {/* Content */}
+      <div className="p-8">
 
-      {/* Empty state */}
-      {!loading && employees.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-60 text-center">
-          <Users size={32} className="text-gray-200 dark:text-gray-700 mb-3" />
-          <p className="text-[14px] text-gray-400">No employees yet.</p>
-        </div>
-      )}
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center h-60">
+            <div className="w-5 h-5 border-2 border-[#089447] border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
 
-      {/* Bento grid */}
-      {!loading && employees.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 auto-rows-[170px] gap-3 [grid-auto-flow:dense]">
-          {employees.map((emp, i) => (
-            <EmployeeCard
-              key={emp.id}
-              employee={emp}
-              size={getBentoSize(i)}
-              onClick={() => setSelected(emp)}
-            />
-          ))}
-        </div>
-      )}
+        {/* Empty state */}
+        {!loading && employees.length === 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card flex flex-col items-center justify-center py-20 text-center">
+            <Users size={28} className="text-gray-200 dark:text-gray-700 mb-3" />
+            <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400">No employees yet.</p>
+          </div>
+        )}
+
+        {/* Bento grid */}
+        {!loading && employees.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 auto-rows-[170px] gap-3 [grid-auto-flow:dense]">
+            {employees.map((emp, i) => (
+              <EmployeeCard
+                key={emp.id}
+                employee={emp}
+                size={getBentoSize(i)}
+                onClick={() => setSelected(emp)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Profile modal */}
       <AnimatePresence>

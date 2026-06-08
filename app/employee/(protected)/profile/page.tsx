@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Clock, Calendar, User, Phone, Building2, Briefcase, FileText } from 'lucide-react'
+import { Save, Clock, Calendar, User, Phone, Building2, Briefcase, FileText, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
+
+const inputCls = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
 
 export default function ProfilePage() {
   const [employee, setEmployee] = useState<Employee | null>(null)
@@ -56,105 +58,149 @@ export default function ProfilePage() {
   const initials = employee.name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
+    <div className="flex-1 overflow-auto">
 
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-10">
-        <div className="w-16 h-16 rounded-2xl bg-gray-800 flex items-center justify-center text-white text-[22px] font-bold flex-shrink-0">
-          {initials}
+      {/* Page header */}
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center gap-5">
+          {/* Avatar */}
+          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[20px] font-bold flex-shrink-0">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">My Account</p>
+            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-none">{employee.name || 'Your Profile'}</h1>
+            <p className="text-[13px] text-gray-400 mt-0.5">{employee.job_title || 'Employee'} · {employee.email}</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white leading-tight">{employee.name || 'Your Profile'}</h1>
-          <p className="text-[14px] text-gray-400 mt-0.5">{employee.email}</p>
+
+        {/* Balance + stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          <BalanceCard icon={<Calendar size={15} />} label="PTO Balance" value={employee.pto_balance} accrual={employee.pto_accrual_rate} accent="blue" />
+          <BalanceCard icon={<Clock size={15} />} label="Sick Balance" value={employee.sick_balance} accrual={employee.sick_accrual_rate} accent="amber" />
+          {employee.department && (
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] border-l-violet-500 border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center flex-shrink-0">
+                <Building2 size={15} className="text-violet-500 dark:text-violet-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-violet-600 dark:text-violet-400 truncate">{employee.department}</p>
+                <p className="text-[11px] font-medium text-gray-400 mt-0.5">Department</p>
+              </div>
+            </div>
+          )}
+          {employee.hire_date && (
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] border-l-emerald-500 border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 size={15} className="text-emerald-500 dark:text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+                  {new Date(employee.hire_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </p>
+                <p className="text-[11px] font-medium text-gray-400 mt-0.5">Hire Date</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Balance cards */}
-      <div className="grid grid-cols-2 gap-4 mb-10">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center">
-              <Calendar size={15} />
+      {/* Form */}
+      <div className="p-8">
+        <div className="max-w-2xl">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+              <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Personal Information</h2>
+              <p className="text-[12px] text-gray-400 mt-0.5">Update your profile details</p>
             </div>
-            <span className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">PTO Balance</span>
+
+            <form onSubmit={save} className="p-6 space-y-5">
+              <Field icon={User} label="Full Name">
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Jane Doe" className={inputCls} />
+              </Field>
+
+              <Field icon={Briefcase} label="Job Title">
+                <input value={form.job_title} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))}
+                  placeholder="HVAC Technician" className={inputCls} />
+              </Field>
+
+              <Field icon={Building2} label="Department">
+                <input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
+                  placeholder="Field Services" className={inputCls} />
+              </Field>
+
+              <Field icon={Phone} label="Phone">
+                <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                  placeholder="(555) 000-0000" type="tel" className={inputCls} />
+              </Field>
+
+              <Field icon={FileText} label="Bio / Hobbies">
+                <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                  rows={3} placeholder="Tell your team a bit about yourself…"
+                  className={`${inputCls} resize-none`} />
+              </Field>
+
+              <Field icon={User} label="Email" note="Managed by admin">
+                <input value={employee.email} disabled
+                  className="w-full text-[14px] text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl px-4 py-2.5 cursor-not-allowed" />
+              </Field>
+
+              {error && <p className="text-[13px] text-red-500">{error}</p>}
+
+              <div className="flex items-center gap-3 pt-1">
+                <button type="submit" disabled={saving}
+                  className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40 shadow-sm">
+                  <Save size={14} />
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+                {saved && (
+                  <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
+                    className="text-[13px] text-[#089447] font-medium">
+                    Saved ✓
+                  </motion.span>
+                )}
+              </div>
+            </form>
           </div>
-          <p className="text-[32px] font-bold text-gray-900 dark:text-white leading-none">{employee.pto_balance}<span className="text-[16px] font-medium text-gray-400 ml-1">hrs</span></p>
-          <p className="text-[12px] text-gray-400 mt-1">+{employee.pto_accrual_rate} hrs / pay period</p>
         </div>
-
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center">
-              <Clock size={15} />
-            </div>
-            <span className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">Sick Balance</span>
-          </div>
-          <p className="text-[32px] font-bold text-gray-900 dark:text-white leading-none">{employee.sick_balance}<span className="text-[16px] font-medium text-gray-400 ml-1">hrs</span></p>
-          <p className="text-[12px] text-gray-400 mt-1">+{employee.sick_accrual_rate} hrs / pay period</p>
-        </div>
-      </div>
-
-      {/* Editable profile form */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-        <h2 className="text-[15px] font-semibold text-gray-800 dark:text-white mb-5">Personal Information</h2>
-
-        <form onSubmit={save} className="space-y-5">
-          <Field icon={User} label="Full Name">
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="Jane Doe"
-              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
-          </Field>
-
-          <Field icon={Briefcase} label="Job Title">
-            <input value={form.job_title} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))}
-              placeholder="HVAC Technician"
-              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
-          </Field>
-
-          <Field icon={Building2} label="Department">
-            <input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
-              placeholder="Field Services"
-              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
-          </Field>
-
-          <Field icon={Phone} label="Phone">
-            <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-              placeholder="(555) 000-0000" type="tel"
-              className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600" />
-          </Field>
-
-          <Field icon={FileText} label="Bio / Hobbies">
-            <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
-              rows={3} placeholder="Tell your team a bit about yourself…"
-              className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 resize-none" />
-          </Field>
-
-          {/* Read-only email */}
-          <Field icon={User} label="Email" note="Managed by admin">
-            <input value={employee.email} disabled
-              className="w-full text-[14px] text-gray-400 bg-gray-50 border border-gray-150 rounded-xl px-4 py-2.5 cursor-not-allowed" />
-          </Field>
-
-          {error && <p className="text-[13px] text-red-500">{error}</p>}
-
-          <div className="flex items-center gap-3 pt-2">
-            <button type="submit" disabled={saving}
-              className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40 shadow-sm">
-              <Save size={14} />
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
-            {saved && (
-              <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
-                className="text-[13px] text-[#089447] font-medium">
-                Saved ✓
-              </motion.span>
-            )}
-          </div>
-        </form>
       </div>
     </div>
   )
 }
+
+// ─── Balance Card ─────────────────────────────────────────────────────────────
+
+function BalanceCard({ icon, label, value, accrual, accent }: {
+  icon: React.ReactNode
+  label: string
+  value: number
+  accrual: number
+  accent: 'blue' | 'amber'
+}) {
+  const styles = {
+    blue:  { border: 'border-l-blue-500',  bg: 'bg-blue-50 dark:bg-blue-950/50',   icon: 'text-blue-500 dark:text-blue-400',  val: 'text-blue-600 dark:text-blue-400'  },
+    amber: { border: 'border-l-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/50', icon: 'text-amber-500 dark:text-amber-400',val: 'text-amber-600 dark:text-amber-400' },
+  }
+  const s = styles[accent]
+  return (
+    <div className={`bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] ${s.border} border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${s.bg}`}>
+        <span className={s.icon}>{icon}</span>
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-1">
+          <p className={`text-[22px] font-bold tracking-tight leading-none ${s.val}`}>{value}</p>
+          <span className="text-[11px] text-gray-400">hrs</span>
+        </div>
+        <p className="text-[11px] font-medium text-gray-400 mt-0.5">{label}</p>
+        <p className="text-[10px] text-gray-300 dark:text-gray-600">+{accrual} / period</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Field ────────────────────────────────────────────────────────────────────
 
 function Field({ icon: Icon, label, note, children }: {
   icon: React.ElementType
@@ -166,8 +212,8 @@ function Field({ icon: Icon, label, note, children }: {
     <div>
       <div className="flex items-center gap-1.5 mb-1.5">
         <Icon size={13} className="text-gray-400" />
-        <label className="text-[12px] font-semibold text-gray-500">{label}</label>
-        {note && <span className="text-[11px] text-gray-300 ml-1">· {note}</span>}
+        <label className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">{label}</label>
+        {note && <span className="text-[11px] text-gray-300 dark:text-gray-600 ml-1">· {note}</span>}
       </div>
       {children}
     </div>
