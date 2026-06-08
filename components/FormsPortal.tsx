@@ -237,9 +237,10 @@ function FormCard({ form, onOpen, showCategory = false }: {
   return (
     <button
       onClick={() => onOpen(form.slug)}
-      className="group w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+      className="group w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 flex flex-col h-[160px] overflow-hidden shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
     >
-      <div className="flex items-start justify-between gap-2">
+      {/* Icon + optional category pill */}
+      <div className="flex items-start justify-between gap-2 mb-auto">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
           <Icon size={16} strokeWidth={1.8} />
         </div>
@@ -250,12 +251,13 @@ function FormCard({ form, onOpen, showCategory = false }: {
         )}
       </div>
 
-      <div className="flex-1">
-        <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug group-hover:text-[#089447] transition-colors">
+      {/* Title + description pinned to bottom */}
+      <div className="mt-auto">
+        <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-[#089447] transition-colors">
           {form.title}
         </p>
         {form.description && (
-          <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 leading-relaxed line-clamp-2">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 line-clamp-1">
             {form.description}
           </p>
         )}
