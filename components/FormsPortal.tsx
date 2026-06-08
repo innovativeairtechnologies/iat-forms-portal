@@ -11,62 +11,6 @@ import type { Category, Form } from '@/lib/supabase'
 import ThemeToggle from './ThemeToggle'
 import StepFormModal from './StepFormModal'
 
-// ─── Category color system ────────────────────────────────────────────────────
-
-interface CardColor {
-  cardBg:   string
-  iconBg:   string
-  iconText: string
-  pillBg:   string
-  pillText: string
-}
-
-const COLORS: Record<string, CardColor> = {
-  'clock': {
-    cardBg:   'bg-blue-50 dark:bg-blue-950/40',
-    iconBg:   'bg-blue-100 dark:bg-blue-900/50',
-    iconText: 'text-blue-600 dark:text-blue-400',
-    pillBg:   'bg-blue-100 dark:bg-blue-900/50',
-    pillText: 'text-blue-700 dark:text-blue-300',
-  },
-  'clipboard-check': {
-    cardBg:   'bg-amber-50 dark:bg-amber-950/40',
-    iconBg:   'bg-amber-100 dark:bg-amber-900/50',
-    iconText: 'text-amber-600 dark:text-amber-400',
-    pillBg:   'bg-amber-100 dark:bg-amber-900/50',
-    pillText: 'text-amber-700 dark:text-amber-300',
-  },
-  'user-plus': {
-    cardBg:   'bg-violet-50 dark:bg-violet-950/40',
-    iconBg:   'bg-violet-100 dark:bg-violet-900/50',
-    iconText: 'text-violet-600 dark:text-violet-400',
-    pillBg:   'bg-violet-100 dark:bg-violet-900/50',
-    pillText: 'text-violet-700 dark:text-violet-300',
-  },
-  'send': {
-    cardBg:   'bg-sky-50 dark:bg-sky-950/40',
-    iconBg:   'bg-sky-100 dark:bg-sky-900/50',
-    iconText: 'text-sky-600 dark:text-sky-400',
-    pillBg:   'bg-sky-100 dark:bg-sky-900/50',
-    pillText: 'text-sky-700 dark:text-sky-300',
-  },
-  'tool': {
-    cardBg:   'bg-emerald-50 dark:bg-emerald-950/40',
-    iconBg:   'bg-emerald-100 dark:bg-emerald-900/50',
-    iconText: 'text-emerald-600 dark:text-emerald-500',
-    pillBg:   'bg-emerald-100 dark:bg-emerald-900/50',
-    pillText: 'text-emerald-700 dark:text-emerald-300',
-  },
-}
-
-const FALLBACK_COLOR: CardColor = {
-  cardBg:   'bg-gray-50 dark:bg-gray-800/50',
-  iconBg:   'bg-gray-100 dark:bg-gray-700',
-  iconText: 'text-gray-400 dark:text-gray-500',
-  pillBg:   'bg-gray-100 dark:bg-gray-700',
-  pillText: 'text-gray-600 dark:text-gray-400',
-}
-
 const ICON_MAP: Record<string, React.ElementType> = {
   'clock':           Clock,
   'clipboard-check': ClipboardCheck,
@@ -75,15 +19,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   'tool':            Wrench,
 }
 
-function getColors(icon: string | null | undefined): CardColor {
-  return (icon && COLORS[icon]) || FALLBACK_COLOR
-}
-
 function getIcon(icon: string | null | undefined): React.ElementType {
   return (icon && ICON_MAP[icon]) || FolderOpen
 }
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 type SortOption = 'most-used' | 'a-z' | 'z-a'
 
@@ -93,11 +31,11 @@ interface Props {
 }
 
 export default function FormsPortal({ categories, forms }: Props) {
-  const [search, setSearch]               = useState('')
-  const [activeCategory, setActive]       = useState('all')
-  const [sort, setSort]                   = useState<SortOption>('most-used')
-  const [openSlug, setOpenSlug]           = useState<string | null>(null)
-  const [expanded, setExpanded]           = useState<Record<string, boolean>>({})
+  const [search, setSearch]         = useState('')
+  const [activeCategory, setActive] = useState('all')
+  const [sort, setSort]             = useState<SortOption>('most-used')
+  const [openSlug, setOpenSlug]     = useState<string | null>(null)
+  const [expanded, setExpanded]     = useState<Record<string, boolean>>({})
 
   const visibleCategories = categories.filter((c) => forms.some((f) => f.category_id === c.id))
 
@@ -210,7 +148,7 @@ export default function FormsPortal({ categories, forms }: Props) {
         )}
 
         {/* Content */}
-        <div className="pb-20 pt-8 space-y-10">
+        <div className="pb-20 pt-8 space-y-8">
 
           <AnimatePresence>
             {openSlug && <StepFormModal slug={openSlug} onClose={() => setOpenSlug(null)} />}
@@ -223,30 +161,24 @@ export default function FormsPortal({ categories, forms }: Props) {
             </div>
           )}
 
-          {/* Sort control — shown on flat views */}
+          {/* Sort — flat views only */}
           {!showGrouped && sorted.length > 0 && (
-            <div className="flex items-center justify-between -mt-4 mb-0">
+            <div className="flex items-center justify-between -mt-2">
               {search && <p className="text-[12px] text-gray-400">{sorted.length} result{sorted.length !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;</p>}
-              <div className="ml-auto">
-                <SortPills value={sort} onChange={setSort} />
-              </div>
+              <div className="ml-auto"><SortPills value={sort} onChange={setSort} /></div>
             </div>
           )}
 
-          {/* Grouped view — All tab, no search */}
+          {/* Grouped — All tab */}
           {showGrouped && grouped && grouped.map(({ category, forms: catForms }) => {
-            const Icon      = getIcon(category.icon)
-            const colors    = getColors(category.icon)
-            const isOpen    = !!expanded[category.id]
-            const toggle    = () => setExpanded((p) => ({ ...p, [category.id]: !p[category.id] }))
+            const Icon   = getIcon(category.icon)
+            const isOpen = !!expanded[category.id]
+            const toggle = () => setExpanded((p) => ({ ...p, [category.id]: !p[category.id] }))
 
             return (
               <section key={category.id}>
-                <button
-                  onClick={toggle}
-                  className="w-full flex items-center gap-3 mb-4 group"
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${colors.iconBg} ${colors.iconText}`}>
+                <button onClick={toggle} className="w-full flex items-center gap-3 mb-4 group">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
                     <Icon size={15} strokeWidth={1.8} />
                   </div>
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white group-hover:text-[#089447] transition-colors">
@@ -255,11 +187,7 @@ export default function FormsPortal({ categories, forms }: Props) {
                   <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600 tabular-nums">
                     {catForms.length} {catForms.length === 1 ? 'form' : 'forms'}
                   </span>
-                  <motion.div
-                    animate={{ rotate: isOpen ? 0 : -90 }}
-                    transition={{ duration: 0.18, ease: 'easeInOut' }}
-                    className="ml-auto flex-shrink-0"
-                  >
+                  <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.18, ease: 'easeInOut' }} className="ml-auto flex-shrink-0">
                     <ChevronDown size={15} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors" />
                   </motion.div>
                 </button>
@@ -267,15 +195,12 @@ export default function FormsPortal({ categories, forms }: Props) {
                 <AnimatePresence initial={false}>
                   {isOpen && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
-                      style={{ overflow: 'hidden' }}
+                      initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }} style={{ overflow: 'hidden' }}
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-1">
                         {catForms.map((form) => (
-                          <FormCard key={form.id} form={form} colors={colors} categoryName={category.name} onOpen={setOpenSlug} />
+                          <FormCard key={form.id} form={form} onOpen={setOpenSlug} />
                         ))}
                       </div>
                     </motion.div>
@@ -285,18 +210,11 @@ export default function FormsPortal({ categories, forms }: Props) {
             )
           })}
 
-          {/* Flat view — specific category or search */}
+          {/* Flat — category tab or search */}
           {!showGrouped && sorted.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {sorted.map((form) => (
-                <FormCard
-                  key={form.id}
-                  form={form}
-                  colors={getColors(form.categories?.icon)}
-                  categoryName={form.categories?.name ?? null}
-                  onOpen={setOpenSlug}
-                  showCategory
-                />
+                <FormCard key={form.id} form={form} onOpen={setOpenSlug} showCategory />
               ))}
             </div>
           )}
@@ -309,10 +227,8 @@ export default function FormsPortal({ categories, forms }: Props) {
 
 // ─── FormCard ─────────────────────────────────────────────────────────────────
 
-function FormCard({ form, colors, categoryName, onOpen, showCategory = false }: {
+function FormCard({ form, onOpen, showCategory = false }: {
   form: Form & { categories?: Category }
-  colors: CardColor
-  categoryName: string | null
   onOpen: (slug: string) => void
   showCategory?: boolean
 }) {
@@ -321,32 +237,29 @@ function FormCard({ form, colors, categoryName, onOpen, showCategory = false }: 
   return (
     <button
       onClick={() => onOpen(form.slug)}
-      className={`group w-full text-left rounded-2xl p-5 flex flex-col gap-3 transition-all hover:scale-[1.015] hover:shadow-md active:scale-[0.99] ${colors.cardBg}`}
+      className="group w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
     >
-      {/* Top row — icon + category pill */}
       <div className="flex items-start justify-between gap-2">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${colors.iconBg} ${colors.iconText}`}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
           <Icon size={16} strokeWidth={1.8} />
         </div>
-        {(showCategory || categoryName) && (
-          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full flex-shrink-0 ${colors.pillBg} ${colors.pillText}`}>
-            {categoryName}
+        {showCategory && form.categories?.name && (
+          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex-shrink-0">
+            {form.categories.name}
           </span>
         )}
       </div>
 
-      {/* Title + description */}
       <div className="flex-1">
-        <p className="text-[14px] font-bold text-gray-900 dark:text-white leading-snug group-hover:text-[#089447] transition-colors">
+        <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug group-hover:text-[#089447] transition-colors">
           {form.title}
         </p>
         {form.description && (
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed line-clamp-2">
+          <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 leading-relaxed line-clamp-2">
             {form.description}
           </p>
         )}
       </div>
-
     </button>
   )
 }
