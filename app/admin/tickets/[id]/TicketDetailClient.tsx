@@ -195,6 +195,34 @@ export default function TicketDetailClient({ ticket: initial }: { ticket: Ticket
           <Field label="Seals good"><YesNo val={ticket.seals_good} /></Field>
         </Section>
 
+        {/* Photos */}
+        {ticket.photo_urls && ticket.photo_urls.length > 0 && (
+          <Section title={`Photos (${ticket.photo_urls.length})`}>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {ticket.photo_urls.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative block aspect-square rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:border-[#089447] transition-all"
+                >
+                  <img
+                    src={url}
+                    alt={`Photo ${i + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 text-white text-[11px] font-semibold drop-shadow transition-opacity">
+                      Open ↗
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+
         {/* Admin notes */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
           <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Admin Notes</p>

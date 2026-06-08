@@ -125,6 +125,7 @@ export type Ticket = {
   react_heat_working: boolean | null
   react_heat_setpoint: boolean | null
   seals_good: boolean | null
+  photo_urls: string[] | null
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   notes: string | null
   created_at: string
