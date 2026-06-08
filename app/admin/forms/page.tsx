@@ -2,14 +2,22 @@ export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
-import { Plus, ExternalLink, Sparkles } from 'lucide-react'
+import { Plus, ExternalLink, Sparkles, ArrowRight } from 'lucide-react'
 import FormsListClient from './FormsListClient'
 import DuplicateButton from './DuplicateButton'
 import QRModal from './QRModal'
 import EmbedModal from './EmbedModal'
 import DeleteFormButton from './DeleteFormButton'
 
+const PAGE_LIMIT = 10
+
 interface SearchParams { category?: string }
+
+type FormShape = {
+  id: string; title: string; slug: string; is_active: boolean;
+  created_at: string; description: string | null;
+  categories: { id: string; name: string } | null
+}
 
 async function getData() {
   const [{ data: forms }, { data: submissions }, { data: categories }] = await Promise.all([
@@ -26,19 +34,16 @@ async function getData() {
   return { forms: forms || [], countByForm, categories: categories || [] }
 }
 
-type FormShape = {
-  id: string; title: string; slug: string; is_active: boolean;
-  description: string | null; categories: { id: string; name: string } | null
-}
-
-
 export default async function FormsListPage({ searchParams }: { searchParams: SearchParams }) {
   const { forms, countByForm, categories } = await getData()
 
   const activeCategory = searchParams.category || 'all'
-  const filtered: FormShape[] = activeCategory === 'all'
+  const allFiltered: FormShape[] = activeCategory === 'all'
     ? forms
     : forms.filter((f: FormShape) => f.categories?.name === activeCategory)
+
+  const filtered = allFiltered.slice(0, PAGE_LIMIT)
+  const hasMore = allFiltered.length > PAGE_LIMIT
 
   const countByCategory: Record<string, number> = {}
   forms.forEach((f: FormShape) => {
@@ -56,7 +61,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Manage</p>
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Forms</h1>
             <p className="text-[13px] text-gray-400 mt-0.5">
-              {filtered.length} {filtered.length === 1 ? 'form' : 'forms'}
+              {allFiltered.length} {allFiltered.length === 1 ? 'form' : 'forms'}
               {activeCategory !== 'all' && ` in ${activeCategory}`}
             </p>
           </div>
@@ -95,96 +100,95 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {filtered.map((form: FormShape) => (
-              <FormCard
-                key={form.id}
-                form={form}
-                count={countByForm[form.id] || 0}
-                showCategory={activeCategory === 'all'}
-              />
-            ))}
-          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
 
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── FormCard ─────────────────────────────────────────────────────────────────
-
-function FormCard({ form, count, showCategory }: {
-  form: FormShape; count: number; showCategory: boolean
-}) {
-  return (
-    <div className="group bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card hover:shadow-card-hover hover:border-gray-200 dark:hover:border-gray-700 transition-all overflow-hidden flex flex-col h-full">
-
-      {/* ── Visual area ── */}
-      <div className="relative h-[118px] overflow-hidden flex-shrink-0 bg-[#f8f9fa] dark:bg-gray-800">
-
-        {/* Form field mock */}
-        <div className="absolute left-5 right-[80px] top-5 space-y-[6px]">
-          {([62, 84, 48] as number[]).map((w, i) => (
-            <div key={i} className="h-5 rounded-md flex items-center px-2 bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
-              <div className="h-[4px] rounded-full bg-gray-200 dark:bg-gray-600" style={{ width: `${w}%` }} />
+            {/* Column headers */}
+            <div className="grid grid-cols-[1fr_auto_auto_auto] items-center px-6 py-3 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest w-24 text-right">Submissions</span>
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest w-28 text-right hidden sm:block">Created</span>
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest w-[220px] text-right">Actions</span>
             </div>
-          ))}
-          <div className="h-5 rounded-md flex items-center justify-center bg-[#089447]/80">
-            <div className="h-[4px] w-8 rounded-full bg-white/60" />
-          </div>
-        </div>
 
-        {/* Submission count */}
-        <div className="absolute top-4 right-4 rounded-xl text-center px-2.5 py-2 min-w-[50px] bg-white dark:bg-gray-900 shadow-card border border-gray-100 dark:border-gray-700">
-          <p className="text-[20px] font-bold leading-none tabular-nums text-gray-800 dark:text-white">{count}</p>
-          <p className="text-[9px] uppercase tracking-wider mt-0.5 text-gray-400">{count === 1 ? 'response' : 'responses'}</p>
-        </div>
+            {/* Rows */}
+            <ul className="divide-y divide-gray-50 dark:divide-gray-800/60">
+              {filtered.map((form) => (
+                <li key={form.id}
+                  className="group grid grid-cols-[1fr_auto_auto_auto] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors">
 
-        {!form.is_active && (
-          <div className="absolute bottom-2.5 left-4 text-[10px] font-semibold bg-black/10 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
-            Inactive
+                  {/* Form name + meta */}
+                  <div className="flex items-center gap-3 min-w-0 pr-4">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${form.is_active ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
+                          {form.title}
+                        </span>
+                        {activeCategory === 'all' && form.categories?.name && (
+                          <Link
+                            href={`/admin/forms?category=${encodeURIComponent(form.categories.name)}`}
+                            className="flex-shrink-0 text-[10px] font-semibold text-gray-400 bg-gray-50 dark:bg-gray-800 hover:text-[#089447] hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700 transition-colors">
+                            {form.categories.name}
+                          </Link>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-gray-400 font-mono mt-0.5">/forms/{form.slug}</p>
+                    </div>
+                  </div>
+
+                  {/* Submissions */}
+                  <div className="w-24 text-right">
+                    <Link href={`/admin/submissions?form_id=${form.id}`}
+                      className="text-[18px] font-bold text-gray-800 dark:text-white hover:text-[#089447] transition-colors tabular-nums">
+                      {countByForm[form.id] || 0}
+                    </Link>
+                  </div>
+
+                  {/* Created */}
+                  <div className="w-28 text-right hidden sm:block">
+                    <span className="text-[12px] text-gray-400">
+                      {new Date(form.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="w-[220px] flex items-center justify-end gap-0.5">
+                    <FormsListClient formId={form.id} isActive={form.is_active} />
+                    <div className="w-px h-4 bg-gray-100 dark:bg-gray-800 mx-1" />
+                    <QRModal formTitle={form.title} formSlug={form.slug} />
+                    <EmbedModal formTitle={form.title} formSlug={form.slug} />
+                    <DuplicateButton formId={form.id} />
+                    <a href={`/forms/${form.slug}`} target="_blank" rel="noopener noreferrer"
+                      className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                      title="Preview form">
+                      <ExternalLink size={13} />
+                    </a>
+                    <Link href={`/admin/forms/${form.id}/edit`}
+                      className="text-[12px] font-semibold text-[#089447] hover:text-[#077a3c] px-2.5 py-1.5 rounded-lg hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 transition-all">
+                      Edit
+                    </Link>
+                    <DeleteFormButton formId={form.id} formTitle={form.title} submissionCount={countByForm[form.id] || 0} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Footer — cap notice or clean count */}
+            <div className="px-6 py-3 border-t border-gray-50 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/20 flex items-center justify-between">
+              <p className="text-[12px] text-gray-400">
+                Showing {filtered.length} of {allFiltered.length} {allFiltered.length === 1 ? 'form' : 'forms'}
+                {activeCategory !== 'all' && ` in ${activeCategory}`}
+              </p>
+              {hasMore && (
+                <p className="flex items-center gap-1 text-[12px] text-gray-400">
+                  Filter by category to browse the rest
+                  <ArrowRight size={11} />
+                </p>
+              )}
+            </div>
+
           </div>
         )}
-      </div>
-
-      {/* ── Content area ── */}
-      <div className="flex flex-col flex-1 p-5">
-        <div className="flex items-center gap-2 mb-2.5 min-h-[18px]">
-          {showCategory && form.categories?.name && (
-            <Link href={`/admin/forms?category=${encodeURIComponent(form.categories.name)}`}
-              className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 bg-gray-50 dark:bg-gray-800 hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 hover:text-[#089447] px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700 transition-colors">
-              {form.categories.name}
-            </Link>
-          )}
-          <div className={`ml-auto w-2 h-2 rounded-full flex-shrink-0 ${form.is_active ? 'bg-emerald-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
-        </div>
-
-        <h3 className="text-[14px] font-bold text-gray-900 dark:text-white leading-snug">{form.title}</h3>
-        {form.description && (
-          <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-relaxed mt-1.5 line-clamp-2 flex-1">
-            {form.description}
-          </p>
-        )}
-
-        {/* Action row */}
-        <div className="flex items-center gap-0.5 mt-auto pt-4 border-t border-gray-50 dark:border-gray-800">
-          <FormsListClient formId={form.id} isActive={form.is_active} />
-          <div className="flex-1" />
-          <QRModal formTitle={form.title} formSlug={form.slug} />
-          <EmbedModal formTitle={form.title} formSlug={form.slug} />
-          <DuplicateButton formId={form.id} />
-          <a href={`/forms/${form.slug}`} target="_blank" rel="noopener noreferrer"
-            className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-            title="Preview form">
-            <ExternalLink size={13} />
-          </a>
-          <Link href={`/admin/forms/${form.id}/edit`}
-            className="text-[12px] font-semibold text-[#089447] hover:text-[#077a3c] px-2.5 py-1.5 rounded-lg hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 transition-all">
-            Edit
-          </Link>
-          <DeleteFormButton formId={form.id} formTitle={form.title} submissionCount={count} />
-        </div>
       </div>
     </div>
   )
