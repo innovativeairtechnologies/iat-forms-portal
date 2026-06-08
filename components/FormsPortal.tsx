@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Search, X, Settings2, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ArrowUpRight, ChevronDown,
+  Search, X, Settings2, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ChevronDown,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
@@ -347,11 +347,6 @@ function FormCard({ form, colors, categoryName, onOpen, showCategory = false }: 
         )}
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-auto pt-1">
-        <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">Open form</span>
-        <ArrowUpRight size={14} className="text-gray-300 dark:text-gray-600 group-hover:text-[#089447] transition-colors" />
-      </div>
     </button>
   )
 }
