@@ -1,17 +1,20 @@
-import { cookies } from 'next/headers'
+import { createSupabaseServer } from './supabase-server'
+import { supabaseAdmin } from './supabase-admin'
 import { NextResponse } from 'next/server'
 
-const AUTH_COOKIE = 'iat_admin_auth'
+export async function requireAdminAuth(): Promise<NextResponse | null> {
+  const supabase = createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-/**
- * Call at the top of any admin API route handler.
- * Returns a 401 response if the request is not authenticated,
- * or null if it is (so you can do: const err = requireAdminAuth(); if (err) return err).
- */
-export function requireAdminAuth(): NextResponse | null {
-  const cookieStore = cookies()
-  if (cookieStore.get(AUTH_COOKIE)?.value !== 'authenticated') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return null
 }

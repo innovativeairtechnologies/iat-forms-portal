@@ -60,7 +60,7 @@ Rules:
 - Choose the most fitting category based on the form's purpose`
 
 export async function POST(req: NextRequest) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
 
   try {
     const { description } = await req.json()

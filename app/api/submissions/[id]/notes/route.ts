@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   const { data, error } = await supabaseAdmin
     .from('submission_notes')
     .select('*')
@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   const { content } = await req.json()
   if (!content?.trim()) return NextResponse.json({ error: 'Content required' }, { status: 400 })
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   const { note_id } = await req.json()
   const { error } = await supabaseAdmin
     .from('submission_notes')

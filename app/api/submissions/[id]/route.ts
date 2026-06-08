@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   const { data, error } = await supabaseAdmin
     .from('submissions')
     .select('*')
@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   const body = await req.json()
 
   // Whitelist only the fields admins are allowed to update

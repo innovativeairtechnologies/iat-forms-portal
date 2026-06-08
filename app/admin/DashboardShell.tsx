@@ -29,21 +29,11 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DashboardShell({ children, panel, unreadCount }: Props) {
-  const [adminName, setAdminName] = useState('')
   const [bellOpen, setBellOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
   const bellRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const update = () => {
-      const name = localStorage.getItem('admin_display_name')
-      if (name?.trim()) setAdminName(name.trim())
-    }
-    update()
-    window.addEventListener('admin-profile-updated', update)
-    return () => window.removeEventListener('admin-profile-updated', update)
-  }, [])
 
   const fetchNotifications = useCallback(async () => {
     setNotifLoading(true)

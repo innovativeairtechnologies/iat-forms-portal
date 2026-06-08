@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null

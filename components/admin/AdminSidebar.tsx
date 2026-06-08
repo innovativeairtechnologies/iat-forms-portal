@@ -6,8 +6,9 @@ import {
   LayoutDashboard, Inbox, FileText, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight, Users, CalendarClock, TrendingUp, UserCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 const NAV = [
   { href: '/admin',              label: 'Dashboard',   icon: LayoutDashboard, exact: true },
@@ -20,27 +21,18 @@ const NAV = [
 
 interface Props {
   unreadCount: number
+  adminName: string
 }
 
-export default function AdminSidebar({ unreadCount }: Props) {
+export default function AdminSidebar({ unreadCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const [adminName, setAdminName] = useState('')
-
-  useEffect(() => {
-    const update = () => {
-      const name = localStorage.getItem('admin_display_name')
-      setAdminName(name?.trim() || '')
-    }
-    update()
-    window.addEventListener('admin-profile-updated', update)
-    return () => window.removeEventListener('admin-profile-updated', update)
-  }, [])
 
   const logout = async () => {
-    await fetch('/api/admin/auth', { method: 'DELETE' })
+    const supabase = createSupabaseBrowser()
+    await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
   }

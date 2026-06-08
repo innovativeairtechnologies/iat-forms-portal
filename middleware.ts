@@ -23,27 +23,67 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh the session — must happen before any redirect checks
+  // Must be called before any redirect — refreshes the session cookie
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
-  // Protect /employee/* except public entry points
+  // ── /login: if already logged in, skip to the right portal ───────────────
+  if (pathname === '/login') {
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      const dest = profile?.role === 'admin' ? '/admin' : '/employee/profile'
+      return NextResponse.redirect(new URL(dest, request.url))
+    }
+    return supabaseResponse
+  }
+
+  // ── /admin/* ──────────────────────────────────────────────────────────────
+  if (pathname.startsWith('/admin')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    if (profile?.role !== 'admin') {
+      const dest = profile?.role === 'employee' ? '/employee/profile' : '/login'
+      return NextResponse.redirect(new URL(dest, request.url))
+    }
+    return supabaseResponse
+  }
+
+  // ── /employee/* (skip public entry points) ────────────────────────────────
   if (
     pathname.startsWith('/employee') &&
     !pathname.startsWith('/employee/login') &&
-    !pathname.startsWith('/employee/welcome') &&
-    !user
+    !pathname.startsWith('/employee/welcome')
   ) {
-    const loginUrl = request.nextUrl.clone()
-    loginUrl.pathname = '/employee/login'
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+    if (!user) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    if (profile?.role === 'admin') {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
+    return supabaseResponse
   }
 
   return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/employee/:path*'],
+  matcher: ['/admin/:path*', '/employee/:path*', '/login'],
 }

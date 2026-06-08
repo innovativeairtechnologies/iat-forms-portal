@@ -3,7 +3,7 @@ import { isAdminAuthenticated } from '@/lib/admin-auth'
 import { runBiweeklyAccrual } from '@/lib/accrual'
 
 export async function POST() {
-  if (!isAdminAuthenticated()) {
+  if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

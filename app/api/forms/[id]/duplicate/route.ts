@@ -4,7 +4,7 @@ import { requireAdminAuth } from '@/lib/api-auth'
 import { slugify } from '@/lib/utils'
 
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
 
   const { data: original, error: fetchError } = await supabaseAdmin
     .from('forms')

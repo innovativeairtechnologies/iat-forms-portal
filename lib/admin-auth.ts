@@ -1,8 +1,25 @@
-import { cookies } from 'next/headers'
+import { createSupabaseServer } from './supabase-server'
+import { supabaseAdmin } from './supabase-admin'
 
-const AUTH_COOKIE = 'iat_admin_auth'
+export async function getAdminUser() {
+  const supabase = createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
-export function isAdminAuthenticated(): boolean {
-  const cookieStore = cookies()
-  return cookieStore.get(AUTH_COOKIE)?.value === 'authenticated'
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role, display_name')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') return null
+  return {
+    user,
+    displayName: profile.display_name || user.email?.split('@')[0] || 'Admin',
+    role: profile.role as 'admin',
+  }
+}
+
+export async function isAdminAuthenticated(): Promise<boolean> {
+  return (await getAdminUser()) !== null
 }

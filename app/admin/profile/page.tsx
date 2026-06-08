@@ -2,43 +2,60 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Mail, Save, LogOut, Check, Shield } from 'lucide-react'
+import { ArrowLeft, User, Save, LogOut, Check, Shield } from 'lucide-react'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const [name, setName] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [saved, setSaved] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    setName(localStorage.getItem('admin_display_name') || 'Admin')
-    setEmail(localStorage.getItem('admin_email') || '')
+    fetch('/api/admin/profile')
+      .then(r => r.json())
+      .then(data => {
+        setDisplayName(data.display_name || '')
+        setEmail(data.email || '')
+        setLoading(false)
+      })
   }, [])
 
-  const initials = name.trim()
-    ? name.trim().split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+  const initials = displayName.trim()
+    ? displayName.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'A'
 
-  const save = () => {
-    localStorage.setItem('admin_display_name', name.trim() || 'Admin')
-    localStorage.setItem('admin_email', email.trim())
-    // Dispatch so DashboardShell avatar updates without reload
-    window.dispatchEvent(new Event('admin-profile-updated'))
+  const save = async () => {
+    setSaving(true)
+    await fetch('/api/admin/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: displayName }),
+    })
+    setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
-  }
-
-  const logout = async () => {
-    await fetch('/api/admin/auth', { method: 'DELETE' })
-    router.push('/login')
+    // Re-render server layout so the sidebar name updates
     router.refresh()
   }
 
-  if (!mounted) return null
+  const logout = async () => {
+    const supabase = createSupabaseBrowser()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-5 h-5 border-2 border-[#089447] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 overflow-auto">
@@ -58,9 +75,9 @@ export default function ProfilePage() {
           </div>
           <div>
             <h1 className="text-[22px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
-              {name || 'Admin'}
+              {displayName || 'Admin'}
             </h1>
-            <p className="text-[13px] text-gray-400 mt-0.5">Admin · Innovative Air Technologies</p>
+            <p className="text-[13px] text-gray-400 mt-0.5">{email} · Admin</p>
           </div>
         </div>
       </div>
@@ -78,8 +95,8 @@ export default function ProfilePage() {
               <div className="relative">
                 <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
                 <input
-                  value={name}
-                  onChange={(e) => { setName(e.target.value); setSaved(false) }}
+                  value={displayName}
+                  onChange={e => { setDisplayName(e.target.value); setSaved(false) }}
                   placeholder="Your name"
                   className="w-full pl-9 pr-4 py-2.5 text-[13px] border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 transition-all"
                 />
@@ -89,26 +106,23 @@ export default function ProfilePage() {
               <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
                 Email
               </label>
-              <div className="relative">
-                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
-                <input
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setSaved(false) }}
-                  type="email"
-                  placeholder="admin@company.com"
-                  className="w-full pl-9 pr-4 py-2.5 text-[13px] border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 transition-all"
-                />
-              </div>
+              <input
+                value={email}
+                disabled
+                className="w-full px-4 py-2.5 text-[13px] border border-gray-100 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+              />
+              <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-1">Email is managed via Supabase Auth</p>
             </div>
             <button
               onClick={save}
-              className={`inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all ${
+              disabled={saving || !displayName.trim()}
+              className={`inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-40 ${
                 saved
                   ? 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]'
                   : 'bg-[#089447] hover:bg-[#077a3c] text-white shadow-sm'
               }`}
             >
-              {saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> Save Changes</>}
+              {saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> {saving ? 'Saving…' : 'Save Changes'}</>}
             </button>
           </div>
         </div>
@@ -127,16 +141,12 @@ export default function ProfilePage() {
 
         {/* Security */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">Security</h2>
-          </div>
+          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-4">Security</h2>
           <div className="flex items-center justify-between py-3 border border-gray-100 dark:border-gray-800 rounded-xl px-4">
             <div>
-              <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Admin Password</p>
+              <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Authentication</p>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Managed via{' '}
-                <code className="font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-[10px]">ADMIN_PASSWORD</code>
-                {' '}in your environment
+                Managed via Supabase Auth — use the Dashboard to reset passwords
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -149,7 +159,7 @@ export default function ProfilePage() {
         {/* Session */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card p-6">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-1">Session</h2>
-          <p className="text-[12px] text-gray-400 mb-4">Sessions expire after 8 hours of inactivity.</p>
+          <p className="text-[12px] text-gray-400 mb-4">You are signed in as {email}.</p>
           <button
             onClick={logout}
             className="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 px-4 py-2.5 rounded-xl transition-all border border-gray-200 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/20"

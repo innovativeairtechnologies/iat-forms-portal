@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
 
 export async function GET() {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   const { data, error } = await supabaseAdmin
     .from('forms')
     .select('*, categories(*), form_fields(*)')
@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const err = requireAdminAuth(); if (err) return err
+  const err = await requireAdminAuth(); if (err) return err
   try {
     const body = await req.json()
     const { title, description, category_id, slug, success_message, fields, notification_rules } = body
