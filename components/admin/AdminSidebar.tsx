@@ -92,7 +92,7 @@ function NavLink({
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-lg transition-all',
         active
-          ? 'bg-[rgba(152,152,152,0.12)] text-[12px] font-medium text-[rgb(37,42,52)] dark:text-[rgb(225,225,225)]'
+          ? 'bg-[rgba(152,152,152,0.12)] text-[12px] font-medium text-[rgba(37,42,52,0.52)] dark:text-[rgba(225,225,225,0.52)]'
           : isMain
             ? 'text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)] hover:bg-[rgba(152,152,152,0.08)]'
             : 'text-[11px] font-normal text-[rgb(107,114,128)] dark:text-[rgb(140,146,158)] hover:bg-[rgba(152,152,152,0.08)]',
