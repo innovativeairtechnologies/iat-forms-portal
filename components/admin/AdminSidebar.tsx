@@ -76,12 +76,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function NavLink({
-  item, pathname, unreadCount, onClose,
+  item, pathname, unreadCount, onClose, isMain = false,
 }: {
   item: NavItem
   pathname: string
   unreadCount: number
   onClose?: () => void
+  isMain?: boolean
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
   return (
@@ -89,19 +90,18 @@ function NavLink({
       href={item.href}
       onClick={onClose}
       className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium transition-all',
+        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all',
         active
-          ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
-          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white',
+          ? 'bg-[rgba(152,152,152,0.12)] text-[12px] font-medium text-[rgb(37,42,52)] dark:text-[rgb(225,225,225)]'
+          : isMain
+            ? 'text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)] hover:bg-[rgba(152,152,152,0.08)]'
+            : 'text-[11px] font-normal text-[rgb(107,114,128)] dark:text-[rgb(140,146,158)] hover:bg-[rgba(152,152,152,0.08)]',
       )}
     >
-      <item.icon size={15} className="flex-shrink-0" />
+      <item.icon size={14} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
       {item.showBadge && unreadCount > 0 && (
-        <span className={cn(
-          'text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
-          active ? 'bg-white/20 text-white' : 'bg-[#089447] text-white',
-        )}>
+        <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-[#089447] text-white">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
@@ -111,10 +111,10 @@ function NavLink({
 
 function FutureLink({ item }: { item: FutureItem }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
-      <item.icon size={15} className="flex-shrink-0" />
+    <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-normal text-[rgb(195,198,205)] dark:text-[rgb(75,80,90)] cursor-not-allowed select-none">
+      <item.icon size={14} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
-      <span className="text-[10px] font-medium tracking-wide">Soon</span>
+      <span className="text-[10px] tracking-wide">Soon</span>
     </div>
   )
 }
@@ -180,7 +180,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
       ) : (
         <>
           {/* Dashboard */}
-          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} onClose={onClose} isMain />
 
           {/* Sections */}
           {NAV_SECTIONS.map(section => {
@@ -192,7 +192,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
                   className="w-full flex items-center gap-2 px-3 pb-1.5 group"
                 >
                   <section.icon size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                  <span className="flex-1 text-left text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest">
+                  <span className="flex-1 text-left text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
                     {section.label}
                   </span>
                   <ChevronRight
@@ -226,7 +226,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
                     className="w-full flex items-center gap-2 px-3 pb-1.5 group"
                   >
                     <Zap size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                    <span className="flex-1 text-left text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest">
+                    <span className="flex-1 text-left text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
                       Actions
                     </span>
                     <ChevronRight
@@ -259,7 +259,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
 
   const renderFooter = (onClose?: () => void) => (
     <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-      <p className="text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest px-3 pb-1.5">
+      <p className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)] px-3 pb-1.5">
         Settings
       </p>
       <Link
