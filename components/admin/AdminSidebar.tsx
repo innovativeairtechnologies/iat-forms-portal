@@ -76,13 +76,12 @@ const ALL_NAV_ITEMS: NavItem[] = [
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function NavLink({
-  item, pathname, unreadCount, onClose, isMain = false,
+  item, pathname, unreadCount, onClose,
 }: {
   item: NavItem
   pathname: string
   unreadCount: number
   onClose?: () => void
-  isMain?: boolean
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
   return (
@@ -90,15 +89,13 @@ function NavLink({
       href={item.href}
       onClick={onClose}
       className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all',
+        'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-[14px]',
         active
-          ? 'bg-[rgba(152,152,152,0.12)] text-[12px] font-medium text-[rgba(37,42,52,0.52)] dark:text-[rgba(225,225,225,0.52)]'
-          : isMain
-            ? 'text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)] hover:bg-[rgba(152,152,152,0.08)]'
-            : 'text-[11px] font-normal text-[rgb(107,114,128)] dark:text-[rgb(140,146,158)] hover:bg-[rgba(152,152,152,0.08)]',
+          ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
+          : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300',
       )}
     >
-      <item.icon size={14} className="flex-shrink-0" />
+      <item.icon size={17} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
       {item.showBadge && unreadCount > 0 && (
         <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-[#089447] text-white">
@@ -111,10 +108,10 @@ function NavLink({
 
 function FutureLink({ item }: { item: FutureItem }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-normal text-[rgb(195,198,205)] dark:text-[rgb(75,80,90)] cursor-not-allowed select-none">
-      <item.icon size={14} className="flex-shrink-0" />
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-normal text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
+      <item.icon size={17} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
-      <span className="text-[10px] tracking-wide">Soon</span>
+      <span className="text-[10px] tracking-widest uppercase">Soon</span>
     </div>
   )
 }
@@ -148,7 +145,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
   }, [search])
 
   const renderNav = (onClose?: () => void) => (
-    <nav className="flex-1 px-3 py-2 overflow-y-auto space-y-0.5">
+    <nav className="flex-1 px-3 py-2 overflow-y-auto">
       {/* Search */}
       <div className="relative mb-3">
         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
@@ -171,14 +168,13 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
       ) : (
         <>
           {/* Dashboard */}
-          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} onClose={onClose} isMain />
+          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
 
           {/* Sections */}
           {NAV_SECTIONS.map(section => (
-            <div key={section.label} className="pt-3">
-              <div className="flex items-center gap-2 px-3 pb-1.5">
-                <section.icon size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                <span className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
+            <div key={section.label} className="mt-6">
+              <div className="px-3 mb-2">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
                   {section.label}
                 </span>
               </div>
@@ -190,10 +186,9 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
           ))}
 
           {/* Actions */}
-          <div className="pt-3">
-            <div className="flex items-center gap-2 px-3 pb-1.5">
-              <Zap size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
-              <span className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
+          <div className="mt-6">
+            <div className="px-3 mb-2">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
                 Actions
               </span>
             </div>
