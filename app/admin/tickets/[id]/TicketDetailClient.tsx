@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Lightbulb } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { Ticket, TicketNote, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
@@ -149,7 +149,11 @@ export default function TicketDetailClient({
         </div>
       </div>
 
-      <div className="p-8 max-w-3xl">
+      <div className="p-8">
+        <div className="flex gap-6 items-start max-w-6xl">
+
+        {/* ── Left column ───────────────────────────────────────── */}
+        <div className="flex-1 min-w-0">
 
         {saveError && (
           <div className="mb-4 text-[13px] text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 rounded-xl px-4 py-3">
@@ -353,6 +357,49 @@ export default function TicketDetailClient({
           <RichTextEditor onSubmit={addNote} disabled={savingNote} />
         </div>
 
+        </div>{/* end left column */}
+
+        {/* ── Right column ──────────────────────────────────────── */}
+        <div className="w-72 xl:w-80 flex-shrink-0 sticky top-8 space-y-4">
+
+          {/* AI Recommendations */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
+                <Lightbulb size={13} className="text-amber-500" />
+              </div>
+              <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest">AI Recommendations</p>
+            </div>
+            {ticket.ai_recommendations && ticket.ai_recommendations.length > 0 ? (
+              <div className="space-y-3">
+                {ticket.ai_recommendations.map((rec, i) => (
+                  <div key={i} className="flex gap-2.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-500 dark:text-amber-400 text-[10px] font-bold flex items-center justify-center mt-0.5">
+                      {i + 1}
+                    </span>
+                    <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">{rec}</p>
+                  </div>
+                ))}
+                <p className="text-[11px] text-gray-300 dark:text-gray-600 pt-1 border-t border-gray-50 dark:border-gray-800 mt-1">
+                  Shown to customer at submission
+                </p>
+              </div>
+            ) : (
+              <p className="text-[12px] text-gray-300 dark:text-gray-600">No recommendations generated for this ticket.</p>
+            )}
+          </div>
+
+          {/* Items Reviewed */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+            <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Items Reviewed</p>
+            <p className="text-[12px] text-gray-300 dark:text-gray-600 leading-relaxed">
+              Knowledge base coming soon. Article tracking will appear here once enabled.
+            </p>
+          </div>
+
+        </div>{/* end right column */}
+
+        </div>{/* end flex row */}
       </div>
     </div>
   )
