@@ -9,11 +9,19 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data } = await supabaseAdmin
-    .from('submissions')
-    .select('id, form_title, submitted_at, data, is_read')
-    .order('submitted_at', { ascending: false })
-    .limit(4)
+  const [{ data: notifications }, { data: tickets }] = await Promise.all([
+    supabaseAdmin
+      .from('submissions')
+      .select('id, form_title, submitted_at, data, is_read')
+      .order('submitted_at', { ascending: false })
+      .limit(4),
+    supabaseAdmin
+      .from('tickets')
+      .select('id, ticket_number, customer_name, customer_email, created_at')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(4),
+  ])
 
-  return NextResponse.json({ notifications: data || [] })
+  return NextResponse.json({ notifications: notifications || [], tickets: tickets || [] })
 }

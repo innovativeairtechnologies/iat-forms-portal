@@ -21,6 +21,7 @@ type NavItem = {
   icon: React.ElementType
   exact?: boolean
   showBadge?: boolean
+  showTicketBadge?: boolean
 }
 
 type FutureItem = {
@@ -47,7 +48,7 @@ const NAV_SECTIONS: NavSection[] = [
     href: '/admin/forms',
     items: [
       { href: '/admin/submissions', label: 'Submissions', icon: Inbox, showBadge: true },
-      { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket },
+      { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket, showTicketBadge: true },
     ],
     future: [
       { label: 'Analytics', icon: BarChart2 },
@@ -79,11 +80,12 @@ const ALL_NAV_ITEMS: NavItem[] = [
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function NavLink({
-  item, pathname, unreadCount, onClose,
+  item, pathname, unreadCount, ticketCount, onClose,
 }: {
   item: NavItem
   pathname: string
   unreadCount: number
+  ticketCount: number
   onClose?: () => void
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
@@ -105,6 +107,11 @@ function NavLink({
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
+      {item.showTicketBadge && ticketCount > 0 && (
+        <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500 text-white">
+          {ticketCount > 99 ? '99+' : ticketCount}
+        </span>
+      )}
     </Link>
   )
 }
@@ -123,10 +130,11 @@ function FutureLink({ item }: { item: FutureItem }) {
 
 interface Props {
   unreadCount: number
+  ticketCount: number
   adminName: string
 }
 
-export default function AdminSidebar({ unreadCount, adminName }: Props) {
+export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -165,13 +173,13 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
       {filtered ? (
         filtered.length > 0
           ? filtered.map(item => (
-              <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+              <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} ticketCount={ticketCount} onClose={onClose} />
             ))
           : <p className="text-[12px] text-gray-300 dark:text-gray-600 px-3 py-2">No results</p>
       ) : (
         <>
           {/* Dashboard */}
-          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} ticketCount={ticketCount} onClose={onClose} />
 
           {/* Sections */}
           {NAV_SECTIONS.map(section => (
@@ -192,7 +200,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
                 )}
               </div>
               {section.items.map(item => (
-                <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+                <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} ticketCount={ticketCount} onClose={onClose} />
               ))}
               {section.future?.map(fi => <FutureLink key={fi.label} item={fi} />)}
             </div>
@@ -208,7 +216,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
             <NavLink
               item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
               pathname={pathname}
-              unreadCount={0}
+              unreadCount={0} ticketCount={0}
               onClose={onClose}
             />
             <FutureLink item={{ label: 'Import Data', icon: FileText }} />

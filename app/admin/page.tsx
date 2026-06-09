@@ -198,7 +198,7 @@ export default async function AdminDashboard() {
   )
 
   return (
-    <DashboardShell panel={panel} unreadCount={unread}>
+    <DashboardShell panel={panel} unreadCount={unread} ticketCount={openCount}>
       <div className="p-6 space-y-5">
 
         {/* Hero */}

@@ -15,14 +15,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const admin = await getAdminUser()
   if (!admin) redirect('/login')
 
-  const { count } = await supabaseAdmin
-    .from('submissions')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_read', false)
+  const [{ count: unreadCount }, { count: openTickets }] = await Promise.all([
+    supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
+    supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+  ])
 
   return (
     <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
-      <AdminSidebar unreadCount={count ?? 0} adminName={admin.displayName} />
+      <AdminSidebar unreadCount={unreadCount ?? 0} ticketCount={openTickets ?? 0} adminName={admin.displayName} />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {children}
       </div>
