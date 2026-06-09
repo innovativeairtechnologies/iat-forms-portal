@@ -3,14 +3,17 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Inbox, Plus, LogOut, Menu, X, ChevronLeft, ChevronRight,
-  CalendarClock, TrendingUp, UserCircle, Ticket, BarChart2, FileText,
-  DollarSign, Calendar, UserPlus,
+  LayoutDashboard, Inbox, LogOut, Menu, X,
+  CalendarClock, TrendingUp, Ticket, BarChart2, FileText,
+  DollarSign, Calendar, UserPlus, Search, Plus,
+  ChevronRight, UserCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type NavItem = {
   href: string
@@ -30,6 +33,8 @@ type NavSection = {
   items: NavItem[]
   future?: FutureItem[]
 }
+
+// ─── Nav structure ────────────────────────────────────────────────────────────
 
 const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true }
 
@@ -52,23 +57,25 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/accrual',  label: 'Accrual',  icon: TrendingUp },
     ],
     future: [
-      { label: 'Payroll',     icon: DollarSign },
-      { label: 'Scheduling',  icon: Calendar },
-      { label: 'Onboarding',  icon: UserPlus },
+      { label: 'Payroll',    icon: DollarSign },
+      { label: 'Scheduling', icon: Calendar },
+      { label: 'Onboarding', icon: UserPlus },
     ],
   },
 ]
 
-interface Props {
-  unreadCount: number
-  adminName: string
-}
+const ALL_NAV_ITEMS: NavItem[] = [
+  DASHBOARD,
+  ...NAV_SECTIONS.flatMap(s => s.items),
+  { href: '/admin/forms/new', label: 'New Form', icon: Plus },
+]
 
-function NavItemLink({
-  item, collapsed, pathname, unreadCount, onClose,
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function NavLink({
+  item, pathname, unreadCount, onClose,
 }: {
   item: NavItem
-  collapsed: boolean
   pathname: string
   unreadCount: number
   onClose?: () => void
@@ -76,53 +83,54 @@ function NavItemLink({
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
   return (
     <Link
-      key={item.href}
       href={item.href}
       onClick={onClose}
-      title={collapsed ? item.label : undefined}
       className={cn(
-        'relative flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-[13px] font-medium transition-all',
-        collapsed && 'justify-center',
+        'flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium transition-all',
         active
-          ? 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]'
-          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white',
+          ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white',
       )}
     >
-      <item.icon
-        size={15}
-        className={cn('flex-shrink-0', active ? 'text-[#089447]' : 'text-gray-400 dark:text-gray-500')}
-      />
-      {!collapsed && <span className="flex-1">{item.label}</span>}
-      {item.showBadge && unreadCount > 0 && !collapsed && (
-        <span className="text-[10px] font-bold text-white bg-[#089447] min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full">
+      <item.icon size={15} className="flex-shrink-0" />
+      <span className="flex-1">{item.label}</span>
+      {item.showBadge && unreadCount > 0 && (
+        <span className={cn(
+          'text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
+          active ? 'bg-white/20 text-white' : 'bg-[#089447] text-white',
+        )}>
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
-      )}
-      {item.showBadge && unreadCount > 0 && collapsed && (
-        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#089447] border-2 border-white dark:border-gray-900" />
       )}
     </Link>
   )
 }
 
-function FutureItemRow({ item }: { item: FutureItem }) {
+function FutureLink({ item }: { item: FutureItem }) {
   return (
-    <div
-      title="Coming soon"
-      className="flex items-center gap-3 px-2.5 py-2 rounded-lg text-[13px] font-medium text-gray-300 dark:text-gray-700 cursor-not-allowed select-none"
-    >
-      <item.icon size={15} className="flex-shrink-0 text-gray-200 dark:text-gray-700" />
+    <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
+      <item.icon size={15} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
-      <span className="text-[10px] text-gray-200 dark:text-gray-700 font-medium tracking-wide">Soon</span>
+      <span className="text-[10px] font-medium tracking-wide">Soon</span>
     </div>
   )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+interface Props {
+  unreadCount: number
+  adminName: string
 }
 
 export default function AdminSidebar({ unreadCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const displayName = adminName || 'Admin'
+  const initial = displayName.charAt(0).toUpperCase()
 
   const logout = async () => {
     const supabase = createSupabaseBrowser()
@@ -131,197 +139,131 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
     router.refresh()
   }
 
-  const displayName = adminName || 'Admin'
+  const filtered = useMemo(() => {
+    if (!search.trim()) return null
+    const q = search.toLowerCase()
+    return ALL_NAV_ITEMS.filter(item => item.label.toLowerCase().includes(q))
+  }, [search])
 
-  const renderDesktopNav = () => (
-    <nav className="flex-1 px-2 py-1 overflow-y-auto">
-      {/* Dashboard */}
-      {!collapsed && (
-        <p className="text-[10px] font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest px-2 pb-1.5 pt-1">
-          Menu
-        </p>
-      )}
-      <NavItemLink item={DASHBOARD} collapsed={collapsed} pathname={pathname} unreadCount={unreadCount} />
-
-      {/* Grouped sections */}
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.label} className="mt-3">
-          {!collapsed && (
-            <p className="text-[10px] font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest px-2 pb-1.5">
-              {section.label}
-            </p>
-          )}
-          {collapsed && <div className="border-t border-gray-100 dark:border-gray-800 mx-2 my-1.5" />}
-          <div className="space-y-0.5">
-            {section.items.map((item) => (
-              <NavItemLink key={item.href} item={item} collapsed={collapsed} pathname={pathname} unreadCount={unreadCount} />
-            ))}
-            {!collapsed && section.future?.map((fi) => (
-              <FutureItemRow key={fi.label} item={fi} />
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {/* Actions */}
-      <div className="mt-3">
-        {!collapsed && (
-          <p className="text-[10px] font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest px-2 pb-1.5">
-            Actions
-          </p>
-        )}
-        {collapsed && <div className="border-t border-gray-100 dark:border-gray-800 mx-2 my-1.5" />}
-        <Link
-          href="/admin/forms/new"
-          title={collapsed ? '+ New Form' : undefined}
-          className={cn(
-            'flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all',
-            collapsed && 'justify-center',
-          )}
-        >
-          <Plus size={15} className="flex-shrink-0 text-gray-400 dark:text-gray-500" />
-          {!collapsed && <span className="flex-1">New Form</span>}
-        </Link>
-        {!collapsed && (
-          <div title="Coming soon" className="flex items-center gap-3 px-2.5 py-2 rounded-lg text-[13px] font-medium text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
-            <FileText size={15} className="flex-shrink-0 text-gray-200 dark:text-gray-700" />
-            <span className="flex-1">Import Data</span>
-            <span className="text-[10px] text-gray-200 dark:text-gray-700 font-medium tracking-wide">Soon</span>
-          </div>
-        )}
+  const renderNav = (onClose?: () => void) => (
+    <nav className="flex-1 px-3 py-2 overflow-y-auto space-y-0.5">
+      {/* Search */}
+      <div className="relative mb-3">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search…"
+          className="w-full text-[13px] bg-gray-100 dark:bg-gray-800 border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 transition-all"
+        />
       </div>
+
+      {/* Search results */}
+      {filtered ? (
+        filtered.length > 0
+          ? filtered.map(item => (
+              <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+            ))
+          : <p className="text-[12px] text-gray-300 dark:text-gray-600 px-3 py-2">No results</p>
+      ) : (
+        <>
+          {/* Dashboard */}
+          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+
+          {/* Sections */}
+          {NAV_SECTIONS.map(section => (
+            <div key={section.label} className="pt-3">
+              <p className="text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest px-3 pb-1.5">
+                {section.label}
+              </p>
+              {section.items.map(item => (
+                <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+              ))}
+              {section.future?.map(fi => <FutureLink key={fi.label} item={fi} />)}
+            </div>
+          ))}
+
+          {/* Actions */}
+          <div className="pt-3">
+            <p className="text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest px-3 pb-1.5">
+              Actions
+            </p>
+            <NavLink
+              item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
+              pathname={pathname}
+              unreadCount={0}
+              onClose={onClose}
+            />
+            <FutureLink item={{ label: 'Import Data', icon: FileText }} />
+          </div>
+        </>
+      )}
     </nav>
   )
 
-  const renderMobileNav = () => (
-    <nav className="flex-1 px-3 py-3 overflow-y-auto">
-      <p className="text-[10px] font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest px-2 pb-1.5">
-        Menu
+  const renderFooter = (onClose?: () => void) => (
+    <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+      <p className="text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest px-3 pb-1.5">
+        Settings
       </p>
-      <NavItemLink item={DASHBOARD} collapsed={false} pathname={pathname} unreadCount={unreadCount} onClose={() => setMobileOpen(false)} />
+      <Link
+        href="/admin/profile"
+        onClick={onClose}
+        className="flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all"
+      >
+        <UserCircle size={15} className="flex-shrink-0" />
+        Profile
+      </Link>
+      <button
+        onClick={logout}
+        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all"
+      >
+        <LogOut size={15} className="flex-shrink-0" />
+        Sign Out
+      </button>
 
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.label} className="mt-3">
-          <p className="text-[10px] font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest px-2 pb-1.5">
-            {section.label}
-          </p>
-          <div className="space-y-0.5">
-            {section.items.map((item) => (
-              <NavItemLink key={item.href} item={item} collapsed={false} pathname={pathname} unreadCount={unreadCount} onClose={() => setMobileOpen(false)} />
-            ))}
-            {section.future?.map((fi) => (
-              <FutureItemRow key={fi.label} item={fi} />
-            ))}
-          </div>
+      {/* User card */}
+      <Link
+        href="/admin/profile"
+        onClick={onClose}
+        className="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 transition-all group"
+      >
+        <div className="w-7 h-7 rounded-full bg-gray-900 dark:bg-gray-100 flex items-center justify-center flex-shrink-0">
+          <span className="text-[12px] font-bold text-white dark:text-gray-900">{initial}</span>
         </div>
-      ))}
-
-      <div className="mt-3">
-        <p className="text-[10px] font-semibold text-gray-300 dark:text-gray-700 uppercase tracking-widest px-2 pb-1.5">
-          Actions
-        </p>
-        <Link
-          href="/admin/forms/new"
-          onClick={() => setMobileOpen(false)}
-          className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all"
-        >
-          <Plus size={15} className="text-gray-400 dark:text-gray-500" />
-          + New Form
-        </Link>
-        <div title="Coming soon" className="flex items-center gap-3 px-2.5 py-2 rounded-lg text-[13px] font-medium text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
-          <FileText size={15} className="text-gray-200 dark:text-gray-700" />
-          <span className="flex-1">Import Data</span>
-          <span className="text-[10px] text-gray-200 dark:text-gray-700 font-medium tracking-wide">Soon</span>
-        </div>
-      </div>
-    </nav>
+        <span className="flex-1 text-[13px] font-semibold text-gray-700 dark:text-gray-200 truncate">{displayName}</span>
+        <ChevronRight size={14} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0" />
+      </Link>
+    </div>
   )
 
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside
-        className={cn(
-          'hidden md:flex bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-col flex-shrink-0 h-screen sticky top-0 overflow-hidden',
-          'transition-[width] duration-200 ease-in-out',
-          collapsed ? 'w-16' : 'w-[220px]',
-        )}
-      >
-        {/* Logo + collapse toggle */}
-        <div className={cn('flex items-center gap-2 px-4 pt-5 pb-5', collapsed && 'flex-col px-0 items-center')}>
-          <Link
-            href="/admin"
-            className={cn('flex items-center gap-2.5 group flex-1 min-w-0', collapsed && 'flex-initial')}
-            title={collapsed ? 'IAT Portal' : undefined}
-          >
+      <aside className="hidden md:flex w-[240px] flex-shrink-0 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-col h-screen sticky top-0 overflow-hidden">
+
+        {/* Logo */}
+        <div className="px-4 pt-5 pb-4">
+          <Link href="/admin" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-white flex-shrink-0 flex items-center justify-center shadow-sm border border-black/[0.06]">
-              <Image src="/iat-logo.png" alt="IAT Logo" width={22} height={22} style={{ mixBlendMode: 'multiply' }} />
+              <Image src="/iat-logo.png" alt="IAT" width={22} height={22} style={{ mixBlendMode: 'multiply' }} />
             </div>
-            {!collapsed && (
-              <div className="min-w-0">
-                <p className="text-[13px] font-bold text-gray-900 dark:text-white leading-none tracking-tight group-hover:text-[#089447] transition-colors">
-                  IAT Portal
-                </p>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Admin</p>
-              </div>
-            )}
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#089447] transition-colors">
+              IAT Portal
+            </span>
           </Link>
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="flex-shrink-0 p-1.5 rounded-md text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-          >
-            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-          </button>
         </div>
 
-        {renderDesktopNav()}
-
-        {/* Footer */}
-        <div className="p-2 border-t border-gray-100 dark:border-gray-800 space-y-0.5">
-          {collapsed ? (
-            <>
-              <Link
-                href="/admin/profile"
-                title={`Welcome, ${displayName}`}
-                className="w-full flex items-center justify-center px-2.5 py-2.5 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#089447] dark:hover:text-[#089447] transition-all"
-              >
-                <UserCircle size={15} />
-              </Link>
-              <button
-                onClick={logout}
-                title="Sign Out"
-                className="w-full flex items-center justify-center px-2.5 py-2.5 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-all"
-              >
-                <LogOut size={15} className="text-gray-300 dark:text-gray-600" />
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/admin/profile"
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#089447] dark:hover:text-[#089447] transition-all"
-              >
-                <UserCircle size={15} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                <span className="flex-1 truncate">Welcome, {displayName}</span>
-              </Link>
-              <button
-                onClick={logout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-all"
-              >
-                <LogOut size={15} className="text-gray-300 dark:text-gray-600" />
-                Sign Out
-              </button>
-            </>
-          )}
-        </div>
+        {renderNav()}
+        {renderFooter()}
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 h-14">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
         <Link href="/admin" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-white flex-shrink-0 flex items-center justify-center shadow-sm border border-black/[0.06]">
-            <Image src="/iat-logo.png" alt="IAT Logo" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
+          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
+            <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
           </div>
           <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
         </Link>
@@ -331,13 +273,12 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-          <button onClick={() => setMobileOpen(true)} className="text-gray-600 dark:text-gray-400 p-1">
+          <button onClick={() => setMobileOpen(true)} className="p-1 text-gray-600 dark:text-gray-400">
             <Menu size={20} />
           </button>
         </div>
       </div>
 
-      {/* Mobile content offset */}
       <div className="md:hidden h-14 flex-shrink-0" />
 
       {/* ── Mobile drawer ── */}
@@ -346,39 +287,21 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
             className="relative w-[260px] bg-white dark:bg-gray-900 flex flex-col h-full shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800">
               <Link href="/admin" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
                 <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
-                  <Image src="/iat-logo.png" alt="IAT Logo" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
+                  <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
                 </div>
                 <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
               </Link>
-              <button onClick={() => setMobileOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1">
+              <button onClick={() => setMobileOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <X size={18} />
               </button>
             </div>
-
-            {renderMobileNav()}
-
-            <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-0.5">
-              <Link
-                href="/admin/profile"
-                onClick={() => setMobileOpen(false)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-[#089447] dark:hover:text-[#089447] transition-all"
-              >
-                <UserCircle size={15} className="text-gray-300 dark:text-gray-600" />
-                Welcome, {displayName}
-              </Link>
-              <button
-                onClick={logout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-all"
-              >
-                <LogOut size={15} className="text-gray-300 dark:text-gray-600" />
-                Sign Out
-              </button>
-            </div>
+            {renderNav(() => setMobileOpen(false))}
+            {renderFooter(() => setMobileOpen(false))}
           </div>
         </div>
       )}
