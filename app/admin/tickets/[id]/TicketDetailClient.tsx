@@ -4,13 +4,22 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import type { Ticket } from '@/lib/supabase'
+import type { Ticket, TicketNote } from '@/lib/supabase'
+import dynamic from 'next/dynamic'
+
+const RichTextEditor = dynamic(() => import('@/components/admin/RichTextEditor'), { ssr: false })
 
 const STATUS_OPTIONS: { value: Ticket['status']; label: string; cls: string }[] = [
   { value: 'open',        label: 'Open',        cls: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
   { value: 'in_progress', label: 'In Progress', cls: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
   { value: 'resolved',    label: 'Resolved',    cls: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' },
   { value: 'closed',      label: 'Closed',      cls: 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700' },
+]
+
+const PRIORITY_OPTIONS: { value: Ticket['priority']; label: string; cls: string }[] = [
+  { value: 'low',  label: 'Low',  cls: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' },
+  { value: 'med',  label: 'Med',  cls: 'bg-yellow-50 dark:bg-yellow-950/40 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800' },
+  { value: 'high', label: 'High', cls: 'bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-200 dark:border-red-800' },
 ]
 
 function YesNo({ val }: { val: boolean | null | undefined }) {
@@ -38,10 +47,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export default function TicketDetailClient({ ticket: initial }: { ticket: Ticket }) {
+function formatNoteDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+export default function TicketDetailClient({
+  ticket: initial,
+  initialNotes,
+}: {
+  ticket: Ticket
+  initialNotes: TicketNote[]
+}) {
   const router = useRouter()
   const [ticket, setTicket] = useState(initial)
-  const [notes, setNotes] = useState(initial.notes || '')
+  const [notes, setNotes] = useState<TicketNote[]>(initialNotes)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
@@ -58,17 +80,33 @@ export default function TicketDetailClient({ ticket: initial }: { ticket: Ticket
     startTransition(() => router.refresh())
   }
 
-  const saveNotes = async () => {
+  const updatePriority = async (priority: Ticket['priority']) => {
+    if (saving || ticket.priority === priority) return
     setSaving(true)
     setSaveError(null)
     const sb = createSupabaseBrowser()
-    const { error } = await sb.from('tickets').update({ notes }).eq('id', ticket.id)
+    const { error } = await sb.from('tickets').update({ priority }).eq('id', ticket.id)
     setSaving(false)
     if (error) { setSaveError(error.message); return }
-    setTicket(t => ({ ...t, notes }))
+    setTicket(t => ({ ...t, priority }))
+  }
+
+  const addNote = async (html: string) => {
+    setSaving(true)
+    setSaveError(null)
+    const sb = createSupabaseBrowser()
+    const { data, error } = await sb
+      .from('ticket_notes')
+      .insert({ ticket_id: ticket.id, content: html })
+      .select()
+      .single()
+    setSaving(false)
+    if (error) { setSaveError(error.message); return }
+    if (data) setNotes(prev => [...prev, data as TicketNote])
   }
 
   const currentStatus = STATUS_OPTIONS.find(s => s.value === ticket.status)
+  const currentPriority = PRIORITY_OPTIONS.find(p => p.value === (ticket.priority ?? 'med'))
   const submitted = new Date(ticket.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
@@ -96,9 +134,14 @@ export default function TicketDetailClient({ ticket: initial }: { ticket: Ticket
               {' · '}{submitted}
             </p>
           </div>
-          <span className={`inline-flex items-center text-[12px] font-semibold px-3 py-1.5 rounded-full border flex-shrink-0 ${currentStatus?.cls}`}>
-            {currentStatus?.label}
-          </span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`inline-flex items-center text-[12px] font-semibold px-3 py-1.5 rounded-full border ${currentPriority?.cls}`}>
+              {currentPriority?.label}
+            </span>
+            <span className={`inline-flex items-center text-[12px] font-semibold px-3 py-1.5 rounded-full border ${currentStatus?.cls}`}>
+              {currentStatus?.label}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -121,6 +164,27 @@ export default function TicketDetailClient({ ticket: initial }: { ticket: Ticket
                 disabled={saving}
                 className={`text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 ${
                   ticket.status === opt.value
+                    ? opt.cls + ' cursor-default'
+                    : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Priority update */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-4">
+          <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Priority</p>
+          <div className="flex flex-wrap gap-2">
+            {PRIORITY_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => updatePriority(opt.value)}
+                disabled={saving}
+                className={`text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 ${
+                  (ticket.priority ?? 'med') === opt.value
                     ? opt.cls + ' cursor-default'
                     : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
                 }`}
@@ -223,25 +287,43 @@ export default function TicketDetailClient({ ticket: initial }: { ticket: Ticket
           </Section>
         )}
 
-        {/* Admin notes */}
+        {/* Admin Notes Log */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-          <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Admin Notes</p>
-          <textarea
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="Add internal notes…"
-            rows={4}
-            className="w-full text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-4 py-3 text-gray-700 dark:text-gray-200 placeholder:text-gray-300 dark:placeholder:text-gray-600 outline-none focus:border-gray-300 dark:focus:border-gray-600 resize-none transition-all font-[inherit]"
-          />
-          <div className="flex justify-end mt-3">
-            <button
-              onClick={saveNotes}
-              disabled={saving || notes === (ticket.notes || '')}
-              className="text-[13px] font-semibold bg-[#089447] hover:bg-[#077a3c] text-white px-4 py-2 rounded-xl disabled:opacity-40 transition-all"
-            >
-              {saving ? 'Saving…' : 'Save Notes'}
-            </button>
-          </div>
+          <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-4">Admin Notes</p>
+
+          {/* Legacy note from old system */}
+          {ticket.notes && (
+            <div className="mb-4 pb-4 border-b border-gray-50 dark:border-gray-800">
+              <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-2">Legacy note</p>
+              <p className="text-[13px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                {ticket.notes}
+              </p>
+            </div>
+          )}
+
+          {/* Notes log */}
+          {notes.length > 0 && (
+            <div className="space-y-4 mb-5">
+              {notes.map((note, idx) => (
+                <div key={note.id}>
+                  {(idx > 0 || !!ticket.notes) && <div className="border-t border-gray-50 dark:border-gray-800 mb-4" />}
+                  <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-2">{formatNoteDate(note.created_at)}</p>
+                  <div
+                    className="note-content text-[13px] text-gray-700 dark:text-gray-200"
+                    dangerouslySetInnerHTML={{ __html: note.content }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* New note editor — always visible */}
+          {(notes.length > 0 || !!ticket.notes) && (
+            <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-4 mb-3">
+              <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-3">New note</p>
+            </div>
+          )}
+          <RichTextEditor onSubmit={addNote} disabled={saving} />
         </div>
 
       </div>

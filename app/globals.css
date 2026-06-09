@@ -123,3 +123,29 @@ html.green .text-indigo-600 { color: #4ade80; }
 
   .text-balance { text-wrap: balance; }
 }
+
+/* TipTap placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #d1d5db;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.dark .tiptap p.is-editor-empty:first-child::before {
+  color: #4b5563;
+}
+
+/* Rich note content rendering */
+.note-content p { margin-bottom: 0.5em; line-height: 1.6; }
+.note-content p:last-child { margin-bottom: 0; }
+.note-content strong { font-weight: 600; }
+.note-content em { font-style: italic; }
+.note-content s { text-decoration: line-through; }
+.note-content a { color: #089447; text-decoration: underline; }
+.note-content ul { list-style: disc; padding-left: 1.25em; margin-bottom: 0.5em; }
+.note-content ol { list-style: decimal; padding-left: 1.25em; margin-bottom: 0.5em; }
+.note-content li { margin-bottom: 0.25em; }
+.note-content img { max-width: 100%; border-radius: 0.5rem; margin-top: 0.5em; }
+.note-content code { font-family: monospace; font-size: 0.85em; background: #f3f4f6; padding: 0.1em 0.3em; border-radius: 0.25em; }
+.dark .note-content code { background: #1f2937; }

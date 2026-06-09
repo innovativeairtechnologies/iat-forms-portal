@@ -127,6 +127,14 @@ export type Ticket = {
   seals_good: boolean | null
   photo_urls: string[] | null
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  priority: 'low' | 'med' | 'high'
   notes: string | null
+  created_at: string
+}
+
+export type TicketNote = {
+  id: string
+  ticket_id: string
+  content: string
   created_at: string
 }
