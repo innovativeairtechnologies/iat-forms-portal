@@ -3,8 +3,8 @@ import './globals.css'
 import ThemeProvider from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
-  title: 'IAT Forms Portal',
-  description: 'Internal forms portal for Innovative Air Technologies',
+  title: 'IAT Self-Service',
+  description: 'Employee self-service portal for Innovative Air Technologies',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

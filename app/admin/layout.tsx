@@ -1,7 +1,13 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getAdminUser } from '@/lib/admin-auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+
+export const metadata: Metadata = {
+  title: 'IAT Operations',
+  description: 'Operations admin portal for Innovative Air Technologies',
+}
 
 export const dynamic = 'force-dynamic'
 
