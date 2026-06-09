@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import type { Ticket, TicketNote } from '@/lib/supabase'
+import type { Ticket, TicketNote, Employee } from '@/lib/supabase'
 import dynamic from 'next/dynamic'
 
 const RichTextEditor = dynamic(() => import('@/components/admin/RichTextEditor'), { ssr: false })
@@ -57,14 +57,17 @@ function formatNoteDate(dateStr: string) {
 export default function TicketDetailClient({
   ticket: initial,
   initialNotes,
+  admins,
 }: {
   ticket: Ticket
   initialNotes: TicketNote[]
+  admins: Pick<Employee, 'id' | 'name'>[]
 }) {
   const router = useRouter()
   const [ticket, setTicket] = useState(initial)
   const [pendingStatus, setPendingStatus] = useState(initial.status)
   const [pendingPriority, setPendingPriority] = useState<Ticket['priority']>(initial.priority ?? 'med')
+  const [pendingOwnerId, setPendingOwnerId] = useState<string | null>(initial.owner_id ?? null)
   const [notes, setNotes] = useState<TicketNote[]>(initialNotes)
   const [updating, setUpdating] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
@@ -72,7 +75,9 @@ export default function TicketDetailClient({
   const [, startTransition] = useTransition()
 
   const hasUnsavedChanges =
-    pendingStatus !== ticket.status || pendingPriority !== (ticket.priority ?? 'med')
+    pendingStatus !== ticket.status ||
+    pendingPriority !== (ticket.priority ?? 'med') ||
+    pendingOwnerId !== (ticket.owner_id ?? null)
 
   const saveTicket = async () => {
     if (updating || !hasUnsavedChanges) return
@@ -81,11 +86,12 @@ export default function TicketDetailClient({
     const sb = createSupabaseBrowser()
     const { error } = await sb
       .from('tickets')
-      .update({ status: pendingStatus, priority: pendingPriority })
+      .update({ status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId })
       .eq('id', ticket.id)
     setUpdating(false)
     if (error) { setSaveError(error.message); return }
-    setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority }))
+    const owner = admins.find(a => a.id === pendingOwnerId)
+    setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId, owner: owner ? { ...owner } as Employee : undefined }))
     startTransition(() => router.refresh())
   }
 
@@ -130,6 +136,7 @@ export default function TicketDetailClient({
               {ticket.customer_name}
               {ticket.customer_company ? ` · ${ticket.customer_company}` : ''}
               {' · '}{submitted}
+              {ticket.owner && ` · ${ticket.owner.name}`}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -185,7 +192,7 @@ export default function TicketDetailClient({
           </div>
 
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">Priority</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             {PRIORITY_OPTIONS.map(opt => (
               <button
                 key={opt.value}
@@ -201,6 +208,19 @@ export default function TicketDetailClient({
               </button>
             ))}
           </div>
+
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">Owner</p>
+          <select
+            value={pendingOwnerId ?? ''}
+            onChange={e => setPendingOwnerId(e.target.value || null)}
+            disabled={updating}
+            className="text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 outline-none focus:border-gray-300 dark:focus:border-gray-600 transition-all disabled:opacity-50 w-full sm:w-auto min-w-[180px]"
+          >
+            <option value="">Unassigned</option>
+            {admins.map(admin => (
+              <option key={admin.id} value={admin.id}>{admin.name}</option>
+            ))}
+          </select>
         </div>
 
         {/* Contact */}

@@ -128,8 +128,10 @@ export type Ticket = {
   photo_urls: string[] | null
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   priority: 'low' | 'med' | 'high'
+  owner_id: string | null
   notes: string | null
   created_at: string
+  owner?: Employee
 }
 
 export type TicketNote = {

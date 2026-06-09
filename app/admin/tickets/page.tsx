@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export default async function AdminTicketsPage() {
   const { data: tickets } = await supabaseAdmin
     .from('tickets')
-    .select('*')
+    .select('*, owner:employees(id, name)')
     .order('created_at', { ascending: false })
 
   return <TicketsQueueClient tickets={tickets || []} />

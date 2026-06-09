@@ -171,7 +171,14 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
                         </div>
 
                         {/* Problem preview */}
-                        <p className="text-[13px] text-gray-400 dark:text-gray-500 line-clamp-2">{ticket.problem_description}</p>
+                        <p className="text-[13px] text-gray-400 dark:text-gray-500 line-clamp-2 mb-1.5">{ticket.problem_description}</p>
+
+                        {/* Owner */}
+                        {ticket.owner && (
+                          <p className="text-[11px] text-gray-300 dark:text-gray-600">
+                            Owner: <span className="font-medium text-gray-500 dark:text-gray-400">{(ticket.owner as { name: string }).name}</span>
+                          </p>
+                        )}
 
                       </div>
                       <ChevronRight size={16} className="text-gray-200 dark:text-gray-700 group-hover:text-gray-400 dark:group-hover:text-gray-500 flex-shrink-0 mt-1 transition-colors" />
