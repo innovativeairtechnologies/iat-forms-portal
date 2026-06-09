@@ -2,26 +2,11 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
-import { Plus, ArrowRight, Inbox, FileText, ClipboardList, TrendingUp, CheckCircle2, AlertTriangle, Clock, UserPlus, Circle } from 'lucide-react'
+import { Plus, ArrowRight, Inbox, FileText, ClipboardList, TrendingUp, CheckCircle2, Clock, Circle, Ticket } from 'lucide-react'
 import DashboardShell from './DashboardShell'
 
 async function getData() {
-  const sevenDaysAgo  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000).toISOString()
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-
-  // Resolve Applications category + qualifying form IDs before the main Promise.all
-  const { data: appCat } = await supabaseAdmin
-    .from('categories').select('id').eq('name', 'Applications').single()
-
-  const { data: appForms } = appCat?.id
-    ? await supabaseAdmin
-        .from('forms').select('id')
-        .eq('category_id', appCat.id)
-        .not('title', 'ilike', '%Evaluation%')
-        .not('title', 'ilike', '%Assessment%')
-    : { data: [] }
-
-  const appFormIds = (appForms || []).map((f: { id: string }) => f.id)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   const [
     { count: total },
@@ -31,9 +16,9 @@ async function getData() {
     { data: allForPeople },
     { count: openCount },
     { count: resolvedThisWeek },
-    { count: accidentsThisMonth },
     { count: thisWeek },
     { count: inProgress },
+    { count: ticketsThisWeek },
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
@@ -50,20 +35,10 @@ async function getData() {
       .limit(500),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'resolved').gte('created_at', sevenDaysAgo),
-    supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).ilike('form_title', '%Accident Report%').gte('submitted_at', thirtyDaysAgo),
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).gte('submitted_at', sevenDaysAgo),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
+    supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
   ])
-
-  // Applications this month — separate conditional query to avoid empty .in() edge case
-  let applicationsThisMonth = 0
-  if (appFormIds.length > 0) {
-    const { count } = await supabaseAdmin
-      .from('submissions').select('*', { count: 'exact', head: true })
-      .in('form_id', appFormIds)
-      .gte('submitted_at', thirtyDaysAgo)
-    applicationsThisMonth = count ?? 0
-  }
 
   // Aggregate unique submitters — sorted desc so first encounter = most recent submission
   const map = new Map<string, { name: string; email: string; count: number; lastSeen: string; lastForm: string }>()
@@ -90,10 +65,9 @@ async function getData() {
     activeForms: activeForms ?? 0,
     openCount: openCount ?? 0,
     resolvedThisWeek: resolvedThisWeek ?? 0,
-    accidentsThisMonth: accidentsThisMonth ?? 0,
-    applicationsThisMonth,
     thisWeek: thisWeek ?? 0,
     inProgress: inProgress ?? 0,
+    ticketsThisWeek: ticketsThisWeek ?? 0,
     recent: recent || [],
     people,
   }
@@ -136,7 +110,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function AdminDashboard() {
   const {
     total, unread, activeForms, openCount, resolvedThisWeek,
-    accidentsThisMonth, applicationsThisMonth, thisWeek, inProgress,
+    thisWeek, inProgress, ticketsThisWeek,
     recent, people,
   } = await getData()
 
@@ -264,20 +238,34 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* Metrics — Row 1 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <CompactStat icon={<FileText size={13} />} label="Active Forms" value={activeForms} unit="forms" accent="green" footer="LIVE" indicator="dots" />
-          <CompactStat icon={<ClipboardList size={13} />} label="Total Submissions" value={total} unit="all-time" accent="blue" footer="TRACKED" indicator="bars" href="/admin/submissions" />
-          <CompactStat icon={<Circle size={13} />} label="Open" value={openCount} unit="tickets" accent="amber" footer="AWAITING" indicator="line" href="/admin/submissions?status=open" />
-          <CompactStat icon={<CheckCircle2 size={13} />} label="Resolved" period="7D" value={resolvedThisWeek} unit="items" accent="emerald" footer="CLOSED" indicator="dots" href="/admin/submissions?status=resolved" />
+        {/* Forms Metrics */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <FileText size={13} className="text-gray-400 dark:text-zinc-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">Forms</span>
+            <div className="flex-1 h-px bg-gray-100 dark:bg-zinc-800" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <CompactStat icon={<FileText size={13} />} label="Active Forms" value={activeForms} unit="forms" accent="green" footer="LIVE" indicator="dots" />
+            <CompactStat icon={<ClipboardList size={13} />} label="Submissions" value={total} unit="all-time" accent="blue" footer="TOTAL" indicator="bars" href="/admin/submissions" />
+            <CompactStat icon={<Inbox size={13} />} label="Unread" value={unread} unit="to review" accent="amber" footer="PENDING" indicator="line" href="/admin/submissions?is_read=false" />
+            <CompactStat icon={<TrendingUp size={13} />} label="Submissions" period="7D" value={thisWeek} unit="this week" accent="sky" footer="THIS WEEK" indicator="bars" href="/admin/submissions" />
+          </div>
         </div>
 
-        {/* Metrics — Row 2 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <CompactStat icon={<AlertTriangle size={13} />} label="Accidents" period="30D" value={accidentsThisMonth} unit="reports" accent="red" footer="REPORTED" indicator="bars" href="/admin/submissions" />
-          <CompactStat icon={<UserPlus size={13} />} label="Applications" period="30D" value={applicationsThisMonth} unit="intake" accent="violet" footer="STEADY" indicator="bars" href="/admin/submissions" />
-          <CompactStat icon={<TrendingUp size={13} />} label="Submissions" period="7D" value={thisWeek} unit="weekly" accent="sky" footer="THIS WEEK" indicator="line" href="/admin/submissions" />
-          <CompactStat icon={<Clock size={13} />} label="In Progress" value={inProgress} unit="active" accent="indigo" footer="ACTIVE" indicator="dots" href="/admin/submissions?status=in_progress" />
+        {/* Tickets Metrics */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <Ticket size={13} className="text-gray-400 dark:text-zinc-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">Tickets</span>
+            <div className="flex-1 h-px bg-gray-100 dark:bg-zinc-800" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <CompactStat icon={<Circle size={13} />} label="Open" value={openCount} unit="tickets" accent="red" footer="AWAITING" indicator="line" href="/admin/tickets" />
+            <CompactStat icon={<Clock size={13} />} label="In Progress" value={inProgress} unit="active" accent="amber" footer="ACTIVE" indicator="dots" href="/admin/tickets" />
+            <CompactStat icon={<Ticket size={13} />} label="New Tickets" period="7D" value={ticketsThisWeek} unit="this week" accent="violet" footer="INTAKE" indicator="bars" href="/admin/tickets" />
+            <CompactStat icon={<CheckCircle2 size={13} />} label="Resolved" period="7D" value={resolvedThisWeek} unit="closed" accent="emerald" footer="CLOSED" indicator="dots" href="/admin/tickets" />
+          </div>
         </div>
 
         {/* Recent submissions */}
