@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, BarChart2, FileText,
-  DollarSign, Calendar, UserPlus, Search, Plus,
+  Calendar, UserPlus, Search, Plus,
   ChevronRight, UserCircle, FolderOpen, Users, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -64,7 +64,6 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/accrual',  label: 'Accrual',  icon: TrendingUp },
     ],
     future: [
-      { label: 'Payroll',    icon: DollarSign },
       { label: 'Scheduling', icon: Calendar },
       { label: 'Onboarding', icon: UserPlus },
     ],
