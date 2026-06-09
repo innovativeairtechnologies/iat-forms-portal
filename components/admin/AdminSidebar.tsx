@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, BarChart2, FileText,
   Calendar, UserPlus, Search, Plus,
-  ChevronRight, UserCircle, FolderOpen, Users, Zap,
+  ChevronRight, FolderOpen, Users, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
@@ -230,14 +230,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
       <p className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)] px-3 pb-1.5">
         Settings
       </p>
-      <Link
-        href="/admin/profile"
-        onClick={onClose}
-        className="flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all"
-      >
-        <UserCircle size={15} className="flex-shrink-0" />
-        Profile
-      </Link>
       <button
         onClick={logout}
         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all"

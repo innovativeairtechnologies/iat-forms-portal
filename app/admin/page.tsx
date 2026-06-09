@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
-import { Plus, ArrowRight, Inbox, FileText, ClipboardList, TrendingUp, CheckCircle2, Clock, Circle, Ticket } from 'lucide-react'
+import { ArrowRight, Inbox, FileText, ClipboardList, TrendingUp, CheckCircle2, Clock, Circle, Ticket } from 'lucide-react'
 import DashboardShell from './DashboardShell'
 
 async function getData() {
@@ -221,17 +221,17 @@ export default async function AdminDashboard() {
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                href="/admin/forms/new"
+                href="/admin/submissions"
                 className="inline-flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm"
               >
-                <Plus size={14} />
-                New Form
+                <Inbox size={14} />
+                View Submissions
               </Link>
               <Link
-                href="/admin/submissions"
+                href="/admin/tickets"
                 className="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
               >
-                View Submissions
+                View Tickets
                 <ArrowRight size={14} />
               </Link>
             </div>
