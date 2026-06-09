@@ -166,7 +166,8 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
               data: Record<string, unknown>
             }, i: number) => {
               const name  = String(sub.data?.['Employee Name'] || sub.data?.['Full Name'] || sub.data?.['Name'] || 'Anonymous')
-              const email = sub.data?.['Employee Email'] || sub.data?.['Email'] || sub.data?.['Email Address']
+              const emailRaw = sub.data?.['Employee Email'] || sub.data?.['Email'] || sub.data?.['Email Address']
+              const email = emailRaw ? String(emailRaw) : null
               const ini   = name === 'Anonymous' ? '?' : initials(name)
               const s     = STATUS_CONFIG[sub.status || 'open'] ?? STATUS_CONFIG.open
 
@@ -193,7 +194,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                         {name}
                       </p>
                       {email && (
-                        <p className="text-[11px] text-gray-400 truncate">{String(email)}</p>
+                        <p className="text-[11px] text-gray-400 truncate">{email}</p>
                       )}
                     </div>
                   </div>
