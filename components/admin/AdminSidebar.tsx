@@ -131,15 +131,6 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-
-  const toggleSection = (label: string) =>
-    setCollapsed(prev => {
-      const next = new Set(prev)
-      next.has(label) ? next.delete(label) : next.add(label)
-      return next
-    })
-
   const displayName = adminName || 'Admin'
   const initial = displayName.charAt(0).toUpperCase()
 
@@ -183,74 +174,36 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
           <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} onClose={onClose} isMain />
 
           {/* Sections */}
-          {NAV_SECTIONS.map(section => {
-            const isCollapsed = collapsed.has(section.label)
-            return (
-              <div key={section.label} className="pt-3">
-                <button
-                  onClick={() => toggleSection(section.label)}
-                  className="w-full flex items-center gap-2 px-3 pb-1.5 group"
-                >
-                  <section.icon size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                  <span className="flex-1 text-left text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
-                    {section.label}
-                  </span>
-                  <ChevronRight
-                    size={12}
-                    className={cn(
-                      'text-gray-300 dark:text-gray-600 transition-transform duration-200',
-                      isCollapsed ? 'rotate-0' : 'rotate-90',
-                    )}
-                  />
-                </button>
-                {!isCollapsed && (
-                  <>
-                    {section.items.map(item => (
-                      <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
-                    ))}
-                    {section.future?.map(fi => <FutureLink key={fi.label} item={fi} />)}
-                  </>
-                )}
+          {NAV_SECTIONS.map(section => (
+            <div key={section.label} className="pt-3">
+              <div className="flex items-center gap-2 px-3 pb-1.5">
+                <section.icon size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                <span className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
+                  {section.label}
+                </span>
               </div>
-            )
-          })}
+              {section.items.map(item => (
+                <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
+              ))}
+              {section.future?.map(fi => <FutureLink key={fi.label} item={fi} />)}
+            </div>
+          ))}
 
           {/* Actions */}
           <div className="pt-3">
-            {(() => {
-              const isCollapsed = collapsed.has('Actions')
-              return (
-                <>
-                  <button
-                    onClick={() => toggleSection('Actions')}
-                    className="w-full flex items-center gap-2 px-3 pb-1.5 group"
-                  >
-                    <Zap size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
-                    <span className="flex-1 text-left text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
-                      Actions
-                    </span>
-                    <ChevronRight
-                      size={12}
-                      className={cn(
-                        'text-gray-300 dark:text-gray-600 transition-transform duration-200',
-                        isCollapsed ? 'rotate-0' : 'rotate-90',
-                      )}
-                    />
-                  </button>
-                  {!isCollapsed && (
-                    <>
-                      <NavLink
-                        item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
-                        pathname={pathname}
-                        unreadCount={0}
-                        onClose={onClose}
-                      />
-                      <FutureLink item={{ label: 'Import Data', icon: FileText }} />
-                    </>
-                  )}
-                </>
-              )
-            })()}
+            <div className="flex items-center gap-2 px-3 pb-1.5">
+              <Zap size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
+              <span className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)]">
+                Actions
+              </span>
+            </div>
+            <NavLink
+              item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
+              pathname={pathname}
+              unreadCount={0}
+              onClose={onClose}
+            />
+            <FutureLink item={{ label: 'Import Data', icon: FileText }} />
           </div>
         </>
       )}
