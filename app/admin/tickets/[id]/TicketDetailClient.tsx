@@ -69,6 +69,7 @@ export default function TicketDetailClient({
   const [pendingStatus, setPendingStatus] = useState(initial.status)
   const [pendingPriority, setPendingPriority] = useState<Ticket['priority']>(initial.priority ?? 'med')
   const [pendingOwnerId, setPendingOwnerId] = useState<string | null>(initial.owner_id ?? null)
+  const [pendingResolvedReason, setPendingResolvedReason] = useState<string>(initial.resolved_reason ?? '')
   const [notes, setNotes] = useState<TicketNote[]>(initialNotes)
   const [updating, setUpdating] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
@@ -77,21 +78,26 @@ export default function TicketDetailClient({
   const hasUnsavedChanges =
     pendingStatus !== ticket.status ||
     pendingPriority !== (ticket.priority ?? 'med') ||
-    pendingOwnerId !== (ticket.owner_id ?? null)
+    pendingOwnerId !== (ticket.owner_id ?? null) ||
+    pendingResolvedReason !== (ticket.resolved_reason ?? '')
+
+  const resolvedReasonRequired = pendingStatus === 'resolved' && !pendingResolvedReason
 
   const saveTicket = async () => {
-    if (updating || !hasUnsavedChanges) return
+    if (updating || !hasUnsavedChanges || resolvedReasonRequired) return
     setUpdating(true)
     setSaveError(null)
     const { error } = await updateTicket(ticket.id, {
       status: pendingStatus,
       priority: pendingPriority,
       owner_id: pendingOwnerId,
+      resolved_reason: pendingStatus === 'resolved' ? pendingResolvedReason : null,
     })
     setUpdating(false)
     if (error) { setSaveError(error); return }
     const owner = admins.find(a => a.id === pendingOwnerId)
-    setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId, owner: owner ? { ...owner } as Employee : undefined }))
+    const resolvedReason = pendingStatus === 'resolved' ? pendingResolvedReason : null
+    setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId, resolved_reason: resolvedReason, owner: owner ? { ...owner } as Employee : undefined }))
   }
 
   const addNote = async (html: string) => {
@@ -224,6 +230,44 @@ export default function TicketDetailClient({
               <option key={admin.id} value={admin.id}>{admin.name}</option>
             ))}
           </select>
+
+          {pendingStatus === 'resolved' && (
+            <div className="mt-4">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">
+                Resolution Reason <span className="text-red-400">*</span>
+              </p>
+              <select
+                value={pendingResolvedReason}
+                onChange={e => setPendingResolvedReason(e.target.value)}
+                disabled={updating}
+                className={`text-[13px] bg-gray-50 dark:bg-gray-800 border rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all disabled:opacity-50 w-full ${
+                  resolvedReasonRequired
+                    ? 'border-red-300 dark:border-red-700 focus:border-red-400 focus:ring-red-100 dark:focus:ring-red-900/30'
+                    : 'border-gray-100 dark:border-gray-700 focus:border-gray-300 dark:focus:border-gray-600 focus:ring-gray-100 dark:focus:ring-gray-800'
+                }`}
+              >
+                <option value="">Select a reason…</option>
+                <option>Technician on-site repair completed</option>
+                <option>Remote troubleshooting resolved issue</option>
+                <option>Customer resolved with provided guidance</option>
+                <option>Replacement part installed</option>
+                <option>Software / controls update applied</option>
+                <option>Cooling system serviced</option>
+                <option>Airflow rebalanced</option>
+                <option>Seal / gasket replaced</option>
+                <option>Electrical fault corrected</option>
+                <option>Warranty replacement completed</option>
+                <option>No fault found – unit operating normally</option>
+                <option>Customer training provided</option>
+                <option>Preventive maintenance performed</option>
+                <option>Issue resolved by customer prior to contact</option>
+                <option>Referred to third-party service</option>
+              </select>
+              {resolvedReasonRequired && (
+                <p className="text-[11px] text-red-400 mt-1.5">A resolution reason is required to mark this ticket resolved.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Contact */}

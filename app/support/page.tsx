@@ -93,7 +93,8 @@ export default function SupportPortal() {
         <h1 className="text-[clamp(32px,5vw,46px)] font-bold tracking-[-1.5px] leading-none text-gray-900 dark:text-white mb-2.5">
           Customer Support
         </h1>
-        <p className="text-[15px] text-gray-400">Submit a ticket and our team will respond within 1 business day</p>
+        <p className="text-[15px] text-gray-400 mb-2">Submit a ticket and our team will respond within 1 business day.</p>
+        <p className="text-[14px] text-gray-400 max-w-xl mx-auto leading-relaxed">Your equipment details and system status are pre-screened automatically so our engineers arrive prepared — no repeat questions on the call.</p>
       </div>
 
       {/* Tab bar */}

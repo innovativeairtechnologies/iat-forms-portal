@@ -130,6 +130,7 @@ export type Ticket = {
   priority: 'low' | 'med' | 'high'
   owner_id: string | null
   notes: string | null
+  resolved_reason: string | null
   ai_recommendations: string[] | null
   created_at: string
   owner?: Employee

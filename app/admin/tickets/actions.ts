@@ -6,7 +6,7 @@ import type { Ticket } from '@/lib/supabase'
 
 export async function updateTicket(
   ticketId: string,
-  data: { status: Ticket['status']; priority: Ticket['priority']; owner_id: string | null }
+  data: { status: Ticket['status']; priority: Ticket['priority']; owner_id: string | null; resolved_reason?: string | null }
 ): Promise<{ error: string | null }> {
   const { error } = await supabaseAdmin
     .from('tickets')
