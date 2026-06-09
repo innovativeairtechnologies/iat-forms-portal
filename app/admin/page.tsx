@@ -397,14 +397,15 @@ const ACCENT_HEX: Record<Accent, string> = {
 }
 
 function BarsIndicator({ color }: { color: string }) {
-  const heights = [4, 7, 5, 9, 6, 8, 5, 10]
+  const heights = [3, 6, 9, 6, 12, 9, 15]
+  const accentIdx = heights.length - 2
   return (
-    <div className="flex items-end gap-[2px]" style={{ height: '12px' }}>
+    <div className="flex gap-[2px] items-end h-4">
       {heights.map((h, i) => (
         <div
           key={i}
-          className="w-[3px] rounded-[1px]"
-          style={{ height: `${h}px`, backgroundColor: color, opacity: 0.4 + (i / heights.length) * 0.6 }}
+          className={`w-[3px] ${i !== accentIdx ? 'bg-gray-200 dark:bg-zinc-700' : ''}`}
+          style={{ height: `${h}px`, ...(i === accentIdx ? { backgroundColor: color } : {}) }}
         />
       ))}
     </div>
@@ -465,39 +466,47 @@ function CompactStat({
   const hex = ACCENT_HEX[accent]
   const content = (
     <div className={`
-      rounded-2xl border flex flex-col px-4 pt-3.5 pb-3 gap-2
-      bg-white dark:bg-gray-900
-      border-gray-100 dark:border-gray-800
-      shadow-card
-      ${href ? 'hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-card-hover transition-all cursor-pointer' : ''}
+      relative rounded-2xl ring-1 flex flex-col p-5 gap-4 overflow-hidden
+      bg-white dark:bg-zinc-900/40
+      ring-gray-200 dark:ring-zinc-800
+      transition-colors group
+      ${href ? 'hover:ring-gray-300 dark:hover:ring-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-900/60 cursor-pointer' : ''}
     `}>
+      {/* Hover glow blob */}
+      <div
+        className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ backgroundColor: `${hex}08` }}
+      />
+
       {/* Label + icon + status dot */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 leading-none truncate font-mono">
+      <div className="flex justify-between items-start relative z-10">
+        <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-gray-400 dark:text-zinc-500">
           {label}{period ? ` · ${period}` : ''}
         </span>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-gray-300 dark:text-gray-600" style={{ lineHeight: 0 }}>{icon}</span>
-          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-300 dark:text-zinc-600" style={{ lineHeight: 0 }}>{icon}</span>
+          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: `${hex}99` }} />
         </div>
       </div>
 
       {/* Value + unit */}
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-[30px] font-bold leading-none tabular-nums text-gray-900 dark:text-white">
+      <div className="flex items-baseline gap-2 relative z-10">
+        <span className="text-4xl font-mono tabular-nums leading-none tracking-tight text-gray-900 dark:text-white">
           {value.toLocaleString()}
         </span>
-        <span className="text-[12px] text-gray-400 dark:text-gray-500">{unit}</span>
+        <span className="text-[10px] font-mono text-gray-400 dark:text-zinc-600">{unit}</span>
       </div>
 
       {/* Footer + visual indicator */}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: hex }}>
+      <div className="flex items-center gap-3 relative z-10 min-h-4">
+        <span className="text-[10px] font-mono text-gray-400 dark:text-zinc-500 tracking-wider uppercase">
           {footer}
         </span>
-        {indicator === 'bars' && <BarsIndicator color={hex} />}
-        {indicator === 'line' && <LineIndicator color={hex} />}
-        {indicator === 'dots' && <DotsRow color={hex} />}
+        <div className="flex-1 flex justify-end">
+          {indicator === 'bars' && <BarsIndicator color={hex} />}
+          {indicator === 'line' && <LineIndicator color={hex} />}
+          {indicator === 'dots' && <DotsRow color={hex} />}
+        </div>
       </div>
     </div>
   )
