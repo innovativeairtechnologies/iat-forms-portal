@@ -27,7 +27,7 @@ type FormData = {
   post_cooling: boolean | null
   post_cooling_type: string
   post_cooling_working: boolean | null
-  airflow_balanced: boolean | null
+  airflow_balanced: boolean | 'unsure' | null
   process_airflow_cfm: string
   react_airflow_cfm: string
   react_heat_working: boolean | null
@@ -128,6 +128,48 @@ function BoolField({
   )
 }
 
+function TriBoolField({
+  label, value, onChange, hint,
+}: {
+  label: string; value: boolean | 'unsure' | null; onChange: (v: boolean | 'unsure' | null) => void; hint?: string
+}) {
+  return (
+    <div>
+      <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200 mb-1.5">{label}</label>
+      {hint && <p className="text-[12px] text-gray-400 mb-2 leading-relaxed">{hint}</p>}
+      <div className="flex gap-2">
+        {([true, false] as const).map(v => (
+          <button
+            key={String(v)}
+            type="button"
+            onClick={() => onChange(value === v ? null : v)}
+            className={`px-5 py-2 rounded-xl text-[13px] font-semibold border transition-all ${
+              value === v
+                ? v
+                  ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-300 dark:border-green-700'
+                  : 'bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-300 dark:border-red-700'
+                : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+            }`}
+          >
+            {v ? 'Yes' : 'No'}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange(value === 'unsure' ? null : 'unsure')}
+          className={`px-5 py-2 rounded-xl text-[13px] font-semibold border transition-all ${
+            value === 'unsure'
+              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700'
+              : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+          }`}
+        >
+          Not Sure
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Step definitions ─────────────────────────────────────────────────────────
 
 const STEP_LABELS = ['Contact', 'Equipment', 'Problem', 'Pre-Cooling', 'Post-Cooling', 'System', 'Photos']
@@ -152,7 +194,10 @@ export default function SupportPage() {
   }, [])
 
   const canAdvance = () => {
-    if (step === 1) return !!form.customer_name.trim() && !!form.customer_email.trim()
+    if (step === 1) {
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customer_email.trim())
+      return !!form.customer_name.trim() && emailOk
+    }
     if (step === 2) return !!form.serial_number.trim() && !!form.model_number.trim() && !!form.voltage.trim()
     if (step === 3) return !!form.problem_description.trim()
     return true
@@ -190,7 +235,11 @@ export default function SupportPage() {
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, photo_urls }),
+        body: JSON.stringify({
+          ...form,
+          airflow_balanced: form.airflow_balanced === 'unsure' ? null : form.airflow_balanced,
+          photo_urls,
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Submission failed')
@@ -540,7 +589,7 @@ function StepSystemChecks({ form, set }: { form: FormData; set: SetFn }) {
         <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-1">System Checks</h2>
         <p className="text-[13px] text-gray-400">Record current readings and conditions where possible.</p>
       </div>
-      <BoolField label="Are the process and react airflows balanced?" value={form.airflow_balanced} onChange={v => set('airflow_balanced', v)} />
+      <TriBoolField label="Are the process and react airflows balanced?" value={form.airflow_balanced} onChange={v => set('airflow_balanced', v)} hint="If you're unsure how to check this, select 'Not Sure' and a technician will assess it on-site." />
       {form.airflow_balanced === false && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 gap-4 pt-1">
           <InputField label="Process airflow (CFM)" value={form.process_airflow_cfm} onChange={v => set('process_airflow_cfm', v)} placeholder="e.g. 1200" type="number" />
