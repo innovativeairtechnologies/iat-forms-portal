@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, BarChart2, FileText,
   DollarSign, Calendar, UserPlus, Search, Plus,
-  ChevronRight, UserCircle,
+  ChevronRight, UserCircle, FolderOpen, Users, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
@@ -30,6 +30,7 @@ type FutureItem = {
 
 type NavSection = {
   label: string
+  icon: React.ElementType
   items: NavItem[]
   future?: FutureItem[]
 }
@@ -41,6 +42,7 @@ const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDas
 const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Forms',
+    icon: FolderOpen,
     items: [
       { href: '/admin/submissions', label: 'Submissions', icon: Inbox, showBadge: true },
       { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket },
@@ -52,6 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: 'Employees',
+    icon: Users,
     items: [
       { href: '/admin/requests', label: 'Time Off', icon: CalendarClock },
       { href: '/admin/accrual',  label: 'Accrual',  icon: TrendingUp },
@@ -186,8 +189,9 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
               <div key={section.label} className="pt-3">
                 <button
                   onClick={() => toggleSection(section.label)}
-                  className="w-full flex items-center gap-1 px-3 pb-1.5 group"
+                  className="w-full flex items-center gap-2 px-3 pb-1.5 group"
                 >
+                  <section.icon size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
                   <span className="flex-1 text-left text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest">
                     {section.label}
                   </span>
@@ -219,8 +223,9 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
                 <>
                   <button
                     onClick={() => toggleSection('Actions')}
-                    className="w-full flex items-center gap-1 px-3 pb-1.5 group"
+                    className="w-full flex items-center gap-2 px-3 pb-1.5 group"
                   >
+                    <Zap size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
                     <span className="flex-1 text-left text-[11px] font-semibold text-gray-300 dark:text-gray-600 uppercase tracking-widest">
                       Actions
                     </span>
