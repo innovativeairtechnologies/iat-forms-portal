@@ -31,6 +31,7 @@ type FutureItem = {
 type NavSection = {
   label: string
   icon: React.ElementType
+  href?: string
   items: NavItem[]
   future?: FutureItem[]
 }
@@ -43,6 +44,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Forms',
     icon: FolderOpen,
+    href: '/admin/forms',
     items: [
       { href: '/admin/submissions', label: 'Submissions', icon: Inbox, showBadge: true },
       { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket },
@@ -55,6 +57,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Employees',
     icon: Users,
+    href: '/admin/employees',
     items: [
       { href: '/admin/requests', label: 'Time Off', icon: CalendarClock },
       { href: '/admin/accrual',  label: 'Accrual',  icon: TrendingUp },
@@ -89,7 +92,7 @@ function NavLink({
       href={item.href}
       onClick={onClose}
       className={cn(
-        'flex items-center gap-3 px-3 py-0.5 rounded-xl transition-all text-[12px]',
+        'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
         active
           ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
           : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300',
@@ -108,7 +111,7 @@ function NavLink({
 
 function FutureLink({ item }: { item: FutureItem }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-0.5 rounded-xl text-[12px] font-normal text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
+    <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[12px] font-normal text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
       <item.icon size={17} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
       <span className="text-[10px] tracking-widest uppercase">Soon</span>
@@ -174,9 +177,19 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
           {NAV_SECTIONS.map(section => (
             <div key={section.label} className="mt-6">
               <div className="px-3 mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                  {section.label}
-                </span>
+                {section.href ? (
+                  <Link
+                    href={section.href}
+                    onClick={onClose}
+                    className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                  >
+                    {section.label}
+                  </Link>
+                ) : (
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
+                    {section.label}
+                  </span>
+                )}
               </div>
               {section.items.map(item => (
                 <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} onClose={onClose} />
