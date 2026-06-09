@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, User } from 'lucide-react'
 import SubmissionDetailClient from './SubmissionDetailClient'
 import SubmissionNotes from './SubmissionNotes'
 import SubmissionStatus from './SubmissionStatus'
+import MarkAsRead from './MarkAsRead'
 
 async function getData(id: string) {
   const { data: submission } = await supabaseAdmin
@@ -22,10 +23,6 @@ async function getData(id: string) {
     .eq('form_id', submission.form_id)
     .order('sort_order')
 
-  if (!submission.is_read) {
-    await supabaseAdmin.from('submissions').update({ is_read: true }).eq('id', id)
-  }
-
   return { submission, fields: fields || [] }
 }
 
@@ -41,6 +38,7 @@ export default async function SubmissionDetailPage({ params }: { params: { id: s
 
   return (
     <div className="flex-1 overflow-auto">
+      <MarkAsRead submissionId={submission.id} isRead={submission.is_read} />
       {/* Header */}
       <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
         <Link

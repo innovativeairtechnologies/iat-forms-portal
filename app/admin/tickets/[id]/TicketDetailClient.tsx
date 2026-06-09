@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { Ticket, TicketNote, Employee } from '@/lib/supabase'
+import { updateTicket } from '../actions'
 import dynamic from 'next/dynamic'
 
 const RichTextEditor = dynamic(() => import('@/components/admin/RichTextEditor'), { ssr: false })
@@ -72,7 +73,6 @@ export default function TicketDetailClient({
   const [updating, setUpdating] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [, startTransition] = useTransition()
 
   const hasUnsavedChanges =
     pendingStatus !== ticket.status ||
@@ -83,16 +83,15 @@ export default function TicketDetailClient({
     if (updating || !hasUnsavedChanges) return
     setUpdating(true)
     setSaveError(null)
-    const sb = createSupabaseBrowser()
-    const { error } = await sb
-      .from('tickets')
-      .update({ status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId })
-      .eq('id', ticket.id)
+    const { error } = await updateTicket(ticket.id, {
+      status: pendingStatus,
+      priority: pendingPriority,
+      owner_id: pendingOwnerId,
+    })
     setUpdating(false)
-    if (error) { setSaveError(error.message); return }
+    if (error) { setSaveError(error); return }
     const owner = admins.find(a => a.id === pendingOwnerId)
     setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId, owner: owner ? { ...owner } as Employee : undefined }))
-    startTransition(() => router.refresh())
   }
 
   const addNote = async (html: string) => {

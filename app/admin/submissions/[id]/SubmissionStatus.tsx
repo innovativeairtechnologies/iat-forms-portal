@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { CheckCircle, Circle, Clock, ChevronDown } from 'lucide-react'
+import { updateSubmissionStatus } from '../actions'
 
 type Status = 'open' | 'in_progress' | 'resolved'
 
@@ -37,20 +37,14 @@ export default function SubmissionStatus({
   const [status, setStatus] = useState<Status>(initialStatus || 'open')
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const router = useRouter()
 
   const update = async (next: Status) => {
     if (next === status) { setOpen(false); return }
     setSaving(true)
     setOpen(false)
-    await fetch(`/api/submissions/${submissionId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: next }),
-    })
     setStatus(next)
+    await updateSubmissionStatus(submissionId, next)
     setSaving(false)
-    router.refresh()
   }
 
   const cfg = STATUS_CONFIG[status]
