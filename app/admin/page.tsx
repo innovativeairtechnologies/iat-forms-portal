@@ -480,7 +480,7 @@ function CompactStat({
 
       {/* Label + icon + status dot */}
       <div className="flex justify-between items-start relative z-10">
-        <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-gray-400 dark:text-zinc-500">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-zinc-500">
           {label}{period ? ` · ${period}` : ''}
         </span>
         <div className="flex items-center gap-1.5">
@@ -491,15 +491,15 @@ function CompactStat({
 
       {/* Value + unit */}
       <div className="flex items-baseline gap-2 relative z-10">
-        <span className="text-4xl font-mono tabular-nums leading-none tracking-tight text-gray-900 dark:text-white">
+        <span className="text-4xl font-bold tabular-nums leading-none tracking-tight text-gray-900 dark:text-white">
           {value.toLocaleString()}
         </span>
-        <span className="text-[10px] font-mono text-gray-400 dark:text-zinc-600">{unit}</span>
+        <span className="text-[12px] text-gray-400 dark:text-zinc-600">{unit}</span>
       </div>
 
       {/* Footer + visual indicator */}
       <div className="flex items-center gap-3 relative z-10 min-h-4">
-        <span className="text-[10px] font-mono text-gray-400 dark:text-zinc-500 tracking-wider uppercase">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-zinc-500">
           {footer}
         </span>
         <div className="flex-1 flex justify-end">

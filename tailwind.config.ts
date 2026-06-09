@@ -36,7 +36,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Avenir Next', 'Avenir', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '8px',
