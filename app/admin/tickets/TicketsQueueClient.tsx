@@ -34,7 +34,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all',         label: 'All'         },
 ]
 
-const COL = 'grid-cols-[96px_1fr_180px_88px_108px_72px_28px]'
+const COL = 'grid-cols-[112px_1fr_180px_88px_108px_72px_28px]'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -219,11 +219,11 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
                     onClick={() => router.push(`/admin/tickets/${ticket.id}`)}
                     className={`grid ${COL} items-center cursor-pointer hover:bg-gray-50/80 dark:hover:bg-zinc-800/40 transition-colors group ${
                       i !== 0 ? 'border-t border-gray-50 dark:border-zinc-800/60' : ''
-                    }`}
+                    } ${i % 2 === 1 ? 'bg-gray-50/40 dark:bg-zinc-800/10' : ''}`}
                   >
                     {/* ID */}
                     <div className="px-4 py-3">
-                      <span className="text-[11px] font-mono font-bold text-gray-400 dark:text-gray-500">
+                      <span className="text-[11px] font-mono font-bold text-gray-400 dark:text-gray-500 whitespace-nowrap">
                         {ticket.ticket_number}
                       </span>
                     </div>
