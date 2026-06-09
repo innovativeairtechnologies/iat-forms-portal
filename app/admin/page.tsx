@@ -48,11 +48,11 @@ async function getData() {
       .select('data,submitted_at,form_title')
       .order('submitted_at', { ascending: false })
       .limit(500),
-    supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).or('status.eq.open,status.is.null'),
-    supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'resolved').gte('submitted_at', sevenDaysAgo),
+    supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+    supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'resolved').gte('created_at', sevenDaysAgo),
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).ilike('form_title', '%Accident Report%').gte('submitted_at', thirtyDaysAgo),
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).gte('submitted_at', sevenDaysAgo),
-    supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
+    supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
   ])
 
   // Applications this month — separate conditional query to avoid empty .in() edge case
@@ -266,65 +266,18 @@ export default async function AdminDashboard() {
 
         {/* Metrics — Row 1 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <CompactStat
-            icon={<FileText size={15} />}
-            label="Active Forms"
-            value={activeForms}
-            accent="green"
-          />
-          <CompactStat
-            icon={<ClipboardList size={15} />}
-            label="Total Submissions"
-            value={total}
-            accent="blue"
-            href="/admin/submissions"
-          />
-          <CompactStat
-            icon={<Circle size={15} />}
-            label="Open"
-            value={openCount}
-            accent="amber"
-            href="/admin/submissions?status=open"
-          />
-          <CompactStat
-            icon={<CheckCircle2 size={15} />}
-            label="Resolved · 7 Days"
-            value={resolvedThisWeek}
-            accent="emerald"
-            href="/admin/submissions?status=resolved"
-          />
+          <CompactStat icon={<FileText size={13} />} label="Active Forms" value={activeForms} unit="forms" accent="green" footer="LIVE" indicator="dots" />
+          <CompactStat icon={<ClipboardList size={13} />} label="Total Submissions" value={total} unit="all-time" accent="blue" footer="TRACKED" indicator="bars" href="/admin/submissions" />
+          <CompactStat icon={<Circle size={13} />} label="Open" value={openCount} unit="tickets" accent="amber" footer="AWAITING" indicator="line" href="/admin/submissions?status=open" />
+          <CompactStat icon={<CheckCircle2 size={13} />} label="Resolved" period="7D" value={resolvedThisWeek} unit="items" accent="emerald" footer="CLOSED" indicator="dots" href="/admin/submissions?status=resolved" />
         </div>
 
         {/* Metrics — Row 2 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <CompactStat
-            icon={<AlertTriangle size={15} />}
-            label="Accidents · 30 Days"
-            value={accidentsThisMonth}
-            accent="red"
-            href="/admin/submissions"
-          />
-          <CompactStat
-            icon={<UserPlus size={15} />}
-            label="Applications · 30 Days"
-            value={applicationsThisMonth}
-            accent="violet"
-            href="/admin/submissions"
-          />
-          <CompactStat
-            icon={<TrendingUp size={15} />}
-            label="Submissions · 7 Days"
-            value={thisWeek}
-            accent="sky"
-            href="/admin/submissions"
-          />
-          <CompactStat
-            icon={<Clock size={15} />}
-            label="In Progress"
-            value={inProgress}
-            accent="indigo"
-            href="/admin/submissions?status=in_progress"
-          />
+          <CompactStat icon={<AlertTriangle size={13} />} label="Accidents" period="30D" value={accidentsThisMonth} unit="reports" accent="red" footer="REPORTED" indicator="bars" href="/admin/submissions" />
+          <CompactStat icon={<UserPlus size={13} />} label="Applications" period="30D" value={applicationsThisMonth} unit="intake" accent="violet" footer="STEADY" indicator="bars" href="/admin/submissions" />
+          <CompactStat icon={<TrendingUp size={13} />} label="Submissions" period="7D" value={thisWeek} unit="weekly" accent="sky" footer="THIS WEEK" indicator="line" href="/admin/submissions" />
+          <CompactStat icon={<Clock size={13} />} label="In Progress" value={inProgress} unit="active" accent="indigo" footer="ACTIVE" indicator="dots" href="/admin/submissions?status=in_progress" />
         </div>
 
         {/* Recent submissions */}
@@ -430,44 +383,121 @@ export default async function AdminDashboard() {
 }
 
 type Accent = 'green' | 'blue' | 'amber' | 'emerald' | 'red' | 'violet' | 'sky' | 'indigo'
+type Indicator = 'bars' | 'line' | 'dots'
 
-const ACCENT: Record<Accent, { border: string; bg: string; icon: string; value: string }> = {
-  green:   { border: 'border-l-[#089447]',  bg: 'bg-[#f0faf4] dark:bg-[#089447]/20',        icon: 'text-[#089447]',                        value: 'text-[#089447]' },
-  blue:    { border: 'border-l-blue-500',    bg: 'bg-blue-50 dark:bg-blue-950/50',            icon: 'text-blue-500 dark:text-blue-400',      value: 'text-blue-600 dark:text-blue-400' },
-  amber:   { border: 'border-l-amber-500',   bg: 'bg-amber-50 dark:bg-amber-950/50',          icon: 'text-amber-500 dark:text-amber-400',    value: 'text-amber-600 dark:text-amber-400' },
-  emerald: { border: 'border-l-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/50',      icon: 'text-emerald-600 dark:text-emerald-400',value: 'text-emerald-600 dark:text-emerald-400' },
-  red:     { border: 'border-l-rose-500',    bg: 'bg-rose-50 dark:bg-rose-950/50',            icon: 'text-rose-500 dark:text-rose-400',      value: 'text-rose-600 dark:text-rose-400' },
-  violet:  { border: 'border-l-violet-500',  bg: 'bg-violet-50 dark:bg-violet-950/50',        icon: 'text-violet-500 dark:text-violet-400',  value: 'text-violet-600 dark:text-violet-400' },
-  sky:     { border: 'border-l-sky-500',     bg: 'bg-sky-50 dark:bg-sky-950/50',              icon: 'text-sky-500 dark:text-sky-400',        value: 'text-sky-600 dark:text-sky-400' },
-  indigo:  { border: 'border-l-indigo-500',  bg: 'bg-indigo-50 dark:bg-indigo-950/50',        icon: 'text-indigo-500 dark:text-indigo-400',  value: 'text-indigo-600 dark:text-indigo-400' },
+const ACCENT_HEX: Record<Accent, string> = {
+  green:   '#089447',
+  blue:    '#3b82f6',
+  amber:   '#f59e0b',
+  emerald: '#10b981',
+  red:     '#f43f5e',
+  violet:  '#8b5cf6',
+  sky:     '#0ea5e9',
+  indigo:  '#6366f1',
+}
+
+function BarsIndicator({ color }: { color: string }) {
+  const heights = [4, 7, 5, 9, 6, 8, 5, 10]
+  return (
+    <div className="flex items-end gap-[2px]" style={{ height: '12px' }}>
+      {heights.map((h, i) => (
+        <div
+          key={i}
+          className="w-[3px] rounded-[1px]"
+          style={{ height: `${h}px`, backgroundColor: color, opacity: 0.4 + (i / heights.length) * 0.6 }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function LineIndicator({ color }: { color: string }) {
+  return (
+    <svg width="50" height="14" viewBox="0 0 50 14" fill="none">
+      <polyline
+        points="0,11 7,7 15,9 23,3 31,6 39,2 50,5"
+        stroke={color}
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.85"
+      />
+    </svg>
+  )
+}
+
+function DotsRow({ color }: { color: string }) {
+  return (
+    <div className="flex items-center gap-[4px]">
+      {[1, 0.65, 0.35, 0.15].map((opacity, i) => (
+        <div
+          key={i}
+          className="w-[5px] h-[5px] rounded-full"
+          style={{ backgroundColor: color, opacity }}
+        />
+      ))}
+    </div>
+  )
 }
 
 function CompactStat({
   icon,
   label,
+  period,
   value,
+  unit,
   accent = 'green',
+  footer,
+  indicator = 'line',
   href,
 }: {
   icon: React.ReactNode
   label: string
+  period?: string
   value: number
+  unit: string
   accent?: Accent
+  footer?: string
+  indicator?: Indicator
   href?: string
 }) {
-  const a = ACCENT[accent]
+  const hex = ACCENT_HEX[accent]
   const content = (
-    <div className={`bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] ${a.border} border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3 transition-all ${
-      href ? 'hover:shadow-card-hover cursor-pointer hover:brightness-[0.98] dark:hover:brightness-110' : ''
-    }`}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${a.bg}`}>
-        <span className={a.icon}>{icon}</span>
+    <div className={`
+      rounded-2xl border flex flex-col px-4 pt-3.5 pb-3 gap-2
+      bg-white dark:bg-gray-900
+      border-gray-100 dark:border-gray-800
+      shadow-card
+      ${href ? 'hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-card-hover transition-all cursor-pointer' : ''}
+    `}>
+      {/* Label + icon + status dot */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400 dark:text-gray-500 leading-none truncate font-mono">
+          {label}{period ? ` · ${period}` : ''}
+        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-gray-300 dark:text-gray-600" style={{ lineHeight: 0 }}>{icon}</span>
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className={`text-[22px] font-bold tracking-tight leading-none ${a.value}`}>
+
+      {/* Value + unit */}
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[30px] font-bold leading-none tabular-nums text-gray-900 dark:text-white">
           {value.toLocaleString()}
-        </p>
-        <p className="text-[11px] font-medium text-gray-400 mt-0.5 truncate">{label}</p>
+        </span>
+        <span className="text-[12px] text-gray-400 dark:text-gray-500">{unit}</span>
+      </div>
+
+      {/* Footer + visual indicator */}
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: hex }}>
+          {footer}
+        </span>
+        {indicator === 'bars' && <BarsIndicator color={hex} />}
+        {indicator === 'line' && <LineIndicator color={hex} />}
+        {indicator === 'dots' && <DotsRow color={hex} />}
       </div>
     </div>
   )
