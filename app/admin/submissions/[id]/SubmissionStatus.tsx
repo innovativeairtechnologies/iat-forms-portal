@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { CheckCircle, Circle, Clock, ChevronDown } from 'lucide-react'
@@ -10,8 +10,8 @@ const STATUS_CONFIG: Record<Status, { label: string; icon: React.ReactNode; chip
   open: {
     label: 'Open',
     icon: <Circle size={13} />,
-    chip: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
-    menu: 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300',
+    chip: 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400',
+    menu: 'hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300',
   },
   in_progress: {
     label: 'In Progress',
@@ -64,7 +64,7 @@ export default function SubmissionStatus({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1.5 z-20 w-40 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-card-hover overflow-hidden">
+          <div className="absolute right-0 top-full mt-1.5 z-20 w-40 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 shadow-card-hover overflow-hidden">
             {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([key, val]) => (
               <button
                 key={key}

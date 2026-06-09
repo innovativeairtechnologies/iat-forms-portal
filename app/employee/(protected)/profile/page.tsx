@@ -1,11 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { Save, Clock, Calendar, User, Phone, Building2, Briefcase, FileText, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 
-const inputCls = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
+const inputCls = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
 
 export default function ProfilePage() {
   const [employee, setEmployee] = useState<Employee | null>(null)
@@ -61,10 +61,10 @@ export default function ProfilePage() {
     <div className="flex-1 overflow-auto">
 
       {/* Page header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-center gap-5">
           {/* Avatar */}
-          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[20px] font-bold flex-shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[20px] font-bold flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -79,7 +79,7 @@ export default function ProfilePage() {
           <BalanceCard icon={<Calendar size={15} />} label="PTO Balance" value={employee.pto_balance} accrual={employee.pto_accrual_rate} accent="blue" />
           <BalanceCard icon={<Clock size={15} />} label="Sick Balance" value={employee.sick_balance} accrual={employee.sick_accrual_rate} accent="amber" />
           {employee.department && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] border-l-violet-500 border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-l-[3px] border-l-violet-500 border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-zinc-800 dark:border-r-zinc-800 dark:border-b-zinc-800 shadow-card px-4 py-3.5 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center flex-shrink-0">
                 <Building2 size={15} className="text-violet-500 dark:text-violet-400" />
               </div>
@@ -90,7 +90,7 @@ export default function ProfilePage() {
             </div>
           )}
           {employee.hire_date && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] border-l-emerald-500 border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-l-[3px] border-l-emerald-500 border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-zinc-800 dark:border-r-zinc-800 dark:border-b-zinc-800 shadow-card px-4 py-3.5 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center flex-shrink-0">
                 <CheckCircle2 size={15} className="text-emerald-500 dark:text-emerald-400" />
               </div>
@@ -108,8 +108,8 @@ export default function ProfilePage() {
       {/* Form */}
       <div className="p-8">
         <div className="max-w-2xl">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
               <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Personal Information</h2>
               <p className="text-[12px] text-gray-400 mt-0.5">Update your profile details</p>
             </div>
@@ -143,7 +143,7 @@ export default function ProfilePage() {
 
               <Field icon={User} label="Email" note="Managed by admin">
                 <input value={employee.email} disabled
-                  className="w-full text-[14px] text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl px-4 py-2.5 cursor-not-allowed" />
+                  className="w-full text-[14px] text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-700 rounded-xl px-4 py-2.5 cursor-not-allowed" />
               </Field>
 
               {error && <p className="text-[13px] text-red-500">{error}</p>}
@@ -184,7 +184,7 @@ function BalanceCard({ icon, label, value, accrual, accent }: {
   }
   const s = styles[accent]
   return (
-    <div className={`bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] ${s.border} border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3`}>
+    <div className={`bg-white dark:bg-zinc-900 rounded-xl border border-l-[3px] ${s.border} border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-zinc-800 dark:border-r-zinc-800 dark:border-b-zinc-800 shadow-card px-4 py-3.5 flex items-center gap-3`}>
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${s.bg}`}>
         <span className={s.icon}>{icon}</span>
       </div>

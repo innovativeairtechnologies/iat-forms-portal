@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -17,7 +17,7 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const inp = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
+const inp = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
 
 export default function EmployeeDetailClient({
   employee,
@@ -96,13 +96,13 @@ export default function EmployeeDetailClient({
     <div className="flex-1 overflow-auto">
 
       {/* Page header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <Link href="/admin/employees"
           className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-5">
           <ArrowLeft size={13} />Employees
         </Link>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[20px] font-bold flex-shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[20px] font-bold flex-shrink-0">
             {initials}
           </div>
           <div>
@@ -113,7 +113,7 @@ export default function EmployeeDetailClient({
               <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border ${
                 role === 'admin'
                   ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800'
-                  : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                  : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700'
               }`}>
                 {role === 'admin' ? <Shield size={9} /> : <User size={9} />}
                 {role === 'admin' ? 'Admin' : 'Employee'}
@@ -129,8 +129,8 @@ export default function EmployeeDetailClient({
 
           {/* Edit form — 2/3 */}
           <div className="lg:col-span-2 space-y-5">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
                 <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Employee Details</h2>
               </div>
               <form onSubmit={save} className="p-6 space-y-4">
@@ -193,8 +193,8 @@ export default function EmployeeDetailClient({
           <div className="space-y-5">
 
             {/* ── Role & Access card ── */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
                 <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Role & Access</h2>
                 <p className="text-[11px] text-gray-400 mt-0.5">Controls which portal this user sees after login</p>
               </div>
@@ -215,7 +215,7 @@ export default function EmployeeDetailClient({
                             ? isAdmin
                               ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300'
                               : 'bg-[#f0faf4] dark:bg-[#089447]/20 border-[#089447]/40 text-[#089447]'
-                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-600 dark:hover:text-gray-300'
+                            : 'bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-zinc-600 hover:text-gray-600 dark:hover:text-gray-300'
                         }`}
                       >
                         {isActive && (
@@ -234,7 +234,7 @@ export default function EmployeeDetailClient({
                 <div className={`rounded-xl px-3.5 py-3 text-[11px] leading-relaxed ${
                   role === 'admin'
                     ? 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400'
-                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                    : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400'
                 }`}>
                   {role === 'admin'
                     ? 'Full access to submissions, forms, employees, time off queue, and all admin settings.'
@@ -254,8 +254,8 @@ export default function EmployeeDetailClient({
             </div>
 
             {/* ── Time Off History card ── */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
                 <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Request History</h2>
               </div>
               <div className="p-5">
@@ -267,7 +267,7 @@ export default function EmployeeDetailClient({
                       const s = STATUS_STYLES[req.status]
                       const Icon = s.icon
                       return (
-                        <div key={req.id} className="border border-gray-100 dark:border-gray-800 rounded-xl p-3">
+                        <div key={req.id} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-3">
                           <div className="flex items-center justify-between gap-2 mb-1">
                             <div className="flex items-center gap-2">
                               {req.type === 'pto'

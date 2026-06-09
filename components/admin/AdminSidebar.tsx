@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -94,8 +94,8 @@ function NavLink({
       className={cn(
         'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
         active
-          ? 'bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-white'
-          : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300',
+          ? 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
+          : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
       )}
     >
       <item.icon size={17} className="flex-shrink-0" />
@@ -157,7 +157,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search…"
-          className="w-full text-[13px] bg-gray-100 dark:bg-gray-800 border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 transition-all"
+          className="w-full text-[13px] bg-gray-100 dark:bg-zinc-800 border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 transition-all"
         />
       </div>
 
@@ -219,21 +219,21 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
   )
 
   const renderFooter = (onClose?: () => void) => (
-    <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+    <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-zinc-800">
       <p className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)] px-3 pb-1.5">
         Settings
       </p>
       <Link
         href="/admin/profile"
         onClick={onClose}
-        className="flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all"
+        className="flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all"
       >
         <UserCircle size={15} className="flex-shrink-0" />
         Profile
       </Link>
       <button
         onClick={logout}
-        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all"
+        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all"
       >
         <LogOut size={15} className="flex-shrink-0" />
         Sign Out
@@ -243,7 +243,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
       <Link
         href="/admin/profile"
         onClick={onClose}
-        className="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 transition-all group"
+        className="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 border border-gray-100 dark:border-zinc-700 transition-all group"
       >
         <div className="w-7 h-7 rounded-full bg-gray-900 dark:bg-gray-100 flex items-center justify-center flex-shrink-0">
           <span className="text-[12px] font-bold text-white dark:text-gray-900">{initial}</span>
@@ -257,7 +257,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex w-[240px] flex-shrink-0 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-col h-screen sticky top-0 overflow-hidden">
+      <aside className="hidden md:flex w-[240px] flex-shrink-0 bg-white dark:bg-zinc-900 border-r border-gray-100 dark:border-zinc-800 flex-col h-screen sticky top-0 overflow-hidden">
 
         {/* Logo */}
         <div className="px-4 pt-5 pb-4">
@@ -276,7 +276,7 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800">
         <Link href="/admin" className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
             <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
@@ -302,10 +302,10 @@ export default function AdminSidebar({ unreadCount, adminName }: Props) {
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setMobileOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative w-[260px] bg-white dark:bg-gray-900 flex flex-col h-full shadow-xl"
+            className="relative w-[260px] bg-white dark:bg-zinc-900 flex flex-col h-full shadow-xl"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
               <Link href="/admin" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
                 <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
                   <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />

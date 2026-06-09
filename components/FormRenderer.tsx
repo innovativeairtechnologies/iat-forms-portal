@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -83,7 +83,7 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
   // ── Compact floating modal layout (≤ COMPACT_LAYOUT_MAX_FIELDS fields) ────────
   if (!embedded && fields.length <= COMPACT_LAYOUT_MAX_FIELDS) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 bg-[#f0f0f2] dark:bg-gray-950">
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 bg-[#f0f0f2] dark:bg-zinc-950">
 
         {/* Floating card */}
         <div
@@ -98,7 +98,7 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
           }}
         >
           <div
-            className="bg-white dark:bg-gray-900 overflow-hidden"
+            className="bg-white dark:bg-zinc-900 overflow-hidden"
             style={{ borderRadius: '20px', backdropFilter: 'blur(40px) saturate(1.4)' }}
           >
             {/* Card header */}
@@ -239,7 +239,7 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
               <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">{form.description}</p>
             )}
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card px-7 py-7">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card px-7 py-7">
             {formBody}
           </div>
         </div>
@@ -248,12 +248,12 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] dark:bg-gray-950">
+    <div className="min-h-screen bg-[#f5f5f7] dark:bg-zinc-950">
       <PublicHeader formTitle={form.title} />
       <div className="py-8 px-4">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card overflow-hidden">
-            <div className="px-7 pt-7 pb-6 border-b border-gray-100 dark:border-gray-800">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-black/[0.06] dark:border-white/10 shadow-card overflow-hidden">
+            <div className="px-7 pt-7 pb-6 border-b border-gray-100 dark:border-zinc-800">
               <div className="flex items-center gap-3 mb-1">
                 <div className="w-8 h-8 rounded-lg bg-[#f0faf4] dark:bg-[#089447]/20 flex items-center justify-center flex-shrink-0">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -289,10 +289,10 @@ function FieldRow({
   onChange: (v: unknown) => void
 }) {
   const inputClass = (hasError: boolean) =>
-    `w-full border rounded-xl px-4 py-2.5 text-[14px] text-[#0a0a0b] dark:text-gray-100 outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-white dark:bg-gray-800 ${
+    `w-full border rounded-xl px-4 py-2.5 text-[14px] text-[#0a0a0b] dark:text-gray-100 outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-white dark:bg-zinc-800 ${
       hasError
         ? 'border-red-300 dark:border-red-700 bg-red-50/40 dark:bg-red-950/20 focus:border-red-400 focus:ring-2 focus:ring-red-400/10'
-        : 'border-gray-200 dark:border-gray-700 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10'
+        : 'border-gray-200 dark:border-zinc-700 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10'
     }`
 
   return (

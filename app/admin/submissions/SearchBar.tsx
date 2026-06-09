@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback, useTransition } from 'react'
@@ -28,7 +28,7 @@ export default function SearchBar({ current }: { current?: string }) {
         defaultValue={current || ''}
         onChange={(e) => updateSearch(e.target.value)}
         placeholder="Search submissions…"
-        className="w-full pl-8 pr-8 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[13px] text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 placeholder:text-gray-400 dark:placeholder:text-gray-600"
+        className="w-full pl-8 pr-8 py-1.5 border border-gray-200 dark:border-zinc-700 rounded-lg text-[13px] text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-400 bg-white dark:bg-zinc-800 placeholder:text-gray-400 dark:placeholder:text-gray-600"
       />
       {current && (
         <button

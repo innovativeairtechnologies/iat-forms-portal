@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
@@ -19,7 +19,7 @@ interface SearchParams {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  open: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+  open: 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400',
   in_progress: 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400',
   resolved: 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]',
 }
@@ -63,7 +63,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
   return (
     <div className="flex-1 overflow-auto">
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Inbox</p>
@@ -91,11 +91,11 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
 
       <div className="p-8">
         {/* Filter + search bar */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-card px-5 py-3.5 mb-4 flex flex-wrap items-center gap-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 shadow-card px-5 py-3.5 mb-4 flex flex-wrap items-center gap-4">
           <Suspense>
             <SearchBar current={searchParams.search} />
           </Suspense>
-          <div className="w-px h-4 bg-gray-100 dark:bg-gray-800" />
+          <div className="w-px h-4 bg-gray-100 dark:bg-zinc-800" />
           <div className="flex items-center gap-2.5">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
             <FilterSelect
@@ -104,7 +104,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
               options={[{ value: '', label: 'All Forms' }, ...forms.map((f: { id: string; title: string }) => ({ value: f.id, label: f.title }))]}
             />
           </div>
-          <div className="w-px h-4 bg-gray-100 dark:bg-gray-800" />
+          <div className="w-px h-4 bg-gray-100 dark:bg-zinc-800" />
           <div className="flex items-center gap-2.5">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Status</span>
             <FilterSelect
@@ -118,7 +118,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
               ]}
             />
           </div>
-          <div className="w-px h-4 bg-gray-100 dark:bg-gray-800" />
+          <div className="w-px h-4 bg-gray-100 dark:bg-zinc-800" />
           <div className="flex items-center gap-2.5">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Read</span>
             <FilterSelect
@@ -134,7 +134,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
           {submissions.length === 0 ? (
             <div className="py-20 text-center">
               <Inbox size={28} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
@@ -146,7 +146,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-50 dark:border-gray-800">
+                <tr className="border-b border-gray-50 dark:border-zinc-800">
                   <th className="px-6 py-3.5 text-left w-4"></th>
                   <th className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Submitter</th>
                   <th className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</th>
@@ -154,7 +154,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                   <th className="px-4 py-3.5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                 {submissions.map((sub: { id: string; form_title: string | null; submitted_at: string; is_read: boolean; data: Record<string, unknown> }) => {
                   const submitterName = sub.data?.['Employee Name'] || sub.data?.['Full Name'] || sub.data?.['Name'] || null
                   const submitterEmail = sub.data?.['Employee Email'] || sub.data?.['Email'] || sub.data?.['Email Address'] || null
@@ -162,13 +162,13 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                     ? String(submitterName).split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
                     : '?'
                   return (
-                    <tr key={sub.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/50 transition-colors group">
+                    <tr key={sub.id} className="hover:bg-gray-50/70 dark:hover:bg-zinc-800/50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className={`w-2 h-2 rounded-full ${sub.is_read ? 'bg-transparent' : 'bg-[#089447]'}`} />
                       </td>
                       <td className="px-4 py-4">
                         <Link href={`/admin/submissions/${sub.id}`} className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-gray-400 dark:text-gray-500">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-gray-400 dark:text-gray-500">
                             {initials}
                           </div>
                           <div>
@@ -182,7 +182,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
                         </Link>
                       </td>
                       <td className="px-4 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 text-[12px] font-medium text-gray-600 dark:text-gray-400">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-zinc-800 text-[12px] font-medium text-gray-600 dark:text-gray-400">
                           {sub.form_title || '—'}
                         </span>
                       </td>
@@ -218,7 +218,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
               {page > 1 && (
                 <Link
                   href={`?page=${page - 1}${searchParams.form_id ? `&form_id=${searchParams.form_id}` : ''}${searchParams.is_read ? `&is_read=${searchParams.is_read}` : ''}${searchParams.search ? `&search=${searchParams.search}` : ''}`}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-zinc-600 transition-colors"
                 >
                   <ChevronLeft size={13} /> Prev
                 </Link>
@@ -226,7 +226,7 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
               {page < totalPages && (
                 <Link
                   href={`?page=${page + 1}${searchParams.form_id ? `&form_id=${searchParams.form_id}` : ''}${searchParams.is_read ? `&is_read=${searchParams.is_read}` : ''}${searchParams.search ? `&search=${searchParams.search}` : ''}`}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-[12px] font-medium text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-zinc-600 transition-colors"
                 >
                   Next <ChevronRight size={13} />
                 </Link>

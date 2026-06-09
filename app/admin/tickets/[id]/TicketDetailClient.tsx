@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -14,7 +14,7 @@ const STATUS_OPTIONS: { value: Ticket['status']; label: string; cls: string }[] 
   { value: 'open',        label: 'Open',        cls: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
   { value: 'in_progress', label: 'In Progress', cls: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
   { value: 'resolved',    label: 'Resolved',    cls: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800' },
-  { value: 'closed',      label: 'Closed',      cls: 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700' },
+  { value: 'closed',      label: 'Closed',      cls: 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700' },
 ]
 
 const PRIORITY_OPTIONS: { value: Ticket['priority']; label: string; cls: string }[] = [
@@ -32,7 +32,7 @@ function YesNo({ val }: { val: boolean | null | undefined }) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-3 py-2.5 border-b border-gray-50 dark:border-gray-800 last:border-0">
+    <div className="flex gap-3 py-2.5 border-b border-gray-50 dark:border-zinc-800 last:border-0">
       <span className="text-[12px] text-gray-400 w-44 flex-shrink-0 pt-0.5">{label}</span>
       <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200 flex-1">{children}</span>
     </div>
@@ -41,7 +41,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-4">
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 mb-4">
       <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">{title}</p>
       {children}
     </div>
@@ -124,7 +124,7 @@ export default function TicketDetailClient({
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <button
           onClick={() => router.push('/admin/tickets')}
           className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mb-4 transition-colors"
@@ -168,7 +168,7 @@ export default function TicketDetailClient({
         )}
 
         {/* Status + Priority update */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 mb-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest">Status &amp; Priority</p>
             {hasUnsavedChanges && (
@@ -192,7 +192,7 @@ export default function TicketDetailClient({
                 className={`text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 ${
                   pendingStatus === opt.value
                     ? opt.cls
-                    : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+                    : 'border-gray-200 dark:border-zinc-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
                 }`}
               >
                 {opt.label}
@@ -210,7 +210,7 @@ export default function TicketDetailClient({
                 className={`text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 ${
                   pendingPriority === opt.value
                     ? opt.cls
-                    : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+                    : 'border-gray-200 dark:border-zinc-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
                 }`}
               >
                 {opt.label}
@@ -223,7 +223,7 @@ export default function TicketDetailClient({
             value={pendingOwnerId ?? ''}
             onChange={e => setPendingOwnerId(e.target.value || null)}
             disabled={updating}
-            className="text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 outline-none focus:border-gray-300 dark:focus:border-gray-600 transition-all disabled:opacity-50 w-full sm:w-auto min-w-[180px]"
+            className="text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 outline-none focus:border-gray-300 dark:focus:border-zinc-600 transition-all disabled:opacity-50 w-full sm:w-auto min-w-[180px]"
           >
             <option value="">Unassigned</option>
             {admins.map(admin => (
@@ -240,10 +240,10 @@ export default function TicketDetailClient({
                 value={pendingResolvedReason}
                 onChange={e => setPendingResolvedReason(e.target.value)}
                 disabled={updating}
-                className={`text-[13px] bg-gray-50 dark:bg-gray-800 border rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all disabled:opacity-50 w-full ${
+                className={`text-[13px] bg-gray-50 dark:bg-zinc-800 border rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 outline-none focus:ring-2 transition-all disabled:opacity-50 w-full ${
                   resolvedReasonRequired
                     ? 'border-red-300 dark:border-red-700 focus:border-red-400 focus:ring-red-100 dark:focus:ring-red-900/30'
-                    : 'border-gray-100 dark:border-gray-700 focus:border-gray-300 dark:focus:border-gray-600 focus:ring-gray-100 dark:focus:ring-gray-800'
+                    : 'border-gray-100 dark:border-zinc-700 focus:border-gray-300 dark:focus:border-zinc-600 focus:ring-gray-100 dark:focus:ring-gray-800'
                 }`}
               >
                 <option value="">Select a reason…</option>
@@ -344,7 +344,7 @@ export default function TicketDetailClient({
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative block aspect-square rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 hover:border-[#089447] transition-all"
+                  className="group relative block aspect-square rounded-xl overflow-hidden border border-gray-100 dark:border-zinc-700 hover:border-[#089447] transition-all"
                 >
                   <img
                     src={url}
@@ -363,12 +363,12 @@ export default function TicketDetailClient({
         )}
 
         {/* Admin Notes Log */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5">
           <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-4">Admin Notes</p>
 
           {/* Legacy note from old system */}
           {ticket.notes && (
-            <div className="mb-4 pb-4 border-b border-gray-50 dark:border-gray-800">
+            <div className="mb-4 pb-4 border-b border-gray-50 dark:border-zinc-800">
               <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-2">Legacy note</p>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                 {ticket.notes}
@@ -381,7 +381,7 @@ export default function TicketDetailClient({
             <div className="space-y-4 mb-5">
               {notes.map((note, idx) => (
                 <div key={note.id}>
-                  {(idx > 0 || !!ticket.notes) && <div className="border-t border-gray-50 dark:border-gray-800 mb-4" />}
+                  {(idx > 0 || !!ticket.notes) && <div className="border-t border-gray-50 dark:border-zinc-800 mb-4" />}
                   <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-2">{formatNoteDate(note.created_at)}</p>
                   <div
                     className="note-content text-[13px] text-gray-700 dark:text-gray-200"
@@ -394,7 +394,7 @@ export default function TicketDetailClient({
 
           {/* New note editor — always visible */}
           {(notes.length > 0 || !!ticket.notes) && (
-            <div className="border-t border-gray-100 dark:border-gray-800 mt-2 pt-4 mb-3">
+            <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-4 mb-3">
               <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-3">New note</p>
             </div>
           )}
@@ -407,7 +407,7 @@ export default function TicketDetailClient({
         <div className="w-72 xl:w-80 flex-shrink-0 sticky top-8 space-y-4">
 
           {/* AI Recommendations */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
                 <Lightbulb size={13} className="text-amber-500" />
@@ -424,7 +424,7 @@ export default function TicketDetailClient({
                     <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">{rec}</p>
                   </div>
                 ))}
-                <p className="text-[11px] text-gray-300 dark:text-gray-600 pt-1 border-t border-gray-50 dark:border-gray-800 mt-1">
+                <p className="text-[11px] text-gray-300 dark:text-gray-600 pt-1 border-t border-gray-50 dark:border-zinc-800 mt-1">
                   Shown to customer at submission
                 </p>
               </div>
@@ -434,7 +434,7 @@ export default function TicketDetailClient({
           </div>
 
           {/* Items Reviewed */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5">
             <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Items Reviewed</p>
             <p className="text-[12px] text-gray-300 dark:text-gray-600 leading-relaxed">
               Knowledge base coming soon. Article tracking will appear here once enabled.

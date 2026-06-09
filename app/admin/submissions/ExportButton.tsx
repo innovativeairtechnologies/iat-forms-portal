@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
@@ -75,7 +75,7 @@ export default function ExportButton({ formId, isRead, search, formTitle }: Prop
     <button
       onClick={handleExport}
       disabled={loading}
-      className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all disabled:opacity-50"
+      className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 dark:border-zinc-700 rounded-lg text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all disabled:opacity-50"
     >
       {loading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
       Export CSV

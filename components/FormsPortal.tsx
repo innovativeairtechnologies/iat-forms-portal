@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
@@ -70,10 +70,10 @@ export default function FormsPortal({ categories, forms }: Props) {
   }, [sorted, categories, showGrouped])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-zinc-950">
 
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
+      <header className="sticky top-0 z-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-gray-100 dark:border-zinc-800">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="w-7 h-7 rounded-lg bg-white flex-shrink-0 flex items-center justify-center shadow-card-sm border border-black/[0.06] dark:border-black/10">
@@ -108,7 +108,7 @@ export default function FormsPortal({ categories, forms }: Props) {
             type="text" value={search}
             onChange={(e) => { setSearch(e.target.value); if (e.target.value) setActive('all') }}
             placeholder="Search forms…"
-            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl pl-10 pr-10 py-3 text-[14px] text-[#0a0a0b] dark:text-gray-100 placeholder:text-gray-300 dark:placeholder:text-gray-600 outline-none focus:border-gray-300 dark:focus:border-gray-600 focus:bg-white dark:focus:bg-gray-800 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-800/50 transition-all"
+            className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl pl-10 pr-10 py-3 text-[14px] text-[#0a0a0b] dark:text-gray-100 placeholder:text-gray-300 dark:placeholder:text-gray-600 outline-none focus:border-gray-300 dark:focus:border-zinc-600 focus:bg-white dark:focus:bg-zinc-800 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-800/50 transition-all"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 dark:hover:text-gray-400">
@@ -119,7 +119,7 @@ export default function FormsPortal({ categories, forms }: Props) {
 
         {/* Category tabs */}
         {!search && (
-          <div className="flex items-center gap-0 border-b border-gray-100 dark:border-gray-800 mb-0 overflow-x-auto scrollbar-hide -mx-6 px-6">
+          <div className="flex items-center gap-0 border-b border-gray-100 dark:border-zinc-800 mb-0 overflow-x-auto scrollbar-hide -mx-6 px-6">
             {[
               { name: 'all', label: 'All', count: forms.length },
               ...visibleCategories.map((c) => ({
@@ -131,7 +131,7 @@ export default function FormsPortal({ categories, forms }: Props) {
                 className={`flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-all ${
                   activeCategory === tab.name
                     ? 'border-[#089447] text-[#089447]'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-200 dark:hover:border-gray-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-200 dark:hover:border-zinc-600'
                 }`}>
                 {tab.label}
                 <span className={`text-[11px] tabular-nums ${activeCategory === tab.name ? 'text-gray-500 dark:text-gray-400' : 'text-gray-300 dark:text-gray-600'}`}>
@@ -173,7 +173,7 @@ export default function FormsPortal({ categories, forms }: Props) {
             return (
               <section key={category.id}>
                 <button onClick={toggle} className="w-full flex items-center gap-3 mb-4 group">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-gray-500">
                     <Icon size={15} strokeWidth={1.8} />
                   </div>
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white group-hover:text-[#089447] transition-colors">
@@ -232,15 +232,15 @@ function FormCard({ form, onOpen, showCategory = false }: {
   return (
     <button
       onClick={() => onOpen(form.slug)}
-      className="group w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 flex flex-col h-[160px] overflow-hidden shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+      className="group w-full text-left bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col h-[160px] overflow-hidden shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-zinc-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
     >
       {/* Icon + optional category pill */}
       <div className="flex items-start justify-between gap-2 mb-auto">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-gray-500">
           <Icon size={16} strokeWidth={1.8} />
         </div>
         {showCategory && form.categories?.name && (
-          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex-shrink-0">
+          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 flex-shrink-0">
             {form.categories.name}
           </span>
         )}
@@ -277,7 +277,7 @@ function SortPills({ value, onChange }: { value: SortOption; onChange: (v: SortO
           className={`text-[12px] font-medium px-3 py-1.5 rounded-lg transition-all ${
             value === opt.value
               ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-              : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+              : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800'
           }`}>
           {opt.label}
         </button>

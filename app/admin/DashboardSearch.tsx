@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -25,7 +25,7 @@ export default function DashboardSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search submissions by name, form, or keyword…"
-        className="w-full pl-9 pr-4 py-2 text-[13px] text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:border-gray-300 dark:focus:border-gray-600 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-gray-100 dark:focus:ring-gray-700/50 placeholder:text-gray-400 dark:placeholder:text-gray-600 transition-all"
+        className="w-full pl-9 pr-4 py-2 text-[13px] text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg outline-none focus:border-gray-300 dark:focus:border-zinc-600 focus:bg-white dark:focus:bg-zinc-800 focus:ring-2 focus:ring-gray-100 dark:focus:ring-gray-700/50 placeholder:text-gray-400 dark:placeholder:text-gray-600 transition-all"
       />
     </form>
   )

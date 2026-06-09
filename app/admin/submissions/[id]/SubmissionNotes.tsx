@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { StickyNote, Send, Trash2, Loader2 } from 'lucide-react'
@@ -45,12 +45,12 @@ export default function SubmissionNotes({ submissionId }: { submissionId: string
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 flex items-center gap-2">
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 flex items-center gap-2">
         <StickyNote size={14} className="text-gray-400" />
         <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white">Internal Notes</h3>
         {notes.length > 0 && (
-          <span className="text-[11px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full">
+          <span className="text-[11px] font-bold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">
             {notes.length}
           </span>
         )}
@@ -97,7 +97,7 @@ export default function SubmissionNotes({ submissionId }: { submissionId: string
             }}
             placeholder="Add a note…"
             rows={2}
-            className="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#089447]/50 focus:ring-2 focus:ring-[#089447]/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+            className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#089447]/50 focus:ring-2 focus:ring-[#089447]/10 resize-none placeholder:text-gray-400 dark:placeholder:text-gray-600 bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-200"
           />
           <button
             onClick={addNote}

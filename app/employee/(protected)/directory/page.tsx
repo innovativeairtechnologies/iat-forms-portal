@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { X, Mail, Phone, Building2, Briefcase, FileText, Users } from 'lucide-react'
@@ -49,7 +49,7 @@ export default function DirectoryPage() {
     <div className="flex-1 overflow-auto">
 
       {/* Page header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Team</p>
         <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Directory</h1>
         <p className="text-[13px] text-gray-400 mt-0.5">
@@ -69,7 +69,7 @@ export default function DirectoryPage() {
 
         {/* Empty state */}
         {!loading && employees.length === 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card flex flex-col items-center justify-center py-20 text-center">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card flex flex-col items-center justify-center py-20 text-center">
             <Users size={28} className="text-gray-200 dark:text-gray-700 mb-3" />
             <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400">No employees yet.</p>
           </div>
@@ -115,7 +115,7 @@ function EmployeeCard({ employee, size, onClick }: {
     size === 'wide'     ? 'col-span-2 row-span-1' :
                           'col-span-1 row-span-1'
 
-  const base = `group relative w-full h-full text-left bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg dark:hover:shadow-black/30 hover:-translate-y-0.5 ${color.hover} ${spanClass}`
+  const base = `group relative w-full h-full text-left bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg dark:hover:shadow-black/30 hover:-translate-y-0.5 ${color.hover} ${spanClass}`
 
   /* Featured 2×2 */
   if (size === 'featured') {
@@ -138,7 +138,7 @@ function EmployeeCard({ employee, size, onClick }: {
               <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-1">{employee.job_title}</p>
             )}
             {employee.department && (
-              <span className="inline-block mt-2 text-[11px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+              <span className="inline-block mt-2 text-[11px] font-medium text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
                 {employee.department}
               </span>
             )}
@@ -173,7 +173,7 @@ function EmployeeCard({ employee, size, onClick }: {
             )}
           </div>
           {employee.department && (
-            <span className="text-[11px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full flex-shrink-0 hidden sm:inline">
+            <span className="text-[11px] font-medium text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full flex-shrink-0 hidden sm:inline">
               {employee.department}
             </span>
           )}
@@ -199,7 +199,7 @@ function EmployeeCard({ employee, size, onClick }: {
           <p className="text-[11.5px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{employee.job_title}</p>
         )}
         {employee.department && (
-          <span className="inline-block mt-auto text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full self-start">
+          <span className="inline-block mt-auto text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full self-start">
             {employee.department}
           </span>
         )}
@@ -227,7 +227,7 @@ function ProfileModal({ employee, onClose }: { employee: Employee; onClose: () =
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 40, scale: 0.97 }}
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-white dark:bg-zinc-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header strip */}
@@ -243,7 +243,7 @@ function ProfileModal({ employee, onClose }: { employee: Employee; onClose: () =
           </button>
           {/* Avatar */}
           <div className="absolute -bottom-8 left-6">
-            <div className={`w-16 h-16 rounded-2xl ${color.avatar} flex items-center justify-center text-white text-[22px] font-bold shadow-xl ring-4 ring-white dark:ring-gray-900`}>
+            <div className={`w-16 h-16 rounded-2xl ${color.avatar} flex items-center justify-center text-white text-[22px] font-bold shadow-xl ring-4 ring-white dark:ring-zinc-900`}>
               {initials}
             </div>
           </div>
@@ -260,7 +260,7 @@ function ProfileModal({ employee, onClose }: { employee: Employee; onClose: () =
               <p className="text-[14px] text-gray-400 dark:text-gray-500 mt-0.5">{employee.job_title}</p>
             )}
             {employee.department && (
-              <span className="inline-block mt-2 text-[11px] font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full uppercase tracking-wide">
+              <span className="inline-block mt-2 text-[11px] font-semibold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full uppercase tracking-wide">
                 {employee.department}
               </span>
             )}
@@ -281,7 +281,7 @@ function ProfileModal({ employee, onClose }: { employee: Employee; onClose: () =
 
           {/* Bio */}
           {employee.bio && (
-            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4">
+            <div className="bg-gray-50 dark:bg-zinc-800/60 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText size={13} className="text-gray-400" />
                 <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">About</span>
@@ -298,7 +298,7 @@ function ProfileModal({ employee, onClose }: { employee: Employee; onClose: () =
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
         <Icon size={14} className="text-gray-400" />
       </div>
       <div className="min-w-0">

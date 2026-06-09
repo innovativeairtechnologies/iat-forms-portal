@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -41,7 +41,7 @@ export default function DeleteFormButton({ formId, formTitle, submissionCount }:
         </button>
         <button
           onClick={() => setConfirming(false)}
-          className="h-7 px-2.5 rounded-lg text-[11px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex-shrink-0"
+          className="h-7 px-2.5 rounded-lg text-[11px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all flex-shrink-0"
         >
           Cancel
         </button>

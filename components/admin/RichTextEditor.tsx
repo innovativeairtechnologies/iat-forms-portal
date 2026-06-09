@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
@@ -30,8 +30,8 @@ function ToolbarBtn({
       className={cn(
         'p-1.5 rounded-md transition-all',
         active
-          ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-          : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200',
+          ? 'bg-gray-100 dark:bg-zinc-700 text-gray-900 dark:text-white'
+          : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-gray-700 dark:hover:text-gray-200',
       )}
     >
       {children}
@@ -81,9 +81,9 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
   if (!editor) return null
 
   return (
-    <div className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
+    <div className="border border-gray-100 dark:border-zinc-700 rounded-xl overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex-wrap">
+      <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 dark:bg-zinc-800 border-b border-gray-100 dark:border-zinc-700 flex-wrap">
         <ToolbarBtn active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold">
           <Bold size={13} />
         </ToolbarBtn>
@@ -94,7 +94,7 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
           <Strikethrough size={13} />
         </ToolbarBtn>
 
-        <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-gray-200 dark:bg-zinc-600 mx-1" />
 
         <ToolbarBtn active={editor.isActive('link')} onClick={addLink} title="Add link">
           <Link size={13} />
@@ -103,7 +103,7 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
           <Image size={13} />
         </ToolbarBtn>
 
-        <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-gray-200 dark:bg-zinc-600 mx-1" />
 
         <ToolbarBtn active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Bullet list">
           <List size={13} />
@@ -112,7 +112,7 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
           <ListOrdered size={13} />
         </ToolbarBtn>
 
-        <div className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-gray-200 dark:bg-zinc-600 mx-1" />
 
         <ToolbarBtn active={false} onClick={() => editor.chain().focus().undo().run()} title="Undo">
           <Undo size={13} />
@@ -123,12 +123,12 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
       </div>
 
       {/* Editor area */}
-      <div className="px-4 py-3 bg-white dark:bg-gray-900">
+      <div className="px-4 py-3 bg-white dark:bg-zinc-900">
         <EditorContent editor={editor} />
       </div>
 
       {/* Submit */}
-      <div className="flex justify-end px-4 pb-3 bg-white dark:bg-gray-900">
+      <div className="flex justify-end px-4 pb-3 bg-white dark:bg-zinc-900">
         <button
           onClick={handleSubmit}
           disabled={disabled || !hasContent}

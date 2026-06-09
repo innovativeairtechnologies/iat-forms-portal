@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 interface Option { value: string; label: string }
 
@@ -22,7 +22,7 @@ export default function FilterSelect({
         url.searchParams.delete('page')
         window.location.href = url.toString()
       }}
-      className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-[13px] text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-400 bg-white dark:bg-gray-800 cursor-pointer"
+      className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-[13px] text-gray-700 dark:text-gray-300 outline-none focus:border-indigo-400 bg-white dark:bg-zinc-800 cursor-pointer"
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>

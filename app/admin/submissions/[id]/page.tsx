@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase-admin'
+﻿import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import { formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
@@ -40,7 +40,7 @@ export default async function SubmissionDetailPage({ params }: { params: { id: s
     <div className="flex-1 overflow-auto">
       <MarkAsRead submissionId={submission.id} isRead={submission.is_read} />
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <Link
           href="/admin/submissions"
           className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-5"
@@ -82,7 +82,7 @@ export default async function SubmissionDetailPage({ params }: { params: { id: s
       <div className="p-8 max-w-5xl">
         <div className="grid gap-4">
           {/* Field values */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
             {fields.map((field: { id: string; label: string; field_type: string }, index: number) => {
               const value = submission.data[field.label]
               return (
@@ -123,14 +123,14 @@ function FieldRow({
     if (fieldType === 'signature' && typeof value === 'string' && value.startsWith('data:image')) {
       display = (
         <div className="mt-1">
-          <img src={value} alt="Signature" className="max-w-[280px] border border-gray-100 dark:border-gray-800 rounded-xl" />
+          <img src={value} alt="Signature" className="max-w-[280px] border border-gray-100 dark:border-zinc-800 rounded-xl" />
         </div>
       )
     } else if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
       const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(value)
       display = isImage ? (
         <div className="mt-1">
-          <img src={value} alt={label} className="max-w-[280px] max-h-48 object-contain border border-gray-100 dark:border-gray-800 rounded-xl mb-2" />
+          <img src={value} alt={label} className="max-w-[280px] max-h-48 object-contain border border-gray-100 dark:border-zinc-800 rounded-xl mb-2" />
           <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-[#089447] hover:underline">
             View full file
           </a>
@@ -144,7 +144,7 @@ function FieldRow({
       display = (
         <div className="flex flex-wrap gap-1.5 mt-1">
           {value.map((v, i) => (
-            <span key={i} className="text-[12px] font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 px-2.5 py-1 rounded-lg">
+            <span key={i} className="text-[12px] font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 px-2.5 py-1 rounded-lg">
               {String(v)}
             </span>
           ))}
@@ -156,7 +156,7 @@ function FieldRow({
   }
 
   return (
-    <div className={`px-6 py-5 grid grid-cols-[180px_1fr] gap-6 ${!isLast ? 'border-b border-gray-50 dark:border-gray-800' : ''}`}>
+    <div className={`px-6 py-5 grid grid-cols-[180px_1fr] gap-6 ${!isLast ? 'border-b border-gray-50 dark:border-zinc-800' : ''}`}>
       <dt>
         <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest leading-none">
           {label}

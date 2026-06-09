@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
@@ -125,7 +125,7 @@ function avatarColor(name: string): string {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  open:        'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+  open:        'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400',
   in_progress: 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400',
   resolved:    'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]',
 }
@@ -147,11 +147,11 @@ export default async function AdminDashboard() {
   const panel = (
     <div className="flex flex-col h-full">
       {/* Panel header */}
-      <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+      <div className="px-4 py-4 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-0.5">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">Recent Submissions</h2>
           {people.length > 0 && (
-            <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full tabular-nums">
+            <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full tabular-nums">
               {people.length}
             </span>
           )}
@@ -163,7 +163,7 @@ export default async function AdminDashboard() {
       {people.length === 0 ? (
         <div className="flex-1 flex items-center justify-center py-16 text-center px-6">
           <div>
-            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
+            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-3">
               <span className="text-[18px]">👤</span>
             </div>
             <p className="text-[13px] font-medium text-gray-400">No submitters yet</p>
@@ -173,7 +173,7 @@ export default async function AdminDashboard() {
           </div>
         </div>
       ) : (
-        <ul className="flex-1 divide-y divide-gray-50 dark:divide-gray-800/60 overflow-y-auto">
+        <ul className="flex-1 divide-y divide-gray-50 dark:divide-zinc-800/60 overflow-y-auto">
           {people.map((person) => {
             const initials =
               person.name === 'Anonymous'
@@ -184,7 +184,7 @@ export default async function AdminDashboard() {
               <li key={person.email || person.name}>
                 <Link
                   href={`/admin/submissions?search=${searchParam}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors group"
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold ${avatarColor(person.name)}`}
@@ -202,7 +202,7 @@ export default async function AdminDashboard() {
                       <p className="text-[10px] text-[#089447]/70 truncate mt-0.5">{person.lastForm}</p>
                     )}
                   </div>
-                  <span className="flex-shrink-0 text-[10px] font-bold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full tabular-nums">
+                  <span className="flex-shrink-0 text-[10px] font-bold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full tabular-nums">
                     {person.count}
                   </span>
                 </Link>
@@ -214,7 +214,7 @@ export default async function AdminDashboard() {
 
       {/* Footer note */}
       {people.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <div className="px-4 py-3 border-t border-gray-100 dark:border-zinc-800 flex-shrink-0">
           <p className="text-[10px] text-gray-300 dark:text-gray-700 text-center">
             Aggregated from form submissions · {people.length} unique {people.length === 1 ? 'person' : 'people'}
           </p>
@@ -286,7 +286,7 @@ export default async function AdminDashboard() {
             <div className="flex items-center gap-2.5">
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">Recent Submissions</h2>
               {total > 0 && (
-                <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full tabular-nums">
+                <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full tabular-nums">
                   {total}
                 </span>
               )}
@@ -299,7 +299,7 @@ export default async function AdminDashboard() {
             </Link>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
             {recent.length === 0 ? (
               <div className="py-20 text-center">
                 <Inbox size={24} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
@@ -309,7 +309,7 @@ export default async function AdminDashboard() {
                 </p>
               </div>
             ) : (
-              <ul className="divide-y divide-gray-50 dark:divide-gray-800">
+              <ul className="divide-y divide-gray-50 dark:divide-zinc-800">
                 {recent.map((sub: {
                   id: string
                   form_title: string | null
@@ -334,7 +334,7 @@ export default async function AdminDashboard() {
                     <li key={sub.id}>
                       <Link
                         href={`/admin/submissions/${sub.id}`}
-                        className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors group"
+                        className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/80 dark:hover:bg-zinc-800/50 transition-colors group"
                       >
                         <div className="flex-shrink-0 w-1.5">
                           {!sub.is_read && <div className="w-1.5 h-1.5 rounded-full bg-[#089447]" />}
@@ -357,7 +357,7 @@ export default async function AdminDashboard() {
                             <p className="text-[11px] text-gray-400 truncate">{email}</p>
                           )}
                         </div>
-                        <span className="hidden sm:inline-flex flex-shrink-0 text-[12px] font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2.5 py-1 rounded-lg whitespace-nowrap">
+                        <span className="hidden sm:inline-flex flex-shrink-0 text-[12px] font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800 px-2.5 py-1 rounded-lg whitespace-nowrap">
                           {sub.form_title || '—'}
                         </span>
                         <div className="flex items-center gap-3 flex-shrink-0">

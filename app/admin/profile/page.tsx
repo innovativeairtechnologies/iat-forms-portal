@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -61,7 +61,7 @@ export default function ProfilePage() {
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <Link
           href="/admin"
           className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-5"
@@ -70,7 +70,7 @@ export default function ProfilePage() {
           Dashboard
         </Link>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-gray-700 flex items-center justify-center text-white text-[18px] font-bold flex-shrink-0 select-none">
+          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[18px] font-bold flex-shrink-0 select-none">
             {initials}
           </div>
           <div>
@@ -85,7 +85,7 @@ export default function ProfilePage() {
       <div className="p-8 max-w-xl space-y-4">
 
         {/* Profile */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card p-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-4">Profile</h2>
           <div className="space-y-4">
             <div>
@@ -98,7 +98,7 @@ export default function ProfilePage() {
                   value={displayName}
                   onChange={e => { setDisplayName(e.target.value); setSaved(false) }}
                   placeholder="Your name"
-                  className="w-full pl-9 pr-4 py-2.5 text-[13px] border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 transition-all"
+                  className="w-full pl-9 pr-4 py-2.5 text-[13px] border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 transition-all"
                 />
               </div>
             </div>
@@ -109,7 +109,7 @@ export default function ProfilePage() {
               <input
                 value={email}
                 disabled
-                className="w-full px-4 py-2.5 text-[13px] border border-gray-100 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                className="w-full px-4 py-2.5 text-[13px] border border-gray-100 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-400 dark:text-gray-600 cursor-not-allowed"
               />
               <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-1">Email is managed via Supabase Auth</p>
             </div>
@@ -128,7 +128,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Appearance */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card p-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-4">Appearance</h2>
           <div className="flex items-center justify-between">
             <div>
@@ -140,9 +140,9 @@ export default function ProfilePage() {
         </div>
 
         {/* Security */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card p-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-4">Security</h2>
-          <div className="flex items-center justify-between py-3 border border-gray-100 dark:border-gray-800 rounded-xl px-4">
+          <div className="flex items-center justify-between py-3 border border-gray-100 dark:border-zinc-800 rounded-xl px-4">
             <div>
               <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Authentication</p>
               <p className="text-[11px] text-gray-400 mt-0.5">
@@ -157,12 +157,12 @@ export default function ProfilePage() {
         </div>
 
         {/* Session */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card p-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
           <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-1">Session</h2>
           <p className="text-[12px] text-gray-400 mb-4">You are signed in as {email}.</p>
           <button
             onClick={logout}
-            className="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 px-4 py-2.5 rounded-xl transition-all border border-gray-200 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/20"
+            className="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 px-4 py-2.5 rounded-xl transition-all border border-gray-200 dark:border-zinc-700 hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/20"
           >
             <LogOut size={14} />
             Sign Out

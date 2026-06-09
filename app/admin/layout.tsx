@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getAdminUser } from '@/lib/admin-auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq('is_read', false)
 
   return (
-    <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-gray-950">
+    <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
       <AdminSidebar unreadCount={count ?? 0} adminName={admin.displayName} />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {children}

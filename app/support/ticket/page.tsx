@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -68,7 +68,7 @@ function InputField({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className="w-full text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all"
+        className="w-full text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all"
       />
     </div>
   )
@@ -91,7 +91,7 @@ function TextareaField({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full text-[13px] bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all resize-none leading-relaxed"
+        className="w-full text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all resize-none leading-relaxed"
       />
     </div>
   )
@@ -117,7 +117,7 @@ function BoolField({
                 ? v
                   ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-300 dark:border-green-700'
                   : 'bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-300 dark:border-red-700'
-                : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+                : 'bg-white dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
             }`}
           >
             {v ? 'Yes' : 'No'}
@@ -148,7 +148,7 @@ function TriBoolField({
                 ? v
                   ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-300 dark:border-green-700'
                   : 'bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-300 dark:border-red-700'
-                : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+                : 'bg-white dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
             }`}
           >
             {v ? 'Yes' : 'No'}
@@ -160,7 +160,7 @@ function TriBoolField({
           className={`px-5 py-2 rounded-xl text-[13px] font-semibold border transition-all ${
             value === 'unsure'
               ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700'
-              : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
+              : 'bg-white dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
           }`}
         >
           Not Sure
@@ -261,7 +261,7 @@ export default function SupportPage() {
   // ── Loading ──────────────────────────────────────────────────────────────
   if (stage === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 size={36} className="text-[#089447] animate-spin" />
           <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">Submitting your ticket…</p>
@@ -274,8 +274,8 @@ export default function SupportPage() {
   // ── Success ──────────────────────────────────────────────────────────────
   if (stage === 'success') {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
-        <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
+        <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
           <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-md" />
           <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
         </header>
@@ -285,7 +285,7 @@ export default function SupportPage() {
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden"
+            className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden"
             style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.04), 0 24px 64px rgba(0,0,0,0.10)' }}
           >
             {/* Top success bar */}
@@ -299,7 +299,7 @@ export default function SupportPage() {
                   <h1 className="text-[22px] font-bold text-gray-900 dark:text-white tracking-tight">You&apos;re all set!</h1>
                 </div>
               </div>
-              <div className="bg-white/60 dark:bg-gray-900/60 rounded-xl px-4 py-3 border border-[#089447]/15">
+              <div className="bg-white/60 dark:bg-zinc-900/60 rounded-xl px-4 py-3 border border-[#089447]/15">
                 <p className="text-[11px] text-gray-400 mb-0.5">Your ticket number</p>
                 <p className="text-[20px] font-bold font-mono text-[#089447] tracking-wider">{ticketNumber}</p>
               </div>
@@ -310,7 +310,7 @@ export default function SupportPage() {
 
             {/* AI Recommendations */}
             {recommendations.length > 0 && (
-              <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-800">
+              <div className="px-8 py-6 border-b border-gray-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
                     <Lightbulb size={14} className="text-amber-500" />
@@ -368,10 +368,10 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
 
       {/* Header */}
-      <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3">
+      <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
         <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-md" />
         <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>
@@ -394,7 +394,7 @@ export default function SupportPage() {
                       ? 'bg-[#089447] text-white'
                       : active
                         ? 'bg-[#089447]/10 dark:bg-[#089447]/20 text-[#089447] border-2 border-[#089447]'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600'
+                        : 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-gray-600'
                   }`}>
                     {done ? <CheckCircle size={12} strokeWidth={3} /> : n}
                   </div>
@@ -406,7 +406,7 @@ export default function SupportPage() {
             })}
           </div>
           {/* Progress bar */}
-          <div className="h-1 bg-gray-100 dark:bg-gray-800 rounded-full mt-1">
+          <div className="h-1 bg-gray-100 dark:bg-zinc-800 rounded-full mt-1">
             <div
               className="h-full bg-[#089447] rounded-full transition-all duration-500"
               style={{ width: `${((step - 1) / (TOTAL_STEPS - 1)) * 100}%` }}
@@ -425,7 +425,7 @@ export default function SupportPage() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-7"
+              className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-7"
               style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06)' }}
             >
               {step === 1 && <StepContact form={form} set={set} />}
@@ -629,7 +629,7 @@ function StepPhotos({
         onClick={() => fileInputRef.current?.click()}
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
-        className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-[#089447] hover:bg-[#089447]/3 transition-all mb-4"
+        className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-[#089447] hover:bg-[#089447]/3 transition-all mb-4"
       >
         <Upload size={22} className="text-gray-300 dark:text-gray-600" />
         <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">Click to upload or drag & drop</p>
@@ -648,7 +648,7 @@ function StepPhotos({
       {photos.length > 0 && (
         <div className="grid grid-cols-4 gap-2">
           {photos.map((file, i) => (
-            <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
+            <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-100 dark:border-zinc-800">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
@@ -664,7 +664,7 @@ function StepPhotos({
           {photos.length < 8 && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="aspect-square rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600 hover:border-[#089447] hover:text-[#089447] transition-all"
+              className="aspect-square rounded-xl border-2 border-dashed border-gray-200 dark:border-zinc-700 flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600 hover:border-[#089447] hover:text-[#089447] transition-all"
             >
               <ImageIcon size={16} />
               <span className="text-[10px] font-medium">Add</span>

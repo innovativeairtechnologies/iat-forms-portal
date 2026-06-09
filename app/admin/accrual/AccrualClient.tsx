@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -59,7 +59,7 @@ export default function AccrualClient({
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
         <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Accrual</h1>
         <p className="text-[13px] text-gray-400 mt-0.5">Biweekly PTO &amp; sick time accrual — runs on the 1st and 15th of each month</p>
@@ -68,7 +68,7 @@ export default function AccrualClient({
       <div className="p-8 space-y-6">
 
         {/* Run card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">Run Accrual</h2>
@@ -123,10 +123,10 @@ export default function AccrualClient({
 
                 {/* Per-employee table */}
                 {result.employees.length > 0 && (
-                  <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                  <div className="rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
                     <table className="w-full text-[12px]">
                       <thead>
-                        <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                        <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
                           <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Employee</th>
                           <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Added</th>
                           <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">New PTO Balance</th>
@@ -134,9 +134,9 @@ export default function AccrualClient({
                           <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">New Sick Balance</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                      <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                         {result.employees.map(e => (
-                          <tr key={e.employee_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                          <tr key={e.employee_id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors">
                             <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200">{e.name}</td>
                             <td className="px-4 py-2.5 text-right text-[#089447] font-semibold">+{e.pto_delta} hrs</td>
                             <td className="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300">{e.new_pto_balance} hrs</td>
@@ -154,8 +154,8 @@ export default function AccrualClient({
         </div>
 
         {/* Employee rates table */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
             <TrendingUp size={15} className="text-gray-400" />
             <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Employee Accrual Rates</h2>
             <span className="ml-auto text-[11px] text-gray-400">Click an employee to edit their rates</span>
@@ -165,7 +165,7 @@ export default function AccrualClient({
           ) : (
             <table className="w-full text-[12px]">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
                   <th className="text-left px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Employee</th>
                   <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Balance</th>
                   <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Rate / period</th>
@@ -173,7 +173,7 @@ export default function AccrualClient({
                   <th className="text-right px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sick Rate / period</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                 {employees.map(emp => (
                   <tr key={emp.id} className="group">
                     <td className="px-6 py-3">
@@ -202,8 +202,8 @@ export default function AccrualClient({
         </div>
 
         {/* Recent accrual log */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
             <Clock size={15} className="text-gray-400" />
             <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Recent Accrual Log</h2>
           </div>
@@ -212,7 +212,7 @@ export default function AccrualClient({
           ) : (
             <table className="w-full text-[12px]">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
                   <th className="text-left px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Date</th>
                   <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Employee</th>
                   <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Type</th>
@@ -220,9 +220,9 @@ export default function AccrualClient({
                   <th className="text-left px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Reason</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
                 {recentLog.map(entry => (
-                  <tr key={entry.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                  <tr key={entry.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors">
                     <td className="px-6 py-2.5 text-gray-400 whitespace-nowrap">{formatDate(entry.created_at)}</td>
                     <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300">{entry.employees?.name || entry.employees?.email || entry.employee_id.slice(0, 8)}</td>
                     <td className="px-4 py-2.5">
@@ -264,7 +264,7 @@ export default function AccrualClient({
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-md p-6"
+              className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-700 shadow-xl w-full max-w-md p-6"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 mb-4">
@@ -284,11 +284,11 @@ export default function AccrualClient({
               </p>
 
               {eligible.length > 0 && (
-                <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden mb-5">
-                  <div className="bg-gray-50 dark:bg-gray-800/50 px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+                <div className="rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden mb-5">
+                  <div className="bg-gray-50 dark:bg-zinc-800/50 px-4 py-2 border-b border-gray-100 dark:border-zinc-800">
                     <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Will be updated</p>
                   </div>
-                  <ul className="divide-y divide-gray-50 dark:divide-gray-800 max-h-48 overflow-y-auto">
+                  <ul className="divide-y divide-gray-50 dark:divide-zinc-800 max-h-48 overflow-y-auto">
                     {eligible.map(e => (
                       <li key={e.id} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
                         <span className="font-medium text-gray-700 dark:text-gray-300">{e.name || e.email}</span>
@@ -306,7 +306,7 @@ export default function AccrualClient({
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setConfirming(false)}
-                  className="px-4 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-150 dark:hover:bg-gray-700 rounded-xl transition-all"
+                  className="px-4 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white bg-gray-100 dark:bg-zinc-800 hover:bg-gray-150 dark:hover:bg-zinc-700 rounded-xl transition-all"
                 >
                   Cancel
                 </button>

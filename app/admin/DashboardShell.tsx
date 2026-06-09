@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { Bell, Plus, X } from 'lucide-react'
@@ -69,7 +69,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
     <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
       {/* Top bar */}
-      <div className="flex items-center border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0">
+      <div className="flex items-center border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex-shrink-0">
 
         {/* Search */}
         <div className="flex-1 min-w-0 px-6 py-3">
@@ -77,7 +77,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
         </div>
 
         {/* Actions — desktop */}
-        <div className="hidden lg:flex w-[272px] flex-shrink-0 items-center gap-1.5 px-4 py-3 border-l border-gray-100 dark:border-gray-800 justify-end">
+        <div className="hidden lg:flex w-[272px] flex-shrink-0 items-center gap-1.5 px-4 py-3 border-l border-gray-100 dark:border-zinc-800 justify-end">
 
           {/* Appearance */}
           <ThemeToggle />
@@ -87,18 +87,18 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
             <button
               onClick={toggleBell}
               title={unreadCount > 0 ? `${unreadCount} unread submission${unreadCount !== 1 ? 's' : ''}` : 'Notifications'}
-              className="relative p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              className="relative p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all"
             >
               <Bell size={15} />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#089447] border border-white dark:border-gray-900" />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#089447] border border-white dark:border-zinc-900" />
               )}
             </button>
 
             {/* Dropdown */}
             {bellOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xl z-50 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50 dark:border-gray-800">
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-xl z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50 dark:border-zinc-800">
                   <div>
                     <p className="text-[13px] font-bold text-gray-900 dark:text-white">Notifications</p>
                     {unreadCount > 0 && (
@@ -120,7 +120,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
                     <p className="text-[13px] text-gray-400">No recent submissions</p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-gray-50 dark:divide-gray-800">
+                  <ul className="divide-y divide-gray-50 dark:divide-zinc-800">
                     {notifications.map((n) => {
                       const name = String(
                         n.data?.['Employee Name'] || n.data?.['Full Name'] || n.data?.['Name'] || 'Anonymous'
@@ -131,9 +131,9 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
                           <Link
                             href={`/admin/submissions/${n.id}`}
                             onClick={() => setBellOpen(false)}
-                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors group"
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/60 transition-colors group"
                           >
-                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-gray-500 dark:text-gray-400">
                               {initials}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -153,7 +153,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
                   </ul>
                 )}
 
-                <div className="px-4 py-2.5 border-t border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                <div className="px-4 py-2.5 border-t border-gray-50 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-800/30">
                   <Link
                     href="/admin/submissions?is_read=false"
                     onClick={() => setBellOpen(false)}
@@ -185,7 +185,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
           >
             <Bell size={15} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#089447] border border-white dark:border-gray-900" />
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#089447] border border-white dark:border-zinc-900" />
             )}
           </Link>
         </div>
@@ -196,7 +196,7 @@ export default function DashboardShell({ children, panel, unreadCount }: Props) 
         <div className="flex-1 min-w-0 overflow-y-auto">
           {children}
         </div>
-        <aside className="w-[272px] flex-shrink-0 border-l border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-y-auto hidden lg:flex flex-col">
+        <aside className="w-[272px] flex-shrink-0 border-l border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-y-auto hidden lg:flex flex-col">
           {panel}
         </aside>
       </div>

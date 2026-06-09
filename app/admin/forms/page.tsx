@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
@@ -94,7 +94,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-0 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-0 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-center justify-between mb-5">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Manage</p>
@@ -135,7 +135,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
                 className={`text-[11px] font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${
                   activeStatus === s
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800'
                 }`}>
                 {s === 'all' ? 'All' : s === 'active' ? 'Active' : 'Inactive'}
               </Link>
@@ -146,8 +146,8 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
       <div className="p-8 space-y-6">
         {categoryFiltered.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card py-20 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card py-20 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
               <Plus size={20} className="text-gray-300 dark:text-gray-600" />
             </div>
             <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400 mb-1">No forms found</p>
@@ -159,13 +159,13 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
         ) : activeCategory === 'all' ? (
           /* Grouped by category view */
           grouped.map(({ name, id, forms: catForms, activeCount, inactiveCount }) => (
-            <div key={id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+            <div key={id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
               {/* Category header */}
-              <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+              <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
                 <div className="flex items-center gap-2.5">
                   <FolderOpen size={14} className="text-gray-400 dark:text-gray-500" />
                   <span className="text-[13px] font-bold text-gray-700 dark:text-gray-200">{name}</span>
-                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{catForms.length}</span>
+                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{catForms.length}</span>
                 </div>
                 {/* Per-category active/inactive pills */}
                 <div className="flex items-center gap-1">
@@ -176,8 +176,8 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
                   </Link>
                   {inactiveCount > 0 && (
                     <Link href={`/admin/forms?category=${encodeURIComponent(name)}&status=inactive`}
-                      className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded-lg transition-colors">
-                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
+                      className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 px-2 py-1 rounded-lg transition-colors">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-zinc-600 flex-shrink-0" />
                       {inactiveCount} inactive
                     </Link>
                   )}
@@ -188,7 +188,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
           ))
         ) : (
           /* Flat category view */
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
             <FormsList forms={categoryFiltered} countByForm={countByForm} showCategory={false} showHeaders />
           </div>
         )}
@@ -208,16 +208,16 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
   return (
     <>
       {showHeaders && (
-        <div className="grid grid-cols-[1fr_80px_auto] items-center px-6 py-3 border-b border-gray-50 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+        <div className="grid grid-cols-[1fr_80px_auto] items-center px-6 py-3 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-center">Active</span>
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-right">Actions</span>
         </div>
       )}
-    <ul className="divide-y divide-gray-50 dark:divide-gray-800/60">
+    <ul className="divide-y divide-gray-50 dark:divide-zinc-800/60">
       {forms.map((form) => (
         <li key={form.id}
-          className="group grid grid-cols-[1fr_80px_auto] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors">
+          className="group grid grid-cols-[1fr_80px_auto] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-zinc-800/30 transition-colors">
 
           {/* Form name + meta */}
           <div className="flex items-center gap-3 min-w-0 pr-4">
@@ -229,7 +229,7 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
                 {showCategory && form.categories?.name && (
                   <Link
                     href={`/admin/forms?category=${encodeURIComponent(form.categories.name)}`}
-                    className="flex-shrink-0 text-[10px] font-semibold text-gray-400 bg-gray-50 dark:bg-gray-800 hover:text-[#089447] hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 px-2 py-0.5 rounded-md border border-gray-100 dark:border-gray-700 transition-colors">
+                    className="flex-shrink-0 text-[10px] font-semibold text-gray-400 bg-gray-50 dark:bg-zinc-800 hover:text-[#089447] hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 px-2 py-0.5 rounded-md border border-gray-100 dark:border-zinc-700 transition-colors">
                     {form.categories.name}
                   </Link>
                 )}
@@ -249,12 +249,12 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
             <EmbedModal formTitle={form.title} formSlug={form.slug} />
             <DuplicateButton formId={form.id} />
             <a href={`/forms/${form.slug}`} target="_blank" rel="noopener noreferrer"
-              className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all"
               title="Preview form">
               <ExternalLink size={13} />
             </a>
             <Link href={`/admin/submissions?form_id=${form.id}`}
-              className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all"
               title="View submissions">
               <Inbox size={13} />
             </Link>
@@ -282,11 +282,11 @@ function CategoryTab({ label, count, href, active, activeStatus }: {
     <Link href={url} className={`flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-all ${
       active
         ? 'border-[#089447] text-[#089447]'
-        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-600'
+        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:border-gray-300 dark:hover:border-zinc-600'
     }`}>
       {label}
       <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
-        active ? 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+        active ? 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400'
       }`}>
         {count}
       </span>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -12,7 +12,7 @@ const STATUS_STYLES: Record<string, { cls: string; label: string }> = {
   open:        { cls: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',       label: 'Open'        },
   in_progress: { cls: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800', label: 'In Progress' },
   resolved:    { cls: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800', label: 'Resolved'    },
-  closed:      { cls: 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700',           label: 'Closed'      },
+  closed:      { cls: 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700',           label: 'Closed'      },
 }
 
 const PRIORITY_STYLES: Record<string, { cls: string; label: string }> = {
@@ -65,7 +65,7 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Support</p>
         <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Tickets</h1>
         <p className="text-[13px] text-gray-400 mt-0.5">
@@ -83,7 +83,7 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
             placeholder="Search tickets by name, number, serial, or description…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-9 py-2.5 text-[13px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder:text-gray-300 dark:placeholder:text-gray-600 outline-none focus:border-gray-300 dark:focus:border-gray-600 transition-all"
+            className="w-full pl-9 pr-9 py-2.5 text-[13px] bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder:text-gray-300 dark:placeholder:text-gray-600 outline-none focus:border-gray-300 dark:focus:border-zinc-600 transition-all"
           />
           {search && (
             <button
@@ -96,7 +96,7 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
         </div>
 
         {/* Filter tabs */}
-        <div className="flex items-center gap-1 mb-5 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-1 mb-5 border-b border-gray-100 dark:border-zinc-800">
           {FILTERS.map(({ value, label }) => {
             const count = value === 'all' ? tickets.length : tickets.filter(t => t.status === value).length
             return (
@@ -104,7 +104,7 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
                 className={`px-4 py-2.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-all ${
                   filter === value
                     ? 'border-[#089447] text-[#089447]'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-200 dark:hover:border-gray-600'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-200 dark:hover:border-zinc-600'
                 }`}>
                 {label}{' '}
                 <span className={`text-[11px] tabular-nums ${filter === value ? 'text-gray-500' : 'text-gray-300 dark:text-gray-600'}`}>
@@ -116,7 +116,7 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
         </div>
 
         {filtered.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-12 text-center">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-12 text-center">
             <Ticket size={32} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
             <p className="text-[14px] text-gray-400">
               {search ? `No tickets match "${search}"` : `No ${filter !== 'all' ? FILTERS.find(f => f.value === filter)?.label.toLowerCase() : ''} tickets.`}
@@ -131,7 +131,7 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketType[] 
                 return (
                   <motion.div key={ticket.id}
                     initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
-                    className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 cursor-pointer hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm transition-all group"
+                    className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5 cursor-pointer hover:border-gray-200 dark:hover:border-zinc-700 hover:shadow-sm transition-all group"
                     onClick={() => router.push(`/admin/tickets/${ticket.id}`)}
                   >
                     <div className="flex items-start justify-between gap-4">

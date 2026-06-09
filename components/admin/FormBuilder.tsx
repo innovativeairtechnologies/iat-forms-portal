@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -29,7 +29,7 @@ const FIELD_TYPES: { type: FormField['field_type']; label: string; icon: LucideI
   { type: 'section_header', label: 'Section Header', icon: SeparatorHorizontal },
 ]
 
-const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 outline-none focus:border-[#089447] dark:focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
+const inputCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-zinc-800 outline-none focus:border-[#089447] dark:focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
 
 let idCounter = 0
 const uid = () => `field-${++idCounter}`
@@ -173,8 +173,8 @@ export default function FormBuilder({ categories, initialForm }: Props) {
     <div className="flex h-full">
 
       {/* Left: Field palette */}
-      <aside className="w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto flex-shrink-0">
-        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+      <aside className="w-52 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col overflow-y-auto flex-shrink-0">
+        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-zinc-800">
           <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Add Field</p>
         </div>
         <div className="p-3 space-y-0.5">
@@ -195,7 +195,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Toolbar */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-5 py-3 flex items-center gap-3">
+        <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-5 py-3 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <input
               value={title}
@@ -208,7 +208,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
               <input
                 value={slug}
                 onChange={(e) => setSlug(slugify(e.target.value))}
-                className="text-xs text-gray-500 dark:text-gray-400 font-mono outline-none bg-transparent border-b border-transparent focus:border-gray-300 dark:focus:border-gray-600"
+                className="text-xs text-gray-500 dark:text-gray-400 font-mono outline-none bg-transparent border-b border-transparent focus:border-gray-300 dark:focus:border-zinc-600"
               />
             </div>
           </div>
@@ -241,7 +241,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
         <div className="flex-1 overflow-y-auto p-6 space-y-3">
 
           {/* Form meta */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5 space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
               <textarea
@@ -283,7 +283,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
               {(provided) => (
                 <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
                   {fields.length === 0 && (
-                    <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl py-12 text-center text-sm text-gray-400 dark:text-gray-600">
+                    <div className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-12 text-center text-sm text-gray-400 dark:text-gray-600">
                       Add a field from the left panel to get started
                     </div>
                   )}
@@ -294,12 +294,12 @@ export default function FormBuilder({ categories, initialForm }: Props) {
                           ref={prov.innerRef}
                           {...prov.draggableProps}
                           onClick={() => setSelectedFieldId(field._id === selectedFieldId ? null : field._id)}
-                          className={`bg-white dark:bg-gray-900 border rounded-xl px-4 py-3 cursor-pointer transition-all flex items-center gap-3 ${
+                          className={`bg-white dark:bg-zinc-900 border rounded-xl px-4 py-3 cursor-pointer transition-all flex items-center gap-3 ${
                             snapshot.isDragging ? 'shadow-lg' : ''
                           } ${
                             selectedFieldId === field._id
                               ? 'border-[#089447] shadow-[0_0_0_2px_rgba(8,148,71,0.1)]'
-                              : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
+                              : 'border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'
                           }`}
                         >
                           <div {...prov.dragHandleProps} className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0">
@@ -337,7 +337,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
           </DragDropContext>
 
           {/* Email notifications */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Bell size={15} className="text-gray-400 dark:text-gray-500" />
@@ -417,8 +417,8 @@ export default function FormBuilder({ categories, initialForm }: Props) {
 
       {/* Right: Field settings panel */}
       {selectedField && (
-        <aside className="w-72 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 overflow-y-auto flex-shrink-0">
-          <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <aside className="w-72 bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-zinc-800 overflow-y-auto flex-shrink-0">
+          <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
             <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Field Settings</p>
             <button onClick={() => setSelectedFieldId(null)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
               <X size={15} />
@@ -434,7 +434,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
 function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u: Partial<BuilderField>) => void }) {
   const hasOptions = ['select', 'radio', 'checkbox'].includes(field.field_type)
 
-  const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 outline-none focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
+  const inputCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-zinc-800 outline-none focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
 
   const updateOption = (i: number, val: string) => {
     const opts = [...(field.options || [])]
@@ -476,7 +476,7 @@ function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u:
           <label className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Required</label>
           <button
             onClick={() => onUpdate({ is_required: !field.is_required })}
-            className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none ${field.is_required ? 'bg-[#089447]' : 'bg-gray-200 dark:bg-gray-700'}`}
+            className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none ${field.is_required ? 'bg-[#089447]' : 'bg-gray-200 dark:bg-zinc-700'}`}
           >
             <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${field.is_required ? 'translate-x-4' : 'translate-x-0'}`} />
           </button>

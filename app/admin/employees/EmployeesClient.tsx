@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -76,7 +76,7 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">People</p>
@@ -95,11 +95,11 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
         <div className="relative mb-5">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employees…"
-            className="w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl pl-9 pr-4 py-2.5 text-[13px] text-gray-800 dark:text-gray-200 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 shadow-card" />
+            className="w-full bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-[13px] text-gray-800 dark:text-gray-200 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 shadow-card" />
         </div>
 
       {/* Employee list */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-12 text-center">
             <User size={28} className="text-gray-200 mx-auto mb-2" />

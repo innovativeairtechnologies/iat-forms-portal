@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Image from 'next/image'
@@ -72,10 +72,10 @@ export default function SupportPortal() {
   const showKb = tab === 'all' || tab === 'kb'
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-zinc-950">
 
       {/* Header */}
-      <header className="sticky top-0 z-20 h-14 flex items-center border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md">
+      <header className="sticky top-0 z-20 h-14 flex items-center border-b border-gray-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md">
         <div className="max-w-[900px] mx-auto px-6 w-full flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 no-underline">
             <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-lg" />
@@ -98,7 +98,7 @@ export default function SupportPortal() {
       </div>
 
       {/* Tab bar */}
-      <div className="max-w-[900px] mx-auto px-6 border-b border-gray-200 dark:border-gray-800 flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="max-w-[900px] mx-auto px-6 border-b border-gray-200 dark:border-zinc-800 flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {([
           { id: 'all',       label: 'All',            count: 4 },
           { id: 'equipment', label: 'Equipment',       count: 1 },
@@ -126,7 +126,7 @@ export default function SupportPortal() {
         {showSubmit && (
           <div className="mb-10">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[14px] flex-shrink-0">🎫</div>
+              <div className="w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[14px] flex-shrink-0">🎫</div>
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">Submit a Request</span>
               <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600">1 active option</span>
             </div>
@@ -143,7 +143,7 @@ export default function SupportPortal() {
         {showKb && (
           <div className="mb-8">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[14px] flex-shrink-0">📖</div>
+              <div className="w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[14px] flex-shrink-0">📖</div>
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">Knowledge Base</span>
               <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600">Coming soon</span>
             </div>
@@ -152,10 +152,10 @@ export default function SupportPortal() {
               {KB_CARDS.map(card => (
                 <div
                   key={card.id}
-                  className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 h-40 flex flex-col opacity-50 cursor-not-allowed"
+                  className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 h-40 flex flex-col opacity-50 cursor-not-allowed"
                   style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                 >
-                  <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[16px] mb-auto flex-shrink-0">
+                  <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[16px] mb-auto flex-shrink-0">
                     {card.icon}
                   </div>
                   <div>
@@ -169,7 +169,7 @@ export default function SupportPortal() {
         )}
 
         {/* Status strip */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800">
           <div className="w-2 h-2 rounded-full bg-[#089447] flex-shrink-0" />
           <span className="text-[12px] text-gray-400">
             All systems operational &nbsp;·&nbsp; Average response time: <strong className="text-gray-600 dark:text-gray-300 font-semibold">4 hours</strong>
@@ -187,13 +187,13 @@ type CardDef = typeof SUBMIT_CARDS[number]
 
 function CardItem({ card }: { card: CardDef }) {
   const base =
-    'relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 h-40 flex flex-col text-left w-full transition-all duration-150'
+    'relative bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 h-40 flex flex-col text-left w-full transition-all duration-150'
   const shadow = 'shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
 
   if (card.disabled) {
     return (
       <div className={`${base} ${shadow} opacity-50 cursor-not-allowed`}>
-        <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[16px] mb-auto flex-shrink-0">
+        <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[16px] mb-auto flex-shrink-0">
           {card.icon}
         </div>
         <div>
@@ -207,7 +207,7 @@ function CardItem({ card }: { card: CardDef }) {
   return (
     <Link
       href={card.href!}
-      className={`${base} ${shadow} group hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 ${
+      className={`${base} ${shadow} group hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-zinc-700 ${
         card.primary
           ? 'bg-gradient-to-br from-[#f0faf4] to-[#fafffd] dark:from-[rgba(8,148,71,0.14)] dark:to-[rgba(8,148,71,0.05)] border-[rgba(8,148,71,0.35)] dark:border-[rgba(8,148,71,0.4)]'
           : ''
@@ -219,7 +219,7 @@ function CardItem({ card }: { card: CardDef }) {
         </span>
       )}
       <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center text-[16px] mb-auto flex-shrink-0 ${
-        card.primary ? 'bg-[rgba(8,148,71,0.14)]' : 'bg-gray-100 dark:bg-gray-800'
+        card.primary ? 'bg-[rgba(8,148,71,0.14)]' : 'bg-gray-100 dark:bg-zinc-800'
       }`}>
         {card.icon}
       </div>

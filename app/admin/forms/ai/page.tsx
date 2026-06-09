@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -66,7 +66,7 @@ export default function AIFormBuilderPage() {
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <Link
           href="/admin/forms"
           className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-5"
@@ -92,10 +92,10 @@ export default function AIFormBuilderPage() {
       <div className="p-8 max-w-3xl">
 
         {/* Terminal-style input */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
 
           {/* Fake terminal title bar */}
-          <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+          <div className="px-4 py-2.5 bg-gray-50 dark:bg-zinc-800 border-b border-gray-100 dark:border-zinc-700 flex items-center gap-2">
             <div className="flex gap-1.5">
               <div className="w-3 h-3 rounded-full bg-rose-400/70" />
               <div className="w-3 h-3 rounded-full bg-amber-400/70" />
@@ -113,7 +113,7 @@ export default function AIFormBuilderPage() {
             placeholder={PLACEHOLDER}
             disabled={status === 'building' || status === 'success'}
             rows={22}
-            className="w-full px-5 py-4 text-[13px] font-mono leading-relaxed text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none resize-none disabled:opacity-50 transition-opacity"
+            className="w-full px-5 py-4 text-[13px] font-mono leading-relaxed text-gray-800 dark:text-gray-200 bg-white dark:bg-zinc-900 placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none resize-none disabled:opacity-50 transition-opacity"
             autoFocus
           />
         </div>
@@ -162,7 +162,7 @@ export default function AIFormBuilderPage() {
         </div>
 
         {/* Tips */}
-        <div className="mt-6 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 px-5 py-4">
+        <div className="mt-6 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/40 px-5 py-4">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">Tips</p>
           <ul className="space-y-1.5 text-[12px] text-gray-500 dark:text-gray-400">
             <li>• Paste raw from Word, email, PDF, or any source — format doesn&apos;t matter</li>

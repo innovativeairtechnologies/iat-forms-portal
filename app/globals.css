@@ -19,8 +19,8 @@
 }
 
 .dark {
-  --surface: #111827;
-  --bg: #030712;
+  --surface: #18181b;
+  --bg: #09090b;
   --border: rgba(255, 255, 255, 0.08);
   --text-primary: #f9fafb;
   --text-secondary: #9ca3af;
@@ -32,7 +32,7 @@
   background: linear-gradient(135deg, #f0faf4 0%, #fafffe 50%, #f0f9ff 100%);
 }
 .dark .hero-gradient {
-  background: linear-gradient(135deg, #0c1a2e 0%, #0d1f35 40%, #0a1f18 100%);
+  background: linear-gradient(135deg, #18181b 0%, #1c1c1f 40%, #121214 100%);
 }
 /*
   ── IAT Green Theme (disabled) ────────────────────────────────────────────────
@@ -148,4 +148,4 @@ html.green .text-indigo-600 { color: #4ade80; }
 .note-content li { margin-bottom: 0.25em; }
 .note-content img { max-width: 100%; border-radius: 0.5rem; margin-top: 0.5em; }
 .note-content code { font-family: monospace; font-size: 0.85em; background: #f3f4f6; padding: 0.1em 0.3em; border-radius: 0.25em; }
-.dark .note-content code { background: #1f2937; }
+.dark .note-content code { background: #27272a; }

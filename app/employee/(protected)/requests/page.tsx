@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Calendar, Clock, X, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
@@ -17,7 +17,7 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const inputCls = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
+const inputCls = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
 
 export default function RequestsPage() {
   const [employee, setEmployee] = useState<Employee | null>(null)
@@ -72,7 +72,7 @@ export default function RequestsPage() {
     <div className="flex-1 overflow-auto">
 
       {/* Page header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
@@ -135,11 +135,11 @@ export default function RequestsPage() {
               onClick={() => setShowForm(false)}>
               <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.2 }}
-                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6"
+                className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-md p-6"
                 onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">New Time Off Request</h2>
-                  <button onClick={() => setShowForm(false)} className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <button onClick={() => setShowForm(false)} className="text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800">
                     <X size={16} />
                   </button>
                 </div>
@@ -150,7 +150,7 @@ export default function RequestsPage() {
                     <div className="grid grid-cols-2 gap-2">
                       {(['pto', 'sick'] as const).map(t => (
                         <button key={t} type="button" onClick={() => setForm(f => ({ ...f, type: t }))}
-                          className={`py-2.5 rounded-xl text-[13px] font-semibold border transition-all ${form.type === t ? 'bg-[#089447] text-white border-[#089447]' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+                          className={`py-2.5 rounded-xl text-[13px] font-semibold border transition-all ${form.type === t ? 'bg-[#089447] text-white border-[#089447]' : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600'}`}>
                           {t === 'pto' ? 'PTO' : 'Sick Time'}
                         </button>
                       ))}
@@ -208,7 +208,7 @@ export default function RequestsPage() {
             <div className="w-5 h-5 border-2 border-[#089447] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : requests.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card p-12 text-center">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-12 text-center">
             <Calendar size={28} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
             <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400">No requests yet</p>
             <p className="text-[12px] text-gray-400 mt-1 mb-4">Click &ldquo;New Request&rdquo; above to get started.</p>
@@ -218,13 +218,13 @@ export default function RequestsPage() {
             </button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-card overflow-hidden">
-            <ul className="divide-y divide-gray-50 dark:divide-gray-800">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+            <ul className="divide-y divide-gray-50 dark:divide-zinc-800">
               {requests.map(req => {
                 const s = STATUS_STYLES[req.status]
                 const Icon = s.icon
                 return (
-                  <li key={req.id} className="flex items-center gap-5 px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-gray-800/30 transition-colors">
+                  <li key={req.id} className="flex items-center gap-5 px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-zinc-800/30 transition-colors">
                     {/* Type icon */}
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${req.type === 'pto' ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500 dark:text-blue-400' : 'bg-amber-50 dark:bg-amber-950/40 text-amber-500 dark:text-amber-400'}`}>
                       {req.type === 'pto' ? <Calendar size={16} /> : <Clock size={16} />}
@@ -282,7 +282,7 @@ function StatCard({ icon, label, value, unit, accrual, accent = 'green' }: {
 }) {
   const a = ACCENT[accent]
   return (
-    <div className={`bg-white dark:bg-gray-900 rounded-xl border border-l-[3px] ${a.border} border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-gray-800 dark:border-r-gray-800 dark:border-b-gray-800 shadow-card px-4 py-3.5 flex items-center gap-3`}>
+    <div className={`bg-white dark:bg-zinc-900 rounded-xl border border-l-[3px] ${a.border} border-t-gray-100 border-r-gray-100 border-b-gray-100 dark:border-t-zinc-800 dark:border-r-zinc-800 dark:border-b-zinc-800 shadow-card px-4 py-3.5 flex items-center gap-3`}>
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${a.bg}`}>
         <span className={a.icon}>{icon}</span>
       </div>

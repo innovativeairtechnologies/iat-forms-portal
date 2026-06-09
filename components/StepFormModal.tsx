@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -195,7 +195,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
     <div className="px-6 pt-5 pb-1">
       <div className="relative flex items-center" style={{ height: 16 }}>
         {/* Track */}
-        <div className="absolute inset-x-0 h-[3px] bg-gray-100 dark:bg-gray-800 rounded-full" />
+        <div className="absolute inset-x-0 h-[3px] bg-gray-100 dark:bg-zinc-800 rounded-full" />
         {/* Fill */}
         <motion.div
           className="absolute left-0 h-[3px] bg-[#089447] rounded-full"
@@ -212,8 +212,8 @@ export default function StepFormModal({ slug, onClose }: Props) {
               key={i}
               className={`absolute -translate-x-1/2 rounded-full border-2 z-10 ${
                 done   ? 'bg-[#089447] border-[#089447]'
-                : active ? 'bg-white dark:bg-gray-900 border-[#089447]'
-                :          'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600'
+                : active ? 'bg-white dark:bg-zinc-900 border-[#089447]'
+                :          'bg-white dark:bg-zinc-800 border-gray-200 dark:border-gray-600'
               }`}
               style={{ left: `${pct}%` }}
               animate={{ width: active ? 14 : 10, height: active ? 14 : 10 }}
@@ -232,7 +232,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
       animate={standalone ? { opacity: 1, y: 0 }  : { opacity: 1,  scale: 1,    y: 0  }}
       exit={{ opacity: 0, scale: 0.97, y: 8 }}
       transition={{ duration: 0.2, ease: [0.25, 1, 0.35, 1] }}
-      className="w-full max-w-xl bg-white dark:bg-gray-900 overflow-visible"
+      className="w-full max-w-xl bg-white dark:bg-zinc-900 overflow-visible"
       style={{
         borderRadius: 20,
         boxShadow: standalone
@@ -262,7 +262,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
       {!loading && form && submitted && (
         <div className="px-8 py-14 text-center">
           {/* Full bar at 100% */}
-          <div className="h-[3px] bg-gray-100 dark:bg-gray-800 rounded-full mb-8 mx-0 overflow-hidden">
+          <div className="h-[3px] bg-gray-100 dark:bg-zinc-800 rounded-full mb-8 mx-0 overflow-hidden">
             <motion.div
               className="h-full bg-[#089447] rounded-full"
               initial={{ width: `${progressPct}%` }}
@@ -299,7 +299,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
           {progressBar}
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between px-6 pt-3 pb-4 border-b border-gray-100 dark:border-zinc-800">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-[#f0faf4] dark:bg-[#089447]/20 flex items-center justify-center flex-shrink-0">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -318,7 +318,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
               </span>
               <button
                 onClick={handleClose}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all"
               >
                 <X size={14} />
               </button>
@@ -377,7 +377,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
           )}
 
           {/* Footer */}
-          <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-gray-800 flex items-center justify-between">
+          <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-zinc-800 flex items-center justify-between">
             {currentStep > 0 ? (
               <button
                 onClick={back}
@@ -420,7 +420,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
   // ── Standalone page ─────────────────────────────────────────────────────────
   if (standalone) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0f0f2] dark:bg-gray-950 px-4 py-8">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0f0f2] dark:bg-zinc-950 px-4 py-8">
         <div className="w-full max-w-xl mb-3">
           <button
             onClick={() => router.push('/')}
@@ -457,10 +457,10 @@ function FieldInput({
   onChange: (v: unknown) => void
 }) {
   const cls = (err: boolean) =>
-    `w-full border rounded-xl px-4 py-2.5 text-[14px] text-[#0a0a0b] dark:text-gray-100 outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-white dark:bg-gray-800 ${
+    `w-full border rounded-xl px-4 py-2.5 text-[14px] text-[#0a0a0b] dark:text-gray-100 outline-none transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-white dark:bg-zinc-800 ${
       err
         ? 'border-red-300 dark:border-red-700 bg-red-50/40 focus:border-red-400 focus:ring-2 focus:ring-red-400/10'
-        : 'border-gray-200 dark:border-gray-700 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10'
+        : 'border-gray-200 dark:border-zinc-700 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10'
     }`
 
   return (
