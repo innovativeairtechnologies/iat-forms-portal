@@ -63,36 +63,34 @@ export default function TicketDetailClient({
 }) {
   const router = useRouter()
   const [ticket, setTicket] = useState(initial)
+  const [pendingStatus, setPendingStatus] = useState(initial.status)
+  const [pendingPriority, setPendingPriority] = useState<Ticket['priority']>(initial.priority ?? 'med')
   const [notes, setNotes] = useState<TicketNote[]>(initialNotes)
-  const [saving, setSaving] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
-  const updateStatus = async (status: Ticket['status']) => {
-    if (saving || ticket.status === status) return
-    setSaving(true)
+  const hasUnsavedChanges =
+    pendingStatus !== ticket.status || pendingPriority !== (ticket.priority ?? 'med')
+
+  const saveTicket = async () => {
+    if (updating || !hasUnsavedChanges) return
+    setUpdating(true)
     setSaveError(null)
     const sb = createSupabaseBrowser()
-    const { error } = await sb.from('tickets').update({ status }).eq('id', ticket.id)
-    setSaving(false)
+    const { error } = await sb
+      .from('tickets')
+      .update({ status: pendingStatus, priority: pendingPriority })
+      .eq('id', ticket.id)
+    setUpdating(false)
     if (error) { setSaveError(error.message); return }
-    setTicket(t => ({ ...t, status }))
+    setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority }))
     startTransition(() => router.refresh())
   }
 
-  const updatePriority = async (priority: Ticket['priority']) => {
-    if (saving || ticket.priority === priority) return
-    setSaving(true)
-    setSaveError(null)
-    const sb = createSupabaseBrowser()
-    const { error } = await sb.from('tickets').update({ priority }).eq('id', ticket.id)
-    setSaving(false)
-    if (error) { setSaveError(error.message); return }
-    setTicket(t => ({ ...t, priority }))
-  }
-
   const addNote = async (html: string) => {
-    setSaving(true)
+    setSavingNote(true)
     setSaveError(null)
     const sb = createSupabaseBrowser()
     const { data, error } = await sb
@@ -100,7 +98,7 @@ export default function TicketDetailClient({
       .insert({ ticket_id: ticket.id, content: html })
       .select()
       .single()
-    setSaving(false)
+    setSavingNote(false)
     if (error) { setSaveError(error.message); return }
     if (data) setNotes(prev => [...prev, data as TicketNote])
   }
@@ -153,18 +151,31 @@ export default function TicketDetailClient({
           </div>
         )}
 
-        {/* Status update */}
+        {/* Status + Priority update */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-4">
-          <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Status</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest">Status &amp; Priority</p>
+            {hasUnsavedChanges && (
+              <button
+                onClick={saveTicket}
+                disabled={updating}
+                className="text-[12px] font-semibold bg-[#089447] hover:bg-[#077a3c] text-white px-3.5 py-1.5 rounded-xl disabled:opacity-50 transition-all"
+              >
+                {updating ? 'Saving…' : 'Update Ticket'}
+              </button>
+            )}
+          </div>
+
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">Status</p>
+          <div className="flex flex-wrap gap-2 mb-4">
             {STATUS_OPTIONS.map(opt => (
               <button
                 key={opt.value}
-                onClick={() => updateStatus(opt.value)}
-                disabled={saving}
+                onClick={() => setPendingStatus(opt.value)}
+                disabled={updating}
                 className={`text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 ${
-                  ticket.status === opt.value
-                    ? opt.cls + ' cursor-default'
+                  pendingStatus === opt.value
+                    ? opt.cls
                     : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
                 }`}
               >
@@ -172,20 +183,17 @@ export default function TicketDetailClient({
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Priority update */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-4">
-          <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Priority</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">Priority</p>
           <div className="flex flex-wrap gap-2">
             {PRIORITY_OPTIONS.map(opt => (
               <button
                 key={opt.value}
-                onClick={() => updatePriority(opt.value)}
-                disabled={saving}
+                onClick={() => setPendingPriority(opt.value)}
+                disabled={updating}
                 className={`text-[12px] font-semibold px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 ${
-                  (ticket.priority ?? 'med') === opt.value
-                    ? opt.cls + ' cursor-default'
+                  pendingPriority === opt.value
+                    ? opt.cls
                     : 'border-gray-200 dark:border-gray-700 text-gray-400 hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-200'
                 }`}
               >
@@ -323,7 +331,7 @@ export default function TicketDetailClient({
               <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-3">New note</p>
             </div>
           )}
-          <RichTextEditor onSubmit={addNote} disabled={saving} />
+          <RichTextEditor onSubmit={addNote} disabled={savingNote} />
         </div>
 
       </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TiptapLink from '@tiptap/extension-link'
@@ -39,6 +40,8 @@ function ToolbarBtn({
 }
 
 export default function RichTextEditor({ onSubmit, disabled }: Props) {
+  const [hasContent, setHasContent] = useState(false)
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -46,6 +49,9 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
       TiptapImage,
       Placeholder.configure({ placeholder: 'Add a note…' }),
     ],
+    onUpdate: ({ editor }) => {
+      setHasContent(!editor.isEmpty)
+    },
     editorProps: {
       attributes: {
         class: 'note-editor-content focus:outline-none min-h-[80px] text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed',
@@ -54,9 +60,10 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
   })
 
   const handleSubmit = async () => {
-    if (!editor || editor.isEmpty || disabled) return
+    if (!editor || !hasContent || disabled) return
     await onSubmit(editor.getHTML())
     editor.commands.clearContent()
+    setHasContent(false)
   }
 
   const addLink = () => {
@@ -124,7 +131,7 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
       <div className="flex justify-end px-4 pb-3 bg-white dark:bg-gray-900">
         <button
           onClick={handleSubmit}
-          disabled={disabled || editor.isEmpty}
+          disabled={disabled || !hasContent}
           className="text-[13px] font-semibold bg-[#089447] hover:bg-[#077a3c] text-white px-4 py-2 rounded-xl disabled:opacity-40 transition-all"
         >
           {disabled ? 'Saving…' : 'Add Note'}
