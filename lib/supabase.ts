@@ -142,3 +142,17 @@ export type TicketNote = {
   content: string
   created_at: string
 }
+
+export type KbArticle = {
+  id: string
+  title: string
+  slug: string
+  excerpt: string | null
+  body: string | null
+  category: string | null
+  tags: string[]
+  is_published: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}

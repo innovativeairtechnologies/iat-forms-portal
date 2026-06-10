@@ -306,6 +306,13 @@ export default function SupportPage() {
               <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
                 Our service team will reach out to <strong className="text-gray-700 dark:text-gray-200">{form.customer_email}</strong> shortly.
               </p>
+              <Link
+                href={`/support/status?ticket=${encodeURIComponent(ticketNumber)}`}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#089447] hover:text-[#077a3c] mt-3 transition-colors"
+              >
+                Track this ticket&apos;s status
+                <ArrowRight size={14} />
+              </Link>
             </div>
 
             {/* AI Recommendations */}

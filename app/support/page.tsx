@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Search } from 'lucide-react'
 
 // ─── Card data ───────────────────────────────────────────────────────────────
 
@@ -84,6 +84,13 @@ export default function SupportPortal() {
               <span className="text-[14px] text-gray-300 dark:text-gray-600">/</span>
               <span className="text-[15px] font-medium text-gray-500 dark:text-gray-400">Support</span>
             </div>
+          </Link>
+          <Link
+            href="/support/status"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:text-[#089447] dark:hover:text-[#089447] transition-colors"
+          >
+            <Search size={14} />
+            Check ticket status
           </Link>
         </div>
       </header>
