@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>US Rotors Pricing Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f8f8f8;
+    --bg2: #ffffff;
+    --bg3: #f0f4fa;
+    --border: rgba(2,116,219,0.12);
+    --border-hover: rgba(2,116,219,0.28);
+    --accent: #0274db;
+    --accent-dim: rgba(2,116,219,0.08);
+    --accent2: #16acf8;
+    --accent3: #2323ff;
+    --danger: #c0392b;
+    --text-primary: #303030;
+    --text-secondary: #3a3a46;
+    --text-muted: #7a7a8a;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Sora', sans-serif;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+    border-top: 4px solid var(--accent);
+  }
+
+  .header {
+    max-width: 900px;
+    margin: 0 auto 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+  }
+  .header-left { display: flex; flex-direction: column; gap: 0; align-items: flex-start; }
+  .logo-img { height: 22px; width: auto; display: block; margin-bottom: 18px; object-fit: contain; }
+  h1 { font-size: 22px; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
+  h1 span { color: var(--text-secondary); font-weight: 300; }
+  .header-meta { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+  .confidential { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-family: var(--mono); color: #2323ff; background: rgba(35,35,255,0.06); border: 1px solid rgba(35,35,255,0.2); padding: 4px 10px; border-radius: 4px; }
+
+  .main { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(2,116,219,0.06);
+  }
+  .card:last-child { margin-bottom: 0; }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  label.field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  select, input[type="number"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%230274db' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+  select:focus, input[type="number"]:focus { border-color: var(--accent); }
+  select:hover, input[type="number"]:hover { border-color: var(--border-hover); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    gap: 12px;
+  }
+  .toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .toggle-row:first-of-type { padding-top: 0; }
+  .toggle-info { flex: 1; }
+  .toggle-name { font-size: 13px; color: var(--text-primary); font-weight: 400; }
+  .toggle-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+
+  .switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    inset: 0;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    transition: 0.2s;
+    cursor: pointer;
+  }
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    left: 2px; top: 2px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  input:checked + .slider { background: var(--accent-dim); border-color: var(--accent); }
+  input:checked + .slider::before { transform: translateX(16px); background: var(--accent); }
+
+  .summary-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    position: sticky;
+    top: 1.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(2,116,219,0.06);
+  }
+  .summary-header {
+    background: var(--accent);
+    padding: 1rem 1.25rem;
+  }
+  .summary-title { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+  .grand-total { font-size: 32px; font-weight: 600; color: #ffffff; font-family: var(--mono); letter-spacing: -0.02em; }
+  .grand-total-label { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+  .summary-body { padding: 1rem 1.25rem; }
+
+  .metric-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-row.subtotal { font-weight: 500; border-top: 1px solid var(--border-hover); margin-top: 4px; padding-top: 10px; }
+  .metric-label { color: var(--text-secondary); }
+  .metric-value { font-family: var(--mono); font-size: 12px; color: var(--text-primary); font-weight: 500; }
+  .metric-value.add { color: var(--danger); }
+  .metric-value.blue { color: var(--accent); }
+  .metric-value.muted { color: var(--text-muted); }
+  .metric-value.big { font-size: 15px; }
+
+  .summary-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+  .stat-box { background: var(--bg3); border-radius: var(--radius); padding: 10px 12px; }
+  .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+  .stat-value { font-size: 15px; font-weight: 500; font-family: var(--mono); color: var(--text-primary); }
+
+  .note-box { background: var(--bg3); border-radius: var(--radius); padding: 10px 12px; font-size: 11px; color: var(--text-muted); line-height: 1.6; margin-top: 12px; }
+  .note-box strong { color: var(--text-secondary); }
+
+  .breakdown-section { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; }
+  .breakdown-title { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+
+  .toggle-row.disabled { opacity: 0.4; pointer-events: none; }
+
+  /* PDF Button */
+  .pdf-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.02em;
+  }
+  .pdf-btn:hover { background: #0262c0; }
+  .pdf-btn:active { transform: scale(0.98); }
+  .pdf-btn svg { flex-shrink: 0; }
+
+  .footer { max-width: 900px; margin: 2rem auto 0; display: flex; justify-content: space-between; align-items: center; }
+  .footer-note { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+
+  @media (max-width: 700px) {
+    .main { grid-template-columns: 1fr; }
+    .summary-card { position: static; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+
+
+  /* ── Tab navigation ── */
+  .tab-nav { max-width: 900px; margin: 0 auto 0; display: flex; gap: 0; border-bottom: 2px solid var(--border); }
+  .tab-btn {
+    padding: 10px 22px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .tab-btn svg { opacity: 0.5; transition: opacity 0.15s; }
+  .tab-btn:hover { color: var(--accent); }
+  .tab-btn:hover svg { opacity: 0.8; }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn.active svg { opacity: 1; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Order Form ── */
+  .order-wrap { max-width: 900px; margin: 0 auto; padding-top: 1.75rem; }
+  .order-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .order-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .order-full { margin-bottom: 16px; }
+
+  .of-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 1px 4px rgba(2,116,219,0.06);
+  }
+  .of-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .of-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .of-field { margin-bottom: 14px; }
+  .of-field:last-child { margin-bottom: 0; }
+  .of-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .of-input, .of-select, .of-textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .of-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%230274db' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+  .of-textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+  .of-input:focus, .of-select:focus, .of-textarea:focus { border-color: var(--accent); }
+  .of-input:hover, .of-select:hover, .of-textarea:hover { border-color: var(--border-hover); }
+
+  /* Config grid */
+  .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+  .config-option { position: relative; cursor: pointer; }
+  .config-option input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .config-box {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 8px 8px;
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--bg3);
+  }
+  .config-option input:checked + .config-box {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .config-box:hover { border-color: var(--border-hover); }
+  .config-letter {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent);
+    font-family: var(--mono);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .config-diagram { width: 100%; height: 52px; display: block; margin: 0 auto 4px; }
+  .config-name { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+
+  /* Motor voltage pills */
+  .pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill-option { position: relative; cursor: pointer; }
+  .pill-option input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .pill-label {
+    display: block;
+    padding: 7px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg3);
+    transition: all 0.15s;
+    cursor: pointer;
+    font-family: var(--mono);
+  }
+  .pill-option input:checked + .pill-label {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* RPH input with unit */
+  .input-unit-wrap { display: flex; align-items: center; gap: 0; }
+  .input-unit-wrap .of-input { border-radius: var(--radius) 0 0 var(--radius); border-right: none; }
+  .input-unit {
+    padding: 9px 12px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  /* Submit */
+  .of-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.02em;
+    margin-top: 4px;
+  }
+  .of-submit:hover { background: #0262c0; }
+  .of-submit:active { transform: scale(0.98); }
+
+  .of-success {
+    display: none;
+    background: rgba(2,116,219,0.06);
+    border: 1px solid rgba(2,116,219,0.2);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    text-align: center;
+    margin-top: 1rem;
+  }
+  .of-success-icon { font-size: 32px; margin-bottom: 8px; }
+  .of-success-title { font-size: 16px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+  .of-success-sub { font-size: 13px; color: var(--text-secondary); }
+
+  /* Accent stripe on order form card top */
+  .of-card.accent-top { border-top: 3px solid var(--accent); }
+
+  @media (max-width: 700px) {
+    .order-grid, .order-grid-3 { grid-template-columns: 1fr; }
+    .config-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* PDF styles (injected into print window) */
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="data:image/png;base64,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" alt="US Rotors" class="logo-img" />
+    <h1>Rotor Pricing <span>Calculator</span></h1>
+    <div class="header-meta">Dehumidification Rotors &amp; Cassettes · Effective November 1, 2026</div>
+  </div>
+  <div class="confidential">&#9632; Confidential Price List</div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('pricing', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Pricing Calculator
+  </button>
+  <button class="tab-btn" onclick="switchTab('order', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    C-Series Order Form
+  </button>
+</div>
+
+<!-- Tab: Pricing Calculator -->
+<div id="tab-pricing" class="tab-panel active" style="display:block; padding-top:1.75rem;">
+<div class="main">
+  <div class="left-col">
+
+    <!-- Product Selection -->
+    <div class="card">
+      <div class="section-label">Product Selection</div>
+      <div class="grid2" style="margin-bottom:10px;">
+        <div class="field">
+          <label class="field-label">Rotor Size</label>
+          <select id="size"></select>
+        </div>
+        <div class="field">
+          <label class="field-label">Depth Series</label>
+          <select id="series">
+            <option value="100mm" selected>100 mm</option>
+            <option value="200mm">200 mm</option>
+            <option value="400mm">400 mm</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label class="field-label">Product Type</label>
+          <select id="product_type">
+            <option value="rotor">Rotor Only</option>
+            <option value="both" selected>Rotor + Cassette</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Quantity</label>
+          <input type="number" id="qty" value="1" min="1" max="99" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div class="card">
+      <div class="section-label">Options &amp; Adders</div>
+
+      <label class="toggle-row" id="row-stainless">
+        <div class="toggle-info">
+          <div class="toggle-name">All Stainless Construction</div>
+          <div class="toggle-desc">Add 20% to rotor price — all stainless except bearings</div>
+        </div>
+        <div class="switch"><input type="checkbox" id="stainless" /><span class="slider"></span></div>
+      </label>
+
+      <label class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Non-Silicone Option</div>
+          <div class="toggle-desc">Dow-3145 MIL Spec adhesive/sealant — add 5% to net price</div>
+        </div>
+        <div class="switch"><input type="checkbox" id="nonsilicone" /><span class="slider"></span></div>
+      </label>
+
+      <label class="toggle-row" id="row-segmented">
+        <div class="toggle-info">
+          <div class="toggle-name">Segmented Rotor</div>
+          <div class="toggle-desc" id="seg-desc">2438mm and larger: +15% · 1730mm to 2190mm: +20% to rotor price</div>
+        </div>
+        <div class="switch"><input type="checkbox" id="segmented" /><span class="slider"></span></div>
+      </label>
+
+      <label class="toggle-row" id="row-purge">
+        <div class="toggle-info">
+          <div class="toggle-name">Purge Seals</div>
+          <div class="toggle-desc" id="purge-desc">Available on 400 mm series — price varies by size</div>
+        </div>
+        <div class="switch"><input type="checkbox" id="purge" /><span class="slider"></span></div>
+      </label>
+
+      <label class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">230/3/60 Motor (Included)</div>
+          <div class="toggle-desc">No charge — 550mm through 770mm and all 400mm depths</div>
+        </div>
+        <div class="switch"><input type="checkbox" id="motor" /><span class="slider"></span></div>
+      </label>
+
+      <label class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">VFD — GS11N-10P2</div>
+          <div class="toggle-desc">115v In / 230v Out — optional add-on (+$422.83)</div>
+        </div>
+        <div class="switch"><input type="checkbox" id="vfd" /><span class="slider"></span></div>
+      </label>
+    </div>
+
+    <!-- Fees -->
+    <div class="card">
+      <div class="section-label">Fees &amp; Order Details</div>
+      <div class="grid2" style="margin-bottom:10px;">
+        <div class="field">
+          <label class="field-label">Order Type</label>
+          <select id="order_type">
+            <option value="domestic">Domestic (+2% pkg)</option>
+            <option value="international">International (+4% pkg)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Payment Method</label>
+          <select id="payment">
+            <option value="net30">Net 30 — Approved Credit</option>
+            <option value="card">Credit Card (+3%)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label class="field-label">Extended Warranty</label>
+          <select id="warranty">
+            <option value="none">None</option>
+            <option value="rotor_2yr">Rotor Media — 2 yr (+5%/yr)</option>
+            <option value="rotor_3yr">Rotor Media — 3 yr (+15%)</option>
+            <option value="cassette_2yr">Complete Cassette — 2 yr (+10%/yr)</option>
+            <option value="cassette_3yr">Complete Cassette — 3 yr (+30%)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Drop-Ship Parcel</label>
+          <select id="dropship">
+            <option value="no">No</option>
+            <option value="yes">Yes — +$50 (excludes LTL)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col">
+    <div class="summary-card">
+      <div class="summary-header">
+        <div class="summary-title">Order Total</div>
+        <div class="grand-total" id="grand_total">$0.00</div>
+        <div class="grand-total-label" id="grand_label">1 unit · domestic · net 30</div>
+      </div>
+      <div class="summary-body">
+
+        <div class="summary-stats">
+          <div class="stat-box">
+            <div class="stat-label">Base Price</div>
+            <div class="stat-value" id="stat_base">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Unit Total</div>
+            <div class="stat-value" id="stat_unit">—</div>
+          </div>
+        </div>
+
+        <div class="breakdown-section">
+          <div class="breakdown-title">Price Breakdown</div>
+          <div id="breakdown"></div>
+        </div>
+
+        <div class="note-box">
+          <strong>FOB</strong> Baton Rouge, freight collect via specified carrier.<br>
+          <strong>Lead time:</strong> ~4 weeks from receipt of order. Expediting available.<br>
+          Specifications &amp; pricing subject to change without notice.
+        </div>
+
+        <button class="pdf-btn" onclick="generatePDF()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          Generate PDF Quote
+        </button>
+
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /tab-pricing -->
+
+<!-- Tab: C-Series Order Form -->
+<div id="tab-order" class="tab-panel" style="display:none;">
+<div style="max-width:900px;margin:0 auto;padding-top:1.75rem;">
+
+  <div style="background:#fff;border:1px solid rgba(2,116,219,0.12);border-radius:12px;padding:1.5rem;margin-bottom:16px;box-shadow:0 1px 4px rgba(2,116,219,0.06);border-top:3px solid #0274db;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:18px;font-weight:600;color:#303030;font-family:Sora,sans-serif;">C-Series Cassette Order Form</div>
+      <div style="font-size:12px;color:#7a7a8a;margin-top:3px;font-family:DM Mono,monospace;">Applies to all sq. tube frame style cassettes &middot; COF2-QF-001</div>
+    </div>
+    <div style="font-size:11px;font-family:DM Mono,monospace;color:#2323ff;background:rgba(35,35,255,0.06);border:1px solid rgba(35,35,255,0.2);padding:4px 10px;border-radius:4px;">Serial # assigned by Rotor Source</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="background:#fff;border:1px solid rgba(2,116,219,0.12);border-radius:12px;padding:1.5rem;margin-bottom:16px;box-shadow:0 1px 4px rgba(2,116,219,0.06);">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#7a7a8a;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid rgba(2,116,219,0.12);font-family:Sora,sans-serif;">Company Info</div>
+      <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Company Name</label><input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;" type="text" id="of-company" placeholder="e.g. Acme HVAC Corp" /></div>
+      <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Purchase Order Number</label><input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;" type="text" id="of-po" placeholder="PO-XXXXXXX" /></div>
+      <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Contact Name</label><input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;" type="text" id="of-contact" placeholder="Full name" /></div>
+      <div style="margin-bottom:0;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Contact Email</label><input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;" type="email" id="of-email" placeholder="email@company.com" /></div>
+    </div>
+    <div style="background:#fff;border:1px solid rgba(2,116,219,0.12);border-radius:12px;padding:1.5rem;margin-bottom:16px;box-shadow:0 1px 4px rgba(2,116,219,0.06);">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#7a7a8a;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid rgba(2,116,219,0.12);font-family:Sora,sans-serif;">Product Details</div>
+      <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Model Number</label><input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;" type="text" id="of-model" placeholder="e.g. C-1220-200" /></div>
+      <div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Quantity</label><input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;" type="number" id="of-qty" placeholder="1" min="1" /></div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Motor Voltage</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <label style="cursor:pointer;"><input type="radio" name="motor-voltage" value="120/1/60" checked style="display:none;" /><span id="pill-std" style="display:inline-block;padding:7px 16px;border:1.5px solid #0274db;border-radius:30px;font-size:12px;font-weight:500;color:#fff;background:#0274db;cursor:pointer;font-family:Sora,sans-serif;">120/1/60 (std)</span></label>
+          <label style="cursor:pointer;"><input type="radio" name="motor-voltage" value="230/3/60" style="display:none;" /><span id="pill-3ph" style="display:inline-block;padding:7px 16px;border:1.5px solid rgba(2,116,219,0.2);border-radius:30px;font-size:12px;font-weight:500;color:#3a3a46;background:#f0f4fa;cursor:pointer;font-family:Sora,sans-serif;">230/3/60</span></label>
+        </div>
+      </div>
+      <div style="margin-bottom:0;">
+        <label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Design Rotor Speed</label>
+        <div style="display:flex;align-items:center;">
+          <input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;border-radius:8px 0 0 8px;border-right:none;" type="number" id="of-rph" placeholder="15" />
+          <span style="padding:9px 12px;background:#e8eef8;border:1px solid rgba(2,116,219,0.12);border-left:none;border-radius:0 8px 8px 0;font-size:12px;color:#7a7a8a;font-family:DM Mono,monospace;white-space:nowrap;">RPH</span>
+        </div>
+        <div style="font-size:10px;color:#7a7a8a;margin-top:5px;line-height:1.5;">Default: 15 RPH (200mm) &middot; 7 RPH (400mm)</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="background:#fff;border:1px solid rgba(2,116,219,0.12);border-radius:12px;padding:1.5rem;margin-bottom:16px;box-shadow:0 1px 4px rgba(2,116,219,0.06);">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#7a7a8a;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid rgba(2,116,219,0.12);font-family:Sora,sans-serif;">Drive Settings</div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Frequency Drive Set Point</label>
+        <div style="display:flex;align-items:center;">
+          <input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;border-radius:8px 0 0 8px;border-right:none;" type="number" id="of-hz" placeholder="60" />
+          <span style="padding:9px 12px;background:#e8eef8;border:1px solid rgba(2,116,219,0.12);border-left:none;border-radius:0 8px 8px 0;font-size:12px;color:#7a7a8a;font-family:DM Mono,monospace;">Hz</span>
+        </div>
+      </div>
+      <div style="margin-bottom:0;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Alternate Sprocket Required</label><input style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;" type="text" id="of-sprocket" placeholder="Specify if required" /></div>
+    </div>
+    <div style="background:#fff;border:1px solid rgba(2,116,219,0.12);border-radius:12px;padding:1.5rem;margin-bottom:16px;box-shadow:0 1px 4px rgba(2,116,219,0.06);">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#7a7a8a;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid rgba(2,116,219,0.12);font-family:Sora,sans-serif;">Notes</div>
+      <div style="margin-bottom:0;"><label style="display:block;font-size:11px;font-weight:500;letter-spacing:0.05em;color:#3a3a46;margin-bottom:6px;text-transform:uppercase;font-family:Sora,sans-serif;">Additional Notes / Special Requirements</label><textarea style="width:100%;background:#f0f4fa;border:1px solid rgba(2,116,219,0.12);border-radius:8px;color:#303030;font-size:13px;padding:9px 12px;outline:none;box-sizing:border-box;font-family:Sora,sans-serif;resize:vertical;min-height:120px;line-height:1.6;" id="of-notes" placeholder="Performance selection, special order details, expedite request..."></textarea></div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid rgba(2,116,219,0.12);border-radius:12px;padding:1.5rem;margin-bottom:16px;box-shadow:0 1px 4px rgba(2,116,219,0.06);">
+    <div style="font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#7a7a8a;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid rgba(2,116,219,0.12);font-family:Sora,sans-serif;">Airflow Configuration</div>
+    <div style="font-size:12px;color:#7a7a8a;margin-bottom:14px;line-height:1.6;">Select the desired cassette configuration (A&ndash;F). Each shows process / react / purge sector layout.</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+
+      <label style="cursor:pointer;" onclick="selectConfig('A',this)">
+        <input type="radio" name="config" value="A" checked style="display:none;" />
+        <div id="cfg-A" style="border:1.5px solid rgba(2,116,219,0.15);border-radius:8px;padding:10px 8px 8px;text-align:center;background:#f0f4fa;cursor:pointer;border-color:#0274db;background:rgba(2,116,219,0.06);">
+          <span style="font-size:16px;font-weight:600;color:#0274db;font-family:DM Mono,monospace;display:block;margin-bottom:4px;">A</span>
+          <svg width="100%" height="52" viewBox="0 0 80 52"><circle cx="40" cy="26" r="22" fill="none" stroke="#c8d8f0" stroke-width="1.5"/><line x1="40" y1="4" x2="40" y2="48" stroke="#0274db" stroke-width="1.5"/><text x="22" y="20" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="20" font-size="7" fill="#3a3a46" text-anchor="middle">React</text><text x="22" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text></svg>
+          <div style="font-size:10px;color:#7a7a8a;line-height:1.3;">75/25 &middot; Opp. Flow</div>
+        </div>
+      </label>
+
+      <label style="cursor:pointer;" onclick="selectConfig('B',this)">
+        <input type="radio" name="config" value="B" style="display:none;" />
+        <div id="cfg-B" style="border:1.5px solid rgba(2,116,219,0.15);border-radius:8px;padding:10px 8px 8px;text-align:center;background:#f0f4fa;cursor:pointer;">
+          <span style="font-size:16px;font-weight:600;color:#0274db;font-family:DM Mono,monospace;display:block;margin-bottom:4px;">B</span>
+          <svg width="100%" height="52" viewBox="0 0 80 52"><circle cx="40" cy="26" r="22" fill="none" stroke="#c8d8f0" stroke-width="1.5"/><line x1="40" y1="4" x2="40" y2="48" stroke="#0274db" stroke-width="1.5"/><text x="22" y="20" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="20" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="22" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="36" font-size="7" fill="#3a3a46" text-anchor="middle">React</text></svg>
+          <div style="font-size:10px;color:#7a7a8a;line-height:1.3;">75/25 &middot; Opp. Flow</div>
+        </div>
+      </label>
+
+      <label style="cursor:pointer;" onclick="selectConfig('C',this)">
+        <input type="radio" name="config" value="C" style="display:none;" />
+        <div id="cfg-C" style="border:1.5px solid rgba(2,116,219,0.15);border-radius:8px;padding:10px 8px 8px;text-align:center;background:#f0f4fa;cursor:pointer;">
+          <span style="font-size:16px;font-weight:600;color:#0274db;font-family:DM Mono,monospace;display:block;margin-bottom:4px;">C</span>
+          <svg width="100%" height="52" viewBox="0 0 80 52"><circle cx="40" cy="26" r="22" fill="none" stroke="#c8d8f0" stroke-width="1.5"/><line x1="40" y1="4" x2="40" y2="48" stroke="#0274db" stroke-width="1.5"/><text x="22" y="20" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="20" font-size="7" fill="#3a3a46" text-anchor="middle">React</text><text x="22" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="36" font-size="7" fill="#3a3a46" text-anchor="middle">React</text></svg>
+          <div style="font-size:10px;color:#7a7a8a;line-height:1.3;">50/50 &middot; Opp. Flow</div>
+        </div>
+      </label>
+
+      <label style="cursor:pointer;" onclick="selectConfig('D',this)">
+        <input type="radio" name="config" value="D" style="display:none;" />
+        <div id="cfg-D" style="border:1.5px solid rgba(2,116,219,0.15);border-radius:8px;padding:10px 8px 8px;text-align:center;background:#f0f4fa;cursor:pointer;">
+          <span style="font-size:16px;font-weight:600;color:#0274db;font-family:DM Mono,monospace;display:block;margin-bottom:4px;">D</span>
+          <svg width="100%" height="52" viewBox="0 0 80 52"><circle cx="40" cy="26" r="22" fill="none" stroke="#c8d8f0" stroke-width="1.5"/><line x1="40" y1="4" x2="40" y2="48" stroke="#0274db" stroke-width="1.5"/><text x="22" y="20" font-size="7" fill="#3a3a46" text-anchor="middle">React</text><text x="58" y="20" font-size="7" fill="#3a3a46" text-anchor="middle">React</text><text x="22" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text></svg>
+          <div style="font-size:10px;color:#7a7a8a;line-height:1.3;">50/50 &middot; Opp. Flow</div>
+        </div>
+      </label>
+
+      <label style="cursor:pointer;" onclick="selectConfig('E',this)">
+        <input type="radio" name="config" value="E" style="display:none;" />
+        <div id="cfg-E" style="border:1.5px solid rgba(2,116,219,0.15);border-radius:8px;padding:10px 8px 8px;text-align:center;background:#f0f4fa;cursor:pointer;">
+          <span style="font-size:16px;font-weight:600;color:#0274db;font-family:DM Mono,monospace;display:block;margin-bottom:4px;">E</span>
+          <svg width="100%" height="52" viewBox="0 0 80 52"><circle cx="40" cy="26" r="22" fill="none" stroke="#c8d8f0" stroke-width="1.5"/><line x1="40" y1="4" x2="40" y2="48" stroke="#0274db" stroke-width="1.5"/><text x="22" y="20" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="20" font-size="7" fill="#3a3a46" text-anchor="middle">React</text><text x="22" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="36" font-size="7" fill="#16acf8" text-anchor="middle">Purge</text></svg>
+          <div style="font-size:10px;color:#7a7a8a;line-height:1.3;">50/25/25 Purge</div>
+        </div>
+      </label>
+
+      <label style="cursor:pointer;" onclick="selectConfig('F',this)">
+        <input type="radio" name="config" value="F" style="display:none;" />
+        <div id="cfg-F" style="border:1.5px solid rgba(2,116,219,0.15);border-radius:8px;padding:10px 8px 8px;text-align:center;background:#f0f4fa;cursor:pointer;">
+          <span style="font-size:16px;font-weight:600;color:#0274db;font-family:DM Mono,monospace;display:block;margin-bottom:4px;">F</span>
+          <svg width="100%" height="52" viewBox="0 0 80 52"><circle cx="40" cy="26" r="22" fill="none" stroke="#c8d8f0" stroke-width="1.5"/><line x1="40" y1="4" x2="40" y2="48" stroke="#0274db" stroke-width="1.5"/><text x="22" y="20" font-size="7" fill="#3a3a46" text-anchor="middle">React</text><text x="58" y="20" font-size="7" fill="#16acf8" text-anchor="middle">Purge</text><text x="22" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text><text x="58" y="36" font-size="7" fill="#0274db" text-anchor="middle">Process</text></svg>
+          <div style="font-size:10px;color:#7a7a8a;line-height:1.3;">50/25/25 Purge</div>
+        </div>
+      </label>
+
+    </div>
+  </div>
+
+  <button style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px 20px;background:#0274db;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px;font-family:Sora,sans-serif;" onclick="submitOrderForm()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    Generate Order Form PDF
+  </button>
+
+  <div id="of-success" style="display:none;background:rgba(2,116,219,0.06);border:1px solid rgba(2,116,219,0.2);border-radius:12px;padding:2rem;text-align:center;margin-top:1rem;">
+    <div style="font-size:24px;margin-bottom:8px;">&#10003;</div>
+    <div style="font-size:16px;font-weight:600;color:#0274db;margin-bottom:4px;font-family:Sora,sans-serif;">Order Form Ready</div>
+    <div style="font-size:13px;color:#3a3a46;font-family:Sora,sans-serif;">Your PDF has been generated and opened for printing.</div>
+  </div>
+
+  <div style="height:2rem;"></div>
+</div>
+</div><!-- /tab-order -->
+
+<div class="footer">
+  <div class="footer-note">US Rotors · Rotor Pricing Calculator · v1.0</div>
+  <div class="footer-note">Prices effective November 1, 2026 — Confidential</div>
+</div>
+
+<script>
+const LOGO_SRC = "data:image/png;base64,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";
+
+// Consolidated data: key = "depth_size", single source of truth
+// 100mm: merges Standard + Large series sizes
+// 200mm: merges R1 + 15RPH sizes (larger size takes priority price if overlap)
+// 400mm: all 400mm sizes
+
+const DATA = {
+  "100mm": {
+    label: "100 mm",
+    sizes: [
+      { size: "220",  rotor: 207.97,   cassette: 1212.60 },
+      { size: "320",  rotor: 312.48,   cassette: 1327.78 },
+      { size: "440",  rotor: 415.93,   cassette: 1558.15 },
+      { size: "550",  rotor: 600.44,   cassette: 2019.93 },
+      { size: "660",  rotor: 836.13,   cassette: 2595.84 },
+      { size: "770",  rotor: 1073.95,  cassette: 2883.79 },
+      { size: "965",  rotor: 2399.60,  cassette: 4971.98 },
+      { size: "1070", rotor: 2861.40,  cassette: 5802.78 },
+      { size: "1220", rotor: 3772.18,  cassette: 7071.90 },
+      { size: "1525", rotor: 5548.95,  cassette: 9437.94 },
+      { size: "1730", rotor: 7428.11,  cassette: 12711.50 },
+      { size: "1940", rotor: 9296.60,  cassette: 15260.42 },
+    ]
+  },
+  "200mm": {
+    label: "200 mm",
+    sizes: [
+      { size: "550",  rotor: 1499.49,  cassette: 3829.77 },
+      { size: "660",  rotor: 1955.94,  cassette: 4682.97 },
+      { size: "770",  rotor: 2434.80,  cassette: 5156.48 },
+      { size: "965",  rotor: 3506.62,  cassette: 6042.74 },
+      { size: "1070", rotor: 4291.56,  cassette: 7197.74 },
+      { size: "1220", rotor: 5525.49,  cassette: 8771.89 },
+      { size: "1372", rotor: 7012.18,  cassette: 10750.23 },
+      { size: "1525", rotor: 8604.45,  cassette: 12838.42 },
+      { size: "1730", rotor: 11210.95, cassette: 16298.11 },
+      { size: "1940", rotor: 14084.08, cassette: 19769.54 },
+      { size: "2190", rotor: 17924.51, cassette: 24706.33 },
+      { size: "2438", rotor: 22169.14, cassette: 30277.68 },
+      { size: "2743", rotor: 28028.45, cassette: 37416.76 },
+      { size: "2896", rotor: 30306.47, cassette: 40139.52 },
+      { size: "3050", rotor: 34637.49, cassette: 45457.04 },
+      { size: "3300", rotor: 42091.19, cassette: 54265.19 },
+    ]
+  },
+  "400mm": {
+    label: "400 mm",
+    sizes: [
+      { size: "550",  rotor: 2538.25,  cassette: 4821.26,   purge: 100.25 },
+      { size: "660",  rotor: 3910.82,  cassette: 6228.42,   purge: 118.38 },
+      { size: "770",  rotor: 4239.30,  cassette: 6961.10,   purge: 138.64 },
+      { size: "965",  rotor: 6967.39,  cassette: 10115.96,  purge: 175.97 },
+      { size: "1070", rotor: 8535.13,  cassette: 12169.02,  purge: 194.10 },
+      { size: "1220", rotor: 11073.38, cassette: 15260.16,  purge: 221.83 },
+      { size: "1372", rotor: 14025.43, cassette: 18976.07,  purge: 249.56 },
+      { size: "1525", rotor: 17325.14, cassette: 23011.07,  purge: 277.29 },
+      { size: "1730", rotor: 22284.33, cassette: 29170.28,  purge: 314.61 },
+      { size: "1940", rotor: 28040.18, cassette: 36067.68,  purge: 351.94 },
+      { size: "2190", rotor: 35732.78, cassette: 45352.08,  purge: 397.80 },
+      { size: "2438", rotor: 44211.38, cassette: 55952.46,  purge: 442.59 },
+      { size: "2743", rotor: 55953.45, cassette: 69954.86,  purge: 499.12 },
+      { size: "2896", rotor: 60612.94, cassette: 75460.47,  purge: 526.84 },
+      { size: "3050", rotor: 69158.73, cassette: 85664.30,  purge: 554.58 },
+      { size: "3300", rotor: 84039.48, cassette: 102344.81, purge: 599.37 },
+    ]
+  }
+};
+
+const SEG_15 = ["2438","2743","2896","3050","3300"];
+const SEG_20 = ["1730","1940","2190"];
+
+const fmt = n => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function populateSizes() {
+  const series = document.getElementById("series").value;
+  const sel = document.getElementById("size");
+  const prev = sel.value;
+  sel.innerHTML = "";
+  DATA[series].sizes.forEach(r => {
+    const o = document.createElement("option");
+    o.value = r.size;
+    o.textContent = r.size + "mm";
+    sel.appendChild(o);
+  });
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+  updateSegDesc();
+  updatePurgeDesc();
+  recalc();
+}
+
+function updateSegDesc() {
+  const size = document.getElementById("size").value;
+  const desc = document.getElementById("seg-desc");
+  const row = document.getElementById("row-segmented");
+  if (SEG_15.includes(size)) {
+    desc.textContent = size + "mm and larger: +15% to rotor price";
+    row.classList.remove("disabled");
+  } else if (SEG_20.includes(size)) {
+    desc.textContent = "1730mm to 2190mm range: +20% to rotor price";
+    row.classList.remove("disabled");
+  } else {
+    desc.textContent = "Not applicable for this size (requires 1730mm or larger)";
+    row.classList.add("disabled");
+    document.getElementById("segmented").checked = false;
+  }
+}
+
+function updatePurgeDesc() {
+  const series = document.getElementById("series").value;
+  const size = document.getElementById("size").value;
+  const desc = document.getElementById("purge-desc");
+  const row = document.getElementById("row-purge");
+  if (series === "400mm") {
+    const rowData = DATA["400mm"].sizes.find(r => r.size === size);
+    desc.textContent = "400mm series — " + (rowData ? fmt(rowData.purge) + " per unit" : "see price list");
+    row.classList.remove("disabled");
+  } else {
+    desc.textContent = "Only available on 400mm depth series";
+    row.classList.add("disabled");
+    document.getElementById("purge").checked = false;
+  }
+}
+
+let lastCalc = {};
+
+function recalc() {
+  const series = document.getElementById("series").value;
+  const sizeVal = document.getElementById("size").value;
+  const prodType = document.getElementById("product_type").value;
+  const qty = Math.max(1, parseInt(document.getElementById("qty").value) || 1);
+  const stainless = document.getElementById("stainless").checked;
+  const nonsilicone = document.getElementById("nonsilicone").checked;
+  const segmented = document.getElementById("segmented").checked;
+  const purge = document.getElementById("purge").checked;
+  const motor = document.getElementById("motor").checked;
+  const vfd = document.getElementById("vfd").checked;
+  const orderType = document.getElementById("order_type").value;
+  const payment = document.getElementById("payment").value;
+  const warranty = document.getElementById("warranty").value;
+  const dropship = document.getElementById("dropship").value;
+
+  const row = DATA[series].sizes.find(r => r.size === sizeVal);
+  if (!row) return;
+
+  let rotorBase = prodType !== "cassette" ? row.rotor : 0;
+  let cassetteBase = prodType !== "rotor" ? row.cassette : 0;
+  const base = rotorBase + cassetteBase;
+
+  let lines = [];
+  if (rotorBase > 0) lines.push({ label: "Rotor " + sizeVal + "mm", value: rotorBase });
+  if (cassetteBase > 0) lines.push({ label: "Cassette " + sizeVal + "mm", value: cassetteBase });
+
+  let adders = 0;
+
+  if (stainless && rotorBase > 0) {
+    const a = rotorBase * 0.20;
+    adders += a;
+    lines.push({ label: "All stainless (+20%)", value: a, add: true });
+  }
+
+  if (segmented && rotorBase > 0) {
+    if (SEG_15.includes(sizeVal)) {
+      const a = rotorBase * 0.15;
+      adders += a; lines.push({ label: "Segmented rotor (+15%)", value: a, add: true });
+    } else if (SEG_20.includes(sizeVal)) {
+      const a = rotorBase * 0.20;
+      adders += a; lines.push({ label: "Segmented rotor (+20%)", value: a, add: true });
+    }
+  }
+
+  const subtotal1 = base + adders;
+  if (nonsilicone) {
+    const a = subtotal1 * 0.05;
+    adders += a;
+    lines.push({ label: "Non-silicone (+5%)", value: a, add: true });
+  }
+
+  if (purge && row.purge) {
+    adders += row.purge;
+    lines.push({ label: "Purge seals", value: row.purge, add: true });
+  }
+
+  if (motor) lines.push({ label: "230/3/60 Motor", value: 0, included: true });
+
+  if (vfd) {
+    adders += 422.83;
+    lines.push({ label: "VFD GS11N-10P2", value: 422.83, add: true });
+  }
+
+  let warrantyAmt = 0;
+  if (warranty === "rotor_2yr") warrantyAmt = rotorBase * 0.10;
+  if (warranty === "rotor_3yr") warrantyAmt = rotorBase * 0.15;
+  if (warranty === "cassette_2yr") warrantyAmt = cassetteBase * 0.20;
+  if (warranty === "cassette_3yr") warrantyAmt = cassetteBase * 0.30;
+  if (warrantyAmt > 0) {
+    adders += warrantyAmt;
+    lines.push({ label: "Extended warranty", value: warrantyAmt, add: true });
+  }
+
+  const unitTotal = base + adders;
+  let orderSub = unitTotal * qty;
+  const pkgRate = orderType === "domestic" ? 0.02 : 0.04;
+  const pkgFee = orderSub * pkgRate;
+  const ccFee = payment === "card" ? (orderSub + pkgFee) * 0.03 : 0;
+  const dropFee = dropship === "yes" ? 50 : 0;
+  const grandTotal = orderSub + pkgFee + ccFee + dropFee;
+
+  // Store for PDF
+  lastCalc = { series, sizeVal, prodType, qty, stainless, nonsilicone, segmented, purge, motor, vfd,
+    orderType, payment, warranty, dropship, lines, base, adders, unitTotal, orderSub,
+    pkgFee, pkgRate, ccFee, dropFee, grandTotal, rotorBase, cassetteBase };
+
+  document.getElementById("stat_base").textContent = fmt(base);
+  document.getElementById("stat_unit").textContent = fmt(unitTotal);
+  document.getElementById("grand_total").textContent = fmt(grandTotal);
+
+  const payLabel = payment === "card" ? "credit card" : "net 30";
+  const ordLabel = orderType === "domestic" ? "domestic" : "international";
+  document.getElementById("grand_label").textContent = qty + " unit" + (qty > 1 ? "s" : "") + " · " + ordLabel + " · " + payLabel;
+
+  let html = "";
+  lines.forEach(l => {
+    if (l.included) {
+      html += '<div class="metric-row"><span class="metric-label">' + l.label + '</span><span class="metric-value muted">included</span></div>';
+    } else {
+      html += '<div class="metric-row"><span class="metric-label">' + l.label + '</span><span class="metric-value' + (l.add ? " add" : "") + '">' + fmt(l.value) + '</span></div>';
+    }
+  });
+
+  if (qty > 1) {
+    html += '<div class="metric-row subtotal"><span class="metric-label">Unit total</span><span class="metric-value">' + fmt(unitTotal) + '</span></div>';
+    html += '<div class="metric-row"><span class="metric-label">&times; ' + qty + ' units</span><span class="metric-value">' + fmt(orderSub) + '</span></div>';
+  } else {
+    html += '<div class="metric-row subtotal"><span class="metric-label">Subtotal</span><span class="metric-value">' + fmt(orderSub) + '</span></div>';
+  }
+
+  const pkgLabel = orderType === "domestic" ? "Packaging &amp; handling (2%)" : "Packaging &amp; handling (4%)";
+  html += '<div class="metric-row"><span class="metric-label">' + pkgLabel + '</span><span class="metric-value add">' + fmt(pkgFee) + '</span></div>';
+  if (ccFee > 0) html += '<div class="metric-row"><span class="metric-label">Credit card fee (3%)</span><span class="metric-value add">' + fmt(ccFee) + '</span></div>';
+  if (dropFee > 0) html += '<div class="metric-row"><span class="metric-label">Drop-ship parcel</span><span class="metric-value add">' + fmt(dropFee) + '</span></div>';
+  html += '<div class="metric-row subtotal"><span class="metric-label">Order Total</span><span class="metric-value blue big">' + fmt(grandTotal) + '</span></div>';
+
+  document.getElementById("breakdown").innerHTML = html;
+}
+
+function generatePDF() {
+  const c = lastCalc;
+  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const seriesLabel = DATA[c.series].label + " Depth";
+  const prodLabel = c.prodType === "rotor" ? "Rotor Only" : c.prodType === "cassette" ? "Cassette Only" : "Rotor + Cassette";
+  const payLabel = c.payment === "card" ? "Credit Card" : "Net 30 (Approved Credit)";
+  const ordLabel = c.orderType === "domestic" ? "Domestic" : "International";
+
+  let lineRows = "";
+  c.lines.forEach(l => {
+    if (l.included) {
+      lineRows += '<tr><td class="ld">' + l.label + '</td><td class="lv muted">Included</td></tr>';
+    } else {
+      lineRows += '<tr><td class="ld">' + l.label + '</td><td class="lv' + (l.add ? " add" : "") + '">' + fmt(l.value) + '</td></tr>';
+    }
+  });
+
+  const pkgLabelPdf = c.orderType === "domestic" ? "Packaging & handling (2%)" : "Packaging & handling (4%)";
+  if (c.qty > 1) {
+    lineRows += '<tr class="sub"><td class="ld">Unit total</td><td class="lv">' + fmt(c.unitTotal) + '</td></tr>';
+    lineRows += '<tr><td class="ld">&times; ' + c.qty + ' units</td><td class="lv">' + fmt(c.orderSub) + '</td></tr>';
+  } else {
+    lineRows += '<tr class="sub"><td class="ld">Subtotal</td><td class="lv">' + fmt(c.orderSub) + '</td></tr>';
+  }
+  lineRows += '<tr><td class="ld">' + pkgLabelPdf + '</td><td class="lv add">' + fmt(c.pkgFee) + '</td></tr>';
+  if (c.ccFee > 0) lineRows += '<tr><td class="ld">Credit card fee (3%)</td><td class="lv add">' + fmt(c.ccFee) + '</td></tr>';
+  if (c.dropFee > 0) lineRows += '<tr><td class="ld">Drop-ship parcel</td><td class="lv add">' + fmt(c.dropFee) + '</td></tr>';
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>US Rotors Price Quote</title>' +
+  '<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">' +
+  '<style>' +
+  '* { box-sizing: border-box; margin: 0; padding: 0; }' +
+  'body { font-family: "Sora", sans-serif; background: #fff; color: #303030; padding: 48px; font-size: 13px; }' +
+  '.header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0274db; padding-bottom: 20px; margin-bottom: 28px; }' +
+  '.logo { height: 36px; }' +
+  '.header-right { text-align: right; }' +
+  '.doc-title { font-size: 22px; font-weight: 600; color: #0274db; margin-bottom: 4px; }' +
+  '.doc-meta { font-size: 11px; color: #7a7a8a; font-family: "DM Mono", monospace; }' +
+  '.conf { display: inline-block; font-size: 10px; font-family: "DM Mono", monospace; color: #2323ff; border: 1px solid rgba(35,35,255,0.3); padding: 3px 8px; border-radius: 3px; margin-top: 6px; }' +
+  '.section { margin-bottom: 24px; }' +
+  '.section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #7a7a8a; border-bottom: 1px solid #e8eef8; padding-bottom: 6px; margin-bottom: 12px; }' +
+  '.specs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }' +
+  '.spec-box { background: #f0f4fa; border-radius: 6px; padding: 10px 12px; }' +
+  '.spec-label { font-size: 10px; color: #7a7a8a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }' +
+  '.spec-value { font-size: 13px; font-weight: 500; color: #303030; }' +
+  'table { width: 100%; border-collapse: collapse; }' +
+  'tr { border-bottom: 1px solid #edf2fa; }' +
+  'tr.sub { border-top: 2px solid #c8d8f0; border-bottom: none; }' +
+  'td { padding: 7px 4px; }' +
+  'td.ld { color: #3a3a46; }' +
+  'td.lv { text-align: right; font-family: "DM Mono", monospace; font-size: 12px; font-weight: 500; color: #303030; }' +
+  'td.lv.add { color: #c0392b; }' +
+  'td.lv.muted { color: #7a7a8a; }' +
+  '.total-row { background: #0274db; border-radius: 8px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }' +
+  '.total-label { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); }' +
+  '.total-value { font-size: 26px; font-weight: 600; color: #fff; font-family: "DM Mono", monospace; letter-spacing: -0.02em; }' +
+  '.footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid #e8eef8; display: flex; justify-content: space-between; font-size: 10px; color: #7a7a8a; font-family: "DM Mono", monospace; }' +
+  '@media print { body { padding: 32px; } @page { margin: 0; } }' +
+  '</style></head><body>' +
+  '<div class="header">' +
+  '<img src="' + LOGO_SRC + '" class="logo" alt="US Rotors">' +
+  '<div class="header-right">' +
+  '<div class="doc-title">Price Quote</div>' +
+  '<div class="doc-meta">Date: ' + today + '</div>' +
+  '<div class="doc-meta">Ref: USR-' + Date.now().toString().slice(-6) + '</div>' +
+  '<div class="conf">&#9632; Confidential</div>' +
+  '</div></div>' +
+  '<div class="section">' +
+  '<div class="section-title">Product Configuration</div>' +
+  '<div class="specs">' +
+  '<div class="spec-box"><div class="spec-label">Size</div><div class="spec-value">' + c.sizeVal + 'mm</div></div>' +
+  '<div class="spec-box"><div class="spec-label">Depth Series</div><div class="spec-value">' + seriesLabel + '</div></div>' +
+  '<div class="spec-box"><div class="spec-label">Product Type</div><div class="spec-value">' + prodLabel + '</div></div>' +
+  '<div class="spec-box"><div class="spec-label">Quantity</div><div class="spec-value">' + c.qty + ' unit' + (c.qty > 1 ? 's' : '') + '</div></div>' +
+  '<div class="spec-box"><div class="spec-label">Order Type</div><div class="spec-value">' + ordLabel + '</div></div>' +
+  '<div class="spec-box"><div class="spec-label">Payment</div><div class="spec-value">' + payLabel + '</div></div>' +
+  '</div></div>' +
+  '<div class="section">' +
+  '<div class="section-title">Price Breakdown</div>' +
+  '<table>' + lineRows + '</table>' +
+  '</div>' +
+  '<div class="total-row"><span class="total-label">Order Total</span><span class="total-value">' + fmt(c.grandTotal) + '</span></div>' +
+  '<div class="footer">' +
+  '<span>FOB Baton Rouge · Freight collect · ~4 week lead time</span>' +
+  '<span>US Rotors · Prices effective November 1, 2026 · Confidential</span>' +
+  '</div>' +
+  '</body></html>';
+
+  const w = window.open("", "_blank", "width=800,height=900");
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => w.print();
+}
+
+document.getElementById("series").addEventListener("change", populateSizes);
+document.getElementById("size").addEventListener("change", () => { updateSegDesc(); updatePurgeDesc(); recalc(); });
+["product_type","qty","order_type","payment","warranty","dropship"].forEach(id =>
+  document.getElementById(id).addEventListener("change", recalc));
+["stainless","nonsilicone","segmented","purge","motor","vfd"].forEach(id =>
+  document.getElementById(id).addEventListener("change", recalc));
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) {
+    p.style.display = 'none';
+    p.classList.remove('active');
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  var target = document.getElementById('tab-' + name);
+  target.style.display = 'block';
+  target.classList.add('active');
+  btn.classList.add('active');
+}
+
+function selectConfig(val, lbl) {
+  ['A','B','C','D','E','F'].forEach(function(l) {
+    var el = document.getElementById('cfg-'+l);
+    if (el) { el.style.borderColor = 'rgba(2,116,219,0.15)'; el.style.background = '#f0f4fa'; }
+  });
+  var sel = document.getElementById('cfg-'+val);
+  if (sel) { sel.style.borderColor = '#0274db'; sel.style.background = 'rgba(2,116,219,0.06)'; }
+  var radio = document.querySelector('input[name="config"][value="'+val+'"]');
+  if (radio) radio.checked = true;
+}
+
+// Voltage pill toggle
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('input[name="motor-voltage"]').forEach(function(r) {
+    r.addEventListener('change', function() {
+      document.getElementById('pill-std').style.cssText = this.value === '120/1/60' ? 'display:inline-block;padding:7px 16px;border:1.5px solid #0274db;border-radius:30px;font-size:12px;font-weight:500;color:#fff;background:#0274db;cursor:pointer;' : 'display:inline-block;padding:7px 16px;border:1.5px solid rgba(2,116,219,0.2);border-radius:30px;font-size:12px;font-weight:500;color:#3a3a46;background:#f0f4fa;cursor:pointer;';
+      document.getElementById('pill-3ph').style.cssText = this.value === '230/3/60' ? 'display:inline-block;padding:7px 16px;border:1.5px solid #0274db;border-radius:30px;font-size:12px;font-weight:500;color:#fff;background:#0274db;cursor:pointer;' : 'display:inline-block;padding:7px 16px;border:1.5px solid rgba(2,116,219,0.2);border-radius:30px;font-size:12px;font-weight:500;color:#3a3a46;background:#f0f4fa;cursor:pointer;';
+    });
+  });
+});
+
+function submitOrderForm() {
+  const company   = document.getElementById('of-company').value || '—';
+  const po        = document.getElementById('of-po').value || '—';
+  const contact   = document.getElementById('of-contact').value || '—';
+  const email     = document.getElementById('of-email').value || '—';
+  const model     = document.getElementById('of-model').value || '—';
+  const qty       = document.getElementById('of-qty').value || '—';
+  const rph       = document.getElementById('of-rph').value || 'Standard';
+  const hz        = document.getElementById('of-hz').value || '—';
+  const sprocket  = document.getElementById('of-sprocket').value || 'N/A';
+  const notes     = document.getElementById('of-notes').value || 'None';
+  const voltage   = document.querySelector('input[name="motor-voltage"]:checked')?.value || '120/1/60';
+  const config    = document.querySelector('input[name="config"]:checked')?.value || 'A';
+  const today     = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const ref       = 'COF-' + Date.now().toString().slice(-6);
+
+  const configLabels = {
+    A: '75/25 — Airflows Opposite, Either Direction',
+    B: '75/25 — Airflows Opposite, Either Direction',
+    C: '50/50 — Airflows Opposite, Either Direction',
+    D: '50/50 — Airflows Opposite, Either Direction',
+    E: '50/25/25 Purge — Airflows Opposite, Either Direction',
+    F: '50/25/25 Purge — Airflows Opposite, Either Direction'
+  };
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>US Rotors Order Form</title>' +
+  '<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">' +
+  '<style>' +
+  '* { box-sizing: border-box; margin: 0; padding: 0; }' +
+  'body { font-family: "Sora", sans-serif; background: #fff; color: #303030; padding: 48px; font-size: 13px; }' +
+  '.header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0274db; padding-bottom: 20px; margin-bottom: 28px; }' +
+  '.logo { height: 30px; }' +
+  '.header-right { text-align: right; }' +
+  '.doc-title { font-size: 20px; font-weight: 600; color: #303030; margin-bottom: 2px; }' +
+  '.doc-sub { font-size: 12px; color: #7a7a8a; margin-bottom: 4px; }' +
+  '.doc-meta { font-size: 11px; color: #7a7a8a; font-family: "DM Mono", monospace; }' +
+  '.ref-badge { display: inline-block; font-size: 10px; font-family: "DM Mono", monospace; color: #0274db; border: 1px solid rgba(2,116,219,0.3); padding: 3px 8px; border-radius: 3px; margin-top: 4px; }' +
+  '.section { margin-bottom: 24px; }' +
+  '.section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #7a7a8a; border-bottom: 1px solid #e8eef8; padding-bottom: 6px; margin-bottom: 14px; }' +
+  '.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }' +
+  '.info-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }' +
+  '.info-box { background: #f0f4fa; border-radius: 6px; padding: 10px 12px; }' +
+  '.info-label { font-size: 10px; color: #7a7a8a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }' +
+  '.info-value { font-size: 13px; font-weight: 500; color: #303030; }' +
+  '.config-highlight { background: #0274db; color: #fff; border-radius: 8px; padding: 14px 18px; display: flex; align-items: center; gap: 16px; }' +
+  '.config-letter-big { font-size: 36px; font-weight: 700; font-family: "DM Mono", monospace; opacity: 0.9; }' +
+  '.config-detail-title { font-size: 15px; font-weight: 600; }' +
+  '.config-detail-sub { font-size: 12px; opacity: 0.75; margin-top: 2px; }' +
+  '.notes-box { background: #f0f4fa; border-radius: 6px; padding: 12px; font-size: 12px; color: #3a3a46; line-height: 1.7; white-space: pre-wrap; }' +
+  '.footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid #e8eef8; display: flex; justify-content: space-between; font-size: 10px; color: #7a7a8a; font-family: "DM Mono", monospace; }' +
+  '.sig-line { border-bottom: 1px solid #c8d8f0; margin-top: 32px; padding-bottom: 4px; font-size: 10px; color: #7a7a8a; display: flex; justify-content: space-between; }' +
+  '@media print { body { padding: 32px; } @page { margin: 0; } }' +
+  '</style></head><body>' +
+  '<div class="header">' +
+  '<img src="' + LOGO_SRC + '" class="logo" alt="US Rotors">' +
+  '<div class="header-right">' +
+  '<div class="doc-title">C-Series Cassette Order Form</div>' +
+  '<div class="doc-sub">Applies to all sq. tube frame style cassettes</div>' +
+  '<div class="doc-meta">Date: ' + today + '</div>' +
+  '<div class="ref-badge">' + ref + ' · COF2-QF-001</div>' +
+  '</div></div>' +
+  '<div class="section"><div class="section-title">Company Information</div>' +
+  '<div class="info-grid">' +
+  '<div class="info-box"><div class="info-label">Company</div><div class="info-value">' + company + '</div></div>' +
+  '<div class="info-box"><div class="info-label">Purchase Order Number</div><div class="info-value">' + po + '</div></div>' +
+  '<div class="info-box"><div class="info-label">Contact Name</div><div class="info-value">' + contact + '</div></div>' +
+  '<div class="info-box"><div class="info-label">Email</div><div class="info-value">' + email + '</div></div>' +
+  '</div></div>' +
+  '<div class="section"><div class="section-title">Product Specifications</div>' +
+  '<div class="info-grid-3">' +
+  '<div class="info-box"><div class="info-label">Model Number</div><div class="info-value">' + model + '</div></div>' +
+  '<div class="info-box"><div class="info-label">Quantity</div><div class="info-value">' + qty + '</div></div>' +
+  '<div class="info-box"><div class="info-label">Motor Voltage</div><div class="info-value">' + voltage + '</div></div>' +
+  '<div class="info-box"><div class="info-label">Design Rotor Speed</div><div class="info-value">' + rph + ' RPH</div></div>' +
+  '<div class="info-box"><div class="info-label">Freq. Drive Set Point</div><div class="info-value">' + hz + ' Hz</div></div>' +
+  '<div class="info-box"><div class="info-label">Alt. Sprocket Required</div><div class="info-value">' + sprocket + '</div></div>' +
+  '</div></div>' +
+  '<div class="section"><div class="section-title">Airflow Configuration — " ' + config + ' "</div>' +
+  '<div class="config-highlight"><div class="config-letter-big">' + config + '</div><div><div class="config-detail-title">Configuration ' + config + '</div><div class="config-detail-sub">' + (configLabels[config] || '') + '</div></div></div>' +
+  '</div>' +
+  '<div class="section"><div class="section-title">Notes &amp; Special Requirements</div>' +
+  '<div class="notes-box">' + notes + '</div></div>' +
+  '<div class="sig-line"><span>Authorized Signature ________________________________</span><span>Date ________________</span></div>' +
+  '<div class="footer"><span>Serial number assigned by Rotor Source upon receipt</span><span>US Rotors · Effective November 1, 2026 · Confidential</span></div>' +
+  '</body></html>';
+
+  const w = window.open('', '_blank', 'width=820,height=1000');
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => {
+    w.print();
+    document.getElementById('of-success').style.display = 'block';
+    setTimeout(() => { document.getElementById('of-success').style.display = 'none'; }, 4000);
+  };
+}
+
+document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
+</script>
+</body>
+</html>

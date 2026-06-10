@@ -3,12 +3,13 @@ import { LifeBuoy, ImageIcon, Zap, Calculator, ChevronRight } from 'lucide-react
 
 export const dynamic = 'force-dynamic'
 
-// Live tools/apps (and ones coming soon) available to employees.
+// Live tools/apps available to employees. The three static tools live in
+// public/tools/<slug>/ and open in a new tab (they're standalone HTML apps).
 const APPS = [
-  { title: 'Support Ticketing', desc: 'Submit and track customer equipment support tickets.', href: '/support', icon: LifeBuoy, status: 'live' as const },
-  { title: 'Email Graphic Generator', desc: 'Generate branded email graphics.', href: null, icon: ImageIcon, status: 'soon' as const },
-  { title: 'Voltage Formula', desc: 'Quick voltage / electrical calculations.', href: null, icon: Zap, status: 'soon' as const },
-  { title: 'US Rotors Pricing Calculator', desc: 'Price out US Rotors configurations.', href: null, icon: Calculator, status: 'soon' as const },
+  { title: 'Support Ticketing', desc: 'Submit and track customer equipment support tickets.', href: '/support', icon: LifeBuoy, status: 'live' as const, external: false },
+  { title: 'Order Status Card Generator', desc: 'Generate branded order-status cards for customer emails.', href: '/tools/order-status-card.html', icon: ImageIcon, status: 'live' as const, external: true },
+  { title: 'Voltage Scaling Calculator', desc: 'Convert and scale voltages across configurations.', href: '/tools/voltage-scaling-calculator.html', icon: Zap, status: 'live' as const, external: true },
+  { title: 'US Rotors Pricing Calculator', desc: 'Price out US Rotors rotor configurations.', href: '/tools/us-rotors-pricing-calculator.html', icon: Calculator, status: 'live' as const, external: true },
 ]
 
 export default function ResourcesToolsPage() {
@@ -44,12 +45,18 @@ export default function ResourcesToolsPage() {
                 </>
               )
               const rowClass = 'grid grid-cols-[1fr_auto] items-center px-6 py-4 transition-colors'
-              return app.status === 'live' && app.href ? (
+              const hoverClass = 'group hover:bg-gray-50/70 dark:hover:bg-zinc-800/30'
+              if (app.status !== 'live' || !app.href) {
+                return <li key={app.title} className={`${rowClass} opacity-60`}>{body}</li>
+              }
+              return (
                 <li key={app.title}>
-                  <Link href={app.href} className={`group ${rowClass} hover:bg-gray-50/70 dark:hover:bg-zinc-800/30`}>{body}</Link>
+                  {app.external ? (
+                    <a href={app.href} target="_blank" rel="noopener noreferrer" className={`${hoverClass} ${rowClass}`}>{body}</a>
+                  ) : (
+                    <Link href={app.href} className={`${hoverClass} ${rowClass}`}>{body}</Link>
+                  )}
                 </li>
-              ) : (
-                <li key={app.title} className={`${rowClass} opacity-60`}>{body}</li>
               )
             })}
           </ul>
