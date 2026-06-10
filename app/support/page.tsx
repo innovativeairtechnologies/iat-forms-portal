@@ -15,7 +15,7 @@ const SUBMIT_CARDS = [
     desc: 'Report a system issue — our engineers will pre-screen your request before the call',
     badge: 'Start here',
     primary: true,
-    href: '/support/ticket',
+    href: '/support/equipment-support',
     disabled: false,
   },
   {
@@ -77,7 +77,7 @@ export default function SupportPortal() {
       {/* Header */}
       <header className="sticky top-0 z-20 h-14 flex items-center border-b border-gray-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md">
         <div className="max-w-[900px] mx-auto px-6 w-full flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 no-underline">
+          <Link href="/support" className="flex items-center gap-2 no-underline">
             <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-lg" />
             <div className="flex items-center gap-1.5">
               <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">IAT</span>

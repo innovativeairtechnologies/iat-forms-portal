@@ -13,7 +13,7 @@ export default function PublicHeader({ formTitle }: Props) {
   return (
     <header className="sticky top-0 z-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-gray-100 dark:border-zinc-800">
       <div className="max-w-2xl mx-auto px-6 h-13 flex items-center justify-between gap-4" style={{ height: '52px' }}>
-        <Link href="/" className="flex items-center gap-2 group min-w-0 flex-1">
+        <Link href="/forms" className="flex items-center gap-2 group min-w-0 flex-1">
           <div className="w-6 h-6 rounded-md bg-white flex-shrink-0 flex items-center justify-center shadow-sm border border-black/[0.06] dark:border-white/10">
             <Image
               src="/iat-logo.png"

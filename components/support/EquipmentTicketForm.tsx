@@ -178,7 +178,7 @@ const STEP_LABELS = ['Contact', 'Equipment', 'Problem', 'Pre-Cooling', 'Post-Coo
 
 type Stage = 'form' | 'loading' | 'success'
 
-export default function SupportPage() {
+export default function EquipmentTicketForm() {
   const [step, setStep] = useState(1)
   const [dir, setDir] = useState(1)
   const [form, setForm] = useState<FormData>(EMPTY)

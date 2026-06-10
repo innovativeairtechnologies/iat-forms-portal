@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const supabase = createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/employee/login')
+  if (!user) redirect('/login')
 
   const { data: employee } = await supabaseAdmin
     .from('employees')
@@ -20,7 +20,7 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
   // sign them out so the middleware doesn't loop them back here
   if (!employee) {
     await supabase.auth.signOut()
-    redirect('/employee/login')
+    redirect('/login')
   }
 
   return <EmployeeShell employee={employee}>{children}</EmployeeShell>

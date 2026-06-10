@@ -62,7 +62,7 @@ export default async function SuccessPage({ params }: { params: { slug: string }
                 Submit another response
               </Link>
               <Link
-                href="/"
+                href="/forms"
                 className="inline-flex items-center gap-2 text-[13px] font-medium text-gray-400 hover:text-[#0a0a0b] dark:hover:text-white px-4 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
               >
                 <ArrowLeft size={13} />

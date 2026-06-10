@@ -61,7 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
     href: '/admin/employees',
     items: [
       { href: '/admin/requests',   label: 'Time Off',   icon: CalendarClock },
-      { href: '/admin/scheduling', label: 'Scheduling', icon: Calendar },
+      { href: '/admin/schedule', label: 'Scheduling', icon: Calendar },
       { href: '/admin/accrual',    label: 'Accrual',    icon: TrendingUp },
     ],
     future: [

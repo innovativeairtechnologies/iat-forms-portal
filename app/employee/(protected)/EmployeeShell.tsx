@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { User, Calendar, LogOut, Menu, X, Users } from 'lucide-react'
+import { User, Calendar, LogOut, Menu, X, Users, LayoutGrid } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils'
 import ThemeToggle from '@/components/ThemeToggle'
 
 const NAV = [
-  { href: '/employee/profile',   label: 'My Profile',  icon: User     },
-  { href: '/employee/requests',  label: 'Time Off',    icon: Calendar },
-  { href: '/employee/directory', label: 'Directory',   icon: Users    },
+  { href: '/employee/profile',   label: 'My Profile',  icon: User       },
+  { href: '/employee/requests',  label: 'Time Off',    icon: Calendar   },
+  { href: '/employee/directory', label: 'Directory',   icon: Users      },
+  { href: '/employee/resources', label: 'Resources',   icon: LayoutGrid },
 ]
 
 export default function EmployeeShell({ employee, children }: { employee: Employee; children: React.ReactNode }) {
@@ -26,7 +27,7 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
 
   const logout = async () => {
     await supabase.auth.signOut()
-    router.push('/employee/login')
+    router.push('/login')
     router.refresh()
   }
 

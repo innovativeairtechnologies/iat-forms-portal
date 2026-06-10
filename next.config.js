@@ -16,16 +16,10 @@ const nextConfig = {
       },
     ],
   },
-  async rewrites() {
+  async redirects() {
     return [
-      {
-        source: '/support',
-        destination: 'https://iat-ticketing.vercel.app/',
-      },
-      {
-        source: '/support/:path*',
-        destination: 'https://iat-ticketing.vercel.app/:path*',
-      },
+      // Support ticketing moved from /support/ticket to the /support/[form] template
+      { source: '/support/ticket', destination: '/support/equipment-support', permanent: true },
     ]
   },
   async headers() {

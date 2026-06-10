@@ -43,7 +43,7 @@ export default function WelcomePage() {
   useEffect(() => {
     const load = async () => {
       const res = await fetch('/api/employees/me')
-      if (res.status === 401) { router.push('/employee/login'); return }
+      if (res.status === 401) { router.push('/login'); return }
       const json = await res.json()
       if (!res.ok) {
         setLoadError(json.error || 'Could not load your account. Please contact your admin.')
@@ -98,7 +98,7 @@ export default function WelcomePage() {
           <div className="text-center px-6 max-w-sm">
             <p className="text-[15px] font-semibold text-gray-800 mb-2">Something went wrong</p>
             <p className="text-[13px] text-gray-400">{loadError}</p>
-            <button onClick={() => router.push('/employee/login')}
+            <button onClick={() => router.push('/login')}
               className="mt-4 text-[13px] text-[#089447] hover:underline">
               Back to login
             </button>

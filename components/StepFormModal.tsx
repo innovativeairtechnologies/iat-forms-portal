@@ -181,7 +181,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
   // Keep advanceRef pointing at the latest action
   advanceRef.current = isLastStep ? submit : next
 
-  const handleClose = () => standalone ? router.push('/') : onClose?.()
+  const handleClose = () => standalone ? router.push('/forms') : onClose?.()
 
   // ── Progress calculation ────────────────────────────────────────────────────
   const progressPct = submitted
@@ -423,7 +423,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0f0f2] dark:bg-zinc-950 px-4 py-8">
         <div className="w-full max-w-xl mb-3">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/forms')}
             className="flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             <ArrowLeft size={13} />

@@ -1,33 +1,21 @@
-import { supabase } from '@/lib/supabase'
-import type { Category, Form } from '@/lib/supabase'
-import FormsPortal from '@/components/FormsPortal'
+import { redirect } from 'next/navigation'
+import { createSupabaseServer } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
-async function getData() {
-  const [{ data: categories }, { data: forms }, { data: submissionCounts }] = await Promise.all([
-    supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('forms').select('*, categories(*)').eq('is_active', true).order('title'),
-    supabase.from('submissions').select('form_id'),
-  ])
+export const dynamic = 'force-dynamic'
 
-  const countMap: Record<string, number> = {}
-  for (const row of submissionCounts || []) {
-    countMap[row.form_id] = (countMap[row.form_id] || 0) + 1
-  }
+// Root is a role-aware router: it never renders UI, it just sends each visitor
+// to the right home. The public forms directory now lives at /forms.
+export default async function RootRouter() {
+  const supabase = createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  const formsWithCount = (forms || []).map((f) => ({
-    ...f,
-    submission_count: countMap[f.id] || 0,
-  }))
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
 
-  return {
-    categories: (categories || []) as Category[],
-    forms: formsWithCount as (Form & { categories: Category })[],
-  }
-}
-
-export const revalidate = 60
-
-export default async function HomePage() {
-  const { categories, forms } = await getData()
-  return <FormsPortal categories={categories} forms={forms} />
+  redirect(profile?.role === 'admin' ? '/admin' : '/employee/profile')
 }
