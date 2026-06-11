@@ -13,10 +13,6 @@ import SelectChipField from './fields/SelectChipField'
 import FileField from './fields/FileField'
 import SignatureField from './fields/SignatureField'
 
-// Field types that always get their own full-width step
-const LONG_TYPES = new Set(['textarea', 'file', 'signature'])
-const MAX_SHORT_PER_STEP = 4
-
 type Step = { title: string | null; fields: FormField[] }
 
 function groupFieldsIntoSteps(fields: FormField[]): Step[] {
@@ -26,20 +22,11 @@ function groupFieldsIntoSteps(fields: FormField[]): Step[] {
 
   for (const field of fields) {
     if (field.field_type === 'section_header') {
-      // Flush accumulated short fields, then set new section title
-      if (current.length > 0) { steps.push({ title: currentTitle, fields: current }); current = [] }
+      if (current.length > 0) steps.push({ title: currentTitle, fields: current })
+      current = []
       currentTitle = field.label
-    } else if (LONG_TYPES.has(field.field_type)) {
-      if (current.length > 0) { steps.push({ title: currentTitle, fields: current }); current = []; currentTitle = null }
-      steps.push({ title: currentTitle, fields: [field] })
-      currentTitle = null
     } else {
       current.push(field)
-      if (current.length >= MAX_SHORT_PER_STEP) {
-        steps.push({ title: currentTitle, fields: current })
-        current = []
-        currentTitle = null
-      }
     }
   }
 
@@ -343,7 +330,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
                   </p>
                 )}
 
-                {/* 1 field → full width; multiple → 2-col grid */}
+                {/* 1 field → full width; multiple → 2-col grid (wide types always span both cols) */}
                 {(steps[currentStep]?.fields.length ?? 0) === 1 ? (
                   <FieldInput
                     field={steps[currentStep].fields[0]}
@@ -354,13 +341,18 @@ export default function StepFormModal({ slug, onClose }: Props) {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
                     {steps[currentStep]?.fields.map(field => (
-                      <FieldInput
-                        key={field.id}
-                        field={field}
-                        value={answers[field.label]}
-                        error={errors[field.label]}
-                        onChange={v => handleChange(field.label, v)}
-                      />
+                      <div key={field.id} className={
+                        ['textarea', 'file', 'signature', 'checkbox', 'radio'].includes(field.field_type)
+                          ? 'sm:col-span-2'
+                          : ''
+                      }>
+                        <FieldInput
+                          field={field}
+                          value={answers[field.label]}
+                          error={errors[field.label]}
+                          onChange={v => handleChange(field.label, v)}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
