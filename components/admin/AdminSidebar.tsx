@@ -88,8 +88,8 @@ function NavLink({
   onClose?: () => void
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
-  // /admin/test previews a new theme — give the nav an emerald-accented treatment there only.
-  const testTheme = pathname.startsWith('/admin/test')
+  // The new dashboard lives at /admin — give the nav a matching emerald-accented treatment there only.
+  const dashTheme = pathname === '/admin'
   return (
     <Link
       href={item.href}
@@ -97,10 +97,10 @@ function NavLink({
       className={cn(
         'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
         active
-          ? testTheme
+          ? dashTheme
             ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
             : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
-          : testTheme
+          : dashTheme
             ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
             : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
       )}
@@ -142,8 +142,8 @@ interface Props {
 export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
-  // Scope the new dashboard theme to the /admin/test preview only.
-  const testTheme = pathname.startsWith('/admin/test')
+  // The new dashboard is now at /admin (the old one is parked at /admin/test); theme the nav to match it.
+  const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
   const [search, setSearch] = useState('')
   const displayName = adminName || 'Admin'
@@ -174,7 +174,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
           placeholder="Search…"
           className={cn(
             'w-full text-[13px] border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 transition-all',
-            testTheme
+            dashTheme
               ? 'bg-gray-100 dark:bg-zinc-900 focus:ring-emerald-500/30 dark:focus:ring-zinc-700'
               : 'bg-gray-100 dark:bg-zinc-800 focus:ring-gray-200 dark:focus:ring-gray-700',
           )}
@@ -240,9 +240,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
 
   const renderFooter = (onClose?: () => void) => (
     <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-zinc-800">
-      <p className="text-[12px] font-medium text-[rgb(167,167,167)] dark:text-[rgb(140,140,140)] px-3 pb-1.5">
-        Settings
-      </p>
       <button
         onClick={logout}
         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all"
@@ -257,7 +254,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
         onClick={onClose}
         className={cn(
           'mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all group',
-          testTheme
+          dashTheme
             ? 'bg-gray-50 dark:bg-zinc-900/40 hover:bg-gray-100 dark:hover:bg-zinc-900 border-gray-100 dark:border-zinc-800'
             : 'bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 border-gray-100 dark:border-zinc-700',
         )}
@@ -276,7 +273,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
       {/* ── Desktop sidebar ── */}
       <aside className={cn(
         'hidden md:flex w-[240px] flex-shrink-0 flex-col h-screen sticky top-0 overflow-hidden border-r',
-        testTheme
+        dashTheme
           ? 'bg-white dark:bg-[#0a0a0b] border-zinc-200 dark:border-zinc-800'
           : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800',
       )}>
@@ -326,7 +323,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
           <div
             className={cn(
               'relative w-[260px] flex flex-col h-full shadow-xl',
-              testTheme ? 'bg-white dark:bg-[#0a0a0b]' : 'bg-white dark:bg-zinc-900',
+              dashTheme ? 'bg-white dark:bg-[#0a0a0b]' : 'bg-white dark:bg-zinc-900',
             )}
             onClick={e => e.stopPropagation()}
           >
