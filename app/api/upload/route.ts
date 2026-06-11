@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { requireAdminAuth } from '@/lib/api-auth'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
-  const err = await requireAdminAuth(); if (err) return err
+  // Public on purpose: file fields on public forms upload through here, so an
+  // admin guard breaks them (it 401'd every non-admin form filler). Defenses
+  // instead: per-IP rate limit + the size cap, type allowlist, and random
+  // server-side filenames below.
+  const limited = await rateLimit(req, { name: 'upload', max: 20, windowSeconds: 600 })
+  if (limited) return limited
+
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
