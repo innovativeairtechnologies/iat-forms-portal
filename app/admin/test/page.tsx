@@ -389,6 +389,28 @@ export default async function TestDashboard() {
   const pct = (n: number) => Math.round((n / donutBase) * 100)
   const attentionCount = d.attention.unread + d.attention.openTickets + d.attention.pendingApprovals
 
+  // KPI cards defined once, placed in two layouts (mobile grid vs. xl split) below.
+  const kpiTotal = (
+    <Kpi label="Total Submissions" value={d.kpi.totalSubs} unit="all-time" delta={d.subDelta} deltaLabel="vs last week"
+      spark={d.subSeries} color={C.blue} icon={<ClipboardList size={15} />} href="/admin/submissions" />
+  )
+  const kpiForms = (
+    <Kpi label="Active Forms" value={d.kpi.activeForms} unit="live" sub="Published & accepting input"
+      spark={d.formRows.slice(0, 14).map((f) => f.count).reverse()} color={C.green} icon={<FileText size={15} />} href="/admin/forms" />
+  )
+  const kpiUnread = (
+    <Kpi label="Unread" value={d.kpi.unread} unit="to review" sub="Submissions awaiting review"
+      spark={d.subSeries} color={C.amber} icon={<Inbox size={15} />} href="/admin/submissions?is_read=false" />
+  )
+  const kpiOpen = (
+    <Kpi label="Open Tickets" value={d.kpi.openTickets} unit="awaiting" delta={d.tktDelta} deltaLabel="intake vs last week"
+      spark={d.tktSeries} color={C.rose} icon={<Ticket size={15} />} href="/admin/tickets" />
+  )
+  const kpiResolved = (
+    <Kpi label="Resolved" value={d.kpi.resolved7d} unit="this week" sub="Tickets closed in last 7 days"
+      spark={d.tktSeries} color={C.green} icon={<CheckCircle2 size={15} />} href="/admin/tickets" />
+  )
+
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
       {/* Top bar */}
@@ -420,18 +442,17 @@ export default async function TestDashboard() {
 
       <div className="p-5 space-y-4">
 
-        {/* ── KPI row (full width) ─────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-          <Kpi label="Total Submissions" value={d.kpi.totalSubs} unit="all-time" delta={d.subDelta} deltaLabel="vs last week"
-            spark={d.subSeries} color={C.blue} icon={<ClipboardList size={15} />} href="/admin/submissions" />
-          <Kpi label="Active Forms" value={d.kpi.activeForms} unit="live" sub="Published & accepting input"
-            spark={d.formRows.slice(0, 14).map((f) => f.count).reverse()} color={C.green} icon={<FileText size={15} />} href="/admin/forms" />
-          <Kpi label="Unread" value={d.kpi.unread} unit="to review" sub="Submissions awaiting review"
-            spark={d.subSeries} color={C.amber} icon={<Inbox size={15} />} href="/admin/submissions?is_read=false" />
-          <Kpi label="Open Tickets" value={d.kpi.openTickets} unit="awaiting" delta={d.tktDelta} deltaLabel="intake vs last week"
-            spark={d.tktSeries} color={C.rose} icon={<Ticket size={15} />} href="/admin/tickets" />
-          <Kpi label="Resolved" value={d.kpi.resolved7d} unit="this week" sub="Tickets closed in last 7 days"
-            spark={d.tktSeries} color={C.green} icon={<CheckCircle2 size={15} />} href="/admin/tickets" />
+        {/* ── KPI row · below xl: all 5 in a responsive grid ───────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 xl:hidden">
+          {kpiTotal}{kpiForms}{kpiUnread}{kpiOpen}{kpiResolved}
+        </div>
+
+        {/* ── KPI row · xl+: 4 in the left zone, Resolved atop the rail column ── */}
+        <div className="hidden xl:flex gap-4 items-stretch">
+          <div className="flex-1 min-w-0 grid grid-cols-4 gap-3">
+            {kpiTotal}{kpiForms}{kpiUnread}{kpiOpen}
+          </div>
+          <div className="w-[330px] flex-shrink-0">{kpiResolved}</div>
         </div>
 
         {/* ── Main + creative right rail ───────────────────────────── */}
