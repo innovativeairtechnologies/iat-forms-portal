@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { rateLimit } from '@/lib/rate-limit'
+import { sendTicketConfirmationToCustomer, sendTicketNotificationToAdmins } from '@/lib/resend-tickets'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -43,6 +45,10 @@ Respond with ONLY a raw JSON array of 1–3 strings. Each string is one actionab
 }
 
 export async function POST(req: NextRequest) {
+  // Tight window: each ticket is a DB insert + a Claude call + two emails.
+  const limited = await rateLimit(req, { name: 'tickets', max: 5, windowSeconds: 600 })
+  if (limited) return limited
+
   try {
     const body = await req.json()
 
@@ -107,6 +113,26 @@ export async function POST(req: NextRequest) {
         .update({ ai_recommendations })
         .eq('id', ticket.id)
     }
+
+    // Email loop — customer confirmation + staff notification. Awaited so
+    // Vercel doesn't kill the function before Resend fires; failures are
+    // logged but never fail the ticket.
+    const fullTicket = { ...ticket, ai_recommendations: ai_recommendations.length ? ai_recommendations : null }
+
+    const { data: admins } = await supabaseAdmin
+      .from('employees')
+      .select('email')
+      .eq('is_admin', true)
+    const adminEmails = admins?.map(a => a.email) ?? []
+    const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
+    if (fallback && !adminEmails.includes(fallback)) adminEmails.push(fallback)
+
+    await Promise.all([
+      sendTicketConfirmationToCustomer(fullTicket).catch(console.error),
+      adminEmails.length
+        ? sendTicketNotificationToAdmins(fullTicket, adminEmails).catch(console.error)
+        : Promise.resolve(console.log('[tickets] no admin recipients configured — staff notification skipped')),
+    ])
 
     return NextResponse.json({ success: true, ticket_number, ai_recommendations })
   } catch (err) {
