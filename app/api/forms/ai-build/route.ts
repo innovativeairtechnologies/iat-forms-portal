@@ -57,22 +57,70 @@ Rules:
 - Preserve the order fields appear in the source
 - Generate a concise URL-safe slug from the title
 - Write a professional success_message appropriate to the form type
-- Choose the most fitting category based on the form's purpose`
+- Choose the most fitting category based on the form's purpose
+- If a document (PDF) or image is attached, treat it as the source form and faithfully reproduce its questions, sections, and order. Use any typed notes as additional guidance.`
 
 export async function POST(req: NextRequest) {
   const err = await requireAdminAuth(); if (err) return err
 
   try {
-    const { description } = await req.json()
-    if (!description?.trim()) {
-      return NextResponse.json({ error: 'Description is required' }, { status: 400 })
+    const { description, file } = (await req.json()) as {
+      description?: string
+      file?: { data: string; media_type: string; name?: string }
+    }
+
+    const hasText = !!description?.trim()
+    const hasFile = !!file?.data && !!file?.media_type
+
+    if (!hasText && !hasFile) {
+      return NextResponse.json(
+        { error: 'Provide a description, attach a document, or both.' },
+        { status: 400 }
+      )
+    }
+
+    // Build the user turn. With an attachment, send it as a native document/image
+    // block so Claude reads the file directly (text + layout) — far more reliable
+    // than client-side text extraction.
+    let content: Anthropic.MessageParam['content']
+    if (hasFile) {
+      const blocks: Anthropic.ContentBlockParam[] = []
+      if (file!.media_type === 'application/pdf') {
+        blocks.push({
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: file!.data },
+        })
+      } else if (file!.media_type.startsWith('image/')) {
+        blocks.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: file!.media_type as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp',
+            data: file!.data,
+          },
+        })
+      } else {
+        return NextResponse.json(
+          { error: 'Unsupported file type. Attach a PDF or an image (PNG, JPG).' },
+          { status: 400 }
+        )
+      }
+      blocks.push({
+        type: 'text',
+        text: hasText
+          ? `Build a form from the attached document. Additional notes from the user:\n\n${description!.trim()}`
+          : 'Build a form from the attached document.',
+      })
+      content = blocks
+    } else {
+      content = description!.trim()
     }
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8096,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: description.trim() }],
+      messages: [{ role: 'user', content }],
     })
 
     const raw = message.content[0].type === 'text' ? message.content[0].text : ''

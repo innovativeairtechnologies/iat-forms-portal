@@ -1,10 +1,31 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Sparkles, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Sparkles, Loader2, AlertCircle, CheckCircle2, Paperclip, FileText, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+// Vercel caps the request body at ~4.5MB; base64 inflates by ~33%, so keep the
+// raw file under ~3MB. Larger/scanned PDFs would need a storage-upload path.
+const MAX_FILE_BYTES = 3 * 1024 * 1024
+const ACCEPTED = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp']
+
+type Attachment = { data: string; media_type: string; name: string; size: number }
+
+function readFileAsAttachment(file: File): Promise<Attachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result)
+      // Strip the "data:<mime>;base64," prefix — the API wants raw base64.
+      const data = result.slice(result.indexOf(',') + 1)
+      resolve({ data, media_type: file.type, name: file.name, size: file.size })
+    }
+    reader.onerror = () => reject(new Error('Could not read file'))
+    reader.readAsDataURL(file)
+  })
+}
 
 const PLACEHOLDER = `Paste your form description here — section headers, question lists, bullet points, any format works.
 
@@ -27,19 +48,49 @@ Example:
 export default function AIFormBuilderPage() {
   const router = useRouter()
   const [description, setDescription] = useState('')
+  const [attachment, setAttachment] = useState<Attachment | null>(null)
   const [status, setStatus] = useState<'idle' | 'building' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const canBuild = (!!description.trim() || !!attachment) && status !== 'building' && status !== 'success'
+
+  const attachFile = async (file: File | undefined) => {
+    if (!file) return
+    if (!ACCEPTED.includes(file.type)) {
+      setStatus('error')
+      setMessage('Unsupported file. Attach a PDF or an image (PNG, JPG, GIF, WebP).')
+      return
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setStatus('error')
+      setMessage('File is too large (max 3MB). For a bigger PDF, paste its text instead.')
+      return
+    }
+    try {
+      const a = await readFileAsAttachment(file)
+      setAttachment(a)
+      if (status === 'error') setStatus('idle')
+      setMessage('')
+    } catch {
+      setStatus('error')
+      setMessage('Could not read that file. Please try another.')
+    }
+  }
 
   const build = async () => {
-    if (!description.trim() || status === 'building' || status === 'success') return
+    if (!canBuild) return
     setStatus('building')
-    setMessage('Analyzing your form description…')
+    setMessage(attachment ? 'Reading your document and building the form…' : 'Analyzing your form description…')
 
     try {
       const res = await fetch('/api/forms/ai-build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description }),
+        body: JSON.stringify({
+          description,
+          file: attachment ? { data: attachment.data, media_type: attachment.media_type, name: attachment.name } : undefined,
+        }),
       })
       const data = await res.json()
 
@@ -83,7 +134,7 @@ export default function AIFormBuilderPage() {
               Build with AI
             </h1>
             <p className="text-[13px] text-gray-400 mt-0.5">
-              Paste a form description — Claude will parse it and build the form for you.
+              Paste a description or upload a PDF — Claude will read it and build the form for you.
             </p>
           </div>
         </div>
@@ -116,13 +167,51 @@ export default function AIFormBuilderPage() {
             className="w-full px-5 py-4 text-[13px] font-mono leading-relaxed text-gray-800 dark:text-gray-200 bg-white dark:bg-zinc-900 placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none resize-none disabled:opacity-50 transition-opacity"
             autoFocus
           />
+
+          {/* Attachment bar */}
+          <div className="px-4 py-2.5 bg-gray-50 dark:bg-zinc-800/60 border-t border-gray-100 dark:border-zinc-700 flex items-center gap-3 flex-wrap">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,image/png,image/jpeg,image/gif,image/webp"
+              className="hidden"
+              onChange={e => { attachFile(e.target.files?.[0]); if (fileInputRef.current) fileInputRef.current.value = '' }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={status === 'building' || status === 'success'}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors disabled:opacity-40"
+            >
+              <Paperclip size={13} />
+              Attach PDF or image
+            </button>
+
+            {attachment ? (
+              <span className="inline-flex items-center gap-2 pl-2.5 pr-1.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50 text-[12px] text-violet-700 dark:text-violet-300 max-w-full">
+                <FileText size={13} className="flex-shrink-0" />
+                <span className="truncate max-w-[220px]">{attachment.name}</span>
+                <span className="text-violet-400 dark:text-violet-500 flex-shrink-0">{(attachment.size / 1024).toFixed(0)} KB</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachment(null)}
+                  className="ml-0.5 p-0.5 rounded hover:bg-violet-100 dark:hover:bg-violet-900/50 flex-shrink-0"
+                  aria-label="Remove attachment"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ) : (
+              <span className="text-[11px] text-gray-300 dark:text-gray-600 select-none">PDF or image, up to 3MB</span>
+            )}
+          </div>
         </div>
 
         {/* Action row */}
         <div className="mt-4 flex items-center gap-4 flex-wrap">
           <button
             onClick={build}
-            disabled={!description.trim() || status === 'building' || status === 'success'}
+            disabled={!canBuild}
             className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
           >
             {status === 'building' ? (
@@ -165,7 +254,8 @@ export default function AIFormBuilderPage() {
         <div className="mt-6 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/40 px-5 py-4">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">Tips</p>
           <ul className="space-y-1.5 text-[12px] text-gray-500 dark:text-gray-400">
-            <li>• Paste raw from Word, email, PDF, or any source — format doesn&apos;t matter</li>
+            <li>• <strong>Upload a PDF</strong> (e.g. an existing form) and Claude reads it directly — or paste text from Word, email, anywhere</li>
+            <li>• You can do both: attach a PDF <em>and</em> add notes like &quot;skip the signature section&quot;</li>
             <li>• Mention types inline — e.g. <code className="font-mono text-violet-500">(select: Yes, No)</code> or <code className="font-mono text-violet-500">(required)</code></li>
             <li>• Section headers and question numbers help Claude preserve order</li>
             <li>• Forms land in the editor as <strong>drafts</strong> — review fields and publish when ready</li>
