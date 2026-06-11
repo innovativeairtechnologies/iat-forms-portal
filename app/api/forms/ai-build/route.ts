@@ -179,6 +179,7 @@ export async function POST(req: NextRequest) {
         category_id: categoryId,
         slug,
         is_active: false,
+        approval_status: 'pending',
         success_message: parsed.success_message || 'Your submission has been received.',
       })
       .select()

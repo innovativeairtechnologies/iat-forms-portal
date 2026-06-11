@@ -20,6 +20,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const body = await req.json()
     const { title, description, category_id, slug, is_active, success_message, fields, notification_rules } = body
 
+    // Approval gate: a form can only be set active once it has been approved by a
+    // super admin. (approval_status / approved_by / approved_at are never settable
+    // here — only via POST /api/forms/[id]/approve.)
+    if (is_active === true) {
+      const { data: current } = await supabaseAdmin
+        .from('forms')
+        .select('approval_status')
+        .eq('id', params.id)
+        .single()
+      if (current?.approval_status !== 'approved') {
+        return NextResponse.json(
+          { error: 'This form must be approved by a super admin before it can go live.' },
+          { status: 403 }
+        )
+      }
+    }
+
     const { error: formError } = await supabaseAdmin
       .from('forms')
       .update({ title, description, category_id, slug, is_active, success_message, updated_at: new Date().toISOString() })

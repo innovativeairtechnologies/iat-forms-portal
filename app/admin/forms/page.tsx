@@ -1,6 +1,7 @@
 ﻿export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getAdminUser } from '@/lib/admin-auth'
 import Link from 'next/link'
 import { Plus, ExternalLink, Sparkles, Inbox, FolderOpen } from 'lucide-react'
 import FormsListClient from './FormsListClient'
@@ -13,6 +14,7 @@ interface SearchParams { category?: string; status?: string }
 
 type FormShape = {
   id: string; title: string; slug: string; is_active: boolean;
+  approval_status: 'pending' | 'approved';
   created_at: string; description: string | null;
   categories: { id: string; name: string } | null
 }
@@ -33,7 +35,9 @@ async function getData() {
 }
 
 export default async function FormsListPage({ searchParams }: { searchParams: SearchParams }) {
-  const { forms, countByForm, categories } = await getData()
+  const [{ forms, countByForm, categories }, me] = await Promise.all([getData(), getAdminUser()])
+  const isSuperAdmin = me?.isSuperAdmin ?? false
+  const pendingCount = forms.filter((f) => f.approval_status !== 'approved').length
 
   const activeCategory = searchParams.category || 'all'
   const activeStatus   = searchParams.status   || 'all'
@@ -43,6 +47,8 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
     ? forms.filter((f) => f.is_active)
     : activeStatus === 'inactive'
     ? forms.filter((f) => !f.is_active)
+    : activeStatus === 'pending'
+    ? forms.filter((f) => f.approval_status !== 'approved')
     : forms
 
   // Apply category filter
@@ -130,14 +136,19 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
           {/* Status filter pills */}
           <div className="flex items-center gap-1 pb-1 flex-shrink-0">
-            {(['all', 'active', 'inactive'] as const).map((s) => (
+            {(['all', 'active', 'inactive', 'pending'] as const).map((s) => (
               <Link key={s} href={statusHref(s)}
-                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${
+                className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${
                   activeStatus === s
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                    : s === 'pending' && pendingCount > 0
+                    ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100'
                     : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800'
                 }`}>
-                {s === 'all' ? 'All' : s === 'active' ? 'Active' : 'Inactive'}
+                {s === 'all' ? 'All' : s === 'active' ? 'Active' : s === 'inactive' ? 'Inactive' : 'Pending'}
+                {s === 'pending' && pendingCount > 0 && (
+                  <span className={`text-[10px] font-bold px-1.5 rounded-full ${activeStatus === s ? 'bg-white/20' : 'bg-amber-200/60 dark:bg-amber-900/60'}`}>{pendingCount}</span>
+                )}
               </Link>
             ))}
           </div>
@@ -183,13 +194,13 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
                   )}
                 </div>
               </div>
-              <FormsList forms={catForms} countByForm={countByForm} showCategory={false} />
+              <FormsList forms={catForms} countByForm={countByForm} showCategory={false} isSuperAdmin={isSuperAdmin} />
             </div>
           ))
         ) : (
           /* Flat category view */
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-            <FormsList forms={categoryFiltered} countByForm={countByForm} showCategory={false} showHeaders />
+            <FormsList forms={categoryFiltered} countByForm={countByForm} showCategory={false} showHeaders isSuperAdmin={isSuperAdmin} />
           </div>
         )}
       </div>
@@ -199,25 +210,26 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
 // ─── FormsList ────────────────────────────────────────────────────────────────
 
-function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
+function FormsList({ forms, countByForm, showCategory, showHeaders = false, isSuperAdmin }: {
   forms: FormShape[]
   countByForm: Record<string, number>
   showCategory: boolean
   showHeaders?: boolean
+  isSuperAdmin: boolean
 }) {
   return (
     <>
       {showHeaders && (
-        <div className="grid grid-cols-[1fr_80px_auto] items-center px-6 py-3 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
+        <div className="grid grid-cols-[1fr_104px_auto] items-center px-6 py-3 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-center">Active</span>
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-center">Status</span>
           <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-right">Actions</span>
         </div>
       )}
     <ul className="divide-y divide-gray-50 dark:divide-zinc-800/60">
       {forms.map((form) => (
         <li key={form.id}
-          className="group grid grid-cols-[1fr_80px_auto] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-zinc-800/30 transition-colors">
+          className="group grid grid-cols-[1fr_104px_auto] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-zinc-800/30 transition-colors">
 
           {/* Form name + meta */}
           <div className="flex items-center gap-3 min-w-0 pr-4">
@@ -238,9 +250,9 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false }: {
             </div>
           </div>
 
-          {/* Active toggle */}
+          {/* Active toggle / approval control */}
           <div className="flex items-center justify-center">
-            <FormsListClient formId={form.id} isActive={form.is_active} />
+            <FormsListClient formId={form.id} isActive={form.is_active} approvalStatus={form.approval_status} isSuperAdmin={isSuperAdmin} />
           </div>
 
           {/* Actions */}

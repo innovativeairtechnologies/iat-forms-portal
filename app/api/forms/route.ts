@@ -19,9 +19,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { title, description, category_id, slug, success_message, fields, notification_rules } = body
 
+    // New forms start as a draft pending super-admin approval — they cannot go
+    // live until approved (the manual builder used to default is_active=true).
     const { data: form, error: formError } = await supabaseAdmin
       .from('forms')
-      .insert({ title, description, category_id, slug, success_message })
+      .insert({ title, description, category_id, slug, success_message, is_active: false, approval_status: 'pending' })
       .select()
       .single()
 

@@ -8,7 +8,7 @@ export async function getAdminUser() {
 
   const { data: profile } = await supabaseAdmin
     .from('profiles')
-    .select('role, display_name')
+    .select('role, display_name, is_super_admin')
     .eq('id', user.id)
     .single()
 
@@ -17,6 +17,7 @@ export async function getAdminUser() {
     user,
     displayName: profile.display_name || user.email?.split('@')[0] || 'Admin',
     role: profile.role as 'admin',
+    isSuperAdmin: profile.is_super_admin === true,
   }
 }
 

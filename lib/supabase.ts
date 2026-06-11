@@ -20,6 +20,9 @@ export type Form = {
   category_id: string | null
   slug: string
   is_active: boolean
+  approval_status: 'pending' | 'approved'
+  approved_by: string | null
+  approved_at: string | null
   success_message: string
   created_at: string
   updated_at: string
