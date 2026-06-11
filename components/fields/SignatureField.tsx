@@ -21,13 +21,18 @@ interface Props {
 
 export default function SignatureField({ field: _field, value, onChange }: Props) {
   const sigRef = useRef<SigCanvas | null>(null)
-  const [signed, setSigned] = useState(false)
+  // Initialise from value so "Signature captured" persists when navigating back
+  const [signed, setSigned] = useState(!!value)
 
   const handleEnd = () => {
-    if (sigRef.current && !sigRef.current.isEmpty()) {
-      onChange(sigRef.current.toDataURL('image/png'))
+    // requestAnimationFrame ensures the canvas has committed the stroke
+    // before we read isEmpty() / toDataURL() — fixes a race with dynamic import.
+    requestAnimationFrame(() => {
+      const canvas = sigRef.current
+      if (!canvas || canvas.isEmpty()) return
+      onChange(canvas.toDataURL('image/png'))
       setSigned(true)
-    }
+    })
   }
 
   const handleClear = () => {
@@ -56,6 +61,7 @@ export default function SignatureField({ field: _field, value, onChange }: Props
         </div>
         {signed && (
           <button
+            type="button"
             onClick={handleClear}
             className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
           >

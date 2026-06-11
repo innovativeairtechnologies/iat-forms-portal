@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   X, ChevronLeft, ChevronRight, CheckCircle,
-  AlertCircle, Loader2, ArrowLeft,
+  AlertCircle, Loader2, ArrowLeft, Zap,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
@@ -15,22 +15,45 @@ import SignatureField from './fields/SignatureField'
 
 type Step = { title: string | null; fields: FormField[] }
 
+// Weight of each field type when deciding how much a step can hold.
+// Heavier fields are taller on screen and fill the viewport faster.
+const FIELD_WEIGHT: Record<string, number> = {
+  text: 1, email: 1, number: 1, date: 1, select: 1, file: 1,
+  radio: 2, checkbox: 2, textarea: 2,
+  signature: 6,
+}
+const MAX_STEP_WEIGHT = 8
+
 function groupFieldsIntoSteps(fields: FormField[]): Step[] {
   const steps: Step[] = []
-  let current: FormField[] = []
-  let currentTitle: string | null = null
+  let pending: FormField[] = []
+  let weight = 0
+  let sectionTitle: string | null = null
+  let contIndex = 0  // how many steps we've flushed for the current section
+
+  const flush = () => {
+    if (pending.length === 0) return
+    const title = contIndex === 0 ? sectionTitle : `${sectionTitle} (Cont.)`
+    steps.push({ title, fields: pending })
+    pending = []
+    weight = 0
+    contIndex++
+  }
 
   for (const field of fields) {
     if (field.field_type === 'section_header') {
-      if (current.length > 0) steps.push({ title: currentTitle, fields: current })
-      current = []
-      currentTitle = field.label
+      flush()
+      sectionTitle = field.label
+      contIndex = 0
     } else {
-      current.push(field)
+      const w = FIELD_WEIGHT[field.field_type] ?? 1
+      if (pending.length > 0 && weight + w > MAX_STEP_WEIGHT) flush()
+      pending.push(field)
+      weight += w
     }
   }
 
-  if (current.length > 0) steps.push({ title: currentTitle, fields: current })
+  flush()
   return steps
 }
 
@@ -117,6 +140,41 @@ export default function StepFormModal({ slug, onClose }: Props) {
     setErrors(p => { const n = { ...p }; delete n[label]; return n })
   }, [])
 
+  // ── Auto-fill (test helper) ─────────────────────────────────────────────────
+  const autofill = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0]
+    const filled: Record<string, unknown> = { ...answers }
+    for (const step of steps) {
+      for (const f of step.fields) {
+        if (f.field_type === 'section_header') continue
+        if (f.field_type === 'file' || f.field_type === 'signature') continue
+        if (filled[f.label] !== undefined && filled[f.label] !== '' && filled[f.label] !== null) continue
+        switch (f.field_type) {
+          case 'text':
+          case 'number':
+          case 'textarea':
+            filled[f.label] = f.placeholder || 'Test value'
+            break
+          case 'email':
+            filled[f.label] = f.placeholder || 'test@example.com'
+            break
+          case 'date':
+            filled[f.label] = today
+            break
+          case 'radio':
+          case 'select':
+            filled[f.label] = f.options?.[0] ?? ''
+            break
+          case 'checkbox':
+            filled[f.label] = f.options ? [f.options[0]] : []
+            break
+        }
+      }
+    }
+    setAnswers(filled)
+    setErrors({})
+  }, [steps, answers])
+
   // ── Per-step validation ─────────────────────────────────────────────────────
   const validateStep = (idx: number): boolean => {
     const errs: Record<string, string> = {}
@@ -177,22 +235,20 @@ export default function StepFormModal({ slug, onClose }: Props) {
     ? 0
     : (currentStep / (steps.length - 1)) * 100
 
-  // ── Progress bar + dots ─────────────────────────────────────────────────────
+  // ── Progress bar (dots only when ≤10 steps, bar-only for longer forms) ──────
+  const showDots = steps.length <= 10
   const progressBar = !loading && form && !submitted && (
     <div className="px-6 pt-5 pb-1">
-      <div className="relative flex items-center" style={{ height: 16 }}>
-        {/* Track */}
+      <div className="relative flex items-center" style={{ height: showDots ? 16 : 6 }}>
         <div className="absolute inset-x-0 h-[3px] bg-gray-100 dark:bg-zinc-800 rounded-full" />
-        {/* Fill */}
         <motion.div
           className="absolute left-0 h-[3px] bg-[#089447] rounded-full"
           animate={{ width: `${progressPct}%` }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
         />
-        {/* Dots */}
-        {steps.map((_, i) => {
-          const pct  = steps.length <= 1 ? 0 : (i / (steps.length - 1)) * 100
-          const done = i < currentStep
+        {showDots && steps.map((_, i) => {
+          const pct   = steps.length <= 1 ? 0 : (i / (steps.length - 1)) * 100
+          const done  = i < currentStep
           const active = i === currentStep
           return (
             <motion.div
@@ -298,6 +354,14 @@ export default function StepFormModal({ slug, onClose }: Props) {
               </h2>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+              <button
+                onClick={autofill}
+                title="Auto-fill required fields with test data"
+                className="flex items-center gap-1 text-[10px] font-semibold text-gray-300 dark:text-gray-600 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
+              >
+                <Zap size={10} />
+                Fill
+              </button>
               <span className="text-[11px] font-semibold text-gray-400 tabular-nums">
                 {currentStep + 1}
                 <span className="text-gray-300 dark:text-gray-600 mx-0.5">/</span>
