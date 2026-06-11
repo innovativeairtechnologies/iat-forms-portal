@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendSubmissionEmail } from '@/lib/resend'
+import { rateLimit } from '@/lib/rate-limit'
 import type { Form, FormField, NotificationRule } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
+  // Generous window: a whole office can share one IP (NAT), and kiosk/QR use
+  // means several legitimate submissions in a row are normal.
+  const limited = await rateLimit(req, { name: 'submit', max: 30, windowSeconds: 600 })
+  if (limited) return limited
+
   try {
     const body = await req.json()
     const { form_id, data } = body

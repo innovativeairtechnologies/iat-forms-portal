@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { matchKbArticlesForTicket } from '@/lib/kb'
+import { rateLimit } from '@/lib/rate-limit'
 
 // Neutralize LIKE/ILIKE wildcards so a value like "%" can't match every row.
 function escapeLike(value: string): string {
@@ -8,6 +9,10 @@ function escapeLike(value: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Also slows brute-forcing of ticket-number + email combinations.
+  const limited = await rateLimit(req, { name: 'ticket-status', max: 20, windowSeconds: 600 })
+  if (limited) return limited
+
   try {
     const body = await req.json().catch(() => ({}))
     const ticketNumber = String(body.ticket_number ?? '').trim()
