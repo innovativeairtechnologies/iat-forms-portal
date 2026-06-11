@@ -88,6 +88,8 @@ function NavLink({
   onClose?: () => void
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
+  // /admin/test previews a new theme — give the nav an emerald-accented treatment there only.
+  const testTheme = pathname.startsWith('/admin/test')
   return (
     <Link
       href={item.href}
@@ -95,8 +97,12 @@ function NavLink({
       className={cn(
         'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
         active
-          ? 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
-          : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
+          ? testTheme
+            ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
+            : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
+          : testTheme
+            ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
+            : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
       )}
     >
       <item.icon size={17} className="flex-shrink-0" />
@@ -136,6 +142,8 @@ interface Props {
 export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+  // Scope the new dashboard theme to the /admin/test preview only.
+  const testTheme = pathname.startsWith('/admin/test')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [search, setSearch] = useState('')
   const displayName = adminName || 'Admin'
@@ -164,7 +172,12 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search…"
-          className="w-full text-[13px] bg-gray-100 dark:bg-zinc-800 border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 transition-all"
+          className={cn(
+            'w-full text-[13px] border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 transition-all',
+            testTheme
+              ? 'bg-gray-100 dark:bg-zinc-900 focus:ring-emerald-500/30 dark:focus:ring-zinc-700'
+              : 'bg-gray-100 dark:bg-zinc-800 focus:ring-gray-200 dark:focus:ring-gray-700',
+          )}
         />
       </div>
 
@@ -242,7 +255,12 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
       <Link
         href="/admin/profile"
         onClick={onClose}
-        className="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 border border-gray-100 dark:border-zinc-700 transition-all group"
+        className={cn(
+          'mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all group',
+          testTheme
+            ? 'bg-gray-50 dark:bg-zinc-900/40 hover:bg-gray-100 dark:hover:bg-zinc-900 border-gray-100 dark:border-zinc-800'
+            : 'bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 border-gray-100 dark:border-zinc-700',
+        )}
       >
         <div className="w-7 h-7 rounded-full bg-gray-900 dark:bg-gray-100 flex items-center justify-center flex-shrink-0">
           <span className="text-[12px] font-bold text-white dark:text-gray-900">{initial}</span>
@@ -256,7 +274,12 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex w-[240px] flex-shrink-0 bg-white dark:bg-zinc-900 border-r border-gray-100 dark:border-zinc-800 flex-col h-screen sticky top-0 overflow-hidden">
+      <aside className={cn(
+        'hidden md:flex w-[240px] flex-shrink-0 flex-col h-screen sticky top-0 overflow-hidden border-r',
+        testTheme
+          ? 'bg-white dark:bg-[#0a0a0b] border-zinc-200 dark:border-zinc-800'
+          : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800',
+      )}>
 
         {/* Logo */}
         <div className="px-4 pt-5 pb-4">
@@ -301,7 +324,10 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setMobileOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative w-[260px] bg-white dark:bg-zinc-900 flex flex-col h-full shadow-xl"
+            className={cn(
+              'relative w-[260px] flex flex-col h-full shadow-xl',
+              testTheme ? 'bg-white dark:bg-[#0a0a0b]' : 'bg-white dark:bg-zinc-900',
+            )}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-zinc-800">

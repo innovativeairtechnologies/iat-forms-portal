@@ -2,27 +2,28 @@ export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
+import ThemeToggle from '@/components/ThemeToggle'
 import {
   ArrowLeft, ChevronRight, Search, Bell, Plus,
   Inbox, FileText, ClipboardList, Ticket, CheckCircle2,
-  MoreHorizontal,
+  MoreHorizontal, AlertCircle, ShieldCheck, Sparkles, Users, ArrowRight,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
-   /admin/test — DESIGN PREVIEW
-   A dark "operations overview" dashboard modeled on a clean database admin UI,
+   /admin/test — DESIGN PREVIEW (theme-aware: light + dark)
+   A clean "operations overview" dashboard modeled on a database-admin UI,
    populated entirely with IAT's real submissions / tickets / forms metrics.
-   Self-contained server component: all charts are server-rendered inline SVG.
+   Server component; charts are server-rendered inline SVG (currentColor-aware).
    ──────────────────────────────────────────────────────────────────────────── */
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
+// ─── Accent palette (reads well on both light + dark) ────────────────────────
 const C = {
-  green:  '#34d399',
-  blue:   '#60a5fa',
-  violet: '#a78bfa',
-  amber:  '#fbbf24',
-  rose:   '#fb7185',
-  sky:    '#38bdf8',
+  green:  '#10b981',
+  blue:   '#3b82f6',
+  violet: '#8b5cf6',
+  amber:  '#f59e0b',
+  rose:   '#f43f5e',
+  sky:    '#0ea5e9',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -38,19 +39,22 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function nameOf(data: Record<string, unknown>): string {
+  return String(data?.['Employee Name'] || data?.['Full Name'] || data?.['Name'] || 'Anonymous')
+}
 function initialsOf(name: string) {
   if (!name || name === 'Anonymous') return '?'
   return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Data types ───────────────────────────────────────────────────────────────
 type Sub = {
+  id?: string
   form_title: string | null
   submitted_at: string
   is_read: boolean
   status?: string
   data: Record<string, unknown>
-  id?: string
 }
 type Tkt = {
   id: string
@@ -77,6 +81,7 @@ async function getData() {
     { count: resolvedTotal },
     { count: totalTickets },
     { count: resolved7d },
+    { count: pendingApprovals },
     { data: subSample },
     { data: tktSample },
     { data: recentSubs },
@@ -90,6 +95,7 @@ async function getData() {
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'resolved'),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'resolved').gte('created_at', sevenDaysAgo),
+    supabaseAdmin.from('forms').select('*', { count: 'exact', head: true }).eq('approval_status', 'pending'),
     supabaseAdmin
       .from('submissions')
       .select('form_title,submitted_at,is_read,status,data')
@@ -104,7 +110,7 @@ async function getData() {
       .from('submissions')
       .select('id,form_title,submitted_at,is_read,status,data')
       .order('submitted_at', { ascending: false })
-      .limit(7),
+      .limit(8),
     supabaseAdmin.from('forms').select('id,title,is_active,created_at').order('created_at', { ascending: false }),
   ])
 
@@ -149,10 +155,10 @@ async function getData() {
   const formRows = Array.from(formMap.values()).sort((a, b) => b.count - a.count)
   const maxFormCount = Math.max(1, ...formRows.map((f) => f.count))
 
-  // Top submitters (people)
+  // Top submitters
   const peopleMap = new Map<string, { name: string; count: number }>()
   for (const s of subs) {
-    const name = String(s.data?.['Employee Name'] || s.data?.['Full Name'] || s.data?.['Name'] || 'Anonymous')
+    const name = nameOf(s.data)
     const email = String(s.data?.['Employee Email'] || s.data?.['Email'] || s.data?.['Email Address'] || '')
     const key = email || name
     if (!peopleMap.has(key)) peopleMap.set(key, { name, count: 0 })
@@ -161,44 +167,40 @@ async function getData() {
   const people = Array.from(peopleMap.values()).sort((a, b) => b.count - a.count)
   const maxPeople = Math.max(1, ...people.map((p) => p.count))
 
-  // Forms status table (every form, with submission count + last activity)
+  // Form status (every form)
   const formStatus = (forms || []).map((f) => {
     const agg = formMap.get(f.title)
-    return {
-      title: f.title || 'Untitled form',
-      active: f.is_active,
-      count: agg?.count ?? 0,
-      last: agg?.last ?? null,
-    }
+    return { title: f.title || 'Untitled form', active: f.is_active, count: agg?.count ?? 0, last: agg?.last ?? null }
   })
+
+  // Unified activity feed (recent submissions + tickets, chronological)
+  const recents = (recentSubs || []) as Sub[]
+  const activity = [
+    ...recents.map((s) => ({
+      kind: 'sub' as const, id: s.id!, name: nameOf(s.data),
+      label: s.form_title || 'Form submission', time: s.submitted_at, href: `/admin/submissions/${s.id}`,
+    })),
+    ...tkts.slice(0, 8).map((t) => ({
+      kind: 'ticket' as const, id: t.id, name: t.customer_name || 'Unknown',
+      label: `Ticket ${t.ticket_number}`, time: t.created_at, href: `/admin/tickets/${t.id}`,
+    })),
+  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 8)
+
+  // Eastern-time greeting + date (business is US Eastern)
+  const hourET = parseInt(new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }), 10)
+  const dateET = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' })
 
   return {
     kpi: {
-      totalSubs: totalSubs ?? 0,
-      activeForms: activeForms ?? 0,
-      unread: unread ?? 0,
-      openTickets: openTickets ?? 0,
-      resolved7d: resolved7d ?? 0,
+      totalSubs: totalSubs ?? 0, activeForms: activeForms ?? 0, unread: unread ?? 0,
+      openTickets: openTickets ?? 0, resolved7d: resolved7d ?? 0,
     },
-    donut: {
-      open: openTickets ?? 0,
-      inProgress: inProgress ?? 0,
-      resolved: resolvedTotal ?? 0,
-      total: totalTickets ?? 0,
-    },
-    days,
-    subSeries,
-    tktSeries,
-    subDelta,
-    tktDelta,
-    formRows,
-    maxFormCount,
-    people,
-    maxPeople,
-    formStatus,
-    recentSubs: (recentSubs || []) as Sub[],
-    recentTickets: tkts.slice(0, 6),
-    activeTitles,
+    donut: { open: openTickets ?? 0, inProgress: inProgress ?? 0, resolved: resolvedTotal ?? 0, total: totalTickets ?? 0 },
+    attention: { unread: unread ?? 0, openTickets: openTickets ?? 0, pendingApprovals: pendingApprovals ?? 0 },
+    days, subSeries, tktSeries, subDelta, tktDelta,
+    formRows, maxFormCount, people, maxPeople, formStatus,
+    recentSubs: recents, recentTickets: tkts.slice(0, 6), activeTitles,
+    activity, hourET, dateET,
   }
 }
 
@@ -213,33 +215,18 @@ function Spark({ data, color }: { data: number[]; color: string }) {
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
       {data.map((v, i) => {
         const bh = Math.max(2, (v / max) * h)
-        const x = i * (bw + 2)
         const leading = i >= n - 3
         return (
-          <rect
-            key={i}
-            x={x}
-            y={h - bh}
-            width={bw}
-            height={bh}
-            rx={1}
-            fill={color}
-            opacity={leading ? 0.95 : 0.32}
-          />
+          <rect key={i} x={i * (bw + 2)} y={h - bh} width={bw} height={bh} rx={1} fill={color} opacity={leading ? 0.95 : 0.34} />
         )
       })}
     </svg>
   )
 }
 
-/** Donut from segments. */
-function Donut({
-  segments, total, size = 168, stroke = 18,
-}: {
-  segments: { value: number; color: string }[]
-  total: number
-  size?: number
-  stroke?: number
+/** Donut from segments — track + center text use currentColor (theme-aware). */
+function Donut({ segments, total, size = 168, stroke = 18 }: {
+  segments: { value: number; color: string }[]; total: number; size?: number; stroke?: number
 }) {
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
@@ -248,32 +235,22 @@ function Donut({
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#27272a" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke}
+          stroke="currentColor" className="text-zinc-200 dark:text-zinc-800" />
         {segments.map((s, i) => {
-          const frac = s.value / sumv
-          const len = frac * c
+          const len = (s.value / sumv) * c
           const el = (
-            <circle
-              key={i}
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={stroke}
-              strokeDasharray={`${len} ${c - len}`}
-              strokeDashoffset={-offset}
-              strokeLinecap="butt"
-            />
+            <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color} strokeWidth={stroke}
+              strokeDasharray={`${len} ${c - len}`} strokeDashoffset={-offset} strokeLinecap="butt" />
           )
           offset += len
           return el
         })}
       </g>
-      <text x="50%" y="46%" textAnchor="middle" className="fill-white" fontSize="30" fontWeight="700">
+      <text x="50%" y="46%" textAnchor="middle" fill="currentColor" className="text-zinc-900 dark:text-white" fontSize="30" fontWeight="700">
         {fmt(total)}
       </text>
-      <text x="50%" y="60%" textAnchor="middle" fill="#71717a" fontSize="11" fontWeight="600" letterSpacing="0.08em">
+      <text x="50%" y="60%" textAnchor="middle" fill="currentColor" className="text-zinc-400 dark:text-zinc-500" fontSize="11" fontWeight="600" letterSpacing="0.08em">
         TOTAL
       </text>
     </svg>
@@ -281,14 +258,8 @@ function Donut({
 }
 
 /** Two-series area + line chart (14-day activity). */
-function LineChart({
-  days, a, b, ca, cb,
-}: {
-  days: { label: string }[]
-  a: number[]
-  b: number[]
-  ca: string
-  cb: string
+function LineChart({ days, a, b, ca, cb }: {
+  days: { label: string }[]; a: number[]; b: number[]; ca: string; cb: string
 }) {
   const W = 620, H = 190, padL = 30, padR = 12, padT = 14, padB = 26
   const iw = W - padL - padR, ih = H - padT - padB
@@ -303,12 +274,12 @@ function LineChart({
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
       <defs>
-        <linearGradient id="gradA" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={ca} stopOpacity="0.28" />
+        <linearGradient id="tgradA" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={ca} stopOpacity="0.26" />
           <stop offset="100%" stopColor={ca} stopOpacity="0" />
         </linearGradient>
-        <linearGradient id="gradB" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={cb} stopOpacity="0.20" />
+        <linearGradient id="tgradB" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={cb} stopOpacity="0.18" />
           <stop offset="100%" stopColor={cb} stopOpacity="0" />
         </linearGradient>
       </defs>
@@ -316,22 +287,20 @@ function LineChart({
         const gy = padT + ih * g
         return (
           <g key={i}>
-            <line x1={padL} y1={gy} x2={W - padR} y2={gy} stroke="#27272a" strokeWidth="1" />
-            <text x={padL - 6} y={gy + 3} textAnchor="end" fill="#52525b" fontSize="9">
+            <line x1={padL} y1={gy} x2={W - padR} y2={gy} stroke="currentColor" className="text-zinc-200 dark:text-zinc-800" strokeWidth="1" />
+            <text x={padL - 6} y={gy + 3} textAnchor="end" fill="currentColor" className="text-zinc-400 dark:text-zinc-600" fontSize="9">
               {Math.round(max * (1 - g))}
             </text>
           </g>
         )
       })}
-      <path d={area(a)} fill="url(#gradA)" />
-      <path d={area(b)} fill="url(#gradB)" />
+      <path d={area(a)} fill="url(#tgradA)" />
+      <path d={area(b)} fill="url(#tgradB)" />
       <path d={line(b)} fill="none" stroke={cb} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
       <path d={line(a)} fill="none" stroke={ca} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {a.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r={i === n - 1 ? 3 : 0} fill={ca} />
-      ))}
+      {a.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={i === n - 1 ? 3 : 0} fill={ca} />)}
       {ticks.map((t) => (
-        <text key={t} x={x(t)} y={H - 8} textAnchor="middle" fill="#52525b" fontSize="9">
+        <text key={t} x={x(t)} y={H - 8} textAnchor="middle" fill="currentColor" className="text-zinc-400 dark:text-zinc-600" fontSize="9">
           {days[t]?.label}
         </text>
       ))}
@@ -339,23 +308,24 @@ function LineChart({
   )
 }
 
-// ─── Small building blocks ────────────────────────────────────────────────────
-
+// ─── Building blocks (theme-aware) ────────────────────────────────────────────
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-zinc-800 bg-zinc-900/40 ${className}`}>{children}</div>
+    <div className={`rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none ${className}`}>
+      {children}
+    </div>
   )
 }
 
 function CardHead({ title, icon, action, href }: { title: string; icon?: React.ReactNode; action?: string; href?: string }) {
   return (
-    <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800/80">
+    <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200/70 dark:border-zinc-800/80">
       <div className="flex items-center gap-2">
-        {icon && <span className="text-zinc-500">{icon}</span>}
-        <h3 className="text-[13px] font-semibold text-zinc-100">{title}</h3>
+        {icon && <span className="text-zinc-400 dark:text-zinc-500">{icon}</span>}
+        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
       </div>
       {action && (
-        <Link href={href || '#'} className="text-[12px] font-medium text-zinc-400 hover:text-emerald-400 transition-colors">
+        <Link href={href || '#'} className="text-[12px] font-medium text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors">
           {action}
         </Link>
       )}
@@ -363,63 +333,47 @@ function CardHead({ title, icon, action, href }: { title: string; icon?: React.R
   )
 }
 
-function Kpi({
-  label, value, unit, delta, deltaLabel, sub, spark, color, icon, href,
-}: {
-  label: string
-  value: number
-  unit: string
-  delta?: number
-  deltaLabel?: string
-  sub?: string
-  spark: number[]
-  color: string
-  icon: React.ReactNode
-  href?: string
+function Kpi({ label, value, unit, delta, deltaLabel, sub, spark, color, icon, href }: {
+  label: string; value: number; unit: string; delta?: number; deltaLabel?: string
+  sub?: string; spark: number[]; color: string; icon: React.ReactNode; href?: string
 }) {
   const up = (delta ?? 0) >= 0
   const inner = (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-colors p-4">
+    <div className="h-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md dark:hover:bg-zinc-900/70 transition-all p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span style={{ color }}>{icon}</span>
-          <span className="text-[12px] font-medium text-zinc-400">{label}</span>
+          <span className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
         </div>
-        <MoreHorizontal size={14} className="text-zinc-600" />
+        <MoreHorizontal size={14} className="text-zinc-300 dark:text-zinc-600" />
       </div>
       <div className="flex items-end justify-between gap-2">
-        <div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[28px] font-bold text-white leading-none tabular-nums tracking-tight">{fmt(value)}</span>
-            <span className="text-[12px] text-zinc-500">{unit}</span>
-          </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[28px] font-bold text-zinc-900 dark:text-white leading-none tabular-nums tracking-tight">{fmt(value)}</span>
+          <span className="text-[12px] text-zinc-400 dark:text-zinc-500">{unit}</span>
         </div>
-        <div className="opacity-90 -mb-0.5">
-          <Spark data={spark} color={color} />
-        </div>
+        <div className="-mb-0.5"><Spark data={spark} color={color} /></div>
       </div>
       <div className="mt-2.5">
         {typeof delta === 'number' ? (
           <span className="text-[11px] font-medium">
             <span style={{ color: up ? C.green : C.rose }}>{up ? '+' : ''}{delta}</span>
-            <span className="text-zinc-500"> {deltaLabel}</span>
+            <span className="text-zinc-400 dark:text-zinc-500"> {deltaLabel}</span>
           </span>
         ) : (
-          <span className="text-[11px] text-zinc-500">{sub}</span>
+          <span className="text-[11px] text-zinc-400 dark:text-zinc-500">{sub}</span>
         )}
       </div>
     </div>
   )
-  return href ? <Link href={href}>{inner}</Link> : inner
+  return href ? <Link href={href} className="block h-full">{inner}</Link> : inner
 }
 
-const PRIORITY_DOT: Record<string, string> = {
-  high: C.rose, med: C.amber, low: C.sky,
-}
+const PRIORITY_DOT: Record<string, string> = { high: C.rose, med: C.amber, low: C.sky }
 const STATUS_PILL: Record<string, { label: string; color: string; bg: string }> = {
-  open:        { label: 'Open',        color: C.rose,   bg: 'rgba(251,113,133,0.12)' },
-  in_progress: { label: 'In Progress', color: C.amber,  bg: 'rgba(251,191,36,0.12)' },
-  resolved:    { label: 'Resolved',    color: C.green,  bg: 'rgba(52,211,153,0.12)' },
+  open:        { label: 'Open',        color: C.rose,  bg: 'rgba(244,63,94,0.12)' },
+  in_progress: { label: 'In Progress', color: C.amber, bg: 'rgba(245,158,11,0.14)' },
+  resolved:    { label: 'Resolved',    color: C.green, bg: 'rgba(16,185,129,0.14)' },
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -431,291 +385,340 @@ export default async function TestDashboard() {
     { value: d.donut.inProgress, color: C.amber },
     { value: d.donut.open, color: C.rose },
   ]
-  const donutTotalForPct = Math.max(1, d.donut.resolved + d.donut.inProgress + d.donut.open)
-  const pct = (n: number) => Math.round((n / donutTotalForPct) * 100)
+  const donutBase = Math.max(1, d.donut.resolved + d.donut.inProgress + d.donut.open)
+  const pct = (n: number) => Math.round((n / donutBase) * 100)
+  const attentionCount = d.attention.unread + d.attention.openTickets + d.attention.pendingApprovals
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#09090b] text-zinc-300 min-h-0">
+    <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
       {/* Top bar */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-zinc-800 bg-[#09090b]/90 backdrop-blur">
-        <Link href="/admin" className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+      <div className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0b]/90 backdrop-blur">
+        <Link href="/admin" className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors">
           <ArrowLeft size={16} />
         </Link>
         <div className="flex items-center gap-1.5 text-[13px]">
-          <span className="text-zinc-500">Operations</span>
-          <ChevronRight size={13} className="text-zinc-700" />
-          <span className="font-semibold text-zinc-100">Overview</span>
+          <span className="text-zinc-400 dark:text-zinc-500">Operations</span>
+          <ChevronRight size={13} className="text-zinc-300 dark:text-zinc-700" />
+          <span className="font-semibold text-zinc-900 dark:text-zinc-100">Overview</span>
         </div>
-        <span className="ml-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+        <span className="ml-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
           Preview
         </span>
         <div className="flex-1" />
-        <div className="hidden md:flex items-center gap-2 w-64 px-3 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500">
+        <div className="hidden md:flex items-center gap-2 w-56 px-3 h-9 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500">
           <Search size={14} />
           <span className="text-[13px]">Search…</span>
         </div>
-        <button className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+        <ThemeToggle />
+        <button className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors">
           <Bell size={15} />
         </button>
-        <Link
-          href="/admin/forms/new"
-          className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-semibold transition-colors"
-        >
+        <Link href="/admin/forms/new" className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-semibold transition-colors">
           <Plus size={14} /> New Form
         </Link>
       </div>
 
-      <div className="p-5 space-y-4 max-w-[1400px]">
+      <div className="p-5 space-y-4">
 
-        {/* ── KPI row ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-          <Kpi
-            label="Total Submissions" value={d.kpi.totalSubs} unit="all-time"
-            delta={d.subDelta} deltaLabel="vs last week"
-            spark={d.subSeries} color={C.blue} icon={<ClipboardList size={15} />}
-            href="/admin/submissions"
-          />
-          <Kpi
-            label="Active Forms" value={d.kpi.activeForms} unit="live"
-            sub="Published & accepting input"
-            spark={d.formRows.slice(0, 14).map((f) => f.count).reverse()} color={C.green} icon={<FileText size={15} />}
-            href="/admin/forms"
-          />
-          <Kpi
-            label="Unread" value={d.kpi.unread} unit="to review"
-            sub="Submissions awaiting review"
-            spark={d.subSeries} color={C.amber} icon={<Inbox size={15} />}
-            href="/admin/submissions?is_read=false"
-          />
-          <Kpi
-            label="Open Tickets" value={d.kpi.openTickets} unit="awaiting"
-            delta={d.tktDelta} deltaLabel="intake vs last week"
-            spark={d.tktSeries} color={C.rose} icon={<Ticket size={15} />}
-            href="/admin/tickets"
-          />
-          <Kpi
-            label="Resolved" value={d.kpi.resolved7d} unit="this week"
-            sub="Tickets closed in last 7 days"
-            spark={d.tktSeries} color={C.green} icon={<CheckCircle2 size={15} />}
-            href="/admin/tickets"
-          />
+        {/* ── KPI row (full width) ─────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          <Kpi label="Total Submissions" value={d.kpi.totalSubs} unit="all-time" delta={d.subDelta} deltaLabel="vs last week"
+            spark={d.subSeries} color={C.blue} icon={<ClipboardList size={15} />} href="/admin/submissions" />
+          <Kpi label="Active Forms" value={d.kpi.activeForms} unit="live" sub="Published & accepting input"
+            spark={d.formRows.slice(0, 14).map((f) => f.count).reverse()} color={C.green} icon={<FileText size={15} />} href="/admin/forms" />
+          <Kpi label="Unread" value={d.kpi.unread} unit="to review" sub="Submissions awaiting review"
+            spark={d.subSeries} color={C.amber} icon={<Inbox size={15} />} href="/admin/submissions?is_read=false" />
+          <Kpi label="Open Tickets" value={d.kpi.openTickets} unit="awaiting" delta={d.tktDelta} deltaLabel="intake vs last week"
+            spark={d.tktSeries} color={C.rose} icon={<Ticket size={15} />} href="/admin/tickets" />
+          <Kpi label="Resolved" value={d.kpi.resolved7d} unit="this week" sub="Tickets closed in last 7 days"
+            spark={d.tktSeries} color={C.green} icon={<CheckCircle2 size={15} />} href="/admin/tickets" />
         </div>
 
-        {/* ── Performance table + status column ───────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Forms performance */}
-          <Card className="lg:col-span-2">
-            <CardHead title="Forms Performance" icon={<FileText size={14} />} action="View all" href="/admin/forms" />
-            <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-600 border-b border-zinc-800/60">
-              <div className="col-span-5">Form</div>
-              <div className="col-span-1 text-right">Subs</div>
-              <div className="col-span-1 text-right">7d</div>
-              <div className="col-span-1 text-right">Unread</div>
-              <div className="col-span-2">Share</div>
-              <div className="col-span-2 text-right">Last activity</div>
-            </div>
-            <div className="divide-y divide-zinc-800/50">
-              {d.formRows.length === 0 ? (
-                <div className="px-5 py-10 text-center text-[13px] text-zinc-600">No submissions yet</div>
-              ) : (
-                d.formRows.slice(0, 7).map((f) => {
-                  const active = d.activeTitles.has(f.title)
-                  return (
-                    <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-900/60 transition-colors">
-                      <div className="col-span-5 flex items-center gap-2 min-w-0">
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0`} style={{ backgroundColor: active ? C.green : '#52525b' }} />
-                        <span className="font-medium text-zinc-200 truncate">{f.title}</span>
-                      </div>
-                      <div className="col-span-1 text-right tabular-nums text-zinc-300">{fmt(f.count)}</div>
-                      <div className="col-span-1 text-right tabular-nums text-zinc-400">{f.week}</div>
-                      <div className="col-span-1 text-right tabular-nums">
-                        {f.unread > 0 ? <span className="text-amber-400">{f.unread}</span> : <span className="text-zinc-600">0</span>}
-                      </div>
-                      <div className="col-span-2 flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${(f.count / d.maxFormCount) * 100}%`, backgroundColor: C.blue }} />
-                        </div>
-                      </div>
-                      <div className="col-span-2 text-right text-zinc-500 tabular-nums">{timeAgo(f.last)}</div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </Card>
+        {/* ── Main + creative right rail ───────────────────────────── */}
+        <div className="flex gap-4 items-start">
+          <main className="flex-1 min-w-0 space-y-4">
 
-          {/* Right column: donut + top lists */}
-          <div className="space-y-4">
-            <Card>
-              <CardHead title="Tickets by Status" icon={<Ticket size={14} />} />
-              <div className="flex items-center gap-5 px-5 py-5">
-                <Donut segments={donutSegs} total={d.donut.total} />
-                <div className="flex-1 space-y-3">
-                  <Legend color={C.green} label="Resolved" value={d.donut.resolved} pct={pct(d.donut.resolved)} />
-                  <Legend color={C.amber} label="In Progress" value={d.donut.inProgress} pct={pct(d.donut.inProgress)} />
-                  <Legend color={C.rose} label="Open" value={d.donut.open} pct={pct(d.donut.open)} />
+            {/* Forms performance + tickets donut */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card className="lg:col-span-2">
+                <CardHead title="Forms Performance" icon={<FileText size={14} />} action="View all" href="/admin/forms" />
+                <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
+                  <div className="col-span-5">Form</div>
+                  <div className="col-span-1 text-right">Subs</div>
+                  <div className="col-span-1 text-right">7d</div>
+                  <div className="col-span-1 text-right">Unread</div>
+                  <div className="col-span-2">Share</div>
+                  <div className="col-span-2 text-right">Last activity</div>
                 </div>
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                  {d.formRows.length === 0 ? (
+                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No submissions yet</div>
+                  ) : (
+                    d.formRows.slice(0, 7).map((f) => {
+                      const active = d.activeTitles.has(f.title)
+                      return (
+                        <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                          <div className="col-span-5 flex items-center gap-2 min-w-0">
+                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: active ? C.green : '#a1a1aa' }} />
+                            <span className="font-medium text-zinc-700 dark:text-zinc-200 truncate">{f.title}</span>
+                          </div>
+                          <div className="col-span-1 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(f.count)}</div>
+                          <div className="col-span-1 text-right tabular-nums text-zinc-400 dark:text-zinc-400">{f.week}</div>
+                          <div className="col-span-1 text-right tabular-nums">
+                            {f.unread > 0 ? <span className="text-amber-600 dark:text-amber-400">{f.unread}</span> : <span className="text-zinc-300 dark:text-zinc-600">0</span>}
+                          </div>
+                          <div className="col-span-2 flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${(f.count / d.maxFormCount) * 100}%`, backgroundColor: C.blue }} />
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(f.last)}</div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </Card>
+
+              <Card>
+                <CardHead title="Tickets by Status" icon={<Ticket size={14} />} />
+                <div className="flex items-center gap-5 px-5 py-5">
+                  <Donut segments={donutSegs} total={d.donut.total} />
+                  <div className="flex-1 space-y-3">
+                    <Legend color={C.green} label="Resolved" value={d.donut.resolved} pct={pct(d.donut.resolved)} />
+                    <Legend color={C.amber} label="In Progress" value={d.donut.inProgress} pct={pct(d.donut.inProgress)} />
+                    <Legend color={C.rose} label="Open" value={d.donut.open} pct={pct(d.donut.open)} />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Top lists */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHead title="Top Forms by Volume" icon={<FileText size={14} />} />
+                <div className="px-5 py-4 space-y-3">
+                  {d.formRows.slice(0, 5).map((f, i) => (
+                    <RankRow key={f.title} rank={i + 1} label={f.title} value={f.count} pct={(f.count / d.maxFormCount) * 100} color={C.violet} />
+                  ))}
+                  {d.formRows.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
+                </div>
+              </Card>
+              <Card>
+                <CardHead title="Top Submitters" icon={<Inbox size={14} />} action="People" href="/admin/employees" />
+                <div className="px-5 py-4 space-y-3">
+                  {d.people.slice(0, 5).map((p, i) => (
+                    <RankRow key={p.name + i} rank={i + 1} label={p.name} value={p.count} pct={(p.count / d.maxPeople) * 100} color={C.sky} />
+                  ))}
+                  {d.people.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
+                </div>
+              </Card>
+            </div>
+
+            {/* Activity chart + recent submissions */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card className="lg:col-span-2">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200/70 dark:border-zinc-800/80">
+                  <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Activity · Last 14 days</h3>
+                  <div className="flex items-center gap-4">
+                    <LegendInline color={C.green} label="Submissions" />
+                    <LegendInline color={C.rose} label="Tickets" />
+                  </div>
+                </div>
+                <div className="px-3 py-4"><LineChart days={d.days} a={d.subSeries} b={d.tktSeries} ca={C.green} cb={C.rose} /></div>
+              </Card>
+
+              <Card>
+                <CardHead title="Recent Submissions" icon={<Inbox size={14} />} action="View all" href="/admin/submissions" />
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                  {d.recentSubs.length === 0 ? (
+                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">Nothing yet</div>
+                  ) : (
+                    d.recentSubs.map((s) => {
+                      const name = nameOf(s.data)
+                      return (
+                        <Link key={s.id} href={`/admin/submissions/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                          <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[11px] font-bold text-zinc-500 dark:text-zinc-300 flex-shrink-0">
+                            {initialsOf(name)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-medium text-zinc-700 dark:text-zinc-200 truncate">{name}</p>
+                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">{s.form_title || 'Form submission'}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(s.submitted_at)}</span>
+                            {!s.is_read && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} />}
+                          </div>
+                        </Link>
+                      )
+                    })
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {/* Recent tickets + form status */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHead title="Recent Tickets" icon={<Ticket size={14} />} action="View all" href="/admin/tickets" />
+                <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
+                  <div className="col-span-4">Customer</div>
+                  <div className="col-span-3">Equipment</div>
+                  <div className="col-span-2">Priority</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-1 text-right">Age</div>
+                </div>
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                  {d.recentTickets.length === 0 ? (
+                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No tickets yet</div>
+                  ) : (
+                    d.recentTickets.map((t) => {
+                      const sp = STATUS_PILL[t.status] || STATUS_PILL.open
+                      return (
+                        <Link key={t.id} href={`/admin/tickets/${t.id}`} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                          <div className="col-span-4 min-w-0">
+                            <p className="font-medium text-zinc-700 dark:text-zinc-200 truncate">{t.customer_name}</p>
+                            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{t.ticket_number}</p>
+                          </div>
+                          <div className="col-span-3 min-w-0">
+                            <p className="text-zinc-600 dark:text-zinc-300 truncate">{t.model_number || '—'}</p>
+                            <p className="text-[10px] text-zinc-400 dark:text-zinc-600 truncate">{t.serial_number ? `S/N ${t.serial_number}` : ''}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-300 capitalize">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PRIORITY_DOT[t.priority ?? 'med'] || C.amber }} />
+                              {t.priority ?? 'med'}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: sp.color, backgroundColor: sp.bg }}>{sp.label}</span>
+                          </div>
+                          <div className="col-span-1 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(t.created_at)}</div>
+                        </Link>
+                      )
+                    })
+                  )}
+                </div>
+              </Card>
+
+              <Card>
+                <CardHead title="Form Status" icon={<FileText size={14} />} action="Manage" href="/admin/forms" />
+                <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
+                  <div className="col-span-6">Form</div>
+                  <div className="col-span-2 text-right">Subs</div>
+                  <div className="col-span-2">State</div>
+                  <div className="col-span-2 text-right">Last</div>
+                </div>
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                  {d.formStatus.length === 0 ? (
+                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No forms yet</div>
+                  ) : (
+                    d.formStatus.slice(0, 6).map((f) => (
+                      <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                        <div className="col-span-6 font-medium text-zinc-700 dark:text-zinc-200 truncate">{f.title}</div>
+                        <div className="col-span-2 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(f.count)}</div>
+                        <div className="col-span-2">
+                          {f.active ? (
+                            <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: C.green }}>
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} /> Live
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" /> Draft
+                            </span>
+                          )}
+                        </div>
+                        <div className="col-span-2 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{f.last ? timeAgo(f.last) : '—'}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+            </div>
+          </main>
+
+          {/* ── Creative right rail: Operations Pulse ──────────────── */}
+          <aside className="hidden xl:flex flex-col gap-4 w-[330px] flex-shrink-0 sticky top-[72px]">
+
+            {/* Greeting */}
+            <div className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none p-5">
+              <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: 'radial-gradient(circle,#10b981,transparent 70%)' }} />
+              <div className="relative">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">{d.dateET}</p>
+                <h2 className="mt-1 text-[20px] font-bold text-zinc-900 dark:text-white leading-tight">{greeting(d.hourET)}</h2>
+                <p className="mt-1.5 text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  {attentionCount > 0
+                    ? <>You have <span className="font-semibold text-zinc-700 dark:text-zinc-200">{attentionCount}</span> item{attentionCount === 1 ? '' : 's'} that need attention.</>
+                    : <>Everything is handled. Nice work. <Sparkles size={12} className="inline -mt-0.5 text-emerald-500" /></>}
+                </p>
+              </div>
+            </div>
+
+            {/* Needs attention */}
+            <Card>
+              <CardHead title="Needs Attention" icon={<AlertCircle size={14} />} />
+              <div className="p-2">
+                <AttentionRow icon={<Inbox size={15} />} color={C.amber} label="Unread submissions" value={d.attention.unread} href="/admin/submissions?is_read=false" />
+                <AttentionRow icon={<Ticket size={15} />} color={C.rose} label="Open tickets" value={d.attention.openTickets} href="/admin/tickets" />
+                <AttentionRow icon={<ShieldCheck size={15} />} color={C.violet} label="Forms pending approval" value={d.attention.pendingApprovals} href="/admin/forms" />
+              </div>
+              {attentionCount === 0 && (
+                <div className="px-5 pb-4 -mt-1">
+                  <div className="flex items-center gap-2 text-[12px] text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 size={14} /> All clear — you&apos;re caught up.
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Live activity */}
+            <Card>
+              <CardHead title="Live Activity" icon={<Sparkles size={14} />} />
+              <div className="px-5 py-4">
+                {d.activity.length === 0 ? (
+                  <p className="text-[12px] text-zinc-400 dark:text-zinc-600 text-center py-4">No recent activity</p>
+                ) : (
+                  <ol className="relative space-y-3.5">
+                    <span className="absolute left-[11px] top-1 bottom-1 w-px bg-zinc-200 dark:bg-zinc-800" aria-hidden />
+                    {d.activity.map((e) => (
+                      <li key={`${e.kind}-${e.id}`}>
+                        <Link href={e.href} className="group flex gap-3 items-start">
+                          <span className="relative z-10 mt-0.5 w-[23px] h-[23px] rounded-full flex items-center justify-center flex-shrink-0 ring-4 ring-white dark:ring-[#0a0a0b]"
+                            style={{ backgroundColor: e.kind === 'sub' ? 'rgba(16,185,129,0.14)' : 'rgba(244,63,94,0.14)', color: e.kind === 'sub' ? C.green : C.rose }}>
+                            {e.kind === 'sub' ? <Inbox size={12} /> : <Ticket size={12} />}
+                          </span>
+                          <div className="flex-1 min-w-0 -mt-px">
+                            <p className="text-[12px] text-zinc-700 dark:text-zinc-200 leading-snug">
+                              <span className="font-semibold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{e.name}</span>
+                              {e.kind === 'sub' ? ' submitted ' : ' opened '}
+                              <span className="text-zinc-500 dark:text-zinc-400">{e.label}</span>
+                            </p>
+                            <p className="text-[10px] text-zinc-400 dark:text-zinc-600 tabular-nums mt-0.5">{timeAgo(e.time)}</p>
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
             </Card>
-          </div>
-        </div>
 
-        {/* ── Top lists ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Card>
-            <CardHead title="Top Forms by Volume" icon={<FileText size={14} />} />
-            <div className="px-5 py-4 space-y-3">
-              {d.formRows.slice(0, 5).map((f, i) => (
-                <RankRow key={f.title} rank={i + 1} label={f.title} value={f.count} pct={(f.count / d.maxFormCount) * 100} color={C.violet} />
-              ))}
-              {d.formRows.length === 0 && <p className="text-[13px] text-zinc-600 py-4 text-center">No data yet</p>}
-            </div>
-          </Card>
-          <Card>
-            <CardHead title="Top Submitters" icon={<Inbox size={14} />} action="People" href="/admin/employees" />
-            <div className="px-5 py-4 space-y-3">
-              {d.people.slice(0, 5).map((p, i) => (
-                <RankRow key={p.name + i} rank={i + 1} label={p.name} value={p.count} pct={(p.count / d.maxPeople) * 100} color={C.sky} />
-              ))}
-              {d.people.length === 0 && <p className="text-[13px] text-zinc-600 py-4 text-center">No data yet</p>}
-            </div>
-          </Card>
-        </div>
-
-        {/* ── Activity chart + recent submissions ─────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800/80">
-              <h3 className="text-[13px] font-semibold text-zinc-100">Activity · Last 14 days</h3>
-              <div className="flex items-center gap-4">
-                <LegendInline color={C.green} label="Submissions" />
-                <LegendInline color={C.rose} label="Tickets" />
+            {/* Quick actions */}
+            <Card>
+              <CardHead title="Quick Actions" icon={<Plus size={14} />} />
+              <div className="p-3 grid grid-cols-2 gap-2">
+                <QuickAction icon={<Plus size={15} />} label="New Form" href="/admin/forms/new" />
+                <QuickAction icon={<Inbox size={15} />} label="Review Unread" href="/admin/submissions?is_read=false" />
+                <QuickAction icon={<Ticket size={15} />} label="Open Tickets" href="/admin/tickets" />
+                <QuickAction icon={<Users size={15} />} label="Employees" href="/admin/employees" />
               </div>
-            </div>
-            <div className="px-3 py-4">
-              <LineChart days={d.days} a={d.subSeries} b={d.tktSeries} ca={C.green} cb={C.rose} />
-            </div>
-          </Card>
-
-          <Card>
-            <CardHead title="Recent Submissions" icon={<Inbox size={14} />} action="View all" href="/admin/submissions" />
-            <div className="divide-y divide-zinc-800/50">
-              {d.recentSubs.length === 0 ? (
-                <div className="px-5 py-10 text-center text-[13px] text-zinc-600">Nothing yet</div>
-              ) : (
-                d.recentSubs.map((s) => {
-                  const name = String(s.data?.['Employee Name'] || s.data?.['Full Name'] || s.data?.['Name'] || 'Anonymous')
-                  return (
-                    <Link
-                      key={s.id}
-                      href={`/admin/submissions/${s.id}`}
-                      className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-900/60 transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[11px] font-bold text-zinc-300 flex-shrink-0">
-                        {initialsOf(name)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-medium text-zinc-200 truncate">{name}</p>
-                        <p className="text-[11px] text-zinc-500 truncate">{s.form_title || 'Form submission'}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span className="text-[10px] text-zinc-500 tabular-nums">{timeAgo(s.submitted_at)}</span>
-                        {!s.is_read && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} />}
-                      </div>
-                    </Link>
-                  )
-                })
-              )}
-            </div>
-          </Card>
+            </Card>
+          </aside>
         </div>
 
-        {/* ── Recent tickets + form status ────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Recent tickets */}
-          <Card>
-            <CardHead title="Recent Tickets" icon={<Ticket size={14} />} action="View all" href="/admin/tickets" />
-            <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-600 border-b border-zinc-800/60">
-              <div className="col-span-4">Customer</div>
-              <div className="col-span-3">Equipment</div>
-              <div className="col-span-2">Priority</div>
-              <div className="col-span-2">Status</div>
-              <div className="col-span-1 text-right">Age</div>
-            </div>
-            <div className="divide-y divide-zinc-800/50">
-              {d.recentTickets.length === 0 ? (
-                <div className="px-5 py-10 text-center text-[13px] text-zinc-600">No tickets yet</div>
-              ) : (
-                d.recentTickets.map((t) => {
-                  const sp = STATUS_PILL[t.status] || STATUS_PILL.open
-                  return (
-                    <Link key={t.id} href={`/admin/tickets/${t.id}`} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-900/60 transition-colors">
-                      <div className="col-span-4 min-w-0">
-                        <p className="font-medium text-zinc-200 truncate">{t.customer_name}</p>
-                        <p className="text-[10px] text-zinc-500 truncate">{t.ticket_number}</p>
-                      </div>
-                      <div className="col-span-3 min-w-0">
-                        <p className="text-zinc-300 truncate">{t.model_number || '—'}</p>
-                        <p className="text-[10px] text-zinc-600 truncate">{t.serial_number ? `S/N ${t.serial_number}` : ''}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-300 capitalize">
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PRIORITY_DOT[t.priority ?? 'med'] || C.amber }} />
-                          {t.priority ?? 'med'}
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: sp.color, backgroundColor: sp.bg }}>
-                          {sp.label}
-                        </span>
-                      </div>
-                      <div className="col-span-1 text-right text-zinc-500 tabular-nums">{timeAgo(t.created_at)}</div>
-                    </Link>
-                  )
-                })
-              )}
-            </div>
-          </Card>
-
-          {/* Form status */}
-          <Card>
-            <CardHead title="Form Status" icon={<FileText size={14} />} action="Manage" href="/admin/forms" />
-            <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-600 border-b border-zinc-800/60">
-              <div className="col-span-6">Form</div>
-              <div className="col-span-2 text-right">Subs</div>
-              <div className="col-span-2">State</div>
-              <div className="col-span-2 text-right">Last</div>
-            </div>
-            <div className="divide-y divide-zinc-800/50">
-              {d.formStatus.length === 0 ? (
-                <div className="px-5 py-10 text-center text-[13px] text-zinc-600">No forms yet</div>
-              ) : (
-                d.formStatus.slice(0, 6).map((f) => (
-                  <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-900/60 transition-colors">
-                    <div className="col-span-6 font-medium text-zinc-200 truncate">{f.title}</div>
-                    <div className="col-span-2 text-right tabular-nums text-zinc-300">{fmt(f.count)}</div>
-                    <div className="col-span-2">
-                      {f.active ? (
-                        <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: C.green }}>
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} /> Live
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500">
-                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" /> Draft
-                        </span>
-                      )}
-                    </div>
-                    <div className="col-span-2 text-right text-zinc-500 tabular-nums">{f.last ? timeAgo(f.last) : '—'}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </div>
-
-        <p className="text-[11px] text-zinc-600 text-center pt-1 pb-4">
-          Design preview · <span className="text-zinc-500">/admin/test</span> · live data from your Supabase instance · the dashboard at{' '}
-          <Link href="/admin" className="text-emerald-500 hover:text-emerald-400">/admin</Link> is unchanged
+        <p className="text-[11px] text-zinc-400 dark:text-zinc-600 text-center pt-1 pb-4">
+          Design preview · <span className="text-zinc-500 dark:text-zinc-500">/admin/test</span> · live data from your Supabase instance · the dashboard at{' '}
+          <Link href="/admin" className="text-emerald-600 dark:text-emerald-500 hover:text-emerald-500">/admin</Link> is unchanged
         </p>
       </div>
     </div>
@@ -723,20 +726,26 @@ export default async function TestDashboard() {
 }
 
 // ─── Misc presentational ──────────────────────────────────────────────────────
+function greeting(hour: number) {
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 function Legend({ color, label, value, pct }: { color: string; label: string; value: number; pct: number }) {
   return (
     <div className="flex items-center gap-2.5">
       <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
-      <span className="text-[12px] text-zinc-400 flex-1">{label}</span>
-      <span className="text-[12px] font-semibold text-zinc-100 tabular-nums">{fmt(value)}</span>
-      <span className="text-[11px] text-zinc-500 tabular-nums w-9 text-right">{pct}%</span>
+      <span className="text-[12px] text-zinc-500 dark:text-zinc-400 flex-1">{label}</span>
+      <span className="text-[12px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{fmt(value)}</span>
+      <span className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums w-9 text-right">{pct}%</span>
     </div>
   )
 }
 
 function LegendInline({ color, label }: { color: string; label: string }) {
   return (
-    <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+    <span className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
       {label}
     </span>
@@ -746,12 +755,35 @@ function LegendInline({ color, label }: { color: string; label: string }) {
 function RankRow({ rank, label, value, pct, color }: { rank: number; label: string; value: number; pct: number; color: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[11px] font-semibold text-zinc-600 w-3 tabular-nums">{rank}</span>
-      <span className="text-[12px] text-zinc-300 truncate flex-1 min-w-0">{label}</span>
-      <div className="w-28 h-1.5 rounded-full bg-zinc-800 overflow-hidden flex-shrink-0">
+      <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-600 w-3 tabular-nums">{rank}</span>
+      <span className="text-[12px] text-zinc-600 dark:text-zinc-300 truncate flex-1 min-w-0">{label}</span>
+      <div className="w-28 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden flex-shrink-0">
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
-      <span className="text-[12px] font-semibold text-zinc-200 tabular-nums w-10 text-right">{fmt(value)}</span>
+      <span className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-200 tabular-nums w-10 text-right">{fmt(value)}</span>
     </div>
+  )
+}
+
+function AttentionRow({ icon, color, label, value, href }: { icon: React.ReactNode; color: string; label: string; value: number; href: string }) {
+  const has = value > 0
+  return (
+    <Link href={href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group">
+      <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}1f`, color }}>{icon}</span>
+      <span className="flex-1 text-[12px] font-medium text-zinc-600 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">{label}</span>
+      <span className="text-[14px] font-bold tabular-nums" style={{ color: has ? color : undefined }}>
+        <span className={has ? '' : 'text-zinc-300 dark:text-zinc-600'}>{value}</span>
+      </span>
+      <ArrowRight size={13} className="text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 dark:group-hover:text-zinc-400 transition-colors" />
+    </Link>
+  )
+}
+
+function QuickAction({ icon, label, href }: { icon: React.ReactNode; label: string; href: string }) {
+  return (
+    <Link href={href} className="flex flex-col items-start gap-2 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/40 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 transition-colors group">
+      <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{icon}</span>
+      <span className="text-[12px] font-medium text-zinc-600 dark:text-zinc-300">{label}</span>
+    </Link>
   )
 }
