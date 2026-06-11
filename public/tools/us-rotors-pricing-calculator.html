@@ -928,6 +928,26 @@ const SEG_20 = ["1730","1940","2190"];
 
 const fmt = n => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Chrome snapshots the print preview the moment print() runs — if the embedded
+// logo hasn't finished decoding yet (PNGs decode top-down), it prints half-drawn.
+// Wait for every image in the print window to decode before opening the dialog.
+function printWhenReady(w, after) {
+  var done = false;
+  var go = function() {
+    if (done) return;
+    done = true;
+    w.print();
+    if (after) after();
+  };
+  var fire = function() {
+    Promise.all(Array.prototype.map.call(w.document.images, function(img) {
+      return img.decode ? img.decode().catch(function(){}) : Promise.resolve();
+    })).then(function() { setTimeout(go, 50); });
+    setTimeout(go, 1500); // hard fallback — a stalled decode() must never block printing
+  };
+  if (w.document.readyState === 'complete') fire(); else w.onload = fire;
+}
+
 function populateSizes() {
   const series = document.getElementById("series").value;
   const sel = document.getElementById("size");
@@ -1191,7 +1211,7 @@ function generatePDF() {
   const w = window.open("", "_blank", "width=800,height=900");
   w.document.write(html);
   w.document.close();
-  w.onload = () => w.print();
+  printWhenReady(w);
 }
 
 document.getElementById("series").addEventListener("change", populateSizes);
@@ -1324,11 +1344,10 @@ function submitOrderForm() {
   const w = window.open('', '_blank', 'width=820,height=1000');
   w.document.write(html);
   w.document.close();
-  w.onload = () => {
-    w.print();
+  printWhenReady(w, () => {
     document.getElementById('of-success').style.display = 'block';
     setTimeout(() => { document.getElementById('of-success').style.display = 'none'; }, 4000);
-  };
+  });
 }
 
 // ── Price Sheet ──────────────────────────────────────────────────────────────
@@ -1490,7 +1509,7 @@ function generatePriceSheetPDF() {
     '.notes-title{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#7a7a8a;margin-bottom:7px}' +
     '.notes ol{padding-left:14px;margin-bottom:8px}' +
     '.ftr{margin-top:18px;padding-top:10px;border-top:1px solid #e8eef8;display:flex;justify-content:space-between;font-size:9px;color:#7a7a8a;font-family:"DM Mono",monospace}' +
-    '@media print{body{padding:24px}@page{margin:0;size:letter}}</style></head><body>' +
+    '@media print{body{padding:32px}@page{margin:0;size:letter}}</style></head><body>' +
     '<div class="hdr"><img src="' + LOGO_SRC + '" class="logo" alt="US Rotors">' +
     '<div class="hr"><div class="ht">Dehumidification Rotors &amp; Cassettes</div>' +
     (company ? '<div class="hc">Prepared for: ' + company + '</div>' : '') +
@@ -1514,7 +1533,7 @@ function generatePriceSheetPDF() {
   var w = window.open('', '_blank', 'width=900,height=1100');
   w.document.write(pdfHtml);
   w.document.close();
-  w.onload = function() { w.print(); };
+  printWhenReady(w);
 }
 
 document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
