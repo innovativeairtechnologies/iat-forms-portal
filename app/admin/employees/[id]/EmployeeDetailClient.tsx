@@ -30,17 +30,15 @@ export default function EmployeeDetailClient({
 }) {
   const router = useRouter()
   const [form, setForm] = useState({
-    name:               employee.name        || '',
-    email:              employee.email       || '',
-    job_title:          employee.job_title   || '',
-    department:         employee.department  || '',
-    phone:              employee.phone       || '',
-    bio:                employee.bio         || '',
-    pto_balance:        String(employee.pto_balance),
-    sick_balance:       String(employee.sick_balance),
-    pto_accrual_rate:   String(employee.pto_accrual_rate),
-    sick_accrual_rate:  String(employee.sick_accrual_rate),
-    hire_date:          employee.hire_date   || '',
+    name:        employee.name       || '',
+    email:       employee.email      || '',
+    job_title:   employee.job_title  || '',
+    department:  employee.department || '',
+    phone:       employee.phone      || '',
+    bio:         employee.bio        || '',
+    pto_balance: String(employee.pto_balance),
+    sick_balance: String(employee.sick_balance),
+    hire_date:   employee.hire_date  || '',
   })
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
@@ -60,11 +58,9 @@ export default function EmployeeDetailClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...form,
-        pto_balance:       parseFloat(form.pto_balance)       || 0,
-        sick_balance:      parseFloat(form.sick_balance)      || 0,
-        pto_accrual_rate:  parseFloat(form.pto_accrual_rate)  || 4,
-        sick_accrual_rate: parseFloat(form.sick_accrual_rate) || 2,
-        hire_date: form.hire_date || null,
+        pto_balance:  parseFloat(form.pto_balance)  || 0,
+        sick_balance: parseFloat(form.sick_balance) || 0,
+        hire_date:    form.hire_date || null,
       }),
     })
     setSaving(false)
@@ -158,17 +154,31 @@ export default function EmployeeDetailClient({
 
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   {[
-                    { key: 'pto_balance',       label: 'PTO Balance (hrs)'      },
-                    { key: 'sick_balance',      label: 'Sick Balance (hrs)'     },
-                    { key: 'pto_accrual_rate',  label: 'PTO Accrual (hrs/period)'  },
-                    { key: 'sick_accrual_rate', label: 'Sick Accrual (hrs/period)' },
+                    { key: 'pto_balance',  label: 'PTO Balance (hrs)'  },
+                    { key: 'sick_balance', label: 'Sick Balance (hrs)' },
                   ].map(({ key, label }) => (
                     <div key={key}>
                       <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">{label}</label>
-                      <input type="number" step="0.5" min="0"
+                      <input type="number" step="0.01" min="0"
                         value={(form as Record<string, unknown>)[key] as string}
                         onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                         className={inp} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Read-only accrual rates — managed automatically by the weekly cron */}
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'PTO Rate (auto)',  value: employee.pto_accrual_rate,  color: 'text-[#089447]' },
+                    { label: 'Sick Rate (auto)', value: employee.sick_accrual_rate, color: 'text-amber-600'  },
+                  ].map(({ label, value, color }) => (
+                    <div key={label}>
+                      <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">{label}</label>
+                      <div className={`${inp} flex items-center justify-between cursor-default select-none bg-gray-100 dark:bg-zinc-800/60 border-dashed`}>
+                        <span className={`font-semibold ${color}`}>{value > 0 ? `${value} hrs / wk` : '—'}</span>
+                        <span className="text-[10px] text-gray-300 dark:text-gray-600">auto</span>
+                      </div>
                     </div>
                   ))}
                 </div>
