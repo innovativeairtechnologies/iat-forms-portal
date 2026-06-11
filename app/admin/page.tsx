@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
+import { TopBarSearch, TopBarBell } from './TopBarActions'
 import {
-  ChevronRight, Search, Bell, Plus,
+  ChevronRight, Plus,
   Inbox, FileText, ClipboardList, Ticket, CheckCircle2,
   MoreHorizontal, AlertCircle, ShieldCheck, Sparkles, Users, ArrowRight,
 } from 'lucide-react'
@@ -421,14 +422,9 @@ export default async function AdminDashboard() {
           <span className="font-semibold text-zinc-900 dark:text-zinc-100">Overview</span>
         </div>
         <div className="flex-1" />
-        <div className="hidden md:flex items-center gap-2 w-56 px-3 h-9 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500">
-          <Search size={14} />
-          <span className="text-[13px]">Search…</span>
-        </div>
+        <TopBarSearch />
         <ThemeToggle />
-        <button className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors">
-          <Bell size={15} />
-        </button>
+        <TopBarBell unreadCount={d.kpi.unread} ticketCount={d.kpi.openTickets} />
         <Link href="/admin/forms/new" className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-semibold transition-colors">
           <Plus size={14} /> New Form
         </Link>
