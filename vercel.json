@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/accrue-pto",
-      "schedule": "0 8 1,15 * *"
+      "schedule": "0 8 * * 1"
     }
   ]
 }

@@ -146,6 +146,22 @@ export type TicketNote = {
   created_at: string
 }
 
+export type AccrualTier = {
+  id: number
+  label: string
+  min_tenure_years: number
+  max_tenure_years: number | null
+  pto_weekly_rate: number
+  sort_order: number
+}
+
+export type AccrualConfig = {
+  id: number
+  sick_weekly_rate: number
+  pto_cap_hours: number
+  sick_cap_hours: number
+}
+
 export type KbArticle = {
   id: string
   title: string

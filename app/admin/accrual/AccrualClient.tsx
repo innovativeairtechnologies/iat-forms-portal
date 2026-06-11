@@ -1,10 +1,10 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Play, CheckCircle2, AlertCircle, Calendar, Clock, TrendingUp, AlertTriangle, X } from 'lucide-react'
+import { Play, CheckCircle2, AlertCircle, Calendar, Clock, TrendingUp, AlertTriangle, X, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { Employee, AccrualLog } from '@/lib/supabase'
+import type { Employee, AccrualLog, AccrualTier, AccrualConfig } from '@/lib/supabase'
 import type { AccrualRunResult } from '@/lib/accrual'
 
 type AccrualLogWithEmployee = AccrualLog & { employees: Pick<Employee, 'name' | 'email'> }
@@ -13,12 +13,24 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+function nextMonday(): Date {
+  const now = new Date()
+  const daysUntil = ((1 - now.getDay() + 7) % 7) || 7
+  const d = new Date(now)
+  d.setDate(now.getDate() + daysUntil)
+  return d
+}
+
 export default function AccrualClient({
   employees,
   recentLog,
+  tiers,
+  config,
 }: {
   employees: Employee[]
   recentLog: AccrualLogWithEmployee[]
+  tiers: AccrualTier[]
+  config: AccrualConfig | null
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -42,18 +54,7 @@ export default function AccrualClient({
     startTransition(() => router.refresh())
   }
 
-  const nextRunDates = (() => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const candidates = [
-      new Date(year, month, 1),
-      new Date(year, month, 15),
-      new Date(year, month + 1, 1),
-      new Date(year, month + 1, 15),
-    ]
-    return candidates.filter(d => d > now).slice(0, 2)
-  })()
+  const nextRun = nextMonday()
 
   return (
     <div className="flex-1 overflow-auto">
@@ -62,7 +63,7 @@ export default function AccrualClient({
       <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
         <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Accrual</h1>
-        <p className="text-[13px] text-gray-400 mt-0.5">Biweekly PTO &amp; sick time accrual — runs on the 1st and 15th of each month</p>
+        <p className="text-[13px] text-gray-400 mt-0.5">Weekly PTO &amp; sick time accrual — runs every Monday at 8 AM</p>
       </div>
 
       <div className="p-8 space-y-6">
@@ -73,17 +74,14 @@ export default function AccrualClient({
             <div>
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">Run Accrual</h2>
               <p className="text-[13px] text-gray-400 max-w-sm leading-relaxed">
-                Adds each employee&apos;s accrual rate to their current balance and records the change in the log.
+                Adds each employee&apos;s accrual rate to their current balance and records the change in the log. Balances stop accruing once they hit their cap.
               </p>
-              {nextRunDates.length > 0 && (
-                <div className="flex items-center gap-2 mt-3">
-                  <Calendar size={13} className="text-gray-300" />
-                  <span className="text-[12px] text-gray-400">
-                    Next scheduled: {nextRunDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    {nextRunDates[1] && ` · ${nextRunDates[1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 mt-3">
+                <Calendar size={13} className="text-gray-300" />
+                <span className="text-[12px] text-gray-400">
+                  Next scheduled: {nextRun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
             </div>
             <button
               onClick={() => setConfirming(true)}
@@ -112,16 +110,14 @@ export default function AccrualClient({
                 initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                 className="mt-5 space-y-4"
               >
-                {/* Summary row */}
                 <div className="flex items-center gap-3">
                   <CheckCircle2 size={16} className="text-[#089447]" />
                   <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">
                     Accrual complete — {result.processed} employee{result.processed !== 1 ? 's' : ''} updated
-                    {result.skipped > 0 && <span className="text-gray-400 font-normal"> · {result.skipped} skipped (zero rates)</span>}
+                    {result.skipped > 0 && <span className="text-gray-400 font-normal"> · {result.skipped} skipped (at cap or zero rate)</span>}
                   </p>
                 </div>
 
-                {/* Per-employee table */}
                 {result.employees.length > 0 && (
                   <div className="rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
                     <table className="w-full text-[12px]">
@@ -153,12 +149,86 @@ export default function AccrualClient({
           </AnimatePresence>
         </div>
 
+        {/* Policy card */}
+        {(tiers.length > 0 || config) && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
+              <Shield size={15} className="text-gray-400" />
+              <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Accrual Policy</h2>
+              <span className="ml-auto text-[11px] text-gray-400">Source: HR rate sheet</span>
+            </div>
+            <div className="p-6 space-y-5">
+
+              {/* PTO tiers */}
+              {tiers.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">PTO — Tenure Bands</p>
+                  <div className="rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
+                    <table className="w-full text-[12px]">
+                      <thead>
+                        <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
+                          <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tenure</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Rate / wk</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">≈ Hrs / yr</th>
+                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">≈ Days / yr</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
+                        {tiers.map(tier => {
+                          const hrsPerYr = Number(tier.pto_weekly_rate) * 52
+                          const daysPerYr = (hrsPerYr / 8).toFixed(1)
+                          return (
+                            <tr key={tier.id}>
+                              <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300">{tier.label}</td>
+                              <td className="px-4 py-2.5 text-right text-[#089447] font-semibold">{Number(tier.pto_weekly_rate).toFixed(2)} hrs</td>
+                              <td className="px-4 py-2.5 text-right text-gray-500 dark:text-gray-400 tabular-nums">{Math.round(hrsPerYr)} hrs</td>
+                              <td className="px-4 py-2.5 text-right text-gray-500 dark:text-gray-400 tabular-nums">{daysPerYr} days</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Sick + caps row */}
+              {config && (
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex-1 min-w-[160px] rounded-xl border border-gray-100 dark:border-zinc-800 px-4 py-3">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Sick Time Rate</p>
+                    <p className="text-[15px] font-bold text-amber-600">
+                      {Number(config.sick_weekly_rate).toFixed(2)} hrs<span className="text-[12px] font-normal text-gray-400"> / wk</span>
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Flat rate — all tenures</p>
+                  </div>
+                  <div className="flex-1 min-w-[160px] rounded-xl border border-gray-100 dark:border-zinc-800 px-4 py-3">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">PTO Cap</p>
+                    <p className="text-[15px] font-bold text-[#089447]">
+                      {Number(config.pto_cap_hours)} hrs
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Accrual stops at cap</p>
+                  </div>
+                  <div className="flex-1 min-w-[160px] rounded-xl border border-gray-100 dark:border-zinc-800 px-4 py-3">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Sick Cap</p>
+                    <p className="text-[15px] font-bold text-amber-600">
+                      {Number(config.sick_cap_hours)} hrs
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Accrual stops at cap</p>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
+
         {/* Employee rates table */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
             <TrendingUp size={15} className="text-gray-400" />
             <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Employee Accrual Rates</h2>
-            <span className="ml-auto text-[11px] text-gray-400">Click an employee to edit their rates</span>
+            <span className="ml-auto text-[11px] text-gray-400">Rates update automatically on anniversary</span>
           </div>
           {employees.length === 0 ? (
             <p className="text-[13px] text-gray-400 p-6">No employees yet.</p>
@@ -168,9 +238,9 @@ export default function AccrualClient({
                 <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
                   <th className="text-left px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Employee</th>
                   <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Balance</th>
-                  <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Rate / period</th>
+                  <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Rate / wk</th>
                   <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sick Balance</th>
-                  <th className="text-right px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sick Rate / period</th>
+                  <th className="text-right px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sick Rate / wk</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
@@ -235,14 +305,14 @@ export default function AccrualClient({
                     </td>
                     <td className="px-6 py-2.5">
                       <span className={`text-[11px] font-medium ${
-                        entry.reason === 'scheduled' ? 'text-gray-400' :
+                        entry.reason === 'scheduled'         ? 'text-gray-400' :
                         entry.reason === 'manual_adjustment' ? 'text-violet-600 dark:text-violet-400' :
-                        entry.reason === 'request_approved' ? 'text-red-500' : 'text-gray-400'
+                        entry.reason === 'request_approved'  ? 'text-red-500' : 'text-gray-400'
                       }`}>
-                        {entry.reason === 'scheduled' ? 'Scheduled' :
+                        {entry.reason === 'scheduled'         ? 'Scheduled' :
                          entry.reason === 'manual_adjustment' ? 'Manual Adjustment' :
-                         entry.reason === 'request_approved' ? 'Request Approved' :
-                         entry.reason === 'request_denied' ? 'Request Denied' : entry.reason}
+                         entry.reason === 'request_approved'  ? 'Request Approved' :
+                         entry.reason === 'request_denied'    ? 'Request Denied' : entry.reason}
                       </span>
                       {entry.note && <p className="text-[11px] text-gray-300 dark:text-gray-600">{entry.note}</p>}
                     </td>
@@ -254,6 +324,7 @@ export default function AccrualClient({
         </div>
 
       </div>
+
       {/* Confirmation modal */}
       <AnimatePresence>
         {confirming && (

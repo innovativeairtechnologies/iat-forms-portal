@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { runBiweeklyAccrual } from '@/lib/accrual'
+import { runWeeklyAccrual } from '@/lib/accrual'
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await runBiweeklyAccrual()
+    const result = await runWeeklyAccrual()
     console.log(`[cron/accrue-pto] Processed ${result.processed} employees, skipped ${result.skipped}`)
     return NextResponse.json(result)
   } catch (err) {

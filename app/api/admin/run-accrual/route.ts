@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { isAdminAuthenticated } from '@/lib/admin-auth'
-import { runBiweeklyAccrual } from '@/lib/accrual'
+import { runWeeklyAccrual } from '@/lib/accrual'
 
 export async function POST() {
   if (!(await isAdminAuthenticated())) {
@@ -8,7 +8,7 @@ export async function POST() {
   }
 
   try {
-    const result = await runBiweeklyAccrual()
+    const result = await runWeeklyAccrual()
     console.log(`[admin/run-accrual] Processed ${result.processed} employees, skipped ${result.skipped}`)
     return NextResponse.json(result)
   } catch (err) {
