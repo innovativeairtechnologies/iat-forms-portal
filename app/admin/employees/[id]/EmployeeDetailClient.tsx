@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Check } from 'lucide-react'
+import { ArrowLeft, Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Check, Power } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import type { Employee, TimeOffRequest } from '@/lib/supabase'
@@ -49,6 +49,11 @@ export default function EmployeeDetailClient({
   const [roleLoading, setRoleLoading] = useState(false)
   const [roleSaved, setRoleSaved]   = useState(false)
 
+  // Account status (offboarding)
+  const [active, setActive]             = useState(employee.is_active !== false)
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [statusError, setStatusError]   = useState('')
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -86,6 +91,22 @@ export default function EmployeeDetailClient({
     }
   }
 
+  const toggleActive = async () => {
+    const next = !active
+    if (!next && !window.confirm('Deactivate this employee? They will be blocked from logging in, removed from the directory, and skipped by PTO accrual. You can reactivate them later.')) return
+    setStatusLoading(true)
+    setStatusError('')
+    const res = await fetch(`/api/employees/${employee.id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: next }),
+    })
+    setStatusLoading(false)
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setStatusError(d.error || 'Failed to update status'); return }
+    setActive(next)
+    router.refresh()
+  }
+
   const initials = employee.name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
 
   return (
@@ -114,6 +135,11 @@ export default function EmployeeDetailClient({
                 {role === 'admin' ? <Shield size={9} /> : <User size={9} />}
                 {role === 'admin' ? 'Admin' : 'Employee'}
               </span>
+              {!active && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700">
+                  Inactive
+                </span>
+              )}
             </div>
             <p className="text-[13px] text-gray-400 mt-0.5">{employee.email}{employee.job_title ? ` · ${employee.job_title}` : ''}</p>
           </div>
@@ -260,6 +286,38 @@ export default function EmployeeDetailClient({
                     Role updated ✓
                   </motion.p>
                 )}
+              </div>
+            </div>
+
+            {/* ── Account Status card ── */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
+                <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Account Status</h2>
+                <p className="text-[11px] text-gray-400 mt-0.5">Deactivating blocks login and removes them from the directory &amp; accrual</p>
+              </div>
+              <div className="p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] text-gray-600 dark:text-gray-300">Current</span>
+                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${
+                    active
+                      ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800'
+                      : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700'
+                  }`}>
+                    {active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <button
+                  onClick={toggleActive}
+                  disabled={statusLoading}
+                  className={`w-full flex items-center justify-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-50 border ${
+                    active
+                      ? 'bg-white dark:bg-transparent hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500 border-red-200 dark:border-red-900'
+                      : 'bg-[#089447] hover:bg-[#077a3c] text-white border-transparent'
+                  }`}>
+                  <Power size={14} />
+                  {statusLoading ? 'Updating…' : active ? 'Deactivate Employee' : 'Reactivate Employee'}
+                </button>
+                {statusError && <p className="text-[11px] text-red-500">{statusError}</p>}
               </div>
             </div>
 

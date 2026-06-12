@@ -1,0 +1,19 @@
+# Dependabot — weekly dependency update PRs.
+# Pairs with GitHub's "Dependabot alerts" (enable in repo Settings → Code security),
+# which flags vulnerable deps like the next@14.2.x CVE we patched on 2026-06-12.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    # Group low-risk updates into one PR to cut noise; majors stay separate.
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"

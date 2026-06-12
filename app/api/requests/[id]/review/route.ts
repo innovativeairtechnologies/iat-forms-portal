@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAdminAuthenticated } from '@/lib/admin-auth'
+import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendRequestDecisionToEmployee } from '@/lib/resend-pto'
 
@@ -7,8 +7,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Admin portal uses cookie-based auth, not Supabase auth
-  if (!(await isAdminAuthenticated())) {
+  const admin = await getAdminUser()
+  if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -38,17 +38,40 @@ export async function POST(
 
   if (!employee) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
 
-  // Update request status (no reviewed_by since admin has no Supabase user ID)
-  await supabaseAdmin
+  const balanceField   = request.type === 'pto' ? 'pto_balance' : 'sick_balance'
+  const currentBalance = request.type === 'pto' ? employee.pto_balance : employee.sick_balance
+
+  // Block over-balance approvals rather than silently flooring the balance to 0
+  // (which previously lost hours and produced a wrong balance).
+  if (decision === 'approved' && request.hours_requested > currentBalance) {
+    const label = request.type === 'pto' ? 'PTO' : 'sick'
+    return NextResponse.json(
+      { error: `Insufficient ${label} balance: requesting ${request.hours_requested}h but only ${currentBalance}h available. Adjust the balance first, or deny the request.` },
+      { status: 400 }
+    )
+  }
+
+  // Record the decision and who made it. reviewed_by references employees.id
+  // (= the admin's auth user id via the signup trigger); fall back to omitting it
+  // for any legacy admin row without a matching employees record, so approvals
+  // never break.
+  let { error: updErr } = await supabaseAdmin
     .from('time_off_requests')
-    .update({ status: decision, reviewed_at: new Date().toISOString() })
+    .update({ status: decision, reviewed_at: new Date().toISOString(), reviewed_by: admin.user.id })
     .eq('id', params.id)
 
-  // Approve: deduct balance and log
+  if (updErr) {
+    console.error('[review] update with reviewed_by failed, retrying without it:', updErr.message)
+    ;({ error: updErr } = await supabaseAdmin
+      .from('time_off_requests')
+      .update({ status: decision, reviewed_at: new Date().toISOString() })
+      .eq('id', params.id))
+    if (updErr) return NextResponse.json({ error: 'Failed to update request' }, { status: 500 })
+  }
+
+  // Approve: deduct balance and log (approver captured in the note for audit)
   if (decision === 'approved') {
-    const balanceField    = request.type === 'pto' ? 'pto_balance' : 'sick_balance'
-    const currentBalance  = request.type === 'pto' ? employee.pto_balance : employee.sick_balance
-    const newBalance      = Math.max(0, currentBalance - request.hours_requested)
+    const newBalance = currentBalance - request.hours_requested
 
     await supabaseAdmin
       .from('employees')
@@ -62,7 +85,7 @@ export async function POST(
         type:        request.type,
         hours_delta: -request.hours_requested,
         reason:      'request_approved',
-        note:        `Request approved by admin`,
+        note:        `Request approved by ${admin.displayName}`,
       })
   }
 

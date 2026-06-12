@@ -108,7 +108,7 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
         ) : (
           filtered.map((emp, i) => (
             <Link key={emp.id} href={`/admin/employees/${emp.id}`}
-              className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group ${i < filtered.length - 1 ? 'border-b border-gray-100' : ''}`}>
+              className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group ${i < filtered.length - 1 ? 'border-b border-gray-100' : ''} ${emp.is_active === false ? 'opacity-60' : ''}`}>
               <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0">
                 {emp.name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
               </div>
@@ -118,6 +118,11 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
                   {emp.role === 'admin' && (
                     <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 rounded-full border border-violet-200 dark:border-violet-800">
                       <Shield size={9} />Admin
+                    </span>
+                  )}
+                  {emp.is_active === false && (
+                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-zinc-700">
+                      Inactive
                     </span>
                   )}
                 </div>

@@ -49,6 +49,7 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
     supabaseAdmin
       .from('employees')
       .select('id, name, email, hire_date, pto_balance, sick_balance')
+      .eq('is_active', true)
       .order('name'),
     supabaseAdmin
       .from('accrual_tiers')

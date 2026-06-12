@@ -10,6 +10,7 @@ export async function GET() {
   const { data: employees } = await supabaseAdmin
     .from('employees')
     .select('id, name, email, job_title, department, phone, bio, avatar_url, hire_date')
+    .eq('is_active', true)
     .order('name')
 
   return NextResponse.json({ employees: employees || [] })
