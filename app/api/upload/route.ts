@@ -7,7 +7,10 @@ export async function POST(req: NextRequest) {
   // admin guard breaks them (it 401'd every non-admin form filler). Defenses
   // instead: per-IP rate limit + the size cap, type allowlist, and random
   // server-side filenames below.
-  const limited = await rateLimit(req, { name: 'upload', max: 20, windowSeconds: 600 })
+  // max: 150 / 10 min — photo-heavy forms (e.g. SRV has ~31 photo fields) blew
+  // through the old cap of 20 mid-submission, 429ing the rest of the form. This
+  // fits ~5 full SRV forms per IP/window, with headroom for shared-office NAT.
+  const limited = await rateLimit(req, { name: 'upload', max: 150, windowSeconds: 600 })
   if (limited) return limited
 
   try {

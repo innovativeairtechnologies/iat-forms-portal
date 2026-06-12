@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
+import { sanitizeNoteHtml } from '@/lib/sanitize'
 import TicketDetailClient from './TicketDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -13,5 +14,9 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
 
   if (!ticket) notFound()
 
-  return <TicketDetailClient ticket={ticket} initialNotes={notes ?? []} admins={admins ?? []} />
+  // Sanitize stored note HTML server-side so the client only ever renders a safe
+  // subset (covers rows written before sanitization existed).
+  const safeNotes = (notes ?? []).map(n => ({ ...n, content: sanitizeNoteHtml(n.content) }))
+
+  return <TicketDetailClient ticket={ticket} initialNotes={safeNotes} admins={admins ?? []} />
 }

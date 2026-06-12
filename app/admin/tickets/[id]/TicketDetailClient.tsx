@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Lightbulb } from 'lucide-react'
-import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { Ticket, TicketNote, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import dynamic from 'next/dynamic'
@@ -103,15 +102,24 @@ export default function TicketDetailClient({
   const addNote = async (html: string) => {
     setSavingNote(true)
     setSaveError(null)
-    const sb = createSupabaseBrowser()
-    const { data, error } = await sb
-      .from('ticket_notes')
-      .insert({ ticket_id: ticket.id, content: html })
-      .select()
-      .single()
-    setSavingNote(false)
-    if (error) { setSaveError(error.message); return }
-    if (data) setNotes(prev => [...prev, data as TicketNote])
+    try {
+      const res = await fetch(`/api/tickets/${ticket.id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: html }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setSaveError(j.error || 'Failed to save note')
+        return
+      }
+      const data = await res.json()
+      setNotes(prev => [...prev, data as TicketNote])
+    } catch {
+      setSaveError('Failed to save note')
+    } finally {
+      setSavingNote(false)
+    }
   }
 
   const currentStatus = STATUS_OPTIONS.find(s => s.value === ticket.status)

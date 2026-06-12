@@ -66,16 +66,20 @@ export default function RichTextEditor({ onSubmit, disabled }: Props) {
     setHasContent(false)
   }
 
+  const isHttpUrl = (u: string) => /^https?:\/\//i.test(u.trim())
+
   const addLink = () => {
-    const url = window.prompt('Enter URL:')
+    const url = window.prompt('Enter URL (http:// or https://):')
     if (!url) return
-    editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    if (!isHttpUrl(url)) { window.alert('Only http:// or https:// links are allowed.'); return }
+    editor?.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
   }
 
   const addImage = () => {
-    const url = window.prompt('Enter image URL:')
+    const url = window.prompt('Enter image URL (http:// or https://):')
     if (!url) return
-    editor?.chain().focus().setImage({ src: url }).run()
+    if (!isHttpUrl(url)) { window.alert('Only http:// or https:// image URLs are allowed.'); return }
+    editor?.chain().focus().setImage({ src: url.trim() }).run()
   }
 
   if (!editor) return null
