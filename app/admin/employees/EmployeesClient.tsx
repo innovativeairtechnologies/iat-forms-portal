@@ -21,9 +21,19 @@ function generatePassword() {
   return (core + rest).split('').sort(() => Math.random() - 0.5).join('')
 }
 
+type Tab = 'all' | 'admins' | 'active' | 'inactive'
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: 'all',      label: 'All'      },
+  { value: 'admins',   label: 'Admins'   },
+  { value: 'active',   label: 'Active'   },
+  { value: 'inactive', label: 'Inactive' },
+]
+
 export default function EmployeesClient({ employees }: { employees: (Employee & { role?: 'admin' | 'employee' })[] }) {
   const router = useRouter()
   const [search, setSearch]     = useState('')
+  const [tab, setTab]           = useState<Tab>('all')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm]         = useState(EMPTY_FORM)
   const [showPw, setShowPw]     = useState(false)
@@ -32,9 +42,25 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
   const [created, setCreated]   = useState<{ email: string; password: string } | null>(null)
   const [copied, setCopied]     = useState(false)
 
+  const matchesTab = (e: Employee & { role?: 'admin' | 'employee' }) =>
+    tab === 'all'      ? true :
+    tab === 'admins'   ? e.role === 'admin' :
+    tab === 'active'   ? e.is_active !== false :
+    e.is_active === false
+
+  const tabCount = (t: Tab) =>
+    employees.filter(e =>
+      t === 'all'      ? true :
+      t === 'admins'   ? e.role === 'admin' :
+      t === 'active'   ? e.is_active !== false :
+      e.is_active === false
+    ).length
+
   const filtered = employees.filter(e =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.email.toLowerCase().includes(search.toLowerCase())
+    matchesTab(e) && (
+      e.name.toLowerCase().includes(search.toLowerCase()) ||
+      e.email.toLowerCase().includes(search.toLowerCase())
+    )
   )
 
   const openModal = () => {
@@ -73,7 +99,7 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
 
   return (
     <>
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Header */}
       <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
@@ -91,52 +117,141 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
       </div>
 
       <div className="p-8">
-        {/* Search */}
-        <div className="relative mb-5">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employees…"
-            className="w-full bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-[13px] text-gray-800 dark:text-gray-200 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 shadow-card" />
+
+        {/* Tabs — underline style */}
+        <div className="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-4">
+          {TABS.map(({ value, label }) => {
+            const active = tab === value
+            return (
+              <button
+                key={value}
+                onClick={() => setTab(value)}
+                className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
+                  active
+                    ? 'font-semibold text-zinc-900 dark:text-white'
+                    : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
+                }`}
+              >
+                {label}
+                <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>
+                  {tabCount(value)}
+                </span>
+                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
+              </button>
+            )
+          })}
         </div>
 
-      {/* Employee list */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="py-12 text-center">
-            <User size={28} className="text-gray-200 mx-auto mb-2" />
-            <p className="text-[14px] text-gray-400">No employees found.</p>
+        {/* Toolbar row */}
+        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="pl-8 pr-8 h-9 text-[12.5px] w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
+              >
+                <X size={11} />
+              </button>
+            )}
           </div>
-        ) : (
-          filtered.map((emp, i) => (
-            <Link key={emp.id} href={`/admin/employees/${emp.id}`}
-              className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group ${i < filtered.length - 1 ? 'border-b border-gray-100' : ''} ${emp.is_active === false ? 'opacity-60' : ''}`}>
-              <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0">
-                {emp.name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+
+          <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
+            {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
+          </span>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
+
+          {/* Column headers */}
+          <div className="grid grid-cols-[1fr_220px_110px_90px_90px_44px] items-center border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60">
+            {['Employee', 'Role / Department', 'Status', 'PTO hrs', 'Sick hrs'].map(h => (
+              <div key={h} className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600">
+                {h}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-[14px] font-medium text-gray-800 group-hover:text-[#089447] transition-colors">{emp.name || '—'}</p>
-                  {emp.role === 'admin' && (
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 rounded-full border border-violet-200 dark:border-violet-800">
-                      <Shield size={9} />Admin
-                    </span>
-                  )}
-                  {emp.is_active === false && (
-                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-zinc-700">
+            ))}
+            <div />
+          </div>
+
+          {/* Rows */}
+          {filtered.length === 0 ? (
+            <div className="py-16 text-center">
+              <User size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
+              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">No employees found.</p>
+            </div>
+          ) : (
+            filtered.map((emp, i) => (
+              <Link
+                key={emp.id}
+                href={`/admin/employees/${emp.id}`}
+                className={`grid grid-cols-[1fr_220px_110px_90px_90px_44px] items-center transition-colors group ${
+                  i !== 0 ? 'border-t border-zinc-100 dark:border-zinc-800/60' : ''
+                } hover:bg-zinc-50 dark:hover:bg-zinc-800/40 ${emp.is_active === false ? 'opacity-60' : ''}`}
+              >
+                {/* Employee */}
+                <div className="px-4 py-3.5 min-w-0 flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-zinc-500 dark:text-zinc-300">
+                    {emp.name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {emp.name || '—'}
+                      </p>
+                      {emp.role === 'admin' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-md border border-violet-300/60 bg-violet-50 text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400 flex-shrink-0">
+                          <Shield size={9} />Admin
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11.5px] text-zinc-400 dark:text-zinc-500 truncate">{emp.email}</p>
+                  </div>
+                </div>
+
+                {/* Role / Department */}
+                <div className="px-4 py-3.5 min-w-0">
+                  <p className="text-[12.5px] text-zinc-600 dark:text-zinc-300 truncate">{emp.job_title || '—'}</p>
+                  {emp.department && <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">{emp.department}</p>}
+                </div>
+
+                {/* Status */}
+                <div className="px-4 py-3.5">
+                  {emp.is_active === false ? (
+                    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-[3px] rounded-md border border-zinc-200 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
                       Inactive
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-[3px] rounded-md border border-emerald-300/60 bg-emerald-50 text-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">
+                      Active
                     </span>
                   )}
                 </div>
-                <p className="text-[12px] text-gray-400 mt-0.5 truncate">{emp.email}{emp.job_title ? ` · ${emp.job_title}` : ''}</p>
-              </div>
-              <div className="text-right flex-shrink-0 hidden sm:block">
-                <p className="text-[12px] font-semibold text-gray-600">{emp.pto_balance} <span className="font-normal text-gray-400">PTO hrs</span></p>
-                <p className="text-[12px] font-semibold text-gray-600 mt-0.5">{emp.sick_balance} <span className="font-normal text-gray-400">sick hrs</span></p>
-              </div>
-              <ChevronRight size={15} className="text-gray-300 group-hover:text-[#089447] transition-colors flex-shrink-0" />
-            </Link>
-          ))
-        )}
-      </div>
+
+                {/* PTO */}
+                <div className="px-4 py-3.5">
+                  <span className="text-[12.5px] font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.pto_balance}</span>
+                </div>
+
+                {/* Sick */}
+                <div className="px-4 py-3.5">
+                  <span className="text-[12.5px] font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.sick_balance}</span>
+                </div>
+
+                {/* Chevron */}
+                <div className="flex justify-center">
+                  <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
       </div>{/* p-8 */}
 
       {/* Create employee modal */}

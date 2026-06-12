@@ -44,10 +44,10 @@ export default function SubmissionsToolbar({
   }, [router, pathname, searchParams])
 
   return (
-    <div className="flex items-center gap-3 mb-4 flex-wrap">
+    <div className="mb-4">
 
-      {/* Status segmented control */}
-      <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-zinc-800 rounded-xl p-1">
+      {/* Status tabs — underline style */}
+      <div className="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-4">
         {STATUS_TABS.map(({ value, label }) => {
           const active = (currentStatus ?? '') === value
           const count  = counts[value === '' ? 'all' : value] ?? 0
@@ -55,76 +55,72 @@ export default function SubmissionsToolbar({
             <button
               key={value}
               onClick={() => navigate({ status: value })}
-              className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg whitespace-nowrap transition-all ${
+              className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
                 active
-                  ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                  ? 'font-semibold text-zinc-900 dark:text-white'
+                  : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
               }`}
             >
               {label}
-              <span className={`ml-1.5 text-[10px] tabular-nums ${active ? 'text-gray-400' : 'text-gray-300 dark:text-gray-600'}`}>
+              <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>
                 {count}
               </span>
+              {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
             </button>
           )
         })}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
-        <input
-          type="text"
-          defaultValue={currentSearch ?? ''}
-          onChange={e => navigate({ search: e.target.value })}
-          placeholder="Search submissions…"
-          className="pl-8 pr-8 py-2 text-[12px] w-52 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-700 dark:text-gray-200 placeholder:text-gray-300 dark:placeholder:text-gray-600 outline-none focus:border-gray-300 dark:focus:border-zinc-600 transition-all"
-        />
-        {currentSearch && (
-          <button
-            onClick={() => navigate({ search: '' })}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition-colors"
-          >
-            <X size={11} />
-          </button>
-        )}
-      </div>
+      {/* Toolbar row */}
+      <div className="flex items-center gap-2.5 flex-wrap">
 
-      {/* Form filter */}
-      {forms.length > 0 && (
-        <select
-          defaultValue={currentForm ?? ''}
-          onChange={e => navigate({ form_id: e.target.value })}
-          className="py-2 pl-3 pr-7 text-[12px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-600 dark:text-gray-300 outline-none focus:border-gray-300 dark:focus:border-zinc-600 transition-all appearance-none cursor-pointer"
-        >
-          <option value="">All Forms</option>
-          {forms.map(f => <option key={f.id} value={f.id}>{f.title}</option>)}
-        </select>
-      )}
-
-      {/* Read filter */}
-      <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-zinc-800 rounded-xl p-1">
-        {[['', 'All'], ['false', 'Unread'], ['true', 'Read']].map(([val, label]) => {
-          const active = (currentRead ?? '') === val
-          return (
+        {/* Search */}
+        <div className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
+          <input
+            type="text"
+            defaultValue={currentSearch ?? ''}
+            onChange={e => navigate({ search: e.target.value })}
+            placeholder="Search…"
+            className="pl-8 pr-8 h-9 text-[12.5px] w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
+          />
+          {currentSearch && (
             <button
-              key={val}
-              onClick={() => navigate({ is_read: val })}
-              className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg whitespace-nowrap transition-all ${
-                active
-                  ? 'bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}
+              onClick={() => navigate({ search: '' })}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
             >
-              {label}
+              <X size={11} />
             </button>
-          )
-        })}
-      </div>
+          )}
+        </div>
 
-      <span className="ml-auto text-[12px] text-gray-400 tabular-nums">
-        {counts.all ?? 0} {(counts.all ?? 0) === 1 ? 'submission' : 'submissions'}
-      </span>
+        {/* Form filter */}
+        {forms.length > 0 && (
+          <select
+            defaultValue={currentForm ?? ''}
+            onChange={e => navigate({ form_id: e.target.value })}
+            className="h-9 pl-3 pr-7 text-[12.5px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 outline-none focus:border-emerald-500/50 transition-all appearance-none cursor-pointer"
+          >
+            <option value="">All Forms</option>
+            {forms.map(f => <option key={f.id} value={f.id}>{f.title}</option>)}
+          </select>
+        )}
+
+        {/* Read filter */}
+        <select
+          defaultValue={currentRead ?? ''}
+          onChange={e => navigate({ is_read: e.target.value })}
+          className="h-9 pl-3 pr-7 text-[12.5px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-300 outline-none focus:border-emerald-500/50 transition-all appearance-none cursor-pointer"
+        >
+          <option value="">Read &amp; Unread</option>
+          <option value="false">Unread only</option>
+          <option value="true">Read only</option>
+        </select>
+
+        <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
+          {counts.all ?? 0} {(counts.all ?? 0) === 1 ? 'submission' : 'submissions'}
+        </span>
+      </div>
     </div>
   )
 }
