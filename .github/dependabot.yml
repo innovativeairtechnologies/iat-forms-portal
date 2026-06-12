@@ -9,11 +9,17 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
-    # Group low-risk updates into one PR to cut noise; majors stay separate.
+    # Group minor/patch into a single PR to cut noise.
     groups:
       minor-and-patch:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Major framework upgrades (Next, React, Tailwind, ESLint, …) carry breaking
+      # changes and are done as planned, tested migrations — not auto-PRs. Security
+      # updates still come through regardless of this rule.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     labels:
       - "dependencies"
