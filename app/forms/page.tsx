@@ -1,12 +1,14 @@
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { Category, Form } from '@/lib/supabase'
 import FormsPortal from '@/components/FormsPortal'
 
+// Server component: read via the service role so the public submission-count
+// stat does not depend on (and is not exposed by) anon RLS on `submissions`.
 async function getData() {
   const [{ data: categories }, { data: forms }, { data: submissionCounts }] = await Promise.all([
-    supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('forms').select('*, categories(*)').eq('is_active', true).order('title'),
-    supabase.from('submissions').select('form_id'),
+    supabaseAdmin.from('categories').select('*').order('sort_order'),
+    supabaseAdmin.from('forms').select('*, categories(*)').eq('is_active', true).order('title'),
+    supabaseAdmin.from('submissions').select('form_id'),
   ])
 
   const countMap: Record<string, number> = {}
