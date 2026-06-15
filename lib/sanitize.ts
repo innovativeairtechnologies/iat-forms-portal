@@ -38,3 +38,28 @@ export function noteHasContent(cleanHtml: string): boolean {
   const text = cleanHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
   return text.length > 0 || /<img\b/i.test(cleanHtml)
 }
+
+export type NoteAttachment = { path: string; name: string; type: string; size: number }
+
+/**
+ * Validate/normalize note attachment metadata coming from the client. The only
+ * security-relevant field is `path`: it must live under THIS ticket's storage
+ * prefix (and contain no traversal), so a note can never reference another
+ * ticket's files. Everything else is cosmetic and just length-bounded. Returns
+ * at most 20 attachments. Applied on write and on read.
+ */
+export function sanitizeAttachments(input: unknown, ticketId: string): NoteAttachment[] {
+  if (!Array.isArray(input)) return []
+  const out: NoteAttachment[] = []
+  for (const a of input.slice(0, 20)) {
+    if (!a || typeof a !== 'object') continue
+    const rec = a as Record<string, unknown>
+    const path = typeof rec.path === 'string' ? rec.path : ''
+    if (!path.startsWith(`${ticketId}/`) || path.includes('..')) continue
+    const name = typeof rec.name === 'string' && rec.name.trim() ? rec.name.trim().slice(0, 255) : 'attachment'
+    const type = typeof rec.type === 'string' ? rec.type.slice(0, 100) : ''
+    const size = typeof rec.size === 'number' && Number.isFinite(rec.size) ? Math.max(0, Math.floor(rec.size)) : 0
+    out.push({ path, name, type, size })
+  }
+  return out
+}

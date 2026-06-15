@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
-import { sanitizeNoteHtml } from '@/lib/sanitize'
+import { sanitizeNoteHtml, sanitizeAttachments } from '@/lib/sanitize'
 import TicketDetailClient from './TicketDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +16,11 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
 
   // Sanitize stored note HTML server-side so the client only ever renders a safe
   // subset (covers rows written before sanitization existed).
-  const safeNotes = (notes ?? []).map(n => ({ ...n, content: sanitizeNoteHtml(n.content) }))
+  const safeNotes = (notes ?? []).map(n => ({
+    ...n,
+    content: sanitizeNoteHtml(n.content),
+    attachments: sanitizeAttachments(n.attachments, params.id),
+  }))
 
   // Link to the equipment registry record for this serial, if one exists.
   let equipmentId: string | null = null

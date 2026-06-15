@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Lightbulb, ExternalLink, BookOpen } from 'lucide-react'
-import type { Ticket, TicketNote, Employee } from '@/lib/supabase'
+import { ChevronLeft, Lightbulb, ExternalLink, BookOpen, Paperclip, Mail } from 'lucide-react'
+import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import dynamic from 'next/dynamic'
 
@@ -55,6 +55,42 @@ function formatNoteDate(dateStr: string) {
   })
 }
 
+function formatBytes(n: number): string {
+  if (!n) return ''
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name)
+
+// Download links for a saved note's attachments. Each link hits the admin-gated
+// download route, which validates the path and 307s to a short-lived signed URL.
+function NoteAttachments({ ticketId, attachments }: { ticketId: string; attachments: TicketNoteAttachment[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {attachments.map(att => {
+        const href = `/api/tickets/${ticketId}/attachments/download?path=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.name)}`
+        const Icon = isEmailFile(att.name) ? Mail : Paperclip
+        return (
+          <a
+            key={att.path}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-2 max-w-full text-[12px] bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 hover:border-[#089447] transition-colors"
+            title={`Download ${att.name}`}
+          >
+            <Icon size={13} className={isEmailFile(att.name) ? 'text-[#089447] flex-shrink-0' : 'text-gray-400 group-hover:text-[#089447] flex-shrink-0 transition-colors'} />
+            <span className="truncate text-gray-700 dark:text-gray-200 group-hover:text-[#089447] transition-colors">{att.name}</span>
+            {att.size > 0 && <span className="text-[11px] text-gray-400 flex-shrink-0">{formatBytes(att.size)}</span>}
+          </a>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function TicketDetailClient({
   ticket: initial,
   initialNotes,
@@ -102,14 +138,14 @@ export default function TicketDetailClient({
     setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId, resolved_reason: resolvedReason, owner: owner ? { ...owner } as Employee : undefined }))
   }
 
-  const addNote = async (html: string) => {
+  const addNote = async (html: string, attachments: TicketNoteAttachment[]) => {
     setSavingNote(true)
     setSaveError(null)
     try {
       const res = await fetch(`/api/tickets/${ticket.id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: html }),
+        body: JSON.stringify({ content: html, attachments }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
@@ -123,6 +159,19 @@ export default function TicketDetailClient({
     } finally {
       setSavingNote(false)
     }
+  }
+
+  // Upload one file to the private ticket-attachments bucket; the editor collects
+  // the returned metadata and includes it when the note is saved.
+  const uploadAttachment = async (file: File): Promise<TicketNoteAttachment> => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch(`/api/tickets/${ticket.id}/attachments`, { method: 'POST', body: fd })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      throw new Error(j.error || 'Upload failed')
+    }
+    return res.json()
   }
 
   const currentStatus = STATUS_OPTIONS.find(s => s.value === ticket.status)
@@ -399,10 +448,15 @@ export default function TicketDetailClient({
                 <div key={note.id}>
                   {(idx > 0 || !!ticket.notes) && <div className="border-t border-gray-50 dark:border-zinc-800 mb-4" />}
                   <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-2">{formatNoteDate(note.created_at)}</p>
-                  <div
-                    className="note-content text-[13px] text-gray-700 dark:text-gray-200"
-                    dangerouslySetInnerHTML={{ __html: note.content }}
-                  />
+                  {note.content && (
+                    <div
+                      className="note-content text-[13px] text-gray-700 dark:text-gray-200"
+                      dangerouslySetInnerHTML={{ __html: note.content }}
+                    />
+                  )}
+                  {note.attachments && note.attachments.length > 0 && (
+                    <NoteAttachments ticketId={ticket.id} attachments={note.attachments} />
+                  )}
                 </div>
               ))}
             </div>
@@ -414,7 +468,7 @@ export default function TicketDetailClient({
               <p className="text-[11px] text-gray-300 dark:text-gray-600 mb-3">New note</p>
             </div>
           )}
-          <RichTextEditor onSubmit={addNote} disabled={savingNote} />
+          <RichTextEditor onSubmit={addNote} disabled={savingNote} onUpload={uploadAttachment} />
         </div>
 
         </div>{/* end left column */}

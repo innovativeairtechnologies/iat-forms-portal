@@ -174,10 +174,18 @@ export type ViewedKbArticle = {
   count: number
 }
 
+export type TicketNoteAttachment = {
+  path: string   // object key in the ticket-attachments bucket (prefixed by ticket id)
+  name: string   // original filename, shown to the admin and used as the download name
+  type: string   // browser-reported MIME (may be empty for .msg/.eml)
+  size: number   // bytes
+}
+
 export type TicketNote = {
   id: string
   ticket_id: string
   content: string
+  attachments?: TicketNoteAttachment[]
   created_at: string
 }
 
