@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
-  CalendarClock, TrendingUp, Ticket, BarChart2, FileText,
-  Calendar, Clock, UserPlus, Search, Plus, Boxes,
+  CalendarClock, TrendingUp, Ticket,
+  Calendar, Clock, Search, Plus, Boxes,
   ChevronRight, FolderOpen, Users, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -33,17 +33,11 @@ type Counts = {
   sick: number
 }
 
-type FutureItem = {
-  label: string
-  icon: React.ElementType
-}
-
 type NavSection = {
   label: string
   icon: React.ElementType
   href?: string
   items: NavItem[]
-  future?: FutureItem[]
 }
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -60,10 +54,6 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket, badge: 'tickets' },
       { href: '/admin/equipment',   label: 'Equipment',   icon: Boxes },
     ],
-    future: [
-      { label: 'Analytics', icon: BarChart2 },
-      { label: 'Reports',   icon: FileText },
-    ],
   },
   {
     label: 'Employees',
@@ -79,9 +69,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       { href: '/admin/schedule', label: 'Scheduling', icon: Calendar },
       { href: '/admin/accrual',    label: 'Accrual',    icon: TrendingUp },
-    ],
-    future: [
-      { label: 'Onboarding', icon: UserPlus },
     ],
   },
 ]
@@ -150,16 +137,6 @@ function NavLink({
         </div>
       )}
     </>
-  )
-}
-
-function FutureLink({ item }: { item: FutureItem }) {
-  return (
-    <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[12px] font-normal text-gray-300 dark:text-gray-700 cursor-not-allowed select-none">
-      <item.icon size={17} className="flex-shrink-0" />
-      <span className="flex-1">{item.label}</span>
-      <span className="text-[10px] tracking-widest uppercase">Soon</span>
-    </div>
   )
 }
 
@@ -249,7 +226,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
               {section.items.map(item => (
                 <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
               ))}
-              {section.future?.map(fi => <FutureLink key={fi.label} item={fi} />)}
             </div>
           ))}
 
@@ -266,7 +242,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
               counts={counts}
               onClose={onClose}
             />
-            <FutureLink item={{ label: 'Import Data', icon: FileText }} />
           </div>
         </>
       )}
