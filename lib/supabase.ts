@@ -49,6 +49,27 @@ export type Employee = {
   created_at: string
 }
 
+export type Equipment = {
+  id: string
+  serial_number: string
+  model_number: string | null
+  voltage: string | null
+  customer_company: string | null
+  customer_name: string | null
+  customer_email: string | null
+  customer_phone: string | null
+  location: string | null
+  ship_date: string | null
+  install_date: string | null
+  warranty_months: number
+  warranty_end: string | null
+  status: 'active' | 'decommissioned'
+  photo_urls: string[] | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type TimeOffRequest = {
   id: string
   employee_id: string

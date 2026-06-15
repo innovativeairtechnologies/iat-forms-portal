@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Lightbulb } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronLeft, Lightbulb, ExternalLink } from 'lucide-react'
 import type { Ticket, TicketNote, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import dynamic from 'next/dynamic'
@@ -58,10 +59,12 @@ export default function TicketDetailClient({
   ticket: initial,
   initialNotes,
   admins,
+  equipmentId,
 }: {
   ticket: Ticket
   initialNotes: TicketNote[]
   admins: Pick<Employee, 'id' | 'name'>[]
+  equipmentId: string | null
 }) {
   const router = useRouter()
   const [ticket, setTicket] = useState(initial)
@@ -301,6 +304,11 @@ export default function TicketDetailClient({
           <Field label="Serial Number">{ticket.serial_number}</Field>
           <Field label="Model Number">{ticket.model_number}</Field>
           <Field label="Voltage">{ticket.voltage}</Field>
+          {equipmentId && (
+            <Link href={`/admin/equipment/${equipmentId}`} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#089447] hover:underline mt-3">
+              <ExternalLink size={12} />View unit in registry
+            </Link>
+          )}
         </Section>
 
         {/* Problem */}

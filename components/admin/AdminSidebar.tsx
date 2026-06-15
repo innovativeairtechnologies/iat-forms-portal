@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, BarChart2, FileText,
-  Calendar, UserPlus, Search, Plus,
+  Calendar, UserPlus, Search, Plus, Boxes,
   ChevronRight, FolderOpen, Users, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/admin/submissions', label: 'Submissions', icon: Inbox, showBadge: true },
       { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket, showTicketBadge: true },
+      { href: '/admin/equipment',   label: 'Equipment',   icon: Boxes },
     ],
     future: [
       { label: 'Analytics', icon: BarChart2 },

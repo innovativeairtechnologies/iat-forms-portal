@@ -92,6 +92,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to create ticket' }, { status: 500 })
     }
 
+    // Equipment registry: auto-accrue the unit the first time we see its serial.
+    // Upsert with ignoreDuplicates so an existing (possibly hand-edited) record is
+    // never clobbered. Non-fatal — a registry hiccup must not fail the ticket.
+    const eqSerial = (body.serial_number || '').trim()
+    if (eqSerial) {
+      try {
+        await supabaseAdmin.from('equipment').upsert({
+          serial_number:    eqSerial,
+          model_number:     body.model_number || null,
+          voltage:          body.voltage || null,
+          customer_company: body.customer_company || null,
+          customer_name:    body.customer_name || null,
+          customer_email:   body.customer_email || null,
+          customer_phone:   body.customer_phone || null,
+        }, { onConflict: 'serial_number', ignoreDuplicates: true })
+      } catch (eqErr) {
+        console.error('[tickets] equipment auto-accrue failed:', eqErr)
+      }
+    }
+
     let ai_recommendations: string[] = []
     try {
       const message = await anthropic.messages.create({

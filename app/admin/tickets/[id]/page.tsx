@@ -18,5 +18,13 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
   // subset (covers rows written before sanitization existed).
   const safeNotes = (notes ?? []).map(n => ({ ...n, content: sanitizeNoteHtml(n.content) }))
 
-  return <TicketDetailClient ticket={ticket} initialNotes={safeNotes} admins={admins ?? []} />
+  // Link to the equipment registry record for this serial, if one exists.
+  let equipmentId: string | null = null
+  if (ticket.serial_number) {
+    const { data: eq } = await supabaseAdmin
+      .from('equipment').select('id').eq('serial_number', ticket.serial_number).maybeSingle()
+    equipmentId = eq?.id ?? null
+  }
+
+  return <TicketDetailClient ticket={ticket} initialNotes={safeNotes} admins={admins ?? []} equipmentId={equipmentId} />
 }
