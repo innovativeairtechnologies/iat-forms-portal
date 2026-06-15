@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAdminAuthenticated } from '@/lib/admin-auth'
+import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthenticated())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { name, email, job_title, department, is_admin, temp_password } = await req.json()
   if (!email)         return NextResponse.json({ error: 'Email is required' },            { status: 400 })
@@ -39,6 +41,15 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', data.user.id)
     }
+
+    await logAudit({
+      actor: { id: admin.user.id, name: admin.displayName },
+      action: 'employee.invite',
+      entityType: 'employee',
+      entityId: data.user.id,
+      summary: `Created account for ${displayName} (${email}) as ${role}`,
+      metadata: { email, role, job_title: job_title || null, department: department || null },
+    })
   }
 
   return NextResponse.json({ ok: true }, { status: 201 })

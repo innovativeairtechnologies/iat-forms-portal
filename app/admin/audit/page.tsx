@@ -4,7 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
 import {
   ChevronRight, ShieldCheck, UserCog, FileCheck2, Trash2,
-  CalendarCheck, History, Filter,
+  CalendarCheck, History, Filter, Inbox, UserPlus, UserMinus,
+  UserCheck, Wallet, RefreshCw,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -40,20 +41,29 @@ function initialsOf(name: string | null) {
 
 // Visual treatment per action key.
 const ACTION_META: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  'role.update':     { label: 'Role change',     icon: UserCog,      color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
-  'form.approve':    { label: 'Form approved',   icon: FileCheck2,   color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  'form.delete':     { label: 'Form deleted',    icon: Trash2,       color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
-  'request.review':  { label: 'Time-off review', icon: CalendarCheck, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  'role.update':         { label: 'Role change',     icon: UserCog,       color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  'form.approve':        { label: 'Form approved',   icon: FileCheck2,    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  'form.delete':         { label: 'Form deleted',    icon: Trash2,        color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
+  'request.review':      { label: 'Time-off review', icon: CalendarCheck, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  'submission.status':   { label: 'Submission',      icon: Inbox,         color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  'employee.invite':     { label: 'New account',     icon: UserPlus,      color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  'employee.deactivate': { label: 'Offboarded',      icon: UserMinus,     color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
+  'employee.reactivate': { label: 'Reactivated',     icon: UserCheck,     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  'accrual.adjust':      { label: 'Balance change',  icon: Wallet,        color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+  'accrual.run':         { label: 'Accrual run',     icon: RefreshCw,     color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
 }
 const FALLBACK_META = { label: 'Action', icon: History, color: '#71717a', bg: 'rgba(113,113,122,0.12)' }
 
-// Filter chips shown above the table.
-const FILTERS: { key: string; label: string }[] = [
+// Filter chips shown above the table. `prefix` filters match a family of
+// actions (e.g. every `form.*` or `employee.*`); the rest match exactly.
+const FILTERS: { key: string; label: string; prefix?: boolean }[] = [
   { key: 'all', label: 'All activity' },
   { key: 'role.update', label: 'Role changes' },
-  { key: 'form.approve', label: 'Form approvals' },
-  { key: 'form.delete', label: 'Deletions' },
+  { key: 'form.', label: 'Forms', prefix: true },
+  { key: 'submission.status', label: 'Submissions' },
   { key: 'request.review', label: 'Time off' },
+  { key: 'employee.', label: 'Employees', prefix: true },
+  { key: 'accrual.', label: 'Accrual', prefix: true },
 ]
 
 export default async function AuditLogPage({
@@ -61,7 +71,8 @@ export default async function AuditLogPage({
 }: {
   searchParams: { action?: string }
 }) {
-  const active = searchParams.action && ACTION_META[searchParams.action] ? searchParams.action : 'all'
+  const selected = FILTERS.find((f) => f.key === searchParams.action)
+  const active = selected ? selected.key : 'all'
 
   let query = supabaseAdmin
     .from('audit_log')
@@ -69,7 +80,9 @@ export default async function AuditLogPage({
     .order('created_at', { ascending: false })
     .limit(200)
 
-  if (active !== 'all') query = query.eq('action', active)
+  if (selected && active !== 'all') {
+    query = selected.prefix ? query.like('action', `${selected.key}%`) : query.eq('action', selected.key)
+  }
 
   const { data, error } = await query
   const rows = (data || []) as AuditRow[]

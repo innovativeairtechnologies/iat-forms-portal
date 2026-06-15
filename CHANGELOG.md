@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-15 — Audit coverage + dashboard Admin Activity feed
+
+Follow-on to the audit log shipped the same day.
+
+### Added
+- **Six more audited actions** (10 total): `submission.status`, `employee.invite`,
+  `employee.deactivate`, `employee.reactivate`, `accrual.adjust`, `accrual.run` — each with
+  before→after metadata.
+- **Grouped prefix filters** on `/admin/audit` (Forms / Employees / Accrual) + per-action
+  icons and colors for the new types.
+- **"Admin Activity" card** in the dashboard right rail — 6 most recent audit entries, read
+  in the dashboard server query (degrades to empty if the table is missing).
+
+### Changed
+- `/api/submissions/[id]`, `/api/employees/invite`, `/api/employees/[id]`, and
+  `/api/admin/run-accrual` now resolve the acting admin via `getAdminUser()` (was a boolean
+  `isAdminAuthenticated()` check) so audit entries name who acted. Same admin-only gate.
+
 ## 2026-06-15 — Admin: Executive Briefing, Command Palette, Audit Log
 
 Three upgrades to make the admin portal feel like a finished product.

@@ -72,6 +72,25 @@ type Tkt = {
   status: string
   created_at: string
 }
+type AuditLite = {
+  id: string
+  actor_name: string | null
+  action: string
+  summary: string
+  created_at: string
+}
+
+// Dot color for an audit entry, keyed by its action family.
+function auditColor(action: string): string {
+  if (action.startsWith('form.delete') || action.startsWith('employee.deactivate')) return C.rose
+  if (action.startsWith('form.')) return C.green
+  if (action.startsWith('role.')) return C.violet
+  if (action.startsWith('request.')) return C.amber
+  if (action.startsWith('submission.')) return C.blue
+  if (action.startsWith('accrual.')) return C.sky
+  if (action.startsWith('employee.')) return C.green
+  return '#a1a1aa'
+}
 
 async function getData() {
   const now = Date.now()
@@ -91,6 +110,7 @@ async function getData() {
     { data: tktSample },
     { data: recentSubs },
     { data: forms },
+    { data: recentAudit },
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
@@ -117,6 +137,11 @@ async function getData() {
       .order('submitted_at', { ascending: false })
       .limit(8),
     supabaseAdmin.from('forms').select('id,title,is_active,created_at').order('created_at', { ascending: false }),
+    supabaseAdmin
+      .from('audit_log')
+      .select('id,actor_name,action,summary,created_at')
+      .order('created_at', { ascending: false })
+      .limit(6),
   ])
 
   const subs = (subSample || []) as Sub[]
@@ -206,6 +231,7 @@ async function getData() {
     formRows, maxFormCount, people, maxPeople, formStatus,
     recentSubs: recents, recentTickets: tkts.slice(0, 6), activeTitles,
     activity, hourET, dateET,
+    recentAudit: (recentAudit || []) as AuditLite[],
   }
 }
 
@@ -520,6 +546,30 @@ export default async function AdminDashboard() {
                       </li>
                     ))}
                   </ol>
+                )}
+              </div>
+            </Card>
+
+            {/* Admin activity (audit trail) */}
+            <Card>
+              <CardHead title="Admin Activity" icon={<ShieldCheck size={14} />} action="Full log" href="/admin/audit" />
+              <div className="px-5 py-4">
+                {d.recentAudit.length === 0 ? (
+                  <p className="text-[12px] text-zinc-400 dark:text-zinc-600 text-center py-3">No admin actions logged yet</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {d.recentAudit.map((a) => (
+                      <li key={a.id} className="flex gap-2.5 items-start">
+                        <span className="mt-[5px] w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: auditColor(a.action) }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] text-zinc-700 dark:text-zinc-200 leading-snug line-clamp-2">{a.summary}</p>
+                          <p className="text-[10px] text-zinc-400 dark:text-zinc-600 tabular-nums mt-0.5">
+                            {a.actor_name || 'Unknown'} · {timeAgo(a.created_at)}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </Card>
