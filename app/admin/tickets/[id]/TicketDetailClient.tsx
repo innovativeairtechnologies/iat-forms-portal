@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Lightbulb, ExternalLink } from 'lucide-react'
+import { ChevronLeft, Lightbulb, ExternalLink, BookOpen } from 'lucide-react'
 import type { Ticket, TicketNote, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import dynamic from 'next/dynamic'
@@ -449,12 +449,42 @@ export default function TicketDetailClient({
             )}
           </div>
 
-          {/* Items Reviewed */}
+          {/* Knowledge base articles the customer viewed before submitting */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-5">
-            <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest mb-3">Items Reviewed</p>
-            <p className="text-[12px] text-gray-300 dark:text-gray-600 leading-relaxed">
-              Knowledge base coming soon. Article tracking will appear here once enabled.
-            </p>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                <BookOpen size={13} className="text-gray-500 dark:text-gray-400" />
+              </div>
+              <p className="text-[10px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest">KB Articles Viewed</p>
+            </div>
+            {ticket.viewed_kb_articles && ticket.viewed_kb_articles.length > 0 ? (
+              <div className="space-y-3">
+                {ticket.viewed_kb_articles.map(v => (
+                  <a
+                    key={v.slug}
+                    href={`/support/kb/${v.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block group"
+                  >
+                    <p className="text-[12px] font-medium text-gray-700 dark:text-gray-200 leading-snug group-hover:text-[#089447] transition-colors">
+                      {v.title}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Viewed {v.count}{v.count === 1 ? ' time' : ' times'}
+                      {v.last_viewed_at ? ` · last ${formatNoteDate(v.last_viewed_at)}` : ''}
+                    </p>
+                  </a>
+                ))}
+                <p className="text-[11px] text-gray-300 dark:text-gray-600 pt-1 border-t border-gray-50 dark:border-zinc-800 mt-1">
+                  What the customer read before submitting
+                </p>
+              </div>
+            ) : (
+              <p className="text-[12px] text-gray-300 dark:text-gray-600 leading-relaxed">
+                No knowledge base articles were viewed before this ticket was submitted.
+              </p>
+            )}
           </div>
 
         </div>{/* end right column */}

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase-admin'
-import type { KbArticle, Ticket } from './supabase'
+import type { KbArticle, Ticket, ViewedKbArticle } from './supabase'
 
 // Words too common to be useful for matching a ticket to an article.
 const STOPWORDS = new Set([
@@ -88,4 +88,51 @@ export async function matchKbArticlesForTicket(t: TicketLike, limit = 3): Promis
 
   if (error || !data) return []
   return rankArticles(data as KbArticle[], ticketKeywords(t), limit)
+}
+
+/**
+ * Turn the raw, client-supplied list of viewed-article records into trustworthy
+ * records to store on a ticket. The browser controls the input, so we never
+ * trust its titles: we keep only slugs that match a published article and take
+ * the title from the database. Timestamps and counts are passed through (lightly
+ * validated) — they're for support-team context, not security decisions.
+ */
+export async function resolveViewedKbArticles(raw: unknown): Promise<ViewedKbArticle[]> {
+  if (!Array.isArray(raw) || raw.length === 0) return []
+
+  // Collapse to one entry per slug, merging counts/timestamps from the client.
+  const bySlug = new Map<string, { first: string | null; last: string | null; count: number }>()
+  for (const item of raw.slice(0, 100)) {
+    if (!item || typeof item !== 'object') continue
+    const slug = (item as Record<string, unknown>).slug
+    if (typeof slug !== 'string' || !slug) continue
+
+    const cur = bySlug.get(slug) ?? { first: null, last: null, count: 0 }
+    const rawCount = Number((item as Record<string, unknown>).count)
+    cur.count = Number.isFinite(rawCount) && rawCount > 0 ? Math.min(Math.floor(rawCount), 9999) : cur.count + 1
+    const first = (item as Record<string, unknown>).first_viewed_at
+    const last = (item as Record<string, unknown>).last_viewed_at
+    if (typeof first === 'string') cur.first = first
+    if (typeof last === 'string') cur.last = last
+    bySlug.set(slug, cur)
+  }
+  if (bySlug.size === 0) return []
+
+  const { data } = await supabaseAdmin
+    .from('kb_articles')
+    .select('slug, title')
+    .in('slug', Array.from(bySlug.keys()))
+
+  if (!data || data.length === 0) return []
+
+  return data.map(a => {
+    const v = bySlug.get(a.slug)!
+    return {
+      slug: a.slug,
+      title: a.title,
+      first_viewed_at: v.first ?? v.last,
+      last_viewed_at: v.last ?? v.first,
+      count: v.count || 1,
+    }
+  })
 }

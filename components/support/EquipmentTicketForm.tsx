@@ -9,6 +9,7 @@ import {
   RotateCcw, Upload, X, Loader2, ImageIcon,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { getKbViews, clearKbViews } from '@/lib/kb-views'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -239,12 +240,14 @@ export default function EquipmentTicketForm() {
           ...form,
           airflow_balanced: form.airflow_balanced === 'unsure' ? null : form.airflow_balanced,
           photo_urls,
+          viewed_kb_articles: getKbViews(),
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Submission failed')
       setTicketNumber(json.ticket_number)
       setRecommendations(json.ai_recommendations ?? [])
+      clearKbViews()
       setStage('success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')

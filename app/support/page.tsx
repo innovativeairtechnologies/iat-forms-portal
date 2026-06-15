@@ -46,18 +46,21 @@ const KB_CARDS = [
     icon: '🌡️',
     title: 'Temperature Control Guides',
     desc: 'Setpoint calibration, PID tuning, and temperature troubleshooting',
+    slug: 'temperature-control-setpoint',
   },
   {
     id: 'airflow',
     icon: '💨',
     title: 'Airflow Balancing',
     desc: 'Process & react airflow setup and damper adjustment guides',
+    slug: 'airflow-balancing',
   },
   {
     id: 'cooling',
     icon: '❄️',
     title: 'Cooling System Diagnostics',
     desc: 'DX and chilled water troubleshooting, pre/post cooling checks',
+    slug: 'cooling-system-diagnostics',
   },
 ]
 
@@ -152,24 +155,34 @@ export default function SupportPortal() {
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[14px] flex-shrink-0">📖</div>
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">Knowledge Base</span>
-              <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600">Coming soon</span>
+              <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600">{KB_CARDS.length} guides</span>
+              <Link
+                href="/support/kb"
+                className="ml-auto flex items-center gap-1 text-[12px] font-semibold text-[#089447] hover:text-[#077a3c] transition-colors"
+              >
+                Browse all <ArrowRight size={12} />
+              </Link>
             </div>
 
             <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
               {KB_CARDS.map(card => (
-                <div
+                <Link
                   key={card.id}
-                  className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 h-40 flex flex-col opacity-50 cursor-not-allowed"
+                  href={`/support/kb/${card.slug}`}
+                  className="group bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-5 h-40 flex flex-col transition-all duration-150 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-zinc-700"
                   style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                 >
                   <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[16px] mb-auto flex-shrink-0">
                     {card.icon}
                   </div>
                   <div>
-                    <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug mb-1">{card.title}</p>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <p className="text-[14px] font-semibold text-gray-900 dark:text-white leading-snug">{card.title}</p>
+                      <ArrowRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 text-gray-400" />
+                    </div>
                     <p className="text-[11px] text-gray-400 leading-relaxed">{card.desc}</p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

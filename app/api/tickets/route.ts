@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { resolveViewedKbArticles } from '@/lib/kb'
+import type { ViewedKbArticle } from '@/lib/supabase'
 import { rateLimit } from '@/lib/rate-limit'
 import { sendTicketConfirmationToCustomer, sendTicketNotificationToAdmins } from '@/lib/resend-tickets'
 
@@ -56,6 +58,17 @@ export async function POST(req: NextRequest) {
     const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
     const ticket_number = `TKT-${ts}-${rand}`
 
+    // KB articles the customer viewed before submitting (recorded in their
+    // browser). Validate against published articles so stored titles are
+    // trustworthy. Non-fatal — a lookup hiccup must not block the ticket.
+    let viewed_kb_articles: ViewedKbArticle[] | null = null
+    try {
+      const resolved = await resolveViewedKbArticles(body.viewed_kb_articles)
+      if (resolved.length > 0) viewed_kb_articles = resolved
+    } catch (kbErr) {
+      console.error('[tickets] viewed KB articles resolve failed:', kbErr)
+    }
+
     const { data: ticket, error: insertError } = await supabaseAdmin
       .from('tickets')
       .insert({
@@ -81,6 +94,7 @@ export async function POST(req: NextRequest) {
         react_heat_setpoint: body.react_heat_setpoint ?? null,
         seals_good: body.seals_good ?? null,
         photo_urls: body.photo_urls?.length ? body.photo_urls : null,
+        viewed_kb_articles,
         status: 'open',
         priority: 'med',
       })

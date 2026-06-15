@@ -158,8 +158,20 @@ export type Ticket = {
   notes: string | null
   resolved_reason: string | null
   ai_recommendations: string[] | null
+  viewed_kb_articles: ViewedKbArticle[] | null
   created_at: string
   owner?: Employee
+}
+
+// A Knowledge Base article the customer viewed before submitting their ticket.
+// Recorded client-side (lib/kb-views.ts) and validated against kb_articles by
+// the ticket API before being stored on the ticket.
+export type ViewedKbArticle = {
+  slug: string
+  title: string
+  first_viewed_at: string | null
+  last_viewed_at: string | null
+  count: number
 }
 
 export type TicketNote = {
