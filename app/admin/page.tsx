@@ -83,10 +83,12 @@ type AuditLite = {
 // Dot color for an audit entry, keyed by its action family.
 function auditColor(action: string): string {
   if (action.startsWith('form.delete') || action.startsWith('employee.deactivate')) return C.rose
+  if (action.startsWith('form.pause')) return C.amber
   if (action.startsWith('form.')) return C.green
   if (action.startsWith('role.')) return C.violet
   if (action.startsWith('request.')) return C.amber
   if (action.startsWith('submission.')) return C.blue
+  if (action.startsWith('ticket.')) return C.rose
   if (action.startsWith('accrual.')) return C.sky
   if (action.startsWith('employee.')) return C.green
   return '#a1a1aa'

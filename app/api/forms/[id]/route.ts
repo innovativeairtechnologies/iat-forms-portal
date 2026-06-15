@@ -22,6 +22,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const body = await req.json()
     const { title, description, category_id, slug, is_active, success_message, fields, notification_rules } = body
 
+    // Snapshot prior active state so we log only genuine activate/pause flips
+    // (the form editor's PUT includes is_active on every save).
+    let priorForm: { is_active: boolean; title: string | null } | null = null
+    if (is_active !== undefined) {
+      const { data } = await supabaseAdmin
+        .from('forms')
+        .select('is_active, title')
+        .eq('id', params.id)
+        .single()
+      priorForm = data as { is_active: boolean; title: string | null } | null
+    }
+
     // Approval gate: a form can only be set active once it has been approved by a
     // super admin. (approval_status / approved_by / approved_at are never settable
     // here — only via POST /api/forms/[id]/approve.)
@@ -74,6 +86,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         }))
         await supabaseAdmin.from('notification_rules').insert(ruleRows)
       }
+    }
+
+    if (is_active !== undefined && priorForm && priorForm.is_active !== is_active) {
+      const admin = await getAdminUser()
+      await logAudit({
+        actor: { id: admin?.user.id, name: admin?.displayName },
+        action: is_active ? 'form.activate' : 'form.pause',
+        entityType: 'form',
+        entityId: params.id,
+        summary: `${is_active ? 'Activated' : 'Paused'} form "${priorForm.title || title || 'Untitled form'}"`,
+      })
     }
 
     return NextResponse.json({ success: true })

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   ChevronRight, ShieldCheck, UserCog, FileCheck2, Trash2,
   CalendarCheck, History, Filter, Inbox, UserPlus, UserMinus,
-  UserCheck, Wallet, RefreshCw,
+  UserCheck, Wallet, RefreshCw, FilePlus, Power, PowerOff, Ticket,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -42,9 +42,13 @@ function initialsOf(name: string | null) {
 // Visual treatment per action key.
 const ACTION_META: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   'role.update':         { label: 'Role change',     icon: UserCog,       color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  'form.create':         { label: 'Form created',    icon: FilePlus,      color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   'form.approve':        { label: 'Form approved',   icon: FileCheck2,    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  'form.activate':       { label: 'Form activated',  icon: Power,         color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  'form.pause':          { label: 'Form paused',     icon: PowerOff,      color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   'form.delete':         { label: 'Form deleted',    icon: Trash2,        color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
   'request.review':      { label: 'Time-off review', icon: CalendarCheck, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  'ticket.status':       { label: 'Ticket',          icon: Ticket,        color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
   'submission.status':   { label: 'Submission',      icon: Inbox,         color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
   'employee.invite':     { label: 'New account',     icon: UserPlus,      color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   'employee.deactivate': { label: 'Offboarded',      icon: UserMinus,     color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
@@ -61,6 +65,7 @@ const FILTERS: { key: string; label: string; prefix?: boolean }[] = [
   { key: 'role.update', label: 'Role changes' },
   { key: 'form.', label: 'Forms', prefix: true },
   { key: 'submission.status', label: 'Submissions' },
+  { key: 'ticket.status', label: 'Tickets' },
   { key: 'request.review', label: 'Time off' },
   { key: 'employee.', label: 'Employees', prefix: true },
   { key: 'accrual.', label: 'Accrual', prefix: true },

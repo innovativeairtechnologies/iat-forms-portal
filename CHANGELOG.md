@@ -2,6 +2,30 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-15 — Fix: audit log wasn't capturing status changes / form creation
+
+Resolving submissions and creating forms produced no audit entries — those paths
+bypassed the instrumented API routes.
+
+### Fixed
+- **Server actions weren't logged.** Submission status (`updateSubmissionStatus`) and
+  ticket status (`updateTicket`) are Next server actions writing straight to Supabase;
+  they now call `logAudit` (`submission.status` / `ticket.status`, only on a real
+  transition).
+- **Form create/activate/pause weren't logged.** Added `form.create` to `POST /api/forms`
+  and `form.activate` / `form.pause` to the `is_active` branch of `PUT /api/forms/[id]`
+  (logged only when the active state actually flips).
+- Verified the `audit_log` write path was healthy via a live insert/read/delete self-test;
+  the table was empty only because nothing had hit a logged path.
+
+### Changed (security)
+- `updateSubmissionStatus` and `updateTicket` had **no explicit admin guard** (service-role
+  writes relying on middleware alone). Both now call `getAdminUser()` and refuse non-admins.
+
+### Added
+- Audit viewer: **Tickets** filter + icons/colors for the new action types; dashboard
+  "Admin Activity" dot colors extended to tickets.
+
 ## 2026-06-15 — Audit coverage + dashboard Admin Activity feed
 
 Follow-on to the audit log shipped the same day.

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
+import { getAdminUser } from '@/lib/admin-auth'
+import { logAudit } from '@/lib/audit'
 
 export async function GET() {
   const err = await requireAdminAuth(); if (err) return err
@@ -54,6 +56,15 @@ export async function POST(req: NextRequest) {
       }))
       await supabaseAdmin.from('notification_rules').insert(ruleRows)
     }
+
+    const admin = await getAdminUser()
+    await logAudit({
+      actor: { id: admin?.user.id, name: admin?.displayName },
+      action: 'form.create',
+      entityType: 'form',
+      entityId: form.id,
+      summary: `Created form "${form.title || 'Untitled form'}" (draft, pending approval)`,
+    })
 
     return NextResponse.json({ success: true, id: form.id })
   } catch (err) {
