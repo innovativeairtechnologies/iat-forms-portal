@@ -106,15 +106,22 @@ export default function ProfilePage() {
 
       {/* Page header */}
       <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4 sm:gap-5">
           <div className="w-14 h-14 rounded-2xl bg-zinc-900 dark:bg-zinc-700 flex items-center justify-center text-white text-[20px] font-bold flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">My Account</p>
-            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-none">{employee.name || 'Your Profile'}</h1>
-            <p className="text-[13px] text-gray-400 mt-0.5">{employee.job_title || 'Employee'} · {employee.email}</p>
+            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-none truncate">{employee.name || 'Your Profile'}</h1>
+            <p className="text-[13px] text-gray-400 mt-0.5 truncate">{employee.job_title || 'Employee'} · {employee.email}</p>
           </div>
+          <Link
+            href="/employee/requests"
+            className="flex-shrink-0 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-[12.5px] sm:text-[13px] font-semibold pl-3.5 pr-4 h-10 rounded-xl transition-colors shadow-sm shadow-emerald-600/20"
+          >
+            <CalendarClock size={16} className="flex-shrink-0" />
+            <span className="whitespace-nowrap">Request Time Off</span>
+          </Link>
         </div>
       </div>
 
