@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-15 — Detail pages redesigned to the dashboard language
+
+`/admin/submissions/[id]` and `/admin/tickets/[id]` now match the operations
+dashboard (zinc surfaces, rounded-xl cards, emerald accents, sticky breadcrumb).
+
+### Changed
+- **Submissions detail is now two-column** (was a single scroll-heavy column): a main
+  **Responses** card + a sticky right rail with a **Details** summary and **Internal Notes**.
+  `section_header` fields render as subheading bands; answered/total count in the header.
+- **Tickets detail** restyled to the same language — every section is a titled icon card;
+  back button → breadcrumb. Structure and all behavior unchanged.
+- New `components/admin/detail-ui.tsx` (`DetailShell`, `DetailTopBar`, `Card`, `CardHead`,
+  `MetaRow`) shared by both pages so they stay consistent. Restyled `SubmissionStatus`,
+  `SubmissionNotes`, and the PDF-download button to the emerald/zinc palette.
+
+No behavior changes (status picker, PDF, notes, ticket save + resolution-reason gate,
+attachment upload all preserved). `tsc` clean.
+
 ## 2026-06-15 — Fix: audit log wasn't capturing status changes / form creation
 
 Resolving submissions and creating forms produced no audit entries — those paths

@@ -1,8 +1,10 @@
-﻿import { supabaseAdmin } from '@/lib/supabase-admin'
+export const dynamic = 'force-dynamic'
+
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import { formatDateTime } from '@/lib/utils'
-import Link from 'next/link'
-import { ArrowLeft, Calendar, User } from 'lucide-react'
+import { FileText, Calendar, ClipboardList, Info } from 'lucide-react'
+import { DetailShell, DetailTopBar, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
 import SubmissionDetailClient from './SubmissionDetailClient'
 import SubmissionNotes from './SubmissionNotes'
 import SubmissionStatus from './SubmissionStatus'
@@ -26,142 +28,168 @@ async function getData(id: string) {
   return { submission, fields: fields || [] }
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  open: 'Open', in_progress: 'In Progress', resolved: 'Resolved',
+}
+
 export default async function SubmissionDetailPage({ params }: { params: { id: string } }) {
   const result = await getData(params.id)
   if (!result) notFound()
 
   const { submission, fields } = result
-  const submitterName = submission.data?.['Employee Name'] || submission.data?.['Full Name'] || submission.data?.['Name'] || null
+  const submitterName =
+    submission.data?.['Employee Name'] || submission.data?.['Full Name'] || submission.data?.['Name'] || null
   const initials = submitterName
     ? String(submitterName).split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()
     : '?'
+  const status = (submission.status as 'open' | 'in_progress' | 'resolved') || 'open'
+  const answered = fields.filter((f: { label: string; field_type: string }) =>
+    f.field_type !== 'section_header' &&
+    submission.data[f.label] !== undefined && submission.data[f.label] !== null && submission.data[f.label] !== ''
+  ).length
+  const questionCount = fields.filter((f: { field_type: string }) => f.field_type !== 'section_header').length
 
   return (
-    <div className="flex-1 overflow-auto">
+    <DetailShell>
       <MarkAsRead submissionId={submission.id} isRead={submission.is_read} />
-      {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <Link
-          href="/admin/submissions"
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-5"
-        >
-          <ArrowLeft size={13} />
-          All Submissions
-        </Link>
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#f0faf4] dark:bg-[#089447]/20 flex items-center justify-center flex-shrink-0 text-[15px] font-bold text-[#089447]">
-              {initials}
+
+      <DetailTopBar
+        crumbs={[
+          { label: 'Submissions', href: '/admin/submissions' },
+          { label: submitterName || 'Submission' },
+        ]}
+      >
+        <SubmissionStatus submissionId={submission.id} initialStatus={status} />
+        <SubmissionDetailClient submission={submission} fields={fields} />
+      </DetailTopBar>
+
+      <div className="p-5 space-y-4">
+        {/* Hero */}
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center flex-shrink-0 text-[15px] font-bold text-emerald-600 dark:text-emerald-400">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[20px] font-bold text-zinc-900 dark:text-white tracking-tight truncate">
+              {submitterName || 'Anonymous Submission'}
+            </h1>
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+              <span className="flex items-center gap-1.5 text-[12px] text-zinc-500 dark:text-zinc-400">
+                <FileText size={12} /> {submission.form_title}
+              </span>
+              <span className="flex items-center gap-1.5 text-[12px] text-zinc-400 dark:text-zinc-500">
+                <Calendar size={12} /> {formatDateTime(submission.submitted_at)}
+              </span>
             </div>
-            <div>
-              <h1 className="text-[22px] font-bold text-gray-900 dark:text-white tracking-tight">
-                {submitterName || 'Anonymous Submission'}
-              </h1>
-              <div className="flex items-center gap-4 mt-1">
-                <span className="flex items-center gap-1.5 text-[12px] text-gray-400">
-                  <User size={12} />
-                  {submission.form_title}
-                </span>
-                <span className="flex items-center gap-1.5 text-[12px] text-gray-400">
-                  <Calendar size={12} />
-                  {formatDateTime(submission.submitted_at)}
-                </span>
+          </div>
+        </div>
+
+        {/* Two-column */}
+        <div className="flex flex-col xl:flex-row gap-4 items-start">
+          {/* Main — responses */}
+          <main className="flex-1 min-w-0 w-full">
+            <Card>
+              <CardHead
+                title="Responses"
+                icon={<ClipboardList size={14} />}
+                action={
+                  questionCount > 0 ? (
+                    <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
+                      {answered}/{questionCount} answered
+                    </span>
+                  ) : undefined
+                }
+              />
+              {fields.length === 0 ? (
+                <div className="py-14 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No field data</div>
+              ) : (
+                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                  {fields.map((field: { id: string; label: string; field_type: string }) => (
+                    <FieldRow
+                      key={field.id}
+                      label={field.label}
+                      value={submission.data[field.label]}
+                      fieldType={field.field_type}
+                    />
+                  ))}
+                </div>
+              )}
+            </Card>
+          </main>
+
+          {/* Right rail — details + notes */}
+          <aside className="w-full xl:w-[340px] flex-shrink-0 xl:sticky xl:top-[72px] space-y-4">
+            <Card>
+              <CardHead title="Details" icon={<Info size={14} />} />
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                <MetaRow label="Form">{submission.form_title}</MetaRow>
+                <MetaRow label="Submitted">{formatDateTime(submission.submitted_at)}</MetaRow>
+                <MetaRow label="Status">{STATUS_LABEL[status]}</MetaRow>
+                <MetaRow label="Read">{submission.is_read ? 'Yes' : 'No'}</MetaRow>
+                <MetaRow label="Submission ID">
+                  <span className="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">{submission.id.slice(0, 8)}</span>
+                </MetaRow>
               </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <SubmissionStatus
-              submissionId={submission.id}
-              initialStatus={(submission.status as 'open' | 'in_progress' | 'resolved') || 'open'}
-            />
-            <SubmissionDetailClient submission={submission} fields={fields} />
-          </div>
+            </Card>
+
+            <SubmissionNotes submissionId={submission.id} />
+          </aside>
         </div>
       </div>
-
-      <div className="p-8 max-w-5xl">
-        <div className="grid gap-4">
-          {/* Field values */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-            {fields.map((field: { id: string; label: string; field_type: string }, index: number) => {
-              const value = submission.data[field.label]
-              return (
-                <FieldRow
-                  key={field.id}
-                  label={field.label}
-                  value={value}
-                  fieldType={field.field_type}
-                  isLast={index === fields.length - 1}
-                />
-              )
-            })}
-            {fields.length === 0 && (
-              <div className="py-12 text-center text-[13px] text-gray-400">No field data</div>
-            )}
-          </div>
-
-          {/* Notes */}
-          <SubmissionNotes submissionId={submission.id} />
-        </div>
-
-        <p className="mt-4 text-[11px] text-gray-300 dark:text-gray-700 font-mono">ID: {submission.id}</p>
-      </div>
-    </div>
+    </DetailShell>
   )
 }
 
-function FieldRow({
-  label, value, fieldType, isLast
-}: {
-  label: string; value: unknown; fieldType: string; isLast: boolean
-}) {
-  const isEmpty = value === undefined || value === null || value === ''
+function FieldRow({ label, value, fieldType }: { label: string; value: unknown; fieldType: string }) {
+  // Section headers become subheading bands rather than label/value rows.
+  if (fieldType === 'section_header') {
+    return (
+      <div className="px-5 py-2.5 bg-zinc-50/70 dark:bg-zinc-900/40">
+        <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">{label}</span>
+      </div>
+    )
+  }
 
-  let display: React.ReactNode = <span className="text-gray-300 dark:text-gray-700 text-[13px]">—</span>
+  const isEmpty = value === undefined || value === null || value === ''
+  let display: React.ReactNode = <span className="text-zinc-300 dark:text-zinc-600 text-[13px]">—</span>
 
   if (!isEmpty) {
     if (fieldType === 'signature' && typeof value === 'string' && value.startsWith('data:image')) {
       display = (
-        <div className="mt-1">
-          <img src={value} alt="Signature" className="max-w-[280px] border border-gray-100 dark:border-zinc-800 rounded-xl" />
-        </div>
+        <img src={value} alt="Signature" className="max-w-[280px] border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white" />
       )
     } else if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
       const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(value)
       display = isImage ? (
-        <div className="mt-1">
-          <img src={value} alt={label} className="max-w-[280px] max-h-48 object-contain border border-gray-100 dark:border-zinc-800 rounded-xl mb-2" />
-          <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-[#089447] hover:underline">
+        <div>
+          <img src={value} alt={label} className="max-w-[280px] max-h-48 object-contain border border-zinc-200 dark:border-zinc-800 rounded-lg mb-2" />
+          <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-emerald-600 dark:text-emerald-400 hover:underline">
             View full file
           </a>
         </div>
       ) : (
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-[#089447] hover:underline">
+        <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-emerald-600 dark:text-emerald-400 hover:underline break-all">
           {value}
         </a>
       )
     } else if (Array.isArray(value)) {
       display = (
-        <div className="flex flex-wrap gap-1.5 mt-1">
+        <div className="flex flex-wrap gap-1.5">
           {value.map((v, i) => (
-            <span key={i} className="text-[12px] font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 px-2.5 py-1 rounded-lg">
+            <span key={i} className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 rounded-lg">
               {String(v)}
             </span>
           ))}
         </div>
       )
     } else {
-      display = <span className="text-[14px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{String(value)}</span>
+      display = <span className="text-[14px] text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{String(value)}</span>
     }
   }
 
   return (
-    <div className={`px-6 py-5 grid grid-cols-[180px_1fr] gap-6 ${!isLast ? 'border-b border-gray-50 dark:border-zinc-800' : ''}`}>
-      <dt>
-        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest leading-none">
-          {label}
-        </span>
-      </dt>
+    <div className="px-5 py-3.5">
+      <dt className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">{label}</dt>
       <dd>{display}</dd>
     </div>
   )

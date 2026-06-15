@@ -34,9 +34,9 @@ export default function SubmissionDetailClient({ submission, fields }: Props) {
     <button
       onClick={handlePDFDownload}
       disabled={downloading}
-      className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-sm font-semibold px-4 py-2.5 rounded-[8px] transition-colors disabled:opacity-60 flex-shrink-0"
+      className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-semibold transition-colors disabled:opacity-60 flex-shrink-0"
     >
-      {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+      {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
       {downloading ? 'Generating…' : 'Download PDF'}
     </button>
   )
