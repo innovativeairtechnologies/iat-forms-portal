@@ -6,17 +6,25 @@ import Link from 'next/link'
 import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Equipment } from '@/lib/supabase'
-import { warrantyState, effectiveWarrantyEnd } from '@/lib/equipment'
+import { warrantyState } from '@/lib/equipment'
+import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
 
 type Filter = 'all' | 'in' | 'out' | 'unknown'
 
 const EMPTY = { serial_number: '', model_number: '', voltage: '', customer_company: '', customer_name: '', customer_email: '', ship_date: '' }
 
+const COLS = 'grid-cols-[1.2fr_1fr_1.3fr_148px_104px_92px_28px]'
+
 function WarrantyPill({ eq }: { eq: Equipment }) {
   const s = warrantyState(eq)
-  if (s === 'in') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"><ShieldCheck size={9} />In warranty</span>
-  if (s === 'out') return <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-200 dark:border-red-800"><ShieldAlert size={9} />Out of warranty</span>
-  return <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700"><ShieldQuestion size={9} />No ship date</span>
+  if (s === 'in')  return <StatusPill tone="emerald" icon={<ShieldCheck size={10} />}>In warranty</StatusPill>
+  if (s === 'out') return <StatusPill tone="rose" icon={<ShieldAlert size={10} />}>Out of warranty</StatusPill>
+  return <StatusPill tone="slate" icon={<ShieldQuestion size={10} />}>No date</StatusPill>
+}
+
+function fmtShip(d: string | null) {
+  if (!d) return '—'
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 }
 
 export default function EquipmentClient({ equipment }: { equipment: Equipment[] }) {
@@ -57,7 +65,7 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
       {/* Header */}
       <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-start justify-between">
@@ -67,7 +75,7 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
             <p className="text-[13px] text-gray-400 mt-0.5">{equipment.length} {equipment.length === 1 ? 'unit' : 'units'} in the installed base</p>
           </div>
           <button onClick={() => { setForm(EMPTY); setError(''); setShowModal(true) }}
-            className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
             <Plus size={15} />Add Unit
           </button>
         </div>
@@ -75,54 +83,82 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
 
       <div className="p-8">
         {/* Filter tabs */}
-        <div className="flex items-center gap-1 mb-4 border-b border-gray-100 dark:border-zinc-800">
+        <div className="flex items-center gap-6 mb-4 border-b border-zinc-200 dark:border-zinc-800">
           {([['all', 'All'], ['in', 'In warranty'], ['out', 'Out of warranty'], ['unknown', 'No date']] as [Filter, string][]).map(([f, label]) => {
             const count = f === 'all' ? equipment.length : equipment.filter(e => warrantyState(e) === f).length
+            const active = filter === f
             return (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-4 py-2.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-all ${
-                  filter === f ? 'border-[#089447] text-[#089447]' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
+                className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
+                  active ? 'font-semibold text-zinc-900 dark:text-white' : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
                 }`}>
-                {label} <span className={`text-[11px] tabular-nums ${filter === f ? 'text-gray-500' : 'text-gray-300'}`}>{count}</span>
+                {label}
+                <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>{count}</span>
+                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
               </button>
             )
           })}
         </div>
 
         {/* Search */}
-        <div className="relative mb-5">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by serial, model, or customer…"
-            className="w-full bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-[13px] text-gray-800 dark:text-gray-200 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 shadow-card" />
+        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+              className="pl-8 pr-3 h-9 text-[12.5px] w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all" />
+          </div>
+          <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
+            {filtered.length} {filtered.length === 1 ? 'unit' : 'units'}
+          </span>
         </div>
 
-        {/* List */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+        {/* Floating header */}
+        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+          <Th>Serial</Th>
+          <Th>Model</Th>
+          <Th>Customer</Th>
+          <Th>Warranty</Th>
+          <Th>State</Th>
+          <Th>Ship date</Th>
+          <Th />
+        </div>
+
+        {/* Body */}
+        <div className={BODY_BOX}>
           {filtered.length === 0 ? (
-            <div className="py-12 text-center">
-              <Boxes size={28} className="text-gray-200 dark:text-gray-700 mx-auto mb-2" />
-              <p className="text-[14px] text-gray-400">{equipment.length === 0 ? 'No units yet. They’ll appear here as tickets come in, or add one manually.' : 'No units match.'}</p>
+            <div className="py-16 text-center">
+              <Boxes size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
+              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">{equipment.length === 0 ? 'No units yet. They’ll appear here as tickets come in, or add one manually.' : 'No units match.'}</p>
             </div>
           ) : (
             filtered.map((eq, i) => (
               <Link key={eq.id} href={`/admin/equipment/${eq.id}`}
-                className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-zinc-800/40 transition-colors group ${i < filtered.length - 1 ? 'border-b border-gray-100 dark:border-zinc-800' : ''} ${eq.status === 'decommissioned' ? 'opacity-60' : ''}`}>
-                <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                  <Boxes size={16} className="text-gray-500 dark:text-gray-400" />
+                className={`${rowCx(COLS, { i })} group ${eq.status === 'decommissioned' ? 'opacity-60' : ''}`}>
+                {/* Serial */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                    <Boxes size={13} className="text-zinc-500 dark:text-zinc-400" />
+                  </span>
+                  <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{eq.serial_number}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-[14px] font-semibold text-gray-800 dark:text-gray-100 group-hover:text-[#089447] transition-colors font-mono">{eq.serial_number}</p>
-                    <WarrantyPill eq={eq} />
-                    {eq.status === 'decommissioned' && (
-                      <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-zinc-700">Decommissioned</span>
-                    )}
-                  </div>
-                  <p className="text-[12px] text-gray-400 mt-0.5 truncate">
-                    {eq.model_number || 'Unknown model'}{eq.customer_company ? ` · ${eq.customer_company}` : ''}
-                  </p>
+                {/* Model */}
+                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{eq.model_number || '—'}</div>
+                {/* Customer */}
+                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{eq.customer_company || eq.customer_name || '—'}</div>
+                {/* Warranty */}
+                <div><WarrantyPill eq={eq} /></div>
+                {/* State */}
+                <div>
+                  {eq.status === 'decommissioned'
+                    ? <StatusPill tone="slate">Decommissioned</StatusPill>
+                    : <StatusPill tone="emerald">Active</StatusPill>}
                 </div>
-                <ChevronRight size={15} className="text-gray-300 group-hover:text-[#089447] transition-colors flex-shrink-0" />
+                {/* Ship date */}
+                <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{fmtShip(eq.ship_date)}</div>
+                {/* Chevron */}
+                <div className="flex justify-center">
+                  <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
+                </div>
               </Link>
             ))
           )}

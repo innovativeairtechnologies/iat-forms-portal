@@ -3,7 +3,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminUser } from '@/lib/admin-auth'
 import Link from 'next/link'
-import { Plus, ExternalLink, Sparkles, Inbox, FolderOpen } from 'lucide-react'
+import { Plus, ExternalLink, Sparkles, FolderOpen } from 'lucide-react'
 import FormsListClient from './FormsListClient'
 import DuplicateButton from './DuplicateButton'
 import QRModal from './QRModal'
@@ -97,7 +97,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Header */}
       <div className="px-8 pt-8 pb-0 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
@@ -157,9 +157,9 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
       <div className="p-8 space-y-6">
         {categoryFiltered.length === 0 ? (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card py-20 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
-              <Plus size={20} className="text-gray-300 dark:text-gray-600" />
+          <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none py-20 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+              <Plus size={20} className="text-zinc-300 dark:text-zinc-600" />
             </div>
             <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400 mb-1">No forms found</p>
             <Link href="/admin/forms/new"
@@ -170,13 +170,13 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
         ) : activeCategory === 'all' ? (
           /* Grouped by category view */
           grouped.map(({ name, id, forms: catForms, activeCount, inactiveCount }) => (
-            <div key={id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+            <div key={id} className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
               {/* Category header */}
-              <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60">
                 <div className="flex items-center gap-2.5">
-                  <FolderOpen size={14} className="text-gray-400 dark:text-gray-500" />
-                  <span className="text-[13px] font-bold text-gray-700 dark:text-gray-200">{name}</span>
-                  <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{catForms.length}</span>
+                  <FolderOpen size={14} className="text-zinc-400 dark:text-zinc-500" />
+                  <span className="text-[13px] font-bold text-zinc-800 dark:text-zinc-100">{name}</span>
+                  <span className="text-[11px] font-semibold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{catForms.length}</span>
                 </div>
                 {/* Per-category active/inactive pills */}
                 <div className="flex items-center gap-1">
@@ -199,7 +199,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
           ))
         ) : (
           /* Flat category view */
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
             <FormsList forms={categoryFiltered} countByForm={countByForm} showCategory={false} showHeaders isSuperAdmin={isSuperAdmin} />
           </div>
         )}
@@ -217,37 +217,43 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false, isSu
   showHeaders?: boolean
   isSuperAdmin: boolean
 }) {
+  const COLS = 'grid-cols-[1.7fr_180px_96px_64px_auto]'
   return (
     <>
       {showHeaders && (
-        <div className="grid grid-cols-[1fr_104px_auto] items-center px-6 py-3 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Form</span>
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-center">Status</span>
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest text-right">Actions</span>
+        <div className={`grid ${COLS} items-center gap-3 px-5 h-10 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600`}>
+          <span>Form</span>
+          <span>Category</span>
+          <span className="text-center">Status</span>
+          <span className="text-right">Subs</span>
+          <span className="text-right">Actions</span>
         </div>
       )}
-    <ul className="divide-y divide-gray-50 dark:divide-zinc-800/60">
+    <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
       {forms.map((form) => (
         <li key={form.id}
-          className="group grid grid-cols-[1fr_104px_auto] items-center px-6 py-4 hover:bg-gray-50/70 dark:hover:bg-zinc-800/30 transition-colors">
+          className={`group grid ${COLS} items-center gap-3 px-5 h-[52px] hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors`}>
 
-          {/* Form name + meta */}
-          <div className="flex items-center gap-3 min-w-0 pr-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
-                  {form.title}
-                </span>
-                {showCategory && form.categories?.name && (
-                  <Link
-                    href={`/admin/forms?category=${encodeURIComponent(form.categories.name)}`}
-                    className="flex-shrink-0 text-[10px] font-semibold text-gray-400 bg-gray-50 dark:bg-zinc-800 hover:text-[#089447] hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 px-2 py-0.5 rounded-md border border-gray-100 dark:border-zinc-700 transition-colors">
-                    {form.categories.name}
-                  </Link>
-                )}
-              </div>
-              <p className="text-[12px] text-gray-400 font-mono mt-0.5">/forms/{form.slug}</p>
-            </div>
+          {/* Form name + slug */}
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{form.title}</p>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono truncate">/forms/{form.slug}</p>
+          </div>
+
+          {/* Category */}
+          <div className="min-w-0">
+            {form.categories?.name ? (
+              showCategory ? (
+                <Link href={`/admin/forms?category=${encodeURIComponent(form.categories.name)}`}
+                  className="inline-flex text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors truncate">
+                  {form.categories.name}
+                </Link>
+              ) : (
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{form.categories.name}</span>
+              )
+            ) : (
+              <span className="text-[11px] text-zinc-300 dark:text-zinc-600">—</span>
+            )}
           </div>
 
           {/* Active toggle / approval control */}
@@ -255,23 +261,24 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false, isSu
             <FormsListClient formId={form.id} isActive={form.is_active} approvalStatus={form.approval_status} isSuperAdmin={isSuperAdmin} />
           </div>
 
+          {/* Submission count */}
+          <Link href={`/admin/submissions?form_id=${form.id}`}
+            className="text-right text-[12px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 tabular-nums transition-colors">
+            {countByForm[form.id] || 0}
+          </Link>
+
           {/* Actions */}
           <div className="flex items-center justify-end gap-0.5">
             <QRModal formTitle={form.title} formSlug={form.slug} />
             <EmbedModal formTitle={form.title} formSlug={form.slug} />
             <DuplicateButton formId={form.id} />
             <a href={`/forms/${form.slug}`} target="_blank" rel="noopener noreferrer"
-              className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all"
+              className="p-2 rounded-lg text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
               title="Preview form">
               <ExternalLink size={13} />
             </a>
-            <Link href={`/admin/submissions?form_id=${form.id}`}
-              className="p-2 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all"
-              title="View submissions">
-              <Inbox size={13} />
-            </Link>
             <Link href={`/admin/forms/${form.id}/edit`}
-              className="text-[12px] font-semibold text-[#089447] hover:text-[#077a3c] px-2 py-1.5 rounded-lg hover:bg-[#f0faf4] dark:hover:bg-[#089447]/10 transition-all">
+              className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-500 px-2 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all">
               Edit
             </Link>
             <DeleteFormButton formId={form.id} formTitle={form.title} submissionCount={countByForm[form.id] || 0} />
