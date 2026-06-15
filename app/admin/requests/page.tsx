@@ -9,5 +9,5 @@ export default async function AdminRequestsPage() {
     .select('*, employees!time_off_requests_employee_id_fkey(*)')
     .order('created_at', { ascending: false })
 
-  return <RequestsQueueClient requests={requests || []} />
+  return <RequestsQueueClient requests={requests || []} title="Time Off Requests" />
 }

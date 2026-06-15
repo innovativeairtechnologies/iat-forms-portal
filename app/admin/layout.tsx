@@ -16,15 +16,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const admin = await getAdminUser()
   if (!admin) redirect('/login')
 
-  const [{ count: unreadCount }, { count: openTickets }] = await Promise.all([
+  const [
+    { count: unreadCount },
+    { count: openTickets },
+    { count: ptoPending },
+    { count: sickPending },
+  ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+    supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'pto').eq('status', 'pending'),
+    supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'sick').eq('status', 'pending'),
   ])
 
   return (
     <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
       <RefreshOnNavigate />
-      <AdminSidebar unreadCount={unreadCount ?? 0} ticketCount={openTickets ?? 0} adminName={admin.displayName} />
+      <AdminSidebar
+        unreadCount={unreadCount ?? 0}
+        ticketCount={openTickets ?? 0}
+        ptoPending={ptoPending ?? 0}
+        sickPending={sickPending ?? 0}
+        adminName={admin.displayName}
+      />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {children}
       </div>

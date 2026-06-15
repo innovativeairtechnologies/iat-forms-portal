@@ -20,7 +20,13 @@ function formatDate(d: string) {
 
 type Filter = 'all' | 'pending' | 'approved' | 'denied'
 
-export default function RequestsQueueClient({ requests }: { requests: RequestWithEmployee[] }) {
+export default function RequestsQueueClient({
+  requests,
+  title = 'Time Off Requests',
+}: {
+  requests: RequestWithEmployee[]
+  title?: string
+}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [filter, setFilter] = useState<Filter>('pending')
@@ -54,7 +60,7 @@ export default function RequestsQueueClient({ requests }: { requests: RequestWit
       {/* Header */}
       <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
-        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Time Off Requests</h1>
+        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">{title}</h1>
         <p className="text-[13px] text-gray-400 mt-0.5">
           {pendingCount > 0 ? `${pendingCount} pending review` : 'All caught up'}
         </p>

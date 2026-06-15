@@ -5,23 +5,32 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, BarChart2, FileText,
-  Calendar, UserPlus, Search, Plus, Boxes,
+  Calendar, Clock, UserPlus, Search, Plus, Boxes,
   ChevronRight, FolderOpen, Users, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+type BadgeKind = 'submissions' | 'tickets' | 'pto' | 'sick'
 
 type NavItem = {
   href: string
   label: string
   icon: React.ElementType
   exact?: boolean
-  showBadge?: boolean
-  showTicketBadge?: boolean
+  badge?: BadgeKind
+  children?: NavItem[]
+}
+
+type Counts = {
+  submissions: number
+  tickets: number
+  pto: number
+  sick: number
 }
 
 type FutureItem = {
@@ -47,8 +56,8 @@ const NAV_SECTIONS: NavSection[] = [
     icon: FolderOpen,
     href: '/admin/forms',
     items: [
-      { href: '/admin/submissions', label: 'Submissions', icon: Inbox, showBadge: true },
-      { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket, showTicketBadge: true },
+      { href: '/admin/submissions', label: 'Submissions', icon: Inbox, badge: 'submissions' },
+      { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket, badge: 'tickets' },
       { href: '/admin/equipment',   label: 'Equipment',   icon: Boxes },
     ],
     future: [
@@ -61,7 +70,13 @@ const NAV_SECTIONS: NavSection[] = [
     icon: Users,
     href: '/admin/employees',
     items: [
-      { href: '/admin/requests',   label: 'Time Off',   icon: CalendarClock },
+      {
+        href: '/admin/requests', label: 'Time Off', icon: CalendarClock, exact: true,
+        children: [
+          { href: '/admin/requests/pto',  label: 'PTO',       icon: Calendar, badge: 'pto' },
+          { href: '/admin/requests/sick', label: 'Sick Time', icon: Clock,    badge: 'sick' },
+        ],
+      },
       { href: '/admin/schedule', label: 'Scheduling', icon: Calendar },
       { href: '/admin/accrual',    label: 'Accrual',    icon: TrendingUp },
     ],
@@ -73,52 +88,68 @@ const NAV_SECTIONS: NavSection[] = [
 
 const ALL_NAV_ITEMS: NavItem[] = [
   DASHBOARD,
-  ...NAV_SECTIONS.flatMap(s => s.items),
+  ...NAV_SECTIONS.flatMap(s => s.items.flatMap(i => i.children ? [i, ...i.children] : [i])),
   { href: '/admin/forms/new', label: 'New Form', icon: Plus },
 ]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+const BADGE_CLS: Record<BadgeKind, string> = {
+  submissions: 'bg-[#089447] text-white',
+  tickets:     'bg-amber-500 text-white',
+  pto:         'bg-amber-500 text-white',
+  sick:        'bg-amber-500 text-white',
+}
+
 function NavLink({
-  item, pathname, unreadCount, ticketCount, onClose,
+  item, pathname, counts, onClose, nested = false, suppressChildren = false,
 }: {
   item: NavItem
   pathname: string
-  unreadCount: number
-  ticketCount: number
+  counts: Counts
   onClose?: () => void
+  nested?: boolean
+  suppressChildren?: boolean
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
   // The new dashboard lives at /admin — give the nav a matching emerald-accented treatment there only.
   const dashTheme = pathname === '/admin'
+  const badgeCount = item.badge ? counts[item.badge] : 0
   return (
-    <Link
-      href={item.href}
-      onClick={onClose}
-      className={cn(
-        'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
-        active
-          ? dashTheme
-            ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
-            : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
-          : dashTheme
-            ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
-            : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
+    <>
+      <Link
+        href={item.href}
+        onClick={onClose}
+        className={cn(
+          'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
+          active
+            ? dashTheme
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
+              : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
+            : dashTheme
+              ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
+              : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
+        )}
+      >
+        <item.icon size={nested ? 15 : 17} className="flex-shrink-0" />
+        <span className="flex-1">{item.label}</span>
+        {item.badge && badgeCount > 0 && (
+          <span className={cn(
+            'text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
+            BADGE_CLS[item.badge],
+          )}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
+      </Link>
+      {item.children && !suppressChildren && (
+        <div className="ml-[26px] mt-0.5 mb-1 space-y-0.5 border-l border-gray-100 dark:border-zinc-800 pl-2">
+          {item.children.map(child => (
+            <NavLink key={child.href} item={child} pathname={pathname} counts={counts} onClose={onClose} nested />
+          ))}
+        </div>
       )}
-    >
-      <item.icon size={17} className="flex-shrink-0" />
-      <span className="flex-1">{item.label}</span>
-      {item.showBadge && unreadCount > 0 && (
-        <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-[#089447] text-white">
-          {unreadCount > 99 ? '99+' : unreadCount}
-        </span>
-      )}
-      {item.showTicketBadge && ticketCount > 0 && (
-        <span className="text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500 text-white">
-          {ticketCount > 99 ? '99+' : ticketCount}
-        </span>
-      )}
-    </Link>
+    </>
   )
 }
 
@@ -137,12 +168,15 @@ function FutureLink({ item }: { item: FutureItem }) {
 interface Props {
   unreadCount: number
   ticketCount: number
+  ptoPending: number
+  sickPending: number
   adminName: string
 }
 
-export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Props) {
+export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sickPending, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, pto: ptoPending, sick: sickPending }
   // The new dashboard is now at /admin (the old one is parked at /admin/test); theme the nav to match it.
   const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -186,13 +220,13 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
       {filtered ? (
         filtered.length > 0
           ? filtered.map(item => (
-              <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} ticketCount={ticketCount} onClose={onClose} />
+              <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} suppressChildren />
             ))
           : <p className="text-[12px] text-gray-300 dark:text-gray-600 px-3 py-2">No results</p>
       ) : (
         <>
           {/* Dashboard */}
-          <NavLink item={DASHBOARD} pathname={pathname} unreadCount={unreadCount} ticketCount={ticketCount} onClose={onClose} />
+          <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
 
           {/* Sections */}
           {NAV_SECTIONS.map(section => (
@@ -213,7 +247,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
                 )}
               </div>
               {section.items.map(item => (
-                <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} ticketCount={ticketCount} onClose={onClose} />
+                <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
               ))}
               {section.future?.map(fi => <FutureLink key={fi.label} item={fi} />)}
             </div>
@@ -229,7 +263,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
             <NavLink
               item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
               pathname={pathname}
-              unreadCount={0} ticketCount={0}
+              counts={counts}
               onClose={onClose}
             />
             <FutureLink item={{ label: 'Import Data', icon: FileText }} />
@@ -282,9 +316,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
         {/* Logo */}
         <div className="px-4 pt-5 pb-4">
           <Link href="/admin" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-white flex-shrink-0 flex items-center justify-center shadow-sm border border-black/[0.06]">
-              <Image src="/iat-logo.png" alt="IAT" width={22} height={22} style={{ mixBlendMode: 'multiply' }} />
-            </div>
+            <Logo size={26} className="flex-shrink-0" />
             <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#089447] transition-colors">
               IAT Portal
             </span>
@@ -298,9 +330,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
       {/* ── Mobile top bar ── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800">
         <Link href="/admin" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
-            <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
-          </div>
+          <Logo size={22} className="flex-shrink-0" />
           <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
         </Link>
         <div className="flex items-center gap-2">
@@ -330,9 +360,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, adminName }: Pr
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
               <Link href="/admin" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
-                <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
-                  <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
-                </div>
+                <Logo size={22} className="flex-shrink-0" />
                 <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
               </Link>
               <button onClick={() => setMobileOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
