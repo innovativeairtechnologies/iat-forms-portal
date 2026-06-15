@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Check, X, ArrowRight, Loader2 } from 'lucide-react'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { Employee } from '@/lib/supabase'
@@ -116,9 +116,7 @@ export default function WelcomePage() {
       {/* Header */}
       <header className="border-b border-gray-100 px-6 h-14 flex items-center">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-white border border-black/[0.06] shadow-sm flex items-center justify-center">
-            <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
-          </div>
+          <Logo size={22} className="flex-shrink-0" />
           <span className="text-[14px] font-bold text-gray-900">IAT Portal</span>
         </div>
       </header>

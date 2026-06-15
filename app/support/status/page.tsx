@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import Link from 'next/link'
 import {
   Search, Loader2, CheckCircle, Clock, Wrench, Lightbulb,
@@ -93,7 +93,7 @@ export default function StatusPage() {
       {/* Header */}
       <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
         <Link href="/support" className="flex items-center gap-3 no-underline">
-          <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-md" />
+          <Logo size={28} className="flex-shrink-0" />
           <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
         </Link>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>

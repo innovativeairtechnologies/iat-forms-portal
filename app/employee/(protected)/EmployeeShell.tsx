@@ -6,7 +6,7 @@ import {
   User, Calendar, Users, LayoutGrid, FileText, Wrench,
   LogOut, Menu, X, Search, ChevronRight,
 } from 'lucide-react'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import { useState, useMemo } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { Employee } from '@/lib/supabase'
@@ -179,9 +179,7 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
       )}>
         <div className="px-4 pt-5 pb-4">
           <Link href="/employee/profile" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-white flex-shrink-0 flex items-center justify-center shadow-sm border border-black/[0.06]">
-              <Image src="/iat-logo.png" alt="IAT" width={22} height={22} style={{ mixBlendMode: 'multiply' }} />
-            </div>
+            <Logo size={26} className="flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight leading-none group-hover:text-[#089447] transition-colors">IAT Portal</p>
               <p className="text-[11px] text-gray-400 mt-0.5">Employee</p>
@@ -195,9 +193,7 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
       {/* ── Mobile top bar ── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800">
         <Link href="/employee/profile" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
-            <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
-          </div>
+          <Logo size={22} className="flex-shrink-0" />
           <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
         </Link>
         <button onClick={() => setMobileOpen(true)} className="p-1 text-gray-600 dark:text-gray-400"><Menu size={20} /></button>
@@ -217,9 +213,7 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
               <Link href="/employee/profile" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
-                <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm border border-black/[0.06]">
-                  <Image src="/iat-logo.png" alt="IAT" width={18} height={18} style={{ mixBlendMode: 'multiply' }} />
-                </div>
+                <Logo size={22} className="flex-shrink-0" />
                 <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
               </Link>
               <button onClick={() => setMobileOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><X size={18} /></button>

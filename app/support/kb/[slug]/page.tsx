@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import { ChevronLeft, ArrowRight } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -30,7 +30,7 @@ export default async function KbArticlePage({ params }: { params: { slug: string
       <header className="sticky top-0 z-20 h-14 flex items-center border-b border-gray-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md">
         <div className="max-w-[760px] mx-auto px-6 w-full flex items-center gap-2">
           <Link href="/support/kb" className="flex items-center gap-2 no-underline">
-            <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-lg" />
+            <Logo size={28} className="flex-shrink-0" />
             <div className="flex items-center gap-1.5">
               <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">IAT</span>
               <span className="text-[14px] text-gray-300 dark:text-gray-600">/</span>

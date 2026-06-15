@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import type { Form, FormField } from '@/lib/supabase'
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import SelectChipField from './fields/SelectChipField'
@@ -116,14 +116,8 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
                 </div>
 
                 {/* IAT logo — subtle top-right watermark */}
-                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center opacity-40 mt-0.5">
-                  <Image
-                    src="/iat-logo.png"
-                    alt="IAT"
-                    width={18}
-                    height={18}
-                    style={{ mixBlendMode: 'multiply' }}
-                  />
+                <div className="flex-shrink-0 opacity-40 mt-0.5">
+                  <Logo size={22} />
                 </div>
               </div>
 

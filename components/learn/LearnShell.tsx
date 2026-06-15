@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import { GraduationCap, LayoutGrid, Shield, ArrowLeft } from 'lucide-react'
 
 // Top-header shell for the entire /learn experience. Server component; the
@@ -25,7 +25,7 @@ export default function LearnShell({
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-6">
           <Link href="/learn" className="flex items-center gap-2.5">
-            <Image src="/iat-logo.png" alt="IAT" width={30} height={30} className="rounded" />
+            <Logo size={30} className="flex-shrink-0" />
             <span className="flex items-center gap-1.5 text-[15px] font-semibold tracking-tight">
               <span className="text-[#0a0a0b]">IAT</span>
               <span className="inline-flex items-center gap-1 rounded-md bg-[#f0faf4] px-1.5 py-0.5 text-[12px] font-bold text-[#089447]">

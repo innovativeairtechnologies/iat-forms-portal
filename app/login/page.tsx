@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, ArrowRight, X, FileText, Users, Bell } from 'lucide-react'
 import Image from 'next/image'
+import Logo from '@/components/Logo'
 import { motion } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -87,10 +88,8 @@ function LoginForm() {
           {/* Logo */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-lg flex-shrink-0"
-              style={{ boxShadow: '0 0 20px rgba(8,148,71,0.3)' }}>
-              <Image src="/iat-logo.png" alt="IAT" width={24} height={24} style={{ mixBlendMode: 'multiply' }} />
-            </div>
+            {/* Always-dark brand panel → use the all-white mark */}
+            <Image src="/iat-logo-white.png" alt="IAT" width={22} height={28} className="flex-shrink-0" />
             <div>
               <p className="text-[13px] font-bold text-white leading-none">IAT Portal</p>
               <p className="text-[11px] text-[#089447] leading-none mt-0.5 font-mono">Internal Operations</p>
@@ -142,9 +141,7 @@ function LoginForm() {
 
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2.5 px-8 pt-8">
-          <div className="w-8 h-8 rounded-lg bg-white border border-black/[0.07] shadow-sm flex items-center justify-center">
-            <Image src="/iat-logo.png" alt="IAT" width={22} height={22} style={{ mixBlendMode: 'multiply' }} />
-          </div>
+          <Logo size={26} className="flex-shrink-0" />
           <span className="text-[13px] font-bold text-gray-900">IAT Portal</span>
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
+import Logo from '@/components/Logo'
 import Link from 'next/link'
 import {
   ArrowLeft, ArrowRight, CheckCircle, Lightbulb,
@@ -279,7 +279,7 @@ export default function EquipmentTicketForm() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
         <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
-          <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-md" />
+          <Logo size={28} className="flex-shrink-0" />
           <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
         </header>
 
@@ -382,7 +382,7 @@ export default function EquipmentTicketForm() {
 
       {/* Header */}
       <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
-        <Image src="/iat-logo.png" alt="IAT" width={28} height={28} className="rounded-md" />
+        <Logo size={28} className="flex-shrink-0" />
         <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>
         <span className="text-[14px] text-gray-400">Submit a Ticket</span>
