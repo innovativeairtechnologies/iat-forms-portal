@@ -5,7 +5,8 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import { TopBarSearch, TopBarBell } from './TopBarActions'
-import DashboardPresetPicker, { PRESETS, DASH_PRESET_COOKIE, type Preset } from './DashboardPresetPicker'
+import DashboardPresetPicker from './DashboardPresetPicker'
+import { PRESETS, DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 import {
   ChevronRight, Plus,
   Inbox, FileText, ClipboardList, Ticket, CheckCircle2,

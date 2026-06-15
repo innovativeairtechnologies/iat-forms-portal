@@ -2,14 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { LayoutGrid, Ticket, Inbox } from 'lucide-react'
+import { DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 
-/* Per-admin dashboard layout preset. Stored in a cookie so the server can read
-   it and render the right arrangement immediately (no flash, no DB). Each admin
-   on their own machine gets their own layout. */
-
-export const DASH_PRESET_COOKIE = 'iat_dash_preset'
-export const PRESETS = ['balanced', 'tickets', 'submissions'] as const
-export type Preset = (typeof PRESETS)[number]
+/* Per-admin dashboard layout preset. The constants live in ./dashboard-presets
+   (a non-client module) so the server component can import them as real values. */
 
 const OPTIONS: { id: Preset; label: string; icon: React.ReactNode }[] = [
   { id: 'balanced',    label: 'Balanced',    icon: <LayoutGrid size={13} /> },
