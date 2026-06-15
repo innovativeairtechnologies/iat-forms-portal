@@ -149,3 +149,67 @@ html.green .text-indigo-600 { color: #4ade80; }
 .note-content img { max-width: 100%; border-radius: 0.5rem; margin-top: 0.5em; }
 .note-content code { font-family: monospace; font-size: 0.85em; background: #f3f4f6; padding: 0.1em 0.3em; border-radius: 0.25em; }
 .dark .note-content code { background: #27272a; }
+
+/* ── IAT Learn — lesson reading prose ──────────────────────────────────────── */
+.learn-prose {
+  color: #27272a;
+  font-size: 15.5px;
+  line-height: 1.75;
+}
+.learn-prose > :first-child { margin-top: 0; }
+.learn-prose h2 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0a0a0b;
+  margin: 1.9em 0 0.6em;
+}
+.learn-prose h3 {
+  font-size: 16px;
+  font-weight: 650;
+  color: #0a0a0b;
+  margin: 1.5em 0 0.5em;
+}
+.learn-prose p { margin: 0 0 1.05em; }
+.learn-prose strong { font-weight: 650; color: #0a0a0b; }
+.learn-prose em { font-style: italic; }
+.learn-prose a {
+  color: #089447;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.learn-prose a:hover { color: #077a3c; }
+.learn-prose ul { list-style: disc; padding-left: 1.4em; margin: 0 0 1.05em; }
+.learn-prose ol { list-style: decimal; padding-left: 1.4em; margin: 0 0 1.05em; }
+.learn-prose li { margin-bottom: 0.4em; padding-left: 0.2em; }
+.learn-prose li::marker { color: #089447; }
+.learn-prose blockquote {
+  border-left: 3px solid #44c07d;
+  background: #f0faf4;
+  padding: 0.75em 1.1em;
+  border-radius: 0 0.5rem 0.5rem 0;
+  margin: 0 0 1.2em;
+  color: #3f4a44;
+}
+.learn-prose blockquote p:last-child { margin-bottom: 0; }
+.learn-prose hr { border: 0; border-top: 1px solid #ececec; margin: 2em 0; }
+.learn-prose img { max-width: 100%; border-radius: 0.75rem; margin: 0.5em 0 1.2em; }
+
+/* Placeholder shown where a Trainual image/GIF couldn't be carried over. */
+.learn-prose figure.img-missing {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  border: 1px dashed #d4d4d8;
+  background: #fafafa;
+  border-radius: 0.75rem;
+  padding: 0.85em 1.1em;
+  margin: 0 0 1.2em;
+}
+.learn-prose figure.img-missing figcaption {
+  font-size: 12.5px;
+  color: #71717a;
+  font-style: italic;
+}
+

@@ -59,6 +59,16 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // ── /learn/* (shared auth; admin-gating handled in the /learn/admin layout) ─
+  if (pathname.startsWith('/learn')) {
+    if (!user) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+    return supabaseResponse
+  }
+
   // ── /employee/* (skip public entry points) ────────────────────────────────
   if (
     pathname.startsWith('/employee') &&
@@ -85,5 +95,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/employee/:path*', '/login'],
+  matcher: ['/admin/:path*', '/employee/:path*', '/learn/:path*', '/login'],
 }
