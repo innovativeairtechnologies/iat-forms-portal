@@ -1,9 +1,11 @@
 export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import { TopBarSearch, TopBarBell } from './TopBarActions'
+import DashboardPresetPicker, { PRESETS, DASH_PRESET_COOKIE, type Preset } from './DashboardPresetPicker'
 import {
   ChevronRight, Plus,
   Inbox, FileText, ClipboardList, Ticket, CheckCircle2,
@@ -381,14 +383,11 @@ const STATUS_PILL: Record<string, { label: string; color: string; bg: string }> 
 export default async function AdminDashboard() {
   const d = await getData()
 
-  const donutSegs = [
-    { value: d.donut.resolved, color: C.green },
-    { value: d.donut.inProgress, color: C.amber },
-    { value: d.donut.open, color: C.rose },
-  ]
-  const donutBase = Math.max(1, d.donut.resolved + d.donut.inProgress + d.donut.open)
-  const pct = (n: number) => Math.round((n / donutBase) * 100)
   const attentionCount = d.attention.unread + d.attention.openTickets + d.attention.pendingApprovals
+
+  // Per-admin dashboard layout preset (cookie-backed; read server-side → no flash).
+  const presetRaw = cookies().get(DASH_PRESET_COOKIE)?.value
+  const preset: Preset = (PRESETS as readonly string[]).includes(presetRaw ?? '') ? (presetRaw as Preset) : 'balanced'
 
   // KPI cards defined once, placed in two layouts (mobile grid vs. xl split) below.
   const kpiTotal = (
@@ -422,6 +421,7 @@ export default async function AdminDashboard() {
           <span className="font-semibold text-zinc-900 dark:text-zinc-100">Overview</span>
         </div>
         <div className="flex-1" />
+        <DashboardPresetPicker current={preset} />
         <TopBarSearch />
         <ThemeToggle />
         <TopBarBell unreadCount={d.kpi.unread} ticketCount={d.kpi.openTickets} />
@@ -447,206 +447,11 @@ export default async function AdminDashboard() {
 
         {/* ── Main + creative right rail ───────────────────────────── */}
         <div className="flex gap-4 items-start">
-          <main className="flex-1 min-w-0 space-y-4">
-
-            {/* Forms performance + tickets donut */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="lg:col-span-2">
-                <CardHead title="Forms Performance" icon={<FileText size={14} />} action="View all" href="/admin/forms" />
-                <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
-                  <div className="col-span-5">Form</div>
-                  <div className="col-span-1 text-right">Subs</div>
-                  <div className="col-span-1 text-right">7d</div>
-                  <div className="col-span-1 text-right">Unread</div>
-                  <div className="col-span-2">Share</div>
-                  <div className="col-span-2 text-right">Last activity</div>
-                </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {d.formRows.length === 0 ? (
-                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No submissions yet</div>
-                  ) : (
-                    d.formRows.slice(0, 7).map((f) => {
-                      const active = d.activeTitles.has(f.title)
-                      return (
-                        <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
-                          <div className="col-span-5 flex items-center gap-2 min-w-0">
-                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: active ? C.green : '#a1a1aa' }} />
-                            <span className="font-medium text-zinc-700 dark:text-zinc-200 truncate">{f.title}</span>
-                          </div>
-                          <div className="col-span-1 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(f.count)}</div>
-                          <div className="col-span-1 text-right tabular-nums text-zinc-400 dark:text-zinc-400">{f.week}</div>
-                          <div className="col-span-1 text-right tabular-nums">
-                            {f.unread > 0 ? <span className="text-amber-600 dark:text-amber-400">{f.unread}</span> : <span className="text-zinc-300 dark:text-zinc-600">0</span>}
-                          </div>
-                          <div className="col-span-2 flex items-center gap-2">
-                            <div className="flex-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${(f.count / d.maxFormCount) * 100}%`, backgroundColor: C.blue }} />
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(f.last)}</div>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </Card>
-
-              <Card>
-                <CardHead title="Tickets by Status" icon={<Ticket size={14} />} />
-                <div className="flex items-center gap-5 px-5 py-5">
-                  <Donut segments={donutSegs} total={d.donut.total} />
-                  <div className="flex-1 space-y-3">
-                    <Legend color={C.green} label="Resolved" value={d.donut.resolved} pct={pct(d.donut.resolved)} />
-                    <Legend color={C.amber} label="In Progress" value={d.donut.inProgress} pct={pct(d.donut.inProgress)} />
-                    <Legend color={C.rose} label="Open" value={d.donut.open} pct={pct(d.donut.open)} />
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {/* Top lists */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHead title="Top Forms by Volume" icon={<FileText size={14} />} />
-                <div className="px-5 py-4 space-y-3">
-                  {d.formRows.slice(0, 5).map((f, i) => (
-                    <RankRow key={f.title} rank={i + 1} label={f.title} value={f.count} pct={(f.count / d.maxFormCount) * 100} color={C.violet} />
-                  ))}
-                  {d.formRows.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
-                </div>
-              </Card>
-              <Card>
-                <CardHead title="Top Submitters" icon={<Inbox size={14} />} action="People" href="/admin/employees" />
-                <div className="px-5 py-4 space-y-3">
-                  {d.people.slice(0, 5).map((p, i) => (
-                    <RankRow key={p.name + i} rank={i + 1} label={p.name} value={p.count} pct={(p.count / d.maxPeople) * 100} color={C.sky} />
-                  ))}
-                  {d.people.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
-                </div>
-              </Card>
-            </div>
-
-            {/* Activity chart + recent submissions */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="lg:col-span-2">
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200/70 dark:border-zinc-800/80">
-                  <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Activity · Last 14 days</h3>
-                  <div className="flex items-center gap-4">
-                    <LegendInline color={C.green} label="Submissions" />
-                    <LegendInline color={C.rose} label="Tickets" />
-                  </div>
-                </div>
-                <div className="px-3 py-4"><LineChart days={d.days} a={d.subSeries} b={d.tktSeries} ca={C.green} cb={C.rose} /></div>
-              </Card>
-
-              <Card>
-                <CardHead title="Recent Submissions" icon={<Inbox size={14} />} action="View all" href="/admin/submissions" />
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {d.recentSubs.length === 0 ? (
-                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">Nothing yet</div>
-                  ) : (
-                    d.recentSubs.map((s) => {
-                      const name = nameOf(s.data)
-                      return (
-                        <Link key={s.id} href={`/admin/submissions/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
-                          <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[11px] font-bold text-zinc-500 dark:text-zinc-300 flex-shrink-0">
-                            {initialsOf(name)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-medium text-zinc-700 dark:text-zinc-200 truncate">{name}</p>
-                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">{s.form_title || 'Form submission'}</p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(s.submitted_at)}</span>
-                            {!s.is_read && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} />}
-                          </div>
-                        </Link>
-                      )
-                    })
-                  )}
-                </div>
-              </Card>
-            </div>
-
-            {/* Recent tickets + form status */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHead title="Recent Tickets" icon={<Ticket size={14} />} action="View all" href="/admin/tickets" />
-                <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
-                  <div className="col-span-4">Customer</div>
-                  <div className="col-span-3">Equipment</div>
-                  <div className="col-span-2">Priority</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-1 text-right">Age</div>
-                </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {d.recentTickets.length === 0 ? (
-                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No tickets yet</div>
-                  ) : (
-                    d.recentTickets.map((t) => {
-                      const sp = STATUS_PILL[t.status] || STATUS_PILL.open
-                      return (
-                        <Link key={t.id} href={`/admin/tickets/${t.id}`} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
-                          <div className="col-span-4 min-w-0">
-                            <p className="font-medium text-zinc-700 dark:text-zinc-200 truncate">{t.customer_name}</p>
-                            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{t.ticket_number}</p>
-                          </div>
-                          <div className="col-span-3 min-w-0">
-                            <p className="text-zinc-600 dark:text-zinc-300 truncate">{t.model_number || '—'}</p>
-                            <p className="text-[10px] text-zinc-400 dark:text-zinc-600 truncate">{t.serial_number ? `S/N ${t.serial_number}` : ''}</p>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-300 capitalize">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PRIORITY_DOT[t.priority ?? 'med'] || C.amber }} />
-                              {t.priority ?? 'med'}
-                            </span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: sp.color, backgroundColor: sp.bg }}>{sp.label}</span>
-                          </div>
-                          <div className="col-span-1 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(t.created_at)}</div>
-                        </Link>
-                      )
-                    })
-                  )}
-                </div>
-              </Card>
-
-              <Card>
-                <CardHead title="Form Status" icon={<FileText size={14} />} action="Manage" href="/admin/forms" />
-                <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
-                  <div className="col-span-6">Form</div>
-                  <div className="col-span-2 text-right">Subs</div>
-                  <div className="col-span-2">State</div>
-                  <div className="col-span-2 text-right">Last</div>
-                </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {d.formStatus.length === 0 ? (
-                    <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No forms yet</div>
-                  ) : (
-                    d.formStatus.slice(0, 6).map((f) => (
-                      <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
-                        <div className="col-span-6 font-medium text-zinc-700 dark:text-zinc-200 truncate">{f.title}</div>
-                        <div className="col-span-2 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(f.count)}</div>
-                        <div className="col-span-2">
-                          {f.active ? (
-                            <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: C.green }}>
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} /> Live
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
-                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" /> Draft
-                            </span>
-                          )}
-                        </div>
-                        <div className="col-span-2 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{f.last ? timeAgo(f.last) : '—'}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-            </div>
-          </main>
+          {preset === 'tickets'
+            ? <MainTickets d={d} />
+            : preset === 'submissions'
+            ? <MainSubmissions d={d} />
+            : <MainBalanced d={d} />}
 
           {/* ── Creative right rail: Operations Pulse ──────────────── */}
           <aside className="hidden xl:flex flex-col gap-4 w-[330px] flex-shrink-0 sticky top-[72px]">
@@ -795,5 +600,269 @@ function QuickAction({ icon, label, href }: { icon: React.ReactNode; label: stri
       <span className="text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{icon}</span>
       <span className="text-[12px] font-medium text-zinc-600 dark:text-zinc-300">{label}</span>
     </Link>
+  )
+}
+
+// ─── Dashboard widgets (one source per card; arranged differently per preset) ──
+type DashData = Awaited<ReturnType<typeof getData>>
+type WProps = { d: DashData; className?: string }
+
+function WFormsPerformance({ d, className }: WProps) {
+  return (
+    <Card className={className}>
+      <CardHead title="Forms Performance" icon={<FileText size={14} />} action="View all" href="/admin/forms" />
+      <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
+        <div className="col-span-5">Form</div>
+        <div className="col-span-1 text-right">Subs</div>
+        <div className="col-span-1 text-right">7d</div>
+        <div className="col-span-1 text-right">Unread</div>
+        <div className="col-span-2">Share</div>
+        <div className="col-span-2 text-right">Last activity</div>
+      </div>
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+        {d.formRows.length === 0 ? (
+          <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No submissions yet</div>
+        ) : (
+          d.formRows.slice(0, 7).map((f) => {
+            const active = d.activeTitles.has(f.title)
+            return (
+              <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                <div className="col-span-5 flex items-center gap-2 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: active ? C.green : '#a1a1aa' }} />
+                  <span className="font-medium text-zinc-700 dark:text-zinc-200 truncate">{f.title}</span>
+                </div>
+                <div className="col-span-1 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(f.count)}</div>
+                <div className="col-span-1 text-right tabular-nums text-zinc-400 dark:text-zinc-400">{f.week}</div>
+                <div className="col-span-1 text-right tabular-nums">
+                  {f.unread > 0 ? <span className="text-amber-600 dark:text-amber-400">{f.unread}</span> : <span className="text-zinc-300 dark:text-zinc-600">0</span>}
+                </div>
+                <div className="col-span-2 flex items-center gap-2">
+                  <div className="flex-1 h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${(f.count / d.maxFormCount) * 100}%`, backgroundColor: C.blue }} />
+                  </div>
+                </div>
+                <div className="col-span-2 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(f.last)}</div>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function WTicketsDonut({ d, className }: WProps) {
+  const segs = [
+    { value: d.donut.resolved, color: C.green },
+    { value: d.donut.inProgress, color: C.amber },
+    { value: d.donut.open, color: C.rose },
+  ]
+  const base = Math.max(1, d.donut.resolved + d.donut.inProgress + d.donut.open)
+  const pct = (n: number) => Math.round((n / base) * 100)
+  return (
+    <Card className={className}>
+      <CardHead title="Tickets by Status" icon={<Ticket size={14} />} />
+      <div className="flex items-center gap-5 px-5 py-5">
+        <Donut segments={segs} total={d.donut.total} />
+        <div className="flex-1 space-y-3">
+          <Legend color={C.green} label="Resolved" value={d.donut.resolved} pct={pct(d.donut.resolved)} />
+          <Legend color={C.amber} label="In Progress" value={d.donut.inProgress} pct={pct(d.donut.inProgress)} />
+          <Legend color={C.rose} label="Open" value={d.donut.open} pct={pct(d.donut.open)} />
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function WTopForms({ d, className }: WProps) {
+  return (
+    <Card className={className}>
+      <CardHead title="Top Forms by Volume" icon={<FileText size={14} />} />
+      <div className="px-5 py-4 space-y-3">
+        {d.formRows.slice(0, 5).map((f, i) => (
+          <RankRow key={f.title} rank={i + 1} label={f.title} value={f.count} pct={(f.count / d.maxFormCount) * 100} color={C.violet} />
+        ))}
+        {d.formRows.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
+      </div>
+    </Card>
+  )
+}
+
+function WTopSubmitters({ d, className }: WProps) {
+  return (
+    <Card className={className}>
+      <CardHead title="Top Submitters" icon={<Inbox size={14} />} action="People" href="/admin/employees" />
+      <div className="px-5 py-4 space-y-3">
+        {d.people.slice(0, 5).map((p, i) => (
+          <RankRow key={p.name + i} rank={i + 1} label={p.name} value={p.count} pct={(p.count / d.maxPeople) * 100} color={C.sky} />
+        ))}
+        {d.people.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
+      </div>
+    </Card>
+  )
+}
+
+function WActivityChart({ d, className }: WProps) {
+  return (
+    <Card className={className}>
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200/70 dark:border-zinc-800/80">
+        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Activity · Last 14 days</h3>
+        <div className="flex items-center gap-4">
+          <LegendInline color={C.green} label="Submissions" />
+          <LegendInline color={C.rose} label="Tickets" />
+        </div>
+      </div>
+      <div className="px-3 py-4"><LineChart days={d.days} a={d.subSeries} b={d.tktSeries} ca={C.green} cb={C.rose} /></div>
+    </Card>
+  )
+}
+
+function WRecentSubmissions({ d, className }: WProps) {
+  return (
+    <Card className={className}>
+      <CardHead title="Recent Submissions" icon={<Inbox size={14} />} action="View all" href="/admin/submissions" />
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+        {d.recentSubs.length === 0 ? (
+          <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">Nothing yet</div>
+        ) : (
+          d.recentSubs.map((s) => {
+            const name = nameOf(s.data)
+            return (
+              <Link key={s.id} href={`/admin/submissions/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[11px] font-bold text-zinc-500 dark:text-zinc-300 flex-shrink-0">
+                  {initialsOf(name)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-medium text-zinc-700 dark:text-zinc-200 truncate">{name}</p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">{s.form_title || 'Form submission'}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(s.submitted_at)}</span>
+                  {!s.is_read && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} />}
+                </div>
+              </Link>
+            )
+          })
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function WRecentTickets({ d, className }: WProps) {
+  return (
+    <Card className={className}>
+      <CardHead title="Recent Tickets" icon={<Ticket size={14} />} action="View all" href="/admin/tickets" />
+      <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
+        <div className="col-span-4">Customer</div>
+        <div className="col-span-3">Equipment</div>
+        <div className="col-span-2">Priority</div>
+        <div className="col-span-2">Status</div>
+        <div className="col-span-1 text-right">Age</div>
+      </div>
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+        {d.recentTickets.length === 0 ? (
+          <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No tickets yet</div>
+        ) : (
+          d.recentTickets.map((t) => {
+            const sp = STATUS_PILL[t.status] || STATUS_PILL.open
+            return (
+              <Link key={t.id} href={`/admin/tickets/${t.id}`} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                <div className="col-span-4 min-w-0">
+                  <p className="font-medium text-zinc-700 dark:text-zinc-200 truncate">{t.customer_name}</p>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{t.ticket_number}</p>
+                </div>
+                <div className="col-span-3 min-w-0">
+                  <p className="text-zinc-600 dark:text-zinc-300 truncate">{t.model_number || '—'}</p>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-600 truncate">{t.serial_number ? `S/N ${t.serial_number}` : ''}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-300 capitalize">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PRIORITY_DOT[t.priority ?? 'med'] || C.amber }} />
+                    {t.priority ?? 'med'}
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: sp.color, backgroundColor: sp.bg }}>{sp.label}</span>
+                </div>
+                <div className="col-span-1 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(t.created_at)}</div>
+              </Link>
+            )
+          })
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function WFormStatus({ d, className }: WProps) {
+  return (
+    <Card className={className}>
+      <CardHead title="Form Status" icon={<FileText size={14} />} action="Manage" href="/admin/forms" />
+      <div className="px-5 py-2.5 grid grid-cols-12 gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 border-b border-zinc-100 dark:border-zinc-800/60">
+        <div className="col-span-6">Form</div>
+        <div className="col-span-2 text-right">Subs</div>
+        <div className="col-span-2">State</div>
+        <div className="col-span-2 text-right">Last</div>
+      </div>
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+        {d.formStatus.length === 0 ? (
+          <div className="px-5 py-10 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No forms yet</div>
+        ) : (
+          d.formStatus.slice(0, 6).map((f) => (
+            <div key={f.title} className="px-5 py-3 grid grid-cols-12 gap-2 items-center text-[12px] hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+              <div className="col-span-6 font-medium text-zinc-700 dark:text-zinc-200 truncate">{f.title}</div>
+              <div className="col-span-2 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(f.count)}</div>
+              <div className="col-span-2">
+                {f.active ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: C.green }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.green }} /> Live
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" /> Draft
+                  </span>
+                )}
+              </div>
+              <div className="col-span-2 text-right text-zinc-400 dark:text-zinc-500 tabular-nums">{f.last ? timeAgo(f.last) : '—'}</div>
+            </div>
+          ))
+        )}
+      </div>
+    </Card>
+  )
+}
+
+// ─── Layout presets — each composes the same widgets in a different order ──────
+function MainBalanced({ d }: { d: DashData }) {
+  return (
+    <main className="flex-1 min-w-0 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WFormsPerformance d={d} className="lg:col-span-2" /><WTicketsDonut d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WTopForms d={d} /><WTopSubmitters d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WActivityChart d={d} className="lg:col-span-2" /><WRecentSubmissions d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WRecentTickets d={d} /><WFormStatus d={d} /></div>
+    </main>
+  )
+}
+
+function MainTickets({ d }: { d: DashData }) {
+  return (
+    <main className="flex-1 min-w-0 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WRecentTickets d={d} className="lg:col-span-2" /><WTicketsDonut d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WActivityChart d={d} className="lg:col-span-2" /><WFormStatus d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WFormsPerformance d={d} className="lg:col-span-2" /><WRecentSubmissions d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WTopForms d={d} /><WTopSubmitters d={d} /></div>
+    </main>
+  )
+}
+
+function MainSubmissions({ d }: { d: DashData }) {
+  return (
+    <main className="flex-1 min-w-0 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WFormsPerformance d={d} className="lg:col-span-2" /><WRecentSubmissions d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WTopForms d={d} /><WTopSubmitters d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WActivityChart d={d} className="lg:col-span-2" /><WTicketsDonut d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WRecentTickets d={d} /><WFormStatus d={d} /></div>
+    </main>
   )
 }
