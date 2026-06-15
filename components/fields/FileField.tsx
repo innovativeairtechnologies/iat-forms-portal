@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import type { FormField } from '@/lib/supabase'
 import { Upload, X, FileText, Loader2 } from 'lucide-react'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 interface Props {
   field: FormField
@@ -19,12 +20,24 @@ export default function FileField({ field, value, onChange }: Props) {
   const handleFile = async (file: File) => {
     setUploading(true)
     setUploadError(null)
-    const fd = new FormData()
-    fd.append('file', file)
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      // Ask the server for a one-shot signed upload URL (tiny JSON request), then
+      // upload the bytes straight to storage — bypasses Vercel's ~4.5MB function
+      // body limit, which 413'd larger photos/PDFs.
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, size: file.size }),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
+
+      const sb = createSupabaseBrowser()
+      const { error } = await sb.storage
+        .from('form-uploads')
+        .uploadToSignedUrl(data.path, data.token, file, { contentType: file.type || undefined })
+      if (error) throw new Error(error.message || 'Upload failed')
+
       onChange(data.url)
       setFileName(file.name)
     } catch (e) {
