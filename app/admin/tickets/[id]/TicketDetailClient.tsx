@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ChevronLeft, Lightbulb, ExternalLink, BookOpen, Paperclip, Mail } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import dynamic from 'next/dynamic'
 
 const RichTextEditor = dynamic(() => import('@/components/admin/RichTextEditor'), { ssr: false })
@@ -161,17 +162,30 @@ export default function TicketDetailClient({
     }
   }
 
-  // Upload one file to the private ticket-attachments bucket; the editor collects
-  // the returned metadata and includes it when the note is saved.
+  // Upload one file to the private ticket-attachments bucket. Two steps: the
+  // server hands out a one-shot signed upload URL (tiny JSON request), then the
+  // browser uploads the bytes straight to Supabase Storage — bypassing Vercel's
+  // ~4.5MB function body limit, which 413s larger PDFs/photos. The editor
+  // collects the returned metadata and includes it when the note is saved.
   const uploadAttachment = async (file: File): Promise<TicketNoteAttachment> => {
-    const fd = new FormData()
-    fd.append('file', file)
-    const res = await fetch(`/api/tickets/${ticket.id}/attachments`, { method: 'POST', body: fd })
+    const res = await fetch(`/api/tickets/${ticket.id}/attachments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: file.name, size: file.size }),
+    })
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
       throw new Error(j.error || 'Upload failed')
     }
-    return res.json()
+    const { path, token } = await res.json()
+
+    const supabase = createSupabaseBrowser()
+    const { error } = await supabase.storage
+      .from('ticket-attachments')
+      .uploadToSignedUrl(path, token, file, { contentType: file.type || undefined })
+    if (error) throw new Error(error.message || 'Upload failed')
+
+    return { path, name: file.name, type: file.type || '', size: file.size }
   }
 
   const currentStatus = STATUS_OPTIONS.find(s => s.value === ticket.status)

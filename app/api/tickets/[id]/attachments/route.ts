@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
 
-// Upload a single file to be attached to a ticket note. Admin-gated; files land
-// in the private `ticket-attachments` bucket under the ticket's id prefix. The
-// note itself is saved separately (POST /api/tickets/[id]/notes) with the
-// returned metadata. Downloads go through ./download (signed URLs).
+// Issues a one-shot signed upload URL for a ticket-note attachment. The browser
+// then uploads the file BYTES directly to Supabase Storage with this token,
+// which avoids Vercel's ~4.5MB function request-body limit (a multipart upload
+// routed through here 413s on anything larger). Admin-gated; files land in the
+// private `ticket-attachments` bucket under the ticket's id prefix.
 
 const MAX_BYTES = 25 * 1024 * 1024 // 25MB — emails with attachments run large
 
@@ -22,34 +23,28 @@ const ALLOWED_EXT = new Set([
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const err = await requireAdminAuth(); if (err) return err
 
-  try {
-    const formData = await req.formData()
-    const file = formData.get('file') as File | null
-    if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-    if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: 'File too large (max 25MB)' }, { status: 400 })
-    }
+  const body = await req.json().catch(() => null)
+  const name = typeof body?.name === 'string' ? body.name.trim() : ''
+  const size = typeof body?.size === 'number' && Number.isFinite(body.size) ? body.size : 0
 
-    const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
-    if (!ALLOWED_EXT.has(ext)) {
-      return NextResponse.json({ error: `Unsupported file type${ext ? ` (.${ext})` : ''}` }, { status: 400 })
-    }
+  if (!name) return NextResponse.json({ error: 'Missing file name' }, { status: 400 })
+  if (size > MAX_BYTES) return NextResponse.json({ error: 'File too large (max 25MB)' }, { status: 400 })
 
-    const path = `${params.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const buffer = new Uint8Array(await file.arrayBuffer())
-
-    const { error } = await supabaseAdmin.storage
-      .from('ticket-attachments')
-      .upload(path, buffer, { contentType: file.type || 'application/octet-stream', upsert: false })
-
-    if (error) {
-      console.error('Ticket attachment upload error:', error)
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
-    }
-
-    return NextResponse.json({ path, name: file.name, type: file.type || '', size: file.size })
-  } catch (e) {
-    console.error('Ticket attachment route error:', e)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  const ext = name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
+  if (!ALLOWED_EXT.has(ext)) {
+    return NextResponse.json({ error: `Unsupported file type${ext ? ` (.${ext})` : ''}` }, { status: 400 })
   }
+
+  const path = `${params.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  const { data, error } = await supabaseAdmin.storage
+    .from('ticket-attachments')
+    .createSignedUploadUrl(path)
+
+  if (error || !data) {
+    console.error('Ticket attachment signed-url error:', error)
+    return NextResponse.json({ error: 'Could not start upload' }, { status: 500 })
+  }
+
+  return NextResponse.json({ path, token: data.token })
 }
