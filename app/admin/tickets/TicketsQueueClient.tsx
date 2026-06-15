@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Ticket, Search, X, ChevronUp, ChevronDown, ChevronsUpDown,
-  MoreHorizontal, Clock, CheckCircle2, ExternalLink,
+  MoreHorizontal, Clock, CheckCircle2, ExternalLink, ShieldCheck, ShieldAlert,
 } from 'lucide-react'
 import type { Ticket as TicketType } from '@/lib/supabase'
 import { updateTicket } from './actions'
@@ -43,7 +43,7 @@ function matchesSearch(ticket: TicketRow, q: string): boolean {
   )
 }
 
-export default function TicketsQueueClient({ tickets }: { tickets: TicketRow[] }) {
+export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: { tickets: TicketRow[]; warrantyBySerial?: Record<string, 'in' | 'expiring' | 'out' | 'unknown'> }) {
   const router = useRouter()
   const [filter, setFilter]   = useState<Filter>('open')
   const [search, setSearch]   = useState('')
@@ -206,8 +206,17 @@ export default function TicketsQueueClient({ tickets }: { tickets: TicketRow[] }
                     </span>
                   </div>
                   {/* Equipment */}
-                  <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">
-                    {ticket.model_number}<span className="text-zinc-400 dark:text-zinc-500"> · S/N {ticket.serial_number}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-zinc-600 dark:text-zinc-300 truncate">
+                      {ticket.model_number}<span className="text-zinc-400 dark:text-zinc-500"> · S/N {ticket.serial_number}</span>
+                    </span>
+                    {(() => {
+                      const w = warrantyBySerial[ticket.serial_number]
+                      if (w === 'in')       return <StatusPill tone="emerald" icon={<ShieldCheck size={9} />}>In</StatusPill>
+                      if (w === 'expiring') return <StatusPill tone="amber" icon={<ShieldAlert size={9} />}>Exp</StatusPill>
+                      if (w === 'out')      return <StatusPill tone="rose" icon={<ShieldAlert size={9} />}>Out</StatusPill>
+                      return null
+                    })()}
                   </div>
                   {/* Assignee */}
                   <div className="flex items-center gap-2 min-w-0">

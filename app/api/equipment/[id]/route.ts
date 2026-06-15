@@ -6,7 +6,7 @@ const FIELDS = [
   'serial_number', 'model_number', 'voltage',
   'customer_company', 'customer_name', 'customer_email', 'customer_phone',
   'location', 'ship_date', 'install_date', 'warranty_months', 'warranty_end',
-  'status', 'notes', 'photo_urls',
+  'pm_interval_months', 'status', 'notes', 'photo_urls',
 ] as const
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {

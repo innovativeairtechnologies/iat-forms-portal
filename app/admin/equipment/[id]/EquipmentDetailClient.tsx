@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Boxes, ShieldCheck, ShieldAlert, ShieldQuestion, Ticket as TicketIcon } from 'lucide-react'
+import { ArrowLeft, Save, Boxes, ShieldCheck, ShieldAlert, ShieldQuestion, Ticket as TicketIcon, Wrench } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Equipment } from '@/lib/supabase'
-import { effectiveWarrantyEnd, warrantyState } from '@/lib/equipment'
+import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd, nextPmDue, pmState } from '@/lib/equipment'
 
 type TicketLite = {
   id: string
@@ -47,6 +47,7 @@ export default function EquipmentDetailClient({ equipment, tickets }: { equipmen
     install_date: equipment.install_date || '',
     warranty_months: String(equipment.warranty_months ?? 12),
     warranty_end: equipment.warranty_end || '',
+    pm_interval_months: equipment.pm_interval_months != null ? String(equipment.pm_interval_months) : '',
     status: equipment.status || 'active',
     notes: equipment.notes || '',
   })
@@ -65,6 +66,21 @@ export default function EquipmentDetailClient({ equipment, tickets }: { equipmen
     ship_date: form.ship_date || null,
     warranty_months: parseInt(form.warranty_months) || 12,
   })
+  const daysLeft = daysUntilWarrantyEnd({
+    warranty_end: form.warranty_end || null,
+    ship_date: form.ship_date || null,
+    warranty_months: parseInt(form.warranty_months) || 12,
+  })
+
+  // Maintenance: last service = most recent ticket for this serial
+  const lastService = tickets[0]?.created_at ?? null
+  const pmInput = {
+    pm_interval_months: form.pm_interval_months === '' ? null : (parseInt(form.pm_interval_months) || null),
+    install_date: form.install_date || null,
+    ship_date: form.ship_date || null,
+  }
+  const pmDue = nextPmDue(pmInput, lastService)
+  const pmS = pmState(pmInput, lastService)
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,6 +91,7 @@ export default function EquipmentDetailClient({ equipment, tickets }: { equipmen
       body: JSON.stringify({
         ...form,
         warranty_months: parseInt(form.warranty_months) || 12,
+        pm_interval_months: form.pm_interval_months === '' ? null : (parseInt(form.pm_interval_months) || null),
         ship_date: form.ship_date || null,
         install_date: form.install_date || null,
         warranty_end: form.warranty_end || null,
@@ -159,6 +176,10 @@ export default function EquipmentDetailClient({ equipment, tickets }: { equipmen
                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">Warranty End <span className="normal-case text-gray-300">(override)</span></label>
                     <input type="date" value={form.warranty_end} onChange={e => setForm(f => ({ ...f, warranty_end: e.target.value }))} className={inp} />
                   </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">PM interval <span className="normal-case text-gray-300">(months)</span></label>
+                    <input type="number" min="0" value={form.pm_interval_months} onChange={e => setForm(f => ({ ...f, pm_interval_months: e.target.value }))} className={inp} placeholder="blank = none" />
+                  </div>
                 </div>
 
                 <div>
@@ -190,7 +211,26 @@ export default function EquipmentDetailClient({ equipment, tickets }: { equipmen
                 {wState === 'in' && <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-2"><ShieldCheck size={18} /><span className="text-[14px] font-semibold">In warranty</span></div>}
                 {wState === 'out' && <div className="flex items-center gap-2 text-red-500 dark:text-red-400 mb-2"><ShieldAlert size={18} /><span className="text-[14px] font-semibold">Out of warranty</span></div>}
                 {wState === 'unknown' && <div className="flex items-center gap-2 text-gray-400 mb-2"><ShieldQuestion size={18} /><span className="text-[14px] font-semibold">Unknown</span></div>}
-                <p className="text-[12px] text-gray-400">{wState === 'unknown' ? 'Add a ship date to compute coverage.' : `Coverage through ${fmt(previewEnd)}`}</p>
+                <p className="text-[12px] text-gray-400">
+                  {wState === 'unknown'
+                    ? 'Add a ship date to compute coverage.'
+                    : `Coverage through ${fmt(previewEnd)}${daysLeft !== null && daysLeft >= 0 ? ` · ${daysLeft}d left` : ''}`}
+                </p>
+
+                {/* Preventive maintenance */}
+                <div className="mt-4 pt-4 border-t border-gray-50 dark:border-zinc-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wrench size={14} className="text-gray-400" />
+                    <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">Preventive maintenance</span>
+                    {pmS === 'due' && <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-rose-500">Due</span>}
+                    {pmS === 'soon' && <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-amber-500">Soon</span>}
+                  </div>
+                  <div className="space-y-1 text-[12px] text-gray-400">
+                    <div className="flex justify-between"><span>Interval</span><span className="text-gray-600 dark:text-gray-300">{form.pm_interval_months ? `${form.pm_interval_months} mo` : 'None'}</span></div>
+                    <div className="flex justify-between"><span>Last service</span><span className="text-gray-600 dark:text-gray-300">{fmt(lastService)}</span></div>
+                    <div className="flex justify-between"><span>Next PM</span><span className={`font-medium ${pmS === 'due' ? 'text-rose-500' : pmS === 'soon' ? 'text-amber-500' : 'text-gray-600 dark:text-gray-300'}`}>{pmDue ? fmt(pmDue) : '—'}</span></div>
+                  </div>
+                </div>
               </div>
             </div>
 

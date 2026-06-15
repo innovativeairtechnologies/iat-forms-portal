@@ -63,6 +63,7 @@ export type Equipment = {
   install_date: string | null
   warranty_months: number
   warranty_end: string | null
+  pm_interval_months: number | null
   status: 'active' | 'decommissioned'
   photo_urls: string[] | null
   notes: string | null

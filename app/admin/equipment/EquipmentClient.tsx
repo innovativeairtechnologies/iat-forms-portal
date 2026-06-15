@@ -3,23 +3,38 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react'
+import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Wrench } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Equipment } from '@/lib/supabase'
-import { warrantyState } from '@/lib/equipment'
+import { warrantyState, isExpiringSoon, daysUntilWarrantyEnd, pmState, nextPmDue } from '@/lib/equipment'
 import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
 
-type Filter = 'all' | 'in' | 'out' | 'unknown'
+type EquipmentRow = Equipment & { last_service_at: string | null }
+type Filter = 'all' | 'in' | 'expiring' | 'out' | 'pm_due' | 'unknown'
 
 const EMPTY = { serial_number: '', model_number: '', voltage: '', customer_company: '', customer_name: '', customer_email: '', ship_date: '' }
 
-const COLS = 'grid-cols-[1.2fr_1fr_1.3fr_148px_104px_92px_28px]'
+const COLS = 'grid-cols-[1.2fr_1fr_1.3fr_150px_132px_96px_28px]'
 
 function WarrantyPill({ eq }: { eq: Equipment }) {
   const s = warrantyState(eq)
-  if (s === 'in')  return <StatusPill tone="emerald" icon={<ShieldCheck size={10} />}>In warranty</StatusPill>
+  if (s === 'in') {
+    if (isExpiringSoon(eq)) {
+      const d = daysUntilWarrantyEnd(eq)
+      return <StatusPill tone="amber" icon={<ShieldAlert size={10} />}>{d === 0 ? 'Expires today' : `Expires ${d}d`}</StatusPill>
+    }
+    return <StatusPill tone="emerald" icon={<ShieldCheck size={10} />}>In warranty</StatusPill>
+  }
   if (s === 'out') return <StatusPill tone="rose" icon={<ShieldAlert size={10} />}>Out of warranty</StatusPill>
   return <StatusPill tone="slate" icon={<ShieldQuestion size={10} />}>No date</StatusPill>
+}
+
+function PmCell({ eq }: { eq: EquipmentRow }) {
+  const s = pmState(eq, eq.last_service_at)
+  if (s === 'due')  return <StatusPill tone="rose" icon={<Wrench size={10} />}>PM due</StatusPill>
+  if (s === 'soon') return <StatusPill tone="amber" icon={<Wrench size={10} />}>PM soon</StatusPill>
+  if (s === 'ok')   return <span className="text-zinc-400 dark:text-zinc-500 tabular-nums text-[12px]">{fmtShip(nextPmDue(eq, eq.last_service_at))}</span>
+  return <span className="text-zinc-300 dark:text-zinc-600">—</span>
 }
 
 function fmtShip(d: string | null) {
@@ -27,7 +42,7 @@ function fmtShip(d: string | null) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 }
 
-export default function EquipmentClient({ equipment }: { equipment: Equipment[] }) {
+export default function EquipmentClient({ equipment }: { equipment: EquipmentRow[] }) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -36,6 +51,12 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
 
+  const matchesTab = (e: EquipmentRow, f: Filter) =>
+    f === 'all' ? true
+    : f === 'expiring' ? isExpiringSoon(e)
+    : f === 'pm_due' ? pmState(e, e.last_service_at) === 'due'
+    : warrantyState(e) === f
+
   const q = search.toLowerCase()
   const filtered = equipment.filter(e => {
     const matchesSearch = !q ||
@@ -43,8 +64,7 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
       (e.model_number || '').toLowerCase().includes(q) ||
       (e.customer_company || '').toLowerCase().includes(q) ||
       (e.customer_name || '').toLowerCase().includes(q)
-    const matchesFilter = filter === 'all' || warrantyState(e) === filter
-    return matchesSearch && matchesFilter
+    return matchesSearch && matchesTab(e, filter)
   })
 
   const submit = async (ev: React.FormEvent) => {
@@ -83,9 +103,9 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
 
       <div className="p-8">
         {/* Filter tabs */}
-        <div className="flex items-center gap-6 mb-4 border-b border-zinc-200 dark:border-zinc-800">
-          {([['all', 'All'], ['in', 'In warranty'], ['out', 'Out of warranty'], ['unknown', 'No date']] as [Filter, string][]).map(([f, label]) => {
-            const count = f === 'all' ? equipment.length : equipment.filter(e => warrantyState(e) === f).length
+        <div className="flex items-center gap-6 mb-4 border-b border-zinc-200 dark:border-zinc-800 flex-wrap">
+          {([['all', 'All'], ['in', 'In warranty'], ['expiring', 'Expiring soon'], ['out', 'Out of warranty'], ['pm_due', 'PM due'], ['unknown', 'No date']] as [Filter, string][]).map(([f, label]) => {
+            const count = equipment.filter(e => matchesTab(e, f)).length
             const active = filter === f
             return (
               <button key={f} onClick={() => setFilter(f)}
@@ -118,8 +138,8 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
           <Th>Model</Th>
           <Th>Customer</Th>
           <Th>Warranty</Th>
+          <Th>PM</Th>
           <Th>State</Th>
-          <Th>Ship date</Th>
           <Th />
         </div>
 
@@ -147,14 +167,14 @@ export default function EquipmentClient({ equipment }: { equipment: Equipment[] 
                 <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{eq.customer_company || eq.customer_name || '—'}</div>
                 {/* Warranty */}
                 <div><WarrantyPill eq={eq} /></div>
+                {/* PM */}
+                <div><PmCell eq={eq} /></div>
                 {/* State */}
                 <div>
                   {eq.status === 'decommissioned'
                     ? <StatusPill tone="slate">Decommissioned</StatusPill>
                     : <StatusPill tone="emerald">Active</StatusPill>}
                 </div>
-                {/* Ship date */}
-                <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{fmtShip(eq.ship_date)}</div>
                 {/* Chevron */}
                 <div className="flex justify-center">
                   <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />

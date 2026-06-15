@@ -6,7 +6,7 @@ const FIELDS = [
   'serial_number', 'model_number', 'voltage',
   'customer_company', 'customer_name', 'customer_email', 'customer_phone',
   'location', 'ship_date', 'install_date', 'warranty_months', 'warranty_end',
-  'status', 'notes',
+  'pm_interval_months', 'status', 'notes',
 ] as const
 
 export async function GET() {
