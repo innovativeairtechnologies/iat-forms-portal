@@ -14,8 +14,11 @@ import type { ReactNode } from 'react'
 export const HEADER_BOX =
   'rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none h-10 items-center gap-3 px-4 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600'
 
+// NOTE: no `overflow-hidden` here — the per-row kebab menu is absolutely
+// positioned and would be clipped at the box edges (esp. the top rows). Rows
+// round their own outer corners (see rowCx) so the box still looks clean.
 export const BODY_BOX =
-  'mt-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none overflow-hidden'
+  'mt-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none'
 
 export const ROW = 'items-center gap-3 px-4 h-[44px] text-[13px] transition-colors'
 export const ROW_DIVIDE = 'border-t border-zinc-100 dark:border-zinc-800/60'
@@ -26,6 +29,7 @@ export const ROW_SELECTED = 'bg-emerald-50/60 dark:bg-emerald-500/[0.06]'
 export function rowCx(cols: string, opts?: { i?: number; selected?: boolean }) {
   return [
     'grid', cols, ROW,
+    'first:rounded-t-xl last:rounded-b-xl',
     opts?.i ? ROW_DIVIDE : '',
     opts?.selected ? ROW_SELECTED : ROW_HOVER,
   ].join(' ')

@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-15 — List-view fixes: kebab clipping + forms column alignment
+
+### Fixed
+- **Kebab menu options clipped** on the top rows of Submissions & Tickets — the shared
+  `BODY_BOX` had `overflow-hidden` that clipped the vertically-centered dropdown. Removed it;
+  rows now self-round their outer corners (`rowCx` → `first:rounded-t-xl last:rounded-b-xl`).
+  Shared-kit fix, so it covers Equipment & Employees lists too.
+- **Forms list column misalignment** (header labels vs row Status/Subs/Actions) in the flat
+  category view — header and rows are separate grids and the template ended in `auto`, which
+  sized differently in each. Actions column is now a fixed `232px` so both grids align.
+
 ## 2026-06-15 — Detail pages redesigned to the dashboard language
 
 `/admin/submissions/[id]` and `/admin/tickets/[id]` now match the operations

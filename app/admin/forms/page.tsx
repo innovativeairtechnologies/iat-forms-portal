@@ -217,7 +217,10 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false, isSu
   showHeaders?: boolean
   isSuperAdmin: boolean
 }) {
-  const COLS = 'grid-cols-[1.7fr_180px_96px_64px_auto]'
+  // All tracks fixed except the first (1.7fr) so the header grid and each row
+  // grid resolve identically and line up. A trailing `auto` would size to its
+  // own content (narrow in the header, wide in the rows) → columns drift.
+  const COLS = 'grid-cols-[1.7fr_180px_96px_64px_232px]'
   return (
     <>
       {showHeaders && (
