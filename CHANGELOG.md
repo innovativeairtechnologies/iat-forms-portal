@@ -2,6 +2,31 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-15 — Admin: Executive Briefing, Command Palette, Audit Log
+
+Three upgrades to make the admin portal feel like a finished product.
+
+### Added
+- **AI Executive Briefing** (`/admin`) — a card where Claude writes a short plain-English
+  read of the operation from live metrics. `app/admin/ExecutiveBriefing.tsx` (client) +
+  `app/api/admin/briefing/route.ts` (gathers metrics, calls `claude-sonnet-4-6`, **caches
+  in-module for 1 hour**; `?refresh=1` bypasses). Never called inline — the dashboard is
+  `force-dynamic`, so the card fetches after mount.
+- **Command palette** — press **⌘K / Ctrl+K** anywhere in the admin. `components/admin/CommandPalette.tsx`
+  (mounted in `app/admin/layout.tsx`): static destinations + actions, plus live search of
+  forms/employees/tickets via `app/api/admin/search/route.ts`. Full keyboard nav. A ⌘K chip
+  in the dashboard search box opens it (`commandk:open` window event).
+- **Audit log** — append-only `audit_log` table (`supabase/migrations/020_audit_log.sql`,
+  RLS on / service-role only) + `lib/audit.ts` `logAudit()` (best-effort, never throws),
+  wired into the role-change, form-approve, form-delete, and time-off-review routes. Viewer
+  at `/admin/audit` with action filters; new **System** section in the sidebar.
+
+### Operational notes
+- **Run migration `020_audit_log.sql`** in the Supabase SQL editor (done 2026-06-15).
+- The role route now uses `getAdminUser()` (was `requireAdminAuth()`) to capture the acting
+  admin — same admin-only gate, returns 403 for non-admins.
+- `ANTHROPIC_API_KEY` (already set for the AI form builder) powers the briefing too.
+
 ## 2026-06-15 — IAT Learn (Phase 1)
 
 Added **IAT Learn**, an internal training portal that replaces Trainual, served at

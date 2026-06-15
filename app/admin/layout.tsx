@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getAdminUser } from '@/lib/admin-auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import RefreshOnNavigate from '@/components/admin/RefreshOnNavigate'
+import CommandPalette from '@/components/admin/CommandPalette'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const metadata: Metadata = {
@@ -31,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
       <RefreshOnNavigate />
+      <CommandPalette />
       <AdminSidebar
         unreadCount={unreadCount ?? 0}
         ticketCount={openTickets ?? 0}

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
+import { getAdminUser } from '@/lib/admin-auth'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const err = await requireAdminAuth(); if (err) return err
@@ -83,7 +85,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const err = await requireAdminAuth(); if (err) return err
+
+  const { data: form } = await supabaseAdmin
+    .from('forms')
+    .select('title')
+    .eq('id', params.id)
+    .single()
+
   const { error } = await supabaseAdmin.from('forms').delete().eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const admin = await getAdminUser()
+  await logAudit({
+    actor: { id: admin?.user.id, name: admin?.displayName },
+    action: 'form.delete',
+    entityType: 'form',
+    entityId: params.id,
+    summary: `Deleted form "${form?.title || 'Untitled form'}"`,
+  })
+
   return NextResponse.json({ success: true })
 }

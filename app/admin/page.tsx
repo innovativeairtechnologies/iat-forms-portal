@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import { TopBarSearch, TopBarBell } from './TopBarActions'
 import DashboardPresetPicker from './DashboardPresetPicker'
+import ExecutiveBriefing from './ExecutiveBriefing'
 import { PRESETS, DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 import {
   ChevronRight, Plus,
@@ -432,6 +433,9 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="p-5 space-y-4">
+
+        {/* ── AI Executive Briefing — plain-English read of the operation ── */}
+        <ExecutiveBriefing />
 
         {/* ── KPI row · below xl: all 5 in a responsive grid ───────── */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 xl:hidden">

@@ -7,6 +7,7 @@ import {
   CalendarClock, TrendingUp, Ticket,
   Calendar, Clock, Search, Plus, Boxes,
   ChevronRight, FolderOpen, Users, Zap,
+  ShieldCheck, Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
@@ -69,6 +70,13 @@ const NAV_SECTIONS: NavSection[] = [
       },
       { href: '/admin/schedule', label: 'Scheduling', icon: Calendar },
       { href: '/admin/accrual',    label: 'Accrual',    icon: TrendingUp },
+    ],
+  },
+  {
+    label: 'System',
+    icon: Settings,
+    items: [
+      { href: '/admin/audit', label: 'Audit Log', icon: ShieldCheck },
     ],
   },
 ]

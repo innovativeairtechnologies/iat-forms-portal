@@ -48,6 +48,8 @@ export function TopBarSearch() {
     router.push(`/admin/submissions?search=${encodeURIComponent(query.trim())}`)
   }
 
+  const openPalette = () => window.dispatchEvent(new Event('commandk:open'))
+
   return (
     <form onSubmit={handleSubmit} className="hidden md:block relative w-64">
       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
@@ -56,8 +58,16 @@ export function TopBarSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search submissions…"
-        className="w-full h-9 pl-9 pr-3 text-[13px] rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
+        className="w-full h-9 pl-9 pr-12 text-[13px] rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
       />
+      <button
+        type="button"
+        onClick={openPalette}
+        title="Open command palette (⌘K)"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 h-5 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+      >
+        ⌘K
+      </button>
     </form>
   )
 }

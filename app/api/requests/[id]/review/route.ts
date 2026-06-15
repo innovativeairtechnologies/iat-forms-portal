@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendRequestDecisionToEmployee } from '@/lib/resend-pto'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(
   req: NextRequest,
@@ -88,6 +89,16 @@ export async function POST(
         note:        `Request approved by ${admin.displayName}`,
       })
   }
+
+  const label = request.type === 'pto' ? 'PTO' : 'sick'
+  await logAudit({
+    actor: { id: admin.user.id, name: admin.displayName },
+    action: 'request.review',
+    entityType: 'time_off_request',
+    entityId: params.id,
+    summary: `${decision === 'approved' ? 'Approved' : 'Denied'} ${label} request for ${employee.name} (${request.hours_requested}h)`,
+    metadata: { decision, type: request.type, hours: request.hours_requested, employee_id: employee.id },
+  })
 
   // Email the employee — awaited so Vercel doesn't kill the function before Resend fires
   await sendRequestDecisionToEmployee(employee, request, decision).catch(console.error)
