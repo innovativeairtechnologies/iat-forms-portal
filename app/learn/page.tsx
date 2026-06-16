@@ -1,74 +1,110 @@
 import { getCategoriesWithStats, getUserLearnStats } from '@/lib/learn'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import CategoryGrid from '@/components/learn/CategoryGrid'
-import { Sparkles } from 'lucide-react'
+import { PortalHero, HeroAction } from '@/components/PortalHero'
+import { Sparkles, Trophy, Flame, BookOpen, Clock, Medal } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+
+function fmtMinutes(min: number): string {
+  if (!min) return '0m'
+  if (min < 60) return `${min}m`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+
+function greeting(hour: number) {
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function StatTile({ icon, value, label, accent }: { icon: React.ReactNode; value: string; label: string; accent: string }) {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card">
+      <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${accent}14`, color: accent }}>
+        {icon}
+      </div>
+      <p className="text-[22px] font-bold leading-none tracking-tight text-[#0a0a0b]">{value}</p>
+      <p className="mt-1 text-[12px] text-gray-500">{label}</p>
+    </div>
+  )
+}
 
 export default async function LearnHomePage() {
   const supabase = createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [categories, stats] = await Promise.all([
+  const [categories, stats, profileRes] = await Promise.all([
     getCategoriesWithStats(),
     user ? getUserLearnStats(user.id) : Promise.resolve(null),
+    user
+      ? supabaseAdmin.from('profiles').select('display_name').eq('id', user.id).single()
+      : Promise.resolve({ data: null as { display_name: string | null } | null }),
   ])
 
   const progress: Record<string, { completed: number; total: number; pct: number }> = {}
   if (stats) for (const c of stats.categories) progress[c.id] = { completed: c.completed, total: c.total, pct: c.pct }
 
   const totals = categories.reduce(
-    (acc, c) => ({
-      modules: acc.modules + c.moduleCount,
-      lessons: acc.lessons + c.lessonCount,
-    }),
+    (acc, c) => ({ modules: acc.modules + c.moduleCount, lessons: acc.lessons + c.lessonCount }),
     { modules: 0, lessons: 0 },
   )
 
+  const displayName = profileRes?.data?.display_name || user?.email?.split('@')[0] || ''
+  const firstName = displayName.split(' ')[0]
+  const hourET = parseInt(
+    new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }), 10,
+  )
+  const dateET = new Date().toLocaleDateString('en-US', {
+    timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric',
+  })
+  const hasProgress = !!stats && stats.lessonsCompleted > 0
+
   return (
-    <div>
-      <section className="mb-9">
-        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#dcf5e6] bg-[#f0faf4] px-3 py-1 text-[12px] font-semibold text-[#077a3c]">
-          <Sparkles size={13} /> Training Library
-        </div>
-        <h1 className="text-[30px] font-bold leading-tight tracking-tight text-[#0a0a0b]">
-          Everything you need to do great work here.
-        </h1>
-        <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-gray-500">
-          Step-by-step training paths for every part of Innovative Air Technologies — from
-          your first day to mastering the technical side. Pick a category to get started.
-        </p>
+    <div className="space-y-6">
 
-        <div className="mt-5 flex items-center gap-6 text-[13px]">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[18px] font-bold text-[#089447]">{categories.length}</span>
-            <span className="text-gray-500">categories</span>
-          </div>
-          <div className="h-4 w-px bg-gray-200" />
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[18px] font-bold text-[#089447]">{totals.modules}</span>
-            <span className="text-gray-500">subjects</span>
-          </div>
-          <div className="h-4 w-px bg-gray-200" />
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[18px] font-bold text-[#089447]">{totals.lessons}</span>
-            <span className="text-gray-500">lessons</span>
-          </div>
-        </div>
-      </section>
+      {/* ── Greeting band ──────────────────────────────────────────── */}
+      <PortalHero
+        eyebrow={dateET}
+        title={`${greeting(hourET)}${firstName ? `, ${firstName}` : ''}`}
+        subtitle={
+          hasProgress
+            ? <>You&apos;ve completed <span className="font-semibold text-zinc-200">{stats!.overallPct}%</span> of the library — {stats!.lessonsCompleted} of {stats!.totalLessons} lessons. Keep it up.</>
+            : <>Welcome to IAT Learn — {totals.lessons} lessons across {categories.length} categories. Pick one to begin.</>
+        }
+        actions={
+          <>
+            <HeroAction href="/learn/me" icon={Sparkles} label="My learning" variant="primary" />
+            <HeroAction href="/learn/leaderboard" icon={Trophy} label="Leaderboard" />
+          </>
+        }
+      />
 
-      {stats && stats.lessonsCompleted > 0 && (
-        <div className="mb-6 flex items-center gap-3">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#089447] to-[#44c07d]" style={{ width: `${stats.overallPct}%` }} />
-          </div>
-          <span className="text-[12.5px] font-medium text-gray-500">
-            <span className="font-bold text-[#089447]">{stats.overallPct}%</span> complete
-          </span>
-        </div>
+      {/* ── Stats strip ────────────────────────────────────────────── */}
+      {stats && (
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile icon={<Flame size={17} />} accent="#f97316" value={`${stats.currentStreak}`} label="day streak" />
+          <StatTile icon={<BookOpen size={17} />} accent="#089447" value={`${stats.lessonsCompleted}/${stats.totalLessons}`} label={`lessons · ${stats.overallPct}%`} />
+          <StatTile icon={<Medal size={17} />} accent="#d97706" value={`${stats.earnedBadgeCount}`} label="badges earned" />
+          <StatTile icon={<Clock size={17} />} accent="#0ea5e9" value={fmtMinutes(stats.minutesLearned)} label="time learning" />
+        </section>
       )}
 
-      <CategoryGrid categories={categories} progress={progress} />
+      {/* ── Browse ─────────────────────────────────────────────────── */}
+      <section>
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-[18px] font-bold tracking-tight text-[#0a0a0b]">Browse the library</h2>
+          <div className="hidden items-center gap-5 text-[12.5px] text-gray-500 sm:flex">
+            <span><span className="font-semibold text-[#089447]">{categories.length}</span> categories</span>
+            <span><span className="font-semibold text-[#089447]">{totals.modules}</span> subjects</span>
+            <span><span className="font-semibold text-[#089447]">{totals.lessons}</span> lessons</span>
+          </div>
+        </div>
+        <CategoryGrid categories={categories} progress={progress} />
+      </section>
     </div>
   )
 }

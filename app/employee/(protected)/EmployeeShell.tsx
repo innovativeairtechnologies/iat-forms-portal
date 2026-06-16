@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  User, Calendar, Users, LayoutGrid, FileText, Wrench,
+  Calendar, Users, LayoutGrid, FileText, Wrench,
   LogOut, Menu, X, Search, ChevronRight,
   Wind, Package,
 } from 'lucide-react'
@@ -25,7 +25,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Menu',
     items: [
-      { href: '/employee/profile',   label: 'My Profile', icon: User,     exact: true },
+      { href: '/employee/profile',   label: 'Home',     icon: LayoutGrid, exact: true },
       { href: '/employee/requests',  label: 'Time Off',   icon: Calendar },
       { href: '/employee/directory', label: 'Directory',  icon: Users    },
     ],
@@ -153,7 +153,7 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
 
       {/* User card */}
       <Link
-        href="/employee/profile"
+        href="/employee/profile/edit"
         onClick={onClose}
         className={cn(
           'mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all group',
