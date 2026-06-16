@@ -20,6 +20,10 @@ const nextConfig = {
     return [
       // Support ticketing moved from /support/ticket to the /support/[form] template
       { source: '/support/ticket', destination: '/support/equipment-support', permanent: true },
+      // Login consolidated to /login. Platform-level redirect keeps old
+      // /employee/login bookmarks working (query string, e.g. ?redirect=, is
+      // forwarded automatically). Runs before middleware, so no route file needed.
+      { source: '/employee/login', destination: '/login', permanent: true },
     ]
   },
   async headers() {

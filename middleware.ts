@@ -70,9 +70,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── /employee/* (skip public entry points) ────────────────────────────────
+  // Note: /employee/login is consolidated to /login via a next.config redirect
+  // (runs before middleware), so it never reaches here.
   if (
     pathname.startsWith('/employee') &&
-    !pathname.startsWith('/employee/login') &&
     !pathname.startsWith('/employee/welcome')
   ) {
     if (!user) {
