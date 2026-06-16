@@ -23,12 +23,12 @@ function greeting(hour: number) {
 
 function StatTile({ icon, value, label, accent }: { icon: React.ReactNode; value: string; label: string; accent: string }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card">
+    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none">
       <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${accent}14`, color: accent }}>
         {icon}
       </div>
-      <p className="text-[22px] font-bold leading-none tracking-tight text-[#0a0a0b]">{value}</p>
-      <p className="mt-1 text-[12px] text-gray-500">{label}</p>
+      <p className="text-[22px] font-bold leading-none tracking-tight text-[#0a0a0b] dark:text-white">{value}</p>
+      <p className="mt-1 text-[12px] text-gray-500 dark:text-zinc-400">{label}</p>
     </div>
   )
 }
@@ -72,7 +72,7 @@ export default async function LearnHomePage() {
         title={`${greeting(hourET)}${firstName ? `, ${firstName}` : ''}`}
         subtitle={
           hasProgress
-            ? <>You&apos;ve completed <span className="font-semibold text-zinc-200">{stats!.overallPct}%</span> of the library — {stats!.lessonsCompleted} of {stats!.totalLessons} lessons. Keep it up.</>
+            ? <>You&apos;ve completed <span className="font-semibold text-zinc-700 dark:text-zinc-200">{stats!.overallPct}%</span> of the library — {stats!.lessonsCompleted} of {stats!.totalLessons} lessons. Keep it up.</>
             : <>Welcome to IAT Learn — {totals.lessons} lessons across {categories.length} categories. Pick one to begin.</>
         }
         actions={
@@ -96,11 +96,11 @@ export default async function LearnHomePage() {
       {/* ── Browse ─────────────────────────────────────────────────── */}
       <section>
         <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 className="text-[18px] font-bold tracking-tight text-[#0a0a0b]">Browse the library</h2>
-          <div className="hidden items-center gap-5 text-[12.5px] text-gray-500 sm:flex">
-            <span><span className="font-semibold text-[#089447]">{categories.length}</span> categories</span>
-            <span><span className="font-semibold text-[#089447]">{totals.modules}</span> subjects</span>
-            <span><span className="font-semibold text-[#089447]">{totals.lessons}</span> lessons</span>
+          <h2 className="text-[18px] font-bold tracking-tight text-[#0a0a0b] dark:text-white">Browse the library</h2>
+          <div className="hidden items-center gap-5 text-[12.5px] text-gray-500 dark:text-zinc-400 sm:flex">
+            <span><span className="font-semibold text-[#089447] dark:text-emerald-400">{categories.length}</span> categories</span>
+            <span><span className="font-semibold text-[#089447] dark:text-emerald-400">{totals.modules}</span> subjects</span>
+            <span><span className="font-semibold text-[#089447] dark:text-emerald-400">{totals.lessons}</span> lessons</span>
           </div>
         </div>
         <CategoryGrid categories={categories} progress={progress} />

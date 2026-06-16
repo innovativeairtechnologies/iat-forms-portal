@@ -32,9 +32,9 @@ export default async function ModulePage({
       />
 
       <header className="mb-8">
-        <h1 className="text-[27px] font-bold tracking-tight text-[#0a0a0b]">{module.title}</h1>
+        <h1 className="text-[27px] font-bold tracking-tight text-[#0a0a0b] dark:text-white">{module.title}</h1>
         {module.description && (
-          <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-gray-500">
+          <p className="mt-2 max-w-2xl text-[14.5px] leading-relaxed text-gray-500 dark:text-zinc-400">
             {module.description}
           </p>
         )}
@@ -47,9 +47,9 @@ export default async function ModulePage({
               <Play size={15} /> Start training
             </Link>
           )}
-          <span className="flex items-center gap-3.5 text-[12.5px] font-medium text-gray-400">
+          <span className="flex items-center gap-3.5 text-[12.5px] font-medium text-gray-400 dark:text-zinc-500">
             <span>{lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}</span>
-            <span className="h-3.5 w-px bg-gray-200" />
+            <span className="h-3.5 w-px bg-gray-200 dark:bg-zinc-800" />
             <span className="flex items-center gap-1"><Clock size={13} /> {fmtMinutes(totalMinutes)}</span>
           </span>
         </div>
@@ -68,27 +68,27 @@ export default async function ModulePage({
       ) : (
         <ol className="relative">
           {/* connecting spine */}
-          <span className="absolute bottom-6 left-[18px] top-6 w-px bg-gradient-to-b from-gray-200 via-gray-200 to-transparent" />
+          <span className="absolute bottom-6 left-[18px] top-6 w-px bg-gradient-to-b from-gray-200 via-gray-200 to-transparent dark:from-zinc-800 dark:via-zinc-800" />
           {lessons.map((lesson, i) => (
             <li key={lesson.id} className="relative">
               <Link
                 href={`${base}/${lesson.slug}`}
-                className="group flex items-center gap-4 rounded-xl px-2 py-2.5 transition-colors hover:bg-white"
+                className="group flex items-center gap-4 rounded-xl px-2 py-2.5 transition-colors hover:bg-white dark:hover:bg-zinc-900/40"
               >
-                <span className="relative z-10 grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border-2 border-gray-200 bg-white text-[12.5px] font-bold text-gray-400 transition-colors group-hover:border-[#089447] group-hover:text-[#089447]">
+                <span className="relative z-10 grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border-2 border-gray-200 bg-white text-[12.5px] font-bold text-gray-400 transition-colors group-hover:border-[#089447] group-hover:text-[#089447] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500">
                   {i + 1}
                 </span>
-                <div className={`min-w-0 flex-1 pb-3.5 pt-0.5 ${i === lessons.length - 1 ? '' : 'border-b border-gray-100'}`}>
-                  <p className="truncate text-[14px] font-medium text-[#0a0a0b] group-hover:text-[#077a3c]">
+                <div className={`min-w-0 flex-1 pb-3.5 pt-0.5 ${i === lessons.length - 1 ? '' : 'border-b border-gray-100 dark:border-zinc-800'}`}>
+                  <p className="truncate text-[14px] font-medium text-[#0a0a0b] group-hover:text-[#077a3c] dark:text-white dark:group-hover:text-emerald-400">
                     {lesson.title}
                   </p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[12px] text-gray-400">
+                  <p className="mt-0.5 flex items-center gap-1 text-[12px] text-gray-400 dark:text-zinc-500">
                     <Clock size={11.5} /> {lesson.estimated_minutes} min read
                   </p>
                 </div>
                 <ArrowRight
                   size={16}
-                  className="flex-shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-[#089447]"
+                  className="flex-shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-[#089447] dark:text-zinc-500"
                 />
               </Link>
             </li>

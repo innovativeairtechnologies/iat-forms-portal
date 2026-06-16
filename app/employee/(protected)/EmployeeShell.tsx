@@ -4,15 +4,17 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Calendar, Users, LayoutGrid, FileText, Wrench,
-  LogOut, Menu, X, Search, ChevronRight,
+  LogOut, Menu, X, ChevronRight,
   Wind, Package,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { Employee } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import ThemeToggle from '@/components/ThemeToggle'
+import { PortalTopBar, type Crumb } from '@/components/PortalTopBar'
+import { PortalSearch, type SearchItem } from '@/components/PortalSearch'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,6 +49,24 @@ const NAV_SECTIONS: NavSection[] = [
 ]
 
 const ALL_NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap(s => s.items)
+
+// Header quick-jump targets: every nav item + a couple of extras not in the sidebar.
+const SEARCH_ITEMS: SearchItem[] = [
+  ...ALL_NAV_ITEMS.map(i => ({ label: i.label, href: i.href })),
+  { label: 'Edit profile', href: '/employee/profile/edit', hint: 'Account' },
+  { label: 'IAT Learn',    href: '/learn',                 hint: 'Training' },
+]
+
+// Breadcrumb for the top bar, derived from the route.
+function crumbsFor(pathname: string): Crumb[] {
+  const root: Crumb = { label: 'Employee' }
+  if (pathname === '/employee/profile') return [root, { label: 'Home' }]
+  if (pathname.startsWith('/employee/profile/edit')) {
+    return [root, { label: 'Home', href: '/employee/profile' }, { label: 'Edit profile' }]
+  }
+  const match = ALL_NAV_ITEMS.find(i => i.href !== '/employee/profile' && pathname.startsWith(i.href))
+  return [root, { label: match?.label ?? 'Home' }]
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -83,7 +103,6 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
   // Dashboard theme on the employee home only — mirrors AdminSidebar on /admin.
   const homeTheme = pathname === '/employee/profile'
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [search, setSearch] = useState('')
 
   const displayName = employee.name || employee.email
   const initials = displayName.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
@@ -95,49 +114,20 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
     router.refresh()
   }
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return null
-    const q = search.toLowerCase()
-    return ALL_NAV_ITEMS.filter(item => item.label.toLowerCase().includes(q))
-  }, [search])
-
   const renderNav = (onClose?: () => void) => (
-    <nav className="flex-1 px-3 py-2 overflow-y-auto">
-      {/* Search */}
-      <div className="relative mb-3">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search…"
-          className={cn(
-            'w-full text-[13px] border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 transition-all',
-            homeTheme
-              ? 'bg-gray-100 dark:bg-zinc-900 focus:ring-emerald-500/30 dark:focus:ring-zinc-700'
-              : 'bg-gray-100 dark:bg-zinc-800 focus:ring-gray-200 dark:focus:ring-gray-700',
-          )}
-        />
-      </div>
-
-      {filtered ? (
-        filtered.length > 0
-          ? filtered.map(item => <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />)
-          : <p className="text-[12px] text-gray-300 dark:text-gray-600 px-3 py-2">No results</p>
-      ) : (
-        NAV_SECTIONS.map(section => (
-          <div key={section.label} className="mt-5 first:mt-0">
-            <div className="px-3 mb-2">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                {section.label}
-              </span>
-            </div>
-            {section.items.map(item => (
-              <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
-            ))}
+    <nav className="flex-1 px-3 py-3 overflow-y-auto">
+      {NAV_SECTIONS.map(section => (
+        <div key={section.label} className="mt-5 first:mt-0">
+          <div className="px-3 mb-2">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
+              {section.label}
+            </span>
           </div>
-        ))
-      )}
+          {section.items.map(item => (
+            <NavLink key={item.href} item={item} pathname={pathname} onClose={onClose} />
+          ))}
+        </div>
+      ))}
     </nav>
   )
 
@@ -151,7 +141,7 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
         Sign Out
       </button>
 
-      {/* User card */}
+      {/* User card → edit profile. (Theme toggle lives in the top bar, not here.) */}
       <Link
         href="/employee/profile/edit"
         onClick={onClose}
@@ -169,7 +159,6 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
           <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200 truncate leading-none">{displayName}</p>
           <p className="text-[11px] text-gray-400 mt-0.5 truncate">{employee.job_title || 'Employee'}</p>
         </div>
-        <ThemeToggle />
         <ChevronRight size={14} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0" />
       </Link>
     </div>
@@ -204,7 +193,10 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
           <Logo size={22} className="flex-shrink-0" />
           <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
         </Link>
-        <button onClick={() => setMobileOpen(true)} className="p-1 text-gray-600 dark:text-gray-400"><Menu size={20} /></button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button onClick={() => setMobileOpen(true)} className="p-1 text-gray-600 dark:text-gray-400"><Menu size={20} /></button>
+        </div>
       </div>
       <div className="md:hidden h-14 flex-shrink-0" />
 
@@ -234,6 +226,10 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
 
       {/* ── Main content ── */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <PortalTopBar crumbs={crumbsFor(pathname)}>
+          <PortalSearch items={SEARCH_ITEMS} placeholder="Search the portal…" />
+          <ThemeToggle />
+        </PortalTopBar>
         {children}
       </div>
     </div>

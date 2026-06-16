@@ -239,3 +239,15 @@ html.green .text-indigo-600 { color: #4ade80; }
   font-style: italic;
 }
 
+/* ── IAT Learn — lesson prose, dark mode ───────────────────────────────────── */
+.dark .learn-prose { color: #d4d4d8; }
+.dark .learn-prose h2, .dark .learn-prose h3 { color: #f4f4f5; }
+.dark .learn-prose strong { color: #ffffff; }
+.dark .learn-prose a { color: #34d399; }
+.dark .learn-prose a:hover { color: #6ee7b7; }
+.dark .learn-prose blockquote { border-left-color: #34d399; background: rgba(16,185,129,0.08); color: #a1a1aa; }
+.dark .learn-prose hr { border-top-color: #27272a; }
+.dark .learn-prose li::marker { color: #34d399; }
+.dark .learn-prose figure.img-missing { border-color: #3f3f46; background: #18181b; }
+.dark .learn-prose figure.img-missing figcaption { color: #a1a1aa; }
+

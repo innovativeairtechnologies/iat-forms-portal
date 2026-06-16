@@ -30,12 +30,12 @@ export default function CategoryGrid({
   return (
     <div>
       <div className="relative mb-6 max-w-md">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500" />
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search training categories…"
-          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-[13.5px] text-gray-800 shadow-card-sm outline-none transition-colors placeholder:text-gray-400 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10"
+          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-[13.5px] text-gray-800 shadow-card-sm outline-none transition-colors placeholder:text-gray-400 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:placeholder:text-zinc-500 dark:shadow-none"
         />
       </div>
 
@@ -53,7 +53,7 @@ export default function CategoryGrid({
       </div>
 
       {filtered.length === 0 && (
-        <p className="py-16 text-center text-[13.5px] text-gray-400">
+        <p className="py-16 text-center text-[13.5px] text-gray-400 dark:text-zinc-500">
           No categories match “{query}”.
         </p>
       )}

@@ -23,13 +23,13 @@ export default function CategoryCard({
   return (
     <Link
       href={`/learn/${category.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-[#b9ebce] hover:shadow-card-hover"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-[#b9ebce] hover:shadow-card-hover dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none dark:hover:border-zinc-700"
     >
       {/* hover accent bar */}
       <span className="absolute inset-x-0 top-0 h-0.5 scale-x-0 bg-gradient-to-r from-[#089447] to-[#44c07d] transition-transform duration-300 group-hover:scale-x-100" />
 
       <div className="mb-4 flex items-center justify-between">
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#f0faf4] text-[#089447] transition-colors group-hover:bg-[#089447] group-hover:text-white">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#f0faf4] text-[#089447] transition-colors group-hover:bg-[#089447] group-hover:text-white dark:bg-emerald-500/10 dark:text-emerald-400">
           <LearnIcon name={category.icon} size={21} />
         </div>
         {done ? (
@@ -37,19 +37,19 @@ export default function CategoryCard({
         ) : (
           <ArrowRight
             size={17}
-            className="text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#089447]"
+            className="text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#089447] dark:text-zinc-500"
           />
         )}
       </div>
 
-      <h3 className="text-[15.5px] font-semibold tracking-tight text-[#0a0a0b]">{category.name}</h3>
+      <h3 className="text-[15.5px] font-semibold tracking-tight text-[#0a0a0b] dark:text-white">{category.name}</h3>
       {category.description && (
-        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-gray-500">
+        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-gray-500 dark:text-zinc-400">
           {category.description}
         </p>
       )}
 
-      <div className="mt-4 flex items-center gap-3.5 text-[12px] font-medium text-gray-400">
+      <div className="mt-4 flex items-center gap-3.5 text-[12px] font-medium text-gray-400 dark:text-zinc-500">
         <span className="flex items-center gap-1">
           <Layers size={12.5} /> {category.moduleCount} {category.moduleCount === 1 ? 'subject' : 'subjects'}
         </span>
@@ -64,12 +64,12 @@ export default function CategoryCard({
       {showProgress && (
         <div className="mt-3.5">
           <div className="mb-1 flex items-center justify-between text-[11px] font-medium">
-            <span className={done ? 'text-[#089447]' : 'text-gray-400'}>
+            <span className={done ? 'text-[#089447] dark:text-emerald-400' : 'text-gray-400 dark:text-zinc-500'}>
               {done ? 'Completed' : `${progress!.completed}/${progress!.total} done`}
             </span>
-            <span className="tabular-nums text-gray-400">{progress!.pct}%</span>
+            <span className="tabular-nums text-gray-400 dark:text-zinc-500">{progress!.pct}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-zinc-800">
             <div className="h-full rounded-full bg-gradient-to-r from-[#089447] to-[#44c07d]" style={{ width: `${progress!.pct}%` }} />
           </div>
         </div>

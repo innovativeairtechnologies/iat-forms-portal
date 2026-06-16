@@ -79,8 +79,8 @@ export default async function EmployeeHome() {
           title={`${greeting(hourET)}${firstName ? `, ${firstName}` : ''}`}
           subtitle={
             pendingCount > 0
-              ? <>You have <span className="font-semibold text-zinc-200">{pendingCount}</span> request{pendingCount === 1 ? '' : 's'} awaiting review.</>
-              : <>You&apos;re all caught up — have a great day. <Sparkles size={12} className="-mt-0.5 inline text-emerald-400" /></>
+              ? <>You have <span className="font-semibold text-zinc-700 dark:text-zinc-200">{pendingCount}</span> request{pendingCount === 1 ? '' : 's'} awaiting review.</>
+              : <>You&apos;re all caught up — have a great day. <Sparkles size={12} className="-mt-0.5 inline text-emerald-500 dark:text-emerald-400" /></>
           }
           actions={
             <>

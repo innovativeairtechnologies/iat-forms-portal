@@ -47,11 +47,11 @@ export default async function LessonPage({
 
       {/* progress within the subject */}
       <div className="mb-6">
-        <div className="mb-1.5 flex items-center justify-between text-[12px] font-medium text-gray-400">
+        <div className="mb-1.5 flex items-center justify-between text-[12px] font-medium text-gray-400 dark:text-zinc-500">
           <span>{module.title}</span>
           <span>Lesson {index + 1} of {lessons.length}</span>
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-zinc-800">
           <div
             className="h-full rounded-full bg-gradient-to-r from-[#089447] to-[#44c07d] transition-all"
             style={{ width: `${pct}%` }}
@@ -60,10 +60,10 @@ export default async function LessonPage({
       </div>
 
       <header className="mb-6">
-        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#0a0a0b]">
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#0a0a0b] dark:text-white">
           {lesson.title}
         </h1>
-        <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-gray-400">
+        <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-gray-400 dark:text-zinc-500">
           <Clock size={13} /> {lesson.estimated_minutes} min read
         </p>
       </header>

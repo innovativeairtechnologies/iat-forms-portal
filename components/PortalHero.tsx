@@ -1,11 +1,10 @@
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 
-/* Shared dark greeting band used at the top of every portal dashboard
-   (employee home, IAT Learn, and future portals). Server-safe — no hooks, no
-   'use client' — so it drops into both RSC and client trees. Dark in both light
-   and dark mode by design: it reads as a header band on a light page and is
-   separated from the near-black app background by the subtle ring. */
+/* Shared greeting band used at the top of every portal dashboard (employee home,
+   IAT Learn, future portals). Theme-aware: a light surface in light mode, a dark
+   surface in dark mode — it follows the app theme like everything else, rather
+   than being permanently inverted. Server-safe (no hooks). */
 
 export function PortalHero({
   eyebrow,
@@ -19,24 +18,24 @@ export function PortalHero({
   actions?: React.ReactNode
 }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10 px-6 py-6 sm:px-8 sm:py-7">
+    <section className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white px-6 py-6 shadow-sm dark:border-transparent dark:bg-zinc-900 dark:shadow-none dark:ring-1 dark:ring-white/10 sm:px-8 sm:py-7">
       {/* Emerald brand glow — mirrors the admin greeting card */}
       <div
-        className="pointer-events-none absolute -top-16 -right-12 h-56 w-56 rounded-full opacity-25 blur-3xl"
+        className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full opacity-[0.18] blur-3xl dark:opacity-25"
         style={{ background: 'radial-gradient(circle, #10b981, transparent 70%)' }}
       />
       <div
-        className="pointer-events-none absolute -bottom-24 -left-10 h-56 w-56 rounded-full opacity-10 blur-3xl"
+        className="pointer-events-none absolute -bottom-24 -left-10 h-56 w-56 rounded-full opacity-[0.07] blur-3xl dark:opacity-10"
         style={{ background: 'radial-gradient(circle, #10b981, transparent 70%)' }}
       />
 
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           {eyebrow && (
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-400">{eyebrow}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">{eyebrow}</p>
           )}
-          <h1 className="mt-1 text-[24px] sm:text-[26px] font-bold leading-tight tracking-tight text-white">{title}</h1>
-          {subtitle && <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">{subtitle}</p>}
+          <h1 className="mt-1 text-[24px] font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-[26px]">{title}</h1>
+          {subtitle && <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-shrink-0 flex-wrap items-center gap-2.5">{actions}</div>}
       </div>
@@ -44,8 +43,8 @@ export function PortalHero({
   )
 }
 
-/* Hero action button. `primary` is the solid emerald CTA; `ghost` is the
-   translucent-white secondary. Link-based so it works in server components. */
+/* Hero action button. `primary` is the solid emerald CTA; `ghost` is the subtle
+   secondary. Both theme-aware. Link-based so it works in server components. */
 export function HeroAction({
   href,
   icon: Icon,
@@ -61,8 +60,8 @@ export function HeroAction({
     'inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-[12.5px] font-semibold transition-colors whitespace-nowrap'
   const cls =
     variant === 'primary'
-      ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-sm shadow-emerald-500/20'
-      : 'bg-white/10 hover:bg-white/[0.16] text-white ring-1 ring-white/15'
+      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-600/20 dark:bg-emerald-500 dark:hover:bg-emerald-400'
+      : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 ring-1 ring-zinc-200 dark:bg-white/10 dark:hover:bg-white/[0.16] dark:text-white dark:ring-white/15'
   return (
     <Link href={href} className={`${base} ${cls}`}>
       {Icon && <Icon size={15} className="flex-shrink-0" />}

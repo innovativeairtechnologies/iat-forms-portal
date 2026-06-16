@@ -18,15 +18,15 @@ export default function ModuleCard({
   return (
     <Link
       href={`/learn/${categorySlug}/${module.slug}`}
-      className="group relative flex items-start gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-[#b9ebce] hover:shadow-card-hover"
+      className="group relative flex items-start gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-[#b9ebce] hover:shadow-card-hover dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none dark:hover:border-zinc-700"
     >
-      <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg bg-gray-50 text-[13px] font-bold text-gray-400 transition-colors group-hover:bg-[#f0faf4] group-hover:text-[#089447]">
+      <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg bg-gray-50 text-[13px] font-bold text-gray-400 transition-colors group-hover:bg-[#f0faf4] group-hover:text-[#089447] dark:bg-zinc-800 dark:text-zinc-500 dark:group-hover:bg-emerald-500/10 dark:group-hover:text-emerald-400">
         {String(index + 1).padStart(2, '0')}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h3 className="truncate text-[14.5px] font-semibold tracking-tight text-[#0a0a0b]">
+          <h3 className="truncate text-[14.5px] font-semibold tracking-tight text-[#0a0a0b] dark:text-white">
             {module.title}
           </h3>
           {pending && (
@@ -36,11 +36,11 @@ export default function ModuleCard({
           )}
         </div>
         {module.description && (
-          <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-gray-500">
+          <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-gray-500 dark:text-zinc-400">
             {module.description}
           </p>
         )}
-        <div className="mt-3 flex items-center gap-3.5 text-[12px] font-medium text-gray-400">
+        <div className="mt-3 flex items-center gap-3.5 text-[12px] font-medium text-gray-400 dark:text-zinc-500">
           <span className="flex items-center gap-1">
             <BookOpen size={12.5} /> {module.lessonCount} {module.lessonCount === 1 ? 'lesson' : 'lessons'}
           </span>
@@ -52,7 +52,7 @@ export default function ModuleCard({
 
       <ArrowRight
         size={17}
-        className="mt-1 flex-shrink-0 text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#089447]"
+        className="mt-1 flex-shrink-0 text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#089447] dark:text-zinc-500 dark:group-hover:text-emerald-400"
       />
     </Link>
   )

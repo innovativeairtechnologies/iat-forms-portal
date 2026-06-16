@@ -4,7 +4,7 @@
 export default function LessonContent({ html }: { html: string | null }) {
   if (!html || !html.trim()) {
     return (
-      <p className="rounded-xl border border-dashed border-gray-200 bg-white px-5 py-10 text-center text-[13.5px] text-gray-400">
+      <p className="rounded-xl border border-dashed border-gray-200 bg-white px-5 py-10 text-center text-[13.5px] text-gray-400 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-500">
         This lesson doesn’t have content yet.
       </p>
     )
