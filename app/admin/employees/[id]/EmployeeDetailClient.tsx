@@ -1,23 +1,23 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Check, Power } from 'lucide-react'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Check, Power, UserRound, History } from 'lucide-react'
 import type { Employee, TimeOffRequest } from '@/lib/supabase'
+import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
 
 const STATUS_STYLES = {
   pending:  { icon: AlertCircle,  cls: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',  label: 'Pending'  },
-  approved: { icon: CheckCircle2, cls: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800',  label: 'Approved' },
-  denied:   { icon: XCircle,      cls: 'bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-200 dark:border-red-800',              label: 'Denied'   },
+  approved: { icon: CheckCircle2, cls: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',  label: 'Approved' },
+  denied:   { icon: XCircle,      cls: 'bg-rose-50 dark:bg-rose-950/40 text-rose-500 dark:text-rose-400 border-rose-200 dark:border-rose-800',              label: 'Denied'   },
 }
 
 function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const inp = 'w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600'
+const inp = 'w-full text-[14px] text-zinc-800 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-zinc-300 dark:placeholder:text-zinc-600'
+const lbl = 'text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block mb-1.5'
 
 export default function EmployeeDetailClient({
   employee,
@@ -110,81 +110,91 @@ export default function EmployeeDetailClient({
   const initials = employee.name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
 
   return (
-    <div className="flex-1 overflow-auto">
+    <DetailShell>
+      <DetailTopBar
+        crumbs={[
+          { label: 'Employees', href: '/admin/employees' },
+          { label: employee.name || employee.email },
+        ]}
+      >
+        {saved && <span className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
+        <button
+          type="submit"
+          form="emp-form"
+          disabled={saving}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold px-3.5 py-2 rounded-lg transition-all disabled:opacity-40"
+        >
+          <Save size={13} />{saving ? 'Saving…' : 'Save'}
+        </button>
+      </DetailTopBar>
 
-      {/* Page header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <Link href="/admin/employees"
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-5">
-          <ArrowLeft size={13} />Employees
-        </Link>
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[20px] font-bold flex-shrink-0">
+      <div className="p-5 space-y-4">
+        {/* Hero */}
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-zinc-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[16px] font-bold flex-shrink-0">
             {initials}
           </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-none">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-[20px] font-bold text-zinc-900 dark:text-white tracking-tight leading-none truncate">
                 {employee.name || employee.email}
               </h1>
               <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border ${
                 role === 'admin'
                   ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800'
-                  : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700'
+                  : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
               }`}>
                 {role === 'admin' ? <Shield size={9} /> : <User size={9} />}
                 {role === 'admin' ? 'Admin' : 'Employee'}
               </span>
               {!active && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700">
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700">
                   Inactive
                 </span>
               )}
             </div>
-            <p className="text-[13px] text-gray-400 mt-0.5">{employee.email}{employee.job_title ? ` · ${employee.job_title}` : ''}</p>
+            <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">{employee.email}{employee.job_title ? ` · ${employee.job_title}` : ''}</p>
           </div>
         </div>
-      </div>
 
-      <div className="p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Edit form — 2/3 */}
-          <div className="lg:col-span-2 space-y-5">
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
-                <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Employee Details</h2>
-              </div>
-              <form onSubmit={save} className="p-6 space-y-4">
-                {[
-                  { key: 'name',        label: 'Full Name',   type: 'text'  },
-                  { key: 'email',       label: 'Email',       type: 'email' },
-                  { key: 'job_title',   label: 'Job Title',   type: 'text'  },
-                  { key: 'department',  label: 'Department',  type: 'text'  },
-                  { key: 'phone',       label: 'Phone',       type: 'tel'   },
-                  { key: 'hire_date',   label: 'Hire Date',   type: 'date'  },
-                ].map(({ key, label, type }) => (
-                  <div key={key}>
-                    <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">{label}</label>
-                    <input type={type} value={(form as Record<string, unknown>)[key] as string}
-                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                      className={inp} />
-                  </div>
-                ))}
+        {/* Two-column */}
+        <div className="flex flex-col xl:flex-row gap-4 items-start">
+          {/* Main — edit form */}
+          <main className="flex-1 min-w-0 w-full">
+            <Card>
+              <CardHead title="Employee Details" icon={<UserRound size={14} />} />
+              <form id="emp-form" onSubmit={save} className="p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { key: 'name',        label: 'Full Name',   type: 'text'  },
+                    { key: 'email',       label: 'Email',       type: 'email' },
+                    { key: 'job_title',   label: 'Job Title',   type: 'text'  },
+                    { key: 'department',  label: 'Department',  type: 'text'  },
+                    { key: 'phone',       label: 'Phone',       type: 'tel'   },
+                    { key: 'hire_date',   label: 'Hire Date',   type: 'date'  },
+                  ].map(({ key, label, type }) => (
+                    <div key={key}>
+                      <label className={lbl}>{label}</label>
+                      <input type={type} value={(form as Record<string, unknown>)[key] as string}
+                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                        className={inp} />
+                    </div>
+                  ))}
+                </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">Bio</label>
+                  <label className={lbl}>Bio</label>
                   <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
                     rows={3} className={`${inp} resize-none`} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-2 gap-4">
                   {[
                     { key: 'pto_balance',  label: 'PTO Balance (hrs)'  },
                     { key: 'sick_balance', label: 'Sick Balance (hrs)' },
                   ].map(({ key, label }) => (
                     <div key={key}>
-                      <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">{label}</label>
+                      <label className={lbl}>{label}</label>
                       <input type="number" step="0.01" min="0"
                         value={(form as Record<string, unknown>)[key] as string}
                         onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
@@ -196,67 +206,53 @@ export default function EmployeeDetailClient({
                 {/* Read-only accrual rates — managed automatically by the weekly cron */}
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { label: 'PTO Rate (auto)',  value: employee.pto_accrual_rate,  color: 'text-[#089447]' },
-                    { label: 'Sick Rate (auto)', value: employee.sick_accrual_rate, color: 'text-amber-600'  },
+                    { label: 'PTO Rate (auto)',  value: employee.pto_accrual_rate,  color: 'text-emerald-600 dark:text-emerald-400' },
+                    { label: 'Sick Rate (auto)', value: employee.sick_accrual_rate, color: 'text-amber-600 dark:text-amber-400'  },
                   ].map(({ label, value, color }) => (
                     <div key={label}>
-                      <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">{label}</label>
-                      <div className={`${inp} flex items-center justify-between cursor-default select-none bg-gray-100 dark:bg-zinc-800/60 border-dashed`}>
+                      <label className={lbl}>{label}</label>
+                      <div className={`${inp} flex items-center justify-between cursor-default select-none bg-zinc-100 dark:bg-zinc-800/60 border-dashed`}>
                         <span className={`font-semibold ${color}`}>{value > 0 ? `${value} hrs / wk` : '—'}</span>
-                        <span className="text-[10px] text-gray-300 dark:text-gray-600">auto</span>
+                        <span className="text-[10px] text-zinc-300 dark:text-zinc-600">auto</span>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {error && <p className="text-[13px] text-red-500">{error}</p>}
-
-                <div className="flex items-center gap-3 pt-1">
-                  <button type="submit" disabled={saving}
-                    className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40 shadow-sm">
-                    <Save size={14} />{saving ? 'Saving…' : 'Save Changes'}
-                  </button>
-                  {saved && (
-                    <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }}
-                      className="text-[13px] text-[#089447] font-medium">Saved ✓</motion.span>
-                  )}
-                </div>
+                {error && <p className="text-[13px] text-rose-500">{error}</p>}
               </form>
-            </div>
-          </div>
+            </Card>
+          </main>
 
-          {/* Right column — 1/3 */}
-          <div className="space-y-5">
-
-            {/* ── Role & Access card ── */}
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
-                <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Role & Access</h2>
-                <p className="text-[11px] text-gray-400 mt-0.5">Controls which portal this user sees after login</p>
-              </div>
+          {/* Right rail */}
+          <aside className="w-full xl:w-[340px] flex-shrink-0 xl:sticky xl:top-[72px] space-y-4">
+            {/* ── Role & Access ── */}
+            <Card>
+              <CardHead title="Role & Access" icon={<Shield size={14} />} />
               <div className="p-5 space-y-3">
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 -mt-1">Controls which portal this user sees after login</p>
 
                 {/* Toggle buttons */}
                 <div className="grid grid-cols-2 gap-2">
                   {(['employee', 'admin'] as const).map((r) => {
-                    const isActive = role === r
-                    const isAdmin  = r === 'admin'
+                    const isSel   = role === r
+                    const isAdmin = r === 'admin'
                     return (
                       <button
                         key={r}
                         onClick={() => changeRole(r)}
                         disabled={roleLoading}
                         className={`relative flex flex-col items-center gap-1.5 py-3.5 px-3 rounded-xl border text-[12px] font-semibold transition-all disabled:opacity-60 ${
-                          isActive
+                          isSel
                             ? isAdmin
                               ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300'
-                              : 'bg-[#f0faf4] dark:bg-[#089447]/20 border-[#089447]/40 text-[#089447]'
-                            : 'bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-zinc-600 hover:text-gray-600 dark:hover:text-gray-300'
+                              : 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-400/50 dark:border-emerald-600/50 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300'
                         }`}
                       >
-                        {isActive && (
+                        {isSel && (
                           <span className="absolute top-1.5 right-1.5">
-                            <Check size={10} className={isAdmin ? 'text-violet-500' : 'text-[#089447]'} />
+                            <Check size={10} className={isAdmin ? 'text-violet-500' : 'text-emerald-500'} />
                           </span>
                         )}
                         {isAdmin ? <Shield size={16} /> : <User size={16} />}
@@ -270,7 +266,7 @@ export default function EmployeeDetailClient({
                 <div className={`rounded-xl px-3.5 py-3 text-[11px] leading-relaxed ${
                   role === 'admin'
                     ? 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400'
-                    : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400'
+                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
                 }`}>
                   {role === 'admin'
                     ? 'Full access to submissions, forms, employees, time off queue, and all admin settings.'
@@ -278,30 +274,27 @@ export default function EmployeeDetailClient({
                 </div>
 
                 {roleLoading && (
-                  <p className="text-[11px] text-gray-400 text-center animate-pulse">Updating…</p>
+                  <p className="text-[11px] text-zinc-400 text-center animate-pulse">Updating…</p>
                 )}
                 {roleSaved && !roleLoading && (
-                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                    className="text-[11px] text-[#089447] text-center font-medium">
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 text-center font-medium">
                     Role updated ✓
-                  </motion.p>
+                  </p>
                 )}
               </div>
-            </div>
+            </Card>
 
-            {/* ── Account Status card ── */}
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
-                <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Account Status</h2>
-                <p className="text-[11px] text-gray-400 mt-0.5">Deactivating blocks login and removes them from the directory &amp; accrual</p>
-              </div>
+            {/* ── Account Status ── */}
+            <Card>
+              <CardHead title="Account Status" icon={<Power size={14} />} />
               <div className="p-5 space-y-3">
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 -mt-1">Deactivating blocks login and removes them from the directory &amp; accrual</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-[13px] text-gray-600 dark:text-gray-300">Current</span>
+                  <span className="text-[13px] text-zinc-600 dark:text-zinc-300">Current</span>
                   <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${
                     active
-                      ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800'
-                      : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-zinc-700'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                      : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
                   }`}>
                     {active ? 'Active' : 'Inactive'}
                   </span>
@@ -311,37 +304,39 @@ export default function EmployeeDetailClient({
                   disabled={statusLoading}
                   className={`w-full flex items-center justify-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-50 border ${
                     active
-                      ? 'bg-white dark:bg-transparent hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500 border-red-200 dark:border-red-900'
-                      : 'bg-[#089447] hover:bg-[#077a3c] text-white border-transparent'
+                      ? 'bg-white dark:bg-transparent hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500 border-rose-200 dark:border-rose-900'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
                   }`}>
                   <Power size={14} />
                   {statusLoading ? 'Updating…' : active ? 'Deactivate Employee' : 'Reactivate Employee'}
                 </button>
-                {statusError && <p className="text-[11px] text-red-500">{statusError}</p>}
+                {statusError && <p className="text-[11px] text-rose-500">{statusError}</p>}
               </div>
-            </div>
+            </Card>
 
-            {/* ── Time Off History card ── */}
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
-                <h2 className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Request History</h2>
-              </div>
+            {/* ── Request History ── */}
+            <Card>
+              <CardHead
+                title="Request History"
+                icon={<History size={14} />}
+                action={requests.length > 0 ? <span className="text-[11px] text-zinc-400 dark:text-zinc-500">{requests.length}</span> : undefined}
+              />
               <div className="p-5">
                 {requests.length === 0 ? (
-                  <p className="text-[13px] text-gray-400">No requests yet.</p>
+                  <p className="text-[13px] text-zinc-400 dark:text-zinc-500">No requests yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {requests.map(req => {
                       const s = STATUS_STYLES[req.status]
                       const Icon = s.icon
                       return (
-                        <div key={req.id} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-3">
+                        <div key={req.id} className="border border-zinc-100 dark:border-zinc-800 rounded-xl p-3">
                           <div className="flex items-center justify-between gap-2 mb-1">
                             <div className="flex items-center gap-2">
                               {req.type === 'pto'
                                 ? <Calendar size={13} className="text-blue-400" />
                                 : <Clock size={13} className="text-amber-500" />}
-                              <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">
+                              <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-200">
                                 {req.type === 'pto' ? 'PTO' : 'Sick'} · {req.hours_requested}h
                               </span>
                             </div>
@@ -349,18 +344,17 @@ export default function EmployeeDetailClient({
                               <Icon size={9} />{s.label}
                             </span>
                           </div>
-                          <p className="text-[11px] text-gray-400">{formatDate(req.start_date)} – {formatDate(req.end_date)}</p>
+                          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{formatDate(req.start_date)} – {formatDate(req.end_date)}</p>
                         </div>
                       )
                     })}
                   </div>
                 )}
               </div>
-            </div>
-
-          </div>
+            </Card>
+          </aside>
         </div>
       </div>
-    </div>
+    </DetailShell>
   )
 }

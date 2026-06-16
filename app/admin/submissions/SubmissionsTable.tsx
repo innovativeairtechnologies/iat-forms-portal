@@ -137,7 +137,7 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
                   {menuFor === sub.id && (
                     <div ref={menuRef} className="absolute right-8 top-1/2 -translate-y-1/2 z-30 w-44 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1">
                       <MenuItem icon={<ExternalLink size={13} />} label="Open" onClick={() => { setMenuFor(null); router.push(`/admin/submissions/${sub.id}`) }} />
-                      {!sub.is_read && <MenuItem icon={<CheckCheck size={13} />} label="Mark as read" onClick={() => runOne(sub.id, markSubmissionRead)} />}
+                      {!sub.is_read && <MenuItem icon={<CheckCheck size={13} />} label="Mark as read" onClick={() => runOne(sub.id, (id) => markSubmissionRead(id, { audit: true }))} />}
                       {sub.status !== 'in_progress' && <MenuItem icon={<Clock size={13} />} label="Mark In Progress" onClick={() => runOne(sub.id, (id) => updateSubmissionStatus(id, 'in_progress'))} />}
                       {sub.status !== 'resolved' && <MenuItem icon={<CheckCircle2 size={13} />} label="Resolve" onClick={() => runOne(sub.id, (id) => updateSubmissionStatus(id, 'resolved'))} />}
                     </div>

@@ -1,7 +1,7 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Mail, Phone, Building2, Briefcase, FileText, Users } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { X, Mail, Phone, Building2, Briefcase, FileText, Users, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 
@@ -38,12 +38,34 @@ export default function DirectoryPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading]     = useState(true)
   const [selected, setSelected]   = useState<Employee | null>(null)
+  const [query, setQuery]         = useState('')
+  const [dept, setDept]           = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/employees')
       .then(r => r.json())
       .then(({ employees }) => { setEmployees(employees || []); setLoading(false) })
   }, [])
+
+  // Departments present in the roster, for the filter chips.
+  const departments = useMemo(() => {
+    const set = new Set<string>()
+    for (const e of employees) if (e.department) set.add(e.department)
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [employees])
+
+  // Live filter by search text (name / title / department / email) + department chip.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return employees.filter(e => {
+      if (dept && e.department !== dept) return false
+      if (!q) return true
+      return [e.name, e.job_title, e.department, e.email]
+        .some(v => v?.toLowerCase().includes(q))
+    })
+  }, [employees, query, dept])
+
+  const filtering = query.trim() !== '' || dept !== null
 
   return (
     <div className="flex-1 overflow-auto">
@@ -53,8 +75,43 @@ export default function DirectoryPage() {
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Team</p>
         <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Directory</h1>
         <p className="text-[13px] text-gray-400 mt-0.5">
-          {loading ? 'Loading…' : `${employees.length} ${employees.length === 1 ? 'person' : 'people'} at IAT`}
+          {loading
+            ? 'Loading…'
+            : filtering
+              ? `${filtered.length} of ${employees.length} ${employees.length === 1 ? 'person' : 'people'}`
+              : `${employees.length} ${employees.length === 1 ? 'person' : 'people'} at IAT`}
         </p>
+
+        {/* Search + department filters */}
+        {!loading && employees.length > 0 && (
+          <div className="mt-5 space-y-3">
+            <div className="relative max-w-sm">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search by name, title, or department…"
+                className="w-full text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl pl-10 pr-9 py-2.5 text-gray-700 dark:text-gray-200 placeholder:text-gray-300 dark:placeholder:text-gray-600 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+              />
+              {query && (
+                <button onClick={() => setQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {departments.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Chip label="All" active={dept === null} onClick={() => setDept(null)} />
+                {departments.map(d => (
+                  <Chip key={d} label={d} active={dept === d} onClick={() => setDept(dept === d ? null : d)} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -63,11 +120,11 @@ export default function DirectoryPage() {
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center h-60">
-            <div className="w-5 h-5 border-2 border-[#089447] border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty state — no employees at all */}
         {!loading && employees.length === 0 && (
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card flex flex-col items-center justify-center py-20 text-center">
             <Users size={28} className="text-gray-200 dark:text-gray-700 mb-3" />
@@ -75,14 +132,26 @@ export default function DirectoryPage() {
           </div>
         )}
 
+        {/* No-results state — filtered everything out */}
+        {!loading && employees.length > 0 && filtered.length === 0 && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card flex flex-col items-center justify-center py-20 text-center">
+            <Search size={24} className="text-gray-200 dark:text-gray-700 mb-3" />
+            <p className="text-[14px] font-medium text-gray-500 dark:text-gray-400">No one matches your search.</p>
+            <button onClick={() => { setQuery(''); setDept(null) }}
+              className="mt-3 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+              Clear filters
+            </button>
+          </div>
+        )}
+
         {/* Bento grid */}
-        {!loading && employees.length > 0 && (
+        {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 auto-rows-[170px] gap-3 [grid-auto-flow:dense]">
-            {employees.map((emp, i) => (
+            {filtered.map((emp, i) => (
               <EmployeeCard
                 key={emp.id}
-                employee={emp}
                 size={getBentoSize(i)}
+                employee={emp}
                 onClick={() => setSelected(emp)}
               />
             ))}
@@ -292,6 +361,24 @@ function ProfileModal({ employee, onClose }: { employee: Employee; onClose: () =
         </div>
       </motion.div>
     </motion.div>
+  )
+}
+
+/* ─── Department filter chip ────────────────────────────────────── */
+
+function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        'text-[12px] font-medium px-3 py-1.5 rounded-lg border transition-colors ' +
+        (active
+          ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+          : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-zinc-600 hover:text-gray-700 dark:hover:text-gray-200')
+      }
+    >
+      {label}
+    </button>
   )
 }
 

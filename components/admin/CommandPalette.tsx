@@ -6,7 +6,7 @@ import {
   Search, CornerDownLeft, ArrowUp, ArrowDown,
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
-  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon,
+  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -51,11 +51,49 @@ type SearchResults = {
 
 const EMPTY: SearchResults = { forms: [], employees: [], tickets: [] }
 
+// Recent admin activity (audit feed) surfaced in the palette's empty state.
+type RecentRow = {
+  id: string
+  actor_name: string | null
+  action: string
+  entity_type: string | null
+  entity_id: string | null
+  summary: string
+  created_at: string
+}
+
+// Map an audit entry to the detail page for the record it touched, so the
+// palette can jump straight there. Entities without a detail page fall back to
+// the full audit log.
+function hrefForRecent(r: RecentRow): string {
+  switch (r.entity_type) {
+    case 'submission': return r.entity_id ? `/admin/submissions/${r.entity_id}` : '/admin/submissions'
+    case 'ticket':     return r.entity_id ? `/admin/tickets/${r.entity_id}` : '/admin/tickets'
+    case 'employee':   return r.entity_id ? `/admin/employees/${r.entity_id}` : '/admin/employees'
+    case 'form':       return r.entity_id ? `/admin/forms/${r.entity_id}/edit` : '/admin/forms'
+    default:           return '/admin/audit'
+  }
+}
+
+const RECENT_ICON: Record<string, React.ElementType> = {
+  submission: Inbox, ticket: LifeBuoy, employee: UserRound, form: FileCheck2,
+}
+
+function timeAgo(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export default function CommandPalette() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults>(EMPTY)
+  const [recent, setRecent] = useState<RecentRow[]>([])
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -88,6 +126,11 @@ export default function CommandPalette() {
       setActive(0)
       // focus after paint
       requestAnimationFrame(() => inputRef.current?.focus())
+      // pull the latest admin activity for the empty-state feed
+      fetch('/api/admin/recent')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d?.recent) setRecent(d.recent) })
+        .catch(() => { /* network — ignore, fall back to nav */ })
     }
   }, [open])
 
@@ -117,9 +160,21 @@ export default function CommandPalette() {
   // ── Build the flat, ordered list of visible items ───────────────────────────
   const items = useMemo<Item[]>(() => {
     const q = query.trim().toLowerCase()
-    const statics = q
-      ? STATIC.filter((i) => (i.label + ' ' + (i.keywords || '')).toLowerCase().includes(q))
-      : STATIC
+
+    // Empty state: lead with recent activity, then the static nav/actions.
+    if (!q) {
+      const recentItems: Item[] = recent.map((r) => ({
+        id: `recent-${r.id}`,
+        label: r.summary,
+        sublabel: `${r.actor_name || 'System'} · ${timeAgo(r.created_at)}`,
+        group: 'Recent activity',
+        icon: (r.entity_type && RECENT_ICON[r.entity_type]) || Clock,
+        href: hrefForRecent(r),
+      }))
+      return [...recentItems, ...STATIC]
+    }
+
+    const statics = STATIC.filter((i) => (i.label + ' ' + (i.keywords || '')).toLowerCase().includes(q))
     const live: Item[] = [
       ...results.forms.map((f) => ({
         id: `form-${f.id}`, label: f.title, sublabel: f.is_active ? 'Live form' : 'Draft form',
@@ -136,7 +191,7 @@ export default function CommandPalette() {
       })),
     ]
     return [...statics, ...live]
-  }, [query, results])
+  }, [query, results, recent])
 
   // Keep the active index in range as the list changes.
   useEffect(() => { setActive((a) => Math.min(a, Math.max(0, items.length - 1))) }, [items.length])

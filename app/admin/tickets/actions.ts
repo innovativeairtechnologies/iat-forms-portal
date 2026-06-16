@@ -14,10 +14,10 @@ export async function updateTicket(
   const admin = await getAdminUser()
   if (!admin) return { error: 'Forbidden' }
 
-  // Snapshot prior status so we only log genuine status transitions.
+  // Snapshot prior values so we only log genuine transitions (status / priority / owner).
   const { data: prior } = await supabaseAdmin
     .from('tickets')
-    .select('status, ticket_number, customer_name')
+    .select('status, priority, owner_id, ticket_number, customer_name')
     .eq('id', ticketId)
     .single()
 
@@ -25,18 +25,53 @@ export async function updateTicket(
     .from('tickets')
     .update(data)
     .eq('id', ticketId)
-  if (!error) {
+  if (!error && prior) {
     revalidatePath('/admin/tickets')
     revalidatePath(`/admin/tickets/${ticketId}`)
 
-    if (prior && prior.status !== data.status) {
+    const actor = { id: admin.user.id, name: admin.displayName }
+    const who = prior.customer_name || 'Unknown'
+    const tkt = prior.ticket_number
+
+    if (prior.status !== data.status) {
       await logAudit({
-        actor: { id: admin.user.id, name: admin.displayName },
+        actor,
         action: 'ticket.status',
         entityType: 'ticket',
         entityId: ticketId,
-        summary: `Set ticket ${prior.ticket_number} (${prior.customer_name || 'Unknown'}) to ${String(data.status).replace('_', ' ')}`,
+        summary: `Set ticket ${tkt} (${who}) to ${String(data.status).replace('_', ' ')}`,
         metadata: { from: prior.status, to: data.status },
+      })
+    }
+
+    if (prior.priority !== data.priority) {
+      await logAudit({
+        actor,
+        action: 'ticket.priority',
+        entityType: 'ticket',
+        entityId: ticketId,
+        summary: `Changed ticket ${tkt} (${who}) priority from ${prior.priority ?? 'none'} to ${data.priority ?? 'none'}`,
+        metadata: { from: prior.priority, to: data.priority },
+      })
+    }
+
+    if ((prior.owner_id ?? null) !== (data.owner_id ?? null)) {
+      // Resolve the before/after owner names for a readable trail entry.
+      const ids = [prior.owner_id, data.owner_id].filter(Boolean) as string[]
+      const names: Record<string, string> = {}
+      if (ids.length) {
+        const { data: emps } = await supabaseAdmin.from('employees').select('id, name').in('id', ids)
+        for (const e of emps || []) names[e.id] = e.name
+      }
+      const fromName = prior.owner_id ? names[prior.owner_id] || 'someone' : 'Unassigned'
+      const toName = data.owner_id ? names[data.owner_id] || 'someone' : 'Unassigned'
+      await logAudit({
+        actor,
+        action: 'ticket.owner',
+        entityType: 'ticket',
+        entityId: ticketId,
+        summary: `Reassigned ticket ${tkt} (${who}) from ${fromName} to ${toName}`,
+        metadata: { from: prior.owner_id, to: data.owner_id },
       })
     }
   }

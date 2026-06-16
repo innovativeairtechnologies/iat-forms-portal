@@ -6,6 +6,7 @@ import {
   ChevronRight, ShieldCheck, UserCog, FileCheck2, Trash2,
   CalendarCheck, History, Filter, Inbox, UserPlus, UserMinus,
   UserCheck, Wallet, RefreshCw, FilePlus, Power, PowerOff, Ticket,
+  Eye, Flag, ArrowRightLeft,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -49,7 +50,10 @@ const ACTION_META: Record<string, { label: string; icon: React.ElementType; colo
   'form.delete':         { label: 'Form deleted',    icon: Trash2,        color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
   'request.review':      { label: 'Time-off review', icon: CalendarCheck, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   'ticket.status':       { label: 'Ticket',          icon: Ticket,        color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
+  'ticket.priority':     { label: 'Priority change', icon: Flag,          color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  'ticket.owner':        { label: 'Reassigned',      icon: ArrowRightLeft, color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
   'submission.status':   { label: 'Submission',      icon: Inbox,         color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  'submission.read':     { label: 'Marked read',     icon: Eye,           color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
   'employee.invite':     { label: 'New account',     icon: UserPlus,      color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   'employee.deactivate': { label: 'Offboarded',      icon: UserMinus,     color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
   'employee.reactivate': { label: 'Reactivated',     icon: UserCheck,     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
@@ -64,8 +68,8 @@ const FILTERS: { key: string; label: string; prefix?: boolean }[] = [
   { key: 'all', label: 'All activity' },
   { key: 'role.update', label: 'Role changes' },
   { key: 'form.', label: 'Forms', prefix: true },
-  { key: 'submission.status', label: 'Submissions' },
-  { key: 'ticket.status', label: 'Tickets' },
+  { key: 'submission.', label: 'Submissions', prefix: true },
+  { key: 'ticket.', label: 'Tickets', prefix: true },
   { key: 'request.review', label: 'Time off' },
   { key: 'employee.', label: 'Employees', prefix: true },
   { key: 'accrual.', label: 'Accrual', prefix: true },
