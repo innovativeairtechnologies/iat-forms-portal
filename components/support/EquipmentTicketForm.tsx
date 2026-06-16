@@ -13,7 +13,10 @@ import { getKbViews, clearKbViews } from '@/lib/kb-views'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+type Brand = 'iat' | 'us_rotors'
+
 type FormData = {
+  brand: Brand
   customer_name: string
   customer_company: string
   customer_email: string
@@ -37,6 +40,7 @@ type FormData = {
 }
 
 const EMPTY: FormData = {
+  brand: 'iat',
   customer_name: '', customer_company: '', customer_email: '', customer_phone: '',
   serial_number: '', model_number: '', voltage: '',
   problem_description: '',
@@ -47,7 +51,13 @@ const EMPTY: FormData = {
   seals_good: null,
 }
 
-const TOTAL_STEPS = 7
+// IAT: all 7 steps. US Rotors: skip IAT-specific steps 4/5/6 (Pre-Cooling, Post-Cooling, System).
+// Each entry maps visual step index (0-based) → component step number (1-7).
+const IAT_STEP_MAP   = [1, 2, 3, 4, 5, 6, 7]
+const ROTOR_STEP_MAP = [1, 2, 3, 7]
+
+const IAT_STEP_LABELS   = ['Contact', 'Equipment', 'Problem', 'Pre-Cooling', 'Post-Cooling', 'System', 'Photos']
+const ROTOR_STEP_LABELS = ['Contact', 'Equipment', 'Problem', 'Photos']
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -171,10 +181,6 @@ function TriBoolField({
   )
 }
 
-// ─── Step definitions ─────────────────────────────────────────────────────────
-
-const STEP_LABELS = ['Contact', 'Equipment', 'Problem', 'Pre-Cooling', 'Post-Cooling', 'System', 'Photos']
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type Stage = 'form' | 'loading' | 'success'
@@ -190,9 +196,20 @@ export default function EquipmentTicketForm() {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const stepMap    = form.brand === 'us_rotors' ? ROTOR_STEP_MAP   : IAT_STEP_MAP
+  const stepLabels = form.brand === 'us_rotors' ? ROTOR_STEP_LABELS : IAT_STEP_LABELS
+  const totalSteps = stepMap.length
+  const componentStep = stepMap[step - 1] // which component to render (1-7)
+
   const set = useCallback(<K extends keyof FormData>(key: K, val: FormData[K]) => {
     setForm(f => ({ ...f, [key]: val }))
   }, [])
+
+  const setBrand = (brand: Brand) => {
+    setForm({ ...EMPTY, brand })
+    setStep(1)
+    setDir(1)
+  }
 
   const canAdvance = () => {
     if (step === 1) {
@@ -209,7 +226,7 @@ export default function EquipmentTicketForm() {
     setStep(next)
   }
 
-  const handleNext = () => { if (canAdvance() && step < TOTAL_STEPS) go(step + 1) }
+  const handleNext = () => { if (canAdvance() && step < totalSteps) go(step + 1) }
   const handleBack = () => { if (step > 1) go(step - 1) }
 
   const handleSubmit = async () => {
@@ -241,6 +258,7 @@ export default function EquipmentTicketForm() {
           airflow_balanced: form.airflow_balanced === 'unsure' ? null : form.airflow_balanced,
           photo_urls,
           viewed_kb_articles: getKbViews(),
+          brand: form.brand,
         }),
       })
       const json = await res.json()
@@ -390,10 +408,33 @@ export default function EquipmentTicketForm() {
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
 
+        {/* Brand toggle — shown above the progress bar on step 1 only */}
+        {step === 1 && (
+          <div className="w-full max-w-xl mb-5 flex items-center justify-center gap-2">
+            {([
+              { val: 'iat' as Brand,       label: 'IAT Equipment' },
+              { val: 'us_rotors' as Brand, label: 'US Rotors'     },
+            ]).map(({ val, label }) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setBrand(val)}
+                className={`px-5 py-2 rounded-xl text-[13px] font-semibold border transition-all ${
+                  form.brand === val
+                    ? 'bg-[#089447] text-white border-[#089447]'
+                    : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gray-400 hover:border-[#089447]/40'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Progress */}
         <div className="w-full max-w-xl mb-8">
           <div className="flex items-center justify-between mb-2">
-            {STEP_LABELS.map((label, i) => {
+            {stepLabels.map((label, i) => {
               const n = i + 1
               const done = n < step
               const active = n === step
@@ -419,7 +460,7 @@ export default function EquipmentTicketForm() {
           <div className="h-1 bg-gray-100 dark:bg-zinc-800 rounded-full mt-1">
             <div
               className="h-full bg-[#089447] rounded-full transition-all duration-500"
-              style={{ width: `${((step - 1) / (TOTAL_STEPS - 1)) * 100}%` }}
+              style={{ width: `${((step - 1) / (totalSteps - 1)) * 100}%` }}
             />
           </div>
         </div>
@@ -438,13 +479,13 @@ export default function EquipmentTicketForm() {
               className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-7"
               style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06)' }}
             >
-              {step === 1 && <StepContact form={form} set={set} />}
-              {step === 2 && <StepEquipment form={form} set={set} />}
-              {step === 3 && <StepProblem form={form} set={set} />}
-              {step === 4 && <StepPreCooling form={form} set={set} />}
-              {step === 5 && <StepPostCooling form={form} set={set} />}
-              {step === 6 && <StepSystemChecks form={form} set={set} />}
-              {step === 7 && <StepPhotos photos={photos} setPhotos={setPhotos} fileInputRef={fileInputRef} handleFiles={handleFiles} />}
+              {componentStep === 1 && <StepContact form={form} set={set} />}
+              {componentStep === 2 && <StepEquipment form={form} set={set} />}
+              {componentStep === 3 && <StepProblem form={form} set={set} />}
+              {componentStep === 4 && <StepPreCooling form={form} set={set} />}
+              {componentStep === 5 && <StepPostCooling form={form} set={set} />}
+              {componentStep === 6 && <StepSystemChecks form={form} set={set} />}
+              {componentStep === 7 && <StepPhotos photos={photos} setPhotos={setPhotos} fileInputRef={fileInputRef} handleFiles={handleFiles} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -466,7 +507,7 @@ export default function EquipmentTicketForm() {
             <ArrowLeft size={15} /> Back
           </button>
 
-          {step < TOTAL_STEPS ? (
+          {step < totalSteps ? (
             <button
               onClick={handleNext}
               disabled={!canAdvance()}
@@ -485,7 +526,7 @@ export default function EquipmentTicketForm() {
         </div>
 
         <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-6">
-          Step {step} of {TOTAL_STEPS}
+          Step {step} of {totalSteps}
         </p>
       </div>
     </div>

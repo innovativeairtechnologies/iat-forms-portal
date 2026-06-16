@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
         seals_good: body.seals_good ?? null,
         photo_urls: body.photo_urls?.length ? body.photo_urls : null,
         viewed_kb_articles,
+        brand: body.brand === 'us_rotors' ? 'us_rotors' : 'iat',
         status: 'open',
         priority: 'med',
       })

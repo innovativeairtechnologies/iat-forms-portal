@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   User, Calendar, Users, LayoutGrid, FileText, Wrench,
   LogOut, Menu, X, Search, ChevronRight,
+  Wind, Package,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import { useState, useMemo } from 'react'
@@ -34,6 +35,13 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/employee/resources',       label: 'Employee Forms', icon: FileText, exact: true },
       { href: '/employee/resources/tools', label: 'Tools & Apps',   icon: Wrench   },
+    ],
+  },
+  {
+    label: 'US Rotors',
+    items: [
+      { href: '/employee/us-rotors',       label: 'Overview',        icon: Wind,    exact: true },
+      { href: '/employee/us-rotors/order', label: 'C-Series Order',  icon: Package              },
     ],
   },
 ]

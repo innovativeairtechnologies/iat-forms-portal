@@ -152,6 +152,7 @@ export type Ticket = {
   react_heat_setpoint: boolean | null
   seals_good: boolean | null
   photo_urls: string[] | null
+  brand: 'iat' | 'us_rotors'
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   priority: 'low' | 'med' | 'high'
   owner_id: string | null
@@ -217,4 +218,24 @@ export type KbArticle = {
   sort_order: number
   created_at: string
   updated_at: string
+}
+
+export type USRotorsOrder = {
+  id: string
+  order_ref: string
+  company: string
+  po_number: string | null
+  contact_name: string
+  contact_email: string
+  model: string
+  quantity: number
+  rph: string | null
+  hz: string | null
+  sprocket: string | null
+  motor_voltage: string
+  config: string
+  notes: string | null
+  status: 'pending' | 'processing' | 'shipped' | 'complete'
+  submitted_by: string | null
+  created_at: string
 }

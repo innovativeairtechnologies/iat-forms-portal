@@ -7,7 +7,7 @@ import {
   CalendarClock, TrendingUp, Ticket,
   Calendar, Clock, Search, Plus, Boxes,
   ChevronRight, FolderOpen, Users, Zap,
-  ShieldCheck, Settings,
+  ShieldCheck, Settings, Wind, Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
@@ -16,7 +16,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type BadgeKind = 'submissions' | 'tickets' | 'pto' | 'sick'
+type BadgeKind = 'submissions' | 'tickets' | 'pto' | 'sick' | 'usrotors'
 
 type NavItem = {
   href: string
@@ -32,6 +32,7 @@ type Counts = {
   tickets: number
   pto: number
   sick: number
+  usrotors: number
 }
 
 type NavSection = {
@@ -73,6 +74,14 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: 'US Rotors',
+    icon: Wind,
+    href: '/admin/us-rotors/orders',
+    items: [
+      { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors' as BadgeKind },
+    ],
+  },
+  {
     label: 'System',
     icon: Settings,
     items: [
@@ -85,6 +94,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   DASHBOARD,
   ...NAV_SECTIONS.flatMap(s => s.items.flatMap(i => i.children ? [i, ...i.children] : [i])),
   { href: '/admin/forms/new', label: 'New Form', icon: Plus },
+  { href: '/admin/us-rotors/orders', label: 'US Rotors Orders', icon: Package },
 ]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -94,6 +104,7 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   tickets:     'bg-amber-500 text-white',
   pto:         'bg-amber-500 text-white',
   sick:        'bg-amber-500 text-white',
+  usrotors:    'bg-[#0274db] text-white',
 }
 
 function NavLink({
@@ -155,13 +166,14 @@ interface Props {
   ticketCount: number
   ptoPending: number
   sickPending: number
+  usRotorsOrders: number
   adminName: string
 }
 
-export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sickPending, adminName }: Props) {
+export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sickPending, usRotorsOrders, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
-  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, pto: ptoPending, sick: sickPending }
+  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders }
   // The new dashboard is now at /admin (the old one is parked at /admin/test); theme the nav to match it.
   const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)

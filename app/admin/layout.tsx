@@ -22,11 +22,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { count: openTickets },
     { count: ptoPending },
     { count: sickPending },
+    { count: usRotorsOrders },
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
     supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'pto').eq('status', 'pending'),
     supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'sick').eq('status', 'pending'),
+    supabaseAdmin.from('us_rotors_orders').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
   ])
 
   return (
@@ -38,6 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ticketCount={openTickets ?? 0}
         ptoPending={ptoPending ?? 0}
         sickPending={sickPending ?? 0}
+        usRotorsOrders={usRotorsOrders ?? 0}
         adminName={admin.displayName}
       />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
