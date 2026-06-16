@@ -207,7 +207,7 @@ export default function LearnShell({
           <ThemeToggle />
         </PortalTopBar>
         <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-          <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
+          <div className="px-6 py-8">{children}</div>
         </div>
       </div>
     </div>

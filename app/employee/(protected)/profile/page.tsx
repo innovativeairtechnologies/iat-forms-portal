@@ -71,7 +71,7 @@ export default async function EmployeeHome() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-      <div className="mx-auto w-full max-w-[1400px] space-y-4 p-5 sm:p-6">
+      <div className="space-y-4 p-5 sm:p-6">
 
         {/* ── Greeting band ──────────────────────────────────────────── */}
         <PortalHero
