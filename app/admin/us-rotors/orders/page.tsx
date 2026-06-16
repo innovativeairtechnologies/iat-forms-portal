@@ -4,22 +4,6 @@ import USRotorsOrdersClient from './USRotorsOrdersClient'
 
 export const dynamic = 'force-dynamic'
 
-const STATUS_LABELS: Record<USRotorsOrder['status'], string> = {
-  pending:    'Pending',
-  processing: 'Processing',
-  shipped:    'Shipped',
-  complete:   'Complete',
-}
-
-const STATUS_COLORS: Record<USRotorsOrder['status'], string> = {
-  pending:    'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
-  processing: 'bg-sky-100   dark:bg-sky-950/40   text-sky-700   dark:text-sky-400',
-  shipped:    'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400',
-  complete:   'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
-}
-
-export { STATUS_LABELS, STATUS_COLORS }
-
 export default async function USRotorsOrdersPage() {
   const { data: orders } = await supabaseAdmin
     .from('us_rotors_orders')
@@ -37,11 +21,7 @@ export default async function USRotorsOrdersPage() {
       </div>
 
       <div className="p-8">
-        <USRotorsOrdersClient
-          orders={(orders ?? []) as USRotorsOrder[]}
-          statusLabels={STATUS_LABELS}
-          statusColors={STATUS_COLORS}
-        />
+        <USRotorsOrdersClient orders={(orders ?? []) as USRotorsOrder[]} />
       </div>
     </div>
   )

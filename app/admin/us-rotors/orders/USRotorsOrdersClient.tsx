@@ -8,6 +8,20 @@ import { cn } from '@/lib/utils'
 const STATUSES = ['all', 'pending', 'processing', 'shipped', 'complete'] as const
 type StatusFilter = (typeof STATUSES)[number]
 
+const STATUS_LABELS: Record<USRotorsOrder['status'], string> = {
+  pending:    'Pending',
+  processing: 'Processing',
+  shipped:    'Shipped',
+  complete:   'Complete',
+}
+
+const STATUS_COLORS: Record<USRotorsOrder['status'], string> = {
+  pending:    'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
+  processing: 'bg-sky-100   dark:bg-sky-950/40   text-sky-700   dark:text-sky-400',
+  shipped:    'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400',
+  complete:   'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
+}
+
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const m = Math.floor(diff / 60000)
@@ -19,11 +33,9 @@ function timeAgo(iso: string) {
 
 interface Props {
   orders: USRotorsOrder[]
-  statusLabels: Record<USRotorsOrder['status'], string>
-  statusColors: Record<USRotorsOrder['status'], string>
 }
 
-export default function USRotorsOrdersClient({ orders, statusLabels, statusColors }: Props) {
+export default function USRotorsOrdersClient({ orders }: Props) {
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
@@ -76,7 +88,7 @@ export default function USRotorsOrdersClient({ orders, statusLabels, statusColor
                 : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
             )}
           >
-            {s === 'all' ? 'All' : statusLabels[s as USRotorsOrder['status']]}
+            {s === 'all' ? 'All' : STATUS_LABELS[s as USRotorsOrder['status']]}
             {counts[s] > 0 && (
               <span className={cn(
                 'ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full',
@@ -153,10 +165,10 @@ export default function USRotorsOrdersClient({ orders, statusLabels, statusColor
                 <div className="relative">
                   <div className={cn(
                     'flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold cursor-pointer select-none',
-                    statusColors[o.status],
+                    STATUS_COLORS[o.status],
                     updating === o.id ? 'opacity-50' : '',
                   )}>
-                    <span className="flex-1">{statusLabels[o.status]}</span>
+                    <span className="flex-1">{STATUS_LABELS[o.status]}</span>
                     <select
                       value={o.status}
                       disabled={updating === o.id}
@@ -164,7 +176,7 @@ export default function USRotorsOrdersClient({ orders, statusLabels, statusColor
                       className="absolute inset-0 opacity-0 cursor-pointer w-full"
                     >
                       {(['pending', 'processing', 'shipped', 'complete'] as const).map(s => (
-                        <option key={s} value={s}>{statusLabels[s]}</option>
+                        <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                       ))}
                     </select>
                     <ChevronDown size={11} />
