@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket,
   Calendar, Clock, Plus, Boxes,
-  ChevronRight, ShieldCheck, Package,
+  ChevronRight, ShieldCheck, Package, Network,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -54,6 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Employees',
     items: [
+      { href: '/admin/org-chart',     label: 'Org Chart',  icon: Network },
       { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto' },
       { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick' },
       { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock },
