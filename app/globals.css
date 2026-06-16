@@ -6,6 +6,10 @@
 @tailwind utilities;
 
 :root {
+  /* Pin UA-rendered controls (inputs, scrollbars, the password-reveal eye,
+     autofill) to the active theme. Without this, an OS in dark mode paints
+     background-less form controls dark even on our light pages. */
+  color-scheme: light;
   --navy: #1a1a2e;
   --brand: #089447;
   --brand-hover: #077a3c;
@@ -19,6 +23,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --surface: #18181b;
   --bg: #09090b;
   --border: rgba(255, 255, 255, 0.08);

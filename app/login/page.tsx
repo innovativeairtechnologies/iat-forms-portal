@@ -63,7 +63,10 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    // Login is a light-only design (hardcoded white form panel). Pin the UA
+    // color-scheme to light so an OS/system-dark theme (next-themes adds .dark
+    // to <html>) can't darken the inputs, password-reveal, autofill, etc.
+    <div className="min-h-screen flex" style={{ colorScheme: 'light' }}>
 
       {/* ── Left panel ── */}
       <div
@@ -170,7 +173,7 @@ function LoginForm() {
                   onChange={e => { setEmail(e.target.value); setError('') }}
                   autoFocus
                   placeholder="you@iat.com"
-                  className="w-full border border-gray-200 text-gray-900 text-[14px] rounded-xl px-4 py-3 outline-none transition-all placeholder:text-gray-300 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10"
+                  className="w-full bg-white border border-gray-200 text-gray-900 text-[14px] rounded-xl px-4 py-3 outline-none transition-all placeholder:text-gray-300 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10"
                 />
               </div>
 
@@ -184,7 +187,7 @@ function LoginForm() {
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError('') }}
                     placeholder="••••••••••••"
-                    className="w-full border border-gray-200 text-gray-900 text-[14px] rounded-xl px-4 py-3 pr-11 outline-none transition-all placeholder:text-gray-300 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10"
+                    className="w-full bg-white border border-gray-200 text-gray-900 text-[14px] rounded-xl px-4 py-3 pr-11 outline-none transition-all placeholder:text-gray-300 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10"
                   />
                   <button type="button" tabIndex={-1} onClick={() => setShowPw(v => !v)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
