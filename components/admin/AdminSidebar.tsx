@@ -5,11 +5,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket,
-  Calendar, Clock, Search, Plus, Boxes,
+  Calendar, Clock, Plus, Boxes,
   ChevronRight, ShieldCheck, Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import Logo from '@/components/Logo'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -72,12 +72,6 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/audit', label: 'Audit Log', icon: ShieldCheck },
     ],
   },
-]
-
-const ALL_NAV_ITEMS: NavItem[] = [
-  DASHBOARD,
-  ...NAV_SECTIONS.flatMap(s => s.items),
-  { href: '/admin/forms/new', label: 'New Form', icon: Plus },
 ]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -145,7 +139,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
   const counts: Counts = { submissions: unreadCount, tickets: ticketCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders }
   const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [search, setSearch] = useState('')
   const displayName = adminName || 'Admin'
   const initial = displayName.charAt(0).toUpperCase()
 
@@ -156,69 +149,36 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
     router.refresh()
   }
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return null
-    const q = search.toLowerCase()
-    return ALL_NAV_ITEMS.filter(item => item.label.toLowerCase().includes(q))
-  }, [search])
-
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-2 overflow-y-auto">
-      {/* Search */}
-      <div className="relative mb-3">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search…"
-          className={cn(
-            'w-full text-[13px] border-0 rounded-lg pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:ring-2 transition-all',
-            dashTheme
-              ? 'bg-gray-100 dark:bg-zinc-900 focus:ring-emerald-500/30 dark:focus:ring-zinc-700'
-              : 'bg-gray-100 dark:bg-zinc-800 focus:ring-gray-200 dark:focus:ring-gray-700',
-          )}
+      <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
+
+      {NAV_SECTIONS.map(section => (
+        <div key={section.label} className="mt-5">
+          <div className="px-3 mb-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
+              {section.label}
+            </span>
+          </div>
+          {section.items.map(item => (
+            <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
+          ))}
+        </div>
+      ))}
+
+      <div className="mt-5">
+        <div className="px-3 mb-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
+            Actions
+          </span>
+        </div>
+        <NavLink
+          item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
+          pathname={pathname}
+          counts={counts}
+          onClose={onClose}
         />
       </div>
-
-      {filtered ? (
-        filtered.length > 0
-          ? filtered.map(item => (
-              <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
-            ))
-          : <p className="text-[12px] text-gray-300 dark:text-gray-600 px-3 py-2">No results</p>
-      ) : (
-        <>
-          <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
-
-          {NAV_SECTIONS.map(section => (
-            <div key={section.label} className="mt-5">
-              <div className="px-3 mb-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                  {section.label}
-                </span>
-              </div>
-              {section.items.map(item => (
-                <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
-              ))}
-            </div>
-          ))}
-
-          <div className="mt-5">
-            <div className="px-3 mb-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                Actions
-              </span>
-            </div>
-            <NavLink
-              item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
-              pathname={pathname}
-              counts={counts}
-              onClose={onClose}
-            />
-          </div>
-        </>
-      )}
     </nav>
   )
 
