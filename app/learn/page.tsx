@@ -1,11 +1,21 @@
-import { getCategoriesWithStats } from '@/lib/learn'
+import { getCategoriesWithStats, getUserLearnStats } from '@/lib/learn'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import CategoryGrid from '@/components/learn/CategoryGrid'
 import { Sparkles } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function LearnHomePage() {
-  const categories = await getCategoriesWithStats()
+  const supabase = createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const [categories, stats] = await Promise.all([
+    getCategoriesWithStats(),
+    user ? getUserLearnStats(user.id) : Promise.resolve(null),
+  ])
+
+  const progress: Record<string, { completed: number; total: number; pct: number }> = {}
+  if (stats) for (const c of stats.categories) progress[c.id] = { completed: c.completed, total: c.total, pct: c.pct }
 
   const totals = categories.reduce(
     (acc, c) => ({
@@ -47,7 +57,18 @@ export default async function LearnHomePage() {
         </div>
       </section>
 
-      <CategoryGrid categories={categories} />
+      {stats && stats.lessonsCompleted > 0 && (
+        <div className="mb-6 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+            <div className="h-full rounded-full bg-gradient-to-r from-[#089447] to-[#44c07d]" style={{ width: `${stats.overallPct}%` }} />
+          </div>
+          <span className="text-[12.5px] font-medium text-gray-500">
+            <span className="font-bold text-[#089447]">{stats.overallPct}%</span> complete
+          </span>
+        </div>
+      )}
+
+      <CategoryGrid categories={categories} progress={progress} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Layers, BookOpen, Clock, ArrowRight } from 'lucide-react'
+import { Layers, BookOpen, Clock, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { LearnIcon } from './LearnIcon'
 import type { CategoryWithStats } from '@/lib/learn'
 
@@ -11,7 +11,15 @@ function fmtMinutes(min: number): string {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
-export default function CategoryCard({ category }: { category: CategoryWithStats }) {
+export default function CategoryCard({
+  category,
+  progress,
+}: {
+  category: CategoryWithStats
+  progress?: { completed: number; total: number; pct: number }
+}) {
+  const showProgress = !!progress && progress.total > 0 && progress.completed > 0
+  const done = !!progress && progress.total > 0 && progress.completed >= progress.total
   return (
     <Link
       href={`/learn/${category.slug}`}
@@ -24,10 +32,14 @@ export default function CategoryCard({ category }: { category: CategoryWithStats
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#f0faf4] text-[#089447] transition-colors group-hover:bg-[#089447] group-hover:text-white">
           <LearnIcon name={category.icon} size={21} />
         </div>
-        <ArrowRight
-          size={17}
-          className="text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#089447]"
-        />
+        {done ? (
+          <CheckCircle2 size={18} className="text-[#089447]" />
+        ) : (
+          <ArrowRight
+            size={17}
+            className="text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#089447]"
+          />
+        )}
       </div>
 
       <h3 className="text-[15.5px] font-semibold tracking-tight text-[#0a0a0b]">{category.name}</h3>
@@ -48,6 +60,20 @@ export default function CategoryCard({ category }: { category: CategoryWithStats
           <Clock size={12.5} /> {fmtMinutes(category.totalMinutes)}
         </span>
       </div>
+
+      {showProgress && (
+        <div className="mt-3.5">
+          <div className="mb-1 flex items-center justify-between text-[11px] font-medium">
+            <span className={done ? 'text-[#089447]' : 'text-gray-400'}>
+              {done ? 'Completed' : `${progress!.completed}/${progress!.total} done`}
+            </span>
+            <span className="tabular-nums text-gray-400">{progress!.pct}%</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div className="h-full rounded-full bg-gradient-to-r from-[#089447] to-[#44c07d]" style={{ width: `${progress!.pct}%` }} />
+          </div>
+        </div>
+      )}
     </Link>
   )
 }

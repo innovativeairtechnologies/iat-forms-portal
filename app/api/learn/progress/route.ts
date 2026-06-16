@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { computeAwardForCompletion } from '@/lib/learn'
 
 // POST /api/learn/progress  { lessonId: string, completed: boolean }
 // Upserts the current user's progress for a lesson. user_id is taken from the
@@ -34,5 +35,16 @@ export async function POST(request: Request) {
     )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // On completion, compute the XP gained + any newly-unlocked badges for the toast.
+  // Best-effort: a failure here must never fail the progress write itself.
+  if (completed) {
+    try {
+      const award = await computeAwardForCompletion(user.id, lessonId)
+      return NextResponse.json({ ok: true, completed: true, award })
+    } catch (e) {
+      console.error('[learn] award computation failed:', e)
+    }
+  }
   return NextResponse.json({ ok: true, completed: !!completed })
 }

@@ -6,7 +6,15 @@ import { Search } from 'lucide-react'
 import CategoryCard from './CategoryCard'
 import type { CategoryWithStats } from '@/lib/learn'
 
-export default function CategoryGrid({ categories }: { categories: CategoryWithStats[] }) {
+type CategoryProgress = { completed: number; total: number; pct: number }
+
+export default function CategoryGrid({
+  categories,
+  progress,
+}: {
+  categories: CategoryWithStats[]
+  progress?: Record<string, CategoryProgress>
+}) {
   const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => {
@@ -39,7 +47,7 @@ export default function CategoryGrid({ categories }: { categories: CategoryWithS
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.32, delay: Math.min(i * 0.04, 0.4), ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            <CategoryCard category={category} />
+            <CategoryCard category={category} progress={progress?.[category.id]} />
           </motion.div>
         ))}
       </div>

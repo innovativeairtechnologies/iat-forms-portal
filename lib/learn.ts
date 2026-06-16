@@ -1,4 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import {
+  computeUserStats, computeStreak, lessonXp, levelInfo,
+  type UserLearnStats,
+} from '@/lib/learn-gamification'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IAT Learn data layer
@@ -176,4 +180,125 @@ export async function getLessonForEdit(id: string) {
   const { data: module } = await supabaseAdmin
     .from('learn_modules').select('*').eq('id', lesson.module_id).single()
   return { lesson: lesson as LearnLesson, module: (module ?? null) as LearnModule | null }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gamification (Phase 2) — XP, levels, streaks, badges, leaderboard.
+// All derived from learn_progress + learn_lessons; no extra tables. Pure logic
+// lives in lib/learn-gamification.ts; these wrappers just fetch + feed it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Shared fetch: published taxonomy + a user's completed rows.
+async function fetchStatsRaw(userId: string) {
+  const [{ data: categories }, { data: modules }, { data: lessons }, { data: progress }] = await Promise.all([
+    supabaseAdmin.from('learn_categories').select('id, name, slug, accent').order('display_order'),
+    supabaseAdmin.from('learn_modules').select('id, category_id').eq('is_published', true),
+    supabaseAdmin.from('learn_lessons').select('id, module_id, estimated_minutes').eq('is_published', true),
+    supabaseAdmin.from('learn_progress').select('lesson_id, completed_at').eq('user_id', userId).not('completed_at', 'is', null),
+  ])
+  const moduleCategory = new Map((modules ?? []).map(m => [m.id, m.category_id]))
+  const completed = (progress ?? []).filter(p => p.completed_at) as { lesson_id: string; completed_at: string }[]
+  return {
+    categories: (categories ?? []) as { id: string; name: string; slug: string; accent: string | null }[],
+    moduleCategory,
+    lessons: (lessons ?? []).map(l => ({ id: l.id, module_id: l.module_id, estimated_minutes: l.estimated_minutes ?? 0 })),
+    completed,
+  }
+}
+
+export async function getUserLearnStats(userId: string): Promise<UserLearnStats> {
+  const raw = await fetchStatsRaw(userId)
+  return computeUserStats({
+    categories: raw.categories,
+    moduleCategory: raw.moduleCategory,
+    lessons: raw.lessons,
+    completedLessonIds: new Set(raw.completed.map(p => p.lesson_id)),
+    completedDates: raw.completed.map(p => p.completed_at),
+  })
+}
+
+// Lightweight header chip (no badges/category work) — runs on every /learn page.
+export type LearnHeaderStats = {
+  totalXp: number; level: number; levelTitle: string; currentStreak: number; lessonsCompleted: number
+}
+export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderStats> {
+  const [{ data: lessons }, { data: progress }] = await Promise.all([
+    supabaseAdmin.from('learn_lessons').select('id, estimated_minutes').eq('is_published', true),
+    supabaseAdmin.from('learn_progress').select('lesson_id, completed_at').eq('user_id', userId).not('completed_at', 'is', null),
+  ])
+  const min = new Map((lessons ?? []).map(l => [l.id, l.estimated_minutes ?? 0]))
+  let xp = 0, count = 0
+  for (const p of progress ?? []) { if (!min.has(p.lesson_id)) continue; xp += lessonXp(min.get(p.lesson_id)); count++ }
+  const streak = computeStreak((progress ?? []).map(p => p.completed_at as string).filter(Boolean))
+  const lvl = levelInfo(xp)
+  return { totalXp: xp, level: lvl.level, levelTitle: lvl.title, currentStreak: streak.current, lessonsCompleted: count }
+}
+
+// Per-completion award for the lesson "Mark complete" toast: XP gained + any
+// badges newly unlocked (diffed against the user's state without this lesson).
+export type ProgressAward = {
+  xpAwarded: number
+  totalXp: number
+  level: number
+  levelTitle: string
+  leveledUp: boolean
+  newBadges: { key: string; label: string; icon: string; tier: string }[]
+}
+export async function computeAwardForCompletion(userId: string, lessonId: string): Promise<ProgressAward> {
+  const raw = await fetchStatsRaw(userId)
+  const base = { categories: raw.categories, moduleCategory: raw.moduleCategory, lessons: raw.lessons }
+
+  const allIds = new Set(raw.completed.map(p => p.lesson_id))
+  const allDates = raw.completed.map(p => p.completed_at)
+  const after = computeUserStats({ ...base, completedLessonIds: allIds, completedDates: allDates })
+
+  // "Before": same data minus this lesson's completion (id + its date).
+  const beforeIds = new Set(allIds); beforeIds.delete(lessonId)
+  const beforeDates = raw.completed.filter(p => p.lesson_id !== lessonId).map(p => p.completed_at)
+  const before = computeUserStats({ ...base, completedLessonIds: beforeIds, completedDates: beforeDates })
+  const beforeKeys = new Set(before.badges.filter(b => b.earned).map(b => b.key))
+
+  return {
+    xpAwarded: Math.max(0, after.totalXp - before.totalXp),
+    totalXp: after.totalXp,
+    level: after.level.level,
+    levelTitle: after.level.title,
+    leveledUp: after.level.level > before.level.level,
+    newBadges: after.badges.filter(b => b.earned && !beforeKeys.has(b.key))
+      .map(b => ({ key: b.key, label: b.label, icon: b.icon, tier: b.tier })),
+  }
+}
+
+// Team leaderboard: every active employee ranked by XP. Includes 0-XP folks so
+// the whole team is visible; the UI highlights the viewer.
+export type LeaderboardRow = {
+  userId: string; name: string; avatarUrl: string | null; department: string | null
+  xp: number; lessonsCompleted: number; level: number; levelTitle: string
+}
+export async function getLeaderboard(): Promise<LeaderboardRow[]> {
+  const [{ data: employees }, { data: lessons }, { data: progress }] = await Promise.all([
+    supabaseAdmin.from('employees').select('id, name, email, avatar_url, department, is_active').eq('is_active', true),
+    supabaseAdmin.from('learn_lessons').select('id, estimated_minutes').eq('is_published', true),
+    supabaseAdmin.from('learn_progress').select('user_id, lesson_id, completed_at').not('completed_at', 'is', null),
+  ])
+  const lessonMin = new Map((lessons ?? []).map(l => [l.id, l.estimated_minutes ?? 0]))
+  const perUser = new Map<string, { xp: number; count: number }>()
+  for (const p of progress ?? []) {
+    if (!lessonMin.has(p.lesson_id)) continue
+    const u = perUser.get(p.user_id) ?? { xp: 0, count: 0 }
+    u.xp += lessonXp(lessonMin.get(p.lesson_id)); u.count++
+    perUser.set(p.user_id, u)
+  }
+  const rows: LeaderboardRow[] = (employees ?? []).map(e => {
+    const u = perUser.get(e.id) ?? { xp: 0, count: 0 }
+    const lvl = levelInfo(u.xp)
+    return {
+      userId: e.id,
+      name: e.name?.trim() || e.email?.split('@')[0] || 'Team Member',
+      avatarUrl: e.avatar_url, department: e.department,
+      xp: u.xp, lessonsCompleted: u.count, level: lvl.level, levelTitle: lvl.title,
+    }
+  })
+  rows.sort((a, b) => b.xp - a.xp || b.lessonsCompleted - a.lessonsCompleted || a.name.localeCompare(b.name))
+  return rows
 }
