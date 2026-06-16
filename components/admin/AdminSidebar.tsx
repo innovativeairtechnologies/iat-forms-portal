@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -6,8 +6,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket,
   Calendar, Clock, Search, Plus, Boxes,
-  ChevronRight, FolderOpen, Users, Zap,
-  ShieldCheck, Settings, Wind, Package,
+  ChevronRight, ShieldCheck, Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useMemo } from 'react'
@@ -24,7 +23,6 @@ type NavItem = {
   icon: React.ElementType
   exact?: boolean
   badge?: BadgeKind
-  children?: NavItem[]
 }
 
 type Counts = {
@@ -37,8 +35,6 @@ type Counts = {
 
 type NavSection = {
   label: string
-  icon: React.ElementType
-  href?: string
   items: NavItem[]
 }
 
@@ -48,42 +44,30 @@ const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDas
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    label: 'Forms',
-    icon: FolderOpen,
-    href: '/admin/forms',
+    label: 'IAT',
     items: [
-      { href: '/admin/submissions', label: 'Submissions', icon: Inbox, badge: 'submissions' },
-      { href: '/admin/tickets',     label: 'Tickets',     icon: Ticket, badge: 'tickets' },
-      { href: '/admin/equipment',   label: 'Equipment',   icon: Boxes },
+      { href: '/admin/submissions',  label: 'Submissions', icon: Inbox,       badge: 'submissions' },
+      { href: '/admin/tickets',      label: 'Tickets',     icon: Ticket,      badge: 'tickets' },
+      { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes },
     ],
   },
   {
     label: 'Employees',
-    icon: Users,
-    href: '/admin/employees',
     items: [
-      {
-        href: '/admin/requests', label: 'Time Off', icon: CalendarClock, exact: true,
-        children: [
-          { href: '/admin/requests/pto',  label: 'PTO',       icon: Calendar, badge: 'pto' },
-          { href: '/admin/requests/sick', label: 'Sick Time', icon: Clock,    badge: 'sick' },
-        ],
-      },
-      { href: '/admin/schedule', label: 'Scheduling', icon: Calendar },
-      { href: '/admin/accrual',    label: 'Accrual',    icon: TrendingUp },
+      { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto' },
+      { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick' },
+      { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock },
+      { href: '/admin/accrual',       label: 'Accrual',    icon: TrendingUp },
     ],
   },
   {
     label: 'US Rotors',
-    icon: Wind,
-    href: '/admin/us-rotors/orders',
     items: [
-      { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors' as BadgeKind },
+      { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors' },
     ],
   },
   {
     label: 'System',
-    icon: Settings,
     items: [
       { href: '/admin/audit', label: 'Audit Log', icon: ShieldCheck },
     ],
@@ -92,9 +76,8 @@ const NAV_SECTIONS: NavSection[] = [
 
 const ALL_NAV_ITEMS: NavItem[] = [
   DASHBOARD,
-  ...NAV_SECTIONS.flatMap(s => s.items.flatMap(i => i.children ? [i, ...i.children] : [i])),
+  ...NAV_SECTIONS.flatMap(s => s.items),
   { href: '/admin/forms/new', label: 'New Form', icon: Plus },
-  { href: '/admin/us-rotors/orders', label: 'US Rotors Orders', icon: Package },
 ]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -107,55 +90,41 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   usrotors:    'bg-[#0274db] text-white',
 }
 
-function NavLink({
-  item, pathname, counts, onClose, nested = false, suppressChildren = false,
-}: {
+function NavLink({ item, pathname, counts, onClose }: {
   item: NavItem
   pathname: string
   counts: Counts
   onClose?: () => void
-  nested?: boolean
-  suppressChildren?: boolean
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
-  // The new dashboard lives at /admin — give the nav a matching emerald-accented treatment there only.
   const dashTheme = pathname === '/admin'
   const badgeCount = item.badge ? counts[item.badge] : 0
   return (
-    <>
-      <Link
-        href={item.href}
-        onClick={onClose}
-        className={cn(
-          'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
-          active
-            ? dashTheme
-              ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
-              : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
-            : dashTheme
-              ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
-              : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
-        )}
-      >
-        <item.icon size={nested ? 15 : 17} className="flex-shrink-0" />
-        <span className="flex-1">{item.label}</span>
-        {item.badge && badgeCount > 0 && (
-          <span className={cn(
-            'text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
-            BADGE_CLS[item.badge],
-          )}>
-            {badgeCount > 99 ? '99+' : badgeCount}
-          </span>
-        )}
-      </Link>
-      {item.children && !suppressChildren && (
-        <div className="ml-[26px] mt-0.5 mb-1 space-y-0.5 border-l border-gray-100 dark:border-zinc-800 pl-2">
-          {item.children.map(child => (
-            <NavLink key={child.href} item={child} pathname={pathname} counts={counts} onClose={onClose} nested />
-          ))}
-        </div>
+    <Link
+      href={item.href}
+      onClick={onClose}
+      className={cn(
+        'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
+        active
+          ? dashTheme
+            ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
+            : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
+          : dashTheme
+            ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
+            : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
       )}
-    </>
+    >
+      <item.icon size={16} className="flex-shrink-0" />
+      <span className="flex-1">{item.label}</span>
+      {item.badge && badgeCount > 0 && (
+        <span className={cn(
+          'text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
+          BADGE_CLS[item.badge],
+        )}>
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </span>
+      )}
+    </Link>
   )
 }
 
@@ -174,7 +143,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
   const pathname = usePathname()
   const router = useRouter()
   const counts: Counts = { submissions: unreadCount, tickets: ticketCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders }
-  // The new dashboard is now at /admin (the old one is parked at /admin/test); theme the nav to match it.
   const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -213,35 +181,22 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
         />
       </div>
 
-      {/* Search results */}
       {filtered ? (
         filtered.length > 0
           ? filtered.map(item => (
-              <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} suppressChildren />
+              <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
             ))
           : <p className="text-[12px] text-gray-300 dark:text-gray-600 px-3 py-2">No results</p>
       ) : (
         <>
-          {/* Dashboard */}
           <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
 
-          {/* Sections */}
           {NAV_SECTIONS.map(section => (
-            <div key={section.label} className="mt-6">
-              <div className="px-3 mb-2">
-                {section.href ? (
-                  <Link
-                    href={section.href}
-                    onClick={onClose}
-                    className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
-                  >
-                    {section.label}
-                  </Link>
-                ) : (
-                  <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                    {section.label}
-                  </span>
-                )}
+            <div key={section.label} className="mt-5">
+              <div className="px-3 mb-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
+                  {section.label}
+                </span>
               </div>
               {section.items.map(item => (
                 <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
@@ -249,9 +204,8 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
             </div>
           ))}
 
-          {/* Actions */}
-          <div className="mt-6">
-            <div className="px-3 mb-2">
+          <div className="mt-5">
+            <div className="px-3 mb-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
                 Actions
               </span>
@@ -278,7 +232,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
         Sign Out
       </button>
 
-      {/* User card */}
       <Link
         href="/admin/profile"
         onClick={onClose}
@@ -307,8 +260,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
           ? 'bg-white dark:bg-[#0a0a0b] border-zinc-200 dark:border-zinc-800'
           : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800',
       )}>
-
-        {/* Logo */}
         <div className="px-4 pt-5 pb-4">
           <Link href="/admin" className="flex items-center gap-2.5 group">
             <Logo size={26} className="flex-shrink-0" />
@@ -317,7 +268,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, ptoPending, sic
             </span>
           </Link>
         </div>
-
         {renderNav()}
         {renderFooter()}
       </aside>
