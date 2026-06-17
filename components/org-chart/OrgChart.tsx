@@ -191,11 +191,13 @@ export default function OrgChart({
   const layout = useMemo(() => computeLayout(layoutEmps), [layoutEmps])
   const layoutRef = useRef(layout); layoutRef.current = layout
 
+  // Pills reflect only the departments actually on the chart (the shown set), not
+  // every employee row — otherwise hidden/legacy rows bleed extra categories in.
   const departments = useMemo(() => {
     const s = new Set<string>()
-    employees.forEach((e) => { if (e.department?.trim()) s.add(e.department.trim()) })
+    layoutEmps.forEach((e) => { if (e.department?.trim()) s.add(e.department.trim()) })
     return Array.from(s).sort()
-  }, [employees])
+  }, [layoutEmps])
 
   const hiddenCount = useMemo(() => employees.filter((e) => !e.org_visible).length, [employees])
 
