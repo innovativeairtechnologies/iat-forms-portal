@@ -68,6 +68,11 @@
   .card .specs{margin:26px 0 0;}
   .card .specs .row{font-size:15px;color:var(--body);font-weight:500;margin-bottom:11px;}
   .card .specs .row b{color:var(--bold);font-weight:700;}
+  .card .detail-row{display:flex;gap:24px;align-items:flex-start;}
+  .card .detail-main{flex:1 1 auto;min-width:0;}
+  .card .iom-note{font-size:15px;color:var(--bold);font-weight:700;margin:18px 0 0;}
+  .card .detail-photo{flex:0 0 auto;margin-top:34px;}
+  .card .detail-photo img{display:block;width:210px;height:auto;border-radius:10px;border:1px solid #e3e7ec;}
 
   /* ---- Tracker ---- */
   .tracker{display:flex;align-items:flex-start;margin:38px 6px 0;}
@@ -192,8 +197,12 @@
         <input id="model" type="text" value="75Rec 208/1/60 x 9">
       </div>
       <div class="field">
-        <label for="date">Estimated Ship Date</label>
+        <label for="date" id="dateLabel">Estimated Ship Date</label>
         <input id="date" type="text" value="03/30/26">
+      </div>
+      <div class="field">
+        <label for="unitPhoto">Unit Photo (optional)</label>
+        <input id="unitPhoto" type="file" accept="image/*">
       </div>
     </div>
 
@@ -263,15 +272,21 @@
             <div class="row"><b>Estimated Ship Date:</b> <span id="c-shipDate"></span></div>
           </div>
 
-          <div id="detailBlocks">
-            <p class="thanks">
-              Thank you for your purchase order # <b id="c-po">12345</b><br>
-              for your <span id="c-product">desiccant dehumidifiers</span>.
-            </p>
-            <div class="specs">
-              <div class="row"><b>Model:</b> <span id="c-model">75Rec 208/1/60 x 9</span></div>
-              <div class="row"><b>Serial #:</b> <span id="c-serial">26-4459</span></div>
-              <div class="row"><b>Estimated Ship Date:</b> <span id="c-date">03/30/26</span></div>
+          <div id="detailBlocks" class="detail-row">
+            <div class="detail-main">
+              <p class="thanks">
+                Thank you for your purchase order # <b id="c-po">12345</b><br>
+                for your <span id="c-product">desiccant dehumidifiers</span>.
+              </p>
+              <div class="specs">
+                <div class="row"><b>Model:</b> <span id="c-model">75Rec 208/1/60 x 9</span></div>
+                <div class="row"><b>Serial #:</b> <span id="c-serial">26-4459</span></div>
+                <div class="row"><b id="c-date-label">Estimated Ship Date:</b> <span id="c-date">03/30/26</span></div>
+              </div>
+              <p class="iom-note hidden" id="iomNote">Attached is your IOM.</p>
+            </div>
+            <div class="detail-photo hidden" id="unitPhotoWrap">
+              <img id="c-unitPhoto" alt="Unit photo">
             </div>
           </div>
 
@@ -417,6 +432,13 @@
       $('c-model').textContent   = $('model').value;
       $('c-serial').textContent  = serial;
       $('c-date').textContent    = $('date').value;
+      /* Once it's shipped, the date is the actual ship date, not an estimate. */
+      var shipped  = (statusLabel === 'Shipped');
+      var shipping = (statusLabel === 'Ready to Ship' || shipped);
+      $('c-date-label').textContent = shipped ? 'Ship Date:' : 'Estimated Ship Date:';
+      $('dateLabel').textContent    = shipped ? 'Ship Date'  : 'Estimated Ship Date';
+      /* The IOM ships with the unit — show the note at the shipment stages. */
+      $('iomNote').classList.toggle('hidden', !shipping);
     }
 
     /* subject line: Title (strip trailing period) - Serial - PO */
@@ -484,6 +506,15 @@
     render();
   });
   $('mode').addEventListener('change', applyMode);
+
+  /* ---- unit photo upload → render into the card (right of the thank-you section) ---- */
+  $('unitPhoto').addEventListener('change', function(){
+    var f = this.files && this.files[0];
+    if (!f){ $('unitPhotoWrap').classList.add('hidden'); $('c-unitPhoto').removeAttribute('src'); return; }
+    var reader = new FileReader();
+    reader.onload = function(ev){ $('c-unitPhoto').src = ev.target.result; $('unitPhotoWrap').classList.remove('hidden'); };
+    reader.readAsDataURL(f);
+  });
 
   /* ---- copy subject line ---- */
   $('copySubjectBtn').addEventListener('click', function(){
