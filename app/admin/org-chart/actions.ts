@@ -20,8 +20,9 @@ async function nameOf(id: string): Promise<string> {
   return data?.name || 'an employee'
 }
 
-/** Set (or clear, when managerId is null) who an employee reports to. */
-export async function setManager(employeeId: string, managerId: string | null): Promise<void> {
+/** Set (or clear, when managerId is null) who an employee reports to. Optionally move
+ *  them to a new department in the same write (used to recolor on reassignment). */
+export async function setManager(employeeId: string, managerId: string | null, department?: string): Promise<void> {
   const admin = await requireAdmin()
 
   if (managerId === employeeId) throw new Error('An employee cannot report to themselves.')
@@ -44,9 +45,11 @@ export async function setManager(employeeId: string, managerId: string | null): 
     }
   }
 
+  const patch: { manager_id: string | null; department?: string } = { manager_id: managerId }
+  if (department !== undefined) patch.department = department
   const { error } = await supabaseAdmin
     .from('employees')
-    .update({ manager_id: managerId })
+    .update(patch)
     .eq('id', employeeId)
   if (error) throw new Error(error.message)
 

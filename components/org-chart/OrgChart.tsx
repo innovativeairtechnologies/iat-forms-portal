@@ -210,14 +210,24 @@ export default function OrgChart({
 
   // ── Optimistic mutations ──
   const reassign = useCallback(async (childId: string, managerId: string | null) => {
-    const child = employeesRef.current.find((e) => e.id === childId)
+    const list = employeesRef.current
+    const child = list.find((e) => e.id === childId)
     if (!child || child.manager_id === managerId) return
-    const prior = child.manager_id
-    setEmployees((prev) => prev.map((e) => (e.id === childId ? { ...e, manager_id: managerId } : e)))
+    const newMgr = managerId ? list.find((e) => e.id === managerId) : null
+    const hasReports = list.some((e) => e.manager_id === childId)
+    // A person with no reports adopts their new manager's department (card recolors to the
+    // team they joined). Team leads keep their dept so their team's color stays consistent.
+    const newDept: string | undefined =
+      (!hasReports && newMgr?.department && newMgr.department !== child.department) ? newMgr.department : undefined
+    const priorMgr = child.manager_id
+    const priorDept = child.department
+    setEmployees((prev) => prev.map((e) => (e.id === childId
+      ? { ...e, manager_id: managerId, department: newDept ?? e.department } : e)))
     try {
-      await setManager(childId, managerId)
+      await setManager(childId, managerId, newDept)
     } catch (err) {
-      setEmployees((prev) => prev.map((e) => (e.id === childId ? { ...e, manager_id: prior } : e)))
+      setEmployees((prev) => prev.map((e) => (e.id === childId
+        ? { ...e, manager_id: priorMgr, department: priorDept } : e)))
       showToast(err instanceof Error ? err.message : 'Could not reassign')
     }
   }, [showToast])
