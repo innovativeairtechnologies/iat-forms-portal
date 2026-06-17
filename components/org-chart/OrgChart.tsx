@@ -6,7 +6,7 @@ import {
   X, Users, Mail, Phone, Calendar, Building2, CornerDownRight, Plus,
   GripVertical, Check, ChevronDown, UserCog,
 } from 'lucide-react'
-import { setManager, setVisibility, setInterests } from './actions'
+import { setManager, setVisibility, setInterests } from '@/app/admin/org-chart/actions'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -50,14 +50,14 @@ const PALETTES = [
 ]
 const NEUTRAL = { bar: '#a1a1aa', chipBg: '#f4f4f5', chipText: '#3f3f46', avBg: '#e4e4e7', avText: '#3f3f46', line: '#d4d4d8' }
 
-function paletteFor(dept: string | null) {
+export function paletteFor(dept: string | null) {
   if (!dept || !dept.trim()) return NEUTRAL
   let h = 0
   for (let i = 0; i < dept.length; i++) h = (h * 31 + dept.charCodeAt(i)) >>> 0
   return PALETTES[h % PALETTES.length]
 }
 
-function initialsOf(name: string) {
+export function initialsOf(name: string) {
   if (!name) return '?'
   return name.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()
 }
@@ -139,7 +139,18 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-export default function OrgChart({ employees: initial, adminName }: { employees: OrgEmployee[]; adminName: string }) {
+export default function OrgChart({
+  employees: initial,
+  canEdit = true,
+  title = 'Org chart',
+  toolbarExtra,
+}: {
+  employees: OrgEmployee[]
+  adminName?: string
+  canEdit?: boolean
+  title?: string
+  toolbarExtra?: React.ReactNode
+}) {
   const [employees, setEmployees] = useState<OrgEmployee[]>(initial)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
@@ -366,21 +377,26 @@ export default function OrgChart({ employees: initial, adminName }: { employees:
   }, [selectedId, kidsAll])
 
   return (
-    <div className="flex-1 h-screen flex flex-col overflow-hidden bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300">
       {/* ── Header row ── */}
       <div className="flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Network size={18} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-          <h1 className="text-[15px] font-bold text-zinc-900 dark:text-white">Org chart</h1>
+          <h1 className="text-[15px] font-bold text-zinc-900 dark:text-white">{title}</h1>
           <span className="hidden sm:inline text-[12px] text-zinc-400 dark:text-zinc-500">
-            · {layoutEmps.length} shown{hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''}
+            · {layoutEmps.length} {layoutEmps.length === 1 ? 'person' : 'people'}{canEdit && hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''}
           </span>
+          {toolbarExtra && <div className="ml-2 flex-shrink-0">{toolbarExtra}</div>}
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1.5">
-          <Toggle on={editMode} onClick={() => { setEditMode((v) => { if (v) setEraser(false); return !v }) }} icon={<Pencil size={14} />} label="Edit" tone="emerald" />
-          <Toggle on={eraser} disabled={!editMode} onClick={() => setEraser((v) => !v)} icon={<Eraser size={14} />} label="Erase" tone="rose" />
-          <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+          {canEdit && (
+            <>
+              <Toggle on={editMode} onClick={() => { setEditMode((v) => { if (v) setEraser(false); return !v }) }} icon={<Pencil size={14} />} label="Edit" tone="emerald" />
+              <Toggle on={eraser} disabled={!editMode} onClick={() => setEraser((v) => !v)} icon={<Eraser size={14} />} label="Erase" tone="rose" />
+              <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+            </>
+          )}
           <IconBtn onClick={() => zoomBy(0.85)} title="Zoom out"><ZoomOut size={15} /></IconBtn>
           <span className="text-[11px] tabular-nums text-zinc-500 w-9 text-center">{Math.round(transform.s * 100)}%</span>
           <IconBtn onClick={() => zoomBy(1.18)} title="Zoom in"><ZoomIn size={15} /></IconBtn>
@@ -419,7 +435,7 @@ export default function OrgChart({ employees: initial, adminName }: { employees:
           })}
         </div>
         <div className="flex-1" />
-        {hiddenCount > 0 && (
+        {canEdit && hiddenCount > 0 && (
           <button
             onClick={() => setShowHidden((v) => !v)}
             className={`flex-shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11px] font-medium border transition-colors ${

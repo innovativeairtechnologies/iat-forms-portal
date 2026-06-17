@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminUser } from '@/lib/admin-auth'
-import OrgChart, { type OrgEmployee } from './OrgChart'
+import OrgChart, { type OrgEmployee } from '@/components/org-chart/OrgChart'
 
 /* The org chart is derived live from the employees table. We select('*') and map
    defensively so the page renders even before migration 023 adds the hierarchy
@@ -33,5 +33,9 @@ async function getEmployees(): Promise<OrgEmployee[]> {
 
 export default async function OrgChartPage() {
   const [admin, employees] = await Promise.all([getAdminUser(), getEmployees()])
-  return <OrgChart employees={employees} adminName={admin?.displayName || 'Admin'} />
+  return (
+    <div className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden">
+      <OrgChart employees={employees} adminName={admin?.displayName || 'Admin'} canEdit />
+    </div>
+  )
 }
