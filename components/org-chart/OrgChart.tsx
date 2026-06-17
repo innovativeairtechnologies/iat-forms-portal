@@ -298,6 +298,9 @@ export default function OrgChart({
     const stage = stageRef.current
     if (!stage) return
     const onWheel = (e: WheelEvent) => {
+      // Don't hijack the wheel for zoom when the cursor is over the detail panel or
+      // its dropdowns — let those scroll natively.
+      if ((e.target as HTMLElement)?.closest?.('[data-panel]')) return
       e.preventDefault()
       const rect = stage.getBoundingClientRect()
       const cx = e.clientX - rect.left
