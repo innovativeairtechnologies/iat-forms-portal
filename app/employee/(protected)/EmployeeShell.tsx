@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Calendar, Users, LayoutGrid, FileText, Wrench,
+  Calendar, Network, LayoutGrid, FileText, Wrench,
   LogOut, Menu, X, ChevronRight,
   Wind, Package,
 } from 'lucide-react'
@@ -29,7 +29,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/employee/profile',   label: 'Home',     icon: LayoutGrid, exact: true },
       { href: '/employee/requests',  label: 'Time Off',   icon: Calendar },
-      { href: '/employee/directory', label: 'Directory',  icon: Users    },
+      { href: '/employee/directory', label: 'Org Chart',  icon: Network },
     ],
   },
   {
