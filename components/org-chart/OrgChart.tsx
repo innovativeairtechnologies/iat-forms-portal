@@ -260,10 +260,18 @@ export default function OrgChart({
         setGhost({ id: d.id, dx, dy, overId })
       }
     }
-    const onUp = () => {
+    const onUp = (e: PointerEvent) => {
       if (dragRef.current?.active) {
         const d = dragRef.current
-        if (movedRef.current > 4 && d.overId) reassign(d.id, d.overId)
+        let target = d.overId
+        // Recompute the drop target at release (the ghost is pointer-events:none,
+        // so elementFromPoint now sees the card underneath) — belt and suspenders.
+        if (movedRef.current > 4) {
+          const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+          const tid = (el?.closest('[data-node-id]') as HTMLElement | null)?.getAttribute('data-node-id')
+          if (tid && tid !== d.id) target = tid
+        }
+        if (movedRef.current > 4 && target) reassign(d.id, target)
         dragRef.current = null
         setGhost(null)
       }
@@ -522,6 +530,7 @@ export default function OrgChart({
                     boxShadow: sel ? '0 0 0 2px #10b981' : isOver ? '0 0 0 2px #34d399' : undefined,
                     cursor: editMode && !eraser ? 'grab' : 'pointer',
                     paddingLeft: 16,
+                    pointerEvents: isGhost ? 'none' : undefined,
                   }}
                 >
                   <span className="absolute left-[7px] top-3 bottom-3 w-[3px] rounded-full" style={{ background: pal.bar }} />
