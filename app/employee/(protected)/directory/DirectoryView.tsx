@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Network, List as ListIcon, Search, Mail, Phone } from 'lucide-react'
-import OrgChart, { type OrgEmployee, paletteFor, initialsOf } from '@/components/org-chart/OrgChart'
+import OrgChart, { type OrgEmployee, paletteFor, initialsOf, shownEmail } from '@/components/org-chart/OrgChart'
 
 /* The employee-facing directory. Chart view = the read-only org chart (canEdit
    off, so no edit/erase affordances); List view = a clean searchable roster for
@@ -128,9 +128,9 @@ export default function DirectoryView({ employees }: { employees: OrgEmployee[] 
                       {e.job_title || '—'}{e.department ? ` · ${e.department}` : ''}
                     </div>
                     <div className="mt-1.5 flex flex-col gap-0.5">
-                      {e.email && (
-                        <a href={`mailto:${e.email}`} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 truncate">
-                          <Mail size={12} className="flex-shrink-0" />{e.email}
+                      {shownEmail(e.email) && (
+                        <a href={`mailto:${shownEmail(e.email)}`} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 truncate">
+                          <Mail size={12} className="flex-shrink-0" />{shownEmail(e.email)}
                         </a>
                       )}
                       {e.phone && (

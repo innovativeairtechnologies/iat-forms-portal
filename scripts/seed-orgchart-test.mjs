@@ -1,20 +1,19 @@
 /**
- * IAT Forms Portal — seed a REMOVABLE *test* org chart so the /org-chart and
- * employee /directory views show real branching without using real names.
+ * IAT Forms Portal — seed the org-chart EXAMPLE: the real names + titles from the
+ * company org chart, wired into a hierarchy via manager_id, so the /admin/org-chart
+ * and employee /directory views show the real structure.
  *
- * Placeholder names on the real job titles from the company org chart, wired
- * with manager_id. Inserts via the service role (no emails fire). Every row is
- * marked '@orgtest.iat.test' and removed by clear-orgchart-test.mjs.
+ * Emails are PLACEHOLDERS (slug@orgtest.iat.test) — the real team isn't onboarded
+ * yet; real emails/logins get added later. The app hides @*.iat.test emails so no
+ * fake contact info shows. Every row is marked '@orgtest.iat.test' and is removable
+ * with clear-orgchart-test.mjs (which also un-hides any pre-existing employees).
  *
- * To keep the chart uncluttered it also HIDES existing employees from the chart
- * (sets org_visible = false — reversible; only affects the org-chart views, not
- * the legacy directory or any other feature). clear-orgchart-test.mjs restores
- * them. NOTE: org_visible is new and unused before this, so every real employee
- * was visible (default true) — the remover safely re-shows them all.
+ * Inserts via the service role (no emails fire). To keep the chart clean it also
+ * sets org_visible=false on pre-existing employees (leftover demo rows) so only
+ * this org shows. org_visible was unused before, so the remover safely re-shows them.
  *
  * Run with:    node scripts/seed-orgchart-test.mjs
  * Remove with: node scripts/clear-orgchart-test.mjs
- * ⚠️ Must be cleared before the org chart goes live (removes test rows + un-hides real staff).
  */
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
@@ -33,42 +32,42 @@ const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_
 const MARK = '@orgtest.iat.test'
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '')
 
-// [test name, real title (from the chart), department, manager index | null]
+// Real names + titles from the company org chart. [name, title, department, manager index | null]
 const ROLES = [
-  ['Avery Sloane',   'President',                       'Leadership',    null], // 0
-  ['Morgan Reyes',   'Director of Operations',          'Leadership',    0],    // 1
-  ['Jordan Mills',   'Director of Engineering',         'Engineering',   0],    // 2
-  ['Casey Donovan',  'Inside Sales Manager',            'Sales',         0],    // 3
-  ['Riley Frost',    'Marketing Team Lead',             'Marketing',     0],    // 4
-  ['Sydney Vaughn',  'Director of Technology',          'Technology',    0],    // 5
-  ['Dakota Pierce',  'Purchasing & Shipping Manager',   'Purchasing',    0],    // 6
-  ['Reese Calloway', 'Production Manager',              'Production',    1],    // 7
-  ['Emerson Wade',   'Field Service Manager',           'Field Service', 1],    // 8
-  ['Alex Tran',      'Production Team',                 'Production',    7],    // 9
-  ['Sam Ortiz',      'Production Team',                 'Production',    7],    // 10
-  ['Drew Patel',     'Production Team',                 'Production',    7],    // 11
-  ['Jamie Cole',     'Production Team',                 'Production',    7],    // 12
-  ['Quinn Harper',   'Compact Assembly Tech',          'Production',    7],    // 13
-  ['Devin Park',     'Electrical',                     'Production',    7],    // 14
-  ['Cameron Reid',   'Electrical',                     'Production',    7],    // 15
-  ['Logan Pruitt',   'Fabrication Team',               'Production',    7],    // 16
-  ['Parker Lyle',    'Director of Engineering',         'Production',    7],    // 17 (duplicate title as drawn)
-  ['Hayden Ross',    'Refrigeration Tech',             'Production',    7],    // 18
-  ['Rowan Estes',    'Pressbrake Operator',            'Production',    7],    // 19
-  ['Sage Bennett',   'Operations Support',             'Production',    7],    // 20
-  ['Finley Marsh',   'Field Service Tech',             'Field Service', 8],    // 21
-  ['Reagan Holt',    'OLA',                            'Field Service', 8],    // 22
-  ['Marlowe Kent',   'SAA',                            'Field Service', 8],    // 23
-  ['Sutton Blair',   'CAD Designer',                   'Engineering',   2],    // 24
-  ['Emery Walsh',    'Mech Engineer',                  'Engineering',   2],    // 25
-  ['Tatum Fields',   'Mech Engineer',                  'Engineering',   2],    // 26
-  ['Kai Lawson',     'Elec Controls Eng',             'Engineering',   2],    // 27
-  ['Blake Sutton',   'Inside Sales Representative',     'Sales',         3],    // 28
-  ['Sloan Mercer',   'Multimedia Specialist',          'Marketing',     4],    // 29
-  ['Reid Calhoun',   'Compact Team Lead',              'Technology',    5],    // 30
-  ['Nico Barrett',   'Compact Assembly Tech',          'Technology',    30],   // 31
-  ['Harlow Quinn',   'Inventory / Shipping',           'Purchasing',    6],    // 32
-  ['Wren Sullivan',  'Inventory Assistant',            'Purchasing',    6],    // 33
+  ['Kacy Orr',      'President',                       'Leadership',    null], // 0
+  ['Crystal Hill',  'Director of Operations',          'Leadership',    0],    // 1
+  ['James Pope',    'Director of Engineering',         'Engineering',   0],    // 2
+  ['Jacob Reagan',  'Inside Sales Manager',            'Sales',         0],    // 3
+  ['Jacob Younker', 'Marketing Team Lead',             'Marketing',     0],    // 4
+  ['Lee C',         'Director of Technology',          'Technology',    0],    // 5
+  ['Chris H',       'Purchasing & Shipping Manager',   'Purchasing',    0],    // 6
+  ['Devon Morgan',  'Production Manager',              'Production',    1],    // 7
+  ['Andy S',        'Field Service Manager',           'Field Service', 1],    // 8
+  ['Aslan',         'Production Team',                 'Production',    7],    // 9
+  ['Jarrad R',      'Production Team',                 'Production',    7],    // 10
+  ['Bill J',        'Production Team',                 'Production',    7],    // 11
+  ['Jordan',        'Production Team',                 'Production',    7],    // 12
+  ['Chris G',       'Compact Assembly Tech',          'Production',    7],    // 13
+  ['Jeremy R',      'Electrical',                     'Production',    7],    // 14
+  ['Clay',          'Electrical',                     'Production',    7],    // 15
+  ['Kyle D',        'Fabrication Team',               'Production',    7],    // 16
+  ['Chris M',       'Director of Engineering',         'Production',    7],    // 17 (as drawn — duplicate title)
+  ['Wyant',         'Refrigeration Tech',             'Production',    7],    // 18
+  ['Wayne',         'Pressbrake Operator',            'Production',    7],    // 19
+  ['Steve M',       'Operations Support',             'Production',    7],    // 20
+  ['Joseph J',      'Field Service Tech',             'Field Service', 8],    // 21
+  ['Robin L',       'OLA',                            'Field Service', 8],    // 22
+  ['Jo E',          'SAA',                            'Field Service', 8],    // 23
+  ['Eli K',         'CAD Designer',                   'Engineering',   2],    // 24
+  ['Rob B',         'Mech Engineer',                  'Engineering',   2],    // 25
+  ['Austin F',      'Mech Engineer',                  'Engineering',   2],    // 26
+  ['Ahson K',       'Elec Controls Eng',             'Engineering',   2],    // 27
+  ['Mike Payton',   'Inside Sales Representative',     'Sales',         3],    // 28
+  ['Tyler Bell',    'Multimedia Specialist',          'Marketing',     4],    // 29
+  ['Chris M',       'Compact Team Lead',              'Technology',    5],    // 30 (separate box from #17)
+  ['Nate',          'Compact Assembly Tech',          'Technology',    30],   // 31
+  ['Tommy H',       'Inventory / Shipping',           'Purchasing',    6],    // 32
+  ['Kyle R',        'Inventory Assistant',            'Purchasing',    6],    // 33
 ]
 
 async function deleteOrgtestAuthUsers() {
@@ -84,16 +83,16 @@ async function deleteOrgtestAuthUsers() {
 }
 
 async function run() {
-  console.log('Clearing any stale test-org rows first…')
+  console.log('Clearing any prior org-chart seed rows first…')
   await sb.from('employees').delete().like('email', '%' + MARK)
   const staleUsers = await deleteOrgtestAuthUsers()
-  if (staleUsers) console.log(`  removed ${staleUsers} stale test auth users`)
+  if (staleUsers) console.log(`  removed ${staleUsers} prior seed auth users`)
 
-  // Hide existing employees from the chart so only the test org shows (reversible).
+  // Hide pre-existing employees from the chart so only this org shows (reversible).
   const { data: hidden, error: hideErr } = await sb
     .from('employees').update({ org_visible: false }).not('email', 'like', '%' + MARK).select('id')
   if (hideErr) console.log('  hide existing: ERR ' + hideErr.message)
-  else console.log(`  hid ${hidden?.length ?? 0} existing employees from the chart (reversible)`)
+  else console.log(`  hid ${hidden?.length ?? 0} pre-existing employees from the chart (reversible)`)
 
   // Create an auth user per role (employees.id FK → auth.users), collect id map.
   const idMap = {}
@@ -102,14 +101,14 @@ async function run() {
     const email = `${slug(name)}.${i}${MARK}`
     const { data: created, error } = await sb.auth.admin.createUser({
       email,
-      password: 'OrgTest!' + randomUUID(),
+      password: 'OrgSeed!' + randomUUID(),
       email_confirm: true,
-      user_metadata: { org_test: true, name },
+      user_metadata: { org_seed: true, name },
     })
     if (error || !created?.user) { console.log(`  auth err (${name}): ${error?.message}`); continue }
     idMap[i] = { id: created.user.id, email }
   }
-  console.log(`created ${Object.keys(idMap).length}/${ROLES.length} test auth users`)
+  console.log(`created ${Object.keys(idMap).length}/${ROLES.length} auth users`)
 
   // Insert employee rows (manager_id null first to satisfy the self-FK on insert).
   const empRows = ROLES.map(([name, title, dept], i) => idMap[i] && ({
@@ -129,6 +128,6 @@ async function run() {
   }
   console.log(`wired ${wired} reporting lines`)
 
-  console.log('\nDone. View it on the org chart. Remove with:  node scripts/clear-orgchart-test.mjs')
+  console.log('\nDone. Remove with:  node scripts/clear-orgchart-test.mjs')
 }
 run()

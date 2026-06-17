@@ -62,6 +62,11 @@ export function initialsOf(name: string) {
   return name.trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()
 }
 
+// Placeholder/seed addresses (…@*.iat.test) aren't real contact info — don't show them.
+export function shownEmail(email: string | null): string | null {
+  return email && !/\.iat\.test$/i.test(email) ? email : null
+}
+
 function fmtDate(d: string | null) {
   if (!d) return null
   const dt = new Date(d)
@@ -732,10 +737,10 @@ function DetailPanel({
 
           {/* Contact */}
           <Section label="Contact" />
-          {selected.email && <KV icon={<Mail size={14} />} value={selected.email} />}
+          {shownEmail(selected.email) && <KV icon={<Mail size={14} />} value={shownEmail(selected.email)!} />}
           {selected.phone && <KV icon={<Phone size={14} />} value={selected.phone} />}
           {joined && <KV icon={<Calendar size={14} />} value={`Joined ${joined}`} />}
-          {!selected.email && !selected.phone && !joined && <p className="text-[12px] text-zinc-400">No contact details.</p>}
+          {!shownEmail(selected.email) && !selected.phone && !joined && <p className="text-[12px] text-zinc-400">No contact details.</p>}
           {selected.bio && <p className="mt-2 text-[12px] leading-relaxed text-zinc-500 dark:text-zinc-400">{selected.bio}</p>}
 
           {/* Interests */}
