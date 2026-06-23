@@ -1,10 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Next 15: staleTimes is stable (was under `experimental` in 14).
-  // Disable the client-side Router Cache for dynamic pages so admin tabs
-  // always fetch fresh data instead of serving a stale 30-second snapshot.
-  staleTimes: {
-    dynamic: 0,
+  // Pin the file-tracing root to this app dir. Without it, Next walks up and
+  // picks the repo-root package-lock.json (left from one-off scripts) as the
+  // workspace root and mis-infers the serverless file-tracing base.
+  outputFileTracingRoot: __dirname,
+  // Disable the client-side Router Cache for dynamic pages so admin tabs always
+  // fetch fresh data instead of serving a stale snapshot. NOTE: in Next 15
+  // staleTimes lives under `experimental` — a top-level key is silently ignored
+  // (it regressed there during the 14->15 upgrade). Pairs with RefreshOnNavigate.
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+    },
   },
   images: {
     remotePatterns: [
