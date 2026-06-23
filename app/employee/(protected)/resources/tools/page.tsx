@@ -1,12 +1,11 @@
 import Link from 'next/link'
-import { LifeBuoy, ImageIcon, Zap, Calculator, ChevronRight } from 'lucide-react'
+import { ImageIcon, Zap, Calculator, ChevronRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 // Live tools/apps available to employees. The three static tools live in
 // public/tools/<slug>/ and open in a new tab (they're standalone HTML apps).
 const APPS = [
-  { title: 'Support Ticketing', desc: 'Submit and track customer equipment support tickets.', href: '/support', icon: LifeBuoy, status: 'live' as const, external: false },
   { title: 'Order Status Card Generator', desc: 'Generate branded order-status cards for customer emails.', href: '/tools/order-status-card.html', icon: ImageIcon, status: 'live' as const, external: true },
   { title: 'Voltage Scaling Calculator', desc: 'Convert and scale voltages across configurations.', href: '/tools/voltage-scaling-calculator.html', icon: Zap, status: 'live' as const, external: true },
   { title: 'US Rotors Pricing Calculator', desc: 'Price out US Rotors rotor configurations.', href: '/tools/us-rotors-pricing-calculator.html', icon: Calculator, status: 'live' as const, external: true },
