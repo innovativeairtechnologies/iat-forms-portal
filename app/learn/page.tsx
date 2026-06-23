@@ -34,7 +34,7 @@ function StatTile({ icon, value, label, accent }: { icon: React.ReactNode; value
 }
 
 export default async function LearnHomePage() {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
 
   const [categories, stats, profileRes] = await Promise.all([

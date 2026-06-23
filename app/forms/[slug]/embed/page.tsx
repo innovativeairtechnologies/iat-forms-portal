@@ -13,7 +13,8 @@ async function getForm(slug: string) {
 
 export const revalidate = 60
 
-export default async function EmbedPage({ params }: { params: { slug: string } }) {
+export default async function EmbedPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const result = await getForm(params.slug)
   if (!result) notFound()
   return <FormRenderer form={result.form} fields={result.fields} embedded={true} />

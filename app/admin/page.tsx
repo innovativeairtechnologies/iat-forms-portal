@@ -416,7 +416,7 @@ export default async function AdminDashboard() {
   const attentionCount = d.attention.unread + d.attention.openTickets + d.attention.pendingApprovals
 
   // Per-admin dashboard layout preset (cookie-backed; read server-side → no flash).
-  const presetRaw = cookies().get(DASH_PRESET_COOKIE)?.value
+  const presetRaw = (await cookies()).get(DASH_PRESET_COOKIE)?.value
   const preset: Preset = (PRESETS as readonly string[]).includes(presetRaw ?? '') ? (presetRaw as Preset) : 'balanced'
 
   // KPI cards defined once, placed in two layouts (mobile grid vs. xl split) below.

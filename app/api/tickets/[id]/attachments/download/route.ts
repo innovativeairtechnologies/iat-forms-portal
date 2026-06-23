@@ -7,8 +7,9 @@ import { requireAdminAuth } from '@/lib/api-auth'
 // ticket can't be used to fetch another's files. `download` forces the browser
 // to save the file (with its original name) rather than navigate to it.
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
 
   const path = req.nextUrl.searchParams.get('path') || ''
   if (!path || !path.startsWith(`${params.id}/`) || path.includes('..')) {

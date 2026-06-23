@@ -7,8 +7,9 @@ import { sanitizeNoteHtml, noteHasContent, sanitizeAttachments } from '@/lib/san
 // (NOT the browser anon client) so notes can only be created by authenticated
 // admins, and content is sanitized server-side before storage.
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
   const { data, error } = await supabaseAdmin
     .from('ticket_notes')
     .select('*')
@@ -25,8 +26,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   )
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
 
   const body = await req.json().catch(() => null)
   const clean = sanitizeNoteHtml(typeof body?.content === 'string' ? body.content : '')
@@ -54,8 +56,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(data)
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
   const { note_id } = await req.json().catch(() => ({}))
   if (!note_id) return NextResponse.json({ error: 'note_id required' }, { status: 400 })
 

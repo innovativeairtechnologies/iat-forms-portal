@@ -50,7 +50,7 @@ function StatTile({ icon, value, label, accent }: { icon: React.ReactNode; value
 }
 
 export default async function MyLearningPage() {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?redirect=/learn/me')
 

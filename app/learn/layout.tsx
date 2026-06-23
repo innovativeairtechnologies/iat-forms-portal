@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export default async function LearnLayout({ children }: { children: React.ReactNode }) {
   // Shared auth: a user arriving from the employee portal already has a Supabase
   // session, so this is a no-friction pass-through. No second login.
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?redirect=/learn')
 

@@ -20,8 +20,9 @@ const ALLOWED_EXT = new Set([
   'zip',
 ])
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
 
   const body = await req.json().catch(() => null)
   const name = typeof body?.name === 'string' ? body.name.trim() : ''

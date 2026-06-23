@@ -4,10 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendRequestDecisionToEmployee } from '@/lib/resend-pto'
 import { logAudit } from '@/lib/audit'
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const admin = await getAdminUser()
   if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

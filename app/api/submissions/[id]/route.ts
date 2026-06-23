@@ -8,8 +8,9 @@ function submitterName(data: Record<string, unknown> | null | undefined): string
   return String(data?.['Employee Name'] || data?.['Full Name'] || data?.['Name'] || 'Anonymous')
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
   const { data, error } = await supabaseAdmin
     .from('submissions')
     .select('*')
@@ -20,8 +21,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(data)
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
   const body = await req.json()
 
   // Whitelist only the fields admins are allowed to update

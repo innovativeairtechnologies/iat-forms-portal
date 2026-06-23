@@ -6,7 +6,8 @@ import { logAudit } from '@/lib/audit'
 
 // Super-admin-only: approve a pending form and publish it. Approval is a
 // one-time gate — once approved, regular admins can pause/unpause freely.
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const auth = await requireSuperAdmin()
   if (auth instanceof NextResponse) return auth
 

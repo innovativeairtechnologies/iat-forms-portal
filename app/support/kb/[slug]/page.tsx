@@ -8,7 +8,8 @@ import KbViewTracker from '@/components/support/KbViewTracker'
 
 export const dynamic = 'force-dynamic'
 
-export default async function KbArticlePage({ params }: { params: { slug: string } }) {
+export default async function KbArticlePage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const { data: article } = await supabaseAdmin
     .from('kb_articles')
     .select('*')

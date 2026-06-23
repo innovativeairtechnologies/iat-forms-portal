@@ -34,7 +34,8 @@ async function getData() {
   return { forms: (forms || []) as FormShape[], countByForm, categories: categories || [] }
 }
 
-export default async function FormsListPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function FormsListPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams;
   const [{ forms, countByForm, categories }, me] = await Promise.all([getData(), getAdminUser()])
   const isSuperAdmin = me?.isSuperAdmin ?? false
   const pendingCount = forms.filter((f) => f.approval_status !== 'approved').length
@@ -98,7 +99,6 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
 
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-
       {/* Header */}
       <div className="px-8 pt-8 pb-0 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-center justify-between mb-5">
@@ -154,7 +154,6 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
           </div>
         </div>
       </div>
-
       <div className="p-8 space-y-6">
         {categoryFiltered.length === 0 ? (
           <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none py-20 text-center">
@@ -169,7 +168,7 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
           </div>
         ) : activeCategory === 'all' ? (
           /* Grouped by category view */
-          grouped.map(({ name, id, forms: catForms, activeCount, inactiveCount }) => (
+          (grouped.map(({ name, id, forms: catForms, activeCount, inactiveCount }) => (
             <div key={id} className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
               {/* Category header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60">
@@ -196,16 +195,16 @@ export default async function FormsListPage({ searchParams }: { searchParams: Se
               </div>
               <FormsList forms={catForms} countByForm={countByForm} showCategory={false} isSuperAdmin={isSuperAdmin} />
             </div>
-          ))
+          )))
         ) : (
           /* Flat category view */
-          <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
+          (<div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
             <FormsList forms={categoryFiltered} countByForm={countByForm} showCategory={false} showHeaders isSuperAdmin={isSuperAdmin} />
-          </div>
+          </div>)
         )}
       </div>
     </div>
-  )
+  );
 }
 
 // ─── FormsList ────────────────────────────────────────────────────────────────

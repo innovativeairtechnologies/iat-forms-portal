@@ -2,7 +2,7 @@ import { createSupabaseServer } from './supabase-server'
 import { supabaseAdmin } from './supabase-admin'
 
 export async function getAdminUser() {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 

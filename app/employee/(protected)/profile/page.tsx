@@ -43,7 +43,7 @@ function greeting(hour: number) {
 }
 
 export default async function EmployeeHome() {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 

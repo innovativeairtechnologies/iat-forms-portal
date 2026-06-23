@@ -5,7 +5,8 @@ import TicketDetailClient from './TicketDetailClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function TicketDetailPage({ params }: { params: { id: string } }) {
+export default async function TicketDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const [{ data: ticket }, { data: notes }, { data: admins }] = await Promise.all([
     supabaseAdmin.from('tickets').select('*, owner:employees(id, name)').eq('id', params.id).single(),
     supabaseAdmin.from('ticket_notes').select('*').eq('ticket_id', params.id).order('created_at', { ascending: true }),

@@ -6,7 +6,7 @@ import LeaderboardClient from './LeaderboardClient'
 export const dynamic = 'force-dynamic'
 
 export default async function LeaderboardPage() {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?redirect=/learn/leaderboard')
 

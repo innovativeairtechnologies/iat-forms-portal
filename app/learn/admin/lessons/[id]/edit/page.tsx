@@ -5,7 +5,8 @@ import LessonEditor from '@/components/learn/admin/LessonEditor'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EditLessonPage({ params }: { params: { id: string } }) {
+export default async function EditLessonPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const data = await getLessonForEdit(params.id)
   if (!data) notFound()
   const { lesson, module } = data

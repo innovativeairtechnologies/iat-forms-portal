@@ -15,7 +15,8 @@ async function getData(id: string) {
   return { form, categories: (categories || []) as Category[] }
 }
 
-export default async function EditFormPage({ params }: { params: { id: string } }) {
+export default async function EditFormPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { form, categories } = await getData(params.id)
   if (!form) notFound()
 

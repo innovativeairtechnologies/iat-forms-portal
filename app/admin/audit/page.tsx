@@ -75,11 +75,12 @@ const FILTERS: { key: string; label: string; prefix?: boolean }[] = [
   { key: 'accrual.', label: 'Accrual', prefix: true },
 ]
 
-export default async function AuditLogPage({
-  searchParams,
-}: {
-  searchParams: { action?: string }
-}) {
+export default async function AuditLogPage(
+  props: {
+    searchParams: Promise<{ action?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const selected = FILTERS.find((f) => f.key === searchParams.action)
   const active = selected ? selected.key : 'all'
 

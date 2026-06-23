@@ -12,7 +12,8 @@ async function getForm(slug: string) {
   return data
 }
 
-export default async function SuccessPage({ params }: { params: { slug: string } }) {
+export default async function SuccessPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const form = await getForm(params.slug)
 
   return (

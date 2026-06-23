@@ -4,7 +4,8 @@ import EmployeeDetailClient from './EmployeeDetailClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EmployeeDetailPage({ params }: { params: { id: string } }) {
+export default async function EmployeeDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const [{ data: employee }, { data: requests }, { data: profile }] = await Promise.all([
     supabaseAdmin.from('employees').select('*').eq('id', params.id).single(),
     supabaseAdmin

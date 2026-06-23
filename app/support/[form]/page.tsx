@@ -12,7 +12,8 @@ export function generateStaticParams() {
   return Object.keys(SUPPORT_FORMS).map(form => ({ form }))
 }
 
-export default function SupportFormPage({ params }: { params: { form: string } }) {
+export default async function SupportFormPage(props: { params: Promise<{ form: string }> }) {
+  const params = await props.params;
   const entry = SUPPORT_FORMS[params.form]
   if (!entry) notFound()
   const FormComponent = entry.component

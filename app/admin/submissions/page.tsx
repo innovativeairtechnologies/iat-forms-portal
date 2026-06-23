@@ -61,7 +61,8 @@ async function getSubmissions(searchParams: SearchParams) {
   }
 }
 
-export default async function SubmissionsPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function SubmissionsPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams;
   const { submissions, count, forms, page, limit, counts } = await getSubmissions(searchParams)
   const totalPages = Math.ceil(count / limit)
   const activeForm = forms.find((f: { id: string; title: string }) => f.id === searchParams.form_id)

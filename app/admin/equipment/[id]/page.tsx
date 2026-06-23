@@ -4,7 +4,8 @@ import EquipmentDetailClient from './EquipmentDetailClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EquipmentDetailPage({ params }: { params: { id: string } }) {
+export default async function EquipmentDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { data: equipment } = await supabaseAdmin
     .from('equipment')
     .select('*')

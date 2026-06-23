@@ -6,7 +6,8 @@ import ModuleCard from '@/components/learn/ModuleCard'
 
 export const dynamic = 'force-dynamic'
 
-export default async function CategoryPage({ params }: { params: { category: string } }) {
+export default async function CategoryPage(props: { params: Promise<{ category: string }> }) {
+  const params = await props.params;
   const data = await getCategoryWithModules(params.category)
   if (!data) notFound()
   const { category, modules } = data

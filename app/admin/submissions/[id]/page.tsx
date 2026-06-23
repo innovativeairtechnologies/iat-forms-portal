@@ -32,7 +32,8 @@ const STATUS_LABEL: Record<string, string> = {
   open: 'Open', in_progress: 'In Progress', resolved: 'Resolved',
 }
 
-export default async function SubmissionDetailPage({ params }: { params: { id: string } }) {
+export default async function SubmissionDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const result = await getData(params.id)
   if (!result) notFound()
 

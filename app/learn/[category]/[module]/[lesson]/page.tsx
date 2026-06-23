@@ -9,15 +9,16 @@ import LessonFooterNav from '@/components/learn/LessonFooterNav'
 
 export const dynamic = 'force-dynamic'
 
-export default async function LessonPage({
-  params,
-}: { params: { category: string; module: string; lesson: string } }) {
+export default async function LessonPage(
+  props: { params: Promise<{ category: string; module: string; lesson: string }> }
+) {
+  const params = await props.params;
   const ctx = await getLessonContext(params.category, params.module, params.lesson)
   if (!ctx) notFound()
   const { category, module, lesson, lessons, index } = ctx
 
   // Current user's completion state for this lesson (Phase-1 progress).
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   let completed = false
   if (user) {

@@ -7,7 +7,7 @@ import { computeAwardForCompletion } from '@/lib/learn'
 // Upserts the current user's progress for a lesson. user_id is taken from the
 // session — never from the request body — so a user can only write their own row.
 export async function POST(request: Request) {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

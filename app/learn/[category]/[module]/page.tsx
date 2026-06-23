@@ -14,9 +14,8 @@ function fmtMinutes(min: number): string {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
-export default async function ModulePage({
-  params,
-}: { params: { category: string; module: string } }) {
+export default async function ModulePage(props: { params: Promise<{ category: string; module: string }> }) {
+  const params = await props.params;
   const data = await getModuleWithLessons(params.category, params.module)
   if (!data) notFound()
   const { category, module, lessons } = data

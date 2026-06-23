@@ -4,8 +4,9 @@ import { requireAdminAuth } from '@/lib/api-auth'
 import { getAdminUser } from '@/lib/admin-auth'
 import { logAudit } from '@/lib/audit'
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
   const { data, error } = await supabaseAdmin
     .from('forms')
     .select('*, categories(*), form_fields(*), notification_rules(*)')
@@ -16,8 +17,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json(data)
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
   try {
     const body = await req.json()
     const { title, description, category_id, slug, is_active, success_message, fields, notification_rules } = body
@@ -106,8 +108,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
 
   const { data: form } = await supabaseAdmin
     .from('forms')

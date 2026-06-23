@@ -3,7 +3,7 @@ import { supabaseAdmin } from './supabase-admin'
 import { NextResponse } from 'next/server'
 
 export async function requireAdminAuth(): Promise<NextResponse | null> {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -28,7 +28,7 @@ export async function requireAdminAuth(): Promise<NextResponse | null> {
  *   // auth.userId is available
  */
 export async function requireSuperAdmin(): Promise<{ userId: string } | NextResponse> {
-  const supabase = createSupabaseServer()
+  const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

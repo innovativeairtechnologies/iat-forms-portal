@@ -9,15 +9,17 @@ const FIELDS = [
   'pm_interval_months', 'status', 'notes', 'photo_urls',
 ] as const
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
   const { data, error } = await supabaseAdmin.from('equipment').select('*').eq('id', params.id).single()
   if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(data)
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const err = await requireAdminAuth(); if (err) return err
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
 
   const body = await req.json().catch(() => ({}))
   const update: Record<string, unknown> = {}

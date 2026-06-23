@@ -9,11 +9,12 @@ const TYPE_META: Record<string, { type: 'pto' | 'sick'; title: string }> = {
   sick: { type: 'sick', title: 'Sick Time Requests' },
 }
 
-export default async function AdminRequestsByTypePage({
-  params,
-}: {
-  params: { type: string }
-}) {
+export default async function AdminRequestsByTypePage(
+  props: {
+    params: Promise<{ type: string }>
+  }
+) {
+  const params = await props.params;
   const meta = TYPE_META[params.type]
   if (!meta) notFound()
 
