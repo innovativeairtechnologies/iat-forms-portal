@@ -19,6 +19,16 @@ const SUBMIT_CARDS = [
     disabled: false,
   },
   {
+    id: 'troubleshooting',
+    icon: '🩺',
+    title: 'Troubleshooting Checklist',
+    desc: 'Not sure where to start? Walk the key diagnostic checks so you can share the right readings with our team',
+    badge: null,
+    primary: false,
+    href: '/support/troubleshooting',
+    disabled: false,
+  },
+  {
     id: 'parts',
     icon: '🔧',
     title: 'Parts & Warranty Request',
@@ -73,6 +83,7 @@ export default function SupportPortal() {
 
   const showSubmit = tab === 'all' || tab === 'equipment'
   const showKb = tab === 'all' || tab === 'kb'
+  const activeSubmitCount = SUBMIT_CARDS.filter(c => !c.disabled).length
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950">
@@ -110,9 +121,9 @@ export default function SupportPortal() {
       {/* Tab bar */}
       <div className="max-w-[900px] mx-auto px-6 border-b border-gray-200 dark:border-zinc-800 flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {([
-          { id: 'all',       label: 'All',            count: 4 },
-          { id: 'equipment', label: 'Equipment',       count: 1 },
-          { id: 'kb',        label: 'Knowledge Base',  count: 3 },
+          { id: 'all',       label: 'All',            count: activeSubmitCount + KB_CARDS.length },
+          { id: 'equipment', label: 'Equipment',       count: activeSubmitCount },
+          { id: 'kb',        label: 'Knowledge Base',  count: KB_CARDS.length },
         ] as { id: Tab; label: string; count: number }[]).map(t => (
           <button
             key={t.id}
@@ -138,7 +149,7 @@ export default function SupportPortal() {
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-[10px] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[14px] flex-shrink-0">🎫</div>
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">Submit a Request</span>
-              <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600">1 active option</span>
+              <span className="text-[11px] font-semibold text-gray-300 dark:text-gray-600">{activeSubmitCount} active option{activeSubmitCount === 1 ? '' : 's'}</span>
             </div>
 
             <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">

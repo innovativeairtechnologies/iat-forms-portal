@@ -239,3 +239,35 @@ export type USRotorsOrder = {
   submitted_by: string | null
   created_at: string
 }
+
+// Customer "Troubleshooting Checklist" intake (the DATA BEFORE DECISIONS card as
+// a guided wizard at /support/troubleshooting). Written via /api/troubleshooting
+// using the service role; see migration 024. Tri-state fields hold the customer's
+// literal answer ('unsure' is preserved, not coerced to null).
+export type TroubleshootingIntake = {
+  id: string
+  reference_number: string
+  customer_name: string
+  customer_company: string | null
+  customer_email: string
+  customer_phone: string | null
+  serial_number: string
+  model_number: string | null
+  voltage: string | null
+  problem_description: string
+  problem_started: string | null
+  onset: 'sudden' | 'gradual' | 'unsure' | null
+  what_changed: string | null
+  unit_running: boolean | null
+  has_alarms: boolean | null
+  alarm_details: string | null
+  process_airflow_cfm: string | null
+  react_airflow_cfm: string | null
+  react_temp_f: string | null
+  wheel_rotating: 'yes' | 'no' | 'unsure' | null
+  seal_light_leakage: 'yes' | 'no' | 'unsure' | null
+  external_factors: string[] | null
+  photo_urls: string[] | null
+  status: 'new' | 'reviewed' | 'closed'
+  created_at: string
+}

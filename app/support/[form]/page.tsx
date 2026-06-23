@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation'
 import EquipmentTicketForm from '@/components/support/EquipmentTicketForm'
+import TroubleshootingChecklistForm from '@/components/support/TroubleshootingChecklistForm'
 
 // Registry of customer support forms. Each slug maps to its wizard component.
-// Today there is one (equipment support); add new ticket types here as they're built.
+// Add new ticket types here as they're built.
 // This sets the /support/[form-name] template without a generic form engine yet.
 const SUPPORT_FORMS: Record<string, { component: React.ComponentType }> = {
   'equipment-support': { component: EquipmentTicketForm },
+  'troubleshooting': { component: TroubleshootingChecklistForm },
 }
 
 export function generateStaticParams() {
