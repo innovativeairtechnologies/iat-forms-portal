@@ -90,9 +90,17 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // ── /tools/* (internal static HTML tools — staff only) ─────────────────────
+  // public/tools/*.html are self-contained internal calculators/generators.
+  // Gate them behind any authenticated session (employee OR admin); anon → login.
+  if (pathname.startsWith('/tools')) {
+    if (!user) return toLogin()
+    return supabaseResponse
+  }
+
   return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/employee/:path*', '/learn/:path*', '/customer/:path*', '/login'],
+  matcher: ['/admin/:path*', '/employee/:path*', '/learn/:path*', '/customer/:path*', '/tools/:path*', '/login'],
 }

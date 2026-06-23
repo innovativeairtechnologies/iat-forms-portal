@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
-   /admin/test — DESIGN PREVIEW (theme-aware: light + dark)
+   /admin — OPERATIONS DASHBOARD (theme-aware: light + dark)
    A clean "operations overview" dashboard modeled on a database-admin UI,
    populated entirely with IAT's real submissions / tickets / forms metrics.
    Server component; charts are server-rendered inline SVG (currentColor-aware).

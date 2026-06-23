@@ -131,7 +131,7 @@ export async function sendTroubleshootingCsAlert(t: TroubleshootingIntake, recip
     </table>
     ${photosBlock(t.photo_urls)}
     ${aiRecsBlock(t.ai_recommendations)}
-    <p style="margin:20px 0 0;color:#999;font-size:12px;">A dedicated admin view for these checklists is coming in Phase 2 — for now this email is the full case record.</p>`
+    <p style="margin:20px 0 0;color:#999;font-size:12px;">Manage this case in the <a href="${esc(APP_URL + '/admin/troubleshooting')}" style="color:#089447;">admin Troubleshooting queue</a> — this email carries the full case for quick reference.</p>`
 
   const subject = `New Troubleshooting Case ${t.reference_number} — ${t.customer_name}${t.customer_company ? ` (${t.customer_company})` : ''}`
 
