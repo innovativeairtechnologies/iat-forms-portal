@@ -68,10 +68,16 @@ export default function StatusPage() {
     setError(null)
     setResult(null)
     try {
-      const res = await fetch('/api/tickets/status', {
+      // TSC- references are troubleshooting-checklist intakes; everything else
+      // (TKT-…) is a support ticket. Both endpoints return the same shape.
+      const ref = ticketNumber.trim()
+      const endpoint = ref.toUpperCase().startsWith('TSC-')
+        ? '/api/troubleshooting/status'
+        : '/api/tickets/status'
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticket_number: ticketNumber.trim(), email: email.trim() }),
+        body: JSON.stringify({ ticket_number: ref, email: email.trim() }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Lookup failed.')
@@ -97,7 +103,7 @@ export default function StatusPage() {
           <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
         </Link>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>
-        <span className="text-[14px] text-gray-400">Ticket Status</span>
+        <span className="text-[14px] text-gray-400">Request Status</span>
       </header>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
@@ -105,9 +111,9 @@ export default function StatusPage() {
         {/* Lookup card */}
         <div className="w-full max-w-xl">
           <div className="text-center mb-7">
-            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight mb-1.5">Check your ticket status</h1>
+            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight mb-1.5">Check your request status</h1>
             <p className="text-[14px] text-gray-400 leading-relaxed">
-              Enter your ticket number and the email you submitted with to see the latest update.
+              Enter your ticket or reference number and the email you submitted with to see the latest update.
             </p>
           </div>
 
@@ -118,11 +124,11 @@ export default function StatusPage() {
           >
             <div className="space-y-4">
               <div>
-                <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200 mb-1.5">Ticket Number</label>
+                <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200 mb-1.5">Ticket / Reference Number</label>
                 <input
                   value={ticketNumber}
                   onChange={e => setTicketNumber(e.target.value)}
-                  placeholder="e.g. TKT-123456-789"
+                  placeholder="e.g. TKT-123456-789 or TSC-123456-789"
                   className="w-full text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all font-mono"
                 />
               </div>
@@ -171,7 +177,7 @@ export default function StatusPage() {
                 <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-800">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div>
-                      <p className="text-[11px] text-gray-400 mb-0.5">Ticket</p>
+                      <p className="text-[11px] text-gray-400 mb-0.5">Reference</p>
                       <p className="text-[18px] font-bold font-mono text-[#089447] tracking-wider">{result.ticket_number}</p>
                     </div>
                     <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-full bg-[#089447]/10 text-[#089447]">

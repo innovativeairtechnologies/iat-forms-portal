@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Logo from '@/components/Logo'
 import Link from 'next/link'
 import {
-  ArrowLeft, ArrowRight, CheckCircle, Check,
+  ArrowLeft, ArrowRight, CheckCircle, Check, Lightbulb,
   RotateCcw, Upload, X, Loader2, ImageIcon,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -61,7 +61,7 @@ const EXTERNAL_FACTORS = [
   'Weather changes',
 ]
 
-const STEP_LABELS = ['Contact', 'Serial', 'Problem', 'Onset', 'Status', 'Airflow', 'Seals', 'Factors', 'Photos']
+const STEP_LABELS = ['Contact', 'Serial', 'Problem', 'Onset', 'Status', 'Airflow', 'Seals', 'Factors', 'Photos', 'Tips']
 const TOTAL_STEPS = STEP_LABELS.length
 
 // ─── Field sub-components ──────────────────────────────────────────────────────
@@ -249,10 +249,41 @@ export default function TroubleshootingChecklistForm() {
   const [reference, setReference] = useState('')
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [recommendations, setRecommendations] = useState<string[]>([])
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analyzed, setAnalyzed] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
 
   const set = useCallback(<K extends keyof FormData>(key: K, val: FormData[K]) => {
     setForm(f => ({ ...f, [key]: val }))
   }, [])
+
+  // In-form AI: generate tips from the answers so far when the customer reaches
+  // the final "AI Analysis" card. Stateless; the submit reuses these tips.
+  const analyze = useCallback(async () => {
+    setAnalyzing(true)
+    setAnalyzeError(null)
+    try {
+      const res = await fetch('/api/troubleshooting/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const json = await res.json()
+      setRecommendations(Array.isArray(json.recommendations) ? json.recommendations : [])
+      setAnalyzed(true)
+    } catch {
+      setAnalyzeError('We could not generate suggestions right now — you can still submit and our team will follow up.')
+    } finally {
+      setAnalyzing(false)
+    }
+  }, [form])
+
+  // Auto-run once when they land on the AI Analysis card. The analyzeError guard
+  // prevents an auto-retry loop on persistent failure (manual retry clears it).
+  useEffect(() => {
+    if (step === TOTAL_STEPS && !analyzed && !analyzing && !analyzeError) analyze()
+  }, [step, analyzed, analyzing, analyzeError, analyze])
 
   const canAdvance = () => {
     if (step === 1) {
@@ -302,10 +333,11 @@ export default function TroubleshootingChecklistForm() {
       const res = await fetch('/api/troubleshooting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, photo_urls }),
+        body: JSON.stringify({ ...form, photo_urls, ai_recommendations: recommendations }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Submission failed')
+      if (Array.isArray(json.ai_recommendations)) setRecommendations(json.ai_recommendations)
       setReference(json.reference_number)
       setStage('success')
     } catch (err) {
@@ -321,7 +353,7 @@ export default function TroubleshootingChecklistForm() {
         <div className="flex flex-col items-center gap-4">
           <Loader2 size={36} className="text-[#089447] animate-spin" />
           <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">Submitting your checklist…</p>
-          <p className="text-[13px] text-gray-400">Saving your equipment details for our team</p>
+          <p className="text-[13px] text-gray-400">Saving your case and alerting our team</p>
         </div>
       </div>
     )
@@ -361,11 +393,46 @@ export default function TroubleshootingChecklistForm() {
               <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
                 Our service team will review your checklist and reach out to <strong className="text-gray-700 dark:text-gray-200">{form.customer_email}</strong> shortly.
               </p>
+              <Link
+                href={`/support/status?ticket=${encodeURIComponent(reference)}`}
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#089447] hover:text-[#077a3c] mt-3 transition-colors"
+              >
+                Track this request&apos;s status
+                <ArrowRight size={14} />
+              </Link>
             </div>
+
+            {/* AI tips (same set shown on the pre-submit card) */}
+            {recommendations.length > 0 && (
+              <div className="px-8 py-6 border-b border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
+                    <Lightbulb size={14} className="text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-100">While you wait, try these steps</p>
+                    <p className="text-[11px] text-gray-400">Based on the information you provided</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {recommendations.map((rec, i) => (
+                    <div key={i} className="flex gap-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl px-4 py-3 border border-amber-100 dark:border-amber-900/30">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 text-[11px] font-bold flex items-center justify-center mt-0.5">
+                        {i + 1}
+                      </span>
+                      <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-3">
+                  These are AI-generated suggestions. If unsure, wait for your service technician.
+                </p>
+              </div>
+            )}
 
             <div className="px-8 py-5 flex items-center justify-between gap-4">
               <button
-                onClick={() => { setForm(EMPTY); setPhotos([]); setStep(1); setStage('form') }}
+                onClick={() => { setForm(EMPTY); setPhotos([]); setStep(1); setStage('form'); setRecommendations([]); setAnalyzed(false); setAnalyzeError(null) }}
                 className="flex items-center gap-2 text-[13px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 <RotateCcw size={14} />
@@ -462,6 +529,7 @@ export default function TroubleshootingChecklistForm() {
               {step === 7 && <StepSeals form={form} set={set} />}
               {step === 8 && <StepFactors form={form} set={set} />}
               {step === 9 && <StepPhotos photos={photos} setPhotos={setPhotos} fileInputRef={fileInputRef} handleFiles={handleFiles} />}
+              {step === 10 && <StepAiAnalysis recommendations={recommendations} analyzing={analyzing} analyzed={analyzed} error={analyzeError} onRetry={analyze} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -722,6 +790,59 @@ function StepPhotos({
               <span className="text-[10px] font-medium">Add</span>
             </button>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StepAiAnalysis({
+  recommendations, analyzing, analyzed, error, onRetry,
+}: {
+  recommendations: string[]
+  analyzing: boolean
+  analyzed: boolean
+  error: string | null
+  onRetry: () => void
+}) {
+  return (
+    <div>
+      <div className="mb-5">
+        <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+          <Lightbulb size={18} className="text-amber-500" /> AI Quick Analysis
+        </h2>
+        <p className="text-[13px] text-gray-400">Based on your answers — a few safe things you can check now while our team reviews your case.</p>
+      </div>
+
+      {analyzing && (
+        <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-800/40 rounded-xl px-4 py-5 border border-gray-100 dark:border-zinc-800">
+          <Loader2 size={18} className="text-[#089447] animate-spin flex-shrink-0" />
+          <p className="text-[13px] text-gray-500 dark:text-gray-400">Analyzing your answers…</p>
+        </div>
+      )}
+
+      {!analyzing && error && (
+        <div className="text-[13px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/40 border border-gray-100 dark:border-zinc-800 rounded-xl px-4 py-4">
+          <p className="mb-2">{error}</p>
+          <button type="button" onClick={onRetry} className="text-[13px] font-semibold text-[#089447] hover:text-[#077a3c]">Try again</button>
+        </div>
+      )}
+
+      {!analyzing && !error && recommendations.length > 0 && (
+        <div className="space-y-3">
+          {recommendations.map((rec, i) => (
+            <div key={i} className="flex gap-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl px-4 py-3 border border-amber-100 dark:border-amber-900/30">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 text-[11px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+              <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed">{rec}</p>
+            </div>
+          ))}
+          <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-1">AI-generated suggestions — if unsure, wait for your service technician. Submit below and our team will follow up.</p>
+        </div>
+      )}
+
+      {!analyzing && !error && analyzed && recommendations.length === 0 && (
+        <div className="text-[13px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/40 border border-gray-100 dark:border-zinc-800 rounded-xl px-4 py-4">
+          No specific automated suggestions for this combination — our team will review your details and follow up. Go ahead and submit.
         </div>
       )}
     </div>

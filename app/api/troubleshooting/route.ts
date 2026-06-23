@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
+import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
+import { sendTroubleshootingConfirmationToCustomer, sendTroubleshootingCsAlert } from '@/lib/resend-troubleshooting'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -75,7 +77,20 @@ export async function POST(req: NextRequest) {
 
     const photo_urls = validPhotoUrls(body.photo_urls)
 
-    const { error: insertError } = await supabaseAdmin
+    // AI tips: prefer the ones the in-form "AI Analysis" card already generated
+    // (passed back on submit) — avoids a second model call and keeps them
+    // consistent with what the customer just saw; generate here only if absent.
+    let ai_recommendations = Array.isArray(body.ai_recommendations)
+      ? body.ai_recommendations
+          .filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
+          .map((x: string) => x.trim().slice(0, 600))
+          .slice(0, 3)
+      : []
+    if (ai_recommendations.length === 0) {
+      ai_recommendations = await generateTroubleshootingTips(body)
+    }
+
+    const { data: intake, error: insertError } = await supabaseAdmin
       .from('troubleshooting_intakes')
       .insert({
         reference_number,
@@ -100,15 +115,26 @@ export async function POST(req: NextRequest) {
         seal_light_leakage: oneOf(body.seal_light_leakage, TRISTATE),
         external_factors: external_factors.length ? external_factors : null,
         photo_urls: photo_urls.length ? photo_urls : null,
+        ai_recommendations: ai_recommendations.length ? ai_recommendations : null,
         status: 'new',
       })
+      .select()
+      .single()
 
-    if (insertError) {
+    if (insertError || !intake) {
       console.error('[troubleshooting] insert error:', insertError)
       return NextResponse.json({ error: 'Failed to submit. Please try again.' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, reference_number })
+    // Email loop — customer confirmation + CS alert. Awaited so Vercel doesn't
+    // kill the function before Resend fires; failures log but never fail the case.
+    const csRecipients = [process.env.CS_NOTIFICATION_EMAIL || 'jacob.younker@dehumidifiers.com']
+    await Promise.all([
+      sendTroubleshootingConfirmationToCustomer(intake).catch(console.error),
+      sendTroubleshootingCsAlert(intake, csRecipients).catch(console.error),
+    ])
+
+    return NextResponse.json({ success: true, reference_number, ai_recommendations })
   } catch (err) {
     console.error('[troubleshooting] route error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

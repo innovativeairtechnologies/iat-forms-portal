@@ -268,6 +268,7 @@ export type TroubleshootingIntake = {
   seal_light_leakage: 'yes' | 'no' | 'unsure' | null
   external_factors: string[] | null
   photo_urls: string[] | null
+  ai_recommendations: string[] | null
   status: 'new' | 'reviewed' | 'closed'
   created_at: string
 }
