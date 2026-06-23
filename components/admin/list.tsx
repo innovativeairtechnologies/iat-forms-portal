@@ -70,6 +70,12 @@ export const TICKET_STATUS: Record<string, { label: string; tone: Tone }> = {
   closed:      { label: 'Closed',      tone: 'slate' },
 }
 
+export const TROUBLESHOOTING_STATUS: Record<string, { label: string; tone: Tone }> = {
+  new:      { label: 'New',      tone: 'sky' },
+  reviewed: { label: 'Reviewed', tone: 'amber' },
+  closed:   { label: 'Closed',   tone: 'emerald' },
+}
+
 export const PRIORITY: Record<string, { label: string; dot: string }> = {
   low:      { label: 'Low',      dot: 'bg-sky-400' },
   med:      { label: 'Med',      dot: 'bg-amber-400' },

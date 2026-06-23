@@ -23,12 +23,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { count: ptoPending },
     { count: sickPending },
     { count: usRotorsOrders },
+    { count: newIntakes },
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
     supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'pto').eq('status', 'pending'),
     supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'sick').eq('status', 'pending'),
     supabaseAdmin.from('us_rotors_orders').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabaseAdmin.from('troubleshooting_intakes').select('*', { count: 'exact', head: true }).eq('status', 'new'),
   ])
 
   return (
@@ -38,6 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminSidebar
         unreadCount={unreadCount ?? 0}
         ticketCount={openTickets ?? 0}
+        troubleshootingCount={newIntakes ?? 0}
         ptoPending={ptoPending ?? 0}
         sickPending={sickPending ?? 0}
         usRotorsOrders={usRotorsOrders ?? 0}
