@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getAdminUser } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -419,6 +420,12 @@ export default async function AdminDashboard() {
   const presetRaw = (await cookies()).get(DASH_PRESET_COOKIE)?.value
   const preset: Preset = (PRESETS as readonly string[]).includes(presetRaw ?? '') ? (presetRaw as Preset) : 'balanced'
 
+  // Logged-in admin's first name for the greeting (the admin layout already gates
+  // this page to admins; split on space/dot covers "Jacob Younker" + "jacob.younker").
+  const admin = await getAdminUser()
+  const firstName = (admin?.displayName ?? '').trim().split(/[\s.]+/)[0]
+  const firstNameDisplay = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : ''
+
   // KPI cards defined once, placed in two layouts (mobile grid vs. xl split) below.
   const kpiTotal = (
     <Kpi label="Total Submissions" value={d.kpi.totalSubs} unit="all-time" delta={d.subDelta} deltaLabel="vs last week"
@@ -469,10 +476,11 @@ export default async function AdminDashboard() {
         {/* ── AI Executive Briefing — plain-English read of the operation ── */}
         <ExecutiveBriefing />
 
-        {/* ── KPI metric cards — scoped to the active preset ───────────
-             Balanced keeps the full 5-card split; Tickets / Submissions show
-             only their own metrics, aligned to the main content column. */}
-        {preset === 'balanced' ? (
+        {/* ── KPI metric cards ─────────────────────────────────────────
+             Balanced shows all 5 here (4 + Resolved atop the rail). Tickets /
+             Submissions render their KPI row inside the left column below, so the
+             rail rises to meet the top row instead of leaving a gap beside it. */}
+        {preset === 'balanced' && (
           <>
             {/* below xl: all 5 in a responsive grid */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 xl:hidden">
@@ -486,39 +494,41 @@ export default async function AdminDashboard() {
               <div className="w-[330px] flex-shrink-0">{kpiResolved}</div>
             </div>
           </>
-        ) : (
-          <div className="xl:flex xl:gap-4 xl:items-stretch">
-            <div className="flex-1 min-w-0 grid grid-cols-2 lg:grid-cols-3 gap-3">
-              {preset === 'tickets'
-                ? <>{kpiOpen}{kpiInProgress}{kpiResolved}</>
-                : <>{kpiTotal}{kpiForms}{kpiUnread}</>}
-            </div>
-            {/* spacer keeps the cards aligned with the main column on xl */}
-            <div className="hidden xl:block w-[330px] flex-shrink-0" aria-hidden />
-          </div>
         )}
 
         {/* ── Main + creative right rail ───────────────────────────── */}
         <div className="flex gap-4 items-start">
-          {preset === 'tickets'
-            ? <MainTickets d={d} />
-            : preset === 'submissions'
-            ? <MainSubmissions d={d} />
-            : <MainBalanced d={d} />}
+          {preset === 'balanced' ? (
+            <MainBalanced d={d} />
+          ) : (
+            /* Tickets / Submissions: the KPI row + main share the left column, so
+               the rail (right) starts at the same top row instead of dropping a row. */
+            <div className="flex-1 min-w-0 space-y-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {preset === 'tickets'
+                  ? <>{kpiOpen}{kpiInProgress}{kpiResolved}</>
+                  : <>{kpiTotal}{kpiForms}{kpiUnread}</>}
+              </div>
+              {preset === 'tickets' ? <MainTickets d={d} /> : <MainSubmissions d={d} />}
+            </div>
+          )}
 
           {/* ── Creative right rail: Operations Pulse ──────────────── */}
           <aside className="hidden xl:flex flex-col gap-4 w-[330px] flex-shrink-0 sticky top-[72px]">
 
-            {/* Greeting */}
-            <div className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none p-5">
-              <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl opacity-20" style={{ background: 'radial-gradient(circle,#10b981,transparent 70%)' }} />
+            {/* Greeting — colorful hero so the rail has some life (light + dark) */}
+            <div className="relative overflow-hidden rounded-xl p-5 shadow-sm bg-gradient-to-br from-emerald-600 to-teal-700 dark:from-emerald-700 dark:to-teal-900">
+              <div className="pointer-events-none absolute -top-12 -right-10 w-40 h-40 rounded-full blur-3xl bg-white/20" />
+              <div className="pointer-events-none absolute -bottom-14 -left-10 w-36 h-36 rounded-full blur-3xl bg-emerald-300/20 dark:bg-emerald-400/10" />
               <div className="relative">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">{d.dateET}</p>
-                <h2 className="mt-1 text-[20px] font-bold text-zinc-900 dark:text-white leading-tight">{greeting(d.hourET)}</h2>
-                <p className="mt-1.5 text-[12px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-100">{d.dateET}</p>
+                <h2 className="mt-1 text-[20px] font-bold text-white leading-tight">
+                  {greeting(d.hourET)}{firstNameDisplay ? `, ${firstNameDisplay}` : ''}
+                </h2>
+                <p className="mt-1.5 text-[12px] text-emerald-50 leading-relaxed">
                   {attentionCount > 0
-                    ? <>You have <span className="font-semibold text-zinc-700 dark:text-zinc-200">{attentionCount}</span> item{attentionCount === 1 ? '' : 's'} that need attention.</>
-                    : <>Everything is handled. Nice work. <Sparkles size={12} className="inline -mt-0.5 text-emerald-500" /></>}
+                    ? <>You have <span className="font-semibold text-white">{attentionCount}</span> item{attentionCount === 1 ? '' : 's'} that need attention.</>
+                    : <>Everything is handled. Nice work. <Sparkles size={12} className="inline -mt-0.5 text-white" /></>}
                 </p>
               </div>
             </div>
