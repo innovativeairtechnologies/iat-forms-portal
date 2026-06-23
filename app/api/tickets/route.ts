@@ -8,6 +8,24 @@ import { sendTicketConfirmationToCustomer, sendTicketNotificationToAdmins } from
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// Photos must be https links into our own public storage bucket. Anything else
+// (javascript:/data:/external host) is dropped, so a direct POST to this public
+// endpoint can't seed the table with malicious or off-site URLs. Also caps the
+// count to the client's contract so a flood can't bloat the row.
+const PHOTO_URL_PREFIX =
+  `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}/storage/v1/object/public/ticket-photos/`
+
+function validPhotoUrls(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  return v
+    .filter((u): u is string => typeof u === 'string')
+    .filter(u => {
+      try { return new URL(u).protocol === 'https:' && u.startsWith(PHOTO_URL_PREFIX) }
+      catch { return false }
+    })
+    .slice(0, 8)
+}
+
 function buildPrompt(body: Record<string, unknown>): string {
   const yn = (v: unknown) => v === true ? 'Yes' : v === false ? 'No' : 'Not reported'
 
@@ -69,6 +87,8 @@ export async function POST(req: NextRequest) {
       console.error('[tickets] viewed KB articles resolve failed:', kbErr)
     }
 
+    const photo_urls = validPhotoUrls(body.photo_urls)
+
     const { data: ticket, error: insertError } = await supabaseAdmin
       .from('tickets')
       .insert({
@@ -93,7 +113,7 @@ export async function POST(req: NextRequest) {
         react_heat_working: body.react_heat_working ?? null,
         react_heat_setpoint: body.react_heat_setpoint ?? null,
         seals_good: body.seals_good ?? null,
-        photo_urls: body.photo_urls?.length ? body.photo_urls : null,
+        photo_urls: photo_urls.length ? photo_urls : null,
         viewed_kb_articles,
         brand: body.brand === 'us_rotors' ? 'us_rotors' : 'iat',
         status: 'open',
