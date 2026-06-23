@@ -8,6 +8,11 @@ export const dynamic = 'force-dynamic'
    things an admin jumps to most: forms, employees, and tickets. Kept small &
    fast (5 each) — the palette also has static nav/actions baked in client-side. */
 
+// Best-effort display name from a submission's freeform data.
+function nameOf(data: Record<string, unknown> | null): string {
+  return String(data?.['Employee Name'] || data?.['Full Name'] || data?.['Name'] || 'Anonymous')
+}
+
 export async function GET(req: NextRequest) {
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,11 +24,11 @@ export async function GET(req: NextRequest) {
   // input can't break the query string.
   const q = raw.replace(/[,()%*\\]/g, '')
   if (q.length < 2) {
-    return NextResponse.json({ forms: [], employees: [], tickets: [] })
+    return NextResponse.json({ forms: [], employees: [], tickets: [], submissions: [] })
   }
 
   const like = `%${q}%`
-  const [{ data: forms }, { data: employees }, { data: tickets }] = await Promise.all([
+  const [{ data: forms }, { data: employees }, { data: tickets }, { data: submissions }] = await Promise.all([
     supabaseAdmin
       .from('forms')
       .select('id, title, slug, is_active')
@@ -41,11 +46,22 @@ export async function GET(req: NextRequest) {
       .or(`ticket_number.ilike.${like},customer_name.ilike.${like}`)
       .order('created_at', { ascending: false })
       .limit(5),
+    supabaseAdmin
+      .from('submissions')
+      .select('id, form_title, data')
+      .or(`form_title.ilike.${like},data::text.ilike.${like}`)
+      .order('submitted_at', { ascending: false })
+      .limit(5),
   ])
 
   return NextResponse.json({
     forms: forms || [],
     employees: employees || [],
     tickets: tickets || [],
+    submissions: (submissions || []).map((s: { id: string; form_title: string | null; data: Record<string, unknown> | null }) => ({
+      id: s.id,
+      name: nameOf(s.data),
+      form_title: s.form_title,
+    })),
   })
 }

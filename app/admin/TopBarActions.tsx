@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, Bell, X } from 'lucide-react'
 
@@ -38,17 +37,40 @@ function initialsOf(name: string) {
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────────
+// The top-bar box launches the ⌘K command palette (the real cross-entity search).
+// Its placeholder cycles through what you can reach, so the box advertises its
+// full reach instead of looking submissions-only.
+const SEARCH_HINTS = ['submissions', 'tickets', 'employees', 'forms', 'PTO requests', 'orders', 'equipment']
+
 export function TopBarSearch() {
   const [query, setQuery] = useState('')
-  const router = useRouter()
+  const [hintIdx, setHintIdx] = useState(0)
+  const [hintVisible, setHintVisible] = useState(true)
+  const [focused, setFocused] = useState(false)
+
+  // Rotate the placeholder while the box is idle (empty + unfocused): fade the
+  // current hint out, swap it, fade the next one in.
+  useEffect(() => {
+    if (focused || query) { setHintVisible(true); return }
+    let swap: ReturnType<typeof setTimeout>
+    const cycle = setInterval(() => {
+      setHintVisible(false)
+      swap = setTimeout(() => {
+        setHintIdx((i) => (i + 1) % SEARCH_HINTS.length)
+        setHintVisible(true)
+      }, 220)
+    }, 2600)
+    return () => { clearInterval(cycle); clearTimeout(swap) }
+  }, [focused, query])
+
+  const openPalette = (seed?: string) =>
+    window.dispatchEvent(new CustomEvent('commandk:open', seed ? { detail: { query: seed } } : {}))
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!query.trim()) return
-    router.push(`/admin/submissions?search=${encodeURIComponent(query.trim())}`)
+    openPalette(query.trim() || undefined)
+    setQuery('')
   }
-
-  const openPalette = () => window.dispatchEvent(new Event('commandk:open'))
 
   return (
     <form onSubmit={handleSubmit} className="hidden md:block relative w-64">
@@ -57,12 +79,23 @@ export function TopBarSearch() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search submissions…"
-        className="w-full h-9 pl-9 pr-12 text-[13px] rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        aria-label="Search"
+        placeholder=""
+        className="w-full h-9 pl-9 pr-12 text-[13px] rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
       />
+      {!query && (
+        <span
+          aria-hidden
+          className={`absolute left-9 top-1/2 -translate-y-1/2 text-[13px] text-zinc-400 dark:text-zinc-500 pointer-events-none transition-opacity duration-200 ${hintVisible ? 'opacity-100' : 'opacity-0'}`}
+        >
+          Search {SEARCH_HINTS[hintIdx]}…
+        </span>
+      )}
       <button
         type="button"
-        onClick={openPalette}
+        onClick={() => openPalette(query.trim() || undefined)}
         title="Open command palette (⌘K)"
         className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1.5 h-5 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
       >

@@ -10,7 +10,7 @@ import ExecutiveBriefing from './ExecutiveBriefing'
 import { PRESETS, DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 import {
   ChevronRight, Plus,
-  Inbox, FileText, ClipboardList, Ticket, CheckCircle2,
+  Inbox, FileText, ClipboardList, Ticket, CheckCircle2, Clock,
   MoreHorizontal, AlertCircle, ShieldCheck, Sparkles, Users, ArrowRight,
 } from 'lucide-react'
 
@@ -292,11 +292,11 @@ function Donut({ segments, total, size = 168, stroke = 18 }: {
 
 /** Two-series area + line chart (14-day activity). */
 function LineChart({ days, a, b, ca, cb }: {
-  days: { label: string }[]; a: number[]; b: number[]; ca: string; cb: string
+  days: { label: string }[]; a: number[]; b?: number[]; ca: string; cb?: string
 }) {
   const W = 620, H = 190, padL = 30, padR = 12, padT = 14, padB = 26
   const iw = W - padL - padR, ih = H - padT - padB
-  const max = Math.max(2, ...a, ...b)
+  const max = Math.max(2, ...a, ...(b ?? []))
   const n = a.length
   const x = (i: number) => padL + (iw * i) / (n - 1)
   const y = (v: number) => padT + ih * (1 - v / max)
@@ -328,8 +328,8 @@ function LineChart({ days, a, b, ca, cb }: {
         )
       })}
       <path d={area(a)} fill="url(#tgradA)" />
-      <path d={area(b)} fill="url(#tgradB)" />
-      <path d={line(b)} fill="none" stroke={cb} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      {b && <path d={area(b)} fill="url(#tgradB)" />}
+      {b && cb && <path d={line(b)} fill="none" stroke={cb} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />}
       <path d={line(a)} fill="none" stroke={ca} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {a.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={i === n - 1 ? 3 : 0} fill={ca} />)}
       {ticks.map((t) => (
@@ -440,6 +440,10 @@ export default async function AdminDashboard() {
     <Kpi label="Resolved" value={d.kpi.resolved7d} unit="this week" sub="Tickets closed in last 7 days"
       spark={d.tktSeries} color={C.green} icon={<CheckCircle2 size={15} />} href="/admin/tickets" />
   )
+  const kpiInProgress = (
+    <Kpi label="In Progress" value={d.donut.inProgress} unit="active" sub="Tickets being worked"
+      spark={d.tktSeries} color={C.amber} icon={<Clock size={15} />} href="/admin/tickets" />
+  )
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
@@ -465,18 +469,34 @@ export default async function AdminDashboard() {
         {/* ── AI Executive Briefing — plain-English read of the operation ── */}
         <ExecutiveBriefing />
 
-        {/* ── KPI row · below xl: all 5 in a responsive grid ───────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 xl:hidden">
-          {kpiTotal}{kpiForms}{kpiUnread}{kpiOpen}{kpiResolved}
-        </div>
-
-        {/* ── KPI row · xl+: 4 in the left zone, Resolved atop the rail column ── */}
-        <div className="hidden xl:flex gap-4 items-stretch">
-          <div className="flex-1 min-w-0 grid grid-cols-4 gap-3">
-            {kpiTotal}{kpiForms}{kpiUnread}{kpiOpen}
+        {/* ── KPI metric cards — scoped to the active preset ───────────
+             Balanced keeps the full 5-card split; Tickets / Submissions show
+             only their own metrics, aligned to the main content column. */}
+        {preset === 'balanced' ? (
+          <>
+            {/* below xl: all 5 in a responsive grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 xl:hidden">
+              {kpiTotal}{kpiForms}{kpiUnread}{kpiOpen}{kpiResolved}
+            </div>
+            {/* xl+: 4 in the left zone, Resolved atop the rail column */}
+            <div className="hidden xl:flex gap-4 items-stretch">
+              <div className="flex-1 min-w-0 grid grid-cols-4 gap-3">
+                {kpiTotal}{kpiForms}{kpiUnread}{kpiOpen}
+              </div>
+              <div className="w-[330px] flex-shrink-0">{kpiResolved}</div>
+            </div>
+          </>
+        ) : (
+          <div className="xl:flex xl:gap-4 xl:items-stretch">
+            <div className="flex-1 min-w-0 grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {preset === 'tickets'
+                ? <>{kpiOpen}{kpiInProgress}{kpiResolved}</>
+                : <>{kpiTotal}{kpiForms}{kpiUnread}</>}
+            </div>
+            {/* spacer keeps the cards aligned with the main column on xl */}
+            <div className="hidden xl:block w-[330px] flex-shrink-0" aria-hidden />
           </div>
-          <div className="w-[330px] flex-shrink-0">{kpiResolved}</div>
-        </div>
+        )}
 
         {/* ── Main + creative right rail ───────────────────────────── */}
         <div className="flex gap-4 items-start">
@@ -759,17 +779,27 @@ function WTopSubmitters({ d, className }: WProps) {
   )
 }
 
-function WActivityChart({ d, className }: WProps) {
+function WActivityChart({ d, view = 'both', className }: WProps & { view?: 'both' | 'tickets' | 'submissions' }) {
+  const title =
+    view === 'tickets' ? 'Ticket Intake · Last 14 days'
+    : view === 'submissions' ? 'Submissions · Last 14 days'
+    : 'Activity · Last 14 days'
   return (
     <Card className={className}>
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200/70 dark:border-zinc-800/80">
-        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Activity · Last 14 days</h3>
+        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
         <div className="flex items-center gap-4">
-          <LegendInline color={C.green} label="Submissions" />
-          <LegendInline color={C.rose} label="Tickets" />
+          {view !== 'tickets' && <LegendInline color={C.green} label="Submissions" />}
+          {view !== 'submissions' && <LegendInline color={C.rose} label="Tickets" />}
         </div>
       </div>
-      <div className="px-3 py-4"><LineChart days={d.days} a={d.subSeries} b={d.tktSeries} ca={C.green} cb={C.rose} /></div>
+      <div className="px-3 py-4">
+        {view === 'tickets'
+          ? <LineChart days={d.days} a={d.tktSeries} ca={C.rose} />
+          : view === 'submissions'
+          ? <LineChart days={d.days} a={d.subSeries} ca={C.green} />
+          : <LineChart days={d.days} a={d.subSeries} b={d.tktSeries} ca={C.green} cb={C.rose} />}
+      </div>
     </Card>
   )
 }
@@ -902,24 +932,23 @@ function MainBalanced({ d }: { d: DashData }) {
   )
 }
 
+// Tickets preset — ticket metrics only (intake trend, status mix, recent queue).
 function MainTickets({ d }: { d: DashData }) {
   return (
     <main className="flex-1 min-w-0 space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WRecentTickets d={d} className="lg:col-span-2" /><WTicketsDonut d={d} /></div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WActivityChart d={d} className="lg:col-span-2" /><WFormStatus d={d} /></div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WFormsPerformance d={d} className="lg:col-span-2" /><WRecentSubmissions d={d} /></div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WTopForms d={d} /><WTopSubmitters d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WActivityChart d={d} view="tickets" className="lg:col-span-2" /><WTicketsDonut d={d} /></div>
+      <WRecentTickets d={d} />
     </main>
   )
 }
 
+// Submissions preset — form & submission metrics only (no ticket cards).
 function MainSubmissions({ d }: { d: DashData }) {
   return (
     <main className="flex-1 min-w-0 space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WFormsPerformance d={d} className="lg:col-span-2" /><WRecentSubmissions d={d} /></div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WTopForms d={d} /><WTopSubmitters d={d} /></div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WActivityChart d={d} className="lg:col-span-2" /><WTicketsDonut d={d} /></div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><WRecentTickets d={d} /><WFormStatus d={d} /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><WActivityChart d={d} view="submissions" className="lg:col-span-2" /><WFormStatus d={d} /></div>
     </main>
   )
 }

@@ -6,7 +6,7 @@ import {
   Search, CornerDownLeft, ArrowUp, ArrowDown,
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
-  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock,
+  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Package,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ const STATIC: Item[] = [
   { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions' },
   { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets' },
   { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty' },
+  { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster' },
   { id: 'nav-pto',     label: 'PTO Requests',     group: 'Go to', icon: Calendar,        href: '/admin/requests/pto', keywords: 'time off vacation' },
   { id: 'nav-sick',    label: 'Sick Time',        group: 'Go to', icon: CalendarClock,   href: '/admin/requests/sick', keywords: 'time off' },
@@ -47,9 +48,10 @@ type SearchResults = {
   forms: { id: string; title: string; is_active: boolean }[]
   employees: { id: string; name: string; email: string; job_title: string | null }[]
   tickets: { id: string; ticket_number: string; customer_name: string; status: string }[]
+  submissions: { id: string; name: string; form_title: string | null }[]
 }
 
-const EMPTY: SearchResults = { forms: [], employees: [], tickets: [] }
+const EMPTY: SearchResults = { forms: [], employees: [], tickets: [], submissions: [] }
 
 // Recent admin activity (audit feed) surfaced in the palette's empty state.
 type RecentRow = {
@@ -109,7 +111,13 @@ export default function CommandPalette() {
         setOpen(false)
       }
     }
-    const onOpen = () => setOpen(true)
+    const onOpen = (e: Event) => {
+      // The top-bar search dispatches this with the typed query so the palette
+      // opens pre-filled and immediately runs the live cross-entity search.
+      const seed = (e as CustomEvent).detail?.query
+      if (typeof seed === 'string') { setQuery(seed); setActive(0) }
+      setOpen(true)
+    }
     document.addEventListener('keydown', onKey)
     window.addEventListener('commandk:open', onOpen)
     return () => {
@@ -120,18 +128,20 @@ export default function CommandPalette() {
 
   // Reset + focus when opening; clear when closing.
   useEffect(() => {
-    if (open) {
+    if (!open) {
+      // Clear on close so a plain ⌘K opens fresh; a seeded open sets its own query.
       setQuery('')
       setResults(EMPTY)
       setActive(0)
-      // focus after paint
-      requestAnimationFrame(() => inputRef.current?.focus())
-      // pull the latest admin activity for the empty-state feed
-      fetch('/api/admin/recent')
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => { if (d?.recent) setRecent(d.recent) })
-        .catch(() => { /* network — ignore, fall back to nav */ })
+      return
     }
+    // focus after paint
+    requestAnimationFrame(() => inputRef.current?.focus())
+    // pull the latest admin activity for the empty-state feed
+    fetch('/api/admin/recent')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.recent) setRecent(d.recent) })
+      .catch(() => { /* network — ignore, fall back to nav */ })
   }, [open])
 
   // ── Debounced live search ───────────────────────────────────────────────────
@@ -188,6 +198,10 @@ export default function CommandPalette() {
         id: `tkt-${t.id}`, label: t.customer_name || t.ticket_number,
         sublabel: `${t.ticket_number} · ${t.status.replace('_', ' ')}`,
         group: 'Tickets', icon: LifeBuoy, href: `/admin/tickets/${t.id}`,
+      })),
+      ...results.submissions.map((s) => ({
+        id: `sub-${s.id}`, label: s.name, sublabel: s.form_title || 'Form submission',
+        group: 'Submissions', icon: Inbox, href: `/admin/submissions/${s.id}`,
       })),
     ]
     return [...statics, ...live]
@@ -246,7 +260,7 @@ export default function CommandPalette() {
             value={query}
             onChange={(e) => { setQuery(e.target.value); setActive(0) }}
             onKeyDown={onInputKey}
-            placeholder="Search forms, people, tickets, or jump to a page…"
+            placeholder="Search submissions, tickets, people, forms…"
             className="flex-1 bg-transparent text-[14px] text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none"
           />
           {loading && <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />}
