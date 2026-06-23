@@ -6,7 +6,7 @@ import Logo from '@/components/Logo'
 import Link from 'next/link'
 import {
   ArrowLeft, ArrowRight, CheckCircle, Check, Lightbulb,
-  RotateCcw, Upload, X, Loader2, ImageIcon,
+  RotateCcw, Upload, X, Loader2, ImageIcon, ChevronDown, Info,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -234,6 +234,57 @@ function MultiChoiceField({
       </div>
     </div>
   )
+}
+
+// ── In-flow desiccant coaching (rule-based, opt-in) ───────────────────────────
+
+// Collapsed "learn more" disclosure — expert guidance is there when wanted but
+// doesn't lengthen the flow.
+function Coaching({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/70 dark:bg-zinc-800/30">
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+        className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left">
+        <Lightbulb size={14} className="text-amber-500 flex-shrink-0" />
+        <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 flex-1">{label}</span>
+        <ChevronDown size={14} className={`text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-3.5 pb-3.5 pt-0.5 text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed space-y-2">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Short, auto-shown note that reacts to an entered value.
+function CoachNote({ tone = 'amber', children }: { tone?: 'amber' | 'sky'; children: React.ReactNode }) {
+  const cls = tone === 'sky'
+    ? 'text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/30 border-sky-100 dark:border-sky-900/40'
+    : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/40'
+  return (
+    <div className={`flex items-start gap-2 text-[12px] rounded-xl border px-3 py-2 leading-relaxed ${cls}`}>
+      <Info size={13} className="flex-shrink-0 mt-0.5" />
+      <span>{children}</span>
+    </div>
+  )
+}
+
+// Process:react airflow ratio + which application band it falls in.
+function airflowRatio(processStr: string, reactStr: string): { label: string; band: string } | null {
+  const p = parseFloat(processStr), r = parseFloat(reactStr)
+  if (!isFinite(p) || !isFinite(r) || p <= 0 || r <= 0) return null
+  const ratio = p / r
+  const rounded = Math.round(ratio * 10) / 10
+  let band: string
+  if (ratio < 2.5)       band = 'lower than the usual ~3:1 — worth double-checking the readings'
+  else if (ratio <= 3.5) band = 'right in the typical ~3:1 range for most applications'
+  else if (ratio <= 5.5) band = 'typical for lower-grain applications (4–5:1)'
+  else if (ratio <= 7.5) band = 'typical only for very low-grain applications (6–7:1)'
+  else                   band = 'higher than usual (>7:1) — worth double-checking the readings'
+  return { label: `${rounded}:1`, band }
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -654,6 +705,10 @@ function StepOnset({ form, set }: { form: FormData; set: SetFn }) {
         ]}
       />
       <InputField label="Anything change right before it started?" value={form.what_changed} onChange={v => set('what_changed', v)} placeholder="e.g. New process line, power outage, weather, filter change…" hint="Optional — even small changes can matter." />
+      <Coaching label="What sudden vs. gradual usually points to">
+        <p><strong className="text-gray-600 dark:text-gray-300">Sudden</strong> → heater failure · fan failure · power outage · control or sensor issue · VFD fault.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Gradual</strong> → dirty filters · desiccant wheel aging · airflow drift · seal wear · coil fouling · a changed room/process load.</p>
+      </Coaching>
     </div>
   )
 }
@@ -681,7 +736,18 @@ function StepAirflow({ form, set }: { form: FormData; set: SetFn }) {
         <InputField label="Process airflow (CFM)" value={form.process_airflow_cfm} onChange={v => set('process_airflow_cfm', v)} placeholder="e.g. 1200" type="number" />
         <InputField label="React airflow (CFM)" value={form.react_airflow_cfm} onChange={v => set('react_airflow_cfm', v)} placeholder="e.g. 350" type="number" />
       </div>
-      <InputField label="Reactivation temperature (°F)" value={form.react_temp_f} onChange={v => set('react_temp_f', v)} placeholder="e.g. 285" type="number" hint="Design target is around 285°F. Readings above ~320°F often point to an airflow issue." />
+      <InputField label="Reactivation temperature (°F)" value={form.react_temp_f} onChange={v => set('react_temp_f', v)} placeholder="e.g. 285" type="number" hint="Usually shown on the controller display." />
+      {(() => {
+        const r = airflowRatio(form.process_airflow_cfm, form.react_airflow_cfm)
+        return r ? <CoachNote tone="sky">Process : React airflow ≈ <strong>{r.label}</strong> — {r.band}.</CoachNote> : null
+      })()}
+      {Number(form.react_temp_f) > 320 && (
+        <CoachNote>A reactivation temp above ~320°F often points to an airflow restriction — worth checking filters and process airflow.</CoachNote>
+      )}
+      <Coaching label="What good airflow & reactivation look like">
+        <p><strong className="text-gray-600 dark:text-gray-300">Airflow ratio (process : react):</strong> ≈3:1 for most applications, 4–5:1 for lower grain, 6–7:1 for very low grain.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Reactivation temp:</strong> ~285°F is the usual design target. More airflow runs cooler, less airflow runs hotter; sustained readings above ~320°F usually signal an airflow problem.</p>
+      </Coaching>
     </div>
   )
 }
@@ -711,6 +777,17 @@ function StepSeals({ form, set }: { form: FormData; set: SetFn }) {
           { value: 'unsure', label: 'Not sure', tone: 'unsure' },
         ]}
       />
+      {form.wheel_rotating === 'no' && (
+        <CoachNote>If the wheel isn&apos;t turning, the unit can&apos;t dry the air — the drive motor, belt, and chain/coupling are the first things to check.</CoachNote>
+      )}
+      {form.seal_light_leakage === 'yes' && (
+        <CoachNote>Visible light means process air is bypassing the wheel instead of being dried — the seals likely need adjustment or replacement.</CoachNote>
+      )}
+      <Coaching label="Wheel & seal health — what to look for">
+        <p><strong className="text-gray-600 dark:text-gray-300">Rotation:</strong> the wheel should turn steadily without slipping, ideally at the speed on your submittal/design data.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Desiccant age:</strong> wheels are the opposite of fine wine — the media slowly degrades with age, which gradually cuts drying capacity.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Seals (business-card test):</strong> a card should <em>barely</em> slide through — too loose means leakage. Standard units have 6 seals; purge units have 8.</p>
+      </Coaching>
     </div>
   )
 }
