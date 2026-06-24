@@ -2,8 +2,6 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'IAT Portal <onboarding@resend.dev>'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL
-  || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
 
 function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -29,31 +27,38 @@ function shell(title: string, body: string) {
 }
 
 /**
- * Sends the new customer their one-time "set your password" link. `actionLink`
- * is the Supabase recovery action_link generated server-side; clicking it signs
- * them in and drops them on /customer/welcome to choose a password.
+ * Sends the new customer their temporary login credentials. They sign in at the
+ * login URL and are immediately prompted to choose their own password
+ * (/customer/welcome enforces it on first login).
  */
 export async function sendCustomerWelcomeEmail(opts: {
   to: string
   contactName: string | null
   companyName: string
-  actionLink: string
+  tempPassword: string
+  loginUrl: string
 }) {
-  const { to, contactName, companyName, actionLink } = opts
-  const loginHost = APP_URL.replace(/^https?:\/\//, '')
+  const { to, contactName, companyName, tempPassword, loginUrl } = opts
 
   const body = `
     <p style="margin:0 0 16px;color:#333;font-size:15px;">${contactName ? `Hi ${esc(contactName)},` : 'Hello,'}</p>
     <p style="margin:0 0 20px;color:#333;font-size:15px;">
-      Innovative Air Technologies has set up a customer portal for <strong>${esc(companyName)}</strong>.
-      It's your home for unit details, build &amp; shipping status, warranty, our knowledge base, and support requests — all in one place.
+      Innovative Air Technologies has set up a customer portal for <strong>${esc(companyName)}</strong> —
+      your home for unit details, build &amp; shipping status, warranty, and support. Sign in with the
+      temporary credentials below; you'll choose your own password right after.
     </p>
-    <a href="${esc(actionLink)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:600;font-size:15px;">Set Your Password</a>
-    <p style="margin:22px 0 0;color:#555;font-size:13px;line-height:1.6;">
-      This link signs you in and lets you choose a password. After that you can always log in at
-      <a href="${esc(APP_URL)}/login" style="color:#089447;">${esc(loginHost)}/login</a> using this email (${esc(to)}).
-    </p>
-    <p style="margin:14px 0 0;color:#999;font-size:12px;">If you weren't expecting this, you can safely ignore this email.</p>`
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;overflow:hidden;margin-bottom:20px;">
+      <tr>
+        <td style="padding:11px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#333;width:42%;">Email</td>
+        <td style="padding:11px 16px;border-bottom:1px solid #f0f0f0;color:#555;">${esc(to)}</td>
+      </tr>
+      <tr>
+        <td style="padding:11px 16px;font-weight:600;color:#333;">Temporary password</td>
+        <td style="padding:11px 16px;color:#089447;font-family:monospace;font-size:15px;font-weight:700;letter-spacing:0.5px;">${esc(tempPassword)}</td>
+      </tr>
+    </table>
+    <a href="${esc(loginUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:600;font-size:15px;">Sign In</a>
+    <p style="margin:22px 0 0;color:#999;font-size:12px;">For your security you'll be asked to set a new password right after signing in. If you weren't expecting this, you can safely ignore this email.</p>`
 
   const result = await resend.emails.send({
     from: FROM,

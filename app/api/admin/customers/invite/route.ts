@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
+import { randomInt } from 'crypto'
 import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
 import { DEFAULT_MILESTONE_STAGES } from '@/lib/customer'
 import { sendCustomerWelcomeEmail } from '@/lib/resend-customer'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL
-  || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
+// Readable temp password (no ambiguous chars). The customer is forced to change it
+// on first login via the /customer/welcome gate, so it's only ever used once.
+function genTempPassword(): string {
+  const lower = 'abcdefghijkmnpqrstuvwxyz' // no 'l'
+  const digits = '23456789'                // no 0/1
+  const pick = (set: string, n: number) =>
+    Array.from({ length: n }, () => set[randomInt(set.length)]).join('')
+  return `IAT-${pick(lower, 4)}${pick(digits, 4)}`
+}
 
 type InvitePayload = {
   company_name?: string
@@ -71,8 +78,8 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. Create the customer's login (email + password) ──────────────────────
-  // Random throwaway password; the customer sets their own via the emailed link.
-  const tempPassword = `${randomUUID()}Aa1!`
+  // Temp password the customer changes on first login (the /customer/welcome gate).
+  const tempPassword = genTempPassword()
   const { data: createdUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
     email: contactEmail,
     password: tempPassword,
@@ -148,28 +155,26 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 6. Generate the set-password link + email it (best-effort) ─────────────
-  const redirectTo = `${APP_URL}/auth/callback?next=${encodeURIComponent('/customer/welcome')}`
-  const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'recovery',
-    email: contactEmail,
-    options: { redirectTo },
-  })
-  const setupLink = linkData?.properties?.action_link || null
+  // ── 6. Email the temp password + login link (best-effort) ──────────────────
+  // No magic link: admin-generated links use the implicit flow (token lands in the
+  // URL) and need each redirect origin allowlisted in Supabase — brittle across
+  // preview/prod. A temp password the customer changes on first login mirrors the
+  // employee flow and just works. The login link uses THIS request's origin, so a
+  // preview invite points at the preview and a prod invite at prod.
+  const loginUrl = `${req.nextUrl.origin}/login`
 
   let emailSent = false
-  if (setupLink) {
-    try {
-      const res = await sendCustomerWelcomeEmail({
-        to: contactEmail,
-        contactName,
-        companyName,
-        actionLink: setupLink,
-      })
-      emailSent = !res.error
-    } catch (e) {
-      console.error('[customers/invite] welcome email threw:', e)
-    }
+  try {
+    const res = await sendCustomerWelcomeEmail({
+      to: contactEmail,
+      contactName,
+      companyName,
+      tempPassword,
+      loginUrl,
+    })
+    emailSent = !res.error
+  } catch (e) {
+    console.error('[customers/invite] welcome email threw:', e)
   }
 
   // ── 7. Audit ───────────────────────────────────────────────────────────────
@@ -187,7 +192,8 @@ export async function POST(req: NextRequest) {
     customer_id: customerId,
     equipment_id: equipmentId,
     email_sent: emailSent,
-    // returned so staff can hand off the link manually if email delivery isn't set up yet
-    setup_link: setupLink,
+    login_url: loginUrl,
+    // returned so staff can hand off credentials if email delivery isn't set up yet
+    temp_password: tempPassword,
   }, { status: 201 })
 }

@@ -106,7 +106,7 @@ function InviteModal({
   const [scanning, setScanning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [result, setResult] = useState<{ setup_link: string | null; email_sent: boolean } | null>(null)
+  const [result, setResult] = useState<{ temp_password: string; login_url: string; email_sent: boolean } | null>(null)
   const [copied, setCopied] = useState(false)
 
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
@@ -155,15 +155,15 @@ function InviteModal({
       })
       const json = await res.json()
       if (!res.ok) { setError(json.error || 'Could not create the account.'); return }
-      setResult({ setup_link: json.setup_link, email_sent: json.email_sent })
+      setResult({ temp_password: json.temp_password, login_url: json.login_url, email_sent: json.email_sent })
     } finally {
       setSubmitting(false)
     }
   }
 
   const copy = async () => {
-    if (!result?.setup_link) return
-    await navigator.clipboard.writeText(result.setup_link)
+    if (!result) return
+    await navigator.clipboard.writeText(`${form.contact_email} / ${result.temp_password}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -191,27 +191,34 @@ function InviteModal({
                 <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-emerald-700/80 dark:text-emerald-400/80">
                   <Mail size={12} />
                   {result.email_sent
-                    ? `Setup link emailed to ${form.contact_email}`
-                    : 'Email not sent — share the setup link below'}
+                    ? `Login details emailed to ${form.contact_email}`
+                    : 'Email not sent — share these credentials:'}
                 </p>
               </div>
             </div>
 
-            {result.setup_link && (
-              <div>
-                <label className={lbl}>Set-password link</label>
+            <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+              <div className="flex items-center justify-between gap-3 border-b border-zinc-100 px-3.5 py-2.5 dark:border-zinc-800">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Email</span>
+                <span className="truncate font-mono text-[12px] text-zinc-700 dark:text-zinc-200">{form.contact_email}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Temp password</span>
                 <div className="flex items-center gap-2">
-                  <input readOnly value={result.setup_link} className={`${inp} font-mono text-[11px]`} />
-                  <button onClick={copy} className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 text-[12px] font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300">
-                    {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                  <span className="font-mono text-[13px] font-bold text-emerald-600 dark:text-emerald-400">{result.temp_password}</span>
+                  <button onClick={copy} className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-zinc-200 px-2 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300">
+                    {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] text-zinc-400"><Link2 size={11} /> One-time link — it sets their password and signs them in.</p>
               </div>
-            )}
+            </div>
+            <p className="flex items-center gap-1 text-[11px] text-zinc-400"><Link2 size={11} /> They&apos;ll set their own password right after signing in.</p>
 
-            <button onClick={onDone} className="w-full rounded-lg bg-emerald-600 py-2.5 text-[13px] font-semibold text-white hover:bg-emerald-700">Done</button>
+            <div className="flex items-center gap-2">
+              <a href={result.login_url} target="_blank" rel="noopener noreferrer" className="flex-1 rounded-lg border border-zinc-200 py-2.5 text-center text-[13px] font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200">Open login ↗</a>
+              <button onClick={onDone} className="flex-1 rounded-lg bg-emerald-600 py-2.5 text-[13px] font-semibold text-white hover:bg-emerald-700">Done</button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4 p-5">
