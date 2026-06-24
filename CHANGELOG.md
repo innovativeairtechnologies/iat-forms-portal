@@ -2,6 +2,43 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-24 — Customer Portal (Phase 1) — external customer logins
+
+A customer-facing portal at `/customer`. A company that has bought units from IAT
+gets a login to track their equipment, build & shipping status, warranty, and
+support — branded to IAT. Provisioned by staff from the equipment record, optionally
+by scanning a Submittal PDF. Requires migration `026_customer_portal.sql`.
+
+### Added
+- **New `customer` role** (`profiles.role`) + `profiles.customer_id`. New tables
+  `customers` (one per company) and `equipment_milestones` (staff-updated build→ship
+  timeline); `equipment.customer_id` links units to a customer. All service-role only —
+  `/customer` reads run server-side scoped to the session's customer, so the browser
+  never queries those tables and customers can't see each other's data.
+- **`/customer` dashboard** — unit cards (serial / model / warranty), a build & shipping
+  tracker, KB + start-up guide, the existing support forms, and "My Requests" (their
+  tickets + troubleshooting intakes, now behind a real login). IAT Assistant panel is a
+  Phase-3 placeholder.
+- **Admin "Customer Portal" card** on `/admin/equipment/[id]`: invite a customer (creates
+  the login, links the unit, seeds the tracker, emails a set-password link) + a build &
+  shipping milestone editor. Invite can **scan a Submittal PDF** (Claude document
+  extraction) to pre-fill company/contact.
+- New routes: `POST /api/admin/customers/invite`, `POST /api/admin/customers/extract-submittal`,
+  `POST|PATCH /api/admin/equipment/[id]/milestones`; new `/customer/welcome` set-password page.
+- Helpers: `lib/customer.ts` (milestone model), `lib/customer-auth.ts` (`getCustomerUser`),
+  `lib/resend-customer.ts` (welcome email).
+
+### Changed
+- **`middleware.ts`** resolves the session role once and routes the `customer` role to
+  `/customer` (and keeps customers out of `/admin`, `/employee`, `/learn`).
+  Existing admin/employee routing preserved; `/login` and `/auth/callback` are role-aware.
+
+### Deploy notes
+- Run `supabase/migrations/026_customer_portal.sql` (applied 2026-06-24).
+- Add `${APP_URL}/auth/callback` to Supabase Auth → URL allowlist (set-password redirect).
+- Customer email sends from `onboarding@resend.dev` until a Resend domain is verified; the
+  invite dialog shows a copyable set-password link as a fallback. No new env vars. `tsc` clean.
+
 ## 2026-06-15 — List-view fixes: kebab clipping + forms column alignment
 
 ### Fixed

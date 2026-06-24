@@ -1,0 +1,193 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
+import { getAdminUser } from '@/lib/admin-auth'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logAudit } from '@/lib/audit'
+import { DEFAULT_MILESTONE_STAGES } from '@/lib/customer'
+import { sendCustomerWelcomeEmail } from '@/lib/resend-customer'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL
+  || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
+
+type InvitePayload = {
+  company_name?: string
+  primary_contact_name?: string
+  contact_email?: string
+  phone?: string
+  customer_location?: string
+  existing_customer_id?: string
+  equipment_id?: string                 // link this existing unit
+  equipment?: {                         // …or create/upsert a unit by serial
+    serial_number?: string
+    model_number?: string
+    voltage?: string
+    location?: string
+    ship_date?: string
+    warranty_months?: number
+    notes?: string
+  }
+  seed_tracker?: boolean                 // default true
+}
+
+export async function POST(req: NextRequest) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = (await req.json()) as InvitePayload
+  const companyName = body.company_name?.trim()
+  const contactEmail = body.contact_email?.trim().toLowerCase()
+  const contactName = body.primary_contact_name?.trim() || null
+  const phone = body.phone?.trim() || null
+
+  if (!companyName)  return NextResponse.json({ error: 'Company name is required.' },  { status: 400 })
+  if (!contactEmail) return NextResponse.json({ error: 'Contact email is required.' }, { status: 400 })
+
+  // ── 1. Resolve (or create) the customer company ────────────────────────────
+  let customerId = body.existing_customer_id || null
+  if (!customerId) {
+    const { data: existing } = await supabaseAdmin
+      .from('customers')
+      .select('id')
+      .ilike('contact_email', contactEmail)
+      .maybeSingle()
+    customerId = existing?.id ?? null
+  }
+  if (!customerId) {
+    const { data: created, error } = await supabaseAdmin
+      .from('customers')
+      .insert({
+        company_name: companyName,
+        primary_contact_name: contactName,
+        contact_email: contactEmail,
+        phone,
+        location: body.customer_location?.trim() || null,
+      })
+      .select('id')
+      .single()
+    if (error || !created) {
+      return NextResponse.json({ error: error?.message || 'Could not create the customer.' }, { status: 500 })
+    }
+    customerId = created.id
+  }
+
+  // ── 2. Create the customer's login (email + password) ──────────────────────
+  // Random throwaway password; the customer sets their own via the emailed link.
+  const tempPassword = `${randomUUID()}Aa1!`
+  const { data: createdUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+    email: contactEmail,
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { name: contactName || companyName },
+  })
+  if (createErr || !createdUser?.user?.id) {
+    const msg = /already.*regist|exists/i.test(createErr?.message || '')
+      ? 'An account with this email already exists.'
+      : (createErr?.message || 'Could not create the login.')
+    return NextResponse.json({ error: msg }, { status: 400 })
+  }
+  const userId = createdUser.user.id
+
+  // ── 3. Mark the profile as a customer linked to the company ────────────────
+  // (the new-user trigger created it as 'employee' — override here)
+  const { error: profileErr } = await supabaseAdmin
+    .from('profiles')
+    .upsert({ id: userId, role: 'customer', display_name: contactName || companyName, customer_id: customerId })
+  if (profileErr) {
+    return NextResponse.json({ error: profileErr.message }, { status: 500 })
+  }
+
+  // ── 4. Link or create the equipment for this customer ──────────────────────
+  let equipmentId: string | null = null
+  const denorm = {
+    customer_id: customerId,
+    customer_company: companyName,
+    customer_name: contactName,
+    customer_email: contactEmail,
+    customer_phone: phone,
+  }
+  if (body.equipment_id) {
+    equipmentId = body.equipment_id
+    await supabaseAdmin.from('equipment').update(denorm).eq('id', body.equipment_id)
+  } else if (body.equipment?.serial_number?.trim()) {
+    const eq = body.equipment
+    const { data: upserted, error } = await supabaseAdmin
+      .from('equipment')
+      .upsert(
+        {
+          serial_number: eq.serial_number!.trim(),
+          model_number: eq.model_number?.trim() || null,
+          voltage: eq.voltage?.trim() || null,
+          location: eq.location?.trim() || null,
+          ship_date: eq.ship_date || null,
+          warranty_months: Number.isFinite(eq.warranty_months as number) ? Number(eq.warranty_months) : 12,
+          notes: eq.notes?.trim() || null,
+          ...denorm,
+        },
+        { onConflict: 'serial_number' }
+      )
+      .select('id')
+      .single()
+    if (!error && upserted) equipmentId = upserted.id
+  }
+
+  // ── 5. Seed the default build/ship tracker (only if none yet) ──────────────
+  if (equipmentId && body.seed_tracker !== false) {
+    const { count } = await supabaseAdmin
+      .from('equipment_milestones')
+      .select('id', { count: 'exact', head: true })
+      .eq('equipment_id', equipmentId)
+    if (!count) {
+      await supabaseAdmin.from('equipment_milestones').insert(
+        DEFAULT_MILESTONE_STAGES.map((s, i) => ({
+          equipment_id: equipmentId,
+          stage: s.stage,
+          status: 'pending',
+          sort_order: i,
+        }))
+      )
+    }
+  }
+
+  // ── 6. Generate the set-password link + email it (best-effort) ─────────────
+  const redirectTo = `${APP_URL}/auth/callback?next=${encodeURIComponent('/customer/welcome')}`
+  const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'recovery',
+    email: contactEmail,
+    options: { redirectTo },
+  })
+  const setupLink = linkData?.properties?.action_link || null
+
+  let emailSent = false
+  if (setupLink) {
+    try {
+      const res = await sendCustomerWelcomeEmail({
+        to: contactEmail,
+        contactName,
+        companyName,
+        actionLink: setupLink,
+      })
+      emailSent = !res.error
+    } catch (e) {
+      console.error('[customers/invite] welcome email threw:', e)
+    }
+  }
+
+  // ── 7. Audit ───────────────────────────────────────────────────────────────
+  await logAudit({
+    actor: { id: admin.user.id, name: admin.displayName },
+    action: 'customer.invite',
+    entityType: 'customer',
+    entityId: customerId,
+    summary: `Invited ${companyName} (${contactEmail})${equipmentId ? ' and linked equipment' : ''}`,
+    metadata: { contact_email: contactEmail, equipment_id: equipmentId, email_sent: emailSent },
+  })
+
+  return NextResponse.json({
+    ok: true,
+    customer_id: customerId,
+    equipment_id: equipmentId,
+    email_sent: emailSent,
+    // returned so staff can hand off the link manually if email delivery isn't set up yet
+    setup_link: setupLink,
+  }, { status: 201 })
+}

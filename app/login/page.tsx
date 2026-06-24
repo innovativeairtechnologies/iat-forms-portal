@@ -51,6 +51,19 @@ function LoginForm() {
       return
     }
 
+    // Customer — first-time setup sets the password via /customer/welcome
+    if (profile?.role === 'customer') {
+      const setupComplete = data.user.user_metadata?.setup_complete
+      if (!setupComplete) {
+        router.push('/customer/welcome')
+      } else {
+        const redirect = searchParams.get('redirect')
+        router.push(redirect && redirect.startsWith('/customer') ? redirect : '/customer')
+      }
+      router.refresh()
+      return
+    }
+
     // Employee — check if first-time setup is needed
     const setupComplete = data.user.user_metadata?.setup_complete
     if (!setupComplete) {

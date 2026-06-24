@@ -58,6 +58,7 @@ export type Equipment = {
   customer_name: string | null
   customer_email: string | null
   customer_phone: string | null
+  customer_id: string | null
   location: string | null
   ship_date: string | null
   install_date: string | null
@@ -67,6 +68,38 @@ export type Equipment = {
   status: 'active' | 'decommissioned'
   photo_urls: string[] | null
   notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// A customer COMPANY account (migration 026). One row per customer; one login
+// (profiles.role='customer', profiles.customer_id) sees all of this company's
+// equipment + support history on /customer. Service-role only.
+export type Customer = {
+  id: string
+  company_name: string
+  primary_contact_name: string | null
+  contact_email: string | null
+  phone: string | null
+  location: string | null
+  logo_url: string | null       // nullable: reserved for light white-label
+  accent_color: string | null   // nullable: reserved for light white-label
+  status: 'active' | 'inactive'
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// A staff-updated build/ship milestone for one unit (migration 026). Rendered as
+// the shipping tracker on the customer portal. Canonical defaults: lib/customer.ts.
+export type EquipmentMilestone = {
+  id: string
+  equipment_id: string
+  stage: string
+  status: 'pending' | 'in_progress' | 'complete'
+  occurred_at: string | null
+  note: string | null
+  sort_order: number
   created_at: string
   updated_at: string
 }
