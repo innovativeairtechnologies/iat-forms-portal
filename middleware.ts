@@ -28,44 +28,52 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // ── /login: if already logged in, skip to the right portal ───────────────
-  if (pathname === '/login') {
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      const dest = profile?.role === 'admin' ? '/admin' : '/employee/profile'
-      return NextResponse.redirect(new URL(dest, request.url))
-    }
-    return supabaseResponse
-  }
-
-  // ── /admin/* ──────────────────────────────────────────────────────────────
-  if (pathname.startsWith('/admin')) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+  // Resolve role once (relies on the profiles read-own RLS policy from 002).
+  let role: string | null = null
+  if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
-    if (profile?.role !== 'admin') {
-      const dest = profile?.role === 'employee' ? '/employee/profile' : '/login'
-      return NextResponse.redirect(new URL(dest, request.url))
-    }
+    role = profile?.role ?? null
+  }
+
+  // Where each role's "home" lives. Unknown/null role → employee profile (the
+  // trigger always creates a profile, so null is effectively a dead path).
+  const homeFor = (r: string | null) =>
+    r === 'admin' ? '/admin' : r === 'customer' ? '/customer' : '/employee/profile'
+
+  const toLogin = () => {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // ── /login: if already logged in, skip to the right portal ───────────────
+  if (pathname === '/login') {
+    if (user) return NextResponse.redirect(new URL(homeFor(role), request.url))
+    return supabaseResponse
+  }
+
+  // ── /customer/* (external customers; skip the set-password welcome page) ────
+  if (pathname.startsWith('/customer') && !pathname.startsWith('/customer/welcome')) {
+    if (!user) return toLogin()
+    if (role !== 'customer') return NextResponse.redirect(new URL(homeFor(role), request.url))
+    return supabaseResponse
+  }
+
+  // ── /admin/* ──────────────────────────────────────────────────────────────
+  if (pathname.startsWith('/admin')) {
+    if (!user) return NextResponse.redirect(new URL('/login', request.url))
+    if (role !== 'admin') return NextResponse.redirect(new URL(homeFor(role), request.url))
     return supabaseResponse
   }
 
   // ── /learn/* (shared auth; admin-gating handled in the /learn/admin layout) ─
   if (pathname.startsWith('/learn')) {
-    if (!user) {
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
+    if (!user) return toLogin()
+    if (role === 'customer') return NextResponse.redirect(new URL('/customer', request.url))
     return supabaseResponse
   }
 
@@ -76,19 +84,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/employee') &&
     !pathname.startsWith('/employee/welcome')
   ) {
-    if (!user) {
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-    if (profile?.role === 'admin') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
+    if (!user) return toLogin()
+    if (role === 'admin') return NextResponse.redirect(new URL('/admin', request.url))
+    if (role === 'customer') return NextResponse.redirect(new URL('/customer', request.url))
     return supabaseResponse
   }
 
@@ -96,5 +94,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/employee/:path*', '/learn/:path*', '/login'],
+  matcher: ['/admin/:path*', '/employee/:path*', '/learn/:path*', '/customer/:path*', '/login'],
 }

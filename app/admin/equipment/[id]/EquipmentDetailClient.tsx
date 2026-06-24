@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Save, Boxes, ShieldCheck, ShieldAlert, ShieldQuestion, Ticket as TicketIcon, Wrench, ClipboardList, Image as ImageIcon } from 'lucide-react'
-import type { Equipment } from '@/lib/supabase'
+import type { Equipment, Customer, EquipmentMilestone } from '@/lib/supabase'
 import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd, nextPmDue, pmState } from '@/lib/equipment'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import CustomerPortalCard from '@/components/admin/CustomerPortalCard'
 
 type TicketLite = {
   id: string
@@ -34,7 +35,7 @@ function fmt(d: string | null) {
   return new Date(d.length <= 10 ? d + 'T00:00:00' : d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function EquipmentDetailClient({ equipment, tickets }: { equipment: Equipment; tickets: TicketLite[] }) {
+export default function EquipmentDetailClient({ equipment, tickets, customer, milestones }: { equipment: Equipment; tickets: TicketLite[]; customer: Customer | null; milestones: EquipmentMilestone[] }) {
   const router = useRouter()
   const [form, setForm] = useState({
     serial_number: equipment.serial_number || '',
@@ -196,6 +197,8 @@ export default function EquipmentDetailClient({ equipment, tickets }: { equipmen
                 {error && <p className="text-[13px] text-rose-500">{error}</p>}
               </form>
             </Card>
+
+            <CustomerPortalCard equipment={equipment} customer={customer} milestones={milestones} />
           </main>
 
           {/* Right rail */}

@@ -21,5 +21,22 @@ export default async function EquipmentDetailPage(props: { params: Promise<{ id:
     .eq('serial_number', equipment.serial_number)
     .order('created_at', { ascending: false })
 
-  return <EquipmentDetailClient equipment={equipment} tickets={tickets ?? []} />
+  const { data: customer } = equipment.customer_id
+    ? await supabaseAdmin.from('customers').select('*').eq('id', equipment.customer_id).single()
+    : { data: null }
+
+  const { data: milestones } = await supabaseAdmin
+    .from('equipment_milestones')
+    .select('*')
+    .eq('equipment_id', equipment.id)
+    .order('sort_order', { ascending: true })
+
+  return (
+    <EquipmentDetailClient
+      equipment={equipment}
+      tickets={tickets ?? []}
+      customer={customer ?? null}
+      milestones={milestones ?? []}
+    />
+  )
 }
