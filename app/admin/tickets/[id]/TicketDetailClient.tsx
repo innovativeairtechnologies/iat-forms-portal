@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal } from 'lucide-react'
+import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -66,29 +66,145 @@ function formatBytes(n: number): string {
 
 const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name)
 
-// Download links for a saved note's attachments. Each link hits the admin-gated
-// download route, which validates the path and 307s to a short-lived signed URL.
+type EmailPreview = {
+  from: string
+  to: string
+  date: string | null
+  subject: string
+  html: string | null
+  text: string | null
+  attachments: { name: string; size: number }[]
+}
+
+// A note's attachments. Regular files are admin-gated download links (the route
+// validates the path and 307s to a short-lived signed URL). Saved emails
+// (.eml/.msg) instead open an inline preview so the team can read them without
+// saving the file and launching Outlook.
 function NoteAttachments({ ticketId, attachments }: { ticketId: string; attachments: TicketNoteAttachment[] }) {
+  const [preview, setPreview] = useState<{ path: string; name: string } | null>(null)
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {attachments.map(att => {
-        const href = `/api/tickets/${ticketId}/attachments/download?path=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.name)}`
-        const Icon = isEmailFile(att.name) ? Mail : Paperclip
-        return (
-          <a
-            key={att.path}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-center gap-2 max-w-full text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 hover:border-emerald-500 transition-colors"
-            title={`Download ${att.name}`}
-          >
-            <Icon size={13} className={isEmailFile(att.name) ? 'text-emerald-600 dark:text-emerald-400 flex-shrink-0' : 'text-zinc-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 flex-shrink-0 transition-colors'} />
-            <span className="truncate text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{att.name}</span>
-            {att.size > 0 && <span className="text-[11px] text-zinc-400 flex-shrink-0">{formatBytes(att.size)}</span>}
-          </a>
-        )
-      })}
+    <>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {attachments.map(att => {
+          const downloadHref = `/api/tickets/${ticketId}/attachments/download?path=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.name)}`
+          const chipCls =
+            'group inline-flex items-center gap-2 max-w-full text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 hover:border-emerald-500 transition-colors'
+
+          if (isEmailFile(att.name)) {
+            return (
+              <button
+                key={att.path}
+                type="button"
+                onClick={() => setPreview({ path: att.path, name: att.name })}
+                className={chipCls}
+                title={`Preview ${att.name}`}
+              >
+                <Mail size={13} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                <span className="truncate text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{att.name}</span>
+                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex-shrink-0">Preview</span>
+              </button>
+            )
+          }
+
+          return (
+            <a
+              key={att.path}
+              href={downloadHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={chipCls}
+              title={`Download ${att.name}`}
+            >
+              <Paperclip size={13} className="text-zinc-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 flex-shrink-0 transition-colors" />
+              <span className="truncate text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{att.name}</span>
+              {att.size > 0 && <span className="text-[11px] text-zinc-400 flex-shrink-0">{formatBytes(att.size)}</span>}
+            </a>
+          )
+        })}
+      </div>
+      {preview && <EmailPreviewModal ticketId={ticketId} att={preview} onClose={() => setPreview(null)} />}
+    </>
+  )
+}
+
+// Fetches the parsed email from the admin-gated preview route and shows it in a
+// modal. The HTML body arrives already sanitized server-side.
+function EmailPreviewModal({ ticketId, att, onClose }: { ticketId: string; att: { path: string; name: string }; onClose: () => void }) {
+  const [state, setState] = useState<'loading' | 'error' | 'done'>('loading')
+  const [data, setData] = useState<EmailPreview | null>(null)
+  const [err, setErr] = useState('')
+
+  const downloadHref = `/api/tickets/${ticketId}/attachments/download?path=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.name)}`
+
+  useEffect(() => {
+    let alive = true
+    setState('loading')
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/tickets/${ticketId}/attachments/preview?path=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.name)}`)
+        const json = await res.json()
+        if (!alive) return
+        if (!res.ok) { setErr(json.error || 'Failed to load email'); setState('error'); return }
+        setData(json as EmailPreview)
+        setState('done')
+      } catch {
+        if (alive) { setErr('Failed to load email'); setState('error') }
+      }
+    })()
+    return () => { alive = false }
+  }, [ticketId, att.path, att.name])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 px-5 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Mail size={15} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="truncate text-[13px] font-semibold text-zinc-900 dark:text-white">Email preview</span>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-3">
+            <a href={downloadHref} target="_blank" rel="noopener noreferrer" className="text-[12px] font-medium text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400">Download</a>
+            <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200" aria-label="Close"><X size={16} /></button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-4">
+          {state === 'loading' && (
+            <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-zinc-400">
+              <Loader2 size={16} className="animate-spin" /> Loading email…
+            </div>
+          )}
+          {state === 'error' && <p className="py-12 text-center text-[13px] text-rose-500">{err}</p>}
+          {state === 'done' && data && (
+            <div>
+              <div className="mb-3 space-y-1 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <p className="text-[15px] font-semibold text-zinc-900 dark:text-white">{data.subject}</p>
+                <p className="text-[12px] text-zinc-500 dark:text-zinc-400"><span className="text-zinc-400 dark:text-zinc-500">From:</span> {data.from || '—'}</p>
+                {data.to && <p className="text-[12px] text-zinc-500 dark:text-zinc-400"><span className="text-zinc-400 dark:text-zinc-500">To:</span> {data.to}</p>}
+                {data.date && <p className="text-[12px] text-zinc-400">{new Date(data.date).toLocaleString()}</p>}
+                {data.attachments.length > 0 && (
+                  <p className="flex items-center gap-1.5 text-[12px] text-zinc-400"><Paperclip size={12} /> {data.attachments.map(a => a.name).join(', ')}</p>
+                )}
+              </div>
+              {data.html ? (
+                <div
+                  className="text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200 [&_a]:text-emerald-600 [&_img]:max-w-full [&_table]:max-w-full"
+                  dangerouslySetInnerHTML={{ __html: data.html }}
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap font-sans text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{data.text || '(no body)'}</pre>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -113,6 +229,17 @@ export default function TicketDetailClient({
   const [updating, setUpdating] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Pre-addressed reply to the customer, tagged with the ticket number in the
+  // subject so a future inbound mailbox/webhook can thread responses straight
+  // back onto this ticket (Kacy's "email TKT-… and have replies auto-file").
+  const emailSubject = `IAT Support Ticket ${ticket.ticket_number} – ${ticket.brand === 'us_rotors' ? 'US Rotors support' : 'dehumidifier support'}`
+  const emailBody =
+    `Hi ${ticket.customer_name || 'there'},\n\n` +
+    `Following up on your IAT support ticket ${ticket.ticket_number}.\n\n\n\n` +
+    `Please keep this ticket number in the subject line so we can keep the conversation together.\n\n` +
+    `Thank you,\nIAT Support`
+  const emailCustomerHref = `mailto:${ticket.customer_email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`
 
   const hasUnsavedChanges =
     pendingStatus !== ticket.status ||
@@ -330,22 +457,37 @@ export default function TicketDetailClient({
             </Card>
 
             {/* Contact */}
-            <Section title="Contact" icon={<User size={14} />}>
-              <Field label="Name">{ticket.customer_name}</Field>
-              {ticket.customer_company && <Field label="Company">{ticket.customer_company}</Field>}
-              <Field label="Email">
-                <a href={`mailto:${ticket.customer_email}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                  {ticket.customer_email}
-                </a>
-              </Field>
-              {ticket.customer_phone && (
-                <Field label="Phone">
-                  <a href={`tel:${ticket.customer_phone}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                    {ticket.customer_phone}
+            <Card>
+              <CardHead
+                title="Contact"
+                icon={<User size={14} />}
+                action={
+                  <a
+                    href={emailCustomerHref}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg transition-colors"
+                    title={`Compose an email tagged with ${ticket.ticket_number}`}
+                  >
+                    <Mail size={13} /> Email customer
+                  </a>
+                }
+              />
+              <div className="px-5 py-2.5">
+                <Field label="Name">{ticket.customer_name}</Field>
+                {ticket.customer_company && <Field label="Company">{ticket.customer_company}</Field>}
+                <Field label="Email">
+                  <a href={`mailto:${ticket.customer_email}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">
+                    {ticket.customer_email}
                   </a>
                 </Field>
-              )}
-            </Section>
+                {ticket.customer_phone && (
+                  <Field label="Phone">
+                    <a href={`tel:${ticket.customer_phone}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">
+                      {ticket.customer_phone}
+                    </a>
+                  </Field>
+                )}
+              </div>
+            </Card>
 
             {/* Equipment */}
             <Section title="Equipment" icon={<Wrench size={14} />}>
@@ -364,7 +506,23 @@ export default function TicketDetailClient({
               <p className="text-[13px] text-zinc-700 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap py-1">
                 {ticket.problem_description}
               </p>
+              {(ticket.problem_started || ticket.onset || ticket.what_changed) && (
+                <div className="mt-2">
+                  {ticket.problem_started && <Field label="When it started">{ticket.problem_started}</Field>}
+                  {ticket.onset && <Field label="Onset"><span className="capitalize">{ticket.onset}</span></Field>}
+                  {ticket.what_changed && <Field label="Changed just before">{ticket.what_changed}</Field>}
+                </div>
+              )}
             </Section>
+
+            {/* Current Status */}
+            {(ticket.unit_running !== null || ticket.has_alarms !== null) && (
+              <Section title="Current Status" icon={<Activity size={14} />}>
+                <Field label="Unit running"><YesNo val={ticket.unit_running} /></Field>
+                <Field label="Active alarms"><YesNo val={ticket.has_alarms} /></Field>
+                {ticket.alarm_details && <Field label="Alarm details">{ticket.alarm_details}</Field>}
+              </Section>
+            )}
 
             {/* Cooling */}
             <Section title="Cooling Systems" icon={<Snowflake size={14} />}>
@@ -380,23 +538,35 @@ export default function TicketDetailClient({
               </>}
             </Section>
 
-            {/* System Checks */}
-            <Section title="System Checks" icon={<ClipboardCheck size={14} />}>
+            {/* Airflow & Reactivation */}
+            <Section title="Airflow & Reactivation" icon={<Wind size={14} />}>
               <Field label="Airflows balanced"><YesNo val={ticket.airflow_balanced} /></Field>
-              {ticket.airflow_balanced === false && <>
-                <Field label="Process airflow">
-                  {ticket.process_airflow_cfm ? `${ticket.process_airflow_cfm} CFM` : '—'}
-                </Field>
-                <Field label="React airflow">
-                  {ticket.react_airflow_cfm ? `${ticket.react_airflow_cfm} CFM` : '—'}
-                </Field>
-              </>}
+              {ticket.process_airflow_cfm && <Field label="Process airflow">{ticket.process_airflow_cfm} CFM</Field>}
+              {ticket.react_airflow_cfm && <Field label="React airflow">{ticket.react_airflow_cfm} CFM</Field>}
+              {ticket.react_temp_f && <Field label="Reactivation temp">{ticket.react_temp_f} °F</Field>}
               <Field label="React heat working"><YesNo val={ticket.react_heat_working} /></Field>
-              {ticket.react_heat_working && (
+              {ticket.react_heat_setpoint !== null && (
                 <Field label="Maintaining setpoint (285°F)"><YesNo val={ticket.react_heat_setpoint} /></Field>
               )}
+            </Section>
+
+            {/* Wheel & Seals */}
+            <Section title="Wheel & Seals" icon={<ClipboardCheck size={14} />}>
+              {ticket.wheel_rotating && <Field label="Wheel rotating"><span className="capitalize">{ticket.wheel_rotating}</span></Field>}
+              {ticket.seal_light_leakage && <Field label="Seal light leakage"><span className="capitalize">{ticket.seal_light_leakage}</span></Field>}
               <Field label="Seals good"><YesNo val={ticket.seals_good} /></Field>
             </Section>
+
+            {/* External Factors */}
+            {ticket.external_factors && ticket.external_factors.length > 0 && (
+              <Section title="External Factors" icon={<FileText size={14} />}>
+                <ul className="py-1 space-y-1">
+                  {ticket.external_factors.map((f, i) => (
+                    <li key={i} className="text-[13px] text-zinc-700 dark:text-zinc-200">• {f}</li>
+                  ))}
+                </ul>
+              </Section>
+            )}
 
             {/* Photos */}
             {ticket.photo_urls && ticket.photo_urls.length > 0 && (

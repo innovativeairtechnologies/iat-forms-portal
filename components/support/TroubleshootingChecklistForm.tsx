@@ -9,6 +9,7 @@ import {
   RotateCcw, Upload, X, Loader2, ImageIcon, ChevronDown, Info,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { SampleLabelThumb } from './SampleLabelThumb'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -241,7 +242,9 @@ function MultiChoiceField({
 // Collapsed "learn more" disclosure — expert guidance is there when wanted but
 // doesn't lengthen the flow.
 function Coaching({ label, children }: { label: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
+  // Default OPEN per Kacy — collapsed tips got overlooked; keeping them dropped
+  // down draws the customer's eye to the guidance.
+  const [open, setOpen] = useState(true)
   return (
     <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/70 dark:bg-zinc-800/30">
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
@@ -658,12 +661,18 @@ function StepContact({ form, set }: { form: FormData; set: SetFn }) {
 function StepEquipment({ form, set }: { form: FormData; set: SetFn }) {
   return (
     <div className="space-y-4">
-      <StepHeader title="Serial Number" sub="Found on the label affixed to your unit." />
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-1">Serial Number</h2>
+          <p className="text-[13px] text-gray-400">Found on the label affixed to your unit.</p>
+        </div>
+        <SampleLabelThumb />
+      </div>
       <div className="flex items-start gap-2 text-[12px] text-[#067838] dark:text-[#34d873] bg-[#089447]/8 dark:bg-[#089447]/15 border border-[#089447]/20 rounded-xl px-3.5 py-2.5 leading-relaxed">
         <span className="font-bold">Why first?</span>
         <span>The serial number lets us pull your unit&apos;s drawings, airflow data, and history — so we can troubleshoot accurately.</span>
       </div>
-      <InputField label="Serial Number" value={form.serial_number} onChange={v => set('serial_number', v)} placeholder="e.g. SN-2024-00123" required autoFocus />
+      <InputField label="Serial Number" value={form.serial_number} onChange={v => set('serial_number', v)} placeholder="e.g. 24-1234" required autoFocus />
       <div className="grid grid-cols-2 gap-4">
         <InputField label="Model Number" value={form.model_number} onChange={v => set('model_number', v)} placeholder="e.g. IAT-5000" />
         <InputField label="Operating Voltage" value={form.voltage} onChange={v => set('voltage', v)} placeholder="e.g. 460V / 3-phase" />
@@ -731,7 +740,7 @@ function StepStatus({ form, set }: { form: FormData; set: SetFn }) {
 function StepAirflow({ form, set }: { form: FormData; set: SetFn }) {
   return (
     <div className="space-y-4">
-      <StepHeader title="Airflow & Reactivation" sub="If you have these readings, they help a lot. Skip any you don't — a technician can verify on-site." />
+      <StepHeader title="Airflow & Reactivation" sub="If you have these readings, they help a lot." />
       <div className="grid grid-cols-2 gap-4">
         <InputField label="Process airflow (CFM)" value={form.process_airflow_cfm} onChange={v => set('process_airflow_cfm', v)} placeholder="e.g. 1200" type="number" />
         <InputField label="React airflow (CFM)" value={form.react_airflow_cfm} onChange={v => set('react_airflow_cfm', v)} placeholder="e.g. 350" type="number" />

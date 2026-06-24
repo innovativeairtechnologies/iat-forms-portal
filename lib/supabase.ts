@@ -183,7 +183,18 @@ export type Ticket = {
   react_airflow_cfm: string | null
   react_heat_working: boolean | null
   react_heat_setpoint: boolean | null
+  react_temp_f: string | null
   seals_good: boolean | null
+  // Merged in from the Troubleshooting Checklist (migration 027)
+  problem_started: string | null
+  onset: 'sudden' | 'gradual' | 'unsure' | null
+  what_changed: string | null
+  unit_running: boolean | null
+  has_alarms: boolean | null
+  alarm_details: string | null
+  wheel_rotating: 'yes' | 'no' | 'unsure' | null
+  seal_light_leakage: 'yes' | 'no' | 'unsure' | null
+  external_factors: string[] | null
   photo_urls: string[] | null
   brand: 'iat' | 'us_rotors'
   status: 'open' | 'in_progress' | 'resolved' | 'closed'

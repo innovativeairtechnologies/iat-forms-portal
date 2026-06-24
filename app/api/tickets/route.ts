@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { resolveViewedKbArticles } from '@/lib/kb'
 import type { ViewedKbArticle } from '@/lib/supabase'
 import { rateLimit } from '@/lib/rate-limit'
+import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
 import { sendTicketConfirmationToCustomer, sendTicketNotificationToAdmins } from '@/lib/resend-tickets'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// ── Merged-field validation (the unified support form carries the old
+// Troubleshooting Checklist fields too). Mirrors app/api/troubleshooting/route.ts.
+const ONSET = ['sudden', 'gradual', 'unsure'] as const
+const TRISTATE = ['yes', 'no', 'unsure'] as const
+const EXTERNAL_FACTORS = [
+  'Room construction changes',
+  'Door openings',
+  'People load change',
+  'Process moisture load change',
+  'Building pressure',
+  'New equipment / process changes',
+  'Weather changes',
+]
+const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+const bool = (v: unknown) => (typeof v === 'boolean' ? v : null)
+const oneOf = <T extends readonly string[]>(v: unknown, allowed: T): T[number] | null =>
+  typeof v === 'string' && (allowed as readonly string[]).includes(v) ? (v as T[number]) : null
 
 // Photos must be https links into our own public storage bucket. Anything else
 // (javascript:/data:/external host) is dropped, so a direct POST to this public
@@ -24,44 +40,6 @@ function validPhotoUrls(v: unknown): string[] {
       catch { return false }
     })
     .slice(0, 8)
-}
-
-function buildPrompt(body: Record<string, unknown>): string {
-  const yn = (v: unknown) => v === true ? 'Yes' : v === false ? 'No' : 'Not reported'
-
-  const preCooling = body.pre_cooling === null
-    ? 'Not reported'
-    : body.pre_cooling
-      ? `Installed — Type: ${body.pre_cooling_type || 'unspecified'}, Working: ${yn(body.pre_cooling_working)}`
-      : 'Not installed'
-
-  const postCooling = body.post_cooling === null
-    ? 'Not reported'
-    : body.post_cooling
-      ? `Installed — Type: ${body.post_cooling_type || 'unspecified'}, Working: ${yn(body.post_cooling_working)}`
-      : 'Not installed'
-
-  const airflow = body.airflow_balanced === false
-    ? `Unbalanced — Process: ${body.process_airflow_cfm || '?'} CFM, React: ${body.react_airflow_cfm || '?'} CFM`
-    : yn(body.airflow_balanced)
-
-  const heat = body.react_heat_working === true
-    ? `Working — Maintaining 285°F setpoint: ${yn(body.react_heat_setpoint)}`
-    : yn(body.react_heat_working)
-
-  return `You are a technical support assistant for IAT (Innovative Air Technologies), a manufacturer of industrial heat-sealing systems.
-
-A customer submitted a support ticket. Based on their system data, provide 1-3 concise troubleshooting steps they can safely attempt while waiting for a service technician.
-
-Equipment: Model ${body.model_number} | Serial ${body.serial_number} | Voltage ${body.voltage}
-Problem: ${body.problem_description}
-Pre-cooling: ${preCooling}
-Post-cooling: ${postCooling}
-Airflow balance: ${airflow}
-React heat: ${heat}
-Seals: ${yn(body.seals_good)}
-
-Respond with ONLY a raw JSON array of 1–3 strings. Each string is one actionable step (1–2 sentences, specific to the reported issue). No markdown, no explanation — raw JSON array only.`
 }
 
 export async function POST(req: NextRequest) {
@@ -88,6 +66,9 @@ export async function POST(req: NextRequest) {
     }
 
     const photo_urls = validPhotoUrls(body.photo_urls)
+    const external_factors = Array.isArray(body.external_factors)
+      ? body.external_factors.filter((f: unknown): f is string => typeof f === 'string' && EXTERNAL_FACTORS.includes(f))
+      : []
 
     const { data: ticket, error: insertError } = await supabaseAdmin
       .from('tickets')
@@ -112,7 +93,18 @@ export async function POST(req: NextRequest) {
         react_airflow_cfm: body.react_airflow_cfm || null,
         react_heat_working: body.react_heat_working ?? null,
         react_heat_setpoint: body.react_heat_setpoint ?? null,
+        react_temp_f: str(body.react_temp_f),
         seals_good: body.seals_good ?? null,
+        // Merged-in Troubleshooting Checklist fields (migration 027)
+        problem_started: str(body.problem_started),
+        onset: oneOf(body.onset, ONSET),
+        what_changed: str(body.what_changed),
+        unit_running: bool(body.unit_running),
+        has_alarms: bool(body.has_alarms),
+        alarm_details: str(body.alarm_details),
+        wheel_rotating: oneOf(body.wheel_rotating, TRISTATE),
+        seal_light_leakage: oneOf(body.seal_light_leakage, TRISTATE),
+        external_factors: external_factors.length ? external_factors : null,
         photo_urls: photo_urls.length ? photo_urls : null,
         viewed_kb_articles,
         brand: body.brand === 'us_rotors' ? 'us_rotors' : 'iat',
@@ -147,19 +139,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let ai_recommendations: string[] = []
-    try {
-      const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
-        messages: [{ role: 'user', content: buildPrompt(body) }],
-      })
-      const raw = message.content[0].type === 'text' ? message.content[0].text.trim() : '[]'
-      const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      const parsed = JSON.parse(cleaned)
-      if (Array.isArray(parsed)) ai_recommendations = parsed.slice(0, 3)
-    } catch (aiErr) {
-      console.error('AI recommendations error:', aiErr)
+    // Prefer the tips the in-form "AI Analysis" step already generated (sent back
+    // on submit) — avoids a second model call and keeps them consistent with what
+    // the customer just saw; generate here only if absent.
+    let ai_recommendations: string[] = Array.isArray(body.ai_recommendations)
+      ? body.ai_recommendations
+          .filter((x: unknown): x is string => typeof x === 'string' && x.trim().length > 0)
+          .map((x: string) => x.trim().slice(0, 600))
+          .slice(0, 3)
+      : []
+    if (ai_recommendations.length === 0) {
+      ai_recommendations = await generateTroubleshootingTips(body)
     }
 
     if (ai_recommendations.length > 0) {
