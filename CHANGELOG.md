@@ -2,6 +2,26 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-24 — Employee Forms tab added to `/admin`
+
+The "Employee Forms" library (the JotForms brought into the portal) is now available
+in the admin portal as well, not just `/employee`. Admins are also employees — this
+lets them fill out and submit the same forms (PTO, etc.) without leaving `/admin`.
+Code-only change; no migration, no env vars.
+
+### Added
+- **`/admin/employee-forms`** — the same fillable forms library employees see: active
+  forms grouped by category, category tabs, rows open the `StepFormModal` to submit.
+  Distinct from `/admin/forms`, which remains the form *builder/manager* (create, edit,
+  QR, embed, toggle active, approval).
+- **"Employee Forms" sidebar item** under the admin **Employees** section, plus a matching
+  ⌘K command-palette entry.
+
+### Changed
+- Promoted the employee `ResourcesFormsView` to a shared `components/EmployeeFormsView.tsx`
+  so `/employee/resources` and `/admin/employee-forms` render from one component (added an
+  optional `eyebrow` prop; employee output unchanged). No behavior change for employees.
+
 ## 2026-06-24 — Customer Portal (Phase 1) — external customer logins
 
 A customer-facing portal at `/customer`. A company that has bought units from IAT

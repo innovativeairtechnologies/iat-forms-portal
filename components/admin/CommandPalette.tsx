@@ -29,6 +29,7 @@ type Item = {
 const STATIC: Item[] = [
   { id: 'nav-dash',    label: 'Dashboard',        group: 'Go to', icon: LayoutDashboard, href: '/admin', keywords: 'home overview' },
   { id: 'nav-forms',   label: 'Forms',            group: 'Go to', icon: FileText,        href: '/admin/forms' },
+  { id: 'nav-empforms', label: 'Employee Forms',  group: 'Go to', icon: FileText,        href: '/admin/employee-forms', keywords: 'jotform fill submit resources library' },
   { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions' },
   { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets' },
   { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty' },

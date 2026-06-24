@@ -9,11 +9,17 @@ import StepFormModal from '@/components/StepFormModal'
 type FormWithCat = Form & { categories: Category | null }
 
 /**
- * Employee "Employee Forms" view — mirrors the /admin/forms layout (category
- * tabs + grouped category cards with list rows) but trimmed for employees:
- * rows open the form in a fill modal; no admin controls.
+ * "Employee Forms" view — the JotForms library brought into the portal.
+ * Shared by the employee portal (/employee/resources) and the admin portal
+ * (/admin/employee-forms): category tabs + grouped category cards with list
+ * rows. Rows open the form in a fill modal; no admin/management controls
+ * (those live on the /admin/forms builder).
  */
-export default function ResourcesFormsView({ categories, forms }: { categories: Category[]; forms: FormWithCat[] }) {
+export default function EmployeeFormsView({ categories, forms, eyebrow = 'Resources' }: {
+  categories: Category[]
+  forms: FormWithCat[]
+  eyebrow?: string
+}) {
   const [activeCategory, setActive] = useState('all')
   const [openSlug, setOpenSlug] = useState<string | null>(null)
 
@@ -40,7 +46,7 @@ export default function ResourcesFormsView({ categories, forms }: { categories: 
       {/* Header + category tabs (same structure as /admin/forms) */}
       <div className="px-8 pt-8 pb-0 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="mb-5">
-          <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Resources</p>
+          <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">{eyebrow}</p>
           <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Employee Forms</h1>
           <p className="text-[13px] text-gray-400 mt-0.5">
             {filtered.length} {filtered.length === 1 ? 'form' : 'forms'}{activeCategory !== 'all' && ` in ${activeCategory}`}

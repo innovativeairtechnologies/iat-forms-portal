@@ -15,7 +15,7 @@ async function getData() {
   }
 }
 
-export default async function ResourcesFormsPage() {
+export default async function AdminEmployeeFormsPage() {
   const { categories, forms } = await getData()
-  return <EmployeeFormsView categories={categories} forms={forms} />
+  return <EmployeeFormsView categories={categories} forms={forms} eyebrow="Employees" />
 }
