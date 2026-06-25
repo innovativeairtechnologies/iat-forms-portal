@@ -32,6 +32,26 @@ const STATUS_LABEL: Record<string, string> = {
   open: 'Open', in_progress: 'In Progress', resolved: 'Resolved',
 }
 
+type SubField = { id: string; label: string; field_type: string }
+
+/** Split form fields into sections by `section_header`, so the submission renders as a
+ *  card per section (mirroring the ticket detail) instead of one endless list. Fields
+ *  before the first header fall under a generic "Responses" card; empty sections drop. */
+function groupIntoSections(fields: SubField[]): { title: string; fields: SubField[] }[] {
+  const out: { title: string; fields: SubField[] }[] = []
+  let current: { title: string; fields: SubField[] } | null = null
+  for (const f of fields) {
+    if (f.field_type === 'section_header') {
+      current = { title: f.label, fields: [] }
+      out.push(current)
+    } else {
+      if (!current) { current = { title: 'Responses', fields: [] }; out.push(current) }
+      current.fields.push(f)
+    }
+  }
+  return out.filter((s) => s.fields.length > 0)
+}
+
 export default async function SubmissionDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const result = await getData(params.id)
@@ -49,6 +69,7 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
     submission.data[f.label] !== undefined && submission.data[f.label] !== null && submission.data[f.label] !== ''
   ).length
   const questionCount = fields.filter((f: { field_type: string }) => f.field_type !== 'section_header').length
+  const sections = groupIntoSections(fields)
 
   return (
     <DetailShell>
@@ -87,35 +108,40 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
 
         {/* Two-column */}
         <div className="flex flex-col xl:flex-row gap-4 items-start">
-          {/* Main — responses */}
-          <main className="flex-1 min-w-0 w-full">
-            <Card>
-              <CardHead
-                title="Responses"
-                icon={<ClipboardList size={14} />}
-                action={
-                  questionCount > 0 ? (
-                    <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
-                      {answered}/{questionCount} answered
-                    </span>
-                  ) : undefined
-                }
-              />
-              {fields.length === 0 ? (
+          {/* Main — responses, split into a card per form section (mirrors the ticket
+              detail) so long submissions read as digestible sections, not one endless list. */}
+          <main className="flex-1 min-w-0 w-full space-y-4">
+            {fields.length === 0 ? (
+              <Card>
                 <div className="py-14 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No field data</div>
-              ) : (
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {fields.map((field: { id: string; label: string; field_type: string }) => (
-                    <FieldRow
-                      key={field.id}
-                      label={field.label}
-                      value={submission.data[field.label]}
-                      fieldType={field.field_type}
-                    />
-                  ))}
-                </div>
-              )}
-            </Card>
+              </Card>
+            ) : (
+              sections.map((sec, i) => (
+                <Card key={i}>
+                  <CardHead
+                    title={sec.title}
+                    icon={<ClipboardList size={14} />}
+                    action={
+                      i === 0 && questionCount > 0 ? (
+                        <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
+                          {answered}/{questionCount} answered
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                    {sec.fields.map((field) => (
+                      <FieldRow
+                        key={field.id}
+                        label={field.label}
+                        value={submission.data[field.label]}
+                        fieldType={field.field_type}
+                      />
+                    ))}
+                  </div>
+                </Card>
+              ))
+            )}
           </main>
 
           {/* Right rail — details + notes */}
