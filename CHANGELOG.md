@@ -2,6 +2,37 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-24 — Portal cleanup batch: nav trim, milestone ordering, customer simplification, org-chart list, sectioned submissions
+
+A pass across all four portals (admin, customer, employee, support). Code-only; no migrations.
+
+### Admin
+- Hid the **US Rotors** nav (kept for future use behind a `hidden` flag) and **deleted the
+  one-item Actions** section (New Form is still in ⌘K and at `/admin/forms`).
+- **Troubleshooting** folded into **Tickets** — the two customer forms now feed one pipeline;
+  legacy `troubleshooting_intakes` remain reachable at `/admin/troubleshooting` by URL.
+- **Equipment list** PM column shows the full year (`Jun 26, 2027`) instead of `Jun 26, 27`.
+- **Build & Shipping tracker** enforces **in-order** milestones (client blocks the change with
+  an inline error; the milestones API re-validates and returns 409) and was redesigned with a
+  stepper + breathing room. Equipment detail `<main>` got `space-y-4` so its cards stop butting
+  together.
+- **`/admin/org-chart`** gained the same **Chart / List toggle** the employee directory has
+  (extracted to a shared `components/org-chart/OrgDirectory.tsx`).
+- **Submission detail** now renders a **card per form section** (grouped by `section_header`)
+  instead of one endless "Responses" list — mirrors the ticket detail.
+
+### Customer
+- Removed the redundant **"Support & resources"** card grid: the single support form
+  ("Submit a request") and "Check status" live in the hero, and the Knowledge Base lives in the
+  right rail (was 2 KB blocks + 2 form cards). Reflects the merged support form; spacing tightened
+  toward a single-screen layout.
+
+### Employee
+- Hid the **US Rotors** nav section and the dashboard "US Rotors order" quick-action (kept for future).
+
+### Support
+- Removed the **US Rotors** brand option from the equipment support form (IAT-only now).
+
 ## 2026-06-24 — Hardening: gate `/tools/*`, fix the inert router-cache config, add a smoke suite
 
 Shipped the two genuinely-new fixes that had been stranded (done on a branch, never
