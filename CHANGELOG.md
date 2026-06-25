@@ -2,6 +2,19 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Customer portal: unit photos, Contact Us + message form
+
+Dashboard build-out (stacked on the admin front door below). Code-only; **no migration**.
+
+- **Unit photos** — admin uploads build & QC photos on `/admin/equipment/[id]` (new uploader
+  `components/admin/EquipmentPhotos.tsx`; browser → Supabase Storage `ticket-photos` bucket, then
+  PATCH `equipment.photo_urls`). They render as an expandable lightbox gallery on the customer
+  dashboard.
+- **Contact Us** card on the customer dashboard — the IAT team roster (Kacy Orr, Crystal Hill,
+  Jacob Reagan, James Pope) plus a small **message form**. Submissions email
+  `jacob.younker@dehumidifiers.com` via Resend (`POST /api/customer/contact`,
+  `sendCustomerContactEmail`); the sender's company / contact / email are attached server-side.
+
 ## 2026-06-25 — Customer portal: admin front door (Customers section + Submittal wizard)
 
 A **customer-first** way to provision portal access, alongside the existing equipment-first

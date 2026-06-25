@@ -61,8 +61,14 @@ preview invite points at the preview and a prod invite at prod.
 ## Customer experience
 - Invite email → **Sign In** at `/login` with the temp password → `/customer/welcome` forces a new
   password → `/customer`.
-- Dashboard: unit cards (serial / model / warranty), build & shipping tracker, KB + start-up
-  guide, the support forms, and "My Requests" (their tickets + troubleshooting intakes).
+- Dashboard: unit cards (serial / model / warranty), build & shipping tracker, **build & QC
+  photos** (admin-uploaded, expandable gallery), KB + start-up guide, the support forms, a
+  **Contact Us** card (IAT team roster + a message form that emails the team), and "My Requests"
+  (their tickets + troubleshooting intakes).
+- **Photos** come from the admin equipment record (`/admin/equipment/[id]` → Photos card →
+  Upload). Files go browser → Supabase Storage (`ticket-photos` bucket) → `equipment.photo_urls`.
+- **Contact Us** form → `POST /api/customer/contact` → emails the IAT team
+  (`jacob.younker@dehumidifiers.com`); the customer's identity is taken from the session.
 - Future log-ins: `/login` with their email + password (middleware routes them to `/customer`).
 
 ## Ops / deploy notes
@@ -75,8 +81,6 @@ preview invite points at the preview and a prod invite at prod.
 ## Deferred (later phases)
 - IAT Assistant chatbot (currently a styled placeholder) — Phase 3, read-only Q&A grounded in the
   customer's equipment + KB.
-- Unit **photos** on the dashboard (`equipment.photo_urls` already exists) + a **Contact Us**
-  section and a small contact form — Phase 2.
 - Parts & PM support forms (still disabled on `/support`).
 - Pre-filling the support forms with the customer's unit.
 - Per-customer white-label (the `logo_url` / `accent_color` columns already exist).
