@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Support form: prefill for signed-in customers (public form stays open)
+
+When a logged-in portal customer opens the support form (`/support/equipment-support`) it now
+prefills their account email + contact details and shows a **"Your account & equipment"** card —
+pick a unit to fill in its serial / model / voltage (auto-filled when they have a single unit);
+everything stays editable. The page is **session-aware**, so **anonymous, non-portal customers see
+the exact same public form** — `/support` is not gated. Prefilling the exact serial also makes the
+resulting ticket auto-link to the right equipment record. New `lib/support-context.ts`
+(`getSupportCustomerContext`); the support page renders per-request. Code-only; no migration.
+
 ## 2026-06-25 — Admin tracker: one-click canned notes
 
 The Build & Shipping tracker editor (admin equipment detail) now offers 2–3 customer-facing

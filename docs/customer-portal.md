@@ -74,6 +74,11 @@ preview invite points at the preview and a prod invite at prod.
 - **IAT Assistant** (right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
   read-only Q&A grounded in the customer's equipment + KB; it cannot take actions and is told to
   route actionable requests to the support forms / Contact Us. Uses the existing `ANTHROPIC_API_KEY`.
+- **Support-form prefill:** when a signed-in customer opens `/support/equipment-support`, their
+  account email + contact details prefill and a "Your account & equipment" card lets them pick a
+  unit (fills serial / model / voltage; all editable). `/support` stays public — anonymous visitors
+  see the unchanged form. `lib/support-context.ts` → `getSupportCustomerContext`, passed in by the
+  session-aware `app/support/[form]/page.tsx` (now rendered per-request).
 - Future log-ins: `/login` with their email + password (middleware routes them to `/customer`).
 
 ## Ops / deploy notes

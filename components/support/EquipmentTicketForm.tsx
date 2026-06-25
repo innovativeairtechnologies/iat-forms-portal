@@ -69,6 +69,39 @@ const EMPTY: FormData = {
   external_factors: [],
 }
 
+// Optional context for a logged-in portal customer — lets the public support form
+// prefill their account + unit details. Anonymous visitors pass null (form unchanged).
+export type SupportCustomerContext = {
+  email: string
+  name: string | null
+  company: string | null
+  phone: string | null
+  units: Array<{
+    id: string
+    serial_number: string
+    model_number: string | null
+    voltage: string | null
+    location: string | null
+  }>
+}
+
+// Seed the wizard from a logged-in customer's context: always their contact info,
+// plus the unit details when they own exactly one (multi-unit customers pick a unit).
+function seedForm(ctx: SupportCustomerContext | null): FormData {
+  if (!ctx) return EMPTY
+  const one = ctx.units.length === 1 ? ctx.units[0] : null
+  return {
+    ...EMPTY,
+    customer_email: ctx.email || '',
+    customer_name: ctx.name || '',
+    customer_company: ctx.company || '',
+    customer_phone: ctx.phone || '',
+    serial_number: one?.serial_number || '',
+    model_number: one?.model_number || '',
+    voltage: one?.voltage || '',
+  }
+}
+
 // Must match the whitelist in app/api/tickets/route.ts exactly.
 const EXTERNAL_FACTORS = [
   'Room construction changes',
@@ -388,14 +421,69 @@ function CoachNote({ tone = 'amber', children }: { tone?: 'amber' | 'sky'; child
   )
 }
 
+// Signed-in customer's account + equipment, shown atop the public support form.
+// Picking a unit fills serial / model / voltage; everything stays editable.
+function CustomerEquipmentCard({
+  ctx, selectedSerial, onPick,
+}: {
+  ctx: SupportCustomerContext
+  selectedSerial: string
+  onPick: (u: SupportCustomerContext['units'][number]) => void
+}) {
+  return (
+    <div className="w-full max-w-xl mb-6 rounded-2xl border border-[#089447]/25 bg-[#089447]/[0.06] dark:bg-[#089447]/10 p-4">
+      <div className="flex items-center gap-2 mb-1">
+        <CheckCircle size={15} className="text-[#089447] flex-shrink-0" />
+        <p className="text-[12px] font-bold text-gray-700 dark:text-gray-200">Your account &amp; equipment</p>
+        <span className="ml-auto max-w-[45%] truncate text-[11px] text-gray-400">{ctx.email}</span>
+      </div>
+      <p className="text-[11.5px] text-gray-400 mb-3">
+        {ctx.units.length
+          ? 'Pick a unit to fill in its details — you can still edit anything below.'
+          : 'Your contact details are filled in below.'}
+      </p>
+      {ctx.units.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {ctx.units.map((u) => {
+            const active = !!selectedSerial && u.serial_number === selectedSerial
+            return (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => onPick(u)}
+                className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition-all ${
+                  active
+                    ? 'border-[#089447] bg-white dark:bg-zinc-900'
+                    : 'border-gray-200 dark:border-zinc-700 bg-white/70 dark:bg-zinc-900/40 hover:border-[#089447]/50'
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-[12.5px] font-semibold text-gray-800 dark:text-gray-100">{u.serial_number}</p>
+                  <p className="truncate text-[11px] text-gray-400">
+                    {u.model_number || 'Unknown model'}
+                    {u.location ? ` · ${u.location}` : ''}
+                  </p>
+                </div>
+                <span className={`flex-shrink-0 text-[11px] font-semibold ${active ? 'text-[#089447]' : 'text-gray-400'}`}>
+                  {active ? 'Selected' : 'Use this'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
 type Stage = 'form' | 'loading' | 'success'
 
-export default function EquipmentTicketForm() {
+export default function EquipmentTicketForm({ customerContext = null }: { customerContext?: SupportCustomerContext | null }) {
   const [step, setStep] = useState(1)
   const [dir, setDir] = useState(1)
-  const [form, setForm] = useState<FormData>(EMPTY)
+  const [form, setForm] = useState<FormData>(() => seedForm(customerContext))
   const [photos, setPhotos] = useState<File[]>([])
   const [stage, setStage] = useState<Stage>('form')
   const [ticketNumber, setTicketNumber] = useState('')
@@ -651,6 +739,21 @@ export default function EquipmentTicketForm() {
       </header>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
+
+        {customerContext && (
+          <CustomerEquipmentCard
+            ctx={customerContext}
+            selectedSerial={form.serial_number}
+            onPick={(u) =>
+              setForm((f) => ({
+                ...f,
+                serial_number: u.serial_number,
+                model_number: u.model_number || '',
+                voltage: u.voltage || '',
+              }))
+            }
+          />
+        )}
 
         {/* Brand toggle removed — the support form is IAT Equipment only now (US Rotors
             option retired). The `brand` field defaults to 'iat'; re-add a toggle here if
