@@ -44,36 +44,46 @@ export async function middleware(request: NextRequest) {
   const homeFor = (r: string | null) =>
     r === 'admin' ? '/admin' : r === 'customer' ? '/customer' : '/employee/profile'
 
+  // Carry the refreshed Supabase auth cookies (set on `supabaseResponse` during
+  // getUser()) onto every redirect. Without this, a refreshed session is dropped
+  // on redirect and the auth gate can loop (e.g. /customer ↔ /login) for sessions
+  // whose token needs refreshing. This is the documented Supabase SSR fix.
+  const redirectTo = (url: URL) => {
+    const res = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach((c) => res.cookies.set(c.name, c.value, c))
+    return res
+  }
+
   const toLogin = () => {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+    return redirectTo(loginUrl)
   }
 
   // ── /login: if already logged in, skip to the right portal ───────────────
   if (pathname === '/login') {
-    if (user) return NextResponse.redirect(new URL(homeFor(role), request.url))
+    if (user) return redirectTo(new URL(homeFor(role), request.url))
     return supabaseResponse
   }
 
   // ── /customer/* (external customers; skip the set-password welcome page) ────
   if (pathname.startsWith('/customer') && !pathname.startsWith('/customer/welcome')) {
     if (!user) return toLogin()
-    if (role !== 'customer') return NextResponse.redirect(new URL(homeFor(role), request.url))
+    if (role !== 'customer') return redirectTo(new URL(homeFor(role), request.url))
     return supabaseResponse
   }
 
   // ── /admin/* ──────────────────────────────────────────────────────────────
   if (pathname.startsWith('/admin')) {
-    if (!user) return NextResponse.redirect(new URL('/login', request.url))
-    if (role !== 'admin') return NextResponse.redirect(new URL(homeFor(role), request.url))
+    if (!user) return redirectTo(new URL('/login', request.url))
+    if (role !== 'admin') return redirectTo(new URL(homeFor(role), request.url))
     return supabaseResponse
   }
 
   // ── /learn/* (shared auth; admin-gating handled in the /learn/admin layout) ─
   if (pathname.startsWith('/learn')) {
     if (!user) return toLogin()
-    if (role === 'customer') return NextResponse.redirect(new URL('/customer', request.url))
+    if (role === 'customer') return redirectTo(new URL('/customer', request.url))
     return supabaseResponse
   }
 
@@ -85,8 +95,8 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith('/employee/welcome')
   ) {
     if (!user) return toLogin()
-    if (role === 'admin') return NextResponse.redirect(new URL('/admin', request.url))
-    if (role === 'customer') return NextResponse.redirect(new URL('/customer', request.url))
+    if (role === 'admin') return redirectTo(new URL('/admin', request.url))
+    if (role === 'customer') return redirectTo(new URL('/customer', request.url))
     return supabaseResponse
   }
 

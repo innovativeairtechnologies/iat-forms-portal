@@ -17,5 +17,9 @@ export default async function RootRouter() {
     .eq('id', user.id)
     .single()
 
-  redirect(profile?.role === 'admin' ? '/admin' : '/employee/profile')
+  redirect(
+    profile?.role === 'admin' ? '/admin'
+    : profile?.role === 'customer' ? '/customer'
+    : '/employee/profile',
+  )
 }

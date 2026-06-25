@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Hotfix: production auth redirect loop (`/customer ↔ /login`)
+
+A logged-in customer whose session token needed refreshing could hit an infinite `/customer ↔
+/login` redirect loop (ERR_TOO_MANY_REDIRECTS) on the live domain. Cause: `middleware.ts` returned
+redirects without carrying over the refreshed Supabase auth cookies that `getUser()` sets, so the
+refreshed session was dropped on each redirect and the auth gate oscillated (logged-in → `/customer`,
+unresolved → `/login`, forever). Fix: a `redirectTo()` helper copies `supabaseResponse`'s cookies
+onto every redirect (the documented Supabase SSR pattern). Also: the root router (`app/page.tsx`)
+now sends customers to `/customer` (was `/employee/profile`). Latent middleware bug — surfaced by an
+aging customer session on prod, not by a specific feature change. Code-only; no migration.
+
 ## 2026-06-25 — Status lookup: prefill + request picker for signed-in customers
 
 `/support/status` is now session-aware (like the support form). A logged-in customer gets their
