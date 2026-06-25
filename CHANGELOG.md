@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Hotfix 2: the real fix for the `/customer ↔ /login` loop (unlinked customer logins)
+
+The cookie fix below was correct hardening but **not** the root cause. The loop's real driver: the
+`/customer` page server-redirected to `/login` whenever `getCustomerUser()` returned null — which
+happens for a customer login **not linked to a company** (`profiles.customer_id` is null; the FK is
+`ON DELETE SET NULL`, so deleting a `customers` row orphans its logins). Middleware sees `role=customer`,
+lets `/customer` through and bounces `/login` → `/customer`, so the page's redirect looped forever.
+Fix: `/customer` now renders a client `CustomerSessionError` that **signs out locally** (clears the
+session) then routes to `/login` — no server redirect, so the loop is impossible. Find orphaned
+logins to clean up: `SELECT id FROM profiles WHERE role='customer' AND customer_id IS NULL;`
+
 ## 2026-06-25 — Hotfix: production auth redirect loop (`/customer ↔ /login`)
 
 A logged-in customer whose session token needed refreshing could hit an infinite `/customer ↔

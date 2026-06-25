@@ -90,6 +90,9 @@ preview invite points at the preview and a prod invite at prod.
 - Customer email sends from `onboarding@resend.dev` until a Resend domain is verified —
   delivery is limited; use the temp password shown in the invite/resend dialog meanwhile.
 - No new env vars.
+- **Deleting a `customers` row orphans its logins** (`profiles.customer_id` is `ON DELETE SET NULL`).
+  An orphaned customer login can't resolve a portal account; `/customer` signs it out to `/login`
+  instead of looping. Find orphans: `SELECT id FROM profiles WHERE role='customer' AND customer_id IS NULL;`
 
 ## Deferred (later phases)
 - Parts & PM support forms (still disabled on `/support`).
