@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
 import { getCustomerUser } from '@/lib/customer-auth'
+import CustomerSessionError from '@/components/customer/CustomerSessionError'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd } from '@/lib/equipment'
 import { milestoneProgress } from '@/lib/customer'
@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function CustomerHome() {
   const session = await getCustomerUser()
-  if (!session) redirect('/login')
+  if (!session) return <CustomerSessionError />
+
 
   const { customerId, customer, displayName, user } = session
   const email = (user.email || customer.contact_email || '').toLowerCase()
