@@ -33,6 +33,13 @@ A pass across all four portals (admin, customer, employee, support). Code-only; 
 ### Support
 - Removed the **US Rotors** brand option from the equipment support form (IAT-only now).
 
+### Responsive
+- Form grids that were a fixed two columns (cramped on phones / narrow laptops) now stack to
+  one column below `sm` — the customer support form (`EquipmentTicketForm`) and the admin
+  equipment & employee detail forms. (Best-effort pass; the dashboard KPIs already ship a
+  separate mobile layout, and the detail two-column breakpoints stay `xl` because the admin
+  sidebar takes 240px.)
+
 ## 2026-06-24 — Hardening: gate `/tools/*`, fix the inert router-cache config, add a smoke suite
 
 Shipped the two genuinely-new fixes that had been stranded (done on a branch, never

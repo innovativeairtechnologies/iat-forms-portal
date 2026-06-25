@@ -140,7 +140,7 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
             <Card>
               <CardHead title="Unit Details" icon={<ClipboardList size={14} />} />
               <form id="equip-form" onSubmit={save} className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { key: 'serial_number', label: 'Serial Number' },
                     { key: 'model_number', label: 'Model' },
@@ -158,7 +158,7 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   <div>
                     <label className={lbl}>Ship Date</label>
                     <input type="date" value={form.ship_date} onChange={e => setForm(f => ({ ...f, ship_date: e.target.value }))} className={inp} />

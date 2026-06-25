@@ -164,7 +164,7 @@ export default function EmployeeDetailClient({
             <Card>
               <CardHead title="Employee Details" icon={<UserRound size={14} />} />
               <form id="emp-form" onSubmit={save} className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { key: 'name',        label: 'Full Name',   type: 'text'  },
                     { key: 'email',       label: 'Email',       type: 'email' },
@@ -188,7 +188,7 @@ export default function EmployeeDetailClient({
                     rows={3} className={`${inp} resize-none`} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { key: 'pto_balance',  label: 'PTO Balance (hrs)'  },
                     { key: 'sick_balance', label: 'Sick Balance (hrs)' },
@@ -204,7 +204,7 @@ export default function EmployeeDetailClient({
                 </div>
 
                 {/* Read-only accrual rates — managed automatically by the weekly cron */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { label: 'PTO Rate (auto)',  value: employee.pto_accrual_rate,  color: 'text-emerald-600 dark:text-emerald-400' },
                     { label: 'Sick Rate (auto)', value: employee.sick_accrual_rate, color: 'text-amber-600 dark:text-amber-400'  },

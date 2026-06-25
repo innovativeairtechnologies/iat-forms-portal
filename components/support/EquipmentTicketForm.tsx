@@ -780,7 +780,7 @@ function StepContact({ form, set }: { form: FormData; set: SetFn }) {
       <StepHeader title="Contact Information" sub="We'll use this to follow up on your ticket." />
       <InputField label="Full Name" value={form.customer_name} onChange={v => set('customer_name', v)} placeholder="Jane Smith" required autoFocus />
       <InputField label="Company / Organization" value={form.customer_company} onChange={v => set('customer_company', v)} placeholder="Acme Corp" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InputField label="Email Address" value={form.customer_email} onChange={v => set('customer_email', v)} placeholder="jane@acme.com" type="email" required />
         <InputField label="Phone Number" value={form.customer_phone} onChange={v => set('customer_phone', v)} placeholder="(555) 000-0000" type="tel" />
       </div>
@@ -865,7 +865,7 @@ function StepEquipment({ form, set }: { form: FormData; set: SetFn }) {
       </div>
 
       <InputField label="Serial Number" value={form.serial_number} onChange={v => set('serial_number', v)} placeholder="e.g. 26-1234" required autoFocus />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InputField label="Model Number" value={form.model_number} onChange={v => set('model_number', v)} placeholder="e.g. IAT-5000" required />
         <InputField label="Operating Voltage" value={form.voltage} onChange={v => set('voltage', v)} placeholder="e.g. 460V / 3-phase" />
       </div>
@@ -964,7 +964,7 @@ function StepAirflow({ form, set }: { form: FormData; set: SetFn }) {
         hint="Not sure how to check? Select “Not Sure” for quick step-by-step guidance."
       />
       {form.airflow_balanced === 'unsure' && <AirflowHelp />}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InputField label="Process airflow (CFM)" value={form.process_airflow_cfm} onChange={v => set('process_airflow_cfm', v)} placeholder="e.g. 1200" type="number" />
         <InputField label="React airflow (CFM)" value={form.react_airflow_cfm} onChange={v => set('react_airflow_cfm', v)} placeholder="e.g. 350" type="number" />
       </div>
