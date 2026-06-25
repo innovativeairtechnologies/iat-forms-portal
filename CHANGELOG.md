@@ -2,6 +2,13 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Admin tracker: one-click canned notes
+
+The Build & Shipping tracker editor (admin equipment detail) now offers 2–3 customer-facing
+**note presets per stage** (one click fills the note) alongside the existing free-text note — so
+staff don't write an update from scratch for every unit. Presets live in `lib/customer.ts`
+(`notePresetsFor`), with a generic fallback for custom stages. Code-only; no migration.
+
 ## 2026-06-25 — Customer portal: live IAT Assistant (read-only)
 
 The dashboard's "IAT Assistant" placeholder is now a working chat. Code-only; **no migration**.

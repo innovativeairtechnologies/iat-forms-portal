@@ -61,3 +61,39 @@ export function isMilestoneSequenceValid(ordered: { status: string }[]): boolean
   }
   return true
 }
+
+// Canned, customer-facing note suggestions per build/ship stage. Admins one-click
+// one (or type their own) when advancing the tracker, so they don't write a note
+// from scratch for every unit. Keyed by stage name (case-insensitive); a generic
+// set covers any custom stage. These render on the customer portal, so keep the
+// tone customer-friendly.
+export const MILESTONE_NOTE_PRESETS: Record<string, string[]> = {
+  'order received': [
+    'Order confirmed and queued for production.',
+    'Specs reviewed — your build is scheduled.',
+  ],
+  'in production': [
+    'Your unit is being built on the IAT floor.',
+    'Fabrication underway.',
+    'Assembly in progress.',
+  ],
+  'quality control': [
+    'In final inspection and testing.',
+    'Running QC checks and sign-off.',
+  ],
+  shipped: [
+    'On its way — carrier and tracking to follow.',
+    'Picked up by the carrier.',
+  ],
+  delivered: [
+    'Delivered to your site.',
+    'Delivery complete — thank you!',
+  ],
+}
+
+const GENERIC_NOTE_PRESETS = ['Update posted.', 'On track.', "We'll share more soon."]
+
+/** Suggested notes for a stage (case-insensitive); generic fallback for custom stages. */
+export function notePresetsFor(stage: string): string[] {
+  return MILESTONE_NOTE_PRESETS[stage.trim().toLowerCase()] || GENERIC_NOTE_PRESETS
+}

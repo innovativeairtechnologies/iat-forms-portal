@@ -40,6 +40,8 @@ links *this* existing unit to a new/existing customer (same backend, `equipment_
 
 Staff advance the tracker from the **Build & Shipping** card
 (`POST` seeds defaults, `PATCH` updates a milestone — `/api/admin/equipment/[id]/milestones`).
+Each step offers one-click **canned note presets** (`lib/customer.ts` → `notePresetsFor`,
+customer-facing wording) alongside a free-text note.
 
 ## Managing customers (admin)
 - **`/admin/customers`** — searchable list (Company / Contact / Location / Units / Status),

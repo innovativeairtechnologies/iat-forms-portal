@@ -7,7 +7,7 @@ import {
   CheckCircle2, Clock, Circle, Sparkles, ShieldCheck, AlertCircle,
 } from 'lucide-react'
 import { Card, CardHead } from '@/components/admin/detail-ui'
-import { isMilestoneSequenceValid } from '@/lib/customer'
+import { isMilestoneSequenceValid, notePresetsFor } from '@/lib/customer'
 import type { Equipment, Customer, EquipmentMilestone } from '@/lib/supabase'
 
 const inp = 'w-full text-[13px] text-zinc-800 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-zinc-300 dark:placeholder:text-zinc-600'
@@ -413,6 +413,24 @@ function Tracker({
                           className="min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
                         />
                       </div>
+                      {/* Quick-pick canned notes (one click fills the note above) — shown until a note is set */}
+                      {!(m.note && m.note.trim()) && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {notePresetsFor(m.stage).map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => {
+                                patchLocal(m.id, { note: preset })
+                                persist(m.id, { note: preset })
+                              }}
+                              className="rounded-full border border-zinc-200 px-2 py-0.5 text-[10.5px] text-zinc-500 transition-colors hover:border-emerald-400 hover:text-emerald-600 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-emerald-400"
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </li>
                 )
