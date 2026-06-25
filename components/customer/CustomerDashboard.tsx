@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Stethoscope, Search,
-  ChevronDown, LogOut, CheckCircle2, Circle, Clock, ArrowRight, Sparkles,
+  Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
+  ChevronDown, LogOut, CheckCircle2, Circle, Clock, Sparkles,
   Send, Cpu, MapPin,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
@@ -179,7 +179,7 @@ export default function CustomerDashboard({
       </header>
 
       {/* ── Body ── */}
-      <main className="mx-auto max-w-[1200px] space-y-6 px-5 py-6">
+      <main className="mx-auto max-w-[1200px] space-y-5 px-5 py-6">
 
         <PortalHero
           eyebrow="Customer Portal"
@@ -197,10 +197,10 @@ export default function CustomerDashboard({
           }
         />
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-5 lg:grid-cols-3">
 
           {/* ── Left / main column ── */}
-          <div className="space-y-6 lg:col-span-2">
+          <div className="space-y-5 lg:col-span-2">
 
             {/* Unit switcher */}
             {units.length > 1 && (
@@ -243,37 +243,10 @@ export default function CustomerDashboard({
               </div>
             )}
 
-            {/* Resources & support */}
-            <section>
-              <h2 className="mb-3 text-[13px] font-bold uppercase tracking-wider text-zinc-400">Support &amp; resources</h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <ResourceCard
-                  href="/support/equipment-support"
-                  icon={LifeBuoy}
-                  title="Equipment Support Ticket"
-                  desc="Report an issue — pre-screened before the call."
-                  primary
-                />
-                <ResourceCard
-                  href="/support/troubleshooting"
-                  icon={Stethoscope}
-                  title="Troubleshooting Checklist"
-                  desc="Walk the key diagnostic checks step by step."
-                />
-                <ResourceCard
-                  href="/support/kb"
-                  icon={BookOpen}
-                  title="Knowledge Base & Start-up Guide"
-                  desc="Setup, operation, and troubleshooting guides."
-                />
-                <ResourceCard
-                  href="/support/status"
-                  icon={Search}
-                  title="Check Request Status"
-                  desc="Look up any ticket you've submitted."
-                />
-              </div>
-            </section>
+            {/* Support & resources section removed to de-duplicate the page: the single
+                support form ("Submit a request") and "Check status" live in the hero, and
+                the Knowledge Base lives in the right rail. The Troubleshooting Checklist
+                was merged into Equipment Support, so there's one support form now. */}
 
             {/* My requests */}
             <section className={CARD}>
@@ -315,7 +288,7 @@ export default function CustomerDashboard({
           </div>
 
           {/* ── Right rail ── */}
-          <aside className="space-y-6">
+          <aside className="space-y-5">
             <AssistantPanel companyName={companyName} />
 
             {/* Knowledge base quick links */}
@@ -449,31 +422,8 @@ function Tracker({ unit }: { unit: UnitView }) {
   )
 }
 
-function ResourceCard({
-  href, icon: Icon, title, desc, primary,
-}: { href: string; icon: typeof Package; title: string; desc: string; primary?: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`group flex items-start gap-3 rounded-2xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${
-        primary
-          ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-500/30 dark:from-emerald-500/10 dark:to-zinc-900'
-          : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
-      }`}
-    >
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${primary ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
-        <Icon size={17} />
-      </span>
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="text-[13.5px] font-semibold text-zinc-900 dark:text-white">{title}</p>
-          <ArrowRight size={13} className="text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100" />
-        </div>
-        <p className="mt-0.5 text-[12px] leading-relaxed text-zinc-400">{desc}</p>
-      </div>
-    </Link>
-  )
-}
+// ResourceCard removed — customer support entry points now live only in the hero
+// ("Submit a request" / "Check status") and the right-rail Knowledge Base card.
 
 // Phase-3 placeholder. Styled to match the sketch's "IAT Assistant / Ask me
 // something" panel; wired to a real conversational endpoint in a later phase.
