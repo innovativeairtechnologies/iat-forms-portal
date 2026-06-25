@@ -69,6 +69,9 @@ preview invite points at the preview and a prod invite at prod.
   Upload). Files go browser → Supabase Storage (`ticket-photos` bucket) → `equipment.photo_urls`.
 - **Contact Us** form → `POST /api/customer/contact` → emails the IAT team
   (`jacob.younker@dehumidifiers.com`); the customer's identity is taken from the session.
+- **IAT Assistant** (right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
+  read-only Q&A grounded in the customer's equipment + KB; it cannot take actions and is told to
+  route actionable requests to the support forms / Contact Us. Uses the existing `ANTHROPIC_API_KEY`.
 - Future log-ins: `/login` with their email + password (middleware routes them to `/customer`).
 
 ## Ops / deploy notes
@@ -79,8 +82,6 @@ preview invite points at the preview and a prod invite at prod.
 - No new env vars.
 
 ## Deferred (later phases)
-- IAT Assistant chatbot (currently a styled placeholder) — Phase 3, read-only Q&A grounded in the
-  customer's equipment + KB.
 - Parts & PM support forms (still disabled on `/support`).
 - Pre-filling the support forms with the customer's unit.
 - Per-customer white-label (the `logo_url` / `accent_color` columns already exist).

@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Customer portal: live IAT Assistant (read-only)
+
+The dashboard's "IAT Assistant" placeholder is now a working chat. Code-only; **no migration**.
+
+- `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) answers grounded in the logged-in
+  customer's equipment (serials, warranty, build/ship milestones) + IAT's published KB, assembled
+  server-side. **Read-only** — it can't open tickets or change anything, is told to route actionable
+  requests to Submit a request / Contact Us, and won't invent serials, dates, or status.
+- Right-rail chat panel with suggestion chips, a typing indicator, and a "can make mistakes" note.
+- Uses the existing `ANTHROPIC_API_KEY` (same as the Submittal reader) — no new env vars.
+
 ## 2026-06-25 — Customer portal: unit photos, Contact Us + message form
 
 Dashboard build-out (stacked on the admin front door below). Code-only; **no migration**.

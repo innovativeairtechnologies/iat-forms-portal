@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -432,35 +432,127 @@ function Tracker({ unit }: { unit: UnitView }) {
 // ResourceCard removed — customer support entry points now live only in the hero
 // ("Submit a request" / "Check status") and the right-rail Knowledge Base card.
 
-// Phase-3 placeholder. Styled to match the sketch's "IAT Assistant / Ask me
-// something" panel; wired to a real conversational endpoint in a later phase.
+// IAT Assistant — read-only chat grounded in this customer's equipment + the KB
+// (server route /api/customer/assistant). Phase 3.
+type ChatMsg = { role: 'user' | 'assistant'; content: string }
+const ASSIST_SUGGESTIONS = ['Where is my unit?', 'Is it under warranty?', 'Start-up steps']
+
 function AssistantPanel({ companyName }: { companyName: string }) {
+  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, loading])
+
+  const ask = async (text: string) => {
+    const q = text.trim()
+    if (!q || loading) return
+    setError('')
+    setInput('')
+    const next: ChatMsg[] = [...messages, { role: 'user', content: q }]
+    setMessages(next)
+    setLoading(true)
+    try {
+      const res = await fetch('/api/customer/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: next }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(json.error || 'The assistant is unavailable right now.')
+        return
+      }
+      setMessages((m) => [...m, { role: 'assistant', content: json.reply }])
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const empty = messages.length === 0
+
   return (
-    <section className={`${CARD} overflow-hidden`}>
+    <section className={`${CARD} flex flex-col overflow-hidden`}>
       <div className="flex items-center gap-2 border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
         <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
         <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">IAT Assistant</h2>
-        <span className="ml-auto rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400 dark:bg-zinc-800">Soon</span>
       </div>
-      <div className="space-y-3 px-5 py-4">
-        <p className="text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Ask about your unit, warranty, shipping status, or how-tos — grounded in {companyName}&apos;s equipment and IAT&apos;s knowledge base.
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {['Where is my unit?', 'Is it under warranty?', 'Start-up steps'].map((s) => (
-            <span key={s} className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] text-zinc-400 dark:border-zinc-700">{s}</span>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900/60">
+
+      <div ref={scrollRef} className="max-h-[300px] flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        {empty ? (
+          <p className="text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+            Ask about your unit, warranty, shipping status, or how-tos — grounded in {companyName}&apos;s equipment and IAT&apos;s knowledge base.
+          </p>
+        ) : (
+          messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed ${
+                  m.role === 'user'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                }`}
+              >
+                {m.content}
+              </div>
+            </div>
+          ))
+        )}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="flex items-center gap-1.5 rounded-2xl bg-zinc-100 px-3 py-2.5 dark:bg-zinc-800">
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2.5 px-5 pb-4">
+        {empty && (
+          <div className="flex flex-wrap gap-1.5">
+            {ASSIST_SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => ask(s)}
+                className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] text-zinc-500 transition-colors hover:border-emerald-400 hover:text-emerald-600 dark:border-zinc-700 dark:text-zinc-400"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        {error && <p className="text-[12px] text-rose-500">{error}</p>}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            ask(input)
+          }}
+          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900/60"
+        >
           <input
-            disabled
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={loading}
             placeholder="Ask me something…"
-            className="flex-1 bg-transparent text-[13px] text-zinc-500 outline-none placeholder:text-zinc-400"
+            className="flex-1 bg-transparent text-[13px] text-zinc-700 outline-none placeholder:text-zinc-400 dark:text-zinc-200"
           />
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-200 text-zinc-400 dark:bg-zinc-700">
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+          >
             <Send size={13} />
-          </span>
-        </div>
+          </button>
+        </form>
+        <p className="text-[10.5px] text-zinc-400">IAT Assistant can make mistakes. For service or orders, use Submit a request or Contact Us.</p>
       </div>
     </section>
   )
