@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { DEFAULT_MILESTONE_STAGES } from '@/lib/customer'
+import { DEFAULT_MILESTONE_STAGES, isMilestoneSequenceValid } from '@/lib/customer'
 
 const VALID = ['pending', 'in_progress', 'complete']
 
@@ -45,6 +45,20 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const patch: Record<string, unknown> = {}
   if (status !== undefined) {
     if (!VALID.includes(status)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    // Enforce in-order progress: fetch the unit's timeline, apply the proposed change,
+    // and reject if it would skip a step or leave a gap.
+    const { data: all } = await supabaseAdmin
+      .from('equipment_milestones')
+      .select('id, status, sort_order')
+      .eq('equipment_id', id)
+      .order('sort_order', { ascending: true })
+    const proposed = (all ?? []).map((m) => (m.id === milestoneId ? { ...m, status } : m))
+    if (!isMilestoneSequenceValid(proposed)) {
+      return NextResponse.json(
+        { error: 'Milestones must be completed in order — finish the earlier steps first.' },
+        { status: 409 },
+      )
+    }
     patch.status = status
   }
   if (occurred_at !== undefined) {

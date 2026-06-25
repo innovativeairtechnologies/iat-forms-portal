@@ -136,7 +136,7 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
         {/* Two-column */}
         <div className="flex flex-col xl:flex-row gap-4 items-start">
           {/* Main — edit form */}
-          <main className="flex-1 min-w-0 w-full">
+          <main className="flex-1 min-w-0 w-full space-y-4">
             <Card>
               <CardHead title="Unit Details" icon={<ClipboardList size={14} />} />
               <form id="equip-form" onSubmit={save} className="p-5 space-y-4">

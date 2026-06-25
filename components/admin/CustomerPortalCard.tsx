@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   UserPlus, Upload, Copy, Check, Truck, Loader2, Mail, Link2, X,
-  CheckCircle2, Clock, Circle, Sparkles, ShieldCheck,
+  CheckCircle2, Clock, Circle, Sparkles, ShieldCheck, AlertCircle,
 } from 'lucide-react'
 import { Card, CardHead } from '@/components/admin/detail-ui'
+import { isMilestoneSequenceValid } from '@/lib/customer'
 import type { Equipment, Customer, EquipmentMilestone } from '@/lib/supabase'
 
 const inp = 'w-full text-[13px] text-zinc-800 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-zinc-300 dark:placeholder:text-zinc-600'
@@ -297,18 +298,34 @@ function Tracker({
   setMs: React.Dispatch<React.SetStateAction<EquipmentMilestone[]>>
 }) {
   const [seeding, setSeeding] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const ordered = [...ms].sort((a, b) => a.sort_order - b.sort_order)
+  const doneCount = ordered.filter((m) => m.status === 'complete').length
 
   const patchLocal = (id: string, patch: Partial<EquipmentMilestone>) =>
     setMs((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
 
-  const persist = (id: string, patch: Record<string, unknown>) =>
-    fetch(`/api/admin/equipment/${equipmentId}/milestones`, {
+  const persist = async (id: string, patch: Record<string, unknown>) => {
+    const res = await fetch(`/api/admin/equipment/${equipmentId}/milestones`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ milestoneId: id, ...patch }),
     })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setErr(j.error || 'Could not save that change.')
+    }
+  }
 
   const setStatus = (id: string, status: string) => {
+    // Enforce in-order progress *before* touching state: no skipping ahead, no gaps.
+    const proposed = ordered.map((m) => (m.id === id ? { ...m, status } : m))
+    if (!isMilestoneSequenceValid(proposed)) {
+      setErr('Steps must go in order — finish the earlier steps before starting or completing a later one.')
+      return
+    }
+    setErr(null)
     const occurred_at = status === 'complete' ? new Date().toISOString() : null
     patchLocal(id, { status: status as EquipmentMilestone['status'], occurred_at })
     persist(id, { status })
@@ -331,10 +348,10 @@ function Tracker({
       <CardHead
         title="Build & Shipping"
         icon={<Truck size={14} />}
-        action={ms.length ? <span className="text-[11px] text-zinc-400">{ms.filter((m) => m.status === 'complete').length}/{ms.length} done</span> : undefined}
+        action={ordered.length ? <span className="text-[11px] font-medium text-zinc-400">{doneCount}/{ordered.length} done</span> : undefined}
       />
       <div className="p-5">
-        {ms.length === 0 ? (
+        {ordered.length === 0 ? (
           <div className="space-y-3">
             <p className="text-[13px] text-zinc-500 dark:text-zinc-400">No tracker on this unit yet. Start one to show the customer live build &amp; shipping status.</p>
             <button
@@ -346,42 +363,62 @@ function Tracker({
             </button>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {ms.map((m) => (
-              <li key={m.id} className="space-y-2 border-b border-zinc-100 pb-3 last:border-0 last:pb-0 dark:border-zinc-800">
-                <div className="flex items-center gap-2">
-                  {m.status === 'complete' ? <CheckCircle2 size={16} className="text-emerald-500" />
-                    : m.status === 'in_progress' ? <Clock size={16} className="text-amber-500" />
-                    : <Circle size={16} className="text-zinc-300 dark:text-zinc-600" />}
-                  <span className="flex-1 text-[13px] font-medium text-zinc-800 dark:text-zinc-100">{m.stage}</span>
-                  <select
-                    value={m.status}
-                    onChange={(e) => setStatus(m.id, e.target.value)}
-                    className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[12px] text-zinc-600 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="complete">Complete</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 pl-6">
-                  <input
-                    type="date"
-                    value={(m.occurred_at || '').slice(0, 10)}
-                    onChange={(e) => setDate(m.id, e.target.value)}
-                    className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[12px] text-zinc-600 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                  />
-                  <input
-                    value={m.note || ''}
-                    onChange={(e) => patchLocal(m.id, { note: e.target.value })}
-                    onBlur={(e) => persist(m.id, { note: e.target.value })}
-                    placeholder="note (optional)"
-                    className="flex-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[12px] text-zinc-600 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 placeholder:text-zinc-300"
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <>
+            {err && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
+                <AlertCircle size={14} className="mt-px flex-shrink-0" />
+                <span>{err}</span>
+              </div>
+            )}
+            <ol>
+              {ordered.map((m, i) => {
+                const isLast = i === ordered.length - 1
+                const done = m.status === 'complete'
+                const active = m.status === 'in_progress'
+                return (
+                  <li key={m.id} className="flex gap-3">
+                    {/* stepper rail */}
+                    <div className="flex flex-col items-center pt-1">
+                      {done ? <CheckCircle2 size={18} className="text-emerald-500" />
+                        : active ? <Clock size={18} className="text-amber-500" />
+                        : <Circle size={18} className="text-zinc-300 dark:text-zinc-600" />}
+                      {!isLast && <div className={`my-1 w-px flex-1 ${done ? 'bg-emerald-300 dark:bg-emerald-500/40' : 'bg-zinc-200 dark:bg-zinc-800'}`} />}
+                    </div>
+                    {/* content */}
+                    <div className={`min-w-0 flex-1 ${isLast ? 'pb-0' : 'pb-5'}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className={`text-[13px] font-semibold ${done || active ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>{m.stage}</span>
+                        <select
+                          value={m.status}
+                          onChange={(e) => setStatus(m.id, e.target.value)}
+                          className="flex-shrink-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-zinc-600 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="in_progress">In progress</option>
+                          <option value="complete">Complete</option>
+                        </select>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <input
+                          type="date"
+                          value={(m.occurred_at || '').slice(0, 10)}
+                          onChange={(e) => setDate(m.id, e.target.value)}
+                          className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                        />
+                        <input
+                          value={m.note || ''}
+                          onChange={(e) => patchLocal(m.id, { note: e.target.value })}
+                          onBlur={(e) => persist(m.id, { note: e.target.value })}
+                          placeholder="Add a note (optional)"
+                          className="min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                        />
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ol>
+          </>
         )}
       </div>
     </Card>

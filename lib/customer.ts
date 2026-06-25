@@ -41,3 +41,23 @@ export function milestoneProgress(milestones: EquipmentMilestone[]): MilestonePr
     currentStage: current?.stage ?? null,
   }
 }
+
+/** A unit's timeline is valid only when progress runs in order: a block of completed
+ *  steps, then at most one in-progress step, then pending steps — no skipping ahead and
+ *  no gaps. Pass the milestones sorted by sort_order. Used by both the admin editor
+ *  (blocks the change + shows an error) and the milestones API (rejects out-of-order
+ *  writes), so the customer portal can never display an impossible sequence. */
+export function isMilestoneSequenceValid(ordered: { status: string }[]): boolean {
+  let seenIncomplete = false
+  for (const m of ordered) {
+    if (m.status === 'complete') {
+      if (seenIncomplete) return false // a completed step after an unfinished one = gap
+    } else if (m.status === 'in_progress') {
+      if (seenIncomplete) return false // starting a step before the prior one is done = skip
+      seenIncomplete = true
+    } else {
+      seenIncomplete = true
+    }
+  }
+  return true
+}
