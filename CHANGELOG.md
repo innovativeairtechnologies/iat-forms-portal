@@ -2,6 +2,38 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-24 — Hardening: gate `/tools/*`, fix the inert router-cache config, add a smoke suite
+
+Shipped the two genuinely-new fixes that had been stranded (done on a branch, never
+deployed) on `chore/cleanup-hardening`. Cherry-picked to `main`; that branch's duplicate
+Employee-Forms and support-rebrand commits were dropped (already live) and the branch deleted.
+
+### Security
+- **Gated `/tools/*.html` behind authentication** (security item 8.3). The internal static
+  calculators (order-status card, voltage scaling, US Rotors pricing) were public by URL;
+  `middleware.ts` now redirects anonymous visitors to `/login`, and any signed-in employee or
+  admin may use them. Added `/tools/:path*` to the middleware matcher.
+
+### Fixed
+- **The admin Router-Cache setting was silently inert in production.** `staleTimes` had been
+  moved to the **top level** of `next.config.js` during the 14→15 upgrade on the belief it had
+  gone stable — but in Next 15 it's still `experimental.staleTimes`, so a top-level key is
+  ignored (confirmed against the installed config schema and the build's "Experiments" banner).
+  Moved it back under `experimental`, so `staleTimes.dynamic: 0` takes effect again (pairs with
+  `RefreshOnNavigate`). Also set `outputFileTracingRoot: __dirname` so Next stops walking up to
+  the stray repo-root `package-lock.json` when inferring the workspace root.
+- **Troubleshooting CS-alert email** now links the live `/admin/troubleshooting` queue instead
+  of the stale "a dedicated admin view is coming in Phase 2" copy.
+
+### Added
+- **Playwright smoke suite** (`e2e/smoke.spec.ts`, `playwright.config.ts`, `npm run test:e2e`):
+  non-mutating checks that public entry points load, anonymous auth boundaries redirect, and the
+  new `/tools/*` gate holds. Read-only by design (the dev server talks to prod Supabase).
+
+### Removed
+- **Dead code:** the legacy `/admin/test` design-preview dashboard (503 lines) and the no-op
+  `/api/admin/auth` stub (login is client-side Supabase now). Nothing referenced either.
+
 ## 2026-06-24 — Employee Forms tab added to `/admin`
 
 The "Employee Forms" library (the JotForms brought into the portal) is now available
