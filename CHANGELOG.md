@@ -2,6 +2,25 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Customer portal: admin front door (Customers section + Submittal wizard)
+
+A **customer-first** way to provision portal access, alongside the existing equipment-first
+"Invite to portal" card. Code-only; **no migration**.
+
+- New **Customers** entry in the admin nav + **`/admin/customers`** list (search, Active/Inactive
+  filters, unit counts) and a **`/admin/customers/[id]`** detail page (linked units, contact details).
+- **New Customer wizard** (`components/admin/NewCustomerWizard.tsx`): scan a Submittal → review the
+  pulled **customer + unit** fields → one click creates the `customers` row, the login, the
+  `equipment` row, seeds the build/ship tracker, and emails the temp-password invite — all through
+  the existing `POST /api/admin/customers/invite` (which already accepted a full `equipment` object).
+- The same wizard is the equipment list's **"New from Submittal"** button, so there's a single
+  create-from-Submittal path (Submittal PDF + manual entry only — no DW integration).
+- **Resend invite** (`POST /api/admin/customers/[id]/resend-invite`) resets the temp password,
+  re-sends the email, and re-activates the account; **Remove from portal**
+  (`POST /api/admin/customers/[id]/remove`) deletes the login and marks the customer inactive
+  (equipment + history kept). Both audited.
+- `genTempPassword` extracted to `lib/temp-password.ts` (shared by invite + resend).
+
 ## 2026-06-25 — Legacy troubleshooting intakes migrated into Tickets
 
 The retired Troubleshooting Checklist's intakes (`troubleshooting_intakes`) now live in the
