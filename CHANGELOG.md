@@ -2,6 +2,14 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Status lookup: prefill + request picker for signed-in customers
+
+`/support/status` is now session-aware (like the support form). A logged-in customer gets their
+**email prefilled** and a **"Your requests"** quick-picker — one tap looks up any of their own
+tickets / checklists (matched by their account email, so the lookup always verifies). Anonymous
+visitors get the unchanged public lookup — `/support/status` is **not** gated. Split into a server
+`page.tsx` + `StatusClient.tsx`; `getStatusCustomerContext` in `lib/support-context.ts`. No migration.
+
 ## 2026-06-25 — Support form: prefill for signed-in customers (public form stays open)
 
 When a logged-in portal customer opens the support form (`/support/equipment-support`) it now

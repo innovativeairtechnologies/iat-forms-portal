@@ -32,3 +32,44 @@ export async function getSupportCustomerContext(): Promise<SupportCustomerContex
     units,
   }
 }
+
+// ── Status lookup context ────────────────────────────────────────────────────
+export type StatusCustomerContext = {
+  email: string
+  requests: Array<{ ref: string; kind: 'ticket' | 'troubleshooting'; status: string; title: string }>
+}
+
+// For the "Check status" page: the signed-in customer's email + their own requests,
+// matched by their account email so a one-click lookup always passes the email check.
+// Anonymous visitors → null and the page stays the plain public lookup.
+export async function getStatusCustomerContext(): Promise<StatusCustomerContext | null> {
+  const session = await getCustomerUser()
+  if (!session) return null
+  const { customer, user } = session
+  const email = (user.email || customer.contact_email || '').toLowerCase()
+  if (!email) return { email: '', requests: [] }
+
+  const [tRes, iRes] = await Promise.all([
+    supabaseAdmin
+      .from('tickets')
+      .select('ticket_number, status, problem_description')
+      .ilike('customer_email', email)
+      .order('created_at', { ascending: false })
+      .limit(25),
+    supabaseAdmin
+      .from('troubleshooting_intakes')
+      .select('reference_number, status, problem_description')
+      .ilike('customer_email', email)
+      .order('created_at', { ascending: false })
+      .limit(25),
+  ])
+
+  const requests: StatusCustomerContext['requests'] = []
+  for (const t of tRes.data || []) {
+    requests.push({ ref: t.ticket_number as string, kind: 'ticket', status: t.status as string, title: (t.problem_description as string | null) || '' })
+  }
+  for (const i of iRes.data || []) {
+    requests.push({ ref: i.reference_number as string, kind: 'troubleshooting', status: i.status as string, title: (i.problem_description as string | null) || '' })
+  }
+  return { email, requests }
+}

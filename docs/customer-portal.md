@@ -79,6 +79,9 @@ preview invite points at the preview and a prod invite at prod.
   unit (fills serial / model / voltage; all editable). `/support` stays public — anonymous visitors
   see the unchanged form. `lib/support-context.ts` → `getSupportCustomerContext`, passed in by the
   session-aware `app/support/[form]/page.tsx` (now rendered per-request).
+- **Status-lookup prefill:** signed-in customers get their email prefilled on `/support/status`
+  plus a "Your requests" one-tap picker (`getStatusCustomerContext`; server `page.tsx` +
+  `StatusClient.tsx`). Anonymous lookup unchanged.
 - Future log-ins: `/login` with their email + password (middleware routes them to `/customer`).
 
 ## Ops / deploy notes
