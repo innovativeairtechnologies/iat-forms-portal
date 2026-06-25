@@ -6,7 +6,7 @@ import { getUserLearnStats } from '@/lib/learn'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
 import {
   Calendar, Clock, Briefcase, Building2, CalendarClock, FileText, Wrench, Users,
-  GraduationCap, Flame, ArrowRight, Sparkles, UserCog, Package,
+  GraduationCap, Flame, ArrowRight, Sparkles, UserCog,
 } from 'lucide-react'
 import type { Employee, TimeOffRequest } from '@/lib/supabase'
 
@@ -179,11 +179,12 @@ export default async function EmployeeHome() {
         </div>
 
         {/* ── Quick actions ──────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <QuickAction icon={<FileText size={16} />} label="Submit a form" href="/employee/resources" />
           <QuickAction icon={<Users size={16} />} label="Team directory" href="/employee/directory" />
           <QuickAction icon={<Wrench size={16} />} label="Tools & apps" href="/employee/resources/tools" />
-          <QuickAction icon={<Package size={16} />} label="US Rotors order" href="/employee/us-rotors/order" />
+          {/* US Rotors hidden for now — re-enable alongside the nav section in EmployeeShell:
+          <QuickAction icon={<Package size={16} />} label="US Rotors order" href="/employee/us-rotors/order" /> */}
         </div>
       </div>
     </div>

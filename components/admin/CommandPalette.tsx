@@ -6,7 +6,7 @@ import {
   Search, CornerDownLeft, ArrowUp, ArrowDown,
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
-  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Package,
+  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -33,7 +33,8 @@ const STATIC: Item[] = [
   { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions' },
   { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets' },
   { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty' },
-  { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series' },
+  // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
+  // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster' },
   { id: 'nav-pto',     label: 'PTO Requests',     group: 'Go to', icon: Calendar,        href: '/admin/requests/pto', keywords: 'time off vacation' },
   { id: 'nav-sick',    label: 'Sick Time',        group: 'Go to', icon: CalendarClock,   href: '/admin/requests/sick', keywords: 'time off' },

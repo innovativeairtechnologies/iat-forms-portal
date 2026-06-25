@@ -414,12 +414,12 @@ export default function EquipmentTicketForm() {
     setForm(f => ({ ...f, [key]: val }))
   }, [])
 
-  const setBrand = (brand: Brand) => {
-    setForm({ ...EMPTY, brand })
-    setStep(1)
-    setDir(1)
-    setRecommendations([]); setAnalyzed(false); setAnalyzeError(null)
-  }
+  // Brand toggle retired (the support form is IAT-only now). Kept for reference if US
+  // Rotors support returns:
+  // const setBrand = (brand: Brand) => {
+  //   setForm({ ...EMPTY, brand }); setStep(1); setDir(1)
+  //   setRecommendations([]); setAnalyzed(false); setAnalyzeError(null)
+  // }
 
   // Live AI tips from the answers so far, when the customer reaches the Analysis
   // step. Stateless; the submit reuses these tips so there's no second model call.
@@ -652,28 +652,9 @@ export default function EquipmentTicketForm() {
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
 
-        {/* Brand toggle — step 1 only */}
-        {step === 1 && (
-          <div className="w-full max-w-xl mb-5 flex items-center justify-center gap-2">
-            {([
-              { val: 'iat' as Brand,       label: 'IAT Equipment' },
-              { val: 'us_rotors' as Brand, label: 'US Rotors'     },
-            ]).map(({ val, label }) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setBrand(val)}
-                className={`px-5 py-2 rounded-xl text-[13px] font-semibold border transition-all ${
-                  form.brand === val
-                    ? 'bg-[#089447] text-white border-[#089447]'
-                    : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gray-400 hover:border-[#089447]/40'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Brand toggle removed — the support form is IAT Equipment only now (US Rotors
+            option retired). The `brand` field defaults to 'iat'; re-add a toggle here if
+            US Rotors support returns. */}
 
         {/* Progress */}
         <div className="w-full max-w-xl mb-8">

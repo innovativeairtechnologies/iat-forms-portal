@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
-  Calendar, Clock, Plus, Boxes,
+  Calendar, Clock, Boxes,
   ChevronRight, ShieldCheck, Package, Network, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -23,6 +23,7 @@ type NavItem = {
   icon: React.ElementType
   exact?: boolean
   badge?: BadgeKind
+  hidden?: boolean
 }
 
 type Counts = {
@@ -37,6 +38,7 @@ type Counts = {
 type NavSection = {
   label: string
   items: NavItem[]
+  hidden?: boolean
 }
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -49,7 +51,11 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/admin/submissions',  label: 'Submissions', icon: Inbox,       badge: 'submissions' },
       { href: '/admin/tickets',      label: 'Tickets',     icon: Ticket,      badge: 'tickets' },
-      { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting' },
+      // Troubleshooting merged into Tickets: the two customer forms (Equipment Support +
+      // Troubleshooting Checklist) are now one form feeding the tickets pipeline, so the
+      // separate tab is hidden. Legacy intakes remain at /admin/troubleshooting by URL.
+      // Re-enable by removing `hidden: true`.
+      { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting', hidden: true },
       { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes },
     ],
   },
@@ -64,8 +70,11 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/accrual',       label: 'Accrual',    icon: TrendingUp },
     ],
   },
+  // US Rotors — hidden for now (not needed currently). Code, routes, API, and badge
+  // plumbing are kept for future use; re-enable by removing `hidden: true`.
   {
     label: 'US Rotors',
+    hidden: true,
     items: [
       { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors' },
     ],
@@ -159,32 +168,23 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
     <nav className="flex-1 px-3 py-2 overflow-y-auto">
       <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
 
-      {NAV_SECTIONS.map(section => (
-        <div key={section.label} className="mt-5">
-          <div className="px-3 mb-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-              {section.label}
-            </span>
+      {NAV_SECTIONS.filter(s => !s.hidden).map(section => {
+        const items = section.items.filter(i => !i.hidden)
+        if (items.length === 0) return null
+        return (
+          <div key={section.label} className="mt-5">
+            <div className="px-3 mb-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
+                {section.label}
+              </span>
+            </div>
+            {items.map(item => (
+              <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
+            ))}
           </div>
-          {section.items.map(item => (
-            <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
-          ))}
-        </div>
-      ))}
+        )
+      })}
 
-      <div className="mt-5">
-        <div className="px-3 mb-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-            Actions
-          </span>
-        </div>
-        <NavLink
-          item={{ href: '/admin/forms/new', label: 'New Form', icon: Plus }}
-          pathname={pathname}
-          counts={counts}
-          onClose={onClose}
-        />
-      </div>
     </nav>
   )
 

@@ -39,7 +39,7 @@ function PmCell({ eq }: { eq: EquipmentRow }) {
 
 function fmtShip(d: string | null) {
   if (!d) return '—'
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export default function EquipmentClient({ equipment }: { equipment: EquipmentRow[] }) {

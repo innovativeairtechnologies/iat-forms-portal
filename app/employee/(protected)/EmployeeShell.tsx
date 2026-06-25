@@ -19,7 +19,7 @@ import { PortalSearch, type SearchItem } from '@/components/PortalSearch'
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type NavItem = { href: string; label: string; icon: React.ElementType; exact?: boolean }
-type NavSection = { label: string; href?: string; items: NavItem[] }
+type NavSection = { label: string; href?: string; items: NavItem[]; hidden?: boolean }
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
@@ -39,8 +39,11 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/employee/resources/tools', label: 'Tools & Apps',   icon: Wrench   },
     ],
   },
+  // US Rotors — hidden for now (not needed currently). Routes/pages kept for future use;
+  // re-enable by removing `hidden: true`.
   {
     label: 'US Rotors',
+    hidden: true,
     items: [
       { href: '/employee/us-rotors',       label: 'Overview',        icon: Wind,    exact: true },
       { href: '/employee/us-rotors/order', label: 'C-Series Order',  icon: Package              },
@@ -48,7 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
-const ALL_NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap(s => s.items)
+const ALL_NAV_ITEMS: NavItem[] = NAV_SECTIONS.filter(s => !s.hidden).flatMap(s => s.items)
 
 // Header quick-jump targets: every nav item + a couple of extras not in the sidebar.
 const SEARCH_ITEMS: SearchItem[] = [
@@ -116,7 +119,7 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
 
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-3 overflow-y-auto">
-      {NAV_SECTIONS.map(section => (
+      {NAV_SECTIONS.filter(s => !s.hidden).map(section => (
         <div key={section.label} className="mt-5 first:mt-0">
           <div className="px-3 mb-2">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
