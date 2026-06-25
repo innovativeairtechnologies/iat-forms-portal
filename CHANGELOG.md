@@ -2,6 +2,21 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Legacy troubleshooting intakes migrated into Tickets
+
+The retired Troubleshooting Checklist's intakes (`troubleshooting_intakes`) now live in the
+unified **Tickets** queue. Each row was copied into `tickets` keeping its original `TSC-…`
+reference as the ticket number — so the origin is obvious in the queue and the move is
+**idempotent** (a `TSC-` ref already in tickets is skipped) and **reversible**
+(`DELETE FROM tickets WHERE ticket_number LIKE 'TSC-%'`). Dates and status are preserved
+(`new→open`, `reviewed→in_progress`, `closed→closed`); the checklist-only diagnostics
+(onset, wheel/seals, external factors, …) map 1:1 thanks to migration 027.
+
+All 6 rows were internal **test** submissions (J.Y. + Kacy, Jun 23–24), moved at the user's
+request; the source `troubleshooting_intakes` table is left intact as a backup (retire it in a
+later cleanup). Data-only — ran against the live DB via the service role, no code deploy.
+Script: `scripts/migrate-troubleshooting-to-tickets.mjs` (dry-run by default; `--commit` to write).
+
 ## 2026-06-24 — Portal cleanup batch: nav trim, milestone ordering, customer simplification, org-chart list, sectioned submissions
 
 A pass across all four portals (admin, customer, employee, support). Code-only; no migrations.
