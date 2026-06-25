@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomInt } from 'crypto'
 import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
 import { DEFAULT_MILESTONE_STAGES } from '@/lib/customer'
 import { sendCustomerWelcomeEmail } from '@/lib/resend-customer'
-
-// Readable temp password (no ambiguous chars). The customer is forced to change it
-// on first login via the /customer/welcome gate, so it's only ever used once.
-function genTempPassword(): string {
-  const lower = 'abcdefghijkmnpqrstuvwxyz' // no 'l'
-  const digits = '23456789'                // no 0/1
-  const pick = (set: string, n: number) =>
-    Array.from({ length: n }, () => set[randomInt(set.length)]).join('')
-  return `IAT-${pick(lower, 4)}${pick(digits, 4)}`
-}
+import { genTempPassword } from '@/lib/temp-password'
 
 type InvitePayload = {
   company_name?: string
@@ -59,6 +49,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
     customerId = existing?.id ?? null
   }
+  let createdNew = false
   if (!customerId) {
     const { data: created, error } = await supabaseAdmin
       .from('customers')
@@ -75,6 +66,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error?.message || 'Could not create the customer.' }, { status: 500 })
     }
     customerId = created.id
+    createdNew = true
+  }
+  // Re-using an existing company (e.g. re-inviting after a "Remove from portal")
+  // → make sure the account is active again.
+  if (!createdNew) {
+    await supabaseAdmin.from('customers').update({ status: 'active' }).eq('id', customerId)
   }
 
   // ── 2. Create the customer's login (email + password) ──────────────────────

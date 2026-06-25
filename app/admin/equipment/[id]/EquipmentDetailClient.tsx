@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Save, Boxes, ShieldCheck, ShieldAlert, ShieldQuestion, Ticket as TicketIcon, Wrench, ClipboardList, Image as ImageIcon } from 'lucide-react'
+import { Save, Boxes, ShieldCheck, ShieldAlert, ShieldQuestion, Ticket as TicketIcon, Wrench, ClipboardList } from 'lucide-react'
 import type { Equipment, Customer, EquipmentMilestone } from '@/lib/supabase'
 import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd, nextPmDue, pmState } from '@/lib/equipment'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
 import CustomerPortalCard from '@/components/admin/CustomerPortalCard'
+import EquipmentPhotos from '@/components/admin/EquipmentPhotos'
 
 type TicketLite = {
   id: string
@@ -267,19 +268,8 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
               </div>
             </Card>
 
-            {/* Photos */}
-            {equipment.photo_urls && equipment.photo_urls.length > 0 && (
-              <Card>
-                <CardHead title="Photos" icon={<ImageIcon size={14} />} />
-                <div className="p-4 grid grid-cols-3 gap-2">
-                  {equipment.photo_urls.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                      <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                    </a>
-                  ))}
-                </div>
-              </Card>
-            )}
+            {/* Photos — admin uploads build & QC photos shown on the customer portal */}
+            <EquipmentPhotos equipmentId={equipment.id} serial={equipment.serial_number} initial={equipment.photo_urls || []} />
           </aside>
         </div>
       </div>

@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
   ChevronDown, LogOut, CheckCircle2, Circle, Clock, Sparkles,
-  Send, Cpu, MapPin,
+  Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
+  Headphones, Loader2,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
@@ -22,6 +23,7 @@ export type UnitView = {
   location: string | null
   ship_date: string | null
   install_date: string | null
+  photos: string[]
   milestones: EquipmentMilestone[]
   warranty: { state: 'in' | 'out' | 'unknown'; end: string | null; daysLeft: number | null }
   progress: { total: number; completed: number; percent: number; currentStage: string | null }
@@ -232,6 +234,9 @@ export default function CustomerDashboard({
 
                 {/* Build / ship tracker */}
                 <Tracker unit={active} />
+
+                {/* Unit photos (build & QC) */}
+                {active.photos.length > 0 && <UnitPhotos photos={active.photos} />}
               </>
             ) : (
               <div className={`${CARD} flex flex-col items-center gap-2 px-6 py-12 text-center`}>
@@ -315,6 +320,8 @@ export default function CustomerDashboard({
                 <p className="px-5 py-6 text-center text-[13px] text-zinc-400">Guides are coming soon.</p>
               )}
             </section>
+
+            <ContactCard />
           </aside>
         </div>
       </main>
@@ -425,35 +432,267 @@ function Tracker({ unit }: { unit: UnitView }) {
 // ResourceCard removed — customer support entry points now live only in the hero
 // ("Submit a request" / "Check status") and the right-rail Knowledge Base card.
 
-// Phase-3 placeholder. Styled to match the sketch's "IAT Assistant / Ask me
-// something" panel; wired to a real conversational endpoint in a later phase.
+// IAT Assistant — read-only chat grounded in this customer's equipment + the KB
+// (server route /api/customer/assistant). Phase 3.
+type ChatMsg = { role: 'user' | 'assistant'; content: string }
+const ASSIST_SUGGESTIONS = ['Where is my unit?', 'Is it under warranty?', 'Start-up steps']
+
 function AssistantPanel({ companyName }: { companyName: string }) {
+  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, loading])
+
+  const ask = async (text: string) => {
+    const q = text.trim()
+    if (!q || loading) return
+    setError('')
+    setInput('')
+    const next: ChatMsg[] = [...messages, { role: 'user', content: q }]
+    setMessages(next)
+    setLoading(true)
+    try {
+      const res = await fetch('/api/customer/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: next }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(json.error || 'The assistant is unavailable right now.')
+        return
+      }
+      setMessages((m) => [...m, { role: 'assistant', content: json.reply }])
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const empty = messages.length === 0
+
   return (
-    <section className={`${CARD} overflow-hidden`}>
+    <section className={`${CARD} flex flex-col overflow-hidden`}>
       <div className="flex items-center gap-2 border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
         <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
         <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">IAT Assistant</h2>
-        <span className="ml-auto rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400 dark:bg-zinc-800">Soon</span>
+      </div>
+
+      <div ref={scrollRef} className="max-h-[300px] flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        {empty ? (
+          <p className="text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+            Ask about your unit, warranty, shipping status, or how-tos — grounded in {companyName}&apos;s equipment and IAT&apos;s knowledge base.
+          </p>
+        ) : (
+          messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed ${
+                  m.role === 'user'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                }`}
+              >
+                {m.content}
+              </div>
+            </div>
+          ))
+        )}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="flex items-center gap-1.5 rounded-2xl bg-zinc-100 px-3 py-2.5 dark:bg-zinc-800">
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2.5 px-5 pb-4">
+        {empty && (
+          <div className="flex flex-wrap gap-1.5">
+            {ASSIST_SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => ask(s)}
+                className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] text-zinc-500 transition-colors hover:border-emerald-400 hover:text-emerald-600 dark:border-zinc-700 dark:text-zinc-400"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        {error && <p className="text-[12px] text-rose-500">{error}</p>}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            ask(input)
+          }}
+          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900/60"
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={loading}
+            placeholder="Ask me something…"
+            className="flex-1 bg-transparent text-[13px] text-zinc-700 outline-none placeholder:text-zinc-400 dark:text-zinc-200"
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+          >
+            <Send size={13} />
+          </button>
+        </form>
+        <p className="text-[10.5px] text-zinc-400">IAT Assistant can make mistakes. For service or orders, use Submit a request or Contact Us.</p>
+      </div>
+    </section>
+  )
+}
+
+// ── Unit photos (build & QC) with a simple lightbox ──────────────────────────
+function UnitPhotos({ photos }: { photos: string[] }) {
+  const [open, setOpen] = useState<number | null>(null)
+  const close = () => setOpen(null)
+  const at = open ?? 0
+  return (
+    <section className={CARD}>
+      <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
+        <div className="flex items-center gap-2">
+          <ImageIcon size={16} className="text-emerald-600 dark:text-emerald-400" />
+          <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Photos</h2>
+        </div>
+        <span className="text-[12px] font-medium text-zinc-400">{photos.length}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 p-4 sm:grid-cols-4">
+        {photos.map((url, i) => (
+          <button
+            key={i}
+            onClick={() => setOpen(i)}
+            className="aspect-square overflow-hidden rounded-lg border border-zinc-200 transition-transform hover:scale-[1.02] dark:border-zinc-800"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={`Unit photo ${i + 1}`} className="h-full w-full object-cover" />
+          </button>
+        ))}
+      </div>
+
+      {open !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={close}>
+          <button className="absolute right-4 top-4 text-white/80 hover:text-white" onClick={close} aria-label="Close">
+            <X size={24} />
+          </button>
+          {at > 0 && (
+            <button
+              className="absolute left-3 text-white/80 hover:text-white sm:left-6"
+              onClick={(e) => { e.stopPropagation(); setOpen(at - 1) }}
+              aria-label="Previous"
+            >
+              <ChevronLeft size={30} />
+            </button>
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photos[at]}
+            alt={`Unit photo ${at + 1}`}
+            className="max-h-[88vh] max-w-[92vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {at < photos.length - 1 && (
+            <button
+              className="absolute right-3 text-white/80 hover:text-white sm:right-6"
+              onClick={(e) => { e.stopPropagation(); setOpen(at + 1) }}
+              aria-label="Next"
+            >
+              <ChevronRight size={30} />
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ── Contact Us (team roster + message form) ──────────────────────────────────
+const IAT_TEAM = ['Kacy Orr', 'Crystal Hill', 'Jacob Reagan', 'James Pope']
+
+function ContactCard() {
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+
+  const send = async () => {
+    if (!message.trim()) return
+    setSending(true)
+    setError('')
+    try {
+      const res = await fetch('/api/customer/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(json.error || 'Could not send — please try again.')
+        return
+      }
+      setSent(true)
+      setMessage('')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <section className={CARD}>
+      <div className="flex items-center gap-2 border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
+        <Headphones size={16} className="text-emerald-600 dark:text-emerald-400" />
+        <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Contact Us</h2>
       </div>
       <div className="space-y-3 px-5 py-4">
-        <p className="text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Ask about your unit, warranty, shipping status, or how-tos — grounded in {companyName}&apos;s equipment and IAT&apos;s knowledge base.
-        </p>
         <div className="flex flex-wrap gap-1.5">
-          {['Where is my unit?', 'Is it under warranty?', 'Start-up steps'].map((s) => (
-            <span key={s} className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] text-zinc-400 dark:border-zinc-700">{s}</span>
+          {IAT_TEAM.map((n) => (
+            <span key={n} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 py-1 pl-1 pr-2.5 dark:border-zinc-700">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-bold text-white">
+                {n.split(' ').map((p) => p[0]).join('')}
+              </span>
+              <span className="text-[11.5px] font-medium text-zinc-600 dark:text-zinc-300">{n}</span>
+            </span>
           ))}
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900/60">
-          <input
-            disabled
-            placeholder="Ask me something…"
-            className="flex-1 bg-transparent text-[13px] text-zinc-500 outline-none placeholder:text-zinc-400"
-          />
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-200 text-zinc-400 dark:bg-zinc-700">
-            <Send size={13} />
-          </span>
-        </div>
+
+        {sent ? (
+          <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-[12.5px] text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+            <CheckCircle2 size={14} /> Thanks — we&apos;ll be in touch.
+          </div>
+        ) : (
+          <>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+              placeholder="Send us a message…"
+              className="w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-[13px] text-zinc-700 outline-none transition-all placeholder:text-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-200"
+            />
+            {error && <p className="text-[12px] text-rose-500">{error}</p>}
+            <button
+              onClick={send}
+              disabled={sending || !message.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+            >
+              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Send message
+            </button>
+          </>
+        )}
       </div>
     </section>
   )

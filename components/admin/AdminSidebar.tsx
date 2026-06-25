@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
-  Calendar, Clock, Boxes,
+  Calendar, Clock, Boxes, Building2,
   ChevronRight, ShieldCheck, Package, Network, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -57,6 +57,7 @@ const NAV_SECTIONS: NavSection[] = [
       // Re-enable by removing `hidden: true`.
       { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting', hidden: true },
       { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes },
+      { href: '/admin/customers',    label: 'Customers',   icon: Building2 },
     ],
   },
   {

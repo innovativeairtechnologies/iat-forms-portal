@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Wrench } from 'lucide-react'
+import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Wrench, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Equipment } from '@/lib/supabase'
 import { warrantyState, isExpiringSoon, daysUntilWarrantyEnd, pmState, nextPmDue } from '@/lib/equipment'
 import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
+import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 
 type EquipmentRow = Equipment & { last_service_at: string | null }
 type Filter = 'all' | 'in' | 'expiring' | 'out' | 'pm_due' | 'unknown'
@@ -50,6 +51,7 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
   const [form, setForm] = useState(EMPTY)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const [showWizard, setShowWizard] = useState(false)
 
   const matchesTab = (e: EquipmentRow, f: Filter) =>
     f === 'all' ? true
@@ -94,10 +96,16 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Equipment</h1>
             <p className="text-[13px] text-gray-400 mt-0.5">{equipment.length} {equipment.length === 1 ? 'unit' : 'units'} in the installed base</p>
           </div>
-          <button onClick={() => { setForm(EMPTY); setError(''); setShowModal(true) }}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
-            <Plus size={15} />Add Unit
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowWizard(true)}
+              className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
+              <Sparkles size={15} />New from Submittal
+            </button>
+            <button onClick={() => { setForm(EMPTY); setError(''); setShowModal(true) }}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
+              <Plus size={15} />Add Unit
+            </button>
+          </div>
         </div>
       </div>
 
@@ -231,6 +239,10 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showWizard && (
+        <NewCustomerWizard onClose={() => setShowWizard(false)} onCreated={() => router.refresh()} />
+      )}
     </div>
   )
 }

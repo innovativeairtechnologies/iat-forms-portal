@@ -79,6 +79,7 @@ export default async function CustomerHome() {
       location: u.location,
       ship_date: u.ship_date,
       install_date: u.install_date,
+      photos: u.photo_urls || [],
       milestones: ms,
       warranty: {
         state: warrantyState(u),

@@ -2,6 +2,74 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-25 — Status lookup: prefill + request picker for signed-in customers
+
+`/support/status` is now session-aware (like the support form). A logged-in customer gets their
+**email prefilled** and a **"Your requests"** quick-picker — one tap looks up any of their own
+tickets / checklists (matched by their account email, so the lookup always verifies). Anonymous
+visitors get the unchanged public lookup — `/support/status` is **not** gated. Split into a server
+`page.tsx` + `StatusClient.tsx`; `getStatusCustomerContext` in `lib/support-context.ts`. No migration.
+
+## 2026-06-25 — Support form: prefill for signed-in customers (public form stays open)
+
+When a logged-in portal customer opens the support form (`/support/equipment-support`) it now
+prefills their account email + contact details and shows a **"Your account & equipment"** card —
+pick a unit to fill in its serial / model / voltage (auto-filled when they have a single unit);
+everything stays editable. The page is **session-aware**, so **anonymous, non-portal customers see
+the exact same public form** — `/support` is not gated. Prefilling the exact serial also makes the
+resulting ticket auto-link to the right equipment record. New `lib/support-context.ts`
+(`getSupportCustomerContext`); the support page renders per-request. Code-only; no migration.
+
+## 2026-06-25 — Admin tracker: one-click canned notes
+
+The Build & Shipping tracker editor (admin equipment detail) now offers 2–3 customer-facing
+**note presets per stage** (one click fills the note) alongside the existing free-text note — so
+staff don't write an update from scratch for every unit. Presets live in `lib/customer.ts`
+(`notePresetsFor`), with a generic fallback for custom stages. Code-only; no migration.
+
+## 2026-06-25 — Customer portal: live IAT Assistant (read-only)
+
+The dashboard's "IAT Assistant" placeholder is now a working chat. Code-only; **no migration**.
+
+- `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) answers grounded in the logged-in
+  customer's equipment (serials, warranty, build/ship milestones) + IAT's published KB, assembled
+  server-side. **Read-only** — it can't open tickets or change anything, is told to route actionable
+  requests to Submit a request / Contact Us, and won't invent serials, dates, or status.
+- Right-rail chat panel with suggestion chips, a typing indicator, and a "can make mistakes" note.
+- Uses the existing `ANTHROPIC_API_KEY` (same as the Submittal reader) — no new env vars.
+
+## 2026-06-25 — Customer portal: unit photos, Contact Us + message form
+
+Dashboard build-out (stacked on the admin front door below). Code-only; **no migration**.
+
+- **Unit photos** — admin uploads build & QC photos on `/admin/equipment/[id]` (new uploader
+  `components/admin/EquipmentPhotos.tsx`; browser → Supabase Storage `ticket-photos` bucket, then
+  PATCH `equipment.photo_urls`). They render as an expandable lightbox gallery on the customer
+  dashboard.
+- **Contact Us** card on the customer dashboard — the IAT team roster (Kacy Orr, Crystal Hill,
+  Jacob Reagan, James Pope) plus a small **message form**. Submissions email
+  `jacob.younker@dehumidifiers.com` via Resend (`POST /api/customer/contact`,
+  `sendCustomerContactEmail`); the sender's company / contact / email are attached server-side.
+
+## 2026-06-25 — Customer portal: admin front door (Customers section + Submittal wizard)
+
+A **customer-first** way to provision portal access, alongside the existing equipment-first
+"Invite to portal" card. Code-only; **no migration**.
+
+- New **Customers** entry in the admin nav + **`/admin/customers`** list (search, Active/Inactive
+  filters, unit counts) and a **`/admin/customers/[id]`** detail page (linked units, contact details).
+- **New Customer wizard** (`components/admin/NewCustomerWizard.tsx`): scan a Submittal → review the
+  pulled **customer + unit** fields → one click creates the `customers` row, the login, the
+  `equipment` row, seeds the build/ship tracker, and emails the temp-password invite — all through
+  the existing `POST /api/admin/customers/invite` (which already accepted a full `equipment` object).
+- The same wizard is the equipment list's **"New from Submittal"** button, so there's a single
+  create-from-Submittal path (Submittal PDF + manual entry only — no DW integration).
+- **Resend invite** (`POST /api/admin/customers/[id]/resend-invite`) resets the temp password,
+  re-sends the email, and re-activates the account; **Remove from portal**
+  (`POST /api/admin/customers/[id]/remove`) deletes the login and marks the customer inactive
+  (equipment + history kept). Both audited.
+- `genTempPassword` extracted to `lib/temp-password.ts` (shared by invite + resend).
+
 ## 2026-06-25 — Legacy troubleshooting intakes migrated into Tickets
 
 The retired Troubleshooting Checklist's intakes (`troubleshooting_intakes`) now live in the
