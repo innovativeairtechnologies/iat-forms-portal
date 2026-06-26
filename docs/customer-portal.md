@@ -41,7 +41,9 @@ links *this* existing unit to a new/existing customer (same backend, `equipment_
 Staff advance the tracker from the **Build & Shipping** card
 (`POST` seeds defaults, `PATCH` updates a milestone — `/api/admin/equipment/[id]/milestones`).
 Each step offers one-click **canned note presets** (`lib/customer.ts` → `notePresetsFor`,
-customer-facing wording) alongside a free-text note.
+customer-facing wording) alongside a free-text note. On the customer dashboard the timeline renders
+as a **winding-road roadmap** — milestone "stops" along a road that snakes through the card, with a
+truck parked at the current stop (`components/customer/CustomerDashboard.tsx`).
 
 ## Managing customers (admin)
 - **`/admin/customers`** — searchable list (Company / Contact / Location / Units / Status),

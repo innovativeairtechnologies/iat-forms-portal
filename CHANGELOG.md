@@ -2,6 +2,28 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-26 — Forms round 4: review tweaks, equipment-form dropdowns/photos, new ticket numbers, roadmap tracker
+
+A batch of form changes plus two redesigns.
+
+- **Performance Review** — removed the **Employee Signature** field (supervisor signature kept;
+  existing submissions keep whatever they captured). Each individual submission page
+  (`/admin/submissions/[id]`) now shows a **per-review ratings tally** — the Superstar / Rockstar /
+  Star / Performer counts for that one person — complementing the form-wide tally page. It renders
+  only when a submission has answers on that scale, so the other forms are unaffected.
+- **Equipment Support form** — the sample-label photo is larger / more prominent; the **pre- and
+  post-cooling "type"** fields are now **dropdowns** (Chilled water coil, DX, Glycol, Evaporative,
+  City/well water, Cooling tower water) with an **"Other…"** free-text fallback; the **Wheel & Seals**
+  step shows **reference-photo placeholders** for the desiccant wheel and seals (drop the real images
+  into `public/support/` and set `src` on the two `<ReferencePhoto>` calls).
+- **Ticket numbers** — new format **`IAT-YYYY-NNNN`** (e.g. `IAT-2026-0042`), sequential per year,
+  replacing the old `TKT-<timestamp>-<random>`. Generated atomically in the DB (`next_ticket_number`
+  RPC + `ticket_counters` table, **migration 029**) so simultaneous tickets can't collide, and seeded
+  above any existing numbers. The route falls back to a timestamp-based number if the RPC is absent.
+- **Customer build/ship tracker** — rebuilt from a vertical stepper into a **winding-road roadmap**:
+  milestone "stops" along a road that snakes through the card, with a truck parked at the current
+  stop. Same stages and in-order logic — a visual redesign (`components/customer/CustomerDashboard.tsx`).
+
 ## 2026-06-26 — Submittal reader: larger PDF limit
 
 Raised the "New from Submittal" PDF size cap (`extract-submittal`) from ~4MB to **~11MB** — the old
