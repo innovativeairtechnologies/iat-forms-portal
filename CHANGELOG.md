@@ -2,6 +2,13 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-26 — Submittal reader: larger PDF limit
+
+Raised the "New from Submittal" PDF size cap (`extract-submittal`) from ~4MB to **~11MB** — the old
+limit was rejecting Submittals the platform itself accepts. The forwarded base64 stays well under
+Claude's ~32MB request cap. (For PDFs beyond that, the next step would be routing the upload through
+Supabase Storage instead of the request body.)
+
 ## 2026-06-26 — Admin nav: "Forms" link to the form builder
 
 Replaced the admin sidebar's **Employee Forms** item (`/admin/employee-forms`) with a **Forms** link
