@@ -4,8 +4,10 @@ import { requireAdminAuth } from '@/lib/api-auth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// Roughly Vercel's ~4.5MB function body cap; base64 inflates the binary ~37%.
-const MAX_BASE64_CHARS = 6_000_000
+// Cap on the base64 we forward to Claude (its API request limit is ~32MB; base64
+// inflates the binary ~37%). Raised from 6M — the old limit rejected Submittals the
+// platform itself accepts. ~16M chars ≈ an ~11MB PDF.
+const MAX_BASE64_CHARS = 16_000_000
 
 const SYSTEM_PROMPT = `You extract structured data from an IAT (Innovative Air Technologies) equipment "Submittal" — a sales/engineering document that wraps a dehumidifier unit's specs and the buying customer's details.
 
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
     if (file.data.length > MAX_BASE64_CHARS) {
       return NextResponse.json(
-        { error: 'That file is too large to scan (max ~4MB). Try a smaller PDF or fill the fields in manually.' },
+        { error: 'That file is too large to scan (max ~11MB). Try a smaller PDF or fill the fields in manually.' },
         { status: 413 }
       )
     }
