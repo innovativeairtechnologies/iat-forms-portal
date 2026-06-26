@@ -71,6 +71,8 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
           options: f.options || null,
           is_required: f.is_required || false,
           sort_order: i,
+          show_when_field: f.show_when_field ?? null,
+          show_when_value: f.show_when_value ?? null,
         }))
         await supabaseAdmin.from('form_fields').insert(fieldRows)
       }

@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Logo from '@/components/Logo'
 import type { Form, FormField } from '@/lib/supabase'
+import { visibleFields, stripHiddenAnswers } from '@/lib/forms'
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import SelectChipField from './fields/SelectChipField'
 import FileField from './fields/FileField'
@@ -30,6 +31,9 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // Conditional fields: only render/validate/submit fields whose show-when is satisfied.
+  const visible = visibleFields(fields, answers)
+
   const handleChange = useCallback((label: string, value: unknown) => {
     setAnswers((prev) => ({ ...prev, [label]: value }))
     setErrors((prev) => { const next = { ...prev }; delete next[label]; return next })
@@ -37,7 +41,7 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    fields.forEach((field) => {
+    visible.forEach((field) => {
       if (!field.is_required) return
       const val = answers[field.label]
       if (val === undefined || val === null || val === '') {
@@ -67,7 +71,7 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ form_id: form.id, data: answers }),
+        body: JSON.stringify({ form_id: form.id, data: stripHiddenAnswers(fields, answers) }),
       })
       if (!res.ok) throw new Error('Submission failed')
       if (embedded) {
@@ -132,7 +136,7 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
             <div className="px-7 py-6">
               <form onSubmit={handleSubmit} noValidate>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
-                  {fields.map((field) => (
+                  {visible.map((field) => (
                     <div
                       key={field.id}
                       className={
@@ -187,7 +191,7 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
 
   const formBody = (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
-      {fields.map((field) => (
+      {visible.map((field) => (
         <FieldRow
           key={field.id}
           field={field}

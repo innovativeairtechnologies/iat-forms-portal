@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendSubmissionEmail } from '@/lib/resend'
 import { rateLimit } from '@/lib/rate-limit'
 import type { Form, FormField, NotificationRule } from '@/lib/supabase'
+import { isFieldVisible } from '@/lib/forms'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -19,6 +20,7 @@ function validateSubmission(fields: FormField[], data: Record<string, unknown>):
   const errors: string[] = []
   for (const f of fields) {
     if (f.field_type === 'section_header') continue
+    if (!isFieldVisible(f, data)) continue  // hidden by its show-when condition → not required
     const val = data[f.label]
     if (f.is_required && isEmpty(val)) {
       errors.push(`${f.label} is required`)
