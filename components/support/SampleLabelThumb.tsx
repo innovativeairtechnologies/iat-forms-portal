@@ -10,11 +10,11 @@ export function SampleLabelThumb() {
   const [zoom, setZoom] = useState(false)
   return (
     <>
-      <figure className="w-28 flex-shrink-0 text-center sm:w-32">
+      <figure className="w-36 flex-shrink-0 text-center sm:w-44">
         <button
           type="button"
           onClick={() => setZoom(true)}
-          className="block w-full overflow-hidden rounded-lg border border-gray-200 dark:border-zinc-700"
+          className="block w-full overflow-hidden rounded-xl border border-gray-200 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-700"
           aria-label="Enlarge sample label"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -24,7 +24,7 @@ export function SampleLabelThumb() {
             className="aspect-[4/3] w-full object-cover transition-opacity hover:opacity-90"
           />
         </button>
-        <figcaption className="mt-1 text-[10px] text-gray-400">Sample label — tap to enlarge</figcaption>
+        <figcaption className="mt-1.5 text-[11px] text-gray-400">Sample label — tap to enlarge</figcaption>
       </figure>
 
       {zoom && (

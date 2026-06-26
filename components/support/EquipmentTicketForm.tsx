@@ -113,6 +113,17 @@ const EXTERNAL_FACTORS = [
   'Weather changes',
 ]
 
+// Common pre-/post-cooling coil types on IAT desiccant units. "Other…" reveals a
+// free-text box, so the dropdown narrows the usual answers without losing the rare one.
+const COOLING_TYPES = [
+  'Chilled water coil',
+  'DX (direct expansion)',
+  'Glycol coil',
+  'Evaporative / adiabatic',
+  'City / well water',
+  'Cooling tower water',
+]
+
 // Each visual step maps to a component key. US Rotors (a bare desiccant rotor,
 // not a full IAT unit) skips the Cooling step; the wheel/airflow/seal diagnostics
 // still apply.
@@ -195,6 +206,55 @@ function InputField({
         autoFocus={autoFocus}
         className="w-full text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all"
       />
+    </div>
+  )
+}
+
+// Styled native dropdown matching InputField. With `allowOther`, an "Other…" choice
+// reveals a free-text box; a stored value that isn't a preset is treated as "Other".
+function SelectField({
+  label, value, onChange, options, placeholder = 'Select…', hint, required, allowOther = false, otherPlaceholder,
+}: {
+  label: string; value: string; onChange: (v: string) => void; options: string[]
+  placeholder?: string; hint?: string; required?: boolean; allowOther?: boolean; otherPlaceholder?: string
+}) {
+  const presetMatch = options.includes(value)
+  const [otherMode, setOtherMode] = useState(allowOther && value !== '' && !presetMatch)
+  const selectValue = otherMode ? '__other__' : presetMatch ? value : ''
+  return (
+    <div>
+      <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-200 mb-1.5">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {hint && <p className="text-[12px] text-gray-400 mb-1.5 leading-relaxed">{hint}</p>}
+      <div className="relative">
+        <select
+          value={selectValue}
+          onChange={e => {
+            const v = e.target.value
+            if (v === '__other__') { setOtherMode(true); onChange('') }
+            else { setOtherMode(false); onChange(v) }
+          }}
+          className={`w-full appearance-none text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl pl-3.5 pr-9 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all cursor-pointer ${
+            selectValue === '' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100'
+          }`}
+        >
+          <option value="">{placeholder}</option>
+          {options.map(o => <option key={o} value={o}>{o}</option>)}
+          {allowOther && <option value="__other__">Other…</option>}
+        </select>
+        <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      </div>
+      {otherMode && (
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={otherPlaceholder || 'Please specify'}
+          autoFocus
+          className="mt-2 w-full text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all"
+        />
+      )}
     </div>
   )
 }
@@ -1039,7 +1099,7 @@ function StepCooling({ form, set }: { form: FormData; set: SetFn }) {
       <BoolField label="Is a pre-cooling system installed?" value={form.pre_cooling} onChange={v => set('pre_cooling', v)} />
       {form.pre_cooling === true && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-1">
-          <InputField label="Pre-cooling type" value={form.pre_cooling_type} onChange={v => set('pre_cooling_type', v)} placeholder="e.g. Chilled water, DX coil…" />
+          <SelectField label="Pre-cooling type" value={form.pre_cooling_type} onChange={v => set('pre_cooling_type', v)} options={COOLING_TYPES} allowOther otherPlaceholder="Describe the pre-cooling type" />
           <BoolField label="Is the pre-cooling system currently operational?" value={form.pre_cooling_working} onChange={v => set('pre_cooling_working', v)} />
         </motion.div>
       )}
@@ -1047,7 +1107,7 @@ function StepCooling({ form, set }: { form: FormData; set: SetFn }) {
         <BoolField label="Is a post-cooling system installed?" value={form.post_cooling} onChange={v => set('post_cooling', v)} />
         {form.post_cooling === true && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-4">
-            <InputField label="Post-cooling type" value={form.post_cooling_type} onChange={v => set('post_cooling_type', v)} placeholder="e.g. Chilled water, DX coil…" />
+            <SelectField label="Post-cooling type" value={form.post_cooling_type} onChange={v => set('post_cooling_type', v)} options={COOLING_TYPES} allowOther otherPlaceholder="Describe the post-cooling type" />
             <BoolField label="Is the post-cooling system currently operational?" value={form.post_cooling_working} onChange={v => set('post_cooling_working', v)} />
           </motion.div>
         )}
@@ -1088,10 +1148,41 @@ function StepAirflow({ form, set }: { form: FormData; set: SetFn }) {
   )
 }
 
+// Reference photo for a diagnostic step. Until IAT supplies the real images, drop
+// them into /public/support/ and pass `src` — otherwise it shows a labeled placeholder.
+function ReferencePhoto({ src, caption }: { src?: string; caption: string }) {
+  return (
+    <figure className="min-w-0 flex-1 text-center">
+      <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800/50">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={caption} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-gray-300 dark:text-zinc-600">
+            <ImageIcon size={22} />
+            <span className="text-[10px] font-medium">Photo coming soon</span>
+          </div>
+        )}
+      </div>
+      <figcaption className="mt-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">{caption}</figcaption>
+    </figure>
+  )
+}
+
 function StepSeals({ form, set }: { form: FormData; set: SetFn }) {
   return (
     <div className="space-y-5">
       <StepHeader title="Wheel & Seals" sub="A quick visual check of the desiccant wheel and its seals." />
+
+      {/* Reference photos so the customer knows exactly what they're looking at.
+          Swap `src` in once IAT provides the real wheel/seal images. */}
+      <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/20 p-3.5">
+        <p className="mb-2.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300">What to look for</p>
+        <div className="flex gap-3">
+          <ReferencePhoto caption="Desiccant wheel" />
+          <ReferencePhoto caption="Wheel seals" />
+        </div>
+      </div>
       <ChoiceField
         label="Is the desiccant wheel rotating?"
         value={form.wheel_rotating}

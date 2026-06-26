@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
-  ChevronDown, LogOut, CheckCircle2, Circle, Clock, Sparkles,
+  ChevronDown, LogOut, CheckCircle2, Sparkles,
   Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
   Headphones, Loader2,
 } from 'lucide-react'
@@ -357,74 +357,156 @@ function WarrantyCard({ w }: { w: UnitView['warranty'] }) {
   )
 }
 
+// Card header — shared by the empty + populated tracker states.
+function TrackerHead({ stage, hasMs }: { stage: string | null; hasMs: boolean }) {
+  return (
+    <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
+      <div className="flex items-center gap-2">
+        <Truck size={16} className="text-emerald-600 dark:text-emerald-400" />
+        <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Build &amp; Shipping</h2>
+      </div>
+      {hasMs && <span className="text-[12px] font-medium text-zinc-400">{stage || 'Not started'}</span>}
+    </div>
+  )
+}
+
+// Build → ship progress drawn as a winding road: milestones are "stops" along a
+// road that snakes through the card (a serpentine of up to 3 per row, joined by
+// rounded U-turns), with a truck parked at the current stop. The road + nodes are
+// SVG (so they scale with the card width); the labels + truck are HTML positioned
+// by percentage over the SVG, so text stays crisp at any size.
 function Tracker({ unit }: { unit: UnitView }) {
   const ms = unit.milestones
-  return (
-    <section className={CARD}>
-      <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
-        <div className="flex items-center gap-2">
-          <Truck size={16} className="text-emerald-600 dark:text-emerald-400" />
-          <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Build &amp; Shipping</h2>
-        </div>
-        {ms.length > 0 && (
-          <span className="text-[12px] font-medium text-zinc-400">
-            {unit.progress.currentStage || 'Not started'}
-          </span>
-        )}
-      </div>
 
-      {ms.length === 0 ? (
+  if (ms.length === 0) {
+    return (
+      <section className={CARD}>
+        <TrackerHead stage={null} hasMs={false} />
         <p className="px-5 py-8 text-center text-[13px] text-zinc-400">
           Status updates will appear here once your build kicks off.
         </p>
-      ) : (
-        <div className="px-5 py-4">
-          {/* progress bar */}
-          <div className="mb-5 flex items-center gap-3">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-              <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${unit.progress.percent}%` }} />
-            </div>
-            <span className="text-[11px] font-semibold text-zinc-400">{unit.progress.percent}%</span>
-          </div>
+      </section>
+    )
+  }
 
-          {/* stepper */}
-          <ol className="space-y-0">
+  // The "you are here" stop: the in-progress one, else the next not-yet-complete, else the last.
+  const currentIndex = (() => {
+    const ip = ms.findIndex((m) => m.status === 'in_progress')
+    if (ip !== -1) return ip
+    const np = ms.findIndex((m) => m.status !== 'complete')
+    return np !== -1 ? np : ms.length - 1
+  })()
+  const allDone = ms.every((m) => m.status === 'complete')
+
+  // ── Serpentine geometry (viewBox units) ──
+  const COLS = Math.min(3, ms.length)
+  const VBW = 600
+  const MX = 74 // x-margin; leaves room for the U-turn arcs to bulge outward
+  const TOP = 46
+  const ROW = 116 // row height = U-turn diameter
+  const BOT = 64
+  const rows = Math.ceil(ms.length / COLS)
+  const VBH = TOP + (rows - 1) * ROW + BOT
+  const colX = (c: number) => (COLS === 1 ? VBW / 2 : MX + c * ((VBW - 2 * MX) / (COLS - 1)))
+  const pos = ms.map((_, i) => {
+    const r = Math.floor(i / COLS)
+    const k = i % COLS
+    const c = r % 2 === 0 ? k : COLS - 1 - k // odd rows run right→left
+    return { x: colX(c), y: TOP + r * ROW }
+  })
+  const R = ROW / 2
+
+  // One continuous path; `roadDone` is the same path truncated at the current stop.
+  let roadFull = `M ${pos[0].x} ${pos[0].y}`
+  let roadDone = `M ${pos[0].x} ${pos[0].y}`
+  for (let i = 1; i < pos.length; i++) {
+    const a = pos[i - 1]
+    const b = pos[i]
+    // Same row → straight; row change → rounded U-turn bulging out the near edge.
+    const seg =
+      a.y === b.y
+        ? ` L ${b.x} ${b.y}`
+        : ` A ${R} ${R} 0 0 ${a.x > VBW / 2 ? 1 : 0} ${b.x} ${b.y}`
+    roadFull += seg
+    if (i <= currentIndex) roadDone += seg
+  }
+
+  const pct = (v: number, total: number) => `${(v / total) * 100}%`
+
+  return (
+    <section className={CARD}>
+      <TrackerHead stage={unit.progress.currentStage} hasMs />
+      <div className="px-4 pb-5 pt-3">
+        <div className="relative">
+          <svg viewBox={`0 0 ${VBW} ${VBH}`} className="block h-auto w-full" role="img" aria-label="Build and shipping progress">
+            {/* road base */}
+            <path d={roadFull} fill="none" className="stroke-zinc-200 dark:stroke-zinc-700" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
+            {/* completed portion */}
+            <path d={roadDone} fill="none" className="stroke-emerald-500" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
+            {/* lane markings */}
+            <path d={roadFull} fill="none" className="stroke-white" strokeOpacity={0.8} strokeWidth={1.6} strokeDasharray="5 9" />
+            {/* checkpoints */}
             {ms.map((m, i) => {
-              const isLast = i === ms.length - 1
-              const done = m.status === 'complete'
-              const current = m.status === 'in_progress'
+              const p = pos[i]
+              const isDone = m.status === 'complete'
+              const isCurrent = i === currentIndex && !isDone
+              if (isDone) {
+                return (
+                  <g key={m.id}>
+                    <circle cx={p.x} cy={p.y} r={15} className="fill-emerald-500" />
+                    <path d={`M ${p.x - 6} ${p.y} l 4 4 l 8 -8`} fill="none" className="stroke-white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                  </g>
+                )
+              }
+              if (isCurrent) {
+                return <circle key={m.id} cx={p.x} cy={p.y} r={17} className="fill-white stroke-emerald-500 dark:fill-zinc-900" strokeWidth={3} />
+              }
               return (
-                <li key={m.id} className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    {done ? (
-                      <CheckCircle2 size={18} className="text-emerald-500" />
-                    ) : current ? (
-                      <Clock size={18} className="text-emerald-500" />
-                    ) : (
-                      <Circle size={18} className="text-zinc-300 dark:text-zinc-600" />
-                    )}
-                    {!isLast && <div className={`my-0.5 w-px flex-1 ${done ? 'bg-emerald-300 dark:bg-emerald-500/40' : 'bg-zinc-200 dark:bg-zinc-700'}`} />}
-                  </div>
-                  <div className={`pb-5 ${isLast ? 'pb-1' : ''}`}>
-                    <p className={`text-[13px] font-semibold ${done || current ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>{m.stage}</p>
-                    <p className="mt-0.5 text-[11.5px] text-zinc-400">
-                      {current ? 'In progress' : done ? `Completed ${fmtDate(m.occurred_at)}` : 'Pending'}
-                      {m.note ? ` · ${m.note}` : ''}
-                    </p>
-                  </div>
-                </li>
+                <g key={m.id}>
+                  <circle cx={p.x} cy={p.y} r={14} className="fill-white stroke-zinc-300 dark:fill-zinc-900 dark:stroke-zinc-600" strokeWidth={2.5} />
+                  <circle cx={p.x} cy={p.y} r={3.5} className="fill-zinc-300 dark:fill-zinc-600" />
+                </g>
               )
             })}
-          </ol>
+          </svg>
 
-          {(unit.ship_date || unit.location) && (
-            <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 border-t border-zinc-100 pt-3 text-[11.5px] text-zinc-400 dark:border-zinc-800">
-              {unit.ship_date && <span className="inline-flex items-center gap-1.5"><Truck size={12} /> Ship date {fmtDate(unit.ship_date)}</span>}
-              {unit.location && <span className="inline-flex items-center gap-1.5"><MapPin size={12} /> {unit.location}</span>}
+          {/* crisp HTML labels, centered under each stop */}
+          {ms.map((m, i) => {
+            const p = pos[i]
+            const isDone = m.status === 'complete'
+            const isCurrent = i === currentIndex && !isDone
+            const sub = isCurrent ? 'In progress' : isDone ? `Done ${fmtDate(m.occurred_at)}` : 'Pending'
+            return (
+              <div
+                key={m.id}
+                className="absolute -translate-x-1/2 px-1 text-center"
+                style={{ left: pct(p.x, VBW), top: pct(p.y + 23, VBH), width: `${100 / COLS}%` }}
+              >
+                <p className={`truncate text-[11.5px] font-semibold leading-tight ${isDone || isCurrent ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>{m.stage}</p>
+                <p className="mt-0.5 truncate text-[10px] text-zinc-400">{sub}</p>
+                {isCurrent && m.note && <p className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{m.note}</p>}
+              </div>
+            )
+          })}
+
+          {/* truck parked at the current stop (hidden once everything's delivered) */}
+          {!allDone && (
+            <div
+              className="absolute -translate-x-1/2 -translate-y-1/2 text-emerald-500"
+              style={{ left: pct(pos[currentIndex].x, VBW), top: pct(pos[currentIndex].y, VBH) }}
+            >
+              <Truck size={16} strokeWidth={2.4} />
             </div>
           )}
         </div>
-      )}
+
+        {(unit.ship_date || unit.location) && (
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-zinc-100 pt-3 text-[11.5px] text-zinc-400 dark:border-zinc-800">
+            {unit.ship_date && <span className="inline-flex items-center gap-1.5"><Truck size={12} /> Ship date {fmtDate(unit.ship_date)}</span>}
+            {unit.location && <span className="inline-flex items-center gap-1.5"><MapPin size={12} /> {unit.location}</span>}
+          </div>
+        )}
+      </div>
     </section>
   )
 }

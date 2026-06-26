@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import { formatDateTime } from '@/lib/utils'
-import { FileText, Calendar, ClipboardList, Info } from 'lucide-react'
+import { FileText, Calendar, ClipboardList, Info, BarChart3 } from 'lucide-react'
 import { DetailShell, DetailTopBar, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
 import SubmissionDetailClient from './SubmissionDetailClient'
 import SubmissionNotes from './SubmissionNotes'
@@ -32,7 +32,35 @@ const STATUS_LABEL: Record<string, string> = {
   open: 'Open', in_progress: 'In Progress', resolved: 'Resolved',
 }
 
+// Performance-review rating scale. When a submission contains radio answers on this
+// scale, the detail page shows a per-review tally (mirrors the form-wide tally page,
+// but scoped to this one person/position). Other forms simply won't trigger it.
+const RATINGS = ['Superstar', 'Rockstar', 'Star', 'Performer'] as const
+type Rating = (typeof RATINGS)[number]
+const RATING_SET = new Set<string>(RATINGS)
+const RATING_COLOR: Record<Rating, string> = {
+  Superstar: 'text-emerald-600 dark:text-emerald-400',
+  Rockstar: 'text-sky-600 dark:text-sky-400',
+  Star: 'text-amber-600 dark:text-amber-400',
+  Performer: 'text-zinc-500 dark:text-zinc-400',
+}
+
 type SubField = { id: string; label: string; field_type: string }
+
+/** Count how many of each rating tier this one submission contains, looking only at
+ *  radio answers whose value is on the scale (so free-text never counts). */
+function ratingTally(fields: SubField[], data: Record<string, unknown>) {
+  const ratingLabels = new Set(fields.filter((f) => f.field_type === 'radio').map((f) => f.label))
+  const counts: Record<Rating, number> = { Superstar: 0, Rockstar: 0, Star: 0, Performer: 0 }
+  let total = 0
+  for (const [label, v] of Object.entries(data || {})) {
+    if (ratingLabels.has(label) && typeof v === 'string' && RATING_SET.has(v)) {
+      counts[v as Rating]++
+      total++
+    }
+  }
+  return { counts, total }
+}
 
 /** Split form fields into sections by `section_header`, so the submission renders as a
  *  card per section (mirroring the ticket detail) instead of one endless list. Fields
@@ -70,6 +98,7 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
   ).length
   const questionCount = fields.filter((f: { field_type: string }) => f.field_type !== 'section_header').length
   const sections = groupIntoSections(fields)
+  const tally = ratingTally(fields as SubField[], submission.data)
 
   return (
     <DetailShell>
@@ -111,6 +140,31 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
           {/* Main — responses, split into a card per form section (mirrors the ticket
               detail) so long submissions read as digestible sections, not one endless list. */}
           <main className="flex-1 min-w-0 w-full space-y-4">
+            {tally.total > 0 && (
+              <Card>
+                <CardHead
+                  title="Rating tally"
+                  icon={<BarChart3 size={14} />}
+                  action={
+                    <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
+                      {tally.total} rating{tally.total === 1 ? '' : 's'}
+                    </span>
+                  }
+                />
+                <div className="grid grid-cols-2 divide-x divide-y divide-zinc-100 dark:divide-zinc-800/50 sm:grid-cols-4 sm:divide-y-0">
+                  {RATINGS.map((r) => (
+                    <div key={r} className="px-4 py-4 text-center">
+                      <div className={`text-[24px] font-bold tabular-nums ${tally.counts[r] ? RATING_COLOR[r] : 'text-zinc-300 dark:text-zinc-700'}`}>
+                        {tally.counts[r]}
+                      </div>
+                      <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                        {r}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
             {fields.length === 0 ? (
               <Card>
                 <div className="py-14 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No field data</div>
