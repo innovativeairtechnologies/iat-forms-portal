@@ -6,7 +6,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import {
   GripVertical, Plus, Trash2, Save, ChevronRight, X, Check, Pencil,
   Type, AlignLeft, Hash, Mail, ListOrdered, CheckSquare,
-  Calendar, Upload, Pen, ToggleLeft, Bell, Eye, SeparatorHorizontal,
+  Calendar, Upload, Pen, ToggleLeft, Bell, Eye, SeparatorHorizontal, BarChart3,
 } from 'lucide-react'
 import type { Form, FormField, NotificationRule, Category } from '@/lib/supabase'
 import { slugify } from '@/lib/utils'
@@ -74,6 +74,8 @@ export default function FormBuilder({ categories, initialForm }: Props) {
       options: ['select', 'radio', 'checkbox'].includes(type) ? ['Option 1', 'Option 2'] : null,
       is_required: false,
       sort_order: fields.length,
+      show_when_field: null,
+      show_when_value: null,
     }
     setFields((prev) => [...prev, newField])
     setSelectedFieldId(newField._id)
@@ -139,6 +141,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
       fields: fields.map((f, i) => ({
         label: f.label, field_type: f.field_type, placeholder: f.placeholder,
         options: f.options, is_required: f.is_required, sort_order: i,
+        show_when_field: f.show_when_field ?? null, show_when_value: f.show_when_value ?? null,
       })),
       notification_rules: rules
         .filter((r) => r.recipient_email.trim())
@@ -221,6 +224,15 @@ export default function FormBuilder({ categories, initialForm }: Props) {
             <Eye size={14} />
             Preview
           </a>
+          {initialForm && (
+            <a
+              href={`/admin/forms/${initialForm.id}/tally`}
+              className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-[#089447] transition-colors flex-shrink-0"
+            >
+              <BarChart3 size={14} />
+              Tally
+            </a>
+          )}
           <button
             onClick={save}
             disabled={saving}
@@ -424,15 +436,20 @@ export default function FormBuilder({ categories, initialForm }: Props) {
               <X size={15} />
             </button>
           </div>
-          <FieldSettings field={selectedField} onUpdate={(u) => updateField(selectedField._id, u)} />
+          <FieldSettings field={selectedField} allFields={fields} onUpdate={(u) => updateField(selectedField._id, u)} />
         </aside>
       )}
     </div>
   )
 }
 
-function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u: Partial<BuilderField>) => void }) {
+function FieldSettings({ field, allFields, onUpdate }: { field: BuilderField; allFields: BuilderField[]; onUpdate: (u: Partial<BuilderField>) => void }) {
   const hasOptions = ['select', 'radio', 'checkbox'].includes(field.field_type)
+  // Fields that can drive this one's visibility: other choice fields that have options.
+  const controllers = allFields.filter(
+    (f) => f._id !== field._id && ['select', 'radio'].includes(f.field_type) && (f.options?.length ?? 0) > 0,
+  )
+  const controllerOptions = allFields.find((f) => f.label === field.show_when_field)?.options || []
 
   const inputCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-[6px] px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-zinc-800 outline-none focus:border-[#089447] placeholder:text-gray-400 dark:placeholder:text-gray-600'
 
@@ -506,6 +523,40 @@ function FieldSettings({ field, onUpdate }: { field: BuilderField; onUpdate: (u:
           >
             <Plus size={12} /> Add option
           </button>
+        </div>
+      )}
+
+      {field.field_type !== 'section_header' && (
+        <div>
+          <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Show only when…</label>
+          <select
+            value={field.show_when_field || ''}
+            onChange={(e) => {
+              const sf = e.target.value || null
+              const firstOpt = sf ? (allFields.find((f) => f.label === sf)?.options?.[0] ?? null) : null
+              onUpdate({ show_when_field: sf, show_when_value: firstOpt })
+            }}
+            className={inputCls}
+          >
+            <option value="">Always show</option>
+            {controllers.map((c) => (
+              <option key={c._id} value={c.label}>{c.label}</option>
+            ))}
+          </select>
+          {field.show_when_field && (
+            <select
+              value={field.show_when_value || ''}
+              onChange={(e) => onUpdate({ show_when_value: e.target.value })}
+              className={`${inputCls} mt-2`}
+            >
+              {controllerOptions.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
+          {controllers.length === 0 && (
+            <p className="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">Add a Dropdown or Single-Choice field to drive visibility.</p>
+          )}
         </div>
       )}
     </div>

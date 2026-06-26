@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   X, ChevronLeft, ChevronRight, CheckCircle,
@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import type { Form, FormField } from '@/lib/supabase'
+import { visibleFields, stripHiddenAnswers } from '@/lib/forms'
 import SelectChipField from './fields/SelectChipField'
 import FileField from './fields/FileField'
 import SignatureField from './fields/SignatureField'
@@ -67,7 +68,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
   const router = useRouter()
 
   const [form, setForm]       = useState<Form | null>(null)
-  const [steps, setSteps]     = useState<Step[]>([])
+  const [fields, setFields]   = useState<FormField[]>([])
   const [loading, setLoading] = useState(true)
 
   const [currentStep, setCurrentStep]   = useState(0)
@@ -77,6 +78,10 @@ export default function StepFormModal({ slug, onClose }: Props) {
   const [submitting, setSubmitting]     = useState(false)
   const [submitted, setSubmitted]       = useState(false)
   const [submitError, setSubmitError]   = useState<string | null>(null)
+
+  // Steps are derived from the *visible* fields, so department-conditional fields
+  // appear/disappear as answers change and empty sections collapse to no step.
+  const steps = useMemo(() => groupFieldsIntoSteps(visibleFields(fields, answers)), [fields, answers])
 
   // Ref so keyboard handler always calls the latest next/submit without stale closure
   const advanceRef = useRef<() => void>(() => {})
@@ -96,13 +101,18 @@ export default function StepFormModal({ slug, onClose }: Props) {
 
       if (!cancelled) {
         setForm(formData)
-        setSteps(groupFieldsIntoSteps(fieldsData || []))
+        setFields(fieldsData || [])
         setLoading(false)
       }
     }
     load()
     return () => { cancelled = true }
   }, [slug])
+
+  // If conditional fields collapse steps (e.g. a department change), keep the index valid.
+  useEffect(() => {
+    if (currentStep > steps.length - 1) setCurrentStep(Math.max(0, steps.length - 1))
+  }, [steps.length, currentStep])
 
   // ── Body scroll lock (overlay mode only) ───────────────────────────────────
   useEffect(() => {
@@ -210,7 +220,7 @@ export default function StepFormModal({ slug, onClose }: Props) {
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ form_id: form.id, data: answers }),
+        body: JSON.stringify({ form_id: form.id, data: stripHiddenAnswers(fields, answers) }),
       })
       if (!res.ok) throw new Error()
       setSubmitted(true)

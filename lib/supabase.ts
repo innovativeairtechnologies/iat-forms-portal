@@ -139,6 +139,10 @@ export type FormField = {
   options: string[] | null
   is_required: boolean
   sort_order: number
+  // Conditional visibility (migration 028): show this field only when the field
+  // labeled `show_when_field` currently equals `show_when_value`. Null = always show.
+  show_when_field: string | null
+  show_when_value: string | null
   created_at: string
 }
 

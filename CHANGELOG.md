@@ -2,6 +2,29 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-26 — Form engine: conditional fields + ratings tally (Performance Review)
+
+Two new form-builder capabilities, both **additive** — a field with no condition behaves exactly as
+before, so the other ~40 forms are unaffected.
+
+- **Conditional fields** — a field can show only when another field has a given value (builder field
+  settings → **"Show only when…"**). The multi-step renderer (`StepFormModal`), the embed renderer
+  (`FormRenderer`), and the server-side submit validation (`/api/submit`) all respect it: hidden
+  fields aren't required and their values are dropped from the submission; empty sections collapse to
+  no step. Schema: `form_fields.show_when_field` / `show_when_value` (**migration 028**). Visibility
+  logic lives in `lib/forms.ts` (`isFieldVisible` / `visibleFields` / `stripHiddenAnswers`).
+- **Ratings tally** — **`/admin/forms/[id]/tally`** (linked from the builder toolbar) counts how many
+  **Superstar / Rockstar / Star / Performer** each employee received across all rating questions in
+  their reviews, grouped by the "Employee Name" field — for reviews and bonuses.
+
+**Performance Review form** data changes ship via `scripts/update-performance-review.mjs` (run after
+migration 028; dry-run by default, `--commit` to apply, idempotent): removes 5 first-page/doc fields
+(position title, supervisor, review period, position description + doc), swaps the rating scale to
+**Superstar / Rockstar / Star / Performer** (drops Performance Gap, adds Superstar), and gates the
+**Department-Specific** questions by **Department** (Engineering questions only show for Engineering,
+etc.). The general competencies, Safety/Initiative/Growth, Summary & Goals, and Signatures stay
+universal.
+
 ## 2026-06-25 — Hotfix 2: the real fix for the `/customer ↔ /login` loop (unlinked customer logins)
 
 The cookie fix below was correct hardening but **not** the root cause. The loop's real driver: the
