@@ -24,6 +24,7 @@ type NavItem = {
   exact?: boolean
   badge?: BadgeKind
   hidden?: boolean
+  external?: boolean   // opens in a new tab (e.g. the public /forms directory)
 }
 
 type Counts = {
@@ -64,7 +65,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Employees',
     items: [
       { href: '/admin/org-chart',      label: 'Org Chart',      icon: Network },
-      { href: '/admin/employee-forms', label: 'Employee Forms', icon: FileText },
+      { href: '/forms',                label: 'Forms',          icon: FileText, external: true },
       { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto' },
       { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick' },
       { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock },
@@ -105,24 +106,21 @@ function NavLink({ item, pathname, counts, onClose }: {
   counts: Counts
   onClose?: () => void
 }) {
-  const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
+  const active = !item.external && (item.exact ? pathname === item.href : pathname.startsWith(item.href))
   const dashTheme = pathname === '/admin'
   const badgeCount = item.badge ? counts[item.badge] : 0
-  return (
-    <Link
-      href={item.href}
-      onClick={onClose}
-      className={cn(
-        'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
-        active
-          ? dashTheme
-            ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
-            : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
-          : dashTheme
-            ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
-            : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
-      )}
-    >
+  const className = cn(
+    'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
+    active
+      ? dashTheme
+        ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
+        : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
+      : dashTheme
+        ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
+        : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
+  )
+  const inner = (
+    <>
       <item.icon size={16} className="flex-shrink-0" />
       <span className="flex-1">{item.label}</span>
       {item.badge && badgeCount > 0 && (
@@ -133,6 +131,22 @@ function NavLink({ item, pathname, counts, onClose }: {
           {badgeCount > 99 ? '99+' : badgeCount}
         </span>
       )}
+    </>
+  )
+
+  // External links (e.g. the public /forms directory) open in a new tab so the
+  // admin keeps their place in the portal.
+  if (item.external) {
+    return (
+      <a href={item.href} target="_blank" rel="noopener noreferrer" onClick={onClose} className={className}>
+        {inner}
+      </a>
+    )
+  }
+
+  return (
+    <Link href={item.href} onClick={onClose} className={className}>
+      {inner}
     </Link>
   )
 }

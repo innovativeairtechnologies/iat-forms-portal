@@ -2,6 +2,12 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-26 — Admin nav: "Forms" link to the public directory
+
+Replaced the admin sidebar's **Employee Forms** item (`/admin/employee-forms`) with a **Forms** link
+to the public **`/forms`** directory, opening in a new tab (sidebar nav items gained an `external`
+flag). The `/admin/employee-forms` page still resolves by URL (now nav-orphaned).
+
 ## 2026-06-26 — Form engine: conditional fields + ratings tally (Performance Review)
 
 Two new form-builder capabilities, both **additive** — a field with no condition behaves exactly as
