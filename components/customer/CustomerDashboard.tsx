@@ -7,9 +7,10 @@ import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
   ChevronDown, LogOut, CheckCircle2, Sparkles,
   Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
-  Headphones, Loader2, FileText,
+  Headphones, Loader2, FileText, ArrowUp,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { EquipmentMilestone } from '@/lib/supabase'
@@ -147,6 +148,8 @@ export default function CustomerDashboard({
                 className="h-9 w-44 rounded-xl border border-zinc-200 bg-zinc-50 pl-8 pr-3 text-[13px] text-zinc-700 outline-none transition-all placeholder:text-zinc-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
               />
             </div>
+
+            <ThemeToggle />
 
             {/* Profile */}
             <div className="relative">
@@ -295,7 +298,7 @@ export default function CustomerDashboard({
 
           {/* ── Right rail ── */}
           <aside className="space-y-5">
-            <AssistantPanel companyName={companyName} />
+            <JerryAssistant companyName={companyName} />
 
             {/* Knowledge base quick links */}
             <section className={CARD}>
@@ -515,12 +518,32 @@ function Tracker({ unit }: { unit: UnitView }) {
 // ResourceCard removed — customer support entry points now live only in the hero
 // ("Submit a request" / "Check status") and the right-rail Knowledge Base card.
 
-// IAT Assistant — read-only chat grounded in this customer's equipment + IAT's
-// documentation (RAG); answers cite the source doc + page (route /api/customer/assistant).
+// ── Jerry — the IAT Assistant. A living "presence" (animated orb) that answers
+// from this customer's equipment + IAT's documentation (RAG) and cites the source
+// (document + page). Route /api/customer/assistant. Deliberately not a chat-bubble
+// bot: a breathing orb, typeset answers, and cited "receipts".
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: KbSource[] }
-const ASSIST_SUGGESTIONS = ['Where is my unit?', 'Is it under warranty?', 'How do I set the humidistat?']
+const JERRY_SUGGESTIONS = ['Where is my unit?', 'How do I set the humidistat?', 'Is it under warranty?']
 
-function AssistantPanel({ companyName }: { companyName: string }) {
+// Jerry's animated presence. Scales with `px`; speeds up while `thinking`.
+function Orb({ px, thinking = false, className = '' }: { px: number; thinking?: boolean; className?: string }) {
+  return (
+    <span
+      className={`jerry-orb ${thinking ? 'is-thinking' : ''} ${className}`}
+      style={{ width: px, height: px }}
+      aria-hidden="true"
+    >
+      <span className="jerry-halo" />
+      <span className="jerry-ring" />
+      <span className="jerry-core" />
+      <span className="jerry-orbit"><i /></span>
+      <span className="jerry-orbit jerry-orbit2"><i /></span>
+      <span className="jerry-spark"><Sparkles size={Math.max(8, Math.round(px * 0.26))} strokeWidth={2.2} /></span>
+    </span>
+  )
+}
+
+function JerryAssistant({ companyName }: { companyName: string }) {
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -558,63 +581,79 @@ function AssistantPanel({ companyName }: { companyName: string }) {
     }
   }
 
-  const empty = messages.length === 0
+  const idle = messages.length === 0
 
   return (
     <section className={`${CARD} flex flex-col overflow-hidden`}>
-      <div className="flex items-center gap-2 border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
-        <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
-        <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">IAT Assistant</h2>
+      {/* Header — Jerry's presence + status */}
+      <div className="flex items-center gap-2.5 border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
+        <Orb px={26} thinking={loading} />
+        <div className="leading-tight">
+          <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Jerry</h2>
+          <p className="text-[11px] text-zinc-400">{loading ? 'Looking through the manuals…' : 'Here to help'}</p>
+        </div>
+        <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="jerry-status-dot" /> online
+        </span>
       </div>
 
-      <div ref={scrollRef} className="max-h-[300px] flex-1 space-y-3 overflow-y-auto px-5 py-4">
-        {empty ? (
-          <p className="text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Ask about your unit, warranty, shipping status, or how-tos — grounded in {companyName}&apos;s equipment and IAT&apos;s documentation, with sources cited.
-          </p>
+      {/* Conversation */}
+      <div ref={scrollRef} className="max-h-[340px] min-h-[268px] flex-1 overflow-y-auto px-5 py-4">
+        {idle ? (
+          <div className="flex h-full flex-col items-center justify-center py-3 text-center">
+            <Orb px={92} />
+            <p className="mt-5 text-[16px] font-bold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
+            <p className="mt-1.5 max-w-[262px] text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+              Ask about {companyName}&apos;s equipment or IAT&apos;s documentation — I answer from the manuals and show you the page.
+            </p>
+          </div>
         ) : (
-          messages.map((m, i) => (
-            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div
-                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed ${
-                  m.role === 'user'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
-                }`}
-              >
-                {m.content}
-              </div>
-              {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
-                <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1">
-                  {m.sources.map((s, j) => (
-                    <span
-                      key={j}
-                      className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10.5px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                      title={`${s.documentTitle}, page ${s.pageNumber}`}
-                    >
-                      <FileText size={10} className="shrink-0" /> {s.documentTitle} · p.{s.pageNumber}
-                    </span>
-                  ))}
+          <div className="space-y-4">
+            {messages.map((m, i) =>
+              m.role === 'user' ? (
+                <div key={i} className="flex animate-fade-up justify-end">
+                  <p className="max-w-[85%] rounded-full border border-zinc-200 px-3.5 py-1.5 text-[12.5px] text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+                    {m.content}
+                  </p>
                 </div>
-              )}
-            </div>
-          ))
-        )}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="flex items-center gap-1.5 rounded-2xl bg-zinc-100 px-3 py-2.5 dark:bg-zinc-800">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
-            </div>
+              ) : (
+                <div key={i} className="flex animate-fade-up gap-2.5">
+                  <Orb px={20} className="mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{m.content}</p>
+                    {m.sources && m.sources.length > 0 && (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Sources</span>
+                        {m.sources.map((s, j) => (
+                          <span
+                            key={j}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+                            title={`${s.documentTitle}, page ${s.pageNumber}`}
+                          >
+                            <FileText size={10} className="shrink-0" /> {s.documentTitle} · p.{s.pageNumber}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+            {loading && (
+              <div className="flex animate-fade-up items-center gap-2.5">
+                <Orb px={20} thinking />
+                <span className="text-[12.5px] text-zinc-400">Reading IAT&apos;s documentation…</span>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      <div className="space-y-2.5 px-5 pb-4">
-        {empty && (
-          <div className="flex flex-wrap gap-1.5">
-            {ASSIST_SUGGESTIONS.map((s) => (
+      {/* Composer */}
+      <div className="space-y-2.5 px-5 pb-4 pt-1">
+        {idle && (
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {JERRY_SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => ask(s)}
@@ -631,24 +670,25 @@ function AssistantPanel({ companyName }: { companyName: string }) {
             e.preventDefault()
             ask(input)
           }}
-          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900/60"
+          className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 py-1.5 pl-4 pr-1.5 transition-all focus-within:border-emerald-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900/60 dark:focus-within:bg-zinc-900"
         >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
-            placeholder="Ask me something…"
+            placeholder="Ask Jerry…"
             className="flex-1 bg-transparent text-[13px] text-zinc-700 outline-none placeholder:text-zinc-400 dark:text-zinc-200"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+            aria-label="Send"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white transition-all hover:bg-emerald-700 disabled:opacity-40"
           >
-            <Send size={13} />
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={15} />}
           </button>
         </form>
-        <p className="text-[10.5px] text-zinc-400">IAT Assistant can make mistakes. For service or orders, use Submit a request or Contact Us.</p>
+        <p className="text-[10.5px] text-zinc-400">Jerry can make mistakes. For service or orders, use Submit a request or Contact Us.</p>
       </div>
     </section>
   )

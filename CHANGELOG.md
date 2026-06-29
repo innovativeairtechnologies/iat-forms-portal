@@ -2,6 +2,20 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-29 — Customer assistant becomes "Jerry" + light/dark toggle
+
+Reskinned the customer-portal AI assistant from a chat-bubble bot into **Jerry** — an animated
+"presence" (a breathing emerald orb that spins up while it reads the docs), with typeset answers
+and cited "receipts" (document + page) instead of speech bubbles. Same RAG underneath — only the
+experience changed.
+
+- **Jerry** (`components/customer/CustomerDashboard.tsx`; orb styles in `app/globals.css`) — idle
+  hero with a large orb + greeting, a persistent orb in the header that energizes while loading,
+  answers as clean text with source chips, an "Ask Jerry…" composer. Honors `prefers-reduced-motion`.
+- **Light/dark toggle** — the existing `ThemeToggle` (Sun/Moon) is now surfaced in the customer-portal
+  header. The portal already supported dark mode via Tailwind; it just wasn't exposed to customers.
+  Built light-first.
+
 ## 2026-06-29 — Customer AI Assistant: documentation RAG with citations
 
 The customer-portal **IAT Assistant** can now answer from IAT's documentation. PDFs are ingested

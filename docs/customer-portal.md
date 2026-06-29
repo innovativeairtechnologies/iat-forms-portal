@@ -73,8 +73,10 @@ preview invite points at the preview and a prod invite at prod.
   Upload). Files go browser → Supabase Storage (`ticket-photos` bucket) → `equipment.photo_urls`.
 - **Contact Us** form → `POST /api/customer/contact` → emails the IAT team
   (`jacob.younker@dehumidifiers.com`); the customer's identity is taken from the session.
-- **IAT Assistant** (right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
-  read-only Q&A grounded in the customer's equipment **and IAT's documentation (RAG, migration 030)**:
+- **Jerry** (the IAT Assistant, right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
+  presented as an animated "presence" (a breathing orb that energizes while it reads the docs) with
+  typeset answers + cited source chips, not a chat-bubble bot (orb styles in `app/globals.css`).
+  Read-only Q&A grounded in the customer's equipment **and IAT's documentation (RAG, migration 030)**:
   it retrieves the most relevant manual/datasheet excerpts, answers **only** from them, and **cites the
   source (document + page)** as chips under each answer — or says it's not in the documentation and
   routes to the support forms / Contact Us. It cannot take actions. Uses the existing `ANTHROPIC_API_KEY`
@@ -87,6 +89,8 @@ preview invite points at the preview and a prod invite at prod.
 - **Status-lookup prefill:** signed-in customers get their email prefilled on `/support/status`
   plus a "Your requests" one-tap picker (`getStatusCustomerContext`; server `page.tsx` +
   `StatusClient.tsx`). Anonymous lookup unchanged.
+- **Theme** — a light/dark toggle (Sun/Moon, `components/ThemeToggle.tsx`) sits in the header; the
+  portal defaults to the OS theme and remembers the customer's choice.
 - Future log-ins: `/login` with their email + password (middleware routes them to `/customer`).
 
 ## Ops / deploy notes
