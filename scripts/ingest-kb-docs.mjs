@@ -65,6 +65,19 @@ const INTERNAL_DOCS = new Set([
   'References.pdf',
 ])
 
+// Duplicate source files — exact copies (or strict subsets) of another doc already
+// in the pool. Excluded under --all so a topic doesn't return the same content under
+// two citation chips. (`--docs="<name>"` can still force one in if ever needed.)
+// Kept copy is noted in the comment.
+const SKIP_DOCS = new Set([
+  'SCR  DC20-60F0-0000 Din-A-Mite C manual SCR.pdf',  // dup of "DC  SCR Manual.pdf" (Watlow DIN-A-MITE C)
+  'SCR  DC20-60F0-0000 Din-A-Mite C manual SCR1.pdf', // dup of "DC  SCR Manual.pdf"
+  'DP4A EN4A WB4A GE Installation Guide[1].pdf',       // dup of "DP4A.pdf" (GE HumiTrac XR)
+  'GEH-HumiTrac Installation Guide[1].pdf',            // dup of "GEH2-D-TT2.pdf" (GE Sensing HumiTrac)
+  'KAS-44-M.pdf',                                      // dup of "KAS-44-88-175-install.pdf" (KAS actuators)
+  'PXR459_manual (shortened).pdf',                     // condensed subset of "PXR459_manual.pdf" (Fuji PXR4/5/9)
+])
+
 // Nicer human titles for citations (fallback derives one from the filename).
 // Titles are taken from each PDF's own header text, in the existing vendor-named
 // style (Omron, Fuji, Munters…). Several source files are duplicates of the same
@@ -391,7 +404,10 @@ async function main() {
   let docs
   const docsArg = args.find((a) => a.startsWith('--docs='))
   if (args.includes('--all')) {
-    docs = readdirSync(DOCS_DIR).filter((f) => f.toLowerCase().endsWith('.pdf')).sort()
+    docs = readdirSync(DOCS_DIR)
+      .filter((f) => f.toLowerCase().endsWith('.pdf'))
+      .filter((f) => !SKIP_DOCS.has(f)) // drop known duplicate source files
+      .sort()
   } else if (docsArg) {
     docs = docsArg.slice('--docs='.length).split(',').map((s) => s.trim()).filter(Boolean)
   } else {

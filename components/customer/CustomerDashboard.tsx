@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
   ChevronDown, LogOut, CheckCircle2, Sparkles,
@@ -98,9 +99,22 @@ export default function CustomerDashboard({
   kb: DashboardKb[]
 }) {
   const router = useRouter()
+  const { setTheme } = useTheme()
   const [activeIdx, setActiveIdx] = useState(0)
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // Customer portal is light-first: if this browser has never picked a theme,
+  // default it to light here (scoped to the customer portal — admin/employee keep
+  // the global 'system' default). A customer who toggles to dark is respected
+  // (next-themes persists their choice in localStorage).
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('theme')) setTheme('light')
+    } catch {
+      /* localStorage blocked — leave the global default */
+    }
+  }, [setTheme])
 
   const active = units[activeIdx]
 
@@ -518,18 +532,19 @@ function Tracker({ unit }: { unit: UnitView }) {
 // ResourceCard removed — customer support entry points now live only in the hero
 // ("Submit a request" / "Check status") and the right-rail Knowledge Base card.
 
-// ── Jerry — the IAT Assistant. A living "presence" (animated orb) that answers
+// ── Jerry — IAT's customer assistant. A living "presence" (animated orb) that answers
 // from this customer's equipment + IAT's documentation (RAG) and cites the source
 // (document + page). Route /api/customer/assistant. Deliberately not a chat-bubble
 // bot: a breathing orb, typeset answers, and cited "receipts".
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: KbSource[] }
 const JERRY_SUGGESTIONS = ['Where is my unit?', 'How do I set the humidistat?', 'Is it under warranty?']
 
-// Jerry's animated presence. Scales with `px`; speeds up while `thinking`.
-function Orb({ px, thinking = false, className = '' }: { px: number; thinking?: boolean; className?: string }) {
+// Jerry's animated presence. Scales with `px`; speeds up while `thinking`;
+// `float` adds a gentle hover drift (used on the large idle hero orb).
+function Orb({ px, thinking = false, float = false, className = '' }: { px: number; thinking?: boolean; float?: boolean; className?: string }) {
   return (
     <span
-      className={`jerry-orb ${thinking ? 'is-thinking' : ''} ${className}`}
+      className={`jerry-orb ${thinking ? 'is-thinking' : ''} ${float ? 'jerry-float' : ''} ${className}`}
       style={{ width: px, height: px }}
       aria-hidden="true"
     >
@@ -601,8 +616,8 @@ function JerryAssistant({ companyName }: { companyName: string }) {
       <div ref={scrollRef} className="max-h-[340px] min-h-[268px] flex-1 overflow-y-auto px-5 py-4">
         {idle ? (
           <div className="flex h-full flex-col items-center justify-center py-3 text-center">
-            <Orb px={92} />
-            <p className="mt-5 text-[16px] font-bold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
+            <Orb px={92} float />
+            <p className="jerry-voice mt-5 text-[18px] font-semibold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
             <p className="mt-1.5 max-w-[262px] text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
               Ask about {companyName}&apos;s equipment or IAT&apos;s documentation — I answer from the manuals and show you the page.
             </p>
@@ -620,7 +635,7 @@ function JerryAssistant({ companyName }: { companyName: string }) {
                 <div key={i} className="flex animate-fade-up gap-2.5">
                   <Orb px={20} className="mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{m.content}</p>
+                    <p className="jerry-voice whitespace-pre-wrap text-[14px] leading-[1.6] text-zinc-700 dark:text-zinc-200">{m.content}</p>
                     {m.sources && m.sources.length > 0 && (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Sources</span>

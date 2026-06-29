@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-29 — Jerry refinements (light-first, serif voice, tuned orb, real name) + KB pool to 58 docs
+
+Follow-up polish after scaling Jerry's KB pool to the full documentation folder.
+
+- **KB pool** — ran `ingest-kb-docs.mjs --all` (now **58 docs / ~3,164 chunks** after pruning 6
+  duplicate source files via a new `SKIP_DOCS` set). Recovered `PXR3.pdf` (NUL-byte fix in
+  `cleanText`), sealed a customer-PII doc (`References.pdf` → internal), and added vendor-named
+  citation titles. See `docs/kb-rag-assistant.md`.
+- **Light-first customer portal** — the customer portal now defaults to **light** for a browser
+  that has never chosen a theme (scoped effect in `CustomerDashboard`; admin/employee keep the
+  global `system` default; a customer who toggles to dark is still respected).
+- **Jerry's serif "voice"** — his greeting and answers are now set in a serif (`.jerry-voice`),
+  giving the assistant a distinct, crafted voice; the UI chrome stays sans.
+- **Tuned orb** — calmer/slower idle breathing + halo, a richer core/ring gradient, and a gentle
+  floating drift on the large idle hero orb (`app/globals.css`; still honors `prefers-reduced-motion`).
+- **Real name in the prompt** — the assistant's system prompt now introduces itself as **Jerry**
+  (was "the IAT Assistant") so it answers to its name (`app/api/customer/assistant/route.ts`).
+
 ## 2026-06-29 — Customer assistant becomes "Jerry" + light/dark toggle
 
 Reskinned the customer-portal AI assistant from a chat-bubble bot into **Jerry** — an animated

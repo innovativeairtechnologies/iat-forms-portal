@@ -73,9 +73,10 @@ preview invite points at the preview and a prod invite at prod.
   Upload). Files go browser → Supabase Storage (`ticket-photos` bucket) → `equipment.photo_urls`.
 - **Contact Us** form → `POST /api/customer/contact` → emails the IAT team
   (`jacob.younker@dehumidifiers.com`); the customer's identity is taken from the session.
-- **Jerry** (the IAT Assistant, right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
+- **Jerry** (IAT's customer assistant, right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
   presented as an animated "presence" (a breathing orb that energizes while it reads the docs) with
-  typeset answers + cited source chips, not a chat-bubble bot (orb styles in `app/globals.css`).
+  **serif** typeset answers + cited source chips, not a chat-bubble bot (orb styles in `app/globals.css`).
+  The system prompt introduces him by name ("You are Jerry…").
   Read-only Q&A grounded in the customer's equipment **and IAT's documentation (RAG, migration 030)**:
   it retrieves the most relevant manual/datasheet excerpts, answers **only** from them, and **cites the
   source (document + page)** as chips under each answer — or says it's not in the documentation and
@@ -89,8 +90,10 @@ preview invite points at the preview and a prod invite at prod.
 - **Status-lookup prefill:** signed-in customers get their email prefilled on `/support/status`
   plus a "Your requests" one-tap picker (`getStatusCustomerContext`; server `page.tsx` +
   `StatusClient.tsx`). Anonymous lookup unchanged.
-- **Theme** — a light/dark toggle (Sun/Moon, `components/ThemeToggle.tsx`) sits in the header; the
-  portal defaults to the OS theme and remembers the customer's choice.
+- **Theme** — a light/dark toggle (Sun/Moon, `components/ThemeToggle.tsx`) sits in the header. The
+  customer portal is **light-first**: a browser that has never picked a theme defaults to light
+  (scoped effect in `CustomerDashboard`; admin/employee keep the global `system` default), and a
+  customer who toggles to dark is remembered.
 - Future log-ins: `/login` with their email + password (middleware routes them to `/customer`).
 
 ## Ops / deploy notes

@@ -74,8 +74,9 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   filename. True duplicates are given identical titles so the chips collapse.
 
 ## Pool status (all-80 ingest — 2026-06-29)
-- Pool: **64 documents, ~3,296 chunks** (the full IAT documentation folder run with
-  `--all`). 5 of the 64 are `is_internal=true` (hidden from customers).
+- Pool: **58 documents, ~3,164 chunks** (the full IAT documentation folder run with
+  `--all`, after pruning 6 duplicate source files). 5 are `is_internal=true` (hidden
+  from customers).
 - **16 PDFs are image-only/scanned** (no extractable text — they WARN and skip on
   ingest; need OCR to include): `A1094 Manual`, `E5CN Temp Controller Manual (Omron)`
   *(a scanned dup of the text `E5CN Manual` that did ingest)*, `Actuator LF24-MFT-S`,
@@ -83,11 +84,12 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   `HS-70-D`, `MMSQPL`, `Paint`, `SCR (EZ1) Phasetronics`, `Technical-Specification-EDC`,
   `Terms Certifigroup-MET Labs`, `ZWN030X6D Cond Unit Manual`,
   `iPak Humidity-Temp Transmitter GEH2-D-TT2`, `motors`. OCR is the future fix.
-- **Duplicate source files** ingested as separate docs (given identical titles so
-  the chips collapse, but still redundant — candidates to prune from the folder):
-  the **Watlow DIN-A-MITE Style C** manual appears **3×** (`DC SCR Manual`,
-  `SCR…SCR`, `SCR…SCR1`); GE HumiTrac install guides 2× each (XR + non-XR); the
-  KAS actuator install 2×; and the Fuji PXR4/5/9 manual as full + condensed.
+- **Duplicate source files were pruned** (6 of them) via the `SKIP_DOCS` set in the
+  ingest script, so `--all` no longer re-adds them and a topic returns one chip, not
+  several: the **Watlow DIN-A-MITE Style C** manual (kept `DC  SCR Manual.pdf`, dropped
+  the two `SCR  DC20-60F0-0000…` copies); **GE HumiTrac XR** (kept `DP4A.pdf`); **GE
+  Sensing HumiTrac** (kept `GEH2-D-TT2.pdf`); **KAS** actuator (kept `KAS-44-88-175-install.pdf`);
+  and the **Fuji PXR4/5/9** manual (kept the full `PXR459_manual.pdf`, dropped the condensed).
 - Proven end-to-end on new-doc topics: "Belimo actuator wiring" → Belimo LF guide,
   "Vaisala humidity transmitter output" → Vaisala HMD/HMW, "SCR power controller
   setup" → Watlow DIN-A-MITE, "Compact IOM startup" → IAT Compact IOM, "desiccant
