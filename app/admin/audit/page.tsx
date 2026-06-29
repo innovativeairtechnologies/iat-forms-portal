@@ -6,7 +6,7 @@ import {
   ChevronRight, ShieldCheck, UserCog, FileCheck2, Trash2,
   CalendarCheck, History, Filter, Inbox, UserPlus, UserMinus,
   UserCheck, Wallet, RefreshCw, FilePlus, Power, PowerOff, Ticket,
-  Eye, Flag, ArrowRightLeft,
+  Eye, Flag, ArrowRightLeft, LogIn, MapPin, Monitor, Smartphone, Tablet, Globe,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -24,6 +24,56 @@ type AuditRow = {
   summary: string
   metadata: Record<string, unknown>
   created_at: string
+}
+
+type LoginRow = {
+  id: string
+  user_id: string | null
+  email: string | null
+  name: string | null
+  role: string | null
+  portal: string | null
+  method: string | null
+  ip: string | null
+  city: string | null
+  region: string | null
+  country: string | null
+  user_agent: string | null
+  browser: string | null
+  os: string | null
+  device: string | null
+  created_at: string
+}
+
+// Visual treatment per portal/role, reused for the login feed.
+const ROLE_META: Record<string, { label: string; color: string; bg: string }> = {
+  admin:    { label: 'Admin',    color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  employee: { label: 'Employee', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  customer: { label: 'Customer', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+}
+const ROLE_FALLBACK = { label: 'User', color: '#71717a', bg: 'rgba(113,113,122,0.12)' }
+
+const METHOD_LABEL: Record<string, string> = {
+  password: 'Password',
+  magic_link: 'Magic link',
+  invite: 'Invite link',
+  recovery: 'Password reset',
+}
+
+function deviceIcon(device: string | null): React.ElementType {
+  if (device === 'mobile') return Smartphone
+  if (device === 'tablet') return Tablet
+  return Monitor
+}
+
+function locationOf(r: LoginRow): string | null {
+  const parts = [r.city, r.region || r.country].filter(Boolean)
+  return parts.length ? parts.join(', ') : null
+}
+
+function deviceLabel(r: LoginRow): string | null {
+  const parts = [r.browser, r.os].filter(Boolean)
+  return parts.length ? parts.join(' · ') : (r.device || null)
 }
 
 function timeAgo(dateStr: string): string {
@@ -66,6 +116,7 @@ const FALLBACK_META = { label: 'Action', icon: History, color: '#71717a', bg: 'r
 // actions (e.g. every `form.*` or `employee.*`); the rest match exactly.
 const FILTERS: { key: string; label: string; prefix?: boolean }[] = [
   { key: 'all', label: 'All activity' },
+  { key: 'logins', label: 'Logins' },
   { key: 'role.update', label: 'Role changes' },
   { key: 'form.', label: 'Forms', prefix: true },
   { key: 'submission.', label: 'Submissions', prefix: true },
@@ -83,19 +134,39 @@ export default async function AuditLogPage(
   const searchParams = await props.searchParams;
   const selected = FILTERS.find((f) => f.key === searchParams.action)
   const active = selected ? selected.key : 'all'
+  const isLogins = active === 'logins'
 
-  let query = supabaseAdmin
-    .from('audit_log')
-    .select('id, actor_name, action, entity_type, entity_id, summary, metadata, created_at')
-    .order('created_at', { ascending: false })
-    .limit(200)
+  // Login feed reads a separate table (login_events, mig 031); everything else
+  // reads the admin-action trail (audit_log, mig 020).
+  let rows: AuditRow[] = []
+  let logins: LoginRow[] = []
+  let error: unknown = null
 
-  if (selected && active !== 'all') {
-    query = selected.prefix ? query.like('action', `${selected.key}%`) : query.eq('action', selected.key)
+  if (isLogins) {
+    const res = await supabaseAdmin
+      .from('login_events')
+      .select('id, user_id, email, name, role, portal, method, ip, city, region, country, user_agent, browser, os, device, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    error = res.error
+    logins = (res.data || []) as LoginRow[]
+  } else {
+    let query = supabaseAdmin
+      .from('audit_log')
+      .select('id, actor_name, action, entity_type, entity_id, summary, metadata, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200)
+
+    if (selected && active !== 'all') {
+      query = selected.prefix ? query.like('action', `${selected.key}%`) : query.eq('action', selected.key)
+    }
+
+    const res = await query
+    error = res.error
+    rows = (res.data || []) as AuditRow[]
   }
 
-  const { data, error } = await query
-  const rows = (data || []) as AuditRow[]
+  const totalCount = isLogins ? logins.length : rows.length
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
@@ -117,7 +188,9 @@ export default async function AuditLogPage(
           <div>
             <h1 className="text-[18px] font-bold text-zinc-900 dark:text-white leading-tight">Audit Log</h1>
             <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-              An immutable record of consequential admin actions — who did what, and when.
+              {isLogins
+                ? 'Every sign-in across all portals — who logged in, from where, and on what device.'
+                : 'An immutable record of consequential admin actions — who did what, and when.'}
             </p>
           </div>
         </div>
@@ -148,11 +221,69 @@ export default async function AuditLogPage(
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none overflow-hidden">
           {error ? (
             <div className="px-5 py-12 text-center">
-              <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Couldn&apos;t load the audit log.</p>
+              <p className="text-[13px] text-zinc-500 dark:text-zinc-400">
+                Couldn&apos;t load the {isLogins ? 'login activity' : 'audit log'}.
+              </p>
               <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mt-1">
-                If this table doesn&apos;t exist yet, run migration <code className="font-mono">020_audit_log.sql</code>.
+                If this table doesn&apos;t exist yet, run migration{' '}
+                <code className="font-mono">{isLogins ? '031_login_events.sql' : '020_audit_log.sql'}</code>.
               </p>
             </div>
+          ) : isLogins ? (
+            logins.length === 0 ? (
+              <div className="px-5 py-16 text-center">
+                <LogIn size={22} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-2.5" />
+                <p className="text-[13px] text-zinc-500 dark:text-zinc-400">No sign-ins recorded yet</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mt-1">
+                  Logins across every portal will appear here as they happen.
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                {logins.map((r) => {
+                  const meta = ROLE_META[r.role || ''] || ROLE_FALLBACK
+                  const DeviceIcon = deviceIcon(r.device)
+                  const location = locationOf(r)
+                  const device = deviceLabel(r)
+                  return (
+                    <li key={r.id} className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+                      <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: meta.bg, color: meta.color }}>
+                        <LogIn size={15} />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-zinc-800 dark:text-zinc-100 truncate">
+                          <span className="font-medium">{r.name || r.email || 'Unknown user'}</span>
+                          <span className="text-zinc-400 dark:text-zinc-500"> signed in</span>
+                          {METHOD_LABEL[r.method || ''] && (
+                            <span className="text-zinc-400 dark:text-zinc-500"> · {METHOD_LABEL[r.method || '']}</span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[11px] text-zinc-400 dark:text-zinc-500 flex-wrap">
+                          <span className="font-medium" style={{ color: meta.color }}>{meta.label}</span>
+                          {location && (
+                            <span className="flex items-center gap-1"><MapPin size={11} />{location}</span>
+                          )}
+                          {r.ip && (
+                            <span className="flex items-center gap-1 font-mono"><Globe size={11} />{r.ip}</span>
+                          )}
+                          {device && (
+                            <span className="flex items-center gap-1"><DeviceIcon size={11} />{device}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 flex-shrink-0">
+                        <span className="hidden sm:flex w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 items-center justify-center text-[10px] font-bold text-zinc-500 dark:text-zinc-300">
+                          {initialsOf(r.name || r.email)}
+                        </span>
+                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums w-16 text-right" title={new Date(r.created_at).toLocaleString()}>
+                          {timeAgo(r.created_at)}
+                        </span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )
           ) : rows.length === 0 ? (
             <div className="px-5 py-16 text-center">
               <History size={22} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-2.5" />
@@ -194,7 +325,7 @@ export default async function AuditLogPage(
           )}
         </div>
 
-        {rows.length >= 200 && (
+        {totalCount >= 200 && (
           <p className="text-[11px] text-zinc-400 dark:text-zinc-600 text-center">
             Showing the 200 most recent entries.
           </p>

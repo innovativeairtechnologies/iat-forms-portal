@@ -45,6 +45,19 @@ function LoginForm() {
       .eq('id', data.user.id)
       .single()
 
+    // Record the sign-in (IP / location / device captured server-side). The
+    // session cookie is already set, so this same-origin POST is authenticated.
+    // Fire-and-forget with keepalive so it survives the imminent navigation and
+    // never delays the redirect; a logging failure is intentionally ignored.
+    const portal =
+      profile?.role === 'admin' ? 'admin' : profile?.role === 'customer' ? 'customer' : 'employee'
+    void fetch('/api/auth/login-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ portal, method: 'password' }),
+      keepalive: true,
+    }).catch(() => {})
+
     if (profile?.role === 'admin') {
       router.push('/admin')
       router.refresh()

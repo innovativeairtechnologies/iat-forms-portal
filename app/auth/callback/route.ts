@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logLoginEvent, type LoginMethod } from '@/lib/login-events'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get('next') ?? '/employee/profile'
 
   let userId: string | null = null
+  let userEmail: string | null = null
 
   if (code) {
     const cookieStore = await cookies()
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=invalid_link', requestUrl.origin))
     }
     userId = data.user?.id ?? null
+    userEmail = data.user?.email ?? null
   }
 
   // Role-aware routing: customers always land inside /customer, never the
@@ -42,9 +45,22 @@ export async function GET(request: NextRequest) {
   if (userId) {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, display_name')
       .eq('id', userId)
       .single()
+
+    // Record this sign-in (magic-link / invite / recovery land here, not /login).
+    const method: LoginMethod =
+      type === 'invite' || type === 'signup' ? 'invite' : type === 'recovery' ? 'recovery' : 'magic_link'
+    await logLoginEvent({
+      userId,
+      email: userEmail,
+      name: profile?.display_name ?? userEmail ?? null,
+      role: profile?.role ?? null,
+      portal: profile?.role === 'customer' ? 'customer' : profile?.role === 'admin' ? 'admin' : 'employee',
+      method,
+      headers: request.headers,
+    })
 
     if (profile?.role === 'customer') {
       const onboarding = type === 'invite' || type === 'signup' || type === 'recovery'
