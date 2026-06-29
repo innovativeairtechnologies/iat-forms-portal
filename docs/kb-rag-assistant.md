@@ -61,20 +61,44 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
 - Extracts **per page** (so page numbers survive for citations), chunks each page
   (~320 words, small overlap), and inserts via the service role. **Idempotent per
   file** (deletes existing rows for that `source_filename`, then re-inserts).
-- **Internal/company docs** (Core Values, Aptitude Test, Terms, Paint, MSDS) are
+- `cleanText()` strips **NUL + other C0 control characters** before insert — some
+  CID/Adobe-Japan1-font PDFs make `pdftotext` emit a NUL, which Postgres `text`
+  rejects ("unsupported Unicode escape sequence") and would otherwise drop the
+  whole document. (This is what was silently losing `PXR3.pdf`.)
+- **Internal/company docs** (Core Values, Aptitude Test, Terms, Paint, MSDS, and
+  the customer **References** list, which holds other customers' contact PII) are
   marked `is_internal=true` so they never surface in the customer pool, even under `--all`.
+- **Titles for citations** come from `TITLE_MAP` (vendor-named, taken from each
+  PDF's own header — Belimo / Vaisala / Watlow / Johnson Controls / GE / Fuji /
+  Honeywell / Setra / TAMCO…); anything not in the map falls back to a tidied
+  filename. True duplicates are given identical titles so the chips collapse.
 
-## POC status (2026-06-29)
-- Pool: **10 documents, ~2,114 chunks** (ASPYRE manual, Compact brochure, Munters
-  handbook, 3045 humidistat guide, CDI submittal, Omron E5CN, Fuji VFD, GS1/2/3 drives).
-- **`A1094 Manual.pdf` is an image-only/scanned PDF** (no extractable text — needs
-  OCR), so it's excluded; re-add to `POC_DOCS` once OCR'd.
-- Proven end-to-end: real questions return the right document + page with citations;
-  out-of-scope questions are declined with no citations.
+## Pool status (all-80 ingest — 2026-06-29)
+- Pool: **64 documents, ~3,296 chunks** (the full IAT documentation folder run with
+  `--all`). 5 of the 64 are `is_internal=true` (hidden from customers).
+- **16 PDFs are image-only/scanned** (no extractable text — they WARN and skip on
+  ingest; need OCR to include): `A1094 Manual`, `E5CN Temp Controller Manual (Omron)`
+  *(a scanned dup of the text `E5CN Manual` that did ingest)*, `Actuator LF24-MFT-S`,
+  `Actuator TF120`, `Fasco Model D215`, `Fasco PN 71625928`, `GEH Series Transmitter`,
+  `HS-70-D`, `MMSQPL`, `Paint`, `SCR (EZ1) Phasetronics`, `Technical-Specification-EDC`,
+  `Terms Certifigroup-MET Labs`, `ZWN030X6D Cond Unit Manual`,
+  `iPak Humidity-Temp Transmitter GEH2-D-TT2`, `motors`. OCR is the future fix.
+- **Duplicate source files** ingested as separate docs (given identical titles so
+  the chips collapse, but still redundant — candidates to prune from the folder):
+  the **Watlow DIN-A-MITE Style C** manual appears **3×** (`DC SCR Manual`,
+  `SCR…SCR`, `SCR…SCR1`); GE HumiTrac install guides 2× each (XR + non-XR); the
+  KAS actuator install 2×; and the Fuji PXR4/5/9 manual as full + condensed.
+- Proven end-to-end on new-doc topics: "Belimo actuator wiring" → Belimo LF guide,
+  "Vaisala humidity transmitter output" → Vaisala HMD/HMW, "SCR power controller
+  setup" → Watlow DIN-A-MITE, "Compact IOM startup" → IAT Compact IOM, "desiccant
+  rotor maintenance" → Rotor Source manual. Internal/PII docs (incl. `References`)
+  confirmed not retrievable on the default customer call.
 
 ## Scaling & upgrades
-- **All 80 docs:** run `node scripts/ingest-kb-docs.mjs --all` (marks internal docs).
+- **Re-ingest after changing the folder / maps:** `node scripts/ingest-kb-docs.mjs --all`.
 - **Internal assistant:** point a new server-side caller at `retrieveChunks(q, { includeInternal: true })`.
+- **OCR the 16 image-only PDFs** (e.g. `ocrmypdf`/Tesseract → searchable text layer,
+  then re-ingest) to fold them into the pool.
 - **Semantic search:** add the `embedding` column + an embeddings key and blend
   vector similarity with the FTS score — the quality upgrade when keyword search is too literal.
 

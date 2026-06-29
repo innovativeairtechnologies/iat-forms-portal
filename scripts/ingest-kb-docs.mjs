@@ -60,10 +60,17 @@ const INTERNAL_DOCS = new Set([
   'IAT Terms & Conditions_rev8.20.2025.pdf',
   'Paint.pdf',
   'MSDSArmaflex520AUS.pdf',
+  // IAT customer reference list — holds OTHER customers' names, phone numbers and
+  // emails (PII). Must never surface in the customer-facing pool.
+  'References.pdf',
 ])
 
 // Nicer human titles for citations (fallback derives one from the filename).
+// Titles are taken from each PDF's own header text, in the existing vendor-named
+// style (Omron, Fuji, Munters…). Several source files are duplicates of the same
+// manual; they're given identical titles so the citation chips collapse cleanly.
 const TITLE_MAP = {
+  // ── original POC set ───────────────────────────────────────────────────────
   'ASPYRE-60-210A-manual.pdf': 'ASPYRE 60-210A Manual',
   'Compact Brochure_rev2025.pdf': 'IAT Compact Brochure (2025)',
   'Munters DH handbook.pdf': 'Munters Dehumidification Handbook',
@@ -75,6 +82,69 @@ const TITLE_MAP = {
   'gs1m.pdf': 'GS1 Series Drive User Manual',
   'gs2m.pdf': 'GS2 Series Drive User Manual',
   'gs3m.pdf': 'GS3 Series Drive User Manual',
+
+  // ── IAT / dehumidifier ─────────────────────────────────────────────────────
+  'Compact IOM_rev08.2025.pdf': 'IAT Compact Rotor Series IOM Manual',
+  'Compact Performance Curves.pdf': 'IAT Compact Performance Curves',
+  'M120.pdf': 'Munters M120 Desiccant Dehumidifier',
+  'rotor-source-desiccant-and-passive-manual.pdf': 'Rotor Source Desiccant Rotor & Cassette Manual',
+
+  // ── temperature controllers (Fuji / Honeywell) ────────────────────────────
+  'PXR3.pdf': 'Fuji PXR3 Temperature Controller Manual',
+  'PXR459_manual.pdf': 'Fuji PXR4/5/9 Temperature Controller Manual',
+  'PXR459_manual (shortened).pdf': 'Fuji PXR4/5/9 Temperature Controller Manual (Condensed)',
+  'PXF4-manual.pdf': 'Fuji PXF4 Temperature Controller Manual',
+  'RM7890.pdf': 'Honeywell RM7890/EC7890 Relay Module Instructions',
+
+  // ── SCR / power controllers (Watlow) ───────────────────────────────────────
+  'powerController_UM.pdf': 'Watlow Power Series SCR Power Controller Manual',
+  'DA SCR-Manual.pdf': 'Watlow DIN-A-MITE Style A SCR Power Controller Manual',
+  'DB SCR Manual.pdf': 'Watlow DIN-A-MITE Style B SCR Power Controller Manual',
+  'DC  SCR Manual.pdf': 'Watlow DIN-A-MITE Style C SCR Power Controller Manual',
+  'SCR  DC20-60F0-0000 Din-A-Mite C manual SCR.pdf': 'Watlow DIN-A-MITE Style C SCR Power Controller Manual',
+  'SCR  DC20-60F0-0000 Din-A-Mite C manual SCR1.pdf': 'Watlow DIN-A-MITE Style C SCR Power Controller Manual',
+
+  // ── humidity / dewpoint transmitters & sensors (Vaisala / GE / others) ─────
+  'DMT143-Users-Guide-in-English-M211435EN.pdf': 'Vaisala DMT143 Dewpoint Transmitter User Guide',
+  'DMT142 Vaisala.pdf': 'Vaisala DMT142 Dewpoint Transmitter Guide',
+  'DMT142 Brochure Vaisala.pdf': 'Vaisala DMT142 Dewpoint Transmitter Brochure',
+  'HMD82TD Manual.pdf': 'Vaisala INTERCAP HMDW80 Series Transmitter User Guide',
+  'HMW80 datasheet B211060EN-A.pdf': 'Vaisala INTERCAP HMW80 Series Transmitter Datasheet',
+  'HMW80 Quick Guide - M211328EN-B.pdf': 'Vaisala INTERCAP HMW80 Series Transmitter Quick Guide',
+  'HMW40Y Transmitter.pdf': 'Vaisala HMW40U/Y Humidity Transmitter',
+  'HMD40Y Transmitter Kele.pdf': 'Vaisala HMD40U/Y Humidity Transmitter',
+  'DP4A.pdf': 'GE HumiTrac XR Transmitter Installation Guide',
+  'DP4A EN4A WB4A GE Installation Guide[1].pdf': 'GE HumiTrac XR Transmitter Installation Guide',
+  'GEH-HumiTrac Installation Guide[1].pdf': 'GE Sensing HumiTrac Transmitter Installation Guide',
+  'GEH2-D-TT2.pdf': 'GE Sensing HumiTrac Transmitter Installation Guide',
+  'GEH-S-TT3.pdf': 'GE HumiTrac GEH Series Humidity Transmitter',
+  'M264 Installation Guide and Manual.pdf': 'Setra Model 264 Differential Pressure Transducer Guide',
+  'DPA-5-20  Series Installation Instructions.pdf': 'DPA Series Differential Pressure Transmitter Guide',
+  'SC10C.pdf': 'SC10C Signal Conditioner',
+
+  // ── controls (Control Products / Johnson Controls) ─────────────────────────
+  'Control Products HC110S24.pdf': 'Control Products HC-110 Panel-Mount Humidity Controller',
+  'Control Products HS50S.pdf': 'Control Products HS-50-S Humidity Sensor',
+  'TC-110 Control Products Temp Controller.pdf': 'Control Products TC-110 Panel-Mount Temperature Controller',
+  'PN 1299 Humidistat.pdf': 'Johnson Controls W43A Humidistat',
+  'T26 INSTL[1].pdf': 'Johnson Controls T26 Line-Voltage Thermostat',
+
+  // ── actuators & valves (Belimo / Johnson Controls / TAC / KAS) ─────────────
+  'LF_Installation.pdf': 'Belimo LF Series Actuator Installation Instructions',
+  'LF120.pdf': 'Belimo LF120/LF230 Spring-Return Actuator',
+  'AF-24-SR.pdf': 'Belimo AF24-SR Proportional Damper Actuator',
+  'NFB24-SR-S.pdf': 'Belimo NFB24-SR Spring-Return Damper Actuator',
+  'TF24-SR_1_1_en.pdf': 'Belimo TF24-SR Spring-Return Actuator',
+  'M9206 Actuator (Kele).pdf': 'Johnson Controls M9206 Electric Spring-Return Actuator',
+  'AP13A000 Actuator.pdf': 'TAC VM Series PopTop Modulating Valve Actuator',
+  'VG1000_Series_2010_Catalog[1].pdf': 'Johnson Controls VG1000 Series Ball Valves Catalog',
+  'KAS-44-88-175-install.pdf': 'KAS Series Spring-Return Actuator Installation',
+  'KAS-44-M.pdf': 'KAS Series Spring-Return Actuator Installation',
+
+  // ── dampers & HVAC ─────────────────────────────────────────────────────────
+  'TAMCO Dampers TA-1000-TECH-24.pdf': 'TAMCO Series 1000 Low-Leakage Control Dampers',
+  'H-IM-CU-0808.pdf': 'Condensing Units Installation & Operations Manual (H-IM-CU)',
+  'CC-HADTB-0407-000.pdf': 'Outdoor Discus Condensing Unit Technical Guide',
 }
 
 const CATEGORY_MAP = {
@@ -89,6 +159,67 @@ const CATEGORY_MAP = {
   'gs1m.pdf': 'Drives / VFD',
   'gs2m.pdf': 'Drives / VFD',
   'gs3m.pdf': 'Drives / VFD',
+
+  // IAT / dehumidifier
+  'Compact IOM_rev08.2025.pdf': 'Dehumidifier',
+  'Compact Performance Curves.pdf': 'Dehumidifier',
+  'M120.pdf': 'Dehumidifier',
+  'rotor-source-desiccant-and-passive-manual.pdf': 'Reference',
+
+  // temperature controllers
+  'PXR3.pdf': 'Controls',
+  'PXR459_manual.pdf': 'Controls',
+  'PXR459_manual (shortened).pdf': 'Controls',
+  'PXF4-manual.pdf': 'Controls',
+  'RM7890.pdf': 'Controls',
+  'PN 1299 Humidistat.pdf': 'Controls',
+  'T26 INSTL[1].pdf': 'Controls',
+  'Control Products HC110S24.pdf': 'Controls',
+  'Control Products HS50S.pdf': 'Controls',
+  'TC-110 Control Products Temp Controller.pdf': 'Controls',
+  'SC10C.pdf': 'Controls',
+
+  // SCR / power controllers
+  'powerController_UM.pdf': 'Power Controls',
+  'DA SCR-Manual.pdf': 'Power Controls',
+  'DB SCR Manual.pdf': 'Power Controls',
+  'DC  SCR Manual.pdf': 'Power Controls',
+  'SCR  DC20-60F0-0000 Din-A-Mite C manual SCR.pdf': 'Power Controls',
+  'SCR  DC20-60F0-0000 Din-A-Mite C manual SCR1.pdf': 'Power Controls',
+
+  // sensors / transmitters
+  'DMT143-Users-Guide-in-English-M211435EN.pdf': 'Sensors / Transmitters',
+  'DMT142 Vaisala.pdf': 'Sensors / Transmitters',
+  'DMT142 Brochure Vaisala.pdf': 'Sensors / Transmitters',
+  'HMD82TD Manual.pdf': 'Sensors / Transmitters',
+  'HMW80 datasheet B211060EN-A.pdf': 'Sensors / Transmitters',
+  'HMW80 Quick Guide - M211328EN-B.pdf': 'Sensors / Transmitters',
+  'HMW40Y Transmitter.pdf': 'Sensors / Transmitters',
+  'HMD40Y Transmitter Kele.pdf': 'Sensors / Transmitters',
+  'DP4A.pdf': 'Sensors / Transmitters',
+  'DP4A EN4A WB4A GE Installation Guide[1].pdf': 'Sensors / Transmitters',
+  'GEH-HumiTrac Installation Guide[1].pdf': 'Sensors / Transmitters',
+  'GEH2-D-TT2.pdf': 'Sensors / Transmitters',
+  'GEH-S-TT3.pdf': 'Sensors / Transmitters',
+  'M264 Installation Guide and Manual.pdf': 'Sensors / Transmitters',
+  'DPA-5-20  Series Installation Instructions.pdf': 'Sensors / Transmitters',
+
+  // actuators & valves
+  'LF_Installation.pdf': 'Actuators / Valves',
+  'LF120.pdf': 'Actuators / Valves',
+  'AF-24-SR.pdf': 'Actuators / Valves',
+  'NFB24-SR-S.pdf': 'Actuators / Valves',
+  'TF24-SR_1_1_en.pdf': 'Actuators / Valves',
+  'M9206 Actuator (Kele).pdf': 'Actuators / Valves',
+  'AP13A000 Actuator.pdf': 'Actuators / Valves',
+  'VG1000_Series_2010_Catalog[1].pdf': 'Actuators / Valves',
+  'KAS-44-88-175-install.pdf': 'Actuators / Valves',
+  'KAS-44-M.pdf': 'Actuators / Valves',
+
+  // dampers & HVAC
+  'TAMCO Dampers TA-1000-TECH-24.pdf': 'Dampers / HVAC',
+  'H-IM-CU-0808.pdf': 'Dampers / HVAC',
+  'CC-HADTB-0407-000.pdf': 'Dampers / HVAC',
 }
 
 // Chunking: ~page-sized. Most datasheet pages fall under one chunk; dense pages
@@ -104,7 +235,12 @@ const INSERT_BATCH = 500
 export function cleanText(s) {
   return String(s ?? '')
     .replace(/\r/g, '')
-    .replace(/�/g, '')
+    // Postgres `text` cannot store a NUL (0x00) — CID/Adobe-Japan1 font glyphs that
+    // pdftotext can't map sometimes emit one, which fails the chunk insert with
+    // "unsupported Unicode escape sequence". Strip NUL + other C0 control chars
+    // (keep \t and \n) so those pages ingest cleanly instead of dropping the doc.
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/\uFFFD/g, '')
     .split('\n')
     .map((line) => line.replace(/[ \t]+$/g, ''))
     .join('\n')
