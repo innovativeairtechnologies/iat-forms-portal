@@ -617,7 +617,7 @@ function JerryAssistant({ companyName }: { companyName: string }) {
         {idle ? (
           <div className="flex h-full flex-col items-center justify-center py-3 text-center">
             <Orb px={92} float />
-            <p className="jerry-voice mt-5 text-[18px] font-semibold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
+            <p className="mt-5 text-[16px] font-bold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
             <p className="mt-1.5 max-w-[262px] text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
               Ask about {companyName}&apos;s equipment or IAT&apos;s documentation — I answer from the manuals and show you the page.
             </p>
@@ -635,7 +635,7 @@ function JerryAssistant({ companyName }: { companyName: string }) {
                 <div key={i} className="flex animate-fade-up gap-2.5">
                   <Orb px={20} className="mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <p className="jerry-voice whitespace-pre-wrap text-[14px] leading-[1.6] text-zinc-700 dark:text-zinc-200">{m.content}</p>
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{m.content}</p>
                     {m.sources && m.sources.length > 0 && (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Sources</span>

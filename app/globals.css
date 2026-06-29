@@ -280,6 +280,3 @@ html.green .text-indigo-600 { color: #4ade80; }
 @keyframes jerryPulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,0.5); } 70% { box-shadow: 0 0 0 5px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
 @media (prefers-reduced-motion: reduce) { .jerry-orb, .jerry-orb > span, .jerry-orb i, .jerry-status-dot { animation: none !important; } }
 
-/* Jerry's "voice" — a warm serif for his spoken answers + greeting (UI chrome stays sans). */
-.jerry-voice { font-family: Georgia, Cambria, "Times New Roman", "Noto Serif", ui-serif, serif; }
-

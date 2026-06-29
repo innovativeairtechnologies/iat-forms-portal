@@ -13,8 +13,8 @@ Follow-up polish after scaling Jerry's KB pool to the full documentation folder.
 - **Light-first customer portal** — the customer portal now defaults to **light** for a browser
   that has never chosen a theme (scoped effect in `CustomerDashboard`; admin/employee keep the
   global `system` default; a customer who toggles to dark is still respected).
-- **Jerry's serif "voice"** — his greeting and answers are now set in a serif (`.jerry-voice`),
-  giving the assistant a distinct, crafted voice; the UI chrome stays sans.
+- ~~Jerry's serif "voice"~~ — tried a serif for his greeting + answers; **reverted same day**
+  (didn't read well), so the answers stay in the portal's sans.
 - **Tuned orb** — calmer/slower idle breathing + halo, a richer core/ring gradient, and a gentle
   floating drift on the large idle hero orb (`app/globals.css`; still honors `prefers-reduced-motion`).
 - **Real name in the prompt** — the assistant's system prompt now introduces itself as **Jerry**

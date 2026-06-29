@@ -75,7 +75,7 @@ preview invite points at the preview and a prod invite at prod.
   (`jacob.younker@dehumidifiers.com`); the customer's identity is taken from the session.
 - **Jerry** (IAT's customer assistant, right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
   presented as an animated "presence" (a breathing orb that energizes while it reads the docs) with
-  **serif** typeset answers + cited source chips, not a chat-bubble bot (orb styles in `app/globals.css`).
+  typeset answers + cited source chips, not a chat-bubble bot (orb styles in `app/globals.css`).
   The system prompt introduces him by name ("You are Jerry…").
   Read-only Q&A grounded in the customer's equipment **and IAT's documentation (RAG, migration 030)**:
   it retrieves the most relevant manual/datasheet excerpts, answers **only** from them, and **cites the
