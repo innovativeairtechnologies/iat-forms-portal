@@ -39,8 +39,9 @@ source dedupe). It **degrades to `[]`** if the pool isn't there yet (so the
 assistant works exactly as before until ingest runs) and logs real RPC errors.
 
 ## Assistant wiring (`app/api/customer/assistant/route.ts`)
-Before the Claude call it retrieves the top ~6 chunks for the question (built from
-the last few user turns, so follow-ups keep context), injects them as a labeled
+Before the Claude call it retrieves the top ~10 chunks for the question (built from
+the last few user turns, so follow-ups keep context; the wider window catches a
+specific answer page that keyword/IDF ranks just outside the top few), injects them as a labeled
 **DOCUMENTATION EXCERPTS** block (each tagged `[Title, p.N]`), and instructs the
 model to answer only from them + the customer's equipment data, cite by
 reproducing the exact bracketed label, and decline if not covered. The excerpts

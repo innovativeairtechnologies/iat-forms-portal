@@ -23,6 +23,10 @@ full-text search only** — no new vendor, no embeddings key (semantic vectors a
 - **Assistant** (`app/api/customer/assistant/route.ts`) injects the excerpts, cites doc+page by exact
   label, and returns the cited sources; `components/customer/CustomerDashboard.tsx` shows them as chips.
 - Docs: **docs/kb-rag-assistant.md**. Deploy: apply `030_kb_rag.sql`, then run the ingest script. No new env vars.
+- **Follow-up (same day):** widened the retrieval window **6 → 10 chunks** — a specific answer page can
+  rank just outside the top few when it doesn't repeat the product name (e.g. the Omron E5CN "Current
+  Value Exceeds" error table, p.230, which never says "E5CN"). Semantic (vector) search remains the
+  durable fix for deep-manual needles.
 
 ## 2026-06-26 — Forms round 4: review tweaks, equipment-form dropdowns/photos, new ticket numbers, roadmap tracker
 
