@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import { formatDateTime } from '@/lib/utils'
-import { FileText, Calendar, ClipboardList, Info, BarChart3 } from 'lucide-react'
+import { FileText, Calendar, ClipboardList, Info, BarChart3, Printer } from 'lucide-react'
+import Link from 'next/link'
 import { DetailShell, DetailTopBar, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
 import SubmissionDetailClient from './SubmissionDetailClient'
 import SubmissionNotes from './SubmissionNotes'
@@ -111,6 +112,14 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
         ]}
       >
         <SubmissionStatus submissionId={submission.id} initialStatus={status} />
+        <Link
+          href={`/print/submissions/${submission.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-[12px] font-semibold transition-colors flex-shrink-0"
+        >
+          <Printer size={14} /> Print
+        </Link>
         <SubmissionDetailClient submission={submission} fields={fields} />
       </DetailTopBar>
 

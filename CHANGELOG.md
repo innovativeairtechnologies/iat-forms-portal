@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-29 — Print views: per-department form preview + submission printout
+
+Two browser-native print views for the Performance Review (and any conditional form) — the ops
+director can **Print** or **Save as PDF**, and both honor the `show_when` department conditions.
+Code-only; no migration, no env vars.
+
+### Added
+- **`/print/forms/[id]`** — pick a department → preview **only that department's questions** as a
+  blank questionnaire (universal sections + that department's gated questions) before sending to
+  team leads. Linked from the form-builder toolbar (next to Tally). Works for any conditional form;
+  non-conditional forms just print the whole form.
+- **`/print/submissions/[id]`** — a clean printout of a completed submission showing only the fields
+  that applied to that person's department, to hand to the employee. Linked from the submission
+  detail (next to Download PDF).
+- Standalone `/print/*` routes (no admin chrome → clean output), self-gated with `getAdminUser()`;
+  shared `components/PrintFrame` + `PrintButton`; reuses `lib/forms.ts` visibility so the printout
+  matches the live form. `tsc` + `next build` clean.
+
 ## 2026-06-29 — Jerry refinements (light-first, serif voice, tuned orb, real name) + KB pool to 58 docs
 
 Follow-up polish after scaling Jerry's KB pool to the full documentation folder.
