@@ -74,7 +74,11 @@ export async function POST(req: NextRequest) {
   // Query from the last few user turns so follow-ups ("what about page 2?") keep
   // the subject established earlier; websearch_to_tsquery tolerates the longer text.
   const question = history.filter((m) => m.role === 'user').slice(-3).map((m) => m.content).join(' ')
-  const chunks = await retrieveChunks(question, { limit: 6 })
+  // Retrieve a slightly wider window (10): a specific answer can sit just outside
+  // the top few when a manual page doesn't repeat the product name (keyword search
+  // ranks it lower) — extra chunks recover those without misleading the model,
+  // which is told to use only what's relevant. Semantic search will fix this properly.
+  const chunks = await retrieveChunks(question, { limit: 10 })
   const excerptsBlock = formatExcerptsForPrompt(chunks)
   const retrievedSources = dedupeSources(chunks)
 
