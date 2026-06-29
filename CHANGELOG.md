@@ -2,6 +2,28 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-29 — Customer AI Assistant: documentation RAG with citations
+
+The customer-portal **IAT Assistant** can now answer from IAT's documentation. PDFs are ingested
+into a searchable pool; the assistant retrieves the most relevant excerpts, answers **grounded only
+in them**, and **cites the source (document + page)** as chips under each answer — or says it's not
+in the documentation and routes to support. It never guesses product specifics. **Lean POC: Postgres
+full-text search only** — no new vendor, no embeddings key (semantic vectors are the planned upgrade).
+
+- **Data (migration `030_kb_rag.sql`)** — `kb_documents` + `kb_chunks` (generated `tsvector` + GIN
+  index), both service-role only; a `match_kb_chunks()` SQL function ranks chunks **TF-IDF-style** so
+  a rare, distinctive term (`humidistat`, `e5cn`, `overcurrent`) outweighs a common one (`set`,
+  `alarm`) and the document that actually covers the question wins.
+- **Ingest** — `scripts/ingest-kb-docs.mjs` extracts each PDF **per page** (page numbers preserved
+  for citations) with `pdftotext`, chunks it, and inserts via the service role; idempotent per file,
+  internal/company docs flagged `is_internal` (hidden from customers). POC pool: **10 docs, ~2,114
+  chunks**. (`A1094 Manual.pdf` is image-only/scanned — excluded pending OCR.)
+- **Retrieval layer** — `lib/kb-rag.ts` (`retrieveChunks` + helpers) is reusable (an internal
+  assistant can reuse it with `includeInternal: true`) and **degrades to no-op** until the pool exists.
+- **Assistant** (`app/api/customer/assistant/route.ts`) injects the excerpts, cites doc+page by exact
+  label, and returns the cited sources; `components/customer/CustomerDashboard.tsx` shows them as chips.
+- Docs: **docs/kb-rag-assistant.md**. Deploy: apply `030_kb_rag.sql`, then run the ingest script. No new env vars.
+
 ## 2026-06-26 — Forms round 4: review tweaks, equipment-form dropdowns/photos, new ticket numbers, roadmap tracker
 
 A batch of form changes plus two redesigns.

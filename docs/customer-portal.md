@@ -74,8 +74,11 @@ preview invite points at the preview and a prod invite at prod.
 - **Contact Us** form → `POST /api/customer/contact` → emails the IAT team
   (`jacob.younker@dehumidifiers.com`); the customer's identity is taken from the session.
 - **IAT Assistant** (right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
-  read-only Q&A grounded in the customer's equipment + KB; it cannot take actions and is told to
-  route actionable requests to the support forms / Contact Us. Uses the existing `ANTHROPIC_API_KEY`.
+  read-only Q&A grounded in the customer's equipment **and IAT's documentation (RAG, migration 030)**:
+  it retrieves the most relevant manual/datasheet excerpts, answers **only** from them, and **cites the
+  source (document + page)** as chips under each answer — or says it's not in the documentation and
+  routes to the support forms / Contact Us. It cannot take actions. Uses the existing `ANTHROPIC_API_KEY`
+  (no new vendor — Postgres full-text search). See **docs/kb-rag-assistant.md**.
 - **Support-form prefill:** when a signed-in customer opens `/support/equipment-support`, their
   account email + contact details prefill and a "Your account & equipment" card lets them pick a
   unit (fills serial / model / voltage; all editable). `/support` stays public — anonymous visitors
@@ -89,6 +92,8 @@ preview invite points at the preview and a prod invite at prod.
 ## Ops / deploy notes
 - Apply `supabase/migrations/026_customer_portal.sql` (done 2026-06-24). The admin front door
   added 2026-06-25 needs **no migration**.
+- **Documentation RAG (2026-06-29):** apply `supabase/migrations/030_kb_rag.sql`, then load the pool
+  with `node scripts/ingest-kb-docs.mjs` — see **docs/kb-rag-assistant.md**. No new env vars.
 - Customer email sends from `onboarding@resend.dev` until a Resend domain is verified —
   delivery is limited; use the temp password shown in the invite/resend dialog meanwhile.
 - No new env vars.

@@ -268,6 +268,30 @@ export type KbArticle = {
   updated_at: string
 }
 
+// ── KB RAG pool (migration 030) — searchable documentation for the AI Assistant ─
+// A source PDF fed into the retrieval pool. Chunks are searched via FTS and cited
+// (document + page). Customer-facing retrieval excludes is_internal=true docs.
+export type KbDocument = {
+  id: string
+  title: string
+  source_filename: string
+  category: string | null
+  is_internal: boolean
+  page_count: number | null
+  created_at: string
+}
+
+// One page-sized text chunk of a KbDocument. `tsv` is a generated FTS column in
+// Postgres and is never selected into the app.
+export type KbChunk = {
+  id: string
+  document_id: string
+  chunk_index: number
+  page_number: number
+  content: string
+  created_at: string
+}
+
 export type USRotorsOrder = {
   id: string
   order_ref: string

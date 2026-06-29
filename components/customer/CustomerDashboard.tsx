@@ -7,12 +7,13 @@ import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
   ChevronDown, LogOut, CheckCircle2, Sparkles,
   Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
-  Headphones, Loader2,
+  Headphones, Loader2, FileText,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { EquipmentMilestone } from '@/lib/supabase'
+import type { KbSource } from '@/lib/kb-rag'
 
 // ── Prop shapes (built server-side in app/customer/page.tsx) ──────────────────
 export type UnitView = {
@@ -514,10 +515,10 @@ function Tracker({ unit }: { unit: UnitView }) {
 // ResourceCard removed — customer support entry points now live only in the hero
 // ("Submit a request" / "Check status") and the right-rail Knowledge Base card.
 
-// IAT Assistant — read-only chat grounded in this customer's equipment + the KB
-// (server route /api/customer/assistant). Phase 3.
-type ChatMsg = { role: 'user' | 'assistant'; content: string }
-const ASSIST_SUGGESTIONS = ['Where is my unit?', 'Is it under warranty?', 'Start-up steps']
+// IAT Assistant — read-only chat grounded in this customer's equipment + IAT's
+// documentation (RAG); answers cite the source doc + page (route /api/customer/assistant).
+type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: KbSource[] }
+const ASSIST_SUGGESTIONS = ['Where is my unit?', 'Is it under warranty?', 'How do I set the humidistat?']
 
 function AssistantPanel({ companyName }: { companyName: string }) {
   const [messages, setMessages] = useState<ChatMsg[]>([])
@@ -549,7 +550,7 @@ function AssistantPanel({ companyName }: { companyName: string }) {
         setError(json.error || 'The assistant is unavailable right now.')
         return
       }
-      setMessages((m) => [...m, { role: 'assistant', content: json.reply }])
+      setMessages((m) => [...m, { role: 'assistant', content: json.reply, sources: Array.isArray(json.sources) ? json.sources : undefined }])
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -569,11 +570,11 @@ function AssistantPanel({ companyName }: { companyName: string }) {
       <div ref={scrollRef} className="max-h-[300px] flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {empty ? (
           <p className="text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Ask about your unit, warranty, shipping status, or how-tos — grounded in {companyName}&apos;s equipment and IAT&apos;s knowledge base.
+            Ask about your unit, warranty, shipping status, or how-tos — grounded in {companyName}&apos;s equipment and IAT&apos;s documentation, with sources cited.
           </p>
         ) : (
           messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div
                 className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-[12.5px] leading-relaxed ${
                   m.role === 'user'
@@ -583,6 +584,19 @@ function AssistantPanel({ companyName }: { companyName: string }) {
               >
                 {m.content}
               </div>
+              {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1">
+                  {m.sources.map((s, j) => (
+                    <span
+                      key={j}
+                      className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10.5px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                      title={`${s.documentTitle}, page ${s.pageNumber}`}
+                    >
+                      <FileText size={10} className="shrink-0" /> {s.documentTitle} · p.{s.pageNumber}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))
         )}
