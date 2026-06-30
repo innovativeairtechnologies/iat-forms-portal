@@ -388,13 +388,14 @@ function TrackerHead({ stage, hasMs }: { stage: string | null; hasMs: boolean })
   )
 }
 
-// Build → ship progress drawn as a winding road: milestones are "stops" along a
-// road that snakes through the card (a serpentine of up to 3 per row, joined by
-// rounded U-turns), with a truck parked at the current stop. The road + nodes are
-// SVG (so they scale with the card width); the labels + truck are HTML positioned
-// by percentage over the SVG, so text stays crisp at any size.
+// Build → ship progress drawn as a gently winding road: each milestone is a "stop"
+// along a smooth meandering road (Catmull-Rom curve; stops dip and rise), with dashed
+// center-line markings and a truck at the current stop. Tapping a stop opens its panel.
+// The road + nodes are SVG (scale with the card width); labels, truck, and hit areas are
+// HTML positioned by percentage over the SVG so text stays crisp at any size.
 function Tracker({ unit }: { unit: UnitView }) {
   const ms = unit.milestones
+  const [openIdx, setOpenIdx] = useState<number | null>(null)
 
   if (ms.length === 0) {
     return (
@@ -417,18 +418,18 @@ function Tracker({ unit }: { unit: UnitView }) {
   const allDone = ms.every((m) => m.status === 'complete')
 
   // ── Winding-road geometry (viewBox units) ──
-  // Stops sit in a gentle serpentine, and within the journey alternate stops rise
-  // and dip so the road genuinely meanders. The whole thing is drawn as ONE smooth
-  // curve (Catmull-Rom → bézier) — no straight runs, no racetrack lane markings.
-  const COLS = Math.min(3, ms.length)
+  // Up to 5 stops per row (kept on a single row when possible for one flowing curve);
+  // along the route alternate stops dip and rise so the road gently meanders, drawn as
+  // one smooth Catmull-Rom curve with dashed center-line markings.
   const VBW = 600
-  const MX = 70
-  const TOP = 60
-  const ROW = 120
-  const BOT = 72
-  const AMP = 22 // vertical "wind" amplitude
-  const rows = Math.ceil(ms.length / COLS)
-  const VBH = TOP + (rows - 1) * ROW + BOT
+  const MX = 64
+  const TOP = 64
+  const ROW = 122
+  const BOT = 80
+  const AMP = 24 // vertical "wind" amplitude
+  const rowsCount = Math.ceil(ms.length / 5)
+  const COLS = Math.ceil(ms.length / rowsCount)
+  const VBH = TOP + (rowsCount - 1) * ROW + BOT
   const colX = (c: number) => (COLS === 1 ? VBW / 2 : MX + c * ((VBW - 2 * MX) / (COLS - 1)))
   const pos = ms.map((_, i) => {
     const r = Math.floor(i / COLS)
@@ -459,17 +460,20 @@ function Tracker({ unit }: { unit: UnitView }) {
   const roadDone = smoothPath(pos, currentIndex) // emerald portion ends at the current stop
 
   const pct = (v: number, total: number) => `${(v / total) * 100}%`
+  const openMs = openIdx !== null ? ms[openIdx] : null
 
   return (
-    <section className={CARD}>
+    <section className={`${CARD} relative`}>
       <TrackerHead stage={unit.progress.currentStage} hasMs />
       <div className="px-4 pb-5 pt-3">
         <div className="relative">
           <svg viewBox={`0 0 ${VBW} ${VBH}`} className="block h-auto w-full" role="img" aria-label="Build and shipping progress">
-            {/* road base */}
-            <path d={roadFull} fill="none" className="stroke-zinc-200 dark:stroke-zinc-700" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
+            {/* road base (asphalt) */}
+            <path d={roadFull} fill="none" className="stroke-zinc-300 dark:stroke-zinc-700" strokeWidth={12} strokeLinecap="round" strokeLinejoin="round" />
             {/* completed portion */}
-            <path d={roadDone} fill="none" className="stroke-emerald-500" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={roadDone} fill="none" className="stroke-emerald-500" strokeWidth={12} strokeLinecap="round" strokeLinejoin="round" />
+            {/* center-line lane markings */}
+            <path d={roadFull} fill="none" className="stroke-white" strokeOpacity={0.85} strokeWidth={1.8} strokeDasharray="5 11" strokeLinecap="round" />
             {/* checkpoints */}
             {ms.map((m, i) => {
               const p = pos[i]
@@ -495,22 +499,35 @@ function Tracker({ unit }: { unit: UnitView }) {
             })}
           </svg>
 
-          {/* crisp HTML labels, centered under each stop */}
+          {/* clickable hit area over each stop → opens its detail panel */}
+          {ms.map((m, i) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setOpenIdx(i)}
+              aria-label={`${m.stage} — view details`}
+              className="absolute h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              style={{ left: pct(pos[i].x, VBW), top: pct(pos[i].y, VBH) }}
+            />
+          ))}
+
+          {/* crisp HTML labels, centered under each stop (also clickable) */}
           {ms.map((m, i) => {
             const p = pos[i]
             const isDone = m.status === 'complete'
             const isCurrent = i === currentIndex && !isDone
             const sub = isCurrent ? 'In progress' : isDone ? `Done ${fmtDate(m.occurred_at)}` : 'Pending'
             return (
-              <div
+              <button
                 key={m.id}
+                type="button"
+                onClick={() => setOpenIdx(i)}
                 className="absolute -translate-x-1/2 px-1 text-center"
                 style={{ left: pct(p.x, VBW), top: pct(p.y + 23, VBH), width: `${100 / COLS}%` }}
               >
-                <p className={`truncate text-[11.5px] font-semibold leading-tight ${isDone || isCurrent ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>{m.stage}</p>
-                <p className="mt-0.5 truncate text-[10px] text-zinc-400">{sub}</p>
-                {isCurrent && m.note && <p className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{m.note}</p>}
-              </div>
+                <span className={`block truncate text-[11.5px] font-semibold leading-tight ${isDone || isCurrent ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>{m.stage}</span>
+                <span className="mt-0.5 block truncate text-[10px] text-zinc-400">{sub}</span>
+              </button>
             )
           })}
 
@@ -532,6 +549,40 @@ function Tracker({ unit }: { unit: UnitView }) {
           </div>
         )}
       </div>
+
+      {/* Milestone detail panel (opens on tapping a stop) */}
+      {openMs && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <button type="button" aria-label="Close" onClick={() => setOpenIdx(null)} className="absolute inset-0 bg-zinc-900/45" />
+          <div className="relative w-full max-w-[330px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="flex items-start justify-between gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+              <div>
+                <p className="text-[14px] font-bold text-zinc-900 dark:text-white">{openMs.stage}</p>
+                <p className="mt-0.5 text-[11.5px] text-zinc-400">
+                  {openMs.status === 'complete'
+                    ? `Completed ${fmtDate(openMs.occurred_at)}`
+                    : openMs.status === 'in_progress'
+                      ? 'In progress'
+                      : 'Pending'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpenIdx(null)}
+                aria-label="Close"
+                className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="px-4 py-3">
+              {openMs.note && <p className="mb-3 text-[12.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">{openMs.note}</p>}
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Documents</p>
+              <p className="mt-1 text-[12px] text-zinc-500 dark:text-zinc-400">Documents for this stage will appear here once they&apos;re available.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

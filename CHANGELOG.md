@@ -2,6 +2,15 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — Roadmap revised: gentler flowing road + clickable milestones
+
+The "windier" serpentine shipped earlier today read as too plain/boring, so the customer
+build/ship roadmap is reworked to the **gentler flowing curve** with the dashed **center-line
+("road") markings back**, a thicker road, and up to **5 stops on a single row** when they fit.
+Each stop is now **clickable**, opening a panel with the milestone's status / date / notes and a
+**"Documents — coming soon"** section. (The real per-milestone document store + admin upload is the
+separate follow-up build.) `Tracker` in `components/customer/CustomerDashboard.tsx`.
+
 ## 2026-06-30 — Jerry wears the founder's face + a windier build/ship roadmap
 
 - **Jerry's avatar (#4).** The orb now carries a portrait of the company founder Jerry is named
