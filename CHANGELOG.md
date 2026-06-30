@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — Admin: "Employee Forms" sidebar item + unfinished-draft badge
+
+Makes an admin's in-progress form drafts easy to find (the `/admin/employee-forms`
+fill library — which carries the "Continue where you left off" resume list — had no
+sidebar link, only ⌘K). Now there's a clear entry point with an at-a-glance count of
+unfinished work.
+
+### Added
+- **"Employee Forms" nav item** in the admin sidebar (Employees section, beside the
+  "Forms" *manager*) → `/admin/employee-forms`.
+- **Amber draft-count badge** on it — the number of the signed-in admin's in-progress
+  drafts (`lib/drafts.ts#getUserFormDraftCount`, wired through the admin layout like the
+  other sidebar counts). Matches the amber "Continue where you left off" theme. Lets a
+  reviewer doing a batch of reviews see at a glance they have unfinished ones to resume.
+
+Distinct from **Forms** (`/admin/forms`, the builder/manager) and **Submissions**
+(`/admin/submissions`, the review queue of completed forms). No migration.
+
 ## 2026-06-30 — Save & resume forms across devices (account drafts)
 
 Stop a form mid-fill and pick it up later on any device. Built for performance

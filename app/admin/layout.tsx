@@ -5,6 +5,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar'
 import RefreshOnNavigate from '@/components/admin/RefreshOnNavigate'
 import CommandPalette from '@/components/admin/CommandPalette'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getUserFormDraftCount } from '@/lib/drafts'
 
 export const metadata: Metadata = {
   title: 'IAT Operations',
@@ -24,6 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { count: sickPending },
     { count: usRotorsOrders },
     { count: newIntakes },
+    draftCount,
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
     supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
@@ -31,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'sick').eq('status', 'pending'),
     supabaseAdmin.from('us_rotors_orders').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     supabaseAdmin.from('troubleshooting_intakes').select('*', { count: 'exact', head: true }).eq('status', 'new'),
+    getUserFormDraftCount(),
   ])
 
   return (
@@ -44,6 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ptoPending={ptoPending ?? 0}
         sickPending={sickPending ?? 0}
         usRotorsOrders={usRotorsOrders ?? 0}
+        draftCount={draftCount}
         adminName={admin.displayName}
       />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">

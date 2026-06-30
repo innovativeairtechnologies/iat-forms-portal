@@ -25,6 +25,11 @@ saved. Click **Resume** to reopen exactly where they left off, or **Discard**.
 **Multiple drafts per form** are allowed on purpose (a manager mid-way through several
 reviews at once).
 
+In **admin**, the Employee Forms tab is reached from the sidebar ("Employees" →
+**Employee Forms**, beside the "Forms" manager). That nav item carries an **amber
+count badge** of the admin's unfinished drafts (`getUserFormDraftCount`, wired through
+the admin layout) so a reviewer sees at a glance they have reviews to finish.
+
 ## Data + API
 - **`form_drafts`** (migration `033_form_drafts.sql`) — `id` (client-generated uuid),
   `user_id`, `form_id`, `label`, `data` (jsonb), `current_step`, `updated_at`.

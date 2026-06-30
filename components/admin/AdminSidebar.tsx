@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
   Calendar, Clock, Boxes, Building2,
-  ChevronRight, ShieldCheck, Package, Network, FileText,
+  ChevronRight, ShieldCheck, Package, Network, FileText, FilePen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -15,7 +15,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'usrotors'
+type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'usrotors' | 'drafts'
 
 type NavItem = {
   href: string
@@ -33,6 +33,7 @@ type Counts = {
   pto: number
   sick: number
   usrotors: number
+  drafts: number
 }
 
 type NavSection = {
@@ -65,6 +66,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/admin/org-chart',      label: 'Org Chart',      icon: Network },
       { href: '/admin/forms',          label: 'Forms',          icon: FileText },
+      { href: '/admin/employee-forms', label: 'Employee Forms', icon: FilePen, badge: 'drafts' },
       { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto' },
       { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick' },
       { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock },
@@ -97,6 +99,7 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   pto:         'bg-amber-500 text-white',
   sick:        'bg-amber-500 text-white',
   usrotors:    'bg-[#0274db] text-white',
+  drafts:      'bg-amber-500 text-white',
 }
 
 function NavLink({ item, pathname, counts, onClose }: {
@@ -146,13 +149,14 @@ interface Props {
   ptoPending: number
   sickPending: number
   usRotorsOrders: number
+  draftCount: number
   adminName: string
 }
 
-export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, adminName }: Props) {
+export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
-  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders }
+  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders, drafts: draftCount }
   const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
   const displayName = adminName || 'Admin'

@@ -15,6 +15,24 @@ export type UserFormDraft = {
   updated_at: string
 }
 
+// Count of the current user's in-progress drafts — for the admin sidebar badge.
+// Returns 0 when signed out or on any error (e.g. before migration 033), so it
+// never breaks the layout that renders it.
+export async function getUserFormDraftCount(): Promise<number> {
+  try {
+    const supabase = await createSupabaseServer()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return 0
+    const { count } = await supabaseAdmin
+      .from('form_drafts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+    return count ?? 0
+  } catch {
+    return 0
+  }
+}
+
 // The logged-in user's in-progress form drafts (newest first), for the "Resume"
 // list. Returns [] when signed out or on any error — drafts are a nicety and must
 // never block the page from rendering.
