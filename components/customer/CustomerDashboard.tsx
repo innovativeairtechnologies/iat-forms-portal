@@ -597,22 +597,36 @@ function Tracker({ unit }: { unit: UnitView }) {
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: KbSource[] }
 const JERRY_SUGGESTIONS = ['Where is my unit?', 'How do I set the humidistat?', 'Is it under warranty?']
 
-// Jerry's animated presence. Scales with `px`; speeds up while `thinking`;
-// `float` adds a gentle hover drift (used on the large idle hero orb).
-function Orb({ px, thinking = false, float = false, className = '' }: { px: number; thinking?: boolean; float?: boolean; className?: string }) {
+// Jerry's small "presence" — his bobblehead's head cropped into the glowing orb
+// (halo + spinning ring + orbiting sparks). Scales with `px`; speeds up while `thinking`.
+// Used in the header and beside each answer. The big idle hero uses <JerryFigure/> instead.
+function Orb({ px, thinking = false, className = '' }: { px: number; thinking?: boolean; className?: string }) {
   return (
     <span
-      className={`jerry-orb ${thinking ? 'is-thinking' : ''} ${float ? 'jerry-float' : ''} ${className}`}
+      className={`jerry-orb ${thinking ? 'is-thinking' : ''} ${className}`}
       style={{ width: px, height: px }}
       aria-hidden="true"
     >
       <span className="jerry-halo" />
       <span className="jerry-ring" />
-      {/* Jerry's face — the company founder he's named for. eslint-disable-next-line @next/next/no-img-element */}
-      <img className="jerry-face" src="/jerry.avif" alt="" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <span className="jerry-headwrap"><img src="/jerry-bobble.webp" alt="" /></span>
       <span className="jerry-orbit"><i /></span>
       <span className="jerry-orbit jerry-orbit2"><i /></span>
     </span>
+  )
+}
+
+// Jerry's full bobblehead — the founder he's named for — standing with a soft emerald
+// aura + ground shadow, gently bobbing and floating. The idle hero "presence."
+function JerryFigure() {
+  return (
+    <div className="jerry-figure" aria-hidden="true">
+      <span className="jerry-figure-glow" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="jerry-figure-img" src="/jerry-bobble.webp" alt="" />
+      <span className="jerry-figure-shadow" />
+    </div>
   )
 }
 
@@ -685,8 +699,8 @@ function JerryAssistant({ companyName }: { companyName: string }) {
       <div ref={scrollRef} className="relative max-h-[460px] min-h-[340px] flex-1 overflow-y-auto px-5 py-4">
         {idle ? (
           <div className="flex h-full flex-col items-center justify-center py-3 text-center">
-            <Orb px={92} float />
-            <p className="mt-5 text-[16px] font-bold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
+            <JerryFigure />
+            <p className="mt-4 text-[16px] font-bold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
             <p className="mt-1.5 max-w-[262px] text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
               Ask about {companyName}&apos;s equipment or IAT&apos;s documentation — I answer from the manuals and show you the page.
             </p>

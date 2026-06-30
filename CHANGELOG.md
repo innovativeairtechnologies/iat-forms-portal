@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — Jerry is now the founder's bobblehead
+
+Swapped the formal headshot avatar for the fun full-body **bobblehead** caricature:
+- **Idle hero** ("Hi, I'm Jerry") = the standing bobblehead with a soft emerald aura + ground
+  shadow, gently bobbing/floating (new `JerryFigure`).
+- **Header + inline** = his head cropped into the small glowing orb (`Orb`).
+- Source 1024px PNG optimized to a **32 KB `public/jerry-bobble.webp`** (via `sharp`); removed the
+  old `jerry.avif`. Also fixed a sizing bug where the avatar `<img>` used `inset` without explicit
+  width/height (replaced elements fall back to intrinsic size → the orb avatar was oversized) — now
+  a sized, `overflow:hidden` wrapper. `components/customer/CustomerDashboard.tsx`, `app/globals.css`.
+
 ## 2026-06-30 — Roadmap revised: gentler flowing road + clickable milestones
 
 The "windier" serpentine shipped earlier today read as too plain/boring, so the customer
