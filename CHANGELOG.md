@@ -2,6 +2,30 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — Save & resume forms across devices (account drafts)
+
+Stop a form mid-fill and pick it up later on any device. Built for performance
+reviews — a manager can have several in progress at once and resume any of them.
+**Requires migration `033_form_drafts.sql`**; degrades gracefully until it's run
+(no crash — drafts are simply inert).
+
+### Added
+- **`form_drafts` table (migration 033)** — per-user drafts, multiple per form,
+  service-role only.
+- **`/api/drafts`** (GET list / PUT upsert / DELETE) — the user is resolved from the
+  session, so a user only ever touches their own drafts.
+- **Cross-device autosave** — logged-in portal fills autosave to the user's account
+  (debounced); the form header shows a "Saved" cue.
+- **"Continue where you left off"** on the Employee Forms tab — lists in-progress
+  forms (with who/when) to **Resume** or **Discard**; the draft is cleared on submit.
+- Anon public-link fills (`/forms/[slug]` while signed out) keep a same-device
+  localStorage autosave as a fallback.
+
+### Changed
+- **`StepFormModal`** is now dual-mode — account drafts (cross-device) for the
+  logged-in portal, localStorage otherwise — with a resume banner + "Start over".
+  See `docs/form-drafts.md`.
+
 ## 2026-06-30 — Jerry is now the founder's bobblehead
 
 Swapped the formal headshot avatar for the fun full-body **bobblehead** caricature:

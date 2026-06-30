@@ -1,12 +1,27 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { FolderOpen, ChevronRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { FolderOpen, ChevronRight, RotateCcw, Trash2 } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
 import StepFormModal from '@/components/StepFormModal'
 
 type FormWithCat = Form & { categories: Category | null }
+
+export type FormDraftItem = {
+  id: string; form_id: string; slug: string; title: string
+  label: string | null; data: Record<string, unknown>; current_step: number; updated_at: string
+}
+
+function ago(iso: string): string {
+  const s = Math.floor((Date.now() - Date.parse(iso)) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`
+  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`
+  const d = Math.floor(s / 86400)
+  return `${d} day${d === 1 ? '' : 's'} ago`
+}
 
 /**
  * "Employee Forms" view — the JotForms library brought into the portal.
@@ -15,13 +30,24 @@ type FormWithCat = Form & { categories: Category | null }
  * rows. Rows open the form in a fill modal; no admin/management controls
  * (those live on the /admin/forms builder).
  */
-export default function EmployeeFormsView({ categories, forms, eyebrow = 'Resources' }: {
+export default function EmployeeFormsView({ categories, forms, drafts = [], eyebrow = 'Resources' }: {
   categories: Category[]
   forms: FormWithCat[]
+  drafts?: FormDraftItem[]
   eyebrow?: string
 }) {
+  const router = useRouter()
   const [activeCategory, setActive] = useState('all')
   const [openSlug, setOpenSlug] = useState<string | null>(null)
+  const [resume, setResume] = useState<FormDraftItem | null>(null)
+
+  const openFresh = (slug: string) => { setResume(null); setOpenSlug(slug) }
+  const openResume = (d: FormDraftItem) => { setResume(d); setOpenSlug(d.slug) }
+  const closeModal = () => { setOpenSlug(null); setResume(null); router.refresh() }
+  const discardDraft = async (id: string) => {
+    await fetch(`/api/drafts?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {})
+    router.refresh()
+  }
 
   const countByCategory: Record<string, number> = {}
   forms.forEach(f => { const n = f.categories?.name || 'Uncategorized'; countByCategory[n] = (countByCategory[n] || 0) + 1 })
@@ -62,6 +88,41 @@ export default function EmployeeFormsView({ categories, forms, eyebrow = 'Resour
       </div>
 
       <div className="p-8 space-y-6">
+        {drafts.length > 0 && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-amber-200/70 dark:border-amber-900/40 shadow-card overflow-hidden">
+            <div className="flex items-center gap-2.5 px-6 py-3.5 border-b border-amber-100/70 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-950/20">
+              <RotateCcw size={14} className="text-amber-500" />
+              <span className="text-[13px] font-bold text-amber-800 dark:text-amber-300">Continue where you left off</span>
+              <span className="text-[11px] font-semibold text-amber-600 bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 rounded-full">{drafts.length}</span>
+            </div>
+            <ul className="divide-y divide-gray-50 dark:divide-zinc-800/60">
+              {drafts.map(d => (
+                <li key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-3 px-6 py-3.5 hover:bg-amber-50/40 dark:hover:bg-amber-950/10 transition-colors">
+                  <button onClick={() => openResume(d)} className="min-w-0 text-left">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[14px] font-semibold text-gray-900 dark:text-white truncate group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">{d.title}</span>
+                      {d.label && (
+                        <span className="flex-shrink-0 text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/40">
+                          {d.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12px] text-gray-400 mt-0.5">Saved {ago(d.updated_at)}</p>
+                  </button>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <button onClick={() => openResume(d)} className="flex items-center gap-1 text-[12px] font-semibold text-amber-700 dark:text-amber-300 hover:underline">
+                      Resume <ChevronRight size={14} />
+                    </button>
+                    <button onClick={() => discardDraft(d.id)} title="Discard draft" className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {filtered.length === 0 ? (
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card py-20 text-center">
             <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">
@@ -77,18 +138,26 @@ export default function EmployeeFormsView({ categories, forms, eyebrow = 'Resour
                 <span className="text-[13px] font-bold text-gray-700 dark:text-gray-200">{name}</span>
                 <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{cf.length}</span>
               </div>
-              <FormRows forms={cf} onOpen={setOpenSlug} />
+              <FormRows forms={cf} onOpen={openFresh} />
             </div>
           ))
         ) : (
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
-            <FormRows forms={filtered} onOpen={setOpenSlug} showCategory />
+            <FormRows forms={filtered} onOpen={openFresh} showCategory />
           </div>
         )}
       </div>
 
       <AnimatePresence>
-        {openSlug && <StepFormModal slug={openSlug} onClose={() => setOpenSlug(null)} />}
+        {openSlug && (
+          <StepFormModal
+            key={resume ? `resume-${resume.id}` : `new-${openSlug}`}
+            slug={openSlug}
+            serverDrafts
+            resumeDraft={resume ? { id: resume.id, data: resume.data, currentStep: resume.current_step, updatedAt: resume.updated_at } : undefined}
+            onClose={closeModal}
+          />
+        )}
       </AnimatePresence>
     </div>
   )

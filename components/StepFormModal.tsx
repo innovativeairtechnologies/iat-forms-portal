@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   X, ChevronLeft, ChevronRight, CheckCircle,
-  AlertCircle, Loader2, ArrowLeft, Zap,
+  AlertCircle, Loader2, ArrowLeft, Zap, RotateCcw, Check,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
@@ -58,12 +58,80 @@ function groupFieldsIntoSteps(fields: FormField[]): Step[] {
   return steps
 }
 
-interface Props {
-  slug: string
-  onClose?: () => void   // omit for standalone page mode
+// ── Draft autosave (stop mid-form, resume later) ─────────────────────────────
+// Two modes. Logged-in portal fills (serverDrafts) save to the user's ACCOUNT via
+// /api/drafts, so a draft started on one device can be resumed on another. Anon
+// public-link fills fall back to this browser's localStorage. Either way an
+// accidental close / refresh / crash never loses progress; cleared on submit.
+
+const DRAFT_PREFIX = 'iat-form-draft:'
+const localKey = (slug: string) => `${DRAFT_PREFIX}${slug}`
+
+type LocalDraft = { answers: Record<string, unknown>; currentStep: number; savedAt: number }
+
+// Keep only serializable answers — File/Blob values exist transiently before upload
+// and can't be stored in a draft.
+function serializableAnswers(answers: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(answers)) {
+    if (v instanceof File || v instanceof Blob) continue
+    if (Array.isArray(v) && v.some((x) => x instanceof File || x instanceof Blob)) continue
+    out[k] = v
+  }
+  return out
 }
 
-export default function StepFormModal({ slug, onClose }: Props) {
+function readLocalDraft(slug: string): LocalDraft | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(localKey(slug))
+    if (!raw) return null
+    const d = JSON.parse(raw) as LocalDraft
+    if (d?.answers && typeof d.answers === 'object' && Object.keys(d.answers).length > 0) return d
+  } catch { /* corrupt / unavailable */ }
+  return null
+}
+
+function writeLocalDraft(slug: string, draft: LocalDraft) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(localKey(slug), JSON.stringify({ ...draft, answers: serializableAnswers(draft.answers) }))
+  } catch { /* quota / unavailable */ }
+}
+
+function clearLocalDraft(slug: string) {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.removeItem(localKey(slug)) } catch { /* ignore */ }
+}
+
+// A short label for the Resume list — who the form is about, if present.
+function deriveDraftLabel(answers: Record<string, unknown>): string | null {
+  for (const k of ['Employee Name', 'Full Name', 'Name']) {
+    const v = answers[k]
+    if (typeof v === 'string' && v.trim()) return v.trim()
+  }
+  return null
+}
+
+function timeAgo(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`
+  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`
+  const d = Math.floor(s / 86400)
+  return `${d} day${d === 1 ? '' : 's'} ago`
+}
+
+type ResumeDraft = { id: string; data: Record<string, unknown>; currentStep: number; updatedAt?: string }
+
+interface Props {
+  slug: string
+  onClose?: () => void          // omit for standalone page mode
+  serverDrafts?: boolean        // save/resume drafts on the logged-in user's account (cross-device)
+  resumeDraft?: ResumeDraft     // open a specific saved draft from the "Resume" list
+}
+
+export default function StepFormModal({ slug, onClose, serverDrafts = false, resumeDraft }: Props) {
   const standalone = !onClose
   const router = useRouter()
 
@@ -78,6 +146,12 @@ export default function StepFormModal({ slug, onClose }: Props) {
   const [submitting, setSubmitting]     = useState(false)
   const [submitted, setSubmitted]       = useState(false)
   const [submitError, setSubmitError]   = useState<string | null>(null)
+  // Autosave/resume: `draftIdRef` is the server draft's id (set when resuming, or
+  // minted on first save); `draftRestoredAt` drives the resume banner; `lastSavedAt`
+  // drives the "Saved" cue.
+  const draftIdRef = useRef<string | null>(null)
+  const [draftRestoredAt, setDraftRestoredAt] = useState<number | null>(null)
+  const [lastSavedAt, setLastSavedAt]         = useState<number | null>(null)
 
   // Steps are derived from the *visible* fields, so department-conditional fields
   // appear/disappear as answers change and empty sections collapse to no step.
@@ -90,6 +164,8 @@ export default function StepFormModal({ slug, onClose }: Props) {
   useEffect(() => {
     let cancelled = false
     setLoading(true); setCurrentStep(0); setAnswers({}); setErrors({}); setSubmitted(false)
+    setDraftRestoredAt(null); setLastSavedAt(null)
+    draftIdRef.current = resumeDraft?.id ?? null
 
     async function load() {
       const { data: formData } = await supabase
@@ -102,17 +178,65 @@ export default function StepFormModal({ slug, onClose }: Props) {
       if (!cancelled) {
         setForm(formData)
         setFields(fieldsData || [])
+        // Restore progress: a specific account draft (from the Resume list), else
+        // this browser's local draft for anon public-link fills.
+        if (resumeDraft) {
+          setAnswers(resumeDraft.data || {})
+          setCurrentStep(resumeDraft.currentStep || 0)   // clamped by the steps effect below
+          setDraftRestoredAt(resumeDraft.updatedAt ? Date.parse(resumeDraft.updatedAt) : Date.now())
+        } else if (!serverDrafts) {
+          const local = readLocalDraft(slug)
+          if (local) {
+            setAnswers(local.answers)
+            setCurrentStep(local.currentStep || 0)
+            setDraftRestoredAt(local.savedAt || Date.now())
+          }
+        }
         setLoading(false)
       }
     }
     load()
     return () => { cancelled = true }
-  }, [slug])
+  }, [slug, serverDrafts, resumeDraft])
 
   // If conditional fields collapse steps (e.g. a department change), keep the index valid.
   useEffect(() => {
     if (currentStep > steps.length - 1) setCurrentStep(Math.max(0, steps.length - 1))
   }, [steps.length, currentStep])
+
+  // ── Autosave the in-progress form so it can be resumed ──────────────────────
+  // serverDrafts → the user's account (cross-device) via /api/drafts; otherwise →
+  // this browser's localStorage. Debounced; skips the empty initial state so it
+  // never overwrites a real draft with nothing.
+  useEffect(() => {
+    if (loading || submitted) return
+    if (Object.keys(answers).length === 0) return
+    const t = setTimeout(() => {
+      if (serverDrafts) {
+        if (!form) return
+        if (!draftIdRef.current) {
+          draftIdRef.current = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.round(Math.random() * 1e9)}`
+        }
+        fetch('/api/drafts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: draftIdRef.current,
+            form_id: form.id,
+            data: serializableAnswers(answers),
+            current_step: currentStep,
+            label: deriveDraftLabel(answers),
+          }),
+        }).then((r) => { if (r.ok) setLastSavedAt(Date.now()) }).catch(() => { /* offline — keep trying on next change */ })
+      } else {
+        writeLocalDraft(slug, { answers, currentStep, savedAt: Date.now() })
+        setLastSavedAt(Date.now())
+      }
+    }, 600)
+    return () => clearTimeout(t)
+  }, [answers, currentStep, loading, submitted, serverDrafts, slug, form])
 
   // ── Body scroll lock (overlay mode only) ───────────────────────────────────
   useEffect(() => {
@@ -149,6 +273,18 @@ export default function StepFormModal({ slug, onClose }: Props) {
     setAnswers(p => ({ ...p, [label]: value }))
     setErrors(p => { const n = { ...p }; delete n[label]; return n })
   }, [])
+
+  // Discard the saved draft and start the form over.
+  const discardDraft = useCallback(() => {
+    if (serverDrafts) {
+      if (draftIdRef.current) fetch(`/api/drafts?id=${encodeURIComponent(draftIdRef.current)}`, { method: 'DELETE' }).catch(() => {})
+      draftIdRef.current = null
+    } else {
+      clearLocalDraft(slug)
+    }
+    setAnswers({}); setCurrentStep(0); setErrors({})
+    setDraftRestoredAt(null); setLastSavedAt(null); setSubmitError(null)
+  }, [serverDrafts, slug])
 
   // ── Auto-fill (test helper) ─────────────────────────────────────────────────
   const autofill = useCallback(() => {
@@ -223,6 +359,12 @@ export default function StepFormModal({ slug, onClose }: Props) {
         body: JSON.stringify({ form_id: form.id, data: stripHiddenAnswers(fields, answers) }),
       })
       if (!res.ok) throw new Error()
+      // submitted → drop the saved draft so it doesn't linger in "Resume"
+      if (serverDrafts) {
+        if (draftIdRef.current) fetch(`/api/drafts?id=${encodeURIComponent(draftIdRef.current)}`, { method: 'DELETE' }).catch(() => {})
+      } else {
+        clearLocalDraft(slug)
+      }
       setSubmitted(true)
     } catch {
       setSubmitError('Something went wrong. Please try again.')
@@ -364,6 +506,14 @@ export default function StepFormModal({ slug, onClose }: Props) {
               </h2>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+              {lastSavedAt && (
+                <span
+                  className="hidden sm:flex items-center gap-1 text-[10px] font-medium text-emerald-500/80 dark:text-emerald-400/70"
+                  title={serverDrafts ? 'Saved to your account — resume on any device' : 'Saved automatically on this device'}
+                >
+                  <Check size={11} /> Saved
+                </span>
+              )}
               <button
                 onClick={autofill}
                 title="Auto-fill required fields with test data"
@@ -385,6 +535,24 @@ export default function StepFormModal({ slug, onClose }: Props) {
               </button>
             </div>
           </div>
+
+          {/* Resume banner — a saved draft was restored on open */}
+          {draftRestoredAt !== null && (
+            <div className="mx-6 mt-3 flex items-center justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 px-3.5 py-2.5">
+              <div className="flex items-center gap-2 min-w-0 text-[12px] text-amber-700 dark:text-amber-300">
+                <RotateCcw size={13} className="flex-shrink-0" />
+                <span className="truncate">
+                  Resumed your saved progress from {timeAgo(draftRestoredAt)}{serverDrafts ? '' : ' (this device)'}.
+                </span>
+              </div>
+              <button
+                onClick={discardDraft}
+                className="flex-shrink-0 text-[12px] font-semibold text-amber-700 dark:text-amber-300 hover:underline"
+              >
+                Start over
+              </button>
+            </div>
+          )}
 
           {/* Fields */}
           <div className="px-6 py-5 min-h-[200px] overflow-hidden">

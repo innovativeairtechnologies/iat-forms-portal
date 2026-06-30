@@ -1,5 +1,6 @@
 import type { Category, Form } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getUserFormDrafts } from '@/lib/drafts'
 import EmployeeFormsView from '@/components/EmployeeFormsView'
 
 export const dynamic = 'force-dynamic'
@@ -16,6 +17,6 @@ async function getData() {
 }
 
 export default async function AdminEmployeeFormsPage() {
-  const { categories, forms } = await getData()
-  return <EmployeeFormsView categories={categories} forms={forms} eyebrow="Employees" />
+  const [{ categories, forms }, drafts] = await Promise.all([getData(), getUserFormDrafts()])
+  return <EmployeeFormsView categories={categories} forms={forms} drafts={drafts} eyebrow="Employees" />
 }
