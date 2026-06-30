@@ -88,13 +88,15 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   (`readOcrSidecar`). Of the 16: **9 ingested** — Maxitrol Selectra 94 gas valve, Belimo
   LF24-MFT-S, Belimo TF120, Fasco D215 motor, Fasco approval drawing, Control Products
   HS-70-O/HS-70-D sensor, Phasetronics EZ1 SCR, DRI desiccant-rotor spec, NEMA Premium
-  motor guide; **4 excluded** via `SKIP_DOCS` (2 GE HumiTrac scans already covered by
+  motor guide; **5 excluded** via `SKIP_DOCS` (2 GE HumiTrac scans already covered by
   `GEH2-D-TT2`/`GEH-S-TT3`/`DP4A`; `MMSQPL` + `Terms Certifigroup-MET Labs` are IAT
   internal business forms — an insurance questionnaire and a pricing quote, **not** product
-  docs); **1 pending** (`ZWN030X6D Cond Unit Manual`, a 9 MB scan — OCR re-running, folds
-  in data-only); **2 not OCR'd** (`E5CN…(Omron)` is a scanned dup of the text `E5CN
-  Manual`; `Paint` is internal). Competitor scrubbing applies to OCR'd text too (it runs
-  in `buildChunks`).
+  docs; and `ZWN030X6D Cond Unit Manual` — OCR'd via page-splitting since the 9 MB scan
+  timed out as a single call, then found to be the **same Heatcraft H-IM-CU manual**
+  already in the pool as `H-IM-CU-0808.pdf`, so removed + excluded — caught by verifying
+  retrieval); **2 not OCR'd** (`E5CN…(Omron)` is a scanned dup of the text `E5CN Manual`;
+  `Paint` is internal). Competitor scrubbing applies to OCR'd text too (it runs in
+  `buildChunks`).
 - **Duplicate source files were pruned** (6 of them) via the `SKIP_DOCS` set in the
   ingest script, so `--all` no longer re-adds them and a topic returns one chip, not
   several: the **Watlow DIN-A-MITE Style C** manual (kept `DC  SCR Manual.pdf`, dropped

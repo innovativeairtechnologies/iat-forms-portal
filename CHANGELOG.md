@@ -21,19 +21,21 @@ Claude PDF-vision and the existing `ANTHROPIC_API_KEY`.
   drawing, Control Products HS-70-O/HS-70-D sensor, Phasetronics EZ1 SCR, DRI rotor
   spec, NEMA Premium motor guide. Pool **58 → 67 docs (61 customer-facing), ~3,228
   chunks**. Verified each retrieves + cites correctly through Jerry's real path.
-- **4 excluded** via `SKIP_DOCS` — 2 GE HumiTrac scans (already covered by
-  `GEH2-D-TT2`/`GEH-S-TT3`/`DP4A`), and `MMSQPL` + `Terms Certifigroup-MET Labs` (IAT
+- **5 excluded** via `SKIP_DOCS` — 2 GE HumiTrac scans (already covered by
+  `GEH2-D-TT2`/`GEH-S-TT3`/`DP4A`); `MMSQPL` + `Terms Certifigroup-MET Labs` (IAT
   internal business forms — an insurance questionnaire and a pricing quote, not product
-  docs).
+  docs); and `ZWN030X6D Cond Unit Manual` (OCR revealed it's the **same Heatcraft
+  H-IM-CU condensing-unit manual** already in the pool as `H-IM-CU-0808.pdf` — caught by
+  verifying retrieval, the "ZWN…" filename is just an order number).
 - **`scripts/ocr-cache/` is gitignored** — this repo is **public**, so full third-party
   manual text + the internal-form transcriptions stay out of git; the text lives only in
   the RLS-locked KB DB after ingest (same posture as the rest of the pool). Also
   gitignored `scripts/_*.mjs` (throwaway dev harnesses).
 
 The OCR'd text is competitor-scrubbed at ingest like everything else. Data is already
-live in the DB (ingest is data-only). **Pending:** `ZWN030X6D Cond Unit Manual` (a 9 MB
-scan) — OCR re-running; folds in data-only when ready. `tsc` + `next build` green; no
-migration.
+live in the DB (ingest is data-only). The big 9 MB `ZWN030X6D` scan needed splitting into
+page-batches to OCR (single-call timed out); once transcribed it proved to be a dup (see
+above), so it was removed and excluded. `tsc` + `next build` green; no migration.
 
 ## 2026-06-30 — Jerry never names a competitor (Munters scrub, 3 layers)
 

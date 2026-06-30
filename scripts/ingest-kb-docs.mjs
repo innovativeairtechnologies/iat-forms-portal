@@ -93,6 +93,7 @@ const SKIP_DOCS = new Set([
   'iPak Humidity - Temp Transmitter GEH2-D-TT2.pdf',   // dup of "GEH2-D-TT2.pdf" (GE HumiTrac install guide)
   'MMSQPL.pdf',                                         // IAT insurance products-liability questionnaire — internal business form, not product doc
   'Terms Certifigroup-MET Labs.pdf',                   // IAT MET Labs field-labeling quote (pricing terms) — internal business, not product doc
+  'ZWN030X6D Cond Unit Manual.pdf',                    // dup of "H-IM-CU-0808.pdf" (same Heatcraft H-IM-CU condensing-unit manual; the filename is just an order/model number)
 ])
 
 // Nicer human titles for citations (fallback derives one from the filename).
@@ -122,7 +123,6 @@ const TITLE_MAP = {
   'HS-70-D.pdf': 'Control Products HS-70-O / HS-70-D Humidity Sensor',
   'SCR (EZ1) Phasetronics.pdf': 'Phasetronics EZ1 Series SCR Power Controller Manual',
   'Technical-Specification-EDC.pdf': 'DRI Desiccant Rotor Technical Specification',
-  'ZWN030X6D Cond Unit Manual.pdf': 'ZWN030X6D Condensing Unit Manual',
   'motors.pdf': 'NEMA Premium 3-Phase Motor Information Guide',
 
   // ── IAT / dehumidifier ─────────────────────────────────────────────────────
@@ -270,7 +270,6 @@ const CATEGORY_MAP = {
   'HS-70-D.pdf': 'Sensors / Transmitters',
   'SCR (EZ1) Phasetronics.pdf': 'Power Controls',
   'Technical-Specification-EDC.pdf': 'Reference',
-  'ZWN030X6D Cond Unit Manual.pdf': 'Dampers / HVAC',
   'motors.pdf': 'Motors',
 }
 
