@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — Jerry wears the founder's face + a windier build/ship roadmap
+
+- **Jerry's avatar (#4).** The orb now carries a portrait of the company founder Jerry is named
+  for — his photo as the orb's core, with the halo, spinning ring, and orbiting sparks kept and a
+  gentle float on the idle hero (the "calm" treatment). `public/jerry.avif`; `Orb` in
+  `components/customer/CustomerDashboard.tsx`; `.jerry-face` in `app/globals.css`.
+- **Windier roadmap (#5).** The customer build/ship tracker is redrawn as one smooth, meandering
+  curve (Catmull-Rom; stops alternately rise and dip) with the racetrack lane-markings removed —
+  calmer and curvier. **Visual only** for now; the click-a-milestone-for-documents idea is a
+  separate later build (needs per-milestone document storage). `Tracker` in `CustomerDashboard.tsx`.
+
 ## 2026-06-30 — Contact Us by department + Jerry reads from the top of long answers
 
 Customer-portal feedback round (bossman review).

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
-  ChevronDown, LogOut, CheckCircle2, Sparkles,
+  ChevronDown, LogOut, CheckCircle2,
   Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
   Headphones, Loader2, FileText, ArrowUp,
 } from 'lucide-react'
@@ -416,13 +416,17 @@ function Tracker({ unit }: { unit: UnitView }) {
   })()
   const allDone = ms.every((m) => m.status === 'complete')
 
-  // ── Serpentine geometry (viewBox units) ──
+  // ── Winding-road geometry (viewBox units) ──
+  // Stops sit in a gentle serpentine, and within the journey alternate stops rise
+  // and dip so the road genuinely meanders. The whole thing is drawn as ONE smooth
+  // curve (Catmull-Rom → bézier) — no straight runs, no racetrack lane markings.
   const COLS = Math.min(3, ms.length)
   const VBW = 600
-  const MX = 74 // x-margin; leaves room for the U-turn arcs to bulge outward
-  const TOP = 46
-  const ROW = 116 // row height = U-turn diameter
-  const BOT = 64
+  const MX = 70
+  const TOP = 60
+  const ROW = 120
+  const BOT = 72
+  const AMP = 22 // vertical "wind" amplitude
   const rows = Math.ceil(ms.length / COLS)
   const VBH = TOP + (rows - 1) * ROW + BOT
   const colX = (c: number) => (COLS === 1 ? VBW / 2 : MX + c * ((VBW - 2 * MX) / (COLS - 1)))
@@ -430,24 +434,29 @@ function Tracker({ unit }: { unit: UnitView }) {
     const r = Math.floor(i / COLS)
     const k = i % COLS
     const c = r % 2 === 0 ? k : COLS - 1 - k // odd rows run right→left
-    return { x: colX(c), y: TOP + r * ROW }
+    const wind = i % 2 === 0 ? -AMP : AMP // alternate rise/dip along the route
+    return { x: colX(c), y: TOP + r * ROW + wind }
   })
-  const R = ROW / 2
 
-  // One continuous path; `roadDone` is the same path truncated at the current stop.
-  let roadFull = `M ${pos[0].x} ${pos[0].y}`
-  let roadDone = `M ${pos[0].x} ${pos[0].y}`
-  for (let i = 1; i < pos.length; i++) {
-    const a = pos[i - 1]
-    const b = pos[i]
-    // Same row → straight; row change → rounded U-turn bulging out the near edge.
-    const seg =
-      a.y === b.y
-        ? ` L ${b.x} ${b.y}`
-        : ` A ${R} ${R} 0 0 ${a.x > VBW / 2 ? 1 : 0} ${b.x} ${b.y}`
-    roadFull += seg
-    if (i <= currentIndex) roadDone += seg
+  // Smooth curve through the stops (Catmull-Rom). `upto` truncates at the current stop.
+  const smoothPath = (pts: { x: number; y: number }[], upto = pts.length - 1) => {
+    if (!pts.length) return ''
+    let d = `M ${pts[0].x} ${pts[0].y}`
+    for (let i = 0; i < upto; i++) {
+      const p0 = pts[i - 1] ?? pts[i]
+      const p1 = pts[i]
+      const p2 = pts[i + 1]
+      const p3 = pts[i + 2] ?? p2
+      const c1x = p1.x + (p2.x - p0.x) / 6
+      const c1y = p1.y + (p2.y - p0.y) / 6
+      const c2x = p2.x - (p3.x - p1.x) / 6
+      const c2y = p2.y - (p3.y - p1.y) / 6
+      d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x} ${p2.y}`
+    }
+    return d
   }
+  const roadFull = smoothPath(pos)
+  const roadDone = smoothPath(pos, currentIndex) // emerald portion ends at the current stop
 
   const pct = (v: number, total: number) => `${(v / total) * 100}%`
 
@@ -461,8 +470,6 @@ function Tracker({ unit }: { unit: UnitView }) {
             <path d={roadFull} fill="none" className="stroke-zinc-200 dark:stroke-zinc-700" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
             {/* completed portion */}
             <path d={roadDone} fill="none" className="stroke-emerald-500" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
-            {/* lane markings */}
-            <path d={roadFull} fill="none" className="stroke-white" strokeOpacity={0.8} strokeWidth={1.6} strokeDasharray="5 9" />
             {/* checkpoints */}
             {ms.map((m, i) => {
               const p = pos[i]
@@ -550,10 +557,10 @@ function Orb({ px, thinking = false, float = false, className = '' }: { px: numb
     >
       <span className="jerry-halo" />
       <span className="jerry-ring" />
-      <span className="jerry-core" />
+      {/* Jerry's face — the company founder he's named for. eslint-disable-next-line @next/next/no-img-element */}
+      <img className="jerry-face" src="/jerry.avif" alt="" />
       <span className="jerry-orbit"><i /></span>
       <span className="jerry-orbit jerry-orbit2"><i /></span>
-      <span className="jerry-spark"><Sparkles size={Math.max(8, Math.round(px * 0.26))} strokeWidth={2.2} /></span>
     </span>
   )
 }

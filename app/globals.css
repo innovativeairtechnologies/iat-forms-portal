@@ -259,6 +259,8 @@ html.green .text-indigo-600 { color: #4ade80; }
 .jerry-halo { inset: -26%; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,0.55), rgba(13,148,136,0.14) 55%, transparent 72%); filter: blur(7px); animation: jerryHalo 4.4s ease-in-out infinite; }
 .jerry-ring { inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent, #10b981 22%, #22d3ee 42%, #6ee7b7 58%, transparent 70%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); animation: jerrySpin 6.5s linear infinite; }
 .jerry-core { inset: 15%; border-radius: 50%; background: radial-gradient(circle at 36% 30%, #cffaf0 2%, #6ee7d6 22%, #10b981 50%, #0f766e 80%, #0b3b34); animation: jerryBreathe 4.4s ease-in-out infinite; }
+/* Jerry's face — the founder's portrait set as the orb's core (calm-float treatment). */
+.jerry-face { position: absolute; inset: 13%; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.92); box-shadow: 0 1px 4px rgba(13,148,136,0.4); }
 .jerry-spark { inset: 0; display: flex; align-items: center; justify-content: center; color: #f0fffa; animation: jerryTwinkle 4.4s ease-in-out infinite; }
 .jerry-orbit { inset: 0; border-radius: 50%; animation: jerrySpin 8.5s linear infinite; }
 .jerry-orbit.jerry-orbit2 { animation-duration: 11s; animation-direction: reverse; }
