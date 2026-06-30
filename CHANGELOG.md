@@ -2,6 +2,20 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — Contact Us by department + Jerry reads from the top of long answers
+
+Customer-portal feedback round (bossman review).
+
+- **Contact Us → departments.** The customer "Contact Us" card now asks the customer to pick a
+  **department** (Sales / Customer Service / Engineering / Billing) instead of listing staff names.
+  Messages route to **iatsupport@dehumidifiers.com** for now, with the department in the subject
+  (`[Department] Portal message — Company`) and body so they can be split to per-department inboxes
+  later. Department is validated server-side. (`components/customer/CustomerDashboard.tsx`,
+  `app/api/customer/contact/route.ts`, `lib/resend-customer.ts`.)
+- **Jerry — long-answer scrolling.** When Jerry's answer lands it now scrolls to the **top of that
+  answer** instead of the bottom (long replies used to dump you at the very end), and the panel is
+  taller (max-h 340→460, min-h 268→340). (`components/customer/CustomerDashboard.tsx`.)
+
 ## 2026-06-29 — Print views: per-department form preview + submission printout
 
 Two browser-native print views for the Performance Review (and any conditional form) — the ops

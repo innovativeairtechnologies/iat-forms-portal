@@ -564,9 +564,20 @@ function JerryAssistant({ companyName }: { companyName: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const answerRef = useRef<HTMLDivElement>(null)
 
+  // While Jerry is thinking, keep the "reading…" row in view (scroll to bottom).
+  // When his answer lands, jump to the TOP of that answer so a long reply reads
+  // from the beginning instead of dropping the reader at the very end.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    const c = scrollRef.current
+    if (!c) return
+    const last = messages[messages.length - 1]
+    if (!loading && last?.role === 'assistant' && answerRef.current) {
+      c.scrollTo({ top: Math.max(0, answerRef.current.offsetTop - 8), behavior: 'smooth' })
+    } else {
+      c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' })
+    }
   }, [messages, loading])
 
   const ask = async (text: string) => {
@@ -613,7 +624,7 @@ function JerryAssistant({ companyName }: { companyName: string }) {
       </div>
 
       {/* Conversation */}
-      <div ref={scrollRef} className="max-h-[340px] min-h-[268px] flex-1 overflow-y-auto px-5 py-4">
+      <div ref={scrollRef} className="relative max-h-[460px] min-h-[340px] flex-1 overflow-y-auto px-5 py-4">
         {idle ? (
           <div className="flex h-full flex-col items-center justify-center py-3 text-center">
             <Orb px={92} float />
@@ -632,7 +643,7 @@ function JerryAssistant({ companyName }: { companyName: string }) {
                   </p>
                 </div>
               ) : (
-                <div key={i} className="flex animate-fade-up gap-2.5">
+                <div key={i} ref={i === messages.length - 1 ? answerRef : undefined} className="flex animate-fade-up gap-2.5">
                   <Orb px={20} className="mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{m.content}</p>
@@ -773,10 +784,13 @@ function UnitPhotos({ photos }: { photos: string[] }) {
 }
 
 // ── Contact Us (team roster + message form) ──────────────────────────────────
-const IAT_TEAM = ['Kacy Orr', 'Crystal Hill', 'Jacob Reagan', 'James Pope']
+// Departments a customer can direct a message to (routing is server-side).
+const DEPARTMENTS = ['Sales', 'Customer Service', 'Engineering', 'Billing'] as const
+type Department = (typeof DEPARTMENTS)[number]
 
 function ContactCard() {
   const [message, setMessage] = useState('')
+  const [department, setDepartment] = useState<Department>('Customer Service')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
@@ -789,7 +803,7 @@ function ContactCard() {
       const res = await fetch('/api/customer/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, department }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -810,23 +824,27 @@ function ContactCard() {
         <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Contact Us</h2>
       </div>
       <div className="space-y-3 px-5 py-4">
-        <div className="flex flex-wrap gap-1.5">
-          {IAT_TEAM.map((n) => (
-            <span key={n} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 py-1 pl-1 pr-2.5 dark:border-zinc-700">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-bold text-white">
-                {n.split(' ').map((p) => p[0]).join('')}
-              </span>
-              <span className="text-[11.5px] font-medium text-zinc-600 dark:text-zinc-300">{n}</span>
-            </span>
-          ))}
-        </div>
-
         {sent ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-[12.5px] text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <CheckCircle2 size={14} /> Thanks — we&apos;ll be in touch.
+            <CheckCircle2 size={14} /> Thanks — your message is on its way to our {department} team.
           </div>
         ) : (
           <>
+            <div>
+              <label htmlFor="cu-dept" className="mb-1 block text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                Who can we connect you with?
+              </label>
+              <select
+                id="cu-dept"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value as Department)}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-[13px] text-zinc-700 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-200"
+              >
+                {DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}

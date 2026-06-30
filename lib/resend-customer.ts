@@ -71,26 +71,33 @@ export async function sendCustomerWelcomeEmail(opts: {
   return result
 }
 
-const CONTACT_TO = 'jacob.younker@dehumidifiers.com'
+// All portal "Contact Us" messages route here for now; the chosen department is
+// carried in the subject + body so they can be split to per-department inboxes later.
+const CONTACT_TO = 'iatsupport@dehumidifiers.com'
 
 /**
  * Forwards a message from a logged-in customer (the dashboard "Contact Us" form)
- * to the IAT team. The customer's identity is attached server-side, never trusted
- * from the client.
+ * to the IAT team, tagged with the department the customer chose. The customer's
+ * identity is attached server-side, never trusted from the client.
  */
 export async function sendCustomerContactEmail(opts: {
   companyName: string
   contactName: string | null
   contactEmail: string
+  department: string
   message: string
 }) {
-  const { companyName, contactName, contactEmail, message } = opts
+  const { companyName, contactName, contactEmail, department, message } = opts
 
   const body = `
     <p style="margin:0 0 4px;color:#333;font-size:15px;">New message from a customer portal user.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;overflow:hidden;margin:14px 0 18px;">
       <tr>
-        <td style="padding:11px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#333;width:34%;">Company</td>
+        <td style="padding:11px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#333;width:34%;">Department</td>
+        <td style="padding:11px 16px;border-bottom:1px solid #f0f0f0;color:#089447;font-weight:600;">${esc(department)}</td>
+      </tr>
+      <tr>
+        <td style="padding:11px 16px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#333;">Company</td>
         <td style="padding:11px 16px;border-bottom:1px solid #f0f0f0;color:#555;">${esc(companyName)}</td>
       </tr>
       <tr>
@@ -108,10 +115,10 @@ export async function sendCustomerContactEmail(opts: {
   const result = await resend.emails.send({
     from: FROM,
     to: CONTACT_TO,
-    subject: `Portal message — ${companyName}`,
+    subject: `[${department}] Portal message — ${companyName}`,
     html: shell('New Portal Message', body),
   })
   if (result.error) console.error(`[resend] customer contact failed from ${contactEmail}:`, result.error)
-  else console.log(`[resend] customer contact sent (${companyName}): id=${result.data?.id}`)
+  else console.log(`[resend] customer contact sent (${companyName}, ${department}): id=${result.data?.id}`)
   return result
 }
