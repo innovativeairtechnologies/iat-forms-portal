@@ -27,6 +27,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { resolve, dirname, join, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pathToFileURL } from 'node:url'
+import { scrubCompetitors, COMPETITOR_TITLE_OVERRIDES } from '../lib/competitors.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -63,6 +64,13 @@ const INTERNAL_DOCS = new Set([
   // IAT customer reference list — holds OTHER customers' names, phone numbers and
   // emails (PII). Must never surface in the customer-facing pool.
   'References.pdf',
+  // Competitor-authored 228-page reference. De-branded (name/URL/email scrubbed,
+  // title → "Dehumidification Guide"), but its front matter still carries the
+  // publisher's address/editor — identifying details that point to the competitor.
+  // Per IAT's "no competitor reference anywhere" rule it's held internal-only for
+  // now (still de-branded, available to a future employee assistant). Re-enable by
+  // removing this line if leadership decides to keep it customer-facing.
+  'Munters DH handbook.pdf',
 ])
 
 // Duplicate source files — exact copies (or strict subsets) of another doc already
@@ -86,7 +94,8 @@ const TITLE_MAP = {
   // ── original POC set ───────────────────────────────────────────────────────
   'ASPYRE-60-210A-manual.pdf': 'ASPYRE 60-210A Manual',
   'Compact Brochure_rev2025.pdf': 'IAT Compact Brochure (2025)',
-  'Munters DH handbook.pdf': 'Munters Dehumidification Handbook',
+  // 'Munters DH handbook.pdf' / 'M120.pdf' → de-branded titles live in
+  // lib/competitors.mjs (COMPETITOR_TITLE_OVERRIDES), applied by deriveTitle().
   '3045 Remote Box Humidistat Guide.pdf': '3045 Remote Box Humidistat Guide',
   'A1094 Manual.pdf': 'A1094 Manual',
   'CDI DH 148 CTR Preliminary Submittal 5 19 25.pdf': 'CDI DH-148 CTR Preliminary Submittal',
@@ -99,7 +108,6 @@ const TITLE_MAP = {
   // ── IAT / dehumidifier ─────────────────────────────────────────────────────
   'Compact IOM_rev08.2025.pdf': 'IAT Compact Rotor Series IOM Manual',
   'Compact Performance Curves.pdf': 'IAT Compact Performance Curves',
-  'M120.pdf': 'Munters M120 Desiccant Dehumidifier',
   'rotor-source-desiccant-and-passive-manual.pdf': 'Rotor Source Desiccant Rotor & Cassette Manual',
 
   // ── temperature controllers (Fuji / Honeywell) ────────────────────────────
@@ -294,7 +302,9 @@ export function buildChunks(pages) {
   const rows = []
   let idx = 0
   pages.forEach((raw, p) => {
-    const clean = cleanText(raw)
+    // Scrub competitor names out of the stored text (also keeps the generated tsv
+    // from indexing them, so a competitor name can't even be searched for).
+    const clean = scrubCompetitors(cleanText(raw))
     if (!clean) return
     for (const content of chunkPageWords(clean)) {
       if (!content.trim()) continue
@@ -304,8 +314,10 @@ export function buildChunks(pages) {
   return rows
 }
 
-/** Human title for citations: from the map, else a tidy version of the filename. */
+/** Human title for citations: a de-branded competitor override wins, then the map,
+ *  else a tidy version of the filename. */
 export function deriveTitle(filename) {
+  if (COMPETITOR_TITLE_OVERRIDES[filename]) return COMPETITOR_TITLE_OVERRIDES[filename]
   if (TITLE_MAP[filename]) return TITLE_MAP[filename]
   return basename(filename, '.pdf')
     .replace(/[_]+/g, ' ')

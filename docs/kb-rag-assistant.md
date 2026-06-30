@@ -75,8 +75,9 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
 
 ## Pool status (all-80 ingest — 2026-06-29)
 - Pool: **58 documents, ~3,164 chunks** (the full IAT documentation folder run with
-  `--all`, after pruning 6 duplicate source files). 5 are `is_internal=true` (hidden
-  from customers).
+  `--all`, after pruning 6 duplicate source files). **6 are `is_internal=true`** (hidden
+  from customers) — the 5 company/PII docs plus the competitor-authored Dehumidification
+  Guide (see Competitor scrubbing below).
 - **16 PDFs are image-only/scanned** (no extractable text — they WARN and skip on
   ingest; need OCR to include): `A1094 Manual`, `E5CN Temp Controller Manual (Omron)`
   *(a scanned dup of the text `E5CN Manual` that did ingest)*, `Actuator LF24-MFT-S`,
@@ -95,6 +96,44 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   setup" → Watlow DIN-A-MITE, "Compact IOM startup" → IAT Compact IOM, "desiccant
   rotor maintenance" → Rotor Source manual. Internal/PII docs (incl. `References`)
   confirmed not retrievable on the default customer call.
+
+## Competitor scrubbing (2026-06-30)
+**Hard rule from IAT leadership: a competitor's name must NEVER reach a customer
+through Jerry — not in an answer, not in a cited document's title, nowhere.** It does
+not have to say "IAT"; it must simply never name the competition. Munters is the only
+competitor present in the corpus today (component suppliers — Omron, Fuji, Vaisala,
+Watlow, Belimo, GE, Honeywell… — are NOT competitors and are deliberately kept).
+
+`lib/competitors.mjs` is the **single source of truth** (plain `.mjs` so the Node ingest
+script and the TS API route both import it). It exports `COMPETITOR_NAMES`,
+`scrubCompetitors(text)`, `COMPETITOR_TITLE_OVERRIDES`, and `hasCompetitor(text)`.
+**Guarantee:** after `scrubCompetitors`, `hasCompetitor` is false — no brand token
+survives, even glued into a URL, an email address, or a compound word
+(`www.MuntersAmerica.com`, `info@muntersnv.be`). To add a competitor later: add its
+tokens to `COMPETITOR_NAMES` (and an optional nicer multiword rule).
+
+Enforced at **three layers**:
+1. **Ingest** (`ingest-kb-docs.mjs`) — `buildChunks` runs `scrubCompetitors` over chunk
+   content (so the generated `tsv` can't even index the name), and `deriveTitle` applies
+   `COMPETITOR_TITLE_OVERRIDES` (de-branded citation titles).
+2. **Answer** (`app/api/customer/assistant/route.ts`) — the excerpts block + source
+   titles are scrubbed before the model sees them; a system-prompt rule forbids naming
+   any competitor **and** forbids revealing a referenced doc's publisher/author/address/
+   provenance; and the model's final reply is run through `scrubCompetitors` as a net.
+3. **Document policy** — the **Munters DH handbook** (228-page competitor-authored
+   reference) is held **`is_internal=true`**: even de-branded, its front matter leaks the
+   publisher's identity another way (postal address, editor name), which a stronger prompt
+   can't fully launder out of 228 pages. Title de-branded to **"Dehumidification Guide"**;
+   re-enable for customers by removing it from `INTERNAL_DOCS` if leadership decides to.
+   **M120** (2-page competitor product manual) stays customer-facing, de-branded to
+   "M120 Desiccant Dehumidifier".
+
+**Verification (2026-06-30):** a node harness (`scripts/_verify-jerry.mjs`, throwaway)
+replays Jerry's real answer path outside the auth wall; a 13-probe battery + the 18
+oblique probes an adversarial workflow red-teamed (jailbreaks, authority claims,
+translation/OCR tricks, footer/metadata/nameplate extraction, "Swedish company") all
+came back clean under an independent 2-judge panel — **0 direct or indirect leaks**, and
+the component-supplier control questions (Belimo/Vaisala/Omron) still answer correctly.
 
 ## Scaling & upgrades
 - **Re-ingest after changing the folder / maps:** `node scripts/ingest-kb-docs.mjs --all`.

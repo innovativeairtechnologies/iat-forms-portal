@@ -2,6 +2,43 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — Jerry never names a competitor (Munters scrub, 3 layers)
+
+IAT leadership's rule: a **competitor's name must never reach a customer through Jerry**
+— not in an answer, not in a cited document's title, nowhere. Munters is the only
+competitor in the corpus (component suppliers like Omron/Vaisala/Belimo are kept — those
+names are useful and expected).
+
+### Added
+- **`lib/competitors.mjs`** — single source of truth (plain `.mjs` so the Node ingest
+  script and the TS API route share it). `scrubCompetitors()` neutralizes every brand
+  reference, even glued into a URL/email/compound word (`www.MuntersAmerica.com`,
+  `info@muntersnv.be`); guarantee: `hasCompetitor()` is false afterward. One-line to add
+  the next competitor.
+
+### Changed
+- **Ingest** (`scripts/ingest-kb-docs.mjs`) — chunk content is scrubbed before storage
+  (so the `tsv` can't even index the brand), and citation titles are de-branded:
+  Munters handbook → **"Dehumidification Guide"**, M120 → **"M120 Desiccant Dehumidifier"**.
+- **Assistant** (`app/api/customer/assistant/route.ts`) — excerpts + source titles are
+  scrubbed before the model sees them; a system-prompt rule forbids naming any competitor
+  **and** revealing a referenced doc's publisher/author/address/provenance; the final
+  reply is run through `scrubCompetitors()` as a net.
+- **Document policy** — the 228-page competitor-authored handbook is held
+  **`is_internal=true`** (its front matter leaked the publisher's address/editor — an
+  indirect identifier a prompt can't fully launder out of 228 pages). De-branded and
+  available to a future employee assistant; re-enable for customers by removing it from
+  `INTERNAL_DOCS`. M120 stays customer-facing, de-branded. Customer-facing pool now 52
+  docs (6 of 58 internal).
+
+Data already re-ingested against the live DB (pool is Munters-free). **Verification:** a
+node harness replays Jerry's real answer path; 31 adversarial probes (direct, oblique,
+jailbreak, authority, translation/OCR tricks, footer/metadata extraction, "Swedish
+company") were judged by an independent 2-judge panel — **0 direct or indirect leaks**;
+supplier controls (Belimo/Vaisala/Omron) still answer correctly. `tsc` + `next build`
+green. No migration. Auth-gated — verified via build + node harness, not a logged-in
+screenshot.
+
 ## 2026-06-30 — Admin: "Employee Forms" sidebar item + unfinished-draft badge
 
 Makes an admin's in-progress form drafts easy to find (the `/admin/employee-forms`
