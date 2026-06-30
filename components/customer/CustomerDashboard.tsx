@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
-  ChevronDown, LogOut, CheckCircle2,
+  ChevronDown, LogOut, CheckCircle2, Sparkles,
   Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
   Headphones, Loader2, FileText, ArrowUp,
 } from 'lucide-react'
@@ -597,9 +597,9 @@ function Tracker({ unit }: { unit: UnitView }) {
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: KbSource[] }
 const JERRY_SUGGESTIONS = ['Where is my unit?', 'How do I set the humidistat?', 'Is it under warranty?']
 
-// Jerry's small "presence" — his bobblehead's head cropped into the glowing orb
-// (halo + spinning ring + orbiting sparks). Scales with `px`; speeds up while `thinking`.
-// Used in the header and beside each answer. The big idle hero uses <JerryFigure/> instead.
+// Jerry's small "presence" — the abstract emerald orb (halo + spinning ring + glowing
+// core + orbiting sparks). Scales with `px`; speeds up while `thinking`. Used in the
+// header and beside each answer. The big idle hero uses <JerryFigure/> (the bobblehead).
 function Orb({ px, thinking = false, className = '' }: { px: number; thinking?: boolean; className?: string }) {
   return (
     <span
@@ -609,10 +609,10 @@ function Orb({ px, thinking = false, className = '' }: { px: number; thinking?: 
     >
       <span className="jerry-halo" />
       <span className="jerry-ring" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <span className="jerry-headwrap"><img src="/jerry-bobble.webp" alt="" /></span>
+      <span className="jerry-core" />
       <span className="jerry-orbit"><i /></span>
       <span className="jerry-orbit jerry-orbit2"><i /></span>
+      <span className="jerry-spark"><Sparkles size={Math.max(8, Math.round(px * 0.26))} strokeWidth={2.2} /></span>
     </span>
   )
 }

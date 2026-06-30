@@ -7,7 +7,7 @@ Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 Swapped the formal headshot avatar for the fun full-body **bobblehead** caricature:
 - **Idle hero** ("Hi, I'm Jerry") = the standing bobblehead with a soft emerald aura + ground
   shadow, gently bobbing/floating (new `JerryFigure`).
-- **Header + inline** = his head cropped into the small glowing orb (`Orb`).
+- **Header + inline** = the **abstract emerald orb** (`Orb`) — Jacob preferred just the orb (no cropped face) in the small spots; only the hero is the bobblehead.
 - Source 1024px PNG optimized to a **32 KB `public/jerry-bobble.webp`** (via `sharp`); removed the
   old `jerry.avif`. Also fixed a sizing bug where the avatar `<img>` used `inset` without explicit
   width/height (replaced elements fall back to intrinsic size → the orb avatar was oversized) — now
