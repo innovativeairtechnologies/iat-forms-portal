@@ -73,18 +73,28 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   Honeywell / Setra / TAMCO…); anything not in the map falls back to a tidied
   filename. True duplicates are given identical titles so the chips collapse.
 
-## Pool status (all-80 ingest — 2026-06-29)
-- Pool: **58 documents, ~3,164 chunks** (the full IAT documentation folder run with
-  `--all`, after pruning 6 duplicate source files). **6 are `is_internal=true`** (hidden
-  from customers) — the 5 company/PII docs plus the competitor-authored Dehumidification
-  Guide (see Competitor scrubbing below).
-- **16 PDFs are image-only/scanned** (no extractable text — they WARN and skip on
-  ingest; need OCR to include): `A1094 Manual`, `E5CN Temp Controller Manual (Omron)`
-  *(a scanned dup of the text `E5CN Manual` that did ingest)*, `Actuator LF24-MFT-S`,
-  `Actuator TF120`, `Fasco Model D215`, `Fasco PN 71625928`, `GEH Series Transmitter`,
-  `HS-70-D`, `MMSQPL`, `Paint`, `SCR (EZ1) Phasetronics`, `Technical-Specification-EDC`,
-  `Terms Certifigroup-MET Labs`, `ZWN030X6D Cond Unit Manual`,
-  `iPak Humidity-Temp Transmitter GEH2-D-TT2`, `motors`. OCR is the future fix.
+## Pool status (2026-06-30)
+- Pool: **67 documents, ~3,228 chunks** (the full IAT documentation folder, after
+  pruning duplicate source files and OCR'ing the image-only PDFs — below). **6 are
+  `is_internal=true`** (hidden from customers) — the 5 company/PII docs plus the
+  competitor-authored Dehumidification Guide (see Competitor scrubbing below) — so
+  **61 are customer-facing**.
+- **Image-only/scanned PDFs → OCR'd (2026-06-30).** 16 of the 80 source PDFs had no text
+  layer (pdftotext returns nothing). They're now transcribed with **Claude PDF-vision**
+  (`scripts/ocr-image-pdfs.mjs`) into local sidecars under `scripts/ocr-cache/`
+  (**gitignored** — full third-party manual text stays out of this *public* repo; the text
+  lives in the RLS-locked DB after ingest, same posture as the rest of the pool). The
+  ingest script uses a sidecar automatically when a PDF extracts to 0 chunks
+  (`readOcrSidecar`). Of the 16: **9 ingested** — Maxitrol Selectra 94 gas valve, Belimo
+  LF24-MFT-S, Belimo TF120, Fasco D215 motor, Fasco approval drawing, Control Products
+  HS-70-O/HS-70-D sensor, Phasetronics EZ1 SCR, DRI desiccant-rotor spec, NEMA Premium
+  motor guide; **4 excluded** via `SKIP_DOCS` (2 GE HumiTrac scans already covered by
+  `GEH2-D-TT2`/`GEH-S-TT3`/`DP4A`; `MMSQPL` + `Terms Certifigroup-MET Labs` are IAT
+  internal business forms — an insurance questionnaire and a pricing quote, **not** product
+  docs); **1 pending** (`ZWN030X6D Cond Unit Manual`, a 9 MB scan — OCR re-running, folds
+  in data-only); **2 not OCR'd** (`E5CN…(Omron)` is a scanned dup of the text `E5CN
+  Manual`; `Paint` is internal). Competitor scrubbing applies to OCR'd text too (it runs
+  in `buildChunks`).
 - **Duplicate source files were pruned** (6 of them) via the `SKIP_DOCS` set in the
   ingest script, so `--all` no longer re-adds them and a topic returns one chip, not
   several: the **Watlow DIN-A-MITE Style C** manual (kept `DC  SCR Manual.pdf`, dropped
@@ -138,8 +148,9 @@ the component-supplier control questions (Belimo/Vaisala/Omron) still answer cor
 ## Scaling & upgrades
 - **Re-ingest after changing the folder / maps:** `node scripts/ingest-kb-docs.mjs --all`.
 - **Internal assistant:** point a new server-side caller at `retrieveChunks(q, { includeInternal: true })`.
-- **OCR the 16 image-only PDFs** (e.g. `ocrmypdf`/Tesseract → searchable text layer,
-  then re-ingest) to fold them into the pool.
+- **OCR'd the image-only PDFs (done 2026-06-30)** via `scripts/ocr-image-pdfs.mjs`
+  (Claude PDF-vision → `scripts/ocr-cache/` sidecars → ingest). Re-run for a new scan
+  with `node scripts/ocr-image-pdfs.mjs --docs="<file>"`, then re-ingest.
 - **Semantic search:** add the `embedding` column + an embeddings key and blend
   vector similarity with the FTS score — the quality upgrade when keyword search is too literal.
 

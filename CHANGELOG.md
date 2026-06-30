@@ -2,6 +2,39 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-06-30 — OCR'd the image-only PDFs into Jerry's pool (+9 docs)
+
+16 of the 80 source PDFs are image-only/scanned (no text layer), so they'd always
+WARN-and-skip on ingest. They're now folded in via OCR — **no software install**, just
+Claude PDF-vision and the existing `ANTHROPIC_API_KEY`.
+
+### Added
+- **`scripts/ocr-image-pdfs.mjs`** — transcribes each image-only PDF with Claude
+  PDF-vision into a local sidecar `scripts/ocr-cache/<file>.txt` (page-delimited).
+  Idempotent (cache-skips); `--force` / `--docs=` to re-run one.
+- **`readOcrSidecar()` in the ingest script** — when a PDF extracts to 0 chunks, the
+  ingest falls back to its OCR sidecar, so `--all` folds the scanned docs in.
+
+### Changed
+- **9 OCR'd docs ingested** (clean vendor-named titles + categories): Maxitrol Selectra
+  94 gas valve, Belimo LF24-MFT-S, Belimo TF120, Fasco D215 motor, Fasco approval
+  drawing, Control Products HS-70-O/HS-70-D sensor, Phasetronics EZ1 SCR, DRI rotor
+  spec, NEMA Premium motor guide. Pool **58 → 67 docs (61 customer-facing), ~3,228
+  chunks**. Verified each retrieves + cites correctly through Jerry's real path.
+- **4 excluded** via `SKIP_DOCS` — 2 GE HumiTrac scans (already covered by
+  `GEH2-D-TT2`/`GEH-S-TT3`/`DP4A`), and `MMSQPL` + `Terms Certifigroup-MET Labs` (IAT
+  internal business forms — an insurance questionnaire and a pricing quote, not product
+  docs).
+- **`scripts/ocr-cache/` is gitignored** — this repo is **public**, so full third-party
+  manual text + the internal-form transcriptions stay out of git; the text lives only in
+  the RLS-locked KB DB after ingest (same posture as the rest of the pool). Also
+  gitignored `scripts/_*.mjs` (throwaway dev harnesses).
+
+The OCR'd text is competitor-scrubbed at ingest like everything else. Data is already
+live in the DB (ingest is data-only). **Pending:** `ZWN030X6D Cond Unit Manual` (a 9 MB
+scan) — OCR re-running; folds in data-only when ready. `tsc` + `next build` green; no
+migration.
+
 ## 2026-06-30 — Jerry never names a competitor (Munters scrub, 3 layers)
 
 IAT leadership's rule: a **competitor's name must never reach a customer through Jerry**

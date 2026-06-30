@@ -37,10 +37,13 @@ const DOCS_DIR =
   process.env.KB_DOCS_DIR ||
   'C:\\Users\\JacobY\\Innovative Air\\IAT Documentation - Documents'
 
+// Committed OCR transcriptions for image-only/scanned PDFs (see scripts/ocr-image-pdfs.mjs).
+// Used as a fallback when pdftotext extracts no text, so `--all` folds those docs in.
+const OCR_CACHE_DIR = join(__dirname, 'ocr-cache')
+
 // ── The starter docs Jacob chose for the POC (exact filenames) ───────────────
-// 'A1094 Manual.pdf' was in the original 11 but is an image-only/scanned PDF
-// (0 extractable text — needs OCR), so it's excluded from the POC pool. Add it
-// back here once it's OCR'd. `--all` would still attempt it and skip it cleanly.
+// 'A1094 Manual.pdf' (Maxitrol Selectra Series 94) was image-only and excluded from
+// the POC pool; it's now OCR'd (scripts/ocr-cache sidecar) and folds in under --all.
 const POC_DOCS = [
   'ASPYRE-60-210A-manual.pdf',
   'Compact Brochure_rev2025.pdf',
@@ -84,6 +87,12 @@ const SKIP_DOCS = new Set([
   'GEH-HumiTrac Installation Guide[1].pdf',            // dup of "GEH2-D-TT2.pdf" (GE Sensing HumiTrac)
   'KAS-44-M.pdf',                                      // dup of "KAS-44-88-175-install.pdf" (KAS actuators)
   'PXR459_manual (shortened).pdf',                     // condensed subset of "PXR459_manual.pdf" (Fuji PXR4/5/9)
+  // OCR'd (sidecars exist) but deliberately NOT ingested — they'd join the pool via
+  // --all otherwise:
+  'GEH Series Transmitter.pdf',                        // dup of GE HumiTrac (covered by GEH2-D-TT2/GEH-S-TT3/DP4A)
+  'iPak Humidity - Temp Transmitter GEH2-D-TT2.pdf',   // dup of "GEH2-D-TT2.pdf" (GE HumiTrac install guide)
+  'MMSQPL.pdf',                                         // IAT insurance products-liability questionnaire — internal business form, not product doc
+  'Terms Certifigroup-MET Labs.pdf',                   // IAT MET Labs field-labeling quote (pricing terms) — internal business, not product doc
 ])
 
 // Nicer human titles for citations (fallback derives one from the filename).
@@ -97,13 +106,24 @@ const TITLE_MAP = {
   // 'Munters DH handbook.pdf' / 'M120.pdf' → de-branded titles live in
   // lib/competitors.mjs (COMPETITOR_TITLE_OVERRIDES), applied by deriveTitle().
   '3045 Remote Box Humidistat Guide.pdf': '3045 Remote Box Humidistat Guide',
-  'A1094 Manual.pdf': 'A1094 Manual',
+  'A1094 Manual.pdf': 'Maxitrol Selectra Series 94 Modulating Gas Valve',
   'CDI DH 148 CTR Preliminary Submittal 5 19 25.pdf': 'CDI DH-148 CTR Preliminary Submittal',
   'E5CN Manual.pdf': 'Omron E5CN Temperature Controller Manual',
   'Fuji VFD.pdf': 'Fuji VFD Manual',
   'gs1m.pdf': 'GS1 Series Drive User Manual',
   'gs2m.pdf': 'GS2 Series Drive User Manual',
   'gs3m.pdf': 'GS3 Series Drive User Manual',
+
+  // ── OCR'd image-only PDFs (text via scripts/ocr-cache sidecars) ────────────
+  'Actuator LF24-MFT-S Kele.pdf': 'Belimo LF24-MFT-S Multi-Function Spring-Return Actuator',
+  'Actuator TF120 Kele.pdf': 'Belimo TF120 Spring-Return Actuator',
+  'Fasco Model D215.pdf': 'Fasco Model D215 Shaded-Pole Motor',
+  'Fasco PN 71625928 Approval Drawing.pdf': 'Fasco Motor Approval Drawing (PN 71625928)',
+  'HS-70-D.pdf': 'Control Products HS-70-O / HS-70-D Humidity Sensor',
+  'SCR (EZ1) Phasetronics.pdf': 'Phasetronics EZ1 Series SCR Power Controller Manual',
+  'Technical-Specification-EDC.pdf': 'DRI Desiccant Rotor Technical Specification',
+  'ZWN030X6D Cond Unit Manual.pdf': 'ZWN030X6D Condensing Unit Manual',
+  'motors.pdf': 'NEMA Premium 3-Phase Motor Information Guide',
 
   // ── IAT / dehumidifier ─────────────────────────────────────────────────────
   'Compact IOM_rev08.2025.pdf': 'IAT Compact Rotor Series IOM Manual',
@@ -241,6 +261,17 @@ const CATEGORY_MAP = {
   'TAMCO Dampers TA-1000-TECH-24.pdf': 'Dampers / HVAC',
   'H-IM-CU-0808.pdf': 'Dampers / HVAC',
   'CC-HADTB-0407-000.pdf': 'Dampers / HVAC',
+
+  // OCR'd image-only PDFs
+  'Actuator LF24-MFT-S Kele.pdf': 'Actuators / Valves',
+  'Actuator TF120 Kele.pdf': 'Actuators / Valves',
+  'Fasco Model D215.pdf': 'Motors',
+  'Fasco PN 71625928 Approval Drawing.pdf': 'Motors',
+  'HS-70-D.pdf': 'Sensors / Transmitters',
+  'SCR (EZ1) Phasetronics.pdf': 'Power Controls',
+  'Technical-Specification-EDC.pdf': 'Reference',
+  'ZWN030X6D Cond Unit Manual.pdf': 'Dampers / HVAC',
+  'motors.pdf': 'Motors',
 }
 
 // Chunking: ~page-sized. Most datasheet pages fall under one chunk; dense pages
@@ -330,6 +361,20 @@ export function deriveCategory(filename) {
   return CATEGORY_MAP[filename] ?? null
 }
 
+/** Image-only PDFs have no text layer; their text comes from a committed OCR sidecar
+ *  (scripts/ocr-cache/<filename>.txt, page-delimited by "===== PAGE N =====" markers).
+ *  Returns an array of per-page strings (dropping blank / "(no text)" pages), or null. */
+export function readOcrSidecar(filename) {
+  const p = join(OCR_CACHE_DIR, `${filename}.txt`)
+  if (!existsSync(p)) return null
+  const raw = readFileSync(p, 'utf8')
+  const pages = raw
+    .split(/^=+ ?PAGE \d+ ?=+$/im)        // segments between page markers (parts[0] = preamble)
+    .map((s) => s.trim())
+    .filter((s) => s && !/^\(no text\)$/i.test(s))
+  return pages.length ? pages : null
+}
+
 // ── ingest one document ──────────────────────────────────────────────────────
 async function ingestDoc(sb, filename) {
   const absPath = join(DOCS_DIR, filename)
@@ -346,7 +391,16 @@ async function ingestDoc(sb, filename) {
     return { ok: false }
   }
 
-  const chunks = buildChunks(pages)
+  let chunks = buildChunks(pages)
+  if (chunks.length === 0) {
+    // Image-only/scanned PDF (no text layer) — fall back to its OCR sidecar, if present.
+    const ocrPages = readOcrSidecar(filename)
+    if (ocrPages) {
+      pages = ocrPages
+      chunks = buildChunks(pages)
+      if (chunks.length) console.log(`  OCR   ${filename} — used OCR sidecar (${pages.length} pages)`)
+    }
+  }
   if (chunks.length === 0) {
     console.log(`  WARN  ${filename} — 0 text chunks (image-only/scanned?), skipped`)
     return { ok: false }

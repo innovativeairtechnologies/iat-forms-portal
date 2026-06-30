@@ -29,6 +29,14 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# OCR transcription cache — full third-party manual text + some internal business
+# docs; kept LOCAL only (this repo is public). The text lives in the RLS-locked DB
+# after ingest (same posture as the rest of the KB pool); cache just avoids re-OCR.
+/scripts/ocr-cache/
+
+# throwaway dev/verification harnesses (scripts/_*.mjs)
+/scripts/_*.mjs
+
 # claude code local config / session data
 .claude/
 
