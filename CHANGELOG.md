@@ -2,6 +2,35 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-01 — Fixed the Submittal-scan "Could not read that file" error on real-world PDFs
+
+The "Scan a Submittal PDF" tool in `NewCustomerWizard` sent the file as base64
+directly in the POST body to `/api/admin/customers/extract-submittal`. Vercel
+caps serverless function request bodies at ~4.5MB, so any Submittal whose
+base64 exceeded that — roughly anything over ~3MB raw — was rejected by the
+platform itself *before the route ever ran*, regardless of the route's own
+(much higher) size check. The browser just got a non-JSON response back,
+which surfaced as a generic "Could not read that file." A previous fix had
+raised the route's own limit from 6MB to ~11MB, which didn't help — that
+ceiling was never the actual constraint. Reported via a 7.1MB real Submittal.
+
+### Fixed
+- **`components/admin/NewCustomerWizard.tsx`** — the scan handler now uploads
+  the file directly to Supabase Storage via a signed upload URL (new `POST
+  /api/admin/customers/submittal-upload`, mirrors the existing
+  ticket-attachments pattern) instead of embedding it in the function body.
+- **`app/api/admin/customers/extract-submittal/route.ts`** — now accepts a
+  Storage `path` instead of inline base64; downloads the file server-side
+  (an outbound fetch, not subject to the inbound body-size limit) before
+  handing it to Claude, and deletes it right after extraction (best-effort;
+  it's not needed afterward and may contain customer PII).
+- **New private bucket `admin-submittals`** (migration `035`, 20MB limit —
+  comfortably above real-world Submittals, well under Claude's per-file cap).
+
+`tsc` + `next build` green. Requires migration `035` before the fixed upload
+path works; degrades to the same "could not read" error if deployed first
+(no crash). — J.Y. + Claude
+
 ## 2026-07-01 — Self-serve "Request portal access" from support tickets
 
 Customers no longer need a portal account forced on them just to check a

@@ -6,6 +6,7 @@ import {
   UserPlus, Upload, Copy, Check, Loader2, Mail, Link2, X,
   CheckCircle2, Sparkles, Building2, Boxes, ArrowRight, AlertCircle,
 } from 'lucide-react'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 /* ────────────────────────────────────────────────────────────────────────────
    NewCustomerWizard — the customer-first "front door" from the whiteboard.
@@ -21,15 +22,6 @@ import {
 
 const inp = 'w-full text-[13px] text-zinc-800 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-zinc-300 dark:placeholder:text-zinc-600'
 const lbl = 'text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block mb-1'
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '')
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 
 const EMPTY = {
   company_name: '',
@@ -90,11 +82,33 @@ export default function NewCustomerWizard({
     setScanning(true)
     setError('')
     try {
-      const data = await fileToBase64(file)
+      // Upload straight to Storage via a signed URL (tiny JSON request for the
+      // token, then the bytes go directly to Supabase) — bypasses Vercel's
+      // ~4.5MB function body limit, which 413'd real-world Submittals before
+      // the scan route's own size check ever ran.
+      const uploadRes = await fetch('/api/admin/customers/submittal-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, size: file.size }),
+      })
+      const uploadJson = await uploadRes.json()
+      if (!uploadRes.ok) {
+        setError(uploadJson.error || 'Could not upload that file.')
+        return
+      }
+      const sb = createSupabaseBrowser()
+      const { error: uploadErr } = await sb.storage
+        .from('admin-submittals')
+        .uploadToSignedUrl(uploadJson.path, uploadJson.token, file, { contentType: file.type || undefined })
+      if (uploadErr) {
+        setError(uploadErr.message || 'Could not upload that file.')
+        return
+      }
+
       const res = await fetch('/api/admin/customers/extract-submittal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: { data, media_type: file.type, name: file.name } }),
+        body: JSON.stringify({ path: uploadJson.path, media_type: file.type }),
       })
       const json = await res.json()
       if (!res.ok) {

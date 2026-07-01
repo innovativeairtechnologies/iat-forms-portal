@@ -59,8 +59,15 @@ Two entry points, **one** backend (`POST /api/admin/customers/invite` — create
 customer + equipment, seeds the tracker, and emails the invite):
 
 **Customer-first — `/admin/customers` → New Customer** (the front door):
-1. **Scan a Submittal PDF** — Claude extracts the customer **and** unit fields
-   (`POST /api/admin/customers/extract-submittal`). Review/edit before sending.
+1. **Scan a Submittal PDF** — the browser uploads the file straight to a private
+   `admin-submittals` Storage bucket via a signed upload URL (`POST
+   /api/admin/customers/submittal-upload`, migration `035`), then `POST
+   /api/admin/customers/extract-submittal` downloads it server-side and Claude
+   extracts the customer **and** unit fields. Review/edit before sending. (Fixed
+   2026-07-01: the file used to ride in the request body as base64 and silently
+   413'd on Vercel's ~4.5MB function limit for anything over ~3MB, regardless of
+   the route's own — much higher — size check; real Submittals routinely exceed
+   that. The uploaded file is deleted right after extraction.)
 2. **Create account & send invite** — creates the `customers` row, the auth login
    (`role='customer'` + `customer_id`), the `equipment` row (upsert by serial — links if it
    already exists), seeds the build/ship tracker, and emails a temp password + Sign In link.
