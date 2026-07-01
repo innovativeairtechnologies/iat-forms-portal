@@ -1,21 +1,22 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
-  ChevronDown, LogOut, CheckCircle2, Sparkles,
+  ChevronDown, LogOut, CheckCircle2,
   Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
-  Headphones, Loader2, FileText, ArrowUp,
+  Headphones, Loader2,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import type { EquipmentMilestone } from '@/lib/supabase'
-import type { KbSource } from '@/lib/kb-rag'
+import WarrantySubmitModal from '@/components/customer/WarrantySubmitModal'
+import JerryWidget from '@/components/shared/JerryWidget'
 
 // ── Prop shapes (built server-side in app/customer/page.tsx) ──────────────────
 export type UnitView = {
@@ -33,6 +34,10 @@ export type UnitView = {
 }
 export type RequestView = {
   kind: 'ticket' | 'troubleshooting'
+  // The ticket's UUID — only meaningful for kind==='ticket' (links to
+  // /customer/tickets/[id]). Troubleshooting-intake rows have no detail page,
+  // so this stays undefined for them and those rows render non-clickable.
+  id?: string
   ref: string
   title: string
   serial: string
@@ -103,6 +108,8 @@ export default function CustomerDashboard({
   const [activeIdx, setActiveIdx] = useState(0)
   const [q, setQ] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [claimUnit, setClaimUnit] = useState<UnitView | null>(null)
+  const [claimSent, setClaimSent] = useState(false)
 
   // Customer portal is light-first: if this browser has never picked a theme,
   // default it to light here (scoped to the customer portal — admin/employee keep
@@ -247,8 +254,15 @@ export default function CustomerDashboard({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <StatCard icon={Package} label="Serial #" value={active.serial_number} />
                   <StatCard icon={Cpu} label="Model #" value={active.model_number || '—'} sub={active.voltage || undefined} />
-                  <WarrantyCard w={active.warranty} />
+                  <WarrantyCard w={active.warranty} onFileClaim={() => { setClaimSent(false); setClaimUnit(active) }} />
                 </div>
+
+                {claimSent && (
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-[12.5px] text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    <CheckCircle2 size={14} className="shrink-0" />
+                    Your warranty claim has been submitted. Our team will review it and follow up by email.
+                  </div>
+                )}
 
                 {/* Build / ship tracker */}
                 <Tracker unit={active} />
@@ -280,11 +294,8 @@ export default function CustomerDashboard({
                 <ul>
                   {filteredRequests.map((r) => {
                     const s = statusMeta(r.kind, r.status)
-                    return (
-                      <li
-                        key={`${r.kind}-${r.ref}`}
-                        className="flex items-center gap-3 border-b border-zinc-50 px-5 py-3 last:border-0 dark:border-zinc-800/60"
-                      >
+                    const rowContent = (
+                      <>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-[12px] font-semibold text-zinc-700 dark:text-zinc-300">{r.ref}</span>
@@ -295,6 +306,26 @@ export default function CustomerDashboard({
                         </div>
                         <span className="hidden shrink-0 text-[11px] text-zinc-400 sm:block">{fmtDate(r.created_at)}</span>
                         <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{s.label}</span>
+                      </>
+                    )
+                    return (
+                      <li
+                        key={`${r.kind}-${r.ref}`}
+                        className="border-b border-zinc-50 last:border-0 dark:border-zinc-800/60"
+                      >
+                        {r.kind === 'ticket' && r.id ? (
+                          <Link
+                            href={`/customer/tickets/${r.id}`}
+                            className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                          >
+                            {rowContent}
+                            <ChevronRight size={14} className="shrink-0 text-zinc-300 transition-colors group-hover:text-emerald-500 dark:text-zinc-600" />
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-3 px-5 py-3">
+                            {rowContent}
+                          </div>
+                        )}
                       </li>
                     )
                   })}
@@ -311,7 +342,12 @@ export default function CustomerDashboard({
 
           {/* ── Right rail ── */}
           <aside className="space-y-5">
-            <JerryAssistant companyName={companyName} />
+            <JerryWidget
+              apiEndpoint="/api/customer/assistant"
+              suggestions={['Where is my unit?', 'How do I set the humidistat?', 'Is it under warranty?']}
+              idleSubtitle={`Ask about ${companyName}'s equipment or IAT's documentation — I answer from the manuals and show you the page.`}
+              footerNote="Jerry can make mistakes. For service or orders, use Submit a request or Contact Us."
+            />
 
             {/* Knowledge base quick links */}
             <section className={CARD}>
@@ -342,6 +378,21 @@ export default function CustomerDashboard({
           </aside>
         </div>
       </main>
+
+      {claimUnit && (
+        <WarrantySubmitModal
+          unit={{
+            equipment_id: claimUnit.id,
+            serial_number: claimUnit.serial_number,
+            model_number: claimUnit.model_number,
+          }}
+          onClose={() => setClaimUnit(null)}
+          onSuccess={() => {
+            setClaimUnit(null)
+            setClaimSent(true)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -360,7 +411,7 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: typeof Package; lab
   )
 }
 
-function WarrantyCard({ w }: { w: UnitView['warranty'] }) {
+function WarrantyCard({ w, onFileClaim }: { w: UnitView['warranty']; onFileClaim: () => void }) {
   const m = warrantyMeta(w)
   return (
     <div className={`${CARD} px-4 py-3.5`}>
@@ -370,6 +421,14 @@ function WarrantyCard({ w }: { w: UnitView['warranty'] }) {
       </div>
       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold ring-1 ${m.cls}`}>{m.label}</span>
       <p className="mt-1.5 truncate text-[11px] text-zinc-400">{m.sub}</p>
+      {w.state === 'in' && (
+        <button
+          onClick={onFileClaim}
+          className="mt-2 text-[11.5px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+        >
+          File a claim
+        </button>
+      )}
     </div>
   )
 }
@@ -588,206 +647,6 @@ function Tracker({ unit }: { unit: UnitView }) {
 
 // ResourceCard removed — customer support entry points now live only in the hero
 // ("Submit a request" / "Check status") and the right-rail Knowledge Base card.
-
-// ── Jerry — IAT's customer assistant. A living "presence" (animated orb) that answers
-// from this customer's equipment + IAT's documentation (RAG) and cites the source
-// (document + page). Route /api/customer/assistant. Deliberately not a chat-bubble
-// bot: a breathing orb, typeset answers, and cited "receipts".
-type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: KbSource[] }
-const JERRY_SUGGESTIONS = ['Where is my unit?', 'How do I set the humidistat?', 'Is it under warranty?']
-
-// Jerry's small "presence" — the abstract emerald orb (halo + spinning ring + glowing
-// core + orbiting sparks). Scales with `px`; speeds up while `thinking`. Used in the
-// header and beside each answer. The big idle hero uses <JerryFigure/> (the bobblehead).
-function Orb({ px, thinking = false, className = '' }: { px: number; thinking?: boolean; className?: string }) {
-  return (
-    <span
-      className={`jerry-orb ${thinking ? 'is-thinking' : ''} ${className}`}
-      style={{ width: px, height: px }}
-      aria-hidden="true"
-    >
-      <span className="jerry-halo" />
-      <span className="jerry-ring" />
-      <span className="jerry-core" />
-      <span className="jerry-orbit"><i /></span>
-      <span className="jerry-orbit jerry-orbit2"><i /></span>
-      <span className="jerry-spark"><Sparkles size={Math.max(8, Math.round(px * 0.26))} strokeWidth={2.2} /></span>
-    </span>
-  )
-}
-
-// Jerry's full bobblehead — the founder he's named for — standing with a soft emerald
-// aura + ground shadow, gently bobbing and floating. The idle hero "presence."
-function JerryFigure() {
-  return (
-    <div className="jerry-figure" aria-hidden="true">
-      <span className="jerry-figure-glow" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="jerry-figure-img" src="/jerry-bobble.webp" alt="" />
-      <span className="jerry-figure-shadow" />
-    </div>
-  )
-}
-
-function JerryAssistant({ companyName }: { companyName: string }) {
-  const [messages, setMessages] = useState<ChatMsg[]>([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const answerRef = useRef<HTMLDivElement>(null)
-
-  // While Jerry is thinking, keep the "reading…" row in view (scroll to bottom).
-  // When his answer lands, jump to the TOP of that answer so a long reply reads
-  // from the beginning instead of dropping the reader at the very end.
-  useEffect(() => {
-    const c = scrollRef.current
-    if (!c) return
-    const last = messages[messages.length - 1]
-    if (!loading && last?.role === 'assistant' && answerRef.current) {
-      c.scrollTo({ top: Math.max(0, answerRef.current.offsetTop - 8), behavior: 'smooth' })
-    } else {
-      c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' })
-    }
-  }, [messages, loading])
-
-  const ask = async (text: string) => {
-    const q = text.trim()
-    if (!q || loading) return
-    setError('')
-    setInput('')
-    const next: ChatMsg[] = [...messages, { role: 'user', content: q }]
-    setMessages(next)
-    setLoading(true)
-    try {
-      const res = await fetch('/api/customer/assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(json.error || 'The assistant is unavailable right now.')
-        return
-      }
-      setMessages((m) => [...m, { role: 'assistant', content: json.reply, sources: Array.isArray(json.sources) ? json.sources : undefined }])
-    } catch {
-      setError('Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const idle = messages.length === 0
-
-  return (
-    <section className={`${CARD} flex flex-col overflow-hidden`}>
-      {/* Header — Jerry's presence + status */}
-      <div className="flex items-center gap-2.5 border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
-        <Orb px={26} thinking={loading} />
-        <div className="leading-tight">
-          <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Jerry</h2>
-          <p className="text-[11px] text-zinc-400">{loading ? 'Looking through the manuals…' : 'Here to help'}</p>
-        </div>
-        <span className="ml-auto jerry-status-dot" aria-hidden="true" />
-      </div>
-
-      {/* Conversation */}
-      <div ref={scrollRef} className="relative max-h-[460px] min-h-[340px] flex-1 overflow-y-auto px-5 py-4">
-        {idle ? (
-          <div className="flex h-full flex-col items-center justify-center py-3 text-center">
-            <JerryFigure />
-            <p className="mt-4 text-[16px] font-bold text-zinc-900 dark:text-white">Hi, I&apos;m Jerry.</p>
-            <p className="mt-1.5 max-w-[262px] text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Ask about {companyName}&apos;s equipment or IAT&apos;s documentation — I answer from the manuals and show you the page.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map((m, i) =>
-              m.role === 'user' ? (
-                <div key={i} className="flex animate-fade-up justify-end">
-                  <p className="max-w-[85%] rounded-full border border-zinc-200 px-3.5 py-1.5 text-[12.5px] text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
-                    {m.content}
-                  </p>
-                </div>
-              ) : (
-                <div key={i} ref={i === messages.length - 1 ? answerRef : undefined} className="flex animate-fade-up gap-2.5">
-                  <Orb px={20} className="mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">{m.content}</p>
-                    {m.sources && m.sources.length > 0 && (
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Sources</span>
-                        {m.sources.map((s, j) => (
-                          <span
-                            key={j}
-                            className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-                            title={`${s.documentTitle}, page ${s.pageNumber}`}
-                          >
-                            <FileText size={10} className="shrink-0" /> {s.documentTitle} · p.{s.pageNumber}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            )}
-            {loading && (
-              <div className="flex animate-fade-up items-center gap-2.5">
-                <Orb px={20} thinking />
-                <span className="text-[12.5px] text-zinc-400">Reading IAT&apos;s documentation…</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Composer */}
-      <div className="space-y-2.5 px-5 pb-4 pt-1">
-        {idle && (
-          <div className="flex flex-wrap justify-center gap-1.5">
-            {JERRY_SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => ask(s)}
-                className="rounded-full border border-zinc-200 px-2.5 py-1 text-[11px] text-zinc-500 transition-colors hover:border-emerald-400 hover:text-emerald-600 dark:border-zinc-700 dark:text-zinc-400"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-        {error && <p className="text-[12px] text-rose-500">{error}</p>}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            ask(input)
-          }}
-          className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 py-1.5 pl-4 pr-1.5 transition-all focus-within:border-emerald-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/10 dark:border-zinc-700 dark:bg-zinc-900/60 dark:focus-within:bg-zinc-900"
-        >
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={loading}
-            placeholder="Ask Jerry…"
-            className="flex-1 bg-transparent text-[13px] text-zinc-700 outline-none placeholder:text-zinc-400 dark:text-zinc-200"
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            aria-label="Send"
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white transition-all hover:bg-emerald-700 disabled:opacity-40"
-          >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={15} />}
-          </button>
-        </form>
-        <p className="text-[10.5px] text-zinc-400">Jerry can make mistakes. For service or orders, use Submit a request or Contact Us.</p>
-      </div>
-    </section>
-  )
-}
 
 // ── Unit photos (build & QC) with a simple lightbox ──────────────────────────
 function UnitPhotos({ photos }: { photos: string[] }) {

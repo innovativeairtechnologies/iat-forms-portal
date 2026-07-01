@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { resolveViewedKbArticles } from '@/lib/kb'
 import type { ViewedKbArticle } from '@/lib/supabase'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
 import { sendTicketConfirmationToCustomer, sendTicketNotificationToAdmins } from '@/lib/resend-tickets'
 
@@ -49,6 +50,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
+
+    const recaptcha = await verifyRecaptcha(body.recaptcha_token, 'submit_ticket')
+    if (!recaptcha.ok) {
+      console.warn('[tickets] reCAPTCHA check failed:', recaptcha.reason)
+      return NextResponse.json({ error: 'Please try again.' }, { status: 400 })
+    }
 
     // Ticket number: IAT-YYYY-NNNN, sequential per year (migration 029). The DB
     // generates the next value atomically so concurrent tickets can't collide. If

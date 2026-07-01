@@ -172,6 +172,9 @@ export type Ticket = {
   customer_company: string | null
   customer_email: string
   customer_phone: string | null
+  // Customer-editable "how should we reach you" preference (migration 037),
+  // set from the customer ticket-detail page's Contact card.
+  preferred_contact_method: 'email' | 'phone' | null
   serial_number: string
   model_number: string
   voltage: string
@@ -211,6 +214,31 @@ export type Ticket = {
   created_at: string
   owner?: Employee
   customer_id: string | null
+  // 'warranty' when this ticket was opened from an approved warranty claim
+  // (migration 036); 'support' for the normal support-form path.
+  request_type: 'support' | 'warranty'
+}
+
+// A customer's self-serve warranty claim on one of their units (migration 036).
+// Filed from /customer (WarrantyCard → WarrantySubmitModal), reviewed at
+// /admin/customers (Warranty tab). Approving stamps resulting_ticket_id with a
+// newly created tickets row (request_type='warranty') so the existing ticket
+// workflow handles servicing the claim. Service-role only.
+export type WarrantyRequest = {
+  id: string
+  customer_id: string
+  equipment_id: string
+  serial_number: string
+  description: string
+  problem_started: string | null
+  resolution: 'repair' | 'replace' | 'credit'
+  status: 'pending' | 'approved' | 'denied'
+  decided_by: string | null
+  decided_at: string | null
+  deny_reason: string | null
+  resulting_ticket_id: string | null
+  created_at: string
+  updated_at: string
 }
 
 // A Knowledge Base article the customer viewed before submitting their ticket.
@@ -237,6 +265,11 @@ export type TicketNote = {
   content: string
   attachments?: TicketNoteAttachment[]
   created_at: string
+  // migration 037 — visibility gates whether a customer can ever see this note;
+  // author_type records who wrote it. Both default to internal/admin so every
+  // historical note stays admin-only with no retroactive exposure.
+  visibility: 'internal' | 'public'
+  author_type: 'admin' | 'customer'
 }
 
 export type AccrualTier = {

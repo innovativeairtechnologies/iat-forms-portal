@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Script from 'next/script'
 import Logo from '@/components/Logo'
 import Link from 'next/link'
 import {
@@ -100,6 +101,20 @@ function seedForm(ctx: SupportCustomerContext | null): FormData {
     serial_number: one?.serial_number || '',
     model_number: one?.model_number || '',
     voltage: one?.voltage || '',
+  }
+}
+
+// reCAPTCHA v3 (invisible, score-based) — scoped to this form only for now. Unset
+// in env until the user adds it, at which point the script loads + a token is
+// sent with the submission; the server (lib/recaptcha.ts) fails open either way.
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void
+      execute: (siteKey: string, options: { action: string }) => Promise<string>
+    }
   }
 }
 
@@ -652,6 +667,20 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
     }
 
     try {
+      // Invisible reCAPTCHA v3 — only runs if a site key is configured (see
+      // RECAPTCHA_SITE_KEY above); otherwise no token is sent and the server
+      // (lib/recaptcha.ts) skips verification entirely. A grecaptcha hiccup
+      // must never block a real submission, so this is best-effort.
+      let recaptcha_token: string | undefined
+      if (RECAPTCHA_SITE_KEY) {
+        try {
+          await new Promise<void>(resolve => window.grecaptcha?.ready(resolve) ?? resolve())
+          recaptcha_token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, { action: 'submit_ticket' })
+        } catch (recaptchaErr) {
+          console.error('[ticket] reCAPTCHA token fetch failed:', recaptchaErr)
+        }
+      }
+
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -662,6 +691,7 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
           ai_recommendations: recommendations,
           viewed_kb_articles: getKbViews(),
           brand: form.brand,
+          ...(recaptcha_token ? { recaptcha_token } : {}),
         }),
       })
       const json = await res.json()
@@ -798,6 +828,15 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
+
+      {/* reCAPTCHA v3 (invisible) — only loads once a site key is configured;
+          scoped to this form for now. See lib/recaptcha.ts for the server side. */}
+      {RECAPTCHA_SITE_KEY && (
+        <Script
+          src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
+          strategy="afterInteractive"
+        />
+      )}
 
       {/* Header */}
       <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { requireAdminAuth } from '@/lib/api-auth'
+import { requireTicketAccess } from '@/lib/ticket-access'
 import PostalMime from 'postal-mime'
 import MsgReader from '@kenjiuno/msgreader'
 import sanitizeHtml from 'sanitize-html'
 
 // Parses a saved .eml / .msg ticket-note attachment server-side and returns its
-// sender / subject / date / body so the admin can read it inline — no "save the
-// file, then open Outlook" round-trip (Kacy's #4). Admin-gated and path-scoped
-// to this ticket, mirroring the sibling download route. The HTML body is
-// sanitized here (server side) before it's handed back, since the admin renders
-// it with dangerouslySetInnerHTML.
+// sender / subject / date / body so the viewer can read it inline — no "save the
+// file, then open Outlook" round-trip (Kacy's #4). Dual-gated via
+// requireTicketAccess (admin, or the owning customer) and path-scoped to this
+// ticket, mirroring the sibling download route. The HTML body is sanitized
+// here (server side) before it's handed back, since the client renders it with
+// dangerouslySetInnerHTML.
 
 type EmailPreview = {
   from: string
@@ -95,8 +96,8 @@ function parseMsg(ab: ArrayBuffer): EmailPreview {
 
 export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params
-  const err = await requireAdminAuth()
-  if (err) return err
+  const auth = await requireTicketAccess(params.id)
+  if (auth instanceof NextResponse) return auth
 
   const path = req.nextUrl.searchParams.get('path') || ''
   if (!path || !path.startsWith(`${params.id}/`) || path.includes('..')) {

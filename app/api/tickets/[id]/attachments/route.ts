@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { requireAdminAuth } from '@/lib/api-auth'
+import { requireTicketAccess } from '@/lib/ticket-access'
 
 // Issues a one-shot signed upload URL for a ticket-note attachment. The browser
 // then uploads the file BYTES directly to Supabase Storage with this token,
 // which avoids Vercel's ~4.5MB function request-body limit (a multipart upload
-// routed through here 413s on anything larger). Admin-gated; files land in the
-// private `ticket-attachments` bucket under the ticket's id prefix.
+// routed through here 413s on anything larger). Dual-gated via requireTicketAccess
+// (admin, or the owning customer); files land in the private `ticket-attachments`
+// bucket under the ticket's id prefix.
 
 const MAX_BYTES = 25 * 1024 * 1024 // 25MB — emails with attachments run large
 
@@ -22,7 +23,8 @@ const ALLOWED_EXT = new Set([
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const err = await requireAdminAuth();if (err) return err
+  const auth = await requireTicketAccess(params.id)
+  if (auth instanceof NextResponse) return auth
 
   const body = await req.json().catch(() => null)
   const name = typeof body?.name === 'string' ? body.name.trim() : ''

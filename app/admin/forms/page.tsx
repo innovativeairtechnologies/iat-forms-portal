@@ -118,7 +118,7 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
             </Link>
             <Link href="/admin/forms/new"
               className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-card-sm">
-              <Plus size={15} />+ New Form
+              <Plus size={15} />New Form
             </Link>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
                     ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100'
                     : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800'
                 }`}>
-                {s === 'all' ? 'All' : s === 'active' ? 'Active' : s === 'inactive' ? 'Inactive' : 'Pending'}
+                {s === 'all' ? 'All' : s === 'active' ? 'Active' : s === 'inactive' ? 'Paused' : 'Pending'}
                 {s === 'pending' && pendingCount > 0 && (
                   <span className={`text-[10px] font-bold px-1.5 rounded-full ${activeStatus === s ? 'bg-white/20' : 'bg-amber-200/60 dark:bg-amber-900/60'}`}>{pendingCount}</span>
                 )}
@@ -188,7 +188,7 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
                     <Link href={`/admin/forms?category=${encodeURIComponent(name)}&status=inactive`}
                       className="flex items-center gap-1 text-[11px] font-semibold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 px-2 py-1 rounded-lg transition-colors">
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-zinc-600 flex-shrink-0" />
-                      {inactiveCount} inactive
+                      {inactiveCount} paused
                     </Link>
                   )}
                 </div>

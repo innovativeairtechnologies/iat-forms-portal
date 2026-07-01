@@ -100,6 +100,7 @@ export default async function CustomerHome() {
   const requests: RequestView[] = [
     ...tickets.map((t) => ({
       kind: 'ticket' as const,
+      id: t.id,
       ref: t.ticket_number,
       title: t.problem_description,
       serial: t.serial_number,

@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown } from 'lucide-react'
+import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown, ShieldCheck } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import dynamic from 'next/dynamic'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import { StatusPill } from '@/components/admin/list'
+import JerryWidget from '@/components/shared/JerryWidget'
 
-const RichTextEditor = dynamic(() => import('@/components/admin/RichTextEditor'), { ssr: false })
+const RichTextEditor = dynamic(() => import('@/components/shared/RichTextEditor'), { ssr: false })
 
 const STATUS_OPTIONS: { value: Ticket['status']; label: string; cls: string }[] = [
   { value: 'open',        label: 'Open',        cls: 'bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
@@ -243,6 +245,10 @@ export default function TicketDetailClient({
   const [updating, setUpdating] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Default UNCHECKED = internal, matching the locked-in server-side default
+  // (migration 037) — an admin must explicitly opt a note into being visible
+  // to the customer.
+  const [replyToCustomer, setReplyToCustomer] = useState(false)
 
   // Pre-addressed reply to the customer, tagged with the ticket number in the
   // subject so a future inbound mailbox/webhook can thread responses straight
@@ -287,7 +293,7 @@ export default function TicketDetailClient({
       const res = await fetch(`/api/tickets/${ticket.id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: html, attachments }),
+        body: JSON.stringify({ content: html, attachments, visibility: replyToCustomer ? 'public' : 'internal' }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
@@ -296,6 +302,7 @@ export default function TicketDetailClient({
       }
       const data = await res.json()
       setNotes(prev => [...prev, data as TicketNote])
+      setReplyToCustomer(false)
     } catch {
       setSaveError('Failed to save note')
     } finally {
@@ -351,9 +358,14 @@ export default function TicketDetailClient({
         {/* Hero */}
         <div>
           <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Support Ticket</p>
-          <h1 className="text-[22px] font-bold text-zinc-900 dark:text-white tracking-tight font-mono mt-0.5">
-            {ticket.ticket_number}
-          </h1>
+          <div className="flex items-center gap-2.5 mt-0.5">
+            <h1 className="text-[22px] font-bold text-zinc-900 dark:text-white tracking-tight font-mono">
+              {ticket.ticket_number}
+            </h1>
+            {ticket.request_type === 'warranty' && (
+              <StatusPill tone="amber" icon={<ShieldCheck size={11} />}>Warranty Claim</StatusPill>
+            )}
+          </div>
           <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-1">
             {ticket.customer_name}
             {ticket.customer_company ? ` · ${ticket.customer_company}` : ''}
@@ -636,7 +648,15 @@ export default function TicketDetailClient({
                     {notes.map((note, idx) => (
                       <div key={note.id}>
                         {(idx > 0 || !!ticket.notes) && <div className="border-t border-zinc-100 dark:border-zinc-800/50 mb-4" />}
-                        <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mb-2">{formatNoteDate(note.created_at)}</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-[11px] text-zinc-400 dark:text-zinc-600">{formatNoteDate(note.created_at)}</p>
+                          <StatusPill tone={note.visibility === 'public' ? 'emerald' : 'slate'}>
+                            {note.visibility === 'public' ? 'Sent to customer' : 'Internal'}
+                          </StatusPill>
+                          <StatusPill tone={note.author_type === 'customer' ? 'sky' : 'slate'}>
+                            {note.author_type === 'customer' ? 'Customer' : 'Admin'}
+                          </StatusPill>
+                        </div>
                         {note.content && (
                           <div
                             className="note-content text-[13px] text-zinc-700 dark:text-zinc-200"
@@ -657,6 +677,17 @@ export default function TicketDetailClient({
                     <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mb-3">New note</p>
                   </div>
                 )}
+                <label className="flex items-center gap-2 mb-2.5 cursor-pointer select-none w-fit">
+                  <input
+                    type="checkbox"
+                    checked={replyToCustomer}
+                    onChange={e => setReplyToCustomer(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-600 text-emerald-600 focus:ring-emerald-500/40"
+                  />
+                  <span className="text-[12px] font-medium text-zinc-600 dark:text-zinc-300">
+                    Reply to customer <span className="text-zinc-400 dark:text-zinc-500 font-normal">— visible on their ticket page</span>
+                  </span>
+                </label>
                 <RichTextEditor onSubmit={addNote} disabled={savingNote} onUpload={uploadAttachment} />
               </div>
             </Card>
@@ -665,6 +696,14 @@ export default function TicketDetailClient({
 
           {/* ── Right rail ────────────────────────────────────────── */}
           <aside className="w-full xl:w-[340px] flex-shrink-0 xl:sticky xl:top-[72px] space-y-4">
+
+            {/* Jerry — internal assistant grounded in this ticket's equipment/problem context */}
+            <JerryWidget
+              apiEndpoint={`/api/admin/tickets/${ticket.id}/assistant`}
+              suggestions={['Summarize this ticket', 'Suggest troubleshooting steps', 'Is this unit under warranty?']}
+              idleSubtitle="Ask about this ticket's equipment or IAT's documentation — I answer from the manuals and show you the page."
+              footerNote="Jerry can make mistakes — verify before acting."
+            />
 
             {/* AI Recommendations */}
             <Card>
