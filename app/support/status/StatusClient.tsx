@@ -9,6 +9,7 @@ import {
   ArrowRight, BookOpen, AlertCircle, Ticket as TicketIcon,
 } from 'lucide-react'
 import type { StatusCustomerContext } from '@/lib/support-context'
+import RequestAccountCta from '@/components/support/RequestAccountCta'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ type TicketResult = {
   ai_recommendations: string[]
   resolved_reason: string | null
   created_at: string
+  customer_id_linked?: boolean
+  has_pending_request?: boolean
 }
 
 type RelatedArticle = { title: string; slug: string; excerpt: string | null; category: string | null }
@@ -288,6 +291,22 @@ export default function StatusClient({ customerContext = null }: { customerConte
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Your reported issue</p>
                   <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{result.problem_description}</p>
                 </div>
+
+                {/* Request portal access — support tickets only, not troubleshooting-checklist refs */}
+                {!ticketNumber.toUpperCase().startsWith('TSC-') && (
+                  <div className="px-6 pb-6">
+                    <RequestAccountCta
+                      ticketNumber={result.ticket_number}
+                      email={email}
+                      suppress={!!customerContext}
+                      initialStatus={
+                        result.customer_id_linked ? 'already_linked'
+                        : result.has_pending_request ? 'already_pending'
+                        : 'idle'
+                      }
+                    />
+                  </div>
+                )}
               </div>
 
               {/* AI recommendations */}

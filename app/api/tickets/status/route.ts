@@ -44,6 +44,19 @@ export async function POST(req: NextRequest) {
 
     const articles = await matchKbArticlesForTicket(ticket)
 
+    // Lets the client show the right "Request portal access" CTA state
+    // without a second round trip.
+    let hasPendingRequest = false
+    if (!ticket.customer_id) {
+      const { data: pendingReq } = await supabaseAdmin
+        .from('customer_portal_requests')
+        .select('id')
+        .eq('ticket_id', ticket.id)
+        .eq('status', 'pending')
+        .maybeSingle()
+      hasPendingRequest = !!pendingReq
+    }
+
     // Return only customer-safe fields — never internal notes, owner, photos, etc.
     return NextResponse.json({
       ticket: {
@@ -54,6 +67,8 @@ export async function POST(req: NextRequest) {
         ai_recommendations: ticket.ai_recommendations ?? [],
         resolved_reason: ticket.resolved_reason ?? null,
         created_at: ticket.created_at,
+        customer_id_linked: !!ticket.customer_id,
+        has_pending_request: hasPendingRequest,
       },
       related_articles: articles.map(a => ({
         title: a.title,

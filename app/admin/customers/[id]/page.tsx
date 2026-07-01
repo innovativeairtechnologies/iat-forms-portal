@@ -25,23 +25,25 @@ export default async function CustomerDetailPage(props: { params: Promise<{ id: 
     .eq('customer_id', id)
     .eq('role', 'customer')
 
-  // Support history tied to this customer (by login email or their serials) —
-  // same matching the /customer dashboard uses, just counted here.
+  // Support history tied to this customer (by login email, their serials, or
+  // an explicit customer_id link) — same matching the /customer dashboard
+  // uses, just counted here. troubleshooting_intakes has no customer_id (it's
+  // historical-only since migration 027), so it stays email/serial-only.
   const email = (customer.contact_email || '').toLowerCase()
   const serials = equipment.map((e) => e.serial_number).filter(Boolean)
   const orParts: string[] = []
   if (email) orParts.push(`customer_email.ilike.${email}`)
   if (serials.length) orParts.push(`serial_number.in.(${serials.join(',')})`)
   const orFilter = orParts.join(',')
+  const ticketOrFilter = [...orParts, `customer_id.eq.${id}`].join(',')
 
-  let requestCount = 0
-  if (orFilter) {
-    const [{ count: tc }, { count: ic }] = await Promise.all([
-      supabaseAdmin.from('tickets').select('id', { count: 'exact', head: true }).or(orFilter),
-      supabaseAdmin.from('troubleshooting_intakes').select('id', { count: 'exact', head: true }).or(orFilter),
-    ])
-    requestCount = (tc ?? 0) + (ic ?? 0)
-  }
+  const [{ count: tc }, { count: ic }] = await Promise.all([
+    supabaseAdmin.from('tickets').select('id', { count: 'exact', head: true }).or(ticketOrFilter),
+    orFilter
+      ? supabaseAdmin.from('troubleshooting_intakes').select('id', { count: 'exact', head: true }).or(orFilter)
+      : Promise.resolve({ count: 0 }),
+  ])
+  const requestCount = (tc ?? 0) + (ic ?? 0)
 
   return (
     <CustomerDetailClient

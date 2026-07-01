@@ -67,7 +67,8 @@ export async function sendTicketConfirmationToCustomer(ticket: Ticket) {
     </table>
     ${aiRecsBlock(ticket.ai_recommendations)}
     <a href="${esc(statusUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;margin-top:20px;">Check Ticket Status</a>
-    <p style="margin:10px 0 0;color:#999;font-size:12px;">You'll need this email address (${esc(ticket.customer_email)}) to look up your ticket.</p>`
+    <p style="margin:10px 0 0;color:#999;font-size:12px;">You'll need this email address (${esc(ticket.customer_email)}) to look up your ticket.</p>
+    <p style="margin:14px 0 0;color:#666;font-size:13px;line-height:1.5;">Want to track all your equipment and requests in one place? Check your ticket status above, then look for <strong>&ldquo;Request portal access&rdquo;</strong> once you've confirmed your details.</p>`
 
   const result = await resend.emails.send({
     from: FROM,

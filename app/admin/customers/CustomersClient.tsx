@@ -7,19 +7,28 @@ import { Building2, Search, Plus, ChevronRight, Boxes } from 'lucide-react'
 import type { Customer } from '@/lib/supabase'
 import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
+import CustomerRequestsQueue, { type CustomerPortalRequestRow } from './CustomerRequestsQueue'
 
 type CustomerRow = Customer & { unit_count: number }
-type Filter = 'all' | 'active' | 'inactive'
+type Filter = 'all' | 'active' | 'inactive' | 'requests'
 
 const COLS = 'grid-cols-[1.5fr_1.5fr_1fr_84px_104px_28px]'
 
-export default function CustomersClient({ customers }: { customers: CustomerRow[] }) {
+export default function CustomersClient({
+  customers,
+  requests,
+}: {
+  customers: CustomerRow[]
+  requests: CustomerPortalRequestRow[]
+}) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [showWizard, setShowWizard] = useState(false)
 
-  const matchesTab = (c: CustomerRow, f: Filter) => (f === 'all' ? true : c.status === f)
+  const pendingRequestCount = requests.filter((r) => r.status === 'pending').length
+
+  const matchesTab = (c: CustomerRow, f: Filter) => (f === 'all' ? true : f === 'requests' ? false : c.status === f)
 
   const q = search.toLowerCase()
   const filtered = customers.filter((c) => {
@@ -61,9 +70,10 @@ export default function CustomersClient({ customers }: { customers: CustomerRow[
               ['all', 'All'],
               ['active', 'Active'],
               ['inactive', 'Inactive'],
+              ['requests', 'Requests'],
             ] as [Filter, string][]
           ).map(([f, label]) => {
-            const count = customers.filter((c) => matchesTab(c, f)).length
+            const count = f === 'requests' ? pendingRequestCount : customers.filter((c) => matchesTab(c, f)).length
             const active = filter === f
             return (
               <button
@@ -85,6 +95,10 @@ export default function CustomersClient({ customers }: { customers: CustomerRow[
           })}
         </div>
 
+        {filter === 'requests' ? (
+          <CustomerRequestsQueue requests={requests} />
+        ) : (
+          <>
         {/* Search */}
         <div className="flex items-center gap-2.5 mb-4 flex-wrap">
           <div className="relative">
@@ -168,6 +182,8 @@ export default function CustomersClient({ customers }: { customers: CustomerRow[
             ))
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* New customer wizard */}

@@ -210,6 +210,7 @@ export type Ticket = {
   viewed_kb_articles: ViewedKbArticle[] | null
   created_at: string
   owner?: Employee
+  customer_id: string | null
 }
 
 // A Knowledge Base article the customer viewed before submitting their ticket.

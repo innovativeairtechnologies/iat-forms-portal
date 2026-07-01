@@ -11,6 +11,7 @@ import {
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
 import { SampleLabelThumb } from './SampleLabelThumb'
+import RequestAccountCta from './RequestAccountCta'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 // This is the UNIFIED support form — the former "Equipment Support Ticket" and
@@ -729,6 +730,14 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
                 Track this ticket&apos;s status
                 <ArrowRight size={14} />
               </Link>
+            </div>
+
+            <div className="px-8 py-6 border-b border-gray-100 dark:border-zinc-800">
+              <RequestAccountCta
+                ticketNumber={ticketNumber}
+                email={form.customer_email}
+                suppress={!!customerContext}
+              />
             </div>
 
             {recommendations.length > 0 && (

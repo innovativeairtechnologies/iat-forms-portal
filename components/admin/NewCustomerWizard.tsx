@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   UserPlus, Upload, Copy, Check, Loader2, Mail, Link2, X,
-  CheckCircle2, Sparkles, Building2, Boxes, ArrowRight,
+  CheckCircle2, Sparkles, Building2, Boxes, ArrowRight, AlertCircle,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -49,12 +49,29 @@ const EMPTY = {
 export default function NewCustomerWizard({
   onClose,
   onCreated,
+  initial,
+  linkTicketId,
+  linkRequestId,
+  suggestedCustomerId,
+  suggestedCustomerName,
 }: {
   onClose: () => void
   onCreated?: (res: { customer_id: string | null; equipment_id: string | null }) => void
+  /** Prefill the form — used when opened from an approved portal-access request. */
+  initial?: Partial<typeof EMPTY>
+  /** The ticket that triggered this invite; gets `customer_id` stamped on approve. */
+  linkTicketId?: string
+  /** The customer_portal_requests row to mark approved once the invite succeeds. */
+  linkRequestId?: string
+  /** A likely-existing company for this unit's serial — offers "attach instead". */
+  suggestedCustomerId?: string | null
+  suggestedCustomerName?: string | null
 }) {
   const router = useRouter()
-  const [form, setForm] = useState({ ...EMPTY })
+  const [form, setForm] = useState({ ...EMPTY, ...initial })
+  // Default OFF — attaching to an existing company is consequential, so the
+  // admin has to actively opt in rather than merge by default off a guess.
+  const [attachToExisting, setAttachToExisting] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -121,6 +138,7 @@ export default function NewCustomerWizard({
           contact_email: form.contact_email,
           phone: form.phone,
           customer_location: form.location,
+          existing_customer_id: attachToExisting && suggestedCustomerId ? suggestedCustomerId : undefined,
           equipment: hasUnit
             ? {
                 serial_number: form.serial_number,
@@ -133,6 +151,8 @@ export default function NewCustomerWizard({
               }
             : undefined,
           seed_tracker: form.seed_tracker,
+          link_ticket_id: linkTicketId,
+          link_request_id: linkRequestId,
         }),
       })
       const json = await res.json()
@@ -258,11 +278,33 @@ export default function NewCustomerWizard({
               />
             </label>
 
+            {/* Possible existing customer match */}
+            {suggestedCustomerId && suggestedCustomerName && (
+              <label className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 cursor-pointer dark:border-amber-900 dark:bg-amber-500/10">
+                <input
+                  type="checkbox"
+                  checked={attachToExisting}
+                  onChange={(e) => setAttachToExisting(e.target.checked)}
+                  className="mt-0.5 accent-emerald-600"
+                />
+                <span className="text-[12.5px] text-amber-800 dark:text-amber-300">
+                  <AlertCircle size={13} className="inline -mt-0.5 mr-1" />
+                  This unit&apos;s serial number is already linked to <strong>{suggestedCustomerName}</strong>.
+                  Attach this login to that company instead of creating a new one.
+                </span>
+              </label>
+            )}
+
             {/* Customer */}
             <div className="space-y-3">
               <div className="flex items-center gap-1.5 text-zinc-400">
                 <Building2 size={13} />
                 <span className="text-[11px] font-semibold uppercase tracking-widest">Customer</span>
+                {attachToExisting && suggestedCustomerId && (
+                  <span className="text-[10px] font-medium normal-case tracking-normal text-emerald-600 dark:text-emerald-400">
+                    will attach to {suggestedCustomerName}
+                  </span>
+                )}
               </div>
               <div>
                 <label className={lbl}>Company *</label>

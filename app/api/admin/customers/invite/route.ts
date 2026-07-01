@@ -24,6 +24,8 @@ type InvitePayload = {
     notes?: string
   }
   seed_tracker?: boolean                 // default true
+  link_ticket_id?: string                // the ticket that triggered this invite (from a request approval)
+  link_request_id?: string               // the customer_portal_requests row to mark approved
 }
 
 export async function POST(req: NextRequest) {
@@ -134,6 +136,25 @@ export async function POST(req: NextRequest) {
     if (!error && upserted) equipmentId = upserted.id
   }
 
+  // ── 4b. Stamp customer_id onto the triggering ticket + backfill by email ───
+  // Best-effort: the account already exists by this point, so a hiccup here
+  // shouldn't fail the whole invite or roll anything back.
+  let backfilledTicketCount = 0
+  try {
+    if (body.link_ticket_id) {
+      await supabaseAdmin.from('tickets').update({ customer_id: customerId }).eq('id', body.link_ticket_id)
+    }
+    const { data: backfilled } = await supabaseAdmin
+      .from('tickets')
+      .update({ customer_id: customerId })
+      .ilike('customer_email', contactEmail)
+      .is('customer_id', null)
+      .select('id')
+    backfilledTicketCount = backfilled?.length ?? 0
+  } catch (e) {
+    console.error('[customers/invite] ticket linking failed:', e)
+  }
+
   // ── 5. Seed the default build/ship tracker (only if none yet) ──────────────
   if (equipmentId && body.seed_tracker !== false) {
     const { count } = await supabaseAdmin
@@ -174,6 +195,20 @@ export async function POST(req: NextRequest) {
     console.error('[customers/invite] welcome email threw:', e)
   }
 
+  // ── 6b. Mark the originating portal-access request approved ────────────────
+  if (body.link_request_id) {
+    await supabaseAdmin
+      .from('customer_portal_requests')
+      .update({
+        status: 'approved',
+        decided_by: admin.user.id,
+        decided_at: new Date().toISOString(),
+        resulting_customer_id: customerId,
+      })
+      .eq('id', body.link_request_id)
+      .eq('status', 'pending')
+  }
+
   // ── 7. Audit ───────────────────────────────────────────────────────────────
   await logAudit({
     actor: { id: admin.user.id, name: admin.displayName },
@@ -181,7 +216,14 @@ export async function POST(req: NextRequest) {
     entityType: 'customer',
     entityId: customerId,
     summary: `Invited ${companyName} (${contactEmail})${equipmentId ? ' and linked equipment' : ''}`,
-    metadata: { contact_email: contactEmail, equipment_id: equipmentId, email_sent: emailSent },
+    metadata: {
+      contact_email: contactEmail,
+      equipment_id: equipmentId,
+      email_sent: emailSent,
+      linked_ticket_id: body.link_ticket_id ?? null,
+      backfilled_ticket_count: backfilledTicketCount,
+      approved_request_id: body.link_request_id ?? null,
+    },
   })
 
   return NextResponse.json({

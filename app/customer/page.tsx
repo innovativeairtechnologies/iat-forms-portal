@@ -45,21 +45,27 @@ export default async function CustomerHome() {
   }
 
   // ── Support history (tickets + troubleshooting) for their units/email ──────
+  // troubleshooting_intakes has no customer_id column (it's historical-only —
+  // migration 027 merged all new submissions into tickets), so it keeps the
+  // email/serial match; tickets additionally match on customer_id, which is
+  // the reliable link once a request has been approved (email/serial can miss
+  // e.g. a second contact at the same company using a different email).
   const orParts: string[] = []
   if (email) orParts.push(`customer_email.ilike.${email}`)
   if (serials.length) orParts.push(`serial_number.in.(${serials.join(',')})`)
   const orFilter = orParts.join(',')
+  const ticketOrFilter = [...orParts, `customer_id.eq.${customerId}`].join(',')
 
   let tickets: Ticket[] = []
   let intakes: TroubleshootingIntake[] = []
-  if (orFilter) {
-    const [tRes, iRes] = await Promise.all([
-      supabaseAdmin.from('tickets').select('*').or(orFilter).order('created_at', { ascending: false }).limit(50),
-      supabaseAdmin.from('troubleshooting_intakes').select('*').or(orFilter).order('created_at', { ascending: false }).limit(50),
-    ])
-    tickets = (tRes.data || []) as Ticket[]
-    intakes = (iRes.data || []) as TroubleshootingIntake[]
-  }
+  const [tRes, iRes] = await Promise.all([
+    supabaseAdmin.from('tickets').select('*').or(ticketOrFilter).order('created_at', { ascending: false }).limit(50),
+    orFilter
+      ? supabaseAdmin.from('troubleshooting_intakes').select('*').or(orFilter).order('created_at', { ascending: false }).limit(50)
+      : Promise.resolve({ data: [] as TroubleshootingIntake[] }),
+  ])
+  tickets = (tRes.data || []) as Ticket[]
+  intakes = (iRes.data || []) as TroubleshootingIntake[]
 
   // ── Knowledge base (published) ─────────────────────────────────────────────
   const { data: kbData } = await supabaseAdmin
