@@ -20,6 +20,40 @@ server-side and fetch only the logged-in customer's rows (`lib/customer-auth.ts`
 `getCustomerUser`), so the browser never queries these tables and one customer can never
 read another's data — same posture as `/admin`.
 
+## Self-serve access requests (2026-07-01)
+A third entry point, for customers who aren't in `/admin/customers` yet: from
+`/support`, after submitting an equipment ticket (or later, from a successful
+`/support/status` lookup), an anonymous submitter sees a **"Request portal
+access"** button (`components/support/RequestAccountCta.tsx`, shared by both
+call sites) — opt-in, never forced. It re-proves ownership with the same
+ticket-number + email match the status lookup uses (`POST
+/api/tickets/request-account`), and is suppressed once the ticket is already
+linked to an account, or shows a "pending" state if a request is already
+awaiting review. Requests land in a new **pending queue**, not an
+auto-created account:
+- `customer_portal_requests` (migration `034`) — one row per request, snapshot
+  of the requester's details off the ticket (not client input), a
+  `suggested_customer_id` signal (set when the ticket's equipment serial is
+  already linked to an existing customer — flags a likely second-contact
+  case), and `pending | approved | denied` status. Service-role only, same
+  posture as `customers`.
+- **`/admin/customers` → Requests tab** (`CustomerRequestsQueue.tsx`) — pending
+  count badge alongside All/Active/Inactive, each row linking back to the
+  originating ticket. **Approve** opens `NewCustomerWizard` pre-filled from the
+  request (reuses the exact same invite pipeline below — no parallel logic);
+  if a suggested match exists, a banner offers **"attach to this company
+  instead"** rather than creating a duplicate. **Deny** just closes the request
+  out (optional reason, no email sent).
+- Approving stamps `tickets.customer_id` (migration `034`) onto the
+  triggering ticket **and backfills** any other historical ticket from the
+  same email that isn't linked yet — additive to `POST
+  /api/admin/customers/invite` (`link_ticket_id` / `link_request_id` params),
+  not a separate code path. Both the `/customer` dashboard and the
+  `/admin/customers/[id]` request count now match on `customer_id OR
+  email OR serial` (previously email/serial only), so a second contact at the
+  same company (different login email) is no longer invisible to either view.
+  `troubleshooting_intakes` is untouched (historical-only since migration 027).
+
 ## Provisioning (admin)
 Two entry points, **one** backend (`POST /api/admin/customers/invite` — creates/links the
 customer + equipment, seeds the tracker, and emails the invite):
@@ -99,6 +133,10 @@ preview invite points at the preview and a prod invite at prod.
 ## Ops / deploy notes
 - Apply `supabase/migrations/026_customer_portal.sql` (done 2026-06-24). The admin front door
   added 2026-06-25 needs **no migration**.
+- **Self-serve access requests (2026-07-01):** apply `supabase/migrations/034_customer_portal_requests.sql`
+  (done — `customer_portal_requests` table + `tickets.customer_id`) before the "Request portal
+  access" CTA will work; the frontend degrades gracefully (clean "not found" response, no crash)
+  if it's deployed before the migration runs.
 - **Documentation RAG (2026-06-29):** apply `supabase/migrations/030_kb_rag.sql`, then load the pool
   with `node scripts/ingest-kb-docs.mjs` — see **docs/kb-rag-assistant.md**. No new env vars.
 - Customer email sends from `onboarding@resend.dev` until a Resend domain is verified —

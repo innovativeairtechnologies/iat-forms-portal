@@ -2,6 +2,46 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-01 — Self-serve "Request portal access" from support tickets
+
+Customers no longer need a portal account forced on them just to check a
+ticket, but can now opt in to one from a ticket they've already submitted —
+gated by admin approval, not auto-created.
+
+### Added
+- **`RequestAccountCta`** (`components/support/RequestAccountCta.tsx`) — a
+  shared CTA on the ticket success screen and the `/support/status` lookup
+  result. Re-proves ownership via the same ticket-number + email match the
+  status lookup already uses (`POST /api/tickets/request-account`); suppressed
+  for already-logged-in portal customers, and shows "already linked" /
+  "pending" states instead of re-submitting.
+- **`customer_portal_requests`** table (migration `034`) — a pending queue,
+  not an auto-created account. Snapshots the requester's details off the
+  ticket (not client input) and carries a `suggested_customer_id` signal
+  (set when the ticket's equipment serial is already linked to an existing
+  customer) so the approving admin can spot a likely second-contact case
+  instead of creating a duplicate company.
+- **`/admin/customers` → Requests tab** (`CustomerRequestsQueue.tsx`) — pending
+  count badge, each row linking back to the originating ticket. **Approve**
+  opens `NewCustomerWizard` pre-filled from the request (now accepts an
+  `initial` prop + a "attach to this company instead" toggle); **Deny** closes
+  the request with an optional reason, no email sent.
+- **`tickets.customer_id`** (migration `034`) — approving a request stamps it
+  on the triggering ticket and backfills any other historical ticket from the
+  same email, additive to `POST /api/admin/customers/invite`
+  (`link_ticket_id` / `link_request_id`). Both `/customer` and
+  `/admin/customers/[id]` now match tickets on `customer_id OR email OR
+  serial` instead of email/serial only.
+
+### Changed
+- Confirmation email (`lib/resend-tickets.ts`) gained one line pointing back
+  to the status page, where the CTA lives once ownership is re-proven — no
+  new link, no email address in a URL.
+
+Migration `034` applied to the DB before deploy. `tsc` + `next build` green.
+End-to-end verified live in-browser up through ticket submission + the CTA
+render/click; the approve/deny loop needs a post-migration pass. — J.Y. + Claude
+
 ## 2026-06-30 — OCR'd the image-only PDFs into Jerry's pool (+9 docs)
 
 16 of the 80 source PDFs are image-only/scanned (no text layer), so they'd always
