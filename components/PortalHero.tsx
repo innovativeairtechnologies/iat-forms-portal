@@ -24,10 +24,6 @@ export function PortalHero({
         className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full opacity-[0.18] blur-3xl dark:opacity-25"
         style={{ background: 'radial-gradient(circle, #10b981, transparent 70%)' }}
       />
-      <div
-        className="pointer-events-none absolute -bottom-24 -left-10 h-56 w-56 rounded-full opacity-[0.07] blur-3xl dark:opacity-10"
-        style={{ background: 'radial-gradient(circle, #10b981, transparent 70%)' }}
-      />
 
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">

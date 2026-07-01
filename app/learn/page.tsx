@@ -3,34 +3,14 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import CategoryGrid from '@/components/learn/CategoryGrid'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
-import { Sparkles, Trophy, Flame, BookOpen, Clock, Medal } from 'lucide-react'
+import { Sparkles, Trophy } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
-
-function fmtMinutes(min: number): string {
-  if (!min) return '0m'
-  if (min < 60) return `${min}m`
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  return m ? `${h}h ${m}m` : `${h}h`
-}
 
 function greeting(hour: number) {
   if (hour < 12) return 'Good morning'
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'
-}
-
-function StatTile({ icon, value, label, accent }: { icon: React.ReactNode; value: string; label: string; accent: string }) {
-  return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none">
-      <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${accent}14`, color: accent }}>
-        {icon}
-      </div>
-      <p className="text-[22px] font-bold leading-none tracking-tight text-[#0a0a0b] dark:text-white">{value}</p>
-      <p className="mt-1 text-[12px] text-gray-500 dark:text-zinc-400">{label}</p>
-    </div>
-  )
 }
 
 export default async function LearnHomePage() {
@@ -82,16 +62,6 @@ export default async function LearnHomePage() {
           </>
         }
       />
-
-      {/* ── Stats strip ────────────────────────────────────────────── */}
-      {stats && (
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile icon={<Flame size={17} />} accent="#f97316" value={`${stats.currentStreak}`} label="day streak" />
-          <StatTile icon={<BookOpen size={17} />} accent="#089447" value={`${stats.lessonsCompleted}/${stats.totalLessons}`} label={`lessons · ${stats.overallPct}%`} />
-          <StatTile icon={<Medal size={17} />} accent="#d97706" value={`${stats.earnedBadgeCount}`} label="badges earned" />
-          <StatTile icon={<Clock size={17} />} accent="#0ea5e9" value={fmtMinutes(stats.minutesLearned)} label="time learning" />
-        </section>
-      )}
 
       {/* ── Browse ─────────────────────────────────────────────────── */}
       <section>

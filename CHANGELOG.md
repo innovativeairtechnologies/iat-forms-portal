@@ -2,7 +2,51 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
-## 2026-07-01 — Fixed the Submittal-scan "Could not read that file" error on real-world PDFs
+## 2026-07-01 — Portal-wide "calming" pass: subtracted visual noise on every surface
+
+The portal — the `/admin` dashboard especially — had started to feel "in your
+face." A density review across all nine surfaces found the bones (layout,
+spacing, type, the shared card/list kit) were sound; the crowding came from
+**decoration without meaning**: accent color used ornamentally (rainbow KPI
+icons, six-color palettes, non-semantic rank-bar hues), the same fact rendered
+two or three times (status/priority, streak/XP, stacked hero glows), and
+animation that never rested (Jerry's idle orb, an alarm-red pulsing badge, an
+infinite "Live" pulse, and a fake "⋯" affordance that did nothing). This pass
+subtracts that noise everywhere while preserving every piece of information and
+all behavior. Principles captured in `docs/design-language.md`.
+
+### Changed
+- **Shared DNA** — `AdminSidebar` nav count badges: solid saturated fills → soft
+  tinted chips; `list.tsx` `StatusPill`: single soft fill (no border) +
+  `semibold`; `PortalHero`: two glow blobs → one. Calms every portal at once.
+- **Admin dashboard** (`app/admin/page.tsx`, `ExecutiveBriefing.tsx`) — one
+  emerald focal point (flattened the Briefing, single hero glow), removed the
+  non-functional `MoreHorizontal` "⋯" from KPI tiles, sparklines only on
+  delta-bearing KPIs, Top-Forms/Top-Submitters rank bars recolored to emerald,
+  secondary rail cards flattened, section rhythm `space-y-4`→`6`.
+- **Customer + Jerry** (`CustomerDashboard.tsx`, `globals.css`) — Jerry's orb is
+  calm at idle (one gentle breathe); the spin/orbit/twinkle now run only behind
+  `.is-thinking` while he's answering. Cyan removed (pure emerald). Dropped
+  redundant counters and muted request pills. Winding-road tracker untouched.
+- **Ticket detail** (`TicketDetailClient.tsx`) — Problem Description promoted to
+  the top; six read-only intake echoes folded into one collapsed "Intake details"
+  disclosure (11 cards → ~5); duplicate status/priority pills removed from the top bar.
+- **Support** (`app/support/page.tsx`, `status/StatusClient.tsx`) — alarm-red
+  "Start here" badge → quiet emerald; five "coming soon" ghost cards → one-line
+  note; static status dot; trimmed the run-on hero subtitle; softened
+  secondary-card shadows.
+- **Learn** (`app/learn/page.tsx`, `me/page.tsx`, `BadgeIcon.tsx`) — removed the
+  duplicate dashboard stat strip; unified the four stat-tile hues to emerald;
+  locked badges preview 4 behind "show all"; softened earned-badge tiers.
+- **Employee** (`profile/page.tsx`, `EmployeeFormsView.tsx`, `OrgDirectory.tsx`) —
+  unified KPI icon color; folded Quick Actions into the hero; muted the amber
+  drafts panel; capped directory interest chips at 2 + "+N".
+
+Sibling landing (`iat-home`) and ticketing (`iat-ticketing`) repos got matching
+micro-fixes (one-shot "Live" pulse, tag trim; collapsed "coming soon" cards,
+lighter review rows). No data, props, or behavior removed — visual noise only.
+`tsc` + `next build` green. No migration. — J.Y. + Claude
+
 
 The "Scan a Submittal PDF" tool in `NewCustomerWizard` sent the file as base64
 directly in the POST body to `/api/admin/customers/extract-submittal`. Vercel

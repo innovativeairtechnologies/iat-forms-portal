@@ -252,40 +252,40 @@ html.green .text-indigo-600 { color: #4ade80; }
 .dark .learn-prose figure.img-missing figcaption { color: #a1a1aa; }
 
 /* ── Jerry — IAT's customer assistant "presence" orb ───────────────────────────
-   Idle motion is intentionally slow/serene (a calm "presence"); the .is-thinking
-   state speeds everything up to read as "working." Scales with the inline px size. */
+   At idle Jerry is calm: only the core gently breathes. The spinning ring, orbiting
+   sparks, twinkle, and halo pulse are held still and reserved for the .is-thinking
+   state (Jerry actually working). Scales with the inline px size. */
 .jerry-orb { position: relative; display: inline-block; flex-shrink: 0; }
 .jerry-orb > span { position: absolute; }
-.jerry-halo { inset: -26%; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,0.55), rgba(13,148,136,0.14) 55%, transparent 72%); filter: blur(7px); animation: jerryHalo 4.4s ease-in-out infinite; }
-.jerry-ring { inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent, #10b981 22%, #22d3ee 42%, #6ee7b7 58%, transparent 70%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); animation: jerrySpin 6.5s linear infinite; }
+.jerry-halo { inset: -26%; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,0.55), rgba(13,148,136,0.14) 55%, transparent 72%); filter: blur(7px); }
+.jerry-ring { inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent, #10b981 22%, #34d399 42%, #6ee7b7 58%, transparent 70%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); }
 .jerry-core { inset: 15%; border-radius: 50%; background: radial-gradient(circle at 36% 30%, #cffaf0 2%, #6ee7d6 22%, #10b981 50%, #0f766e 80%, #0b3b34); animation: jerryBreathe 4.4s ease-in-out infinite; }
 /* Jerry's full standing bobblehead — the idle hero "presence" (aura + ground shadow + bob). */
 .jerry-figure { position: relative; width: 180px; height: 178px; display: flex; align-items: flex-end; justify-content: center; }
-.jerry-figure-glow { position: absolute; left: 50%; top: 46%; width: 130px; height: 130px; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,0.38), rgba(13,148,136,0.10) 55%, transparent 72%); filter: blur(8px); animation: jerryFigGlow 4.4s ease-in-out infinite; }
+.jerry-figure-glow { position: absolute; left: 50%; top: 46%; width: 130px; height: 130px; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,0.38), rgba(13,148,136,0.10) 55%, transparent 72%); filter: blur(8px); opacity: .6; }
 .jerry-figure-img { position: relative; z-index: 1; display: block; height: 172px; width: auto; transform-origin: 50% 100%; animation: jerryBob 3.6s ease-in-out infinite; }
-.jerry-figure-shadow { position: absolute; left: 50%; bottom: 4px; width: 96px; height: 14px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(13,42,38,0.22), transparent 70%); filter: blur(3px); animation: jerryFigShadow 3.6s ease-in-out infinite; }
+.jerry-figure-shadow { position: absolute; left: 50%; bottom: 4px; width: 96px; height: 14px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(13,42,38,0.22), transparent 70%); filter: blur(3px); opacity: .5; }
 @keyframes jerryBob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-6px) rotate(1.5deg); } }
-@keyframes jerryFigGlow { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
-@keyframes jerryFigShadow { 0%, 100% { opacity: .5; width: 96px; } 50% { opacity: .34; width: 82px; } }
-@media (prefers-reduced-motion: reduce) { .jerry-figure-img, .jerry-figure-glow, .jerry-figure-shadow { animation: none !important; } }
-.jerry-spark { inset: 0; display: flex; align-items: center; justify-content: center; color: #f0fffa; animation: jerryTwinkle 4.4s ease-in-out infinite; }
-.jerry-orbit { inset: 0; border-radius: 50%; animation: jerrySpin 8.5s linear infinite; }
-.jerry-orbit.jerry-orbit2 { animation-duration: 11s; animation-direction: reverse; }
-.jerry-orbit > i { position: absolute; top: -3%; left: 50%; width: 7%; aspect-ratio: 1; border-radius: 50%; background: #67e8f9; box-shadow: 0 0 7px #22d3ee; transform: translateX(-50%); }
-.jerry-orbit.jerry-orbit2 > i { width: 5.5%; background: #6ee7b7; box-shadow: 0 0 7px #10b981; }
-.jerry-orb.is-thinking .jerry-ring { animation-duration: 1.0s; }
-.jerry-orb.is-thinking .jerry-halo { animation-duration: 1.0s; }
+@media (prefers-reduced-motion: reduce) { .jerry-figure-img { animation: none !important; } }
+.jerry-spark { inset: 0; display: flex; align-items: center; justify-content: center; color: #f0fffa; }
+.jerry-orbit { inset: 0; border-radius: 50%; }
+.jerry-orbit.jerry-orbit2 { animation-direction: reverse; }
+.jerry-orbit > i { position: absolute; top: -3%; left: 50%; width: 7%; aspect-ratio: 1; border-radius: 50%; background: #6ee7b7; box-shadow: 0 0 7px #10b981; transform: translateX(-50%); }
+.jerry-orbit.jerry-orbit2 > i { width: 5.5%; background: #34d399; box-shadow: 0 0 7px #10b981; }
+/* Energetic motion — only while Jerry is actively working. */
+.jerry-orb.is-thinking .jerry-halo { animation: jerryHalo 1.0s ease-in-out infinite; }
+.jerry-orb.is-thinking .jerry-ring { animation: jerrySpin 1.0s linear infinite; }
 .jerry-orb.is-thinking .jerry-core { animation-duration: 1.0s; }
-.jerry-orb.is-thinking .jerry-orbit { animation-duration: 1.4s; }
+.jerry-orb.is-thinking .jerry-spark { animation: jerryTwinkle 1.6s ease-in-out infinite; }
+.jerry-orb.is-thinking .jerry-orbit { animation: jerrySpin 1.4s linear infinite; }
 .jerry-orb.is-thinking .jerry-orbit.jerry-orbit2 { animation-duration: 1.8s; }
 /* Gentle hover drift for the large idle hero orb (percent-based, so it scales). */
 .jerry-orb.jerry-float { animation: jerryFloat 5.5s ease-in-out infinite; }
-.jerry-status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: jerryPulse 2s infinite; }
+.jerry-status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34d399; }
 @keyframes jerrySpin { to { transform: rotate(360deg); } }
 @keyframes jerryBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 @keyframes jerryHalo { 0%, 100% { opacity: .5; transform: scale(1); } 50% { opacity: .82; transform: scale(1.06); } }
 @keyframes jerryTwinkle { 0%, 100% { opacity: .88; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
 @keyframes jerryFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4%); } }
-@keyframes jerryPulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,0.5); } 70% { box-shadow: 0 0 0 5px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
 @media (prefers-reduced-motion: reduce) { .jerry-orb, .jerry-orb > span, .jerry-orb i, .jerry-status-dot { animation: none !important; } }
 

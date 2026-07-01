@@ -275,7 +275,6 @@ export default function CustomerDashboard({
             <section className={CARD}>
               <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
                 <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">My Requests</h2>
-                <span className="text-[12px] font-medium text-zinc-400">{filteredRequests.length} total</span>
               </div>
               {filteredRequests.length ? (
                 <ul>
@@ -295,7 +294,7 @@ export default function CustomerDashboard({
                           <p className="mt-0.5 truncate text-[12.5px] text-zinc-500 dark:text-zinc-400">{r.title}</p>
                         </div>
                         <span className="hidden shrink-0 text-[11px] text-zinc-400 sm:block">{fmtDate(r.created_at)}</span>
-                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${s.cls}`}>{s.label}</span>
+                        <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{s.label}</span>
                       </li>
                     )
                   })}
@@ -690,9 +689,7 @@ function JerryAssistant({ companyName }: { companyName: string }) {
           <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Jerry</h2>
           <p className="text-[11px] text-zinc-400">{loading ? 'Looking through the manuals…' : 'Here to help'}</p>
         </div>
-        <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-          <span className="jerry-status-dot" /> online
-        </span>
+        <span className="ml-auto jerry-status-dot" aria-hidden="true" />
       </div>
 
       {/* Conversation */}
@@ -804,7 +801,6 @@ function UnitPhotos({ photos }: { photos: string[] }) {
           <ImageIcon size={16} className="text-emerald-600 dark:text-emerald-400" />
           <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Photos</h2>
         </div>
-        <span className="text-[12px] font-medium text-zinc-400">{photos.length}</span>
       </div>
       <div className="grid grid-cols-3 gap-2 p-4 sm:grid-cols-4">
         {photos.map((url, i) => (

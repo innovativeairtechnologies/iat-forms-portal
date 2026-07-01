@@ -39,17 +39,17 @@ export function rowCx(cols: string, opts?: { i?: number; selected?: boolean }) {
 export type Tone = 'slate' | 'emerald' | 'amber' | 'sky' | 'rose' | 'violet'
 
 const TONE_CLS: Record<Tone, string> = {
-  slate:   'border-zinc-200 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400',
-  emerald: 'border-emerald-300/60 bg-emerald-50 text-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400',
-  amber:   'border-amber-300/60 bg-amber-50 text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400',
-  sky:     'border-sky-300/60 bg-sky-50 text-sky-600 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-400',
-  rose:    'border-rose-300/60 bg-rose-50 text-rose-500 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400',
-  violet:  'border-violet-300/60 bg-violet-50 text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400',
+  slate:   'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
+  emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+  amber:   'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400',
+  sky:     'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400',
+  rose:    'bg-rose-50 text-rose-500 dark:bg-rose-500/10 dark:text-rose-400',
+  violet:  'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400',
 }
 
 export function StatusPill({ tone, icon, children }: { tone: Tone; icon?: ReactNode; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-[3px] rounded-md border whitespace-nowrap ${TONE_CLS[tone]}`}>
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md whitespace-nowrap ${TONE_CLS[tone]}`}>
       {icon}
       {children}
     </span>

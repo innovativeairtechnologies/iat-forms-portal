@@ -3,7 +3,7 @@ import Logo from '@/components/Logo'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
 import {
   LifeBuoy, Wrench, ClipboardList,
-  BookOpen, Search, ArrowRight, Thermometer, Wind, Snowflake,
+  Search, ArrowRight,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -51,12 +51,6 @@ const SUBMIT_CARDS: SubmitCard[] = [
     href: null,
     disabled: true,
   },
-]
-
-const KB_CARDS = [
-  { id: 'temp',    icon: Thermometer, title: 'Temperature Control Guides', desc: 'Setpoint calibration, PID tuning, and temperature troubleshooting.' },
-  { id: 'airflow', icon: Wind,        title: 'Airflow Balancing',          desc: 'Process & react airflow setup and damper adjustment guides.' },
-  { id: 'cooling', icon: Snowflake,   title: 'Cooling System Diagnostics', desc: 'DX and chilled water troubleshooting, pre/post cooling checks.' },
 ]
 
 /* ─── Filter tabs — TEMPORARILY HIDDEN (2026-06-24, "coming back") ──────────────
@@ -129,52 +123,28 @@ export default function SupportPortal() {
         <PortalHero
           eyebrow="Customer Support"
           title="How can we help?"
-          subtitle="Open a support form and we'll walk you through it — sharing tips and tricks along the way to help you pinpoint the problem yourself — while your equipment details are pre-screened so our support team arrives prepared. A full knowledge base of setup and troubleshooting guides is on the way."
+          subtitle="Open a support request and we'll walk you through it, pre-screening your equipment details so our team arrives prepared."
           actions={<HeroAction href="/support/status" icon={Search} label="Check ticket status" />}
         />
 
         {/* ── Filter tabs render here when restored (see note above) ── */}
 
-        {/* Submit a Request */}
+        {/* Submit a Request — only the live action gets a card; the rest are a quiet note */}
         <section>
           <SectionHeader icon={LifeBuoy} title="Submit a Request" meta={`${activeCount} active option${activeCount === 1 ? '' : 's'}`} />
           <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
-            {SUBMIT_CARDS.map((card) => (
+            {SUBMIT_CARDS.filter((c) => !c.disabled).map((card) => (
               <SubmitCardItem key={card.id} card={card} />
             ))}
           </div>
-        </section>
-
-        {/* Knowledge Base — parked as "coming soon" until there's enough content */}
-        <section>
-          <SectionHeader icon={BookOpen} title="Knowledge Base" badge="Coming soon" />
-          <p className="-mt-1 mb-4 max-w-2xl text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-            We&apos;re building out a full library of setup, calibration, and troubleshooting guides. Check back soon.
+          <p className="mt-3 text-[12px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+            Parts &amp; Warranty, Preventive Maintenance and the Knowledge Base — coming soon.
           </p>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
-            {KB_CARDS.map((card) => {
-              const Icon = card.icon
-              return (
-                <div key={card.id} aria-disabled className={`${CARD_BASE} select-none border-zinc-200 opacity-60 dark:border-zinc-800`}>
-                  <span className="mb-auto flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
-                    <Icon size={17} />
-                  </span>
-                  <div className="mt-3">
-                    <p className="text-[14px] font-semibold leading-snug text-zinc-700 dark:text-zinc-300">{card.title}</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{card.desc}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
         </section>
 
         {/* Status strip */}
         <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-          <span className="relative flex h-2 w-2 flex-shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
+          <span className="inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-emerald-500" />
           <span className="text-[12px] text-zinc-500 dark:text-zinc-400">
             All systems operational&nbsp;·&nbsp;Average response time:{' '}
             <strong className="font-semibold text-zinc-700 dark:text-zinc-200">4 hours</strong>
@@ -235,11 +205,8 @@ function SubmitCardItem({ card }: { card: SubmitCard }) {
       }`}
     >
       {card.badge && (
-        <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm shadow-red-600/40">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-          </span>
+        <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
           {card.badge}
         </span>
       )}

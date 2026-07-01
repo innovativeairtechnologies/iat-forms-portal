@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity } from 'lucide-react'
+import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -47,6 +47,20 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
       <CardHead title={title} icon={icon} />
       <div className="px-5 py-2.5">{children}</div>
     </Card>
+  )
+}
+
+/** A borderless titled group used inside the collapsed "Intake details" card — a
+    lighter Section (no card chrome) so the folded diagnostic echoes read as one card. */
+function IntakeGroup({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-zinc-100 dark:border-zinc-800/50 first:border-0">
+      <div className="flex items-center gap-2 px-5 pt-4 pb-1">
+        <span className="text-zinc-400 dark:text-zinc-500 flex-shrink-0">{icon}</span>
+        <h4 className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-200">{title}</h4>
+      </div>
+      <div className="px-5 pb-2.5">{children}</div>
+    </div>
   )
 }
 
@@ -315,8 +329,6 @@ export default function TicketDetailClient({
     return { path, name: file.name, type: file.type || '', size: file.size }
   }
 
-  const currentStatus = STATUS_OPTIONS.find(s => s.value === ticket.status)
-  const currentPriority = PRIORITY_OPTIONS.find(p => p.value === (ticket.priority ?? 'med'))
   const submitted = new Date(ticket.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
@@ -333,14 +345,7 @@ export default function TicketDetailClient({
           { label: 'Tickets', href: '/admin/tickets' },
           { label: ticket.ticket_number },
         ]}
-      >
-        <span className={`inline-flex items-center text-[12px] font-semibold px-3 h-7 rounded-full border ${currentPriority?.cls}`}>
-          {currentPriority?.label}
-        </span>
-        <span className={`inline-flex items-center text-[12px] font-semibold px-3 h-7 rounded-full border ${currentStatus?.cls}`}>
-          {currentStatus?.label}
-        </span>
-      </DetailTopBar>
+      />
 
       <div className="p-5 space-y-4">
         {/* Hero */}
@@ -366,6 +371,20 @@ export default function TicketDetailClient({
                 {saveError}
               </div>
             )}
+
+            {/* Problem — the primary content, promoted to the top of the reading column */}
+            <Section title="Problem Description" icon={<FileText size={14} />}>
+              <p className="text-[13px] text-zinc-700 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap py-1">
+                {ticket.problem_description}
+              </p>
+              {(ticket.problem_started || ticket.onset || ticket.what_changed) && (
+                <div className="mt-2">
+                  {ticket.problem_started && <Field label="When it started">{ticket.problem_started}</Field>}
+                  {ticket.onset && <Field label="Onset"><span className="capitalize">{ticket.onset}</span></Field>}
+                  {ticket.what_changed && <Field label="Changed just before">{ticket.what_changed}</Field>}
+                </div>
+              )}
+            </Section>
 
             {/* Status + Priority editor */}
             <Card>
@@ -489,84 +508,85 @@ export default function TicketDetailClient({
               </div>
             </Card>
 
-            {/* Equipment */}
-            <Section title="Equipment" icon={<Wrench size={14} />}>
-              <Field label="Serial Number">{ticket.serial_number}</Field>
-              <Field label="Model Number">{ticket.model_number}</Field>
-              <Field label="Voltage">{ticket.voltage}</Field>
-              {equipmentId && (
-                <Link href={`/admin/equipment/${equipmentId}`} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline mt-3">
-                  <ExternalLink size={12} />View unit in registry
-                </Link>
-              )}
-            </Section>
+            {/* Intake details — the read-only diagnostic-form echoes, folded into one
+                progressively-disclosed card (collapsed by default to calm the page). */}
+            <Card>
+              <details className="group">
+                <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none list-none marker:content-none [&::-webkit-details-marker]:hidden">
+                  <ClipboardCheck size={14} className="text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
+                  <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Intake details</h3>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Equipment &amp; diagnostic checklist</span>
+                  <ChevronDown size={14} className="ml-auto text-zinc-400 transition-transform group-open:rotate-180" />
+                </summary>
 
-            {/* Problem */}
-            <Section title="Problem Description" icon={<FileText size={14} />}>
-              <p className="text-[13px] text-zinc-700 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap py-1">
-                {ticket.problem_description}
-              </p>
-              {(ticket.problem_started || ticket.onset || ticket.what_changed) && (
-                <div className="mt-2">
-                  {ticket.problem_started && <Field label="When it started">{ticket.problem_started}</Field>}
-                  {ticket.onset && <Field label="Onset"><span className="capitalize">{ticket.onset}</span></Field>}
-                  {ticket.what_changed && <Field label="Changed just before">{ticket.what_changed}</Field>}
+                <div className="border-t border-zinc-200/70 dark:border-zinc-800/80 pb-2">
+                  {/* Equipment */}
+                  <IntakeGroup title="Equipment" icon={<Wrench size={14} />}>
+                    <Field label="Serial Number">{ticket.serial_number}</Field>
+                    <Field label="Model Number">{ticket.model_number}</Field>
+                    <Field label="Voltage">{ticket.voltage}</Field>
+                    {equipmentId && (
+                      <Link href={`/admin/equipment/${equipmentId}`} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline mt-3">
+                        <ExternalLink size={12} />View unit in registry
+                      </Link>
+                    )}
+                  </IntakeGroup>
+
+                  {/* Current Status */}
+                  {(ticket.unit_running !== null || ticket.has_alarms !== null) && (
+                    <IntakeGroup title="Current Status" icon={<Activity size={14} />}>
+                      <Field label="Unit running"><YesNo val={ticket.unit_running} /></Field>
+                      <Field label="Active alarms"><YesNo val={ticket.has_alarms} /></Field>
+                      {ticket.alarm_details && <Field label="Alarm details">{ticket.alarm_details}</Field>}
+                    </IntakeGroup>
+                  )}
+
+                  {/* Cooling */}
+                  <IntakeGroup title="Cooling Systems" icon={<Snowflake size={14} />}>
+                    <Field label="Pre cooling installed"><YesNo val={ticket.pre_cooling} /></Field>
+                    {ticket.pre_cooling && <>
+                      <Field label="Pre cooling type">{ticket.pre_cooling_type || '—'}</Field>
+                      <Field label="Pre cooling working"><YesNo val={ticket.pre_cooling_working} /></Field>
+                    </>}
+                    <Field label="Post cooling installed"><YesNo val={ticket.post_cooling} /></Field>
+                    {ticket.post_cooling && <>
+                      <Field label="Post cooling type">{ticket.post_cooling_type || '—'}</Field>
+                      <Field label="Post cooling working"><YesNo val={ticket.post_cooling_working} /></Field>
+                    </>}
+                  </IntakeGroup>
+
+                  {/* Airflow & Reactivation */}
+                  <IntakeGroup title="Airflow & Reactivation" icon={<Wind size={14} />}>
+                    <Field label="Airflows balanced"><YesNo val={ticket.airflow_balanced} /></Field>
+                    {ticket.process_airflow_cfm && <Field label="Process airflow">{ticket.process_airflow_cfm} CFM</Field>}
+                    {ticket.react_airflow_cfm && <Field label="React airflow">{ticket.react_airflow_cfm} CFM</Field>}
+                    {ticket.react_temp_f && <Field label="Reactivation temp">{ticket.react_temp_f} °F</Field>}
+                    <Field label="React heat working"><YesNo val={ticket.react_heat_working} /></Field>
+                    {ticket.react_heat_setpoint !== null && (
+                      <Field label="Maintaining setpoint (285°F)"><YesNo val={ticket.react_heat_setpoint} /></Field>
+                    )}
+                  </IntakeGroup>
+
+                  {/* Wheel & Seals */}
+                  <IntakeGroup title="Wheel & Seals" icon={<ClipboardCheck size={14} />}>
+                    {ticket.wheel_rotating && <Field label="Wheel rotating"><span className="capitalize">{ticket.wheel_rotating}</span></Field>}
+                    {ticket.seal_light_leakage && <Field label="Seal light leakage"><span className="capitalize">{ticket.seal_light_leakage}</span></Field>}
+                    <Field label="Seals good"><YesNo val={ticket.seals_good} /></Field>
+                  </IntakeGroup>
+
+                  {/* External Factors */}
+                  {ticket.external_factors && ticket.external_factors.length > 0 && (
+                    <IntakeGroup title="External Factors" icon={<FileText size={14} />}>
+                      <ul className="py-1 space-y-1">
+                        {ticket.external_factors.map((f, i) => (
+                          <li key={i} className="text-[13px] text-zinc-700 dark:text-zinc-200">• {f}</li>
+                        ))}
+                      </ul>
+                    </IntakeGroup>
+                  )}
                 </div>
-              )}
-            </Section>
-
-            {/* Current Status */}
-            {(ticket.unit_running !== null || ticket.has_alarms !== null) && (
-              <Section title="Current Status" icon={<Activity size={14} />}>
-                <Field label="Unit running"><YesNo val={ticket.unit_running} /></Field>
-                <Field label="Active alarms"><YesNo val={ticket.has_alarms} /></Field>
-                {ticket.alarm_details && <Field label="Alarm details">{ticket.alarm_details}</Field>}
-              </Section>
-            )}
-
-            {/* Cooling */}
-            <Section title="Cooling Systems" icon={<Snowflake size={14} />}>
-              <Field label="Pre cooling installed"><YesNo val={ticket.pre_cooling} /></Field>
-              {ticket.pre_cooling && <>
-                <Field label="Pre cooling type">{ticket.pre_cooling_type || '—'}</Field>
-                <Field label="Pre cooling working"><YesNo val={ticket.pre_cooling_working} /></Field>
-              </>}
-              <Field label="Post cooling installed"><YesNo val={ticket.post_cooling} /></Field>
-              {ticket.post_cooling && <>
-                <Field label="Post cooling type">{ticket.post_cooling_type || '—'}</Field>
-                <Field label="Post cooling working"><YesNo val={ticket.post_cooling_working} /></Field>
-              </>}
-            </Section>
-
-            {/* Airflow & Reactivation */}
-            <Section title="Airflow & Reactivation" icon={<Wind size={14} />}>
-              <Field label="Airflows balanced"><YesNo val={ticket.airflow_balanced} /></Field>
-              {ticket.process_airflow_cfm && <Field label="Process airflow">{ticket.process_airflow_cfm} CFM</Field>}
-              {ticket.react_airflow_cfm && <Field label="React airflow">{ticket.react_airflow_cfm} CFM</Field>}
-              {ticket.react_temp_f && <Field label="Reactivation temp">{ticket.react_temp_f} °F</Field>}
-              <Field label="React heat working"><YesNo val={ticket.react_heat_working} /></Field>
-              {ticket.react_heat_setpoint !== null && (
-                <Field label="Maintaining setpoint (285°F)"><YesNo val={ticket.react_heat_setpoint} /></Field>
-              )}
-            </Section>
-
-            {/* Wheel & Seals */}
-            <Section title="Wheel & Seals" icon={<ClipboardCheck size={14} />}>
-              {ticket.wheel_rotating && <Field label="Wheel rotating"><span className="capitalize">{ticket.wheel_rotating}</span></Field>}
-              {ticket.seal_light_leakage && <Field label="Seal light leakage"><span className="capitalize">{ticket.seal_light_leakage}</span></Field>}
-              <Field label="Seals good"><YesNo val={ticket.seals_good} /></Field>
-            </Section>
-
-            {/* External Factors */}
-            {ticket.external_factors && ticket.external_factors.length > 0 && (
-              <Section title="External Factors" icon={<FileText size={14} />}>
-                <ul className="py-1 space-y-1">
-                  {ticket.external_factors.map((f, i) => (
-                    <li key={i} className="text-[13px] text-zinc-700 dark:text-zinc-200">• {f}</li>
-                  ))}
-                </ul>
-              </Section>
-            )}
+              </details>
+            </Card>
 
             {/* Photos */}
             {ticket.photo_urls && ticket.photo_urls.length > 0 && (

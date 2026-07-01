@@ -93,13 +93,13 @@ const NAV_SECTIONS: NavSection[] = [
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const BADGE_CLS: Record<BadgeKind, string> = {
-  submissions: 'bg-[#089447] text-white',
-  tickets:     'bg-amber-500 text-white',
-  troubleshooting: 'bg-sky-500 text-white',
-  pto:         'bg-amber-500 text-white',
-  sick:        'bg-amber-500 text-white',
-  usrotors:    'bg-[#0274db] text-white',
-  drafts:      'bg-amber-500 text-white',
+  submissions: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  tickets:     'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  troubleshooting: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+  pto:         'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  sick:        'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  usrotors:    'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+  drafts:      'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 }
 
 function NavLink({ item, pathname, counts, onClose }: {
@@ -130,7 +130,7 @@ function NavLink({ item, pathname, counts, onClose }: {
       <span className="flex-1">{item.label}</span>
       {item.badge && badgeCount > 0 && (
         <span className={cn(
-          'text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
+          'text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
           BADGE_CLS[item.badge],
         )}>
           {badgeCount > 99 ? '99+' : badgeCount}

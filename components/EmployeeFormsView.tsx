@@ -89,20 +89,20 @@ export default function EmployeeFormsView({ categories, forms, drafts = [], eyeb
 
       <div className="p-8 space-y-6">
         {drafts.length > 0 && (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-amber-200/70 dark:border-amber-900/40 shadow-card overflow-hidden">
-            <div className="flex items-center gap-2.5 px-6 py-3.5 border-b border-amber-100/70 dark:border-amber-900/30 bg-amber-50/60 dark:bg-amber-950/20">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-card overflow-hidden">
+            <div className="flex items-center gap-2.5 px-6 py-3.5 border-b border-gray-100 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
               <RotateCcw size={14} className="text-amber-500" />
-              <span className="text-[13px] font-bold text-amber-800 dark:text-amber-300">Continue where you left off</span>
-              <span className="text-[11px] font-semibold text-amber-600 bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 rounded-full">{drafts.length}</span>
+              <span className="text-[13px] font-bold text-gray-700 dark:text-gray-200">Continue where you left off</span>
+              <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{drafts.length}</span>
             </div>
             <ul className="divide-y divide-gray-50 dark:divide-zinc-800/60">
               {drafts.map(d => (
-                <li key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-3 px-6 py-3.5 hover:bg-amber-50/40 dark:hover:bg-amber-950/10 transition-colors">
+                <li key={d.id} className="group grid grid-cols-[1fr_auto] items-center gap-3 px-6 py-3.5 hover:bg-gray-50/70 dark:hover:bg-zinc-800/30 transition-colors">
                   <button onClick={() => openResume(d)} className="min-w-0 text-left">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[14px] font-semibold text-gray-900 dark:text-white truncate group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">{d.title}</span>
+                      <span className="text-[14px] font-semibold text-gray-900 dark:text-white truncate group-hover:text-[#089447] transition-colors">{d.title}</span>
                       {d.label && (
-                        <span className="flex-shrink-0 text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/40">
+                        <span className="flex-shrink-0 text-[11px] font-medium text-gray-400 bg-gray-50 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-gray-100 dark:border-zinc-700">
                           {d.label}
                         </span>
                       )}
@@ -110,7 +110,7 @@ export default function EmployeeFormsView({ categories, forms, drafts = [], eyeb
                     <p className="text-[12px] text-gray-400 mt-0.5">Saved {ago(d.updated_at)}</p>
                   </button>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    <button onClick={() => openResume(d)} className="flex items-center gap-1 text-[12px] font-semibold text-amber-700 dark:text-amber-300 hover:underline">
+                    <button onClick={() => openResume(d)} className="flex items-center gap-1 text-[12px] font-semibold text-[#089447] hover:underline">
                       Resume <ChevronRight size={14} />
                     </button>
                     <button onClick={() => discardDraft(d.id)} title="Discard draft" className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition-colors">
@@ -134,9 +134,7 @@ export default function EmployeeFormsView({ categories, forms, drafts = [], eyeb
           grouped.map(({ id, name, forms: cf }) => (
             <div key={id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card overflow-hidden">
               <div className="flex items-center gap-2.5 px-6 py-3.5 border-b border-gray-50 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40">
-                <FolderOpen size={14} className="text-gray-400 dark:text-gray-500" />
                 <span className="text-[13px] font-bold text-gray-700 dark:text-gray-200">{name}</span>
-                <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{cf.length}</span>
               </div>
               <FormRows forms={cf} onOpen={openFresh} />
             </div>

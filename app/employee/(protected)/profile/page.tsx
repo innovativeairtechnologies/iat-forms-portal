@@ -71,7 +71,7 @@ export default async function EmployeeHome() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-      <div className="space-y-4 p-5 sm:p-6">
+      <div className="space-y-6 p-5 sm:p-6">
 
         {/* ── Greeting band ──────────────────────────────────────────── */}
         <PortalHero
@@ -85,6 +85,9 @@ export default async function EmployeeHome() {
           actions={
             <>
               <HeroAction href="/employee/requests" icon={CalendarClock} label="Request time off" variant="primary" />
+              <HeroAction href="/employee/resources" icon={FileText} label="Submit a form" />
+              <HeroAction href="/employee/directory" icon={Users} label="Team directory" />
+              <HeroAction href="/employee/resources/tools" icon={Wrench} label="Tools & apps" />
               <HeroAction href="/learn" icon={GraduationCap} label="Browse training" />
               <HeroAction href="/employee/profile/edit" icon={UserCog} label="Edit profile" />
             </>
@@ -96,19 +99,19 @@ export default async function EmployeeHome() {
           <Kpi icon={<Calendar size={15} />} color="#10b981"
             label="PTO Balance" value={emp.pto_balance} unit="hrs"
             sub={`+${emp.pto_accrual_rate} hrs / week accrual`} href="/employee/requests" />
-          <Kpi icon={<Clock size={15} />} color="#f59e0b"
+          <Kpi icon={<Clock size={15} />} color="#10b981"
             label="Sick Balance" value={emp.sick_balance} unit="hrs"
             sub={`+${emp.sick_accrual_rate} hrs / week accrual`} href="/employee/requests" />
           {emp.hire_date ? (
-            <Kpi icon={<Briefcase size={15} />} color="#8b5cf6"
+            <Kpi icon={<Briefcase size={15} />} color="#10b981"
               label="Tenure" value={tenureLabel(emp.hire_date)} unit=""
               sub={`Since ${new Date(emp.hire_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`} />
           ) : (
-            <Kpi icon={<Building2 size={15} />} color="#8b5cf6"
+            <Kpi icon={<Building2 size={15} />} color="#10b981"
               label="Department" value={emp.department || '—'} unit=""
               sub="Set it in Edit profile" href="/employee/profile/edit" />
           )}
-          <Kpi icon={<CalendarClock size={15} />} color="#0ea5e9"
+          <Kpi icon={<CalendarClock size={15} />} color="#10b981"
             label="Pending Requests" value={pendingCount} unit={pendingCount === 1 ? 'request' : 'requests'}
             sub="Awaiting admin review" href="/employee/requests" />
         </div>
@@ -177,15 +180,6 @@ export default async function EmployeeHome() {
             )}
           </Card>
         </div>
-
-        {/* ── Quick actions ──────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <QuickAction icon={<FileText size={16} />} label="Submit a form" href="/employee/resources" />
-          <QuickAction icon={<Users size={16} />} label="Team directory" href="/employee/directory" />
-          <QuickAction icon={<Wrench size={16} />} label="Tools & apps" href="/employee/resources/tools" />
-          {/* US Rotors hidden for now — re-enable alongside the nav section in EmployeeShell:
-          <QuickAction icon={<Package size={16} />} label="US Rotors order" href="/employee/us-rotors/order" /> */}
-        </div>
       </div>
     </div>
   )
@@ -237,16 +231,5 @@ function CardHead({ icon, title, action }: { icon: React.ReactNode; title: strin
       </div>
       {action}
     </div>
-  )
-}
-
-// ─── Quick action ─────────────────────────────────────────────────────────────
-function QuickAction({ icon, label, href }: { icon: React.ReactNode; label: string; href: string }) {
-  return (
-    <Link href={href}
-      className="group flex items-center gap-2.5 rounded-xl border border-zinc-200 bg-white px-4 py-3 transition-colors hover:border-emerald-500/40 hover:bg-emerald-50/50 dark:border-zinc-800 dark:bg-zinc-900/40 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/5">
-      <span className="text-zinc-400 transition-colors group-hover:text-emerald-600 dark:text-zinc-500 dark:group-hover:text-emerald-400">{icon}</span>
-      <span className="text-[12.5px] font-medium text-zinc-600 dark:text-zinc-300">{label}</span>
-    </Link>
   )
 }

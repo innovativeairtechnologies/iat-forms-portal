@@ -155,9 +155,12 @@ export default function OrgDirectory({
                     </div>
                     {(e.interests || []).length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
-                        {e.interests.slice(0, 4).map((t) => (
+                        {e.interests.slice(0, 2).map((t) => (
                           <span key={t} className="text-[10px] px-1.5 py-[1px] rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">{t}</span>
                         ))}
+                        {e.interests.length > 2 && (
+                          <span className="text-[10px] px-1.5 py-[1px] rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500">+{e.interests.length - 2}</span>
+                        )}
                       </div>
                     )}
                   </div>

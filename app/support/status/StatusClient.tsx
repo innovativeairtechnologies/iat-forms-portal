@@ -311,10 +311,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
 
               {/* AI recommendations */}
               {result.ai_recommendations.length > 0 && (
-                <div
-                  className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 px-6 py-5"
-                  style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06)' }}
-                >
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 px-6 py-5 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
                       <Lightbulb size={14} className="text-amber-500" />
@@ -344,10 +341,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                   Backend matching is live (see /api/tickets/status + lib/kb.ts); the
                   KB itself has no published content yet, so we render real matches when
                   they exist and fall back to a "coming soon" stub otherwise. */}
-              <div
-                className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 px-6 py-5"
-                style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06)' }}
-              >
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
                     <BookOpen size={14} className="text-gray-500 dark:text-gray-400" />

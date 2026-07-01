@@ -49,6 +49,23 @@ function StatTile({ icon, value, label, accent }: { icon: React.ReactNode; value
   )
 }
 
+// How many locked badges to show before the "show all" toggle.
+const LOCKED_PREVIEW = 4
+
+function LockedBadge({ badge: b }: { badge: { label: string; description: string; current: number; target: number } }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40 p-3" title={b.description}>
+      <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600">
+        <Lock size={16} />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate text-[12.5px] font-semibold text-gray-500 dark:text-zinc-400">{b.label}</p>
+        <p className="text-[11px] tabular-nums text-gray-400 dark:text-zinc-500">{b.current}/{b.target}</p>
+      </div>
+    </div>
+  )
+}
+
 export default async function MyLearningPage() {
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
@@ -88,10 +105,10 @@ export default async function MyLearningPage() {
 
       {/* Stat tiles */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile icon={<Flame size={17} />} accent="#f97316" value={`${stats.currentStreak}`} label="day streak" />
+        <StatTile icon={<Flame size={17} />} accent="#089447" value={`${stats.currentStreak}`} label="day streak" />
         <StatTile icon={<BookOpen size={17} />} accent="#089447" value={`${stats.lessonsCompleted}/${stats.totalLessons}`} label={`lessons · ${stats.overallPct}%`} />
-        <StatTile icon={<Medal size={17} />} accent="#d97706" value={`${stats.earnedBadgeCount}`} label="badges earned" />
-        <StatTile icon={<Clock size={17} />} accent="#0ea5e9" value={fmtMinutes(stats.minutesLearned)} label="time learning" />
+        <StatTile icon={<Medal size={17} />} accent="#089447" value={`${stats.earnedBadgeCount}`} label="badges earned" />
+        <StatTile icon={<Clock size={17} />} accent="#089447" value={fmtMinutes(stats.minutesLearned)} label="time learning" />
       </section>
 
       {/* Category progress */}
@@ -153,18 +170,23 @@ export default async function MyLearningPage() {
           <>
             <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-zinc-500">Locked</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {locked.map(b => (
-                <div key={b.key} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/40 p-3" title={b.description}>
-                  <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600">
-                    <Lock size={16} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-[12.5px] font-semibold text-gray-500 dark:text-zinc-400">{b.label}</p>
-                    <p className="text-[11px] tabular-nums text-gray-400 dark:text-zinc-500">{b.current}/{b.target}</p>
-                  </div>
-                </div>
+              {locked.slice(0, LOCKED_PREVIEW).map(b => (
+                <LockedBadge key={b.key} badge={b} />
               ))}
             </div>
+            {locked.length > LOCKED_PREVIEW && (
+              <details className="group mt-3">
+                <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-medium text-[#089447] dark:text-emerald-400 hover:underline">
+                  <span className="group-open:hidden">Show all {locked.length} locked</span>
+                  <span className="hidden group-open:inline">Show fewer</span>
+                </summary>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {locked.slice(LOCKED_PREVIEW).map(b => (
+                    <LockedBadge key={b.key} badge={b} />
+                  ))}
+                </div>
+              </details>
+            )}
           </>
         )}
       </section>

@@ -45,10 +45,7 @@ export default function ExecutiveBriefing() {
   useEffect(() => { load() }, [load])
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-emerald-200/70 dark:border-emerald-500/20 bg-gradient-to-br from-emerald-50/80 via-white to-white dark:from-emerald-500/[0.07] dark:via-zinc-900/40 dark:to-zinc-900/40 shadow-sm dark:shadow-none">
-      {/* ambient glow */}
-      <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full blur-3xl opacity-25 dark:opacity-20" style={{ background: 'radial-gradient(circle,#10b981,transparent 70%)' }} />
-
+    <div className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none">
       <div className="relative px-5 py-4">
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">

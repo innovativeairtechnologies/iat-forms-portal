@@ -12,7 +12,7 @@ import { PRESETS, DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 import {
   ChevronRight, Plus,
   Inbox, FileText, ClipboardList, Ticket, CheckCircle2, Clock,
-  MoreHorizontal, AlertCircle, ShieldCheck, Sparkles, Users, ArrowRight,
+  AlertCircle, ShieldCheck, Sparkles, Users, ArrowRight,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -379,14 +379,13 @@ function Kpi({ label, value, unit, delta, deltaLabel, sub, spark, color, icon, h
           <span style={{ color }}>{icon}</span>
           <span className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
         </div>
-        <MoreHorizontal size={14} className="text-zinc-300 dark:text-zinc-600" />
       </div>
       <div className="flex items-end justify-between gap-2">
         <div className="flex items-baseline gap-1.5">
           <span className="text-[28px] font-bold text-zinc-900 dark:text-white leading-none tabular-nums tracking-tight">{fmt(value)}</span>
           <span className="text-[12px] text-zinc-400 dark:text-zinc-500">{unit}</span>
         </div>
-        <div className="-mb-0.5"><Spark data={spark} color={color} /></div>
+        {typeof delta === 'number' && <div className="-mb-0.5"><Spark data={spark} color={color} /></div>}
       </div>
       <div className="mt-2.5">
         {typeof delta === 'number' ? (
@@ -471,7 +470,7 @@ export default async function AdminDashboard() {
         </Link>
       </div>
 
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-6">
 
         {/* ── AI Executive Briefing — plain-English read of the operation ── */}
         <ExecutiveBriefing />
@@ -519,7 +518,6 @@ export default async function AdminDashboard() {
             {/* Greeting — colorful hero so the rail has some life (light + dark) */}
             <div className="relative overflow-hidden rounded-xl p-5 shadow-sm bg-gradient-to-br from-emerald-600 to-teal-700 dark:from-emerald-700 dark:to-teal-900">
               <div className="pointer-events-none absolute -top-12 -right-10 w-40 h-40 rounded-full blur-3xl bg-white/20" />
-              <div className="pointer-events-none absolute -bottom-14 -left-10 w-36 h-36 rounded-full blur-3xl bg-emerald-300/20 dark:bg-emerald-400/10" />
               <div className="relative">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-100">{d.dateET}</p>
                 <h2 className="mt-1 text-[20px] font-bold text-white leading-tight">
@@ -582,8 +580,8 @@ export default async function AdminDashboard() {
               </div>
             </Card>
 
-            {/* Admin activity (audit trail) */}
-            <Card>
+            {/* Admin activity (audit trail) — flat/borderless so only primary cards read as elevated */}
+            <Card className="!border-transparent !shadow-none !bg-transparent">
               <CardHead title="Admin Activity" icon={<ShieldCheck size={14} />} action="Full log" href="/admin/audit" />
               <div className="px-5 py-4">
                 {d.recentAudit.length === 0 ? (
@@ -606,8 +604,8 @@ export default async function AdminDashboard() {
               </div>
             </Card>
 
-            {/* Quick actions */}
-            <Card>
+            {/* Quick actions — flat/borderless so only primary cards read as elevated */}
+            <Card className="!border-transparent !shadow-none !bg-transparent">
               <CardHead title="Quick Actions" icon={<Plus size={14} />} />
               <div className="p-3 grid grid-cols-2 gap-2">
                 <QuickAction icon={<Plus size={15} />} label="New Form" href="/admin/forms/new" />
@@ -767,7 +765,7 @@ function WTopForms({ d, className }: WProps) {
       <CardHead title="Top Forms by Volume" icon={<FileText size={14} />} />
       <div className="px-5 py-4 space-y-3">
         {d.formRows.slice(0, 5).map((f, i) => (
-          <RankRow key={f.title} rank={i + 1} label={f.title} value={f.count} pct={(f.count / d.maxFormCount) * 100} color={C.violet} />
+          <RankRow key={f.title} rank={i + 1} label={f.title} value={f.count} pct={(f.count / d.maxFormCount) * 100} color={C.green} />
         ))}
         {d.formRows.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
       </div>
@@ -781,7 +779,7 @@ function WTopSubmitters({ d, className }: WProps) {
       <CardHead title="Top Submitters" icon={<Inbox size={14} />} action="People" href="/admin/employees" />
       <div className="px-5 py-4 space-y-3">
         {d.people.slice(0, 5).map((p, i) => (
-          <RankRow key={p.name + i} rank={i + 1} label={p.name} value={p.count} pct={(p.count / d.maxPeople) * 100} color={C.sky} />
+          <RankRow key={p.name + i} rank={i + 1} label={p.name} value={p.count} pct={(p.count / d.maxPeople) * 100} color={C.green} />
         ))}
         {d.people.length === 0 && <p className="text-[13px] text-zinc-400 dark:text-zinc-600 py-4 text-center">No data yet</p>}
       </div>
