@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
   Calendar, Clock, Boxes, Building2,
-  ChevronRight, ShieldCheck, Package, Network, FileText, FilePen,
+  ChevronRight, ShieldCheck, Package, Network, FileText, FilePen, Presentation,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -80,6 +80,12 @@ const NAV_SECTIONS: NavSection[] = [
     hidden: true,
     items: [
       { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors' },
+    ],
+  },
+  {
+    label: 'Content',
+    items: [
+      { href: '/admin/presentations', label: 'Presentations', icon: Presentation },
     ],
   },
   {
