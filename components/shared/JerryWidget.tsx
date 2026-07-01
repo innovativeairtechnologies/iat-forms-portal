@@ -9,7 +9,7 @@
 // chat-bubble bot: a breathing orb, typeset answers, and cited "receipts".
 
 import { useEffect, useRef, useState } from 'react'
-import { Sparkles, FileText, Loader2, ArrowUp } from 'lucide-react'
+import { Sparkles, FileText, Loader2, ArrowUp, ArrowLeft } from 'lucide-react'
 import type { KbSource } from '@/lib/kb-rag'
 
 const CARD = 'rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none'
@@ -36,6 +36,7 @@ function Orb({ px, thinking = false, className = '' }: { px: number; thinking?: 
       <span className="jerry-halo" />
       <span className="jerry-ring" />
       <span className="jerry-core" />
+      <span className="jerry-head-thumb" />
       <span className="jerry-orbit"><i /></span>
       <span className="jerry-orbit jerry-orbit2"><i /></span>
       <span className="jerry-spark"><Sparkles size={Math.max(8, Math.round(px * 0.26))} strokeWidth={2.2} /></span>
@@ -107,10 +108,30 @@ export default function JerryWidget({ apiEndpoint, suggestions, idleSubtitle, fo
 
   const idle = messages.length === 0
 
+  // Clears the conversation and returns to the idle "home screen" (the
+  // JerryFigure hero + suggestion chips) — doesn't touch loading/error state
+  // beyond what a fresh idle screen implies.
+  const goHome = () => {
+    setMessages([])
+    setInput('')
+    setError('')
+  }
+
   return (
     <section className={`${CARD} flex flex-col overflow-hidden`}>
       {/* Header — Jerry's presence + status */}
       <div className="flex items-center gap-2.5 border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
+        {!idle && (
+          <button
+            type="button"
+            onClick={goHome}
+            aria-label="Back to Jerry's home screen"
+            title="Back to Jerry's home screen"
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-emerald-600 dark:hover:bg-zinc-800 dark:hover:text-emerald-400"
+          >
+            <ArrowLeft size={15} />
+          </button>
+        )}
         <Orb px={26} thinking={loading} />
         <div className="leading-tight">
           <h2 className="text-[14px] font-bold text-zinc-900 dark:text-white">Jerry</h2>

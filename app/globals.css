@@ -260,6 +260,11 @@ html.green .text-indigo-600 { color: #4ade80; }
 .jerry-halo { inset: -26%; border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,0.55), rgba(13,148,136,0.14) 55%, transparent 72%); filter: blur(7px); }
 .jerry-ring { inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent, #10b981 22%, #34d399 42%, #6ee7b7 58%, transparent 70%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); mask: radial-gradient(farthest-side, transparent calc(100% - 15%), #000 calc(100% - 13%)); }
 .jerry-core { inset: 15%; border-radius: 50%; background: radial-gradient(circle at 36% 30%, #cffaf0 2%, #6ee7d6 22%, #10b981 50%, #0f766e 80%, #0b3b34); animation: jerryBreathe 4.4s ease-in-out infinite; }
+/* Jerry's face, cropped from the bobblehead — sits over the core, only shown
+   while he's actually working (.is-thinking), so the abstract core/sparkle
+   still reads as "idle presence" everywhere else. */
+.jerry-head-thumb { inset: 11%; border-radius: 50%; background: url('/jerry-head.webp') center / cover no-repeat; opacity: 0; transform: scale(0.85); transition: opacity .25s ease, transform .25s ease; }
+.jerry-orb.is-thinking .jerry-head-thumb { opacity: 1; transform: scale(1); }
 /* Jerry's full standing bobblehead — the idle hero "presence" (aura + ground shadow + bob). */
 .jerry-figure { position: relative; width: 180px; height: 178px; display: flex; align-items: flex-end; justify-content: center; }
 .jerry-figure-glow { position: absolute; left: 50%; top: 46%; width: 130px; height: 130px; transform: translate(-50%,-50%); border-radius: 50%; background: radial-gradient(circle, rgba(16,185,129,0.38), rgba(13,148,136,0.10) 55%, transparent 72%); filter: blur(8px); opacity: .6; }
@@ -276,7 +281,7 @@ html.green .text-indigo-600 { color: #4ade80; }
 .jerry-orb.is-thinking .jerry-halo { animation: jerryHalo 1.0s ease-in-out infinite; }
 .jerry-orb.is-thinking .jerry-ring { animation: jerrySpin 1.0s linear infinite; }
 .jerry-orb.is-thinking .jerry-core { animation-duration: 1.0s; }
-.jerry-orb.is-thinking .jerry-spark { animation: jerryTwinkle 1.6s ease-in-out infinite; }
+.jerry-orb.is-thinking .jerry-spark { opacity: 0; }
 .jerry-orb.is-thinking .jerry-orbit { animation: jerrySpin 1.4s linear infinite; }
 .jerry-orb.is-thinking .jerry-orbit.jerry-orbit2 { animation-duration: 1.8s; }
 /* Gentle hover drift for the large idle hero orb (percent-based, so it scales). */
