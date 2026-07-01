@@ -2,6 +2,35 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-01 — Gantt / Project Timelines: internal tool for customer project schedules
+
+A new admin-only **Gantt** tab (`/admin/gantt`) for building and tracking customer
+project schedules as interactive Gantt charts. Sales asked for a schedule on a
+specific customer build; rather than a throwaway file that can't save, it's a
+persistent, shareable portal tab. A timeline is a finish-to-start chain with one
+**anchor** task (the long-lead / critical-path driver) whose arrival date drives
+everything downstream — drag it (or the slider) and the whole tail re-cascades. A
+**test-failure** toggle models the schedule reset (replacement long-lead parts,
+`reset_weeks`), and ranged durations feed a Best/Likely/Worst scenario toggle.
+Full write-up in `docs/gantt.md`.
+
+### Added
+- **`gantt_charts`** table (migration `040_gantt_charts.sql`) — one row per
+  timeline; tasks stored inline as jsonb. Service-role only (RLS on, no policies).
+- **`lib/gantt.ts`** — shared types + pure scheduling math (`layout`, `effDur`) +
+  Auckland/blank templates; server-safe, so list and editor compute identical dates.
+- **`lib/gantt-data.ts`** + **`app/admin/gantt/actions.ts`** — admin-gated,
+  audit-logged reads and mutations (`create`/`update`/`duplicate`/`delete`).
+- **`/admin/gantt`** list (cards, est-ship, new-from-Auckland-template) and
+  **`/admin/gantt/[id]`** editor (draggable arrival anchor, scenario toggle,
+  failure sim, editable task table, live stats, Print/PDF). Edits autosave.
+- **Gantt** nav item in the `AdminSidebar` "IAT" section.
+
+### Deploy / notes
+- Run `040_gantt_charts.sql` in the Supabase SQL editor **before** deploying.
+- Access is admin-only for now; Sales gets in via a temporary `admin` role.
+  Role-based permissions (Sales sees Gantt, not PTO/Time Off) are still to come.
+
 ## 2026-07-01 — Portal-wide "calming" pass: subtracted visual noise on every surface
 
 The portal — the `/admin` dashboard especially — had started to feel "in your
