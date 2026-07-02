@@ -2,6 +2,49 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-02 — Roles & permissions, "View as" preview, and Data Reset panel
+
+Go-live prep: replaces the coarse admin/employee split with seven staff roles and
+adds an admin-only tool to wipe test data cleanly before launch. Full write-up in
+`docs/roles-and-permissions.md`. **Requires migration `042_roles_permissions.sql`.**
+
+### Added
+- **Granular staff roles** — `admin, sales, hr, marketing, engineering,
+  production_manager, production` (plus external `customer`). The base employee
+  tier is renamed to `production`. Each role sees only its permitted admin tabs;
+  the permission matrix lives in `lib/roles.ts` (the single source of truth,
+  imported by the edge middleware, server, and client alike).
+- **Two-layer access control** — the sidebar filters nav by permission AND the
+  middleware page-gates scoped roles, so a hidden tab can't be reached by typing
+  its URL. Any unmapped `/admin` route fails closed to admin-only.
+- **"View as [role]"** — an admin-only sidebar control that previews the portal as
+  any role would see it, with zero effect on the admin's real access (client-only).
+- **Data Reset panel** (`/admin/reset`, admin-only) — per-dataset bulk delete
+  (submissions, tickets, equipment, customers, PTO, sick, employees) behind a
+  type-`DELETE` confirm. Account deletes remove the Supabase auth user so the
+  email is immediately reusable; the employees wipe preserves all admins.
+
+### Changed
+- Role is assignable when inviting an employee and on the employee detail page.
+- Login, the root router, and the auth callback each route a user to the correct
+  home for their role via the shared `homeForRole()` helper.
+
+### Fixed / hardened (from an adversarial preflight review)
+- Removed a legacy `is_admin`→role sync from `/api/employees/[id]` that wrote the
+  now-retired `employee` value unchecked — it could have left a demoted admin with
+  full access. All role changes flow through the validated role endpoint.
+- Migration 042 keeps `employee` as a deprecated transitional CHECK value so the
+  old app can't error during the deploy window, and swaps `time_off_requests.
+  reviewed_by` to `ON DELETE SET NULL` so the employees wipe can't be silently
+  blocked by a foreign key.
+- The reset tool now surfaces per-account delete failures and the customers-delete
+  error instead of swallowing them.
+
+### Migration
+- **042_roles_permissions.sql** (required) — widens the `profiles.role` CHECK,
+  migrates existing `employee` rows to `production`, repoints the signup trigger,
+  and fixes the `reviewed_by` foreign key.
+
 ## 2026-07-02 — Gantt v2 "Honest Schedules": windows, baselines, risk rules, Monte Carlo
 
 Answers leadership's critique of the Gantt tool ("deceptive and deep, with a ton
