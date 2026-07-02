@@ -2,6 +2,57 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-02 — Gantt v2 "Honest Schedules": windows, baselines, risk rules, Monte Carlo
+
+Answers leadership's critique of the Gantt tool ("deceptive and deep, with a ton
+of nuances and conditional IF-THEN statements") with the mechanisms real
+scheduling tools use (LiquidPlanner ranged estimates, MS Project baselines,
+Primavera-style P50/P80/P90, RiskyProject probabilistic branching). The chart is
+now a **forecast instrument**, not a promise. Full write-up in `docs/gantt.md`.
+
+### Changed
+- **Ship windows everywhere** — list cards, editor stats, callout, and print show
+  "best – worst" (plan date secondary); the single ship date is gone. Bars draw a
+  faded extension to their own worst case; milestones get accumulated
+  best–worst whiskers instead of false-precision diamonds.
+- **Scenario toggle retired** — it was itself a false-precision machine (click
+  "Best case", screenshot it). The always-on window + P80 replaces it; the DB
+  column stays for compat.
+- **Failure toggle generalized** into per-task **risk rules** `{prob %,
+  delayMin–delayMax, note}` — several per task, edited inline in the task table.
+  Each risk is a what-if chip; "firing" it cascades the schedule, persists, and
+  is loudly labeled on screen + print. Legacy `failure`/`reset_weeks` migrate
+  lazily onto the anchor task (`normalizeChart()`); columns deprecated.
+
+### Added
+- **Baselines** — freeze the computed schedule as absolute dates (audit-logged);
+  ghost bars under live bars; variance chips (emerald/amber/rose); what-ifs
+  excluded from variance (plan vs plan).
+- **Monte Carlo confidence** — 5,000 seeded client-side simulations (triangular
+  durations, Bernoulli risks) → P50/P80/P90 ship dates + histogram + per-risk
+  impact ("fires in 25% of runs, avg +7.8 wks"). Copy teaches the discipline:
+  commit externally to P80.
+- **Assumptions register** — editable, prints with the chart.
+- **Print-designed sheet** — window headline, what-if banner, baseline variance
+  table, risk register, assumptions, "Forecast, not a commitment" footer.
+- Editor split into render-only components (`GanttChartView`, `TaskTable`,
+  `ConfidencePanel`, `AssumptionsCard`, `PrintSheet`, `ui`); drag logic unchanged
+  and spread-preserving (dragging the anchor keeps a user-entered range).
+
+### Deploy / notes
+- Run `041_gantt_ranges_risks.sql` in the Supabase SQL editor **before**
+  deploying (autosave writes the new `baseline`/`assumptions` columns).
+- Math verified by a 31-check sanity script: legacy charts compute identical
+  dates through the new code; MC is deterministic, ordered (P50≤P80≤P90), and
+  bounded by the analytic window; histogram binning capped for wide spreads.
+- Pre-prod adversarial review (4 dimensions, each finding independently
+  verified) caught + fixed 6 issues before ship: cleared start-date stranding
+  every autosave; a deleted migrated risk reappearing on reload; the
+  duplicate-during-debounce race; the 60-task silent cap; duplicate dropping a
+  legacy contingency; and (found in passing) the debounced autosave logging a
+  baseline audit event on every keystroke (baseline set/clear is now its own
+  audit-logged action, out of the autosave path).
+
 ## 2026-07-01 — Gantt / Project Timelines: internal tool for customer project schedules
 
 A new admin-only **Gantt** tab (`/admin/gantt`) for building and tracking customer

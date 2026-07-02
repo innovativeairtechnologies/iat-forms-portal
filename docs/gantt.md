@@ -1,71 +1,99 @@
 # Gantt / Project Timelines (`/admin/gantt`)
 
-Phase 1 — 2026-07-01. An internal, admin-only tool for building and tracking
-**customer project schedules** as interactive Gantt charts. Born from a Sales
-request for a schedule on a specific customer build (the "Auckland" unit); made a
-persistent, shareable portal tab instead of a throwaway file so charts save,
-update, and live in one place.
+Phase 1 — 2026-07-01. v2 "Honest Schedules" — 2026-07-02. An internal, admin-only
+tool for building and tracking **customer project schedules** as interactive Gantt
+charts. Born from a Sales request for a schedule on a specific customer build (the
+"Auckland" unit); made a persistent portal tab so charts save, update, and live in
+one place.
+
+## v2: the chart is a forecast, not a promise
+
+Leadership's critique of v1 — *"deceptive and deep, with a ton of nuances and
+conditional IF-THEN statements"* — decoded to two classic Gantt failure modes,
+each fixed with the industry-standard mechanism:
+
+| Problem | Fix (v2) |
+|---|---|
+| **False precision** — single-date bars, silent replanning | Ship **windows** everywhere (never one date), range rendering on bars, milestone whiskers, **baselines** with variance chips, **P50/P80/P90** Monte Carlo confidence dates |
+| **Rules live outside the chart** — failure loops / IF-THENs in heads or Excel | **Per-task risk rules** `{prob %, delay range, note}` (probabilistic branching à la RiskyProject), what-if toggles, and a 5,000-run simulation that prices unfired risks |
+
+The discipline baked into the copy: *commit externally to P80, never the plan
+date* (QSRA practice). The printed sheet carries the window headline, what-if
+labeling, baseline variance, the risk register, assumptions, and a "Forecast, not
+a commitment" footer — a shared chart can't shed its caveats.
 
 ## Who it's for
-Admin-only for now (every read/write is admin-gated). Sales/PM users get access by
-being given an `admin` role temporarily. Role-based access (Sales sees Gantt but
-not PTO/Time Off, etc.) is planned but **not yet built** — see "Not yet" below.
+Admin-only (every read/write is admin-gated). Sales/PM users get access by being
+given an `admin` role temporarily; role-based access (Sales sees Gantt but not
+PTO/Time Off) is planned but **not yet built**.
 
 ## The model
-A timeline is a simple **finish-to-start chain**: each task starts when the
-previous one ends. Two ideas make it useful for real projects:
+A timeline is a **linear finish-to-start chain** (deliberately — dependency graphs
+/ parallel tracks are where you buy MS Project; our niche is linear custom-unit
+projects with honest uncertainty):
 
-- **Anchor** — exactly one task is flagged the anchor: the long-lead /
-  critical-path driver (e.g. "LLI procurement"). Its end date is the **arrival**
-  that drives everything downstream. You set its duration with the slider or by
-  dragging the arrival pill on the chart; the whole tail re-cascades live.
-- **Failure contingency** — a per-chart toggle that models a test failure
-  requiring replacement long-lead parts: it pushes the anchor out by
-  `reset_weeks` (shown as a red extension) and re-cascades. A Gantt can't draw a
-  loop, so the "schedule reset" from the Sales brief is modeled as this push.
+- **Ranges.** Every task carries `[durMin, durMax]`. Three lanes are always
+  computed (best / likely / worst); the likely lane draws the solid bars, the
+  worst lane draws each bar's faded extension and the accumulated milestone
+  whiskers, and best–worst is the ship window.
+- **Anchor** — exactly one task (e.g. "LLI procurement"): the long-lead driver.
+  Its plan value is `durMin` (dragged via the arrival pill / slider,
+  spread-preserving); its `durMax` feeds only the range + simulation.
+- **Risk rules** — any task can carry risks `{prob %, delayMin–delayMax, note,
+  fired}`; several per task. Unfired risks contribute **zero** to the drawn plan
+  (only the simulation prices them). "Fired" = a persisted what-if that adds the
+  delay to every lane and is loudly labeled on screen and in print.
+- **Baseline** — freezes the computed schedule as **absolute dates** (so a later
+  `start_date` edit can't drag the baseline along). Ghost bars render under live
+  bars; variance chips show slip vs baseline; set/clear is audit-logged.
+  What-ifs are excluded from variance on both sides (plan vs plan).
+- **Monte Carlo** — ~5,000 client-side runs (triangular duration sampling,
+  Bernoulli risks, RNG seeded from a hash of the tasks so results are stable
+  across renders) → P50/P80/P90 ship dates, histogram, per-risk hit impact.
+  Runs in single-digit ms in a `useMemo`.
+- **Assumptions register** — editable list, printed with the chart.
 
-Ranged durations (`durMin`–`durMax`, e.g. 2–4 wks) feed a **Best / Likely / Worst**
-scenario toggle so you show a *window*, not false-precision. Summary stats
-(estimated ship, weeks-from-arrival, total weeks) recompute on every change.
-
-The scheduling math lives in `lib/gantt.ts` (`layout()`, `effDur()`) as a pure,
-server-safe module, so the list page and the interactive editor compute identical
-dates.
-
-## Data model (migration `040_gantt_charts.sql`)
-- `gantt_charts` — one row per project timeline. Columns: `name`, `customer`,
-  `status` (active/complete/draft), `start_date`, `scenario`, `failure`,
-  `reset_weeks`, and `tasks` (jsonb array). Tasks are stored **inline as jsonb**
-  (owned by the chart, small, always read/written as a whole) rather than a
-  separate table. Each task: `{ id, name, kind:'task'|'milestone',
-  cat:'routine'|'uncertain'|'build', owner, durMin, durMax, anchor }`.
-
-`gantt_charts` is **service-role only** (RLS on, no policies) — every read/write
-goes through `supabaseAdmin` behind admin-gated code, same posture as
-`presentations` (039) and `digest_runs` (038). The browser never queries it.
+Legacy v1 charts (chart-level `failure`/`reset_weeks`) migrate lazily:
+`normalizeChart()` synthesizes the equivalent risk on the anchor (30% / reset
+weeks) inside `layout()`/`layoutRange()`, so even the list page renders old rows
+correctly; opening a chart in the editor materializes + persists the migration.
+The old columns are DEPRECATED and never written again. New charts write
+`reset_weeks: 0` so no phantom risk is synthesized.
 
 ## How it's built
-- `lib/gantt.ts` — shared types + pure scheduling math + the Auckland/blank
-  templates. No server imports (safe for client components).
-- `lib/gantt-data.ts` — server-side reads (`listCharts`, `getChart`) via `supabaseAdmin`.
-- `app/admin/gantt/actions.ts` — server actions (`createChart`, `updateChart`,
-  `duplicateChart`, `deleteChart`), each guarded with `getAdminUser()`, audit-logged.
-- `app/admin/gantt/page.tsx` + `GanttListClient.tsx` — the chart list (cards,
-  est-ship, "New chart" / "New from Auckland template").
-- `app/admin/gantt/[id]/page.tsx` + `GanttEditorClient.tsx` — the interactive
-  editor: draggable arrival anchor, scenario toggle, failure sim, editable task
-  table, live stats, and Print / PDF. Edits **autosave** (600 ms debounce) via
-  `updateChart`.
-- Nav: a **Gantt** item in the `AdminSidebar` "IAT" section (`CalendarRange` icon).
+- `lib/gantt.ts` — pure, import-free math shared by client + server: types,
+  `normalizeChart`, `effDur`/`firedDelay`, `layoutRange` (+ `layout` wrapper),
+  `makeBaseline` / `baselineVariance`, `monteCarlo` / `mulberry32` /
+  `hashChartInputs`, templates.
+- `lib/gantt-data.ts` — server reads via `supabaseAdmin`.
+- `app/admin/gantt/actions.ts` — admin-gated, audit-logged mutations; sanitizes
+  tasks/risks/assumptions; `duplicateChart` deep-copies via spread-with-id-drop
+  (never a field whitelist), resets `fired`, drops the baseline (a copy is a new
+  plan).
+- `app/admin/gantt/[id]/` — `GanttEditorClient.tsx` is the stateful shell (chart
+  state, 600ms debounced autosave, drag logic); render-only siblings:
+  `GanttChartView` (bars/ranges/whiskers/ghosts/pill), `TaskTable` (+ per-task
+  risk editor), `ConfidencePanel`, `AssumptionsCard`, `PrintSheet`, `ui.tsx`.
+  Baselines are computed **client-side** (`makeBaseline`) because chart truth
+  lives in client state under the debounced autosave — a server-side snapshot
+  would race stale data.
+- Nav: **Gantt** in the `AdminSidebar` "IAT" section.
+
+## Data model
+- Migration `040_gantt_charts.sql` — the `gantt_charts` table, tasks inline jsonb,
+  RLS-on/no-policies (service-role only).
+- Migration `041_gantt_ranges_risks.sql` — adds `baseline jsonb` and
+  `assumptions jsonb`; risks live inside the `tasks` jsonb (no new columns);
+  marks `failure`/`reset_weeks` deprecated.
 
 ## Not yet (planned)
-- **Role-based access.** Today anyone who can see the tab is an admin. Next:
-  Admin sees everything; Sales sees Gantt but not PTO/Time Off, etc.
-- **AI-seed** a chart from a plain-English project description (the Anthropic key
-  is already wired for other features).
-- A customer-facing read-only view (the data model doesn't change).
+- **Phase 3 "living schedule":** per-task status + actual dates (done tasks pin
+  to reality, downstream reflows), health colors vs baseline.
+- **Role-based access** (Sales sees Gantt, not PTO/Time Off).
+- AI-seed a chart from a plain-English description; customer-facing read-only view.
 
 ## Deploy
-Run `supabase/migrations/040_gantt_charts.sql` by hand in the Supabase SQL editor
-before deploying, then push. Verify: open `/admin/gantt`, create from the Auckland
-template, drag the arrival pill, confirm it saves (reload).
+Run `041_gantt_ranges_risks.sql` in the Supabase SQL editor **before** deploying
+v2 (the editor autosave writes the new columns and will error without them).
+Verify: open the Auckland chart — same plan dates as v1, plus window/P80/baseline
+controls; drag the arrival pill; set a baseline; toggle a risk chip; print.

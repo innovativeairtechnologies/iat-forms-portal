@@ -4,7 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminUser } from '@/lib/admin-auth'
 import { logAudit } from '@/lib/audit'
-import { AUCKLAND_TASKS, BLANK_TASKS, withIds, type GanttChart, type GanttTask } from '@/lib/gantt'
+import {
+  AUCKLAND_TASKS, BLANK_TASKS, withIds, nid, normalizeChart,
+  type GanttChart, type GanttTask, type GanttAssumption, type TaskRisk, type GanttBaseline,
+} from '@/lib/gantt'
 
 /* Gantt mutations. Run with the service-role key (bypasses RLS), so each guards
    the caller with getAdminUser() rather than trusting only the /admin layout —
@@ -20,6 +23,43 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+const clamp = (v: unknown, lo: number, hi: number) =>
+  Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)))
+
+function sanitizeRisks(risks: unknown): TaskRisk[] | undefined {
+  if (!Array.isArray(risks) || risks.length === 0) return undefined
+  return risks.slice(0, 8).map((r) => {
+    const delayMin = clamp((r as TaskRisk).delayMin, 0, 104)
+    return {
+      id: String((r as TaskRisk).id || nid()).slice(0, 40),
+      prob: clamp((r as TaskRisk).prob, 0, 100),
+      delayMin,
+      delayMax: Math.max(delayMin, clamp((r as TaskRisk).delayMax, 0, 104)),
+      note: (r as TaskRisk).note ? String((r as TaskRisk).note).slice(0, 200) : undefined,
+      fired: !!(r as TaskRisk).fired,
+    }
+  })
+}
+
+function sanitizeTasks(tasks: GanttTask[]): GanttTask[] {
+  return tasks.slice(0, 60).map((t) => ({
+    ...t,
+    name: String(t.name ?? '').slice(0, 140),
+    owner: t.owner ? String(t.owner).slice(0, 80) : undefined,
+    durMin: clamp(t.durMin, 0, 208),
+    durMax: clamp(t.durMax, 0, 208),
+    risks: sanitizeRisks(t.risks),
+  }))
+}
+
+function sanitizeAssumptions(assumptions: unknown): GanttAssumption[] {
+  if (!Array.isArray(assumptions)) return []
+  return assumptions.slice(0, 30).map((a) => ({
+    id: String((a as GanttAssumption).id || nid()).slice(0, 40),
+    text: String((a as GanttAssumption).text ?? '').slice(0, 300),
+  }))
+}
+
 export async function createChart(kind: 'blank' | 'auckland'): Promise<{ id: string }> {
   const admin = await requireAdmin()
   const isAuck = kind === 'auckland'
@@ -31,10 +71,12 @@ export async function createChart(kind: 'blank' | 'auckland'): Promise<{ id: str
       customer: isAuck ? 'Auckland project' : null,
       status: 'active',
       start_date: isAuck ? '2026-07-07' : todayISO(),
-      scenario: 'likely',
-      failure: false,
-      reset_weeks: 8,
       tasks: withIds(isAuck ? AUCKLAND_TASKS : BLANK_TASKS),
+      assumptions: [],
+      // Risks live on tasks now — zero the deprecated legacy contingency columns
+      // so normalizeChart() never synthesizes a phantom risk on new charts.
+      failure: false,
+      reset_weeks: 0,
       created_by: admin.user.id,
     })
     .select('id')
@@ -51,8 +93,10 @@ export async function createChart(kind: 'blank' | 'auckland'): Promise<{ id: str
 }
 
 type ChartPatch = Partial<
-  Pick<GanttChart, 'name' | 'customer' | 'status' | 'start_date' | 'scenario' | 'failure' | 'reset_weeks' | 'tasks'>
+  Pick<GanttChart, 'name' | 'customer' | 'status' | 'start_date' | 'tasks' | 'assumptions'>
 >
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 export async function updateChart(id: string, patch: ChartPatch): Promise<void> {
   await requireAdmin()
@@ -60,11 +104,18 @@ export async function updateChart(id: string, patch: ChartPatch): Promise<void> 
   if (patch.name !== undefined) update.name = String(patch.name).slice(0, 140) || 'Untitled project'
   if (patch.customer !== undefined) update.customer = patch.customer ? String(patch.customer).slice(0, 140) : null
   if (patch.status !== undefined) update.status = patch.status
-  if (patch.start_date !== undefined) update.start_date = patch.start_date
-  if (patch.scenario !== undefined) update.scenario = patch.scenario
-  if (patch.failure !== undefined) update.failure = !!patch.failure
-  if (patch.reset_weeks !== undefined) update.reset_weeks = Math.max(0, Math.min(104, Math.round(Number(patch.reset_weeks) || 0)))
-  if (patch.tasks !== undefined) update.tasks = patch.tasks
+  // Ignore an empty/partial date — a cleared native date input emits ''. Writing
+  // it would make Postgres reject the row and silently strand every later autosave.
+  if (patch.start_date !== undefined && ISO_DATE.test(patch.start_date)) update.start_date = patch.start_date
+  if (patch.assumptions !== undefined) update.assumptions = sanitizeAssumptions(patch.assumptions)
+  if (patch.tasks !== undefined) {
+    update.tasks = sanitizeTasks(patch.tasks)
+    // Commit the lazy legacy migration: once the risks live in `tasks`, neutralize
+    // the deprecated columns so normalizeChart() can never re-synthesize a risk the
+    // user has deleted (they'd otherwise reappear on every reload).
+    update.failure = false
+    update.reset_weeks = 0
+  }
 
   const { error } = await supabaseAdmin.from('gantt_charts').update(update).eq('id', id)
   if (error) throw new Error(error.message)
@@ -72,13 +123,41 @@ export async function updateChart(id: string, patch: ChartPatch): Promise<void> 
   revalidatePath(`/admin/gantt/${id}`)
 }
 
+/** Set or clear the baseline — a dedicated, explicitly audit-logged act (kept OUT
+ *  of the debounced autosave, which would otherwise log a baseline event on every
+ *  keystroke). */
+export async function saveBaseline(id: string, baseline: GanttBaseline | null): Promise<void> {
+  const admin = await requireAdmin()
+  const { error } = await supabaseAdmin
+    .from('gantt_charts')
+    .update({ baseline, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/gantt')
+  revalidatePath(`/admin/gantt/${id}`)
+  await logAudit({
+    actor: { id: admin.user.id, name: admin.displayName },
+    action: baseline ? 'gantt.baseline.set' : 'gantt.baseline.clear',
+    entityType: 'gantt_chart', entityId: id,
+    summary: baseline ? `Set schedule baseline (plan ship ${baseline.ship.likely})` : 'Cleared schedule baseline',
+  })
+}
+
 export async function duplicateChart(id: string): Promise<{ id: string }> {
   const admin = await requireAdmin()
   const { data: src } = await supabaseAdmin.from('gantt_charts').select('*').eq('id', id).single()
   if (!src) throw new Error('Chart not found.')
-  const s = src as GanttChart
-  const strippedTasks = (s.tasks || []).map((t: GanttTask) => ({
-    name: t.name, kind: t.kind, cat: t.cat, owner: t.owner, durMin: t.durMin, durMax: t.durMax, anchor: t.anchor,
+  // Normalize first so a legacy contingency (chart-level failure/reset_weeks never
+  // materialized into tasks) is copied as a real risk instead of being dropped.
+  const s = normalizeChart(src as GanttChart)
+
+  // Spread-with-id-drop (NOT a field whitelist) so future task fields survive the
+  // copy. Fresh ids; what-if `fired` flags reset — a copy is a new plan, so the
+  // baseline is intentionally not copied either.
+  const tasks: GanttTask[] = (s.tasks || []).map(({ id: _id, ...rest }) => ({
+    ...rest,
+    id: nid(),
+    risks: rest.risks?.map(({ id: _rid, ...rr }) => ({ ...rr, id: nid(), fired: false })),
   }))
 
   const { data, error } = await supabaseAdmin
@@ -88,10 +167,13 @@ export async function duplicateChart(id: string): Promise<{ id: string }> {
       customer: s.customer,
       status: s.status,
       start_date: s.start_date,
-      scenario: s.scenario,
-      failure: s.failure,
-      reset_weeks: s.reset_weeks,
-      tasks: withIds(strippedTasks),
+      tasks,
+      assumptions: s.assumptions ?? [],
+      baseline: null,
+      // Migration already committed into `tasks` above (via normalizeChart) — keep
+      // the deprecated columns zeroed so normalizeChart never re-fires on the copy.
+      failure: false,
+      reset_weeks: 0,
       created_by: admin.user.id,
     })
     .select('id')

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, CalendarRange, Loader2 } from 'lucide-react'
 import { StatusPill, timeAgo, type Tone } from '@/components/admin/list'
-import { layout, addWeeks, fmtDate, type GanttChart } from '@/lib/gantt'
+import { layoutRange, addWeeks, fmtDate, fmtShort, type GanttChart } from '@/lib/gantt'
 import { createChart } from './actions'
 
 const STATUS_TONE: Record<string, { label: string; tone: Tone }> = {
@@ -68,8 +68,9 @@ export default function GanttListClient({ charts }: { charts: GanttChart[] }) {
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {charts.map((c) => {
-              const L = layout(c)
-              const ship = fmtDate(addWeeks(c.start_date, L.ship))
+              const R = layoutRange(c)
+              const windowTxt = `${fmtShort(addWeeks(c.start_date, R.shipBest))} – ${fmtDate(addWeeks(c.start_date, R.shipWorst))}`
+              const plan = fmtDate(addWeeks(c.start_date, R.ship))
               const tcount = c.tasks.filter((t) => t.kind === 'task').length
               const meta = STATUS_TONE[c.status] || STATUS_TONE.active
               return (
@@ -89,11 +90,12 @@ export default function GanttListClient({ charts }: { charts: GanttChart[] }) {
                   </div>
                   <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-end justify-between">
                     <div>
-                      <div className="text-[11px] text-zinc-400 dark:text-zinc-500">est. ship</div>
-                      <div className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{ship}</div>
+                      <div className="text-[11px] text-zinc-400 dark:text-zinc-500">ship window</div>
+                      <div className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{windowTxt}</div>
+                      <div className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums">plan {plan}</div>
                     </div>
                     <div className="text-[11.5px] text-zinc-400 dark:text-zinc-500 tabular-nums">
-                      {tcount} tasks · {Math.round(L.ship)} wks
+                      {tcount} tasks
                       {c.updated_at ? ` · ${timeAgo(c.updated_at)}` : ''}
                     </div>
                   </div>
