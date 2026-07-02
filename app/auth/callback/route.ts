@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logLoginEvent, type LoginMethod } from '@/lib/login-events'
+import { normalizeRole, isAdminSurfaceRole, homeForRole } from '@/lib/roles'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -40,14 +41,17 @@ export async function GET(request: NextRequest) {
     userEmail = data.user?.email ?? null
   }
 
-  // Role-aware routing: customers always land inside /customer, never the
-  // internal employee onboarding flow.
+  // Role-aware routing: customers land inside /customer; admin-surface roles land
+  // in their /admin home (no employee onboarding flow); base production uses the
+  // employee shell.
   if (userId) {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role, display_name')
       .eq('id', userId)
       .single()
+
+    const role = normalizeRole(profile?.role)
 
     // Record this sign-in (magic-link / invite / recovery land here, not /login).
     const method: LoginMethod =
@@ -57,21 +61,27 @@ export async function GET(request: NextRequest) {
       email: userEmail,
       name: profile?.display_name ?? userEmail ?? null,
       role: profile?.role ?? null,
-      portal: profile?.role === 'customer' ? 'customer' : profile?.role === 'admin' ? 'admin' : 'employee',
+      portal: role === 'customer' ? 'customer' : isAdminSurfaceRole(role) ? 'admin' : 'employee',
       method,
       headers: request.headers,
     })
 
-    if (profile?.role === 'customer') {
+    if (role === 'customer') {
       const onboarding = type === 'invite' || type === 'signup' || type === 'recovery'
       const dest = onboarding
         ? '/customer/welcome'
         : next.startsWith('/customer') ? next : '/customer'
       return NextResponse.redirect(new URL(dest, requestUrl.origin))
     }
+
+    // Admin-surface roles (admin + scoped) have no /employee welcome flow — send
+    // them straight to their permitted home.
+    if (isAdminSurfaceRole(role)) {
+      return NextResponse.redirect(new URL(homeForRole(role), requestUrl.origin))
+    }
   }
 
-  // Invite and signup flows → employee welcome / onboarding page
+  // Base production/employee invite & signup flows → employee welcome / onboarding
   if (type === 'invite' || type === 'signup') {
     return NextResponse.redirect(new URL('/employee/welcome', requestUrl.origin))
   }

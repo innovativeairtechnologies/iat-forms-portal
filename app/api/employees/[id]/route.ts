@@ -10,23 +10,27 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
   const body = await req.json()
 
-  // Whitelist updatable fields
+  // Whitelist updatable fields. NOTE: role/is_admin is intentionally NOT editable
+  // here — all role changes go through /api/admin/users/[id]/role, which validates
+  // the full role vocabulary and keeps profiles.role + employees.is_admin in sync.
+  // (This route used to sync profiles.role from an is_admin boolean, which wrote
+  // the legacy 'employee' value and could clobber a scoped role — removed.)
   const allowed = ['name', 'email', 'job_title', 'department', 'phone', 'bio',
-                   'pto_balance', 'sick_balance', 'hire_date', 'is_admin']
+                   'pto_balance', 'sick_balance', 'hire_date']
   const update: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) update[key] = body[key]
   }
 
-  // Snapshot the prior row when we're touching balances or the admin flag, both
-  // for the accrual_log deltas and the audit trail.
-  const touchesAudited = 'pto_balance' in update || 'sick_balance' in update || 'is_admin' in update
-  type EmpSnap = { name: string | null; pto_balance: number; sick_balance: number; is_admin: boolean }
+  // Snapshot the prior row when we're touching balances, for the accrual_log
+  // deltas and the audit trail.
+  const touchesAudited = 'pto_balance' in update || 'sick_balance' in update
+  type EmpSnap = { name: string | null; pto_balance: number; sick_balance: number }
   let current: EmpSnap | null = null
   if (touchesAudited) {
     const { data } = await supabaseAdmin
       .from('employees')
-      .select('name, pto_balance, sick_balance, is_admin')
+      .select('name, pto_balance, sick_balance')
       .eq('id', params.id)
       .single()
     current = data as EmpSnap | null
@@ -49,14 +53,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   const { error } = await supabaseAdmin.from('employees').update(update).eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Keep profiles.role in sync when is_admin changes
-  if ('is_admin' in update) {
-    await supabaseAdmin
-      .from('profiles')
-      .upsert({ id: params.id, role: update.is_admin ? 'admin' : 'employee' })
-  }
-
-  // Audit trail — balance adjustments and admin-flag changes.
+  // Audit trail — balance adjustments.
   if (current) {
     const who = current.name || params.id
     const actor = { id: admin.user.id, name: admin.displayName }
@@ -76,16 +73,6 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
           })
         }
       }
-    }
-    if ('is_admin' in update && update.is_admin !== current.is_admin) {
-      await logAudit({
-        actor,
-        action: 'role.update',
-        entityType: 'employee',
-        entityId: params.id,
-        summary: `Changed ${who}'s role to ${update.is_admin ? 'admin' : 'employee'}`,
-        metadata: { from: current.is_admin ? 'admin' : 'employee', to: update.is_admin ? 'admin' : 'employee' },
-      })
     }
   }
 

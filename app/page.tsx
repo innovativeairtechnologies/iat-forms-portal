@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { normalizeRole, homeForRole } from '@/lib/roles'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,9 +18,7 @@ export default async function RootRouter() {
     .eq('id', user.id)
     .single()
 
-  redirect(
-    profile?.role === 'admin' ? '/admin'
-    : profile?.role === 'customer' ? '/customer'
-    : '/employee/profile',
-  )
+  // Single source of truth: admins/scoped roles → their /admin home, customers
+  // → /customer, base production → /employee. Avoids the /employee detour bounce.
+  redirect(homeForRole(normalizeRole(profile?.role)))
 }

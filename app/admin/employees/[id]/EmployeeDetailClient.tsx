@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Check, Power, UserRound, History } from 'lucide-react'
+import { Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Power, UserRound, History } from 'lucide-react'
 import type { Employee, TimeOffRequest } from '@/lib/supabase'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
 const STATUS_STYLES = {
   pending:  { icon: AlertCircle,  cls: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',  label: 'Pending'  },
@@ -26,7 +27,7 @@ export default function EmployeeDetailClient({
 }: {
   employee: Employee
   requests: TimeOffRequest[]
-  currentRole: 'admin' | 'employee'
+  currentRole: StaffRole
 }) {
   const router = useRouter()
   const [form, setForm] = useState({
@@ -45,7 +46,7 @@ export default function EmployeeDetailClient({
   const [error, setError]     = useState('')
 
   // Role state — managed separately from the main form
-  const [role, setRole]           = useState<'admin' | 'employee'>(currentRole)
+  const [role, setRole]           = useState<StaffRole>(currentRole)
   const [roleLoading, setRoleLoading] = useState(false)
   const [roleSaved, setRoleSaved]   = useState(false)
 
@@ -74,7 +75,7 @@ export default function EmployeeDetailClient({
     setTimeout(() => { setSaved(false); router.refresh() }, 2000)
   }
 
-  const changeRole = async (newRole: 'admin' | 'employee') => {
+  const changeRole = async (newRole: StaffRole) => {
     if (newRole === role || roleLoading) return
     setRoleLoading(true)
     const res = await fetch(`/api/admin/users/${employee.id}/role`, {
@@ -145,7 +146,7 @@ export default function EmployeeDetailClient({
                   : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
               }`}>
                 {role === 'admin' ? <Shield size={9} /> : <User size={9} />}
-                {role === 'admin' ? 'Admin' : 'Employee'}
+                {ROLE_LABELS[role]}
               </span>
               {!active && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700">
@@ -230,37 +231,19 @@ export default function EmployeeDetailClient({
             <Card>
               <CardHead title="Role & Access" icon={<Shield size={14} />} />
               <div className="p-5 space-y-3">
-                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 -mt-1">Controls which portal this user sees after login</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 -mt-1">Controls which portal &amp; tabs this user sees after login</p>
 
-                {/* Toggle buttons */}
-                <div className="grid grid-cols-2 gap-2">
-                  {(['employee', 'admin'] as const).map((r) => {
-                    const isSel   = role === r
-                    const isAdmin = r === 'admin'
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => changeRole(r)}
-                        disabled={roleLoading}
-                        className={`relative flex flex-col items-center gap-1.5 py-3.5 px-3 rounded-xl border text-[12px] font-semibold transition-all disabled:opacity-60 ${
-                          isSel
-                            ? isAdmin
-                              ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300'
-                              : 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-400/50 dark:border-emerald-600/50 text-emerald-700 dark:text-emerald-400'
-                            : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300'
-                        }`}
-                      >
-                        {isSel && (
-                          <span className="absolute top-1.5 right-1.5">
-                            <Check size={10} className={isAdmin ? 'text-violet-500' : 'text-emerald-500'} />
-                          </span>
-                        )}
-                        {isAdmin ? <Shield size={16} /> : <User size={16} />}
-                        {r === 'admin' ? 'Admin' : 'Employee'}
-                      </button>
-                    )
-                  })}
-                </div>
+                {/* Role selector */}
+                <select
+                  value={role}
+                  disabled={roleLoading}
+                  onChange={(e) => changeRole(e.target.value as StaffRole)}
+                  className={`${inp} disabled:opacity-60`}
+                >
+                  {ASSIGNABLE_ROLES.map((r) => (
+                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  ))}
+                </select>
 
                 {/* Description of current role */}
                 <div className={`rounded-xl px-3.5 py-3 text-[11px] leading-relaxed ${
@@ -268,9 +251,7 @@ export default function EmployeeDetailClient({
                     ? 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400'
                     : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
                 }`}>
-                  {role === 'admin'
-                    ? 'Full access to submissions, forms, employees, time off queue, and all admin settings.'
-                    : 'Access to their own time off requests, profile, and the team directory.'}
+                  {ROLE_DESCRIPTIONS[role]}
                 </div>
 
                 {roleLoading && (

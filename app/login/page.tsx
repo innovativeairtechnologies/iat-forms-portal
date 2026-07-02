@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Logo from '@/components/Logo'
 import { motion } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { normalizeRole, isAdminSurfaceRole, homeForRole } from '@/lib/roles'
 
 export default function LoginPage() {
   return (
@@ -45,12 +46,14 @@ function LoginForm() {
       .eq('id', data.user.id)
       .single()
 
+    const role = normalizeRole(profile?.role)
+
     // Record the sign-in (IP / location / device captured server-side). The
     // session cookie is already set, so this same-origin POST is authenticated.
     // Fire-and-forget with keepalive so it survives the imminent navigation and
     // never delays the redirect; a logging failure is intentionally ignored.
     const portal =
-      profile?.role === 'admin' ? 'admin' : profile?.role === 'customer' ? 'customer' : 'employee'
+      isAdminSurfaceRole(role) ? 'admin' : role === 'customer' ? 'customer' : 'employee'
     void fetch('/api/auth/login-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -58,14 +61,16 @@ function LoginForm() {
       keepalive: true,
     }).catch(() => {})
 
-    if (profile?.role === 'admin') {
-      router.push('/admin')
+    // Admin-surface roles (full admin + scoped: sales/hr/marketing/engineering/
+    // production_manager) land on their permitted home section.
+    if (isAdminSurfaceRole(role)) {
+      router.push(homeForRole(role))
       router.refresh()
       return
     }
 
     // Customer — first-time setup sets the password via /customer/welcome
-    if (profile?.role === 'customer') {
+    if (role === 'customer') {
       const setupComplete = data.user.user_metadata?.setup_complete
       if (!setupComplete) {
         router.push('/customer/welcome')

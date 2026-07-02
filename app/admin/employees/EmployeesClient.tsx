@@ -7,10 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 import Link from 'next/link'
 import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th } from '@/components/admin/list'
+import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
 const COLS = 'grid-cols-[1.5fr_1.5fr_1.2fr_104px_70px_70px_28px]'
 
-const EMPTY_FORM = { name: '', email: '', job_title: '', department: '', is_admin: false, temp_password: '' }
+const EMPTY_FORM = { name: '', email: '', job_title: '', department: '', role: 'production' as StaffRole, temp_password: '' }
 
 function generatePassword() {
   const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -33,7 +34,9 @@ const TABS: { value: Tab; label: string }[] = [
   { value: 'inactive', label: 'Inactive' },
 ]
 
-export default function EmployeesClient({ employees }: { employees: (Employee & { role?: 'admin' | 'employee' })[] }) {
+type EmployeeWithRole = Employee & { role?: StaffRole }
+
+export default function EmployeesClient({ employees }: { employees: EmployeeWithRole[] }) {
   const router = useRouter()
   const [search, setSearch]     = useState('')
   const [tab, setTab]           = useState<Tab>('all')
@@ -45,7 +48,7 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
   const [created, setCreated]   = useState<{ email: string; password: string } | null>(null)
   const [copied, setCopied]     = useState(false)
 
-  const matchesTab = (e: Employee & { role?: 'admin' | 'employee' }) =>
+  const matchesTab = (e: EmployeeWithRole) =>
     tab === 'all'      ? true :
     tab === 'admins'   ? e.role === 'admin' :
     tab === 'active'   ? e.is_active !== false :
@@ -198,11 +201,15 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
                   <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                     {emp.name || '—'}
                   </span>
-                  {emp.role === 'admin' && (
+                  {emp.role === 'admin' ? (
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-md border border-violet-300/60 bg-violet-50 text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400 flex-shrink-0">
                       <Shield size={9} />Admin
                     </span>
-                  )}
+                  ) : emp.role && emp.role !== 'production' ? (
+                    <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-1.5 py-[2px] rounded-md border border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 flex-shrink-0">
+                      {ROLE_LABELS[emp.role]}
+                    </span>
+                  ) : null}
                 </div>
                 {/* Email */}
                 <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{emp.email}</div>
@@ -336,12 +343,20 @@ export default function EmployeesClient({ employees }: { employees: (Employee & 
                   <p className="text-[11px] text-gray-400 mt-1.5">Share this with the employee — they&apos;ll be asked to change it on first login.</p>
                 </div>
 
-                <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1">
-                  <input type="checkbox" checked={form.is_admin}
-                    onChange={e => setForm(f => ({ ...f, is_admin: e.target.checked }))}
-                    className="w-4 h-4 rounded border-gray-300 accent-[#089447]" />
-                  <span className="text-[13px] text-gray-600 font-medium">Grant admin access</span>
-                </label>
+                {/* Role — determines which portal & tabs the account can access */}
+                <div className="pt-1">
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">Role</label>
+                  <select
+                    value={form.role}
+                    onChange={e => setForm(f => ({ ...f, role: e.target.value as StaffRole }))}
+                    className="w-full text-[14px] text-gray-800 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all"
+                  >
+                    {ASSIGNABLE_ROLES.map(r => (
+                      <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1.5">{ROLE_DESCRIPTIONS[form.role]}</p>
+                </div>
 
                 {formError && <p className="text-[13px] text-red-500">{formError}</p>}
 

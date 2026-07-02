@@ -7,11 +7,14 @@ import {
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
   Calendar, Clock, Boxes, Building2,
   ChevronRight, ShieldCheck, Package, Network, FileText, FilePen, Presentation, CalendarRange,
+  Users, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import Logo from '@/components/Logo'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { hasPermission, homeForRole, type Perm } from '@/lib/roles'
+import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,6 +27,7 @@ type NavItem = {
   exact?: boolean
   badge?: BadgeKind
   hidden?: boolean
+  perm: Perm
 }
 
 type Counts = {
@@ -44,37 +48,38 @@ type NavSection = {
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
-const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true }
+const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, perm: 'dashboard' }
 
 const NAV_SECTIONS: NavSection[] = [
   {
     label: 'IAT',
     items: [
-      { href: '/admin/submissions',  label: 'Submissions', icon: Inbox,       badge: 'submissions' },
-      { href: '/admin/tickets',      label: 'Tickets',     icon: Ticket,      badge: 'tickets' },
+      { href: '/admin/submissions',  label: 'Submissions', icon: Inbox,       badge: 'submissions', perm: 'submissions' },
+      { href: '/admin/tickets',      label: 'Tickets',     icon: Ticket,      badge: 'tickets', perm: 'tickets' },
       // Troubleshooting merged into Tickets: the two customer forms (Equipment Support +
       // Troubleshooting Checklist) are now one form feeding the tickets pipeline, so the
       // separate tab is hidden. Legacy intakes remain at /admin/troubleshooting by URL.
       // Re-enable by removing `hidden: true`.
-      { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting', hidden: true },
-      { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes },
-      { href: '/admin/customers',    label: 'Customers',   icon: Building2 },
+      { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting', hidden: true, perm: 'tickets' },
+      { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes, perm: 'equipment' },
+      { href: '/admin/customers',    label: 'Customers',   icon: Building2, perm: 'customers' },
       // Gantt / Project Timelines. Leadership flagged concerns (a simple Gantt
       // oversimplifies these projects' branching/conditional schedules), but it's
       // kept visible for now to demo. To pause later, add `hidden: true`.
-      { href: '/admin/gantt',        label: 'Gantt',       icon: CalendarRange },
+      { href: '/admin/gantt',        label: 'Gantt',       icon: CalendarRange, perm: 'gantt' },
     ],
   },
   {
     label: 'Employees',
     items: [
-      { href: '/admin/org-chart',      label: 'Org Chart',      icon: Network },
-      { href: '/admin/forms',          label: 'Forms',          icon: FileText },
-      { href: '/admin/employee-forms', label: 'Employee Forms', icon: FilePen, badge: 'drafts' },
-      { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto' },
-      { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick' },
-      { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock },
-      { href: '/admin/accrual',       label: 'Accrual',    icon: TrendingUp },
+      { href: '/admin/employees',      label: 'Accounts',       icon: Users, perm: 'employees' },
+      { href: '/admin/org-chart',      label: 'Org Chart',      icon: Network, perm: 'org_chart' },
+      { href: '/admin/forms',          label: 'Forms',          icon: FileText, perm: 'forms' },
+      { href: '/admin/employee-forms', label: 'Employee Forms', icon: FilePen, badge: 'drafts', perm: 'employee_forms' },
+      { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto', perm: 'pto' },
+      { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick', perm: 'sick' },
+      { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock, perm: 'scheduling' },
+      { href: '/admin/accrual',       label: 'Accrual',    icon: TrendingUp, perm: 'accrual' },
     ],
   },
   // US Rotors — hidden for now (not needed currently). Code, routes, API, and badge
@@ -83,19 +88,20 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'US Rotors',
     hidden: true,
     items: [
-      { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors' },
+      { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors', perm: 'us_rotors' },
     ],
   },
   {
     label: 'Content',
     items: [
-      { href: '/admin/presentations', label: 'Presentations', icon: Presentation },
+      { href: '/admin/presentations', label: 'Presentations', icon: Presentation, perm: 'presentations' },
     ],
   },
   {
     label: 'System',
     items: [
-      { href: '/admin/audit', label: 'Audit Log', icon: ShieldCheck },
+      { href: '/admin/audit', label: 'Audit Log', icon: ShieldCheck, perm: 'audit' },
+      { href: '/admin/reset', label: 'Data Reset', icon: Trash2, perm: 'system' },
     ],
   },
 ]
@@ -166,11 +172,13 @@ interface Props {
 export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+  const { effectiveRole } = useViewAs()
   const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders, drafts: draftCount }
   const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
   const displayName = adminName || 'Admin'
   const initial = displayName.charAt(0).toUpperCase()
+  const homeHref = homeForRole(effectiveRole)
 
   const logout = async () => {
     const supabase = createSupabaseBrowser()
@@ -181,10 +189,12 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-2 overflow-y-auto">
-      <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
+      {hasPermission(effectiveRole, DASHBOARD.perm) && (
+        <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
+      )}
 
       {NAV_SECTIONS.filter(s => !s.hidden).map(section => {
-        const items = section.items.filter(i => !i.hidden)
+        const items = section.items.filter(i => !i.hidden && hasPermission(effectiveRole, i.perm))
         if (items.length === 0) return null
         return (
           <div key={section.label} className="mt-5">
@@ -205,6 +215,9 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
   const renderFooter = (onClose?: () => void) => (
     <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-zinc-800">
+      {/* Admin-only "View as [role]" nav preview (no effect on real access). */}
+      <ViewAsControl />
+
       <button
         onClick={logout}
         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all"
@@ -242,7 +255,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
           : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800',
       )}>
         <div className="px-4 pt-5 pb-4">
-          <Link href="/admin" className="flex items-center gap-2.5 group">
+          <Link href={homeHref} className="flex items-center gap-2.5 group">
             <Logo size={26} className="flex-shrink-0" />
             <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#089447] transition-colors">
               IAT Portal
@@ -255,7 +268,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
       {/* ── Mobile top bar ── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800">
-        <Link href="/admin" className="flex items-center gap-2.5">
+        <Link href={homeHref} className="flex items-center gap-2.5">
           <Logo size={22} className="flex-shrink-0" />
           <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
         </Link>
@@ -285,7 +298,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
-              <Link href="/admin" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
+              <Link href={homeHref} className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
                 <Logo size={22} className="flex-shrink-0" />
                 <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
               </Link>

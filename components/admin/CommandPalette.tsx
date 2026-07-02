@@ -8,6 +8,8 @@ import {
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock,
 } from 'lucide-react'
+import { hasPermission, type Perm } from '@/lib/roles'
+import { useViewAs } from '@/components/admin/ViewAs'
 
 /* ────────────────────────────────────────────────────────────────────────────
    Command palette — press ⌘K / Ctrl+K anywhere in the admin to jump.
@@ -23,27 +25,29 @@ type Item = {
   icon: React.ElementType
   href: string
   keywords?: string
+  perm?: Perm
 }
 
-// Static destinations + quick actions — mirror the sidebar.
+// Static destinations + quick actions — mirror the sidebar. `perm` gates each by
+// role (same matrix as AdminSidebar) so scoped roles don't see dead-end links.
 const STATIC: Item[] = [
-  { id: 'nav-dash',    label: 'Dashboard',        group: 'Go to', icon: LayoutDashboard, href: '/admin', keywords: 'home overview' },
-  { id: 'nav-forms',   label: 'Forms',            group: 'Go to', icon: FileText,        href: '/admin/forms' },
-  { id: 'nav-empforms', label: 'Employee Forms',  group: 'Go to', icon: FileText,        href: '/admin/employee-forms', keywords: 'jotform fill submit resources library' },
-  { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions' },
-  { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets' },
-  { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty' },
+  { id: 'nav-dash',    label: 'Dashboard',        group: 'Go to', icon: LayoutDashboard, href: '/admin', keywords: 'home overview', perm: 'dashboard' },
+  { id: 'nav-forms',   label: 'Forms',            group: 'Go to', icon: FileText,        href: '/admin/forms', perm: 'forms' },
+  { id: 'nav-empforms', label: 'Employee Forms',  group: 'Go to', icon: FileText,        href: '/admin/employee-forms', keywords: 'jotform fill submit resources library', perm: 'employee_forms' },
+  { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions', perm: 'submissions' },
+  { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets', perm: 'tickets' },
+  { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty', perm: 'equipment' },
   // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
-  // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series' },
-  { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster' },
-  { id: 'nav-pto',     label: 'PTO Requests',     group: 'Go to', icon: Calendar,        href: '/admin/requests/pto', keywords: 'time off vacation' },
-  { id: 'nav-sick',    label: 'Sick Time',        group: 'Go to', icon: CalendarClock,   href: '/admin/requests/sick', keywords: 'time off' },
-  { id: 'nav-sched',   label: 'Scheduling',       group: 'Go to', icon: Calendar,        href: '/admin/schedule', keywords: 'calendar' },
-  { id: 'nav-accrual', label: 'Accrual',          group: 'Go to', icon: TrendingUp,      href: '/admin/accrual', keywords: 'balances hours' },
-  { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability' },
-  { id: 'act-newform', label: 'Create a new form',           group: 'Actions', icon: Plus,       href: '/admin/forms/new', keywords: 'add build' },
-  { id: 'act-aiform',  label: 'Build a form with AI',        group: 'Actions', icon: Sparkles,   href: '/admin/forms/ai', keywords: 'generate claude pdf import' },
-  { id: 'act-unread',  label: 'Review unread submissions',   group: 'Actions', icon: Inbox,      href: '/admin/submissions?is_read=false' },
+  // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series', perm: 'us_rotors' },
+  { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },
+  { id: 'nav-pto',     label: 'PTO Requests',     group: 'Go to', icon: Calendar,        href: '/admin/requests/pto', keywords: 'time off vacation', perm: 'pto' },
+  { id: 'nav-sick',    label: 'Sick Time',        group: 'Go to', icon: CalendarClock,   href: '/admin/requests/sick', keywords: 'time off', perm: 'sick' },
+  { id: 'nav-sched',   label: 'Scheduling',       group: 'Go to', icon: Calendar,        href: '/admin/schedule', keywords: 'calendar', perm: 'scheduling' },
+  { id: 'nav-accrual', label: 'Accrual',          group: 'Go to', icon: TrendingUp,      href: '/admin/accrual', keywords: 'balances hours', perm: 'accrual' },
+  { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability', perm: 'audit' },
+  { id: 'act-newform', label: 'Create a new form',           group: 'Actions', icon: Plus,       href: '/admin/forms/new', keywords: 'add build', perm: 'forms' },
+  { id: 'act-aiform',  label: 'Build a form with AI',        group: 'Actions', icon: Sparkles,   href: '/admin/forms/ai', keywords: 'generate claude pdf import', perm: 'forms' },
+  { id: 'act-unread',  label: 'Review unread submissions',   group: 'Actions', icon: Inbox,      href: '/admin/submissions?is_read=false', perm: 'submissions' },
 ]
 
 type SearchResults = {
@@ -94,6 +98,7 @@ function timeAgo(dateStr: string): string {
 
 export default function CommandPalette() {
   const router = useRouter()
+  const { effectiveRole } = useViewAs()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults>(EMPTY)
@@ -169,6 +174,13 @@ export default function CommandPalette() {
     return () => { clearTimeout(t); ctrl.abort() }
   }, [query])
 
+  // Static destinations the current (effective) role may actually reach — so
+  // scoped roles don't see palette links that dead-end at a middleware redirect.
+  const visibleStatic = useMemo<Item[]>(
+    () => STATIC.filter((i) => !i.perm || hasPermission(effectiveRole, i.perm)),
+    [effectiveRole],
+  )
+
   // ── Build the flat, ordered list of visible items ───────────────────────────
   const items = useMemo<Item[]>(() => {
     const q = query.trim().toLowerCase()
@@ -183,10 +195,10 @@ export default function CommandPalette() {
         icon: (r.entity_type && RECENT_ICON[r.entity_type]) || Clock,
         href: hrefForRecent(r),
       }))
-      return [...recentItems, ...STATIC]
+      return [...recentItems, ...visibleStatic]
     }
 
-    const statics = STATIC.filter((i) => (i.label + ' ' + (i.keywords || '')).toLowerCase().includes(q))
+    const statics = visibleStatic.filter((i) => (i.label + ' ' + (i.keywords || '')).toLowerCase().includes(q))
     const live: Item[] = [
       ...results.forms.map((f) => ({
         id: `form-${f.id}`, label: f.title, sublabel: f.is_active ? 'Live form' : 'Draft form',
@@ -207,7 +219,7 @@ export default function CommandPalette() {
       })),
     ]
     return [...statics, ...live]
-  }, [query, results, recent])
+  }, [query, results, recent, visibleStatic])
 
   // Keep the active index in range as the list changes.
   useEffect(() => { setActive((a) => Math.min(a, Math.max(0, items.length - 1))) }, [items.length])

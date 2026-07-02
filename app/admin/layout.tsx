@@ -1,9 +1,10 @@
 ﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import RefreshOnNavigate from '@/components/admin/RefreshOnNavigate'
 import CommandPalette from '@/components/admin/CommandPalette'
+import { ViewAsProvider, ViewAsBanner } from '@/components/admin/ViewAs'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFormDraftCount } from '@/lib/drafts'
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await getAdminUser()
+  const admin = await getAdminSurfaceUser()
   if (!admin) redirect('/login')
 
   const [
@@ -37,22 +38,25 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ])
 
   return (
-    <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
-      <RefreshOnNavigate />
-      <CommandPalette />
-      <AdminSidebar
-        unreadCount={unreadCount ?? 0}
-        ticketCount={openTickets ?? 0}
-        troubleshootingCount={newIntakes ?? 0}
-        ptoPending={ptoPending ?? 0}
-        sickPending={sickPending ?? 0}
-        usRotorsOrders={usRotorsOrders ?? 0}
-        draftCount={draftCount}
-        adminName={admin.displayName}
-      />
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        {children}
+    <ViewAsProvider realRole={admin.role}>
+      <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
+        <RefreshOnNavigate />
+        <CommandPalette />
+        <AdminSidebar
+          unreadCount={unreadCount ?? 0}
+          ticketCount={openTickets ?? 0}
+          troubleshootingCount={newIntakes ?? 0}
+          ptoPending={ptoPending ?? 0}
+          sickPending={sickPending ?? 0}
+          usRotorsOrders={usRotorsOrders ?? 0}
+          draftCount={draftCount}
+          adminName={admin.displayName}
+        />
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <ViewAsBanner />
+          {children}
+        </div>
       </div>
-    </div>
+    </ViewAsProvider>
   )
 }

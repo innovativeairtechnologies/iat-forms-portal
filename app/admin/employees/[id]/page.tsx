@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import EmployeeDetailClient from './EmployeeDetailClient'
+import { normalizeRole, type StaffRole } from '@/lib/roles'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,8 @@ export default async function EmployeeDetailPage(props: { params: Promise<{ id: 
 
   if (!employee) notFound()
 
-  const currentRole = (profile?.role as 'admin' | 'employee') ?? 'employee'
+  const normalized = normalizeRole(profile?.role)
+  const currentRole: StaffRole = normalized && normalized !== 'customer' ? normalized : 'production'
 
   return (
     <EmployeeDetailClient

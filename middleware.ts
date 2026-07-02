@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { normalizeRole, homeForRole, isAdminSurfaceRole, canAccessAdminPath } from '@/lib/roles'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -29,20 +30,17 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Resolve role once (relies on the profiles read-own RLS policy from 002).
-  let role: string | null = null
+  let rawRole: string | null = null
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
-    role = profile?.role ?? null
+    rawRole = profile?.role ?? null
   }
-
-  // Where each role's "home" lives. Unknown/null role → employee profile (the
-  // trigger always creates a profile, so null is effectively a dead path).
-  const homeFor = (r: string | null) =>
-    r === 'admin' ? '/admin' : r === 'customer' ? '/customer' : '/employee/profile'
+  // Normalize legacy 'employee' → 'production' and validate against the role set.
+  const role = normalizeRole(rawRole)
 
   // Carry the refreshed Supabase auth cookies (set on `supabaseResponse` during
   // getUser()) onto every redirect. Without this, a refreshed session is dropped
@@ -62,21 +60,27 @@ export async function middleware(request: NextRequest) {
 
   // ── /login: if already logged in, skip to the right portal ───────────────
   if (pathname === '/login') {
-    if (user) return redirectTo(new URL(homeFor(role), request.url))
+    if (user) return redirectTo(new URL(homeForRole(role), request.url))
     return supabaseResponse
   }
 
   // ── /customer/* (external customers; skip the set-password welcome page) ────
   if (pathname.startsWith('/customer') && !pathname.startsWith('/customer/welcome')) {
     if (!user) return toLogin()
-    if (role !== 'customer') return redirectTo(new URL(homeFor(role), request.url))
+    if (role !== 'customer') return redirectTo(new URL(homeForRole(role), request.url))
     return supabaseResponse
   }
 
   // ── /admin/* ──────────────────────────────────────────────────────────────
+  // Admin-surface roles (full admin + scoped: sales/hr/marketing/engineering/
+  // production_manager) may enter. Scoped roles are gated per-section here so a
+  // hidden nav tab can't be reached by typing its URL. Full admin bypasses.
   if (pathname.startsWith('/admin')) {
     if (!user) return redirectTo(new URL('/login', request.url))
-    if (role !== 'admin') return redirectTo(new URL(homeFor(role), request.url))
+    if (!isAdminSurfaceRole(role)) return redirectTo(new URL(homeForRole(role), request.url))
+    if (!canAccessAdminPath(role, pathname)) {
+      return redirectTo(new URL(homeForRole(role), request.url))
+    }
     return supabaseResponse
   }
 
@@ -95,7 +99,9 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith('/employee/welcome')
   ) {
     if (!user) return toLogin()
-    if (role === 'admin') return redirectTo(new URL('/admin', request.url))
+    // Admin-surface roles have their own /admin shell; send them there.
+    // Base `production` (and any unknown/null role) stays in the employee shell.
+    if (isAdminSurfaceRole(role)) return redirectTo(new URL('/admin', request.url))
     if (role === 'customer') return redirectTo(new URL('/customer', request.url))
     return supabaseResponse
   }
