@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Power, UserRound, History } from 'lucide-react'
 import type { Employee, TimeOffRequest } from '@/lib/supabase'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
 const STATUS_STYLES = {
@@ -24,10 +25,12 @@ export default function EmployeeDetailClient({
   employee,
   requests,
   currentRole,
+  currentAdminId,
 }: {
   employee: Employee
   requests: TimeOffRequest[]
   currentRole: StaffRole
+  currentAdminId: string | null
 }) {
   const router = useRouter()
   const [form, setForm] = useState({
@@ -119,6 +122,15 @@ export default function EmployeeDetailClient({
         ]}
       >
         {saved && <span className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
+        {/* No self-delete — the server refuses it too (400). Hide to avoid a dead button. */}
+        {employee.id !== currentAdminId && (
+          <DeleteRecordButton
+            endpoint={`/api/employees/${employee.id}`}
+            entityLabel="employee"
+            redirectTo="/admin/employees"
+            warn="Deletes the account; frees the email."
+          />
+        )}
         <button
           type="submit"
           form="emp-form"

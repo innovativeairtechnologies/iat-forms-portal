@@ -8,6 +8,7 @@ import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import dynamic from 'next/dynamic'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { StatusPill } from '@/components/admin/list'
 import JerryWidget from '@/components/shared/JerryWidget'
 
@@ -352,7 +353,13 @@ export default function TicketDetailClient({
           { label: 'Tickets', href: '/admin/tickets' },
           { label: ticket.ticket_number },
         ]}
-      />
+      >
+        <DeleteRecordButton
+          endpoint={`/api/tickets/${ticket.id}`}
+          entityLabel="ticket"
+          redirectTo="/admin/tickets"
+        />
+      </DetailTopBar>
 
       <div className="p-5 space-y-4">
         {/* Hero */}

@@ -10,6 +10,7 @@ import SubmissionDetailClient from './SubmissionDetailClient'
 import SubmissionNotes from './SubmissionNotes'
 import SubmissionStatus from './SubmissionStatus'
 import MarkAsRead from './MarkAsRead'
+import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 
 async function getData(id: string) {
   const { data: submission } = await supabaseAdmin
@@ -121,6 +122,11 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
           <Printer size={14} /> Print
         </Link>
         <SubmissionDetailClient submission={submission} fields={fields} />
+        <DeleteRecordButton
+          endpoint={`/api/submissions/${submission.id}`}
+          entityLabel="submission"
+          redirectTo="/admin/submissions"
+        />
       </DetailTopBar>
 
       <div className="p-5 space-y-4">

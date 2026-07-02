@@ -7,6 +7,7 @@ import { Save, Boxes, ShieldCheck, ShieldAlert, ShieldQuestion, Ticket as Ticket
 import type { Equipment, Customer, EquipmentMilestone } from '@/lib/supabase'
 import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd, nextPmDue, pmState } from '@/lib/equipment'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import CustomerPortalCard from '@/components/admin/CustomerPortalCard'
 import EquipmentPhotos from '@/components/admin/EquipmentPhotos'
 
@@ -110,6 +111,11 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
         ]}
       >
         {saved && <span className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
+        <DeleteRecordButton
+          endpoint={`/api/equipment/${equipment.id}`}
+          entityLabel="equipment unit"
+          redirectTo="/admin/equipment"
+        />
         <button
           type="submit"
           form="equip-form"

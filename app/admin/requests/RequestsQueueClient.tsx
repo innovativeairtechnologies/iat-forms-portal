@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TimeOffRequest, Employee } from '@/lib/supabase'
+import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 
 type RequestWithEmployee = TimeOffRequest & { employees: Employee }
 
@@ -119,9 +120,16 @@ export default function RequestsQueueClient({
                         <p className="text-[12px] text-gray-400">{employee?.job_title || 'Employee'}</p>
                       </div>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${s.cls}`}>
-                      <StatusIcon size={11} />{s.label}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${s.cls}`}>
+                        <StatusIcon size={11} />{s.label}
+                      </span>
+                      <DeleteRecordButton
+                        endpoint={`/api/requests/${req.id}`}
+                        entityLabel="request"
+                        compact
+                      />
+                    </div>
                   </div>
 
                   {/* Details */}

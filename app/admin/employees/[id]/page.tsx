@@ -1,13 +1,14 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import EmployeeDetailClient from './EmployeeDetailClient'
+import { getAdminUser } from '@/lib/admin-auth'
 import { normalizeRole, type StaffRole } from '@/lib/roles'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EmployeeDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const [{ data: employee }, { data: requests }, { data: profile }] = await Promise.all([
+  const [{ data: employee }, { data: requests }, { data: profile }, admin] = await Promise.all([
     supabaseAdmin.from('employees').select('*').eq('id', params.id).single(),
     supabaseAdmin
       .from('time_off_requests')
@@ -20,6 +21,7 @@ export default async function EmployeeDetailPage(props: { params: Promise<{ id: 
       .select('role')
       .eq('id', params.id)
       .single(),
+    getAdminUser(),
   ])
 
   if (!employee) notFound()
@@ -32,6 +34,7 @@ export default async function EmployeeDetailPage(props: { params: Promise<{ id: 
       employee={employee}
       requests={requests || []}
       currentRole={currentRole}
+      currentAdminId={admin?.user.id ?? null}
     />
   )
 }

@@ -66,3 +66,31 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
   return NextResponse.json({ success: true })
 }
+
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
+
+  const { data: sub } = await supabaseAdmin
+    .from('submissions')
+    .select('form_title, data')
+    .eq('id', params.id)
+    .single()
+
+  // Remove child notes first (the submission_notes FK may not cascade), then the
+  // submission itself.
+  await supabaseAdmin.from('submission_notes').delete().eq('submission_id', params.id)
+  const { error } = await supabaseAdmin.from('submissions').delete().eq('id', params.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const admin = await getAdminUser()
+  await logAudit({
+    actor: { id: admin?.user.id, name: admin?.displayName },
+    action: 'submission.delete',
+    entityType: 'submission',
+    entityId: params.id,
+    summary: `Deleted ${submitterName(sub?.data)}'s "${sub?.form_title || 'submission'}"`,
+  })
+
+  return NextResponse.json({ success: true })
+}

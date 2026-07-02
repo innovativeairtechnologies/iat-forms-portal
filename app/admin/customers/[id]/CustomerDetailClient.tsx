@@ -8,6 +8,7 @@ import {
   Loader2, CheckCircle2, AlertTriangle, ChevronRight,
 } from 'lucide-react'
 import { DetailShell, DetailTopBar, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
+import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { StatusPill } from '@/components/admin/list'
 import { warrantyState } from '@/lib/equipment'
 import type { Customer, Equipment } from '@/lib/supabase'
@@ -86,6 +87,12 @@ export default function CustomerDetailClient({
         ) : (
           <StatusPill tone="emerald">Active</StatusPill>
         )}
+        <DeleteRecordButton
+          endpoint={`/api/admin/customers/${customer.id}`}
+          entityLabel="customer"
+          redirectTo="/admin/customers"
+          warn="Deletes the company + its logins."
+        />
       </DetailTopBar>
 
       <div className="mx-auto max-w-[1100px] p-5 lg:p-8">

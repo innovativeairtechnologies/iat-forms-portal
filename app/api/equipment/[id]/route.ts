@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getAdminUser } from '@/lib/admin-auth'
+import { logAudit } from '@/lib/audit'
 
 const FIELDS = [
   'serial_number', 'model_number', 'voltage',
@@ -44,4 +46,30 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Failed to update unit' }, { status: 500 })
   }
   return NextResponse.json(data)
+}
+
+// Permanently delete an equipment unit (build/ship milestones cascade via FK).
+export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const err = await requireAdminAuth();if (err) return err
+
+  const { data: unit } = await supabaseAdmin
+    .from('equipment')
+    .select('serial_number, model_number')
+    .eq('id', params.id)
+    .single()
+
+  const { error } = await supabaseAdmin.from('equipment').delete().eq('id', params.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const admin = await getAdminUser()
+  await logAudit({
+    actor: { id: admin?.user.id, name: admin?.displayName },
+    action: 'equipment.delete',
+    entityType: 'equipment',
+    entityId: params.id,
+    summary: `Deleted equipment ${unit?.serial_number || unit?.model_number || params.id}`,
+  })
+
+  return NextResponse.json({ success: true })
 }

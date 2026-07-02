@@ -2,6 +2,30 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-02 — Per-record delete (individual submissions, tickets, employees, …)
+
+Complements the bulk Data Reset with surgical, one-at-a-time deletion for cleanup.
+
+### Added
+- A reusable **Delete** control (two-step confirm) on each record's detail page —
+  submissions, tickets, equipment, customers, employees — plus a per-row delete in
+  the PTO/Sick time-off queue. Each has its own admin-only, audit-logged `DELETE`
+  endpoint.
+- Employee and customer deletes remove the Supabase auth login (frees the email for
+  re-invite), matching the Data Reset behavior. Employee delete is distinct from
+  Deactivate (which stays for offboarding real staff) and refuses to delete your
+  own account (the button is also hidden on your own page).
+- Ticket/submission deletes remove child notes first so a record with notes can't
+  fail on a foreign key.
+
+### Hardened (adversarial review)
+- Employee delete only falls back to a direct row-delete on a genuine "user not
+  found"; any other auth-API error returns 500 without deleting the row, so a
+  transient failure can't orphan the login and leave the email occupied.
+- Customer delete removes the company row before the (irreversible) login deletes,
+  so a failure leaves the record intact for a clean retry instead of a half-deleted
+  "can't log in but still listed" state.
+
 ## 2026-07-02 — Roles & permissions, "View as" preview, and Data Reset panel
 
 Go-live prep: replaces the coarse admin/employee split with seven staff roles and
