@@ -59,7 +59,12 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting', hidden: true },
       { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes },
       { href: '/admin/customers',    label: 'Customers',   icon: Building2 },
-      { href: '/admin/gantt',        label: 'Gantt',       icon: CalendarRange },
+      // Gantt / Project Timelines — PAUSED 2026-07-01 per leadership. A simple Gantt
+      // can't honestly represent these projects' branching/conditional reality
+      // (failure loops, multiple long-lead drivers, IF-THEN paths), and a tidy chart
+      // implies false certainty. Code, routes, and migration 040 are all kept; routes
+      // remain reachable by URL. Re-enable by removing `hidden: true`.
+      { href: '/admin/gantt',        label: 'Gantt',       icon: CalendarRange, hidden: true },
     ],
   },
   {

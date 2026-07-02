@@ -30,6 +30,11 @@ Full write-up in `docs/gantt.md`.
 - Run `040_gantt_charts.sql` in the Supabase SQL editor **before** deploying.
 - Access is admin-only for now; Sales gets in via a temporary `admin` role.
   Role-based permissions (Sales sees Gantt, not PTO/Time Off) are still to come.
+- **Paused same day (2026-07-01)** — nav tab hidden per leadership feedback that a
+  simple Gantt can't honestly represent these projects' branching/conditional
+  schedule logic (failure loops, multiple long-lead drivers, IF-THEN paths) and a
+  tidy chart implies false certainty. Code, routes, and migration 040 kept intact;
+  re-enable by clearing the `hidden` flag on the nav item.
 
 ## 2026-07-01 — Portal-wide "calming" pass: subtracted visual noise on every surface
 
