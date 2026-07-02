@@ -42,10 +42,28 @@ at planning time. No migration — status lives inside the `tasks` jsonb.
   derived from data instead of hand-painted.
 - Progress readouts: "N of M steps complete" in the callout and printed sheet.
 
-### Verified
-- Math script grown to 45 assertions (pinning arithmetic, lane collapse, clamped
-  early actuals, MC pin bounds, done-risk exclusion, health thresholds,
-  downstream slip inheritance) — all green; tsc + production build pass.
+### Hardened (adversarial review — 12 findings, all fixed pre-merge)
+- **Actuals are absolute dates, not week-offsets.** A completion date is a recorded
+  fact; storing it relative to `start_date` (as the first cut did) meant editing the
+  chart's start silently rewrote every recorded actual — the exact failure mode
+  baselines were made absolute to avoid. `actualEnd` is now a `YYYY-MM-DD` and only
+  its axis position depends on `start_date`.
+- **Health is plan-vs-plan.** Per-task health now computes on the what-if-stripped
+  layout, so firing a scenario chip no longer paints rows "+N wks vs baseline" while
+  the variance stat reads "on plan" (and the printed sheet no longer self-contradicts).
+- **"Done" seeds from the plan, not the what-if.** Marking a task done takes its
+  actual from the fired-risk-stripped layout, so a hypothetical delay can't be baked
+  into recorded fact.
+- **Duplicate is a clean new plan** — it now strips completion status/actuals too (it
+  already reset what-if flags and dropped the baseline), so a copy isn't born
+  pre-completed and locked to the source project's history.
+- What-if banner / chips / legend / print now count only live (non-done) tasks' fired
+  risks — a done task's risks are history and were already excluded by the engines.
+- Done label shows the recorded actual date (matching the table) even when the bar
+  clamps to the chain; clamped done bars keep a visible sliver.
+- Math script grown to 51 assertions (adds: start-edit can't move a recorded actual;
+  fired what-if moves layout but not health; late done task reads slipped) — all
+  green; tsc + production build pass.
 
 ## 2026-07-02 — Per-record delete (individual submissions, tickets, employees, …)
 

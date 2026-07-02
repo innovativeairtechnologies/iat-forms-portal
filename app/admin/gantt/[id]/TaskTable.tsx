@@ -2,14 +2,24 @@
 
 import { useState } from 'react'
 import { Plus, ArrowUp, ArrowDown, X, Zap, ChevronDown, ChevronRight } from 'lucide-react'
-import { CAT_META, nid, type GanttTask, type TaskCat, type TaskKind, type TaskRisk } from '@/lib/gantt'
+import {
+  CAT_META, nid, addWeeks, toISODate, parseDate,
+  type GanttTask, type TaskCat, type TaskKind, type TaskRisk, type TaskStatus,
+} from '@/lib/gantt'
 import { fieldCls, toolBtn, IconBtn } from './ui'
 
-/* Editable task list + per-task risk rules (the structured IF-THEN layer).
-   Pure render + callbacks; all state lives in the shell. */
+/* Editable task list + per-task risk rules (the structured IF-THEN layer) +
+   per-task status (the living-schedule layer). Pure render + callbacks; all
+   state lives in the shell. */
+
+const WEEK_MS = 7 * 24 * 3600 * 1000
 
 interface Props {
   tasks: GanttTask[]
+  /** chart start date — converts actual-end weeks ⇄ calendar dates */
+  startDate: string
+  /** current computed (likely) end week per task id — seeds the actual on "Done" */
+  plannedEnd: Record<string, number>
   onEditTask: (id: string, patch: Partial<GanttTask>) => void
   onSetTasks: (tasks: GanttTask[]) => void
   onAdd: () => void
@@ -18,7 +28,7 @@ interface Props {
   onSetAnchor: (id: string) => void
 }
 
-export default function TaskTable({ tasks, onEditTask, onSetTasks, onAdd, onMove, onDelete, onSetAnchor }: Props) {
+export default function TaskTable({ tasks, startDate, plannedEnd, onEditTask, onSetTasks, onAdd, onMove, onDelete, onSetAnchor }: Props) {
   const [openRisks, setOpenRisks] = useState<string | null>(null)
   const n = tasks.length
 
@@ -43,6 +53,7 @@ export default function TaskTable({ tasks, onEditTask, onSetTasks, onAdd, onMove
               <th className="text-left font-semibold px-3 py-2 w-32">Weeks (min–max)</th>
               <th className="text-left font-semibold px-3 py-2 w-44">Category</th>
               <th className="text-left font-semibold px-3 py-2 w-32">Owner</th>
+              <th className="text-left font-semibold px-3 py-2 w-40">Status</th>
               <th className="text-left font-semibold px-3 py-2 w-24">Risks</th>
               <th className="text-center font-semibold px-3 py-2 w-16">Anchor</th>
               <th className="px-3 py-2 w-20"></th>
@@ -97,6 +108,45 @@ export default function TaskTable({ tasks, onEditTask, onSetTasks, onAdd, onMove
                       <input className={fieldCls} value={t.owner ?? ''} onChange={(e) => onEditTask(t.id, { owner: e.target.value })} />
                     </td>
                     <td className="px-3 py-1.5">
+                      <div className="space-y-1">
+                        <select
+                          className={fieldCls}
+                          value={t.status ?? 'not_started'}
+                          onChange={(e) => {
+                            const s = e.target.value as TaskStatus
+                            if (s === 'done') {
+                              // seed the actual from the PLAN end (what-ifs excluded upstream), as an absolute date
+                              onEditTask(t.id, { status: 'done', actualEnd: toISODate(addWeeks(startDate, plannedEnd[t.id] ?? 0)) })
+                            } else if (s === 'in_progress') {
+                              onEditTask(t.id, { status: 'in_progress', actualEnd: undefined })
+                            } else {
+                              onEditTask(t.id, { status: undefined, actualEnd: undefined })
+                            }
+                          }}
+                        >
+                          <option value="not_started">Not started</option>
+                          <option value="in_progress">Underway</option>
+                          <option value="done">Done</option>
+                        </select>
+                        {t.status === 'done' && (
+                          <input
+                            type="date"
+                            title="Actual completion date (a recorded fact — stored as this date)"
+                            className={fieldCls}
+                            value={t.actualEnd ?? toISODate(addWeeks(startDate, plannedEnd[t.id] ?? 0))}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              if (!v) return
+                              // store the typed date verbatim; clamp only if absurdly out of range
+                              const wks = (parseDate(v).getTime() - parseDate(startDate).getTime()) / WEEK_MS
+                              const clamped = Math.max(0, Math.min(520, wks))
+                              onEditTask(t.id, { actualEnd: clamped === wks ? v : toISODate(addWeeks(startDate, clamped)) })
+                            }}
+                          />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5">
                       {isM ? (
                         <span className="text-zinc-300 dark:text-zinc-600">—</span>
                       ) : (
@@ -144,7 +194,7 @@ export default function TaskTable({ tasks, onEditTask, onSetTasks, onAdd, onMove
                   {open && !isM && (
                     <tr className="border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/60 dark:bg-zinc-900/40">
                       <td />
-                      <td colSpan={8} className="px-3 py-2.5">
+                      <td colSpan={9} className="px-3 py-2.5">
                         <div className="space-y-2">
                           {risks.map((r) => (
                             <div key={r.id} className="flex flex-wrap items-center gap-2 text-[12.5px]">

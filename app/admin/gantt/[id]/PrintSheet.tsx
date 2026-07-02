@@ -21,8 +21,12 @@ interface Props {
 export default function PrintSheet({ chart, R, H, mc, variance }: Props) {
   const d = (w: number) => fmtDate(addWeeks(chart.start_date, w))
   const norm = normalizeChart(chart)
-  const firedRisks = norm.tasks.flatMap((t) => (t.risks ?? []).filter((r) => r.fired).map((r) => ({ task: t.name, r })))
-  const allRisks = norm.tasks.flatMap((t) => (t.risks ?? []).map((r) => ({ task: t.name, r })))
+  // the what-if banner counts only LIVE tasks' fired risks — done tasks' risks are
+  // history and contribute nothing to the printed schedule
+  const firedRisks = norm.tasks.flatMap((t) =>
+    t.status === 'done' ? [] : (t.risks ?? []).filter((r) => r.fired).map((r) => ({ task: t.name, r })),
+  )
+  const allRisks = norm.tasks.flatMap((t) => (t.risks ?? []).map((r) => ({ task: t.name, taskDone: t.status === 'done', r })))
   const assumptions = chart.assumptions ?? []
 
   return (
@@ -46,6 +50,11 @@ export default function PrintSheet({ chart, R, H, mc, variance }: Props) {
         <span className="text-[14px] text-zinc-600 ml-3 tabular-nums">
           plan {d(R.ship)} · P80 {d(mc.ship.p80)}
         </span>
+        {norm.tasks.some((t) => t.status) && (
+          <span className="text-[12px] text-zinc-500 ml-3">
+            {norm.tasks.filter((t) => t.status === 'done').length} of {norm.tasks.length} steps complete
+          </span>
+        )}
       </div>
 
       {/* what-if banner */}
@@ -104,13 +113,13 @@ export default function PrintSheet({ chart, R, H, mc, variance }: Props) {
               </tr>
             </thead>
             <tbody>
-              {allRisks.map(({ task, r }) => (
+              {allRisks.map(({ task, taskDone, r }) => (
                 <tr key={r.id} className="border-b border-zinc-200">
                   <td className="py-1 pr-4">{task}</td>
                   <td className="py-1 pr-4">{r.note || '—'}</td>
                   <td className="py-1 pr-4 tabular-nums">{r.prob}%</td>
                   <td className="py-1 pr-4 tabular-nums">+{r.delayMin}{r.delayMax > r.delayMin ? `–${r.delayMax}` : ''} wks</td>
-                  <td className="py-1">{r.fired ? 'assumed fired (what-if)' : 'open'}</td>
+                  <td className="py-1">{taskDone ? 'closed — task complete' : r.fired ? 'assumed fired (what-if)' : 'open'}</td>
                 </tr>
               ))}
             </tbody>

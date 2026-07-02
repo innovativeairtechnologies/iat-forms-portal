@@ -26,6 +26,8 @@ export type Scenario = 'best' | 'likely' | 'worst'
 export type TaskKind = 'task' | 'milestone'
 export type TaskCat = 'routine' | 'uncertain' | 'build'
 export type ChartStatus = 'active' | 'complete' | 'draft'
+export type TaskStatus = 'not_started' | 'in_progress' | 'done'
+export type TaskHealth = 'on_track' | 'at_risk' | 'slipped'
 
 export interface TaskRisk {
   id: string
@@ -50,6 +52,13 @@ export interface GanttTask {
   durMax: number
   anchor?: boolean
   risks?: TaskRisk[]
+  /** Phase 3 "living schedule": a `done` task pins the chain to its actual end —
+   *  all lanes collapse to reality and its risks stop being simulated. */
+  status?: TaskStatus
+  /** ABSOLUTE completion date 'YYYY-MM-DD', set when status === 'done'. Absolute
+   *  on purpose (same principle as GanttBaseline): a recorded fact must never
+   *  move because someone later edits the chart's start_date. */
+  actualEnd?: string
 }
 
 export interface GanttAssumption {
@@ -106,6 +115,8 @@ export interface LaidRowRange extends LaidRow {
   baseStart?: number
   baseEnd?: number
   baseClamped?: boolean
+  /** vs baseline (only when a baseline covers this task): computed, not hand-painted */
+  health?: TaskHealth
 }
 
 export function nid(): string {
@@ -154,6 +165,14 @@ export function firedDelay(t: GanttTask | undefined, lane: Scenario): number {
 
 export function anchorTask(c: GanttChart): GanttTask | undefined {
   return c.tasks.find((t) => t.anchor)
+}
+
+/** A done task's actual end as weeks on the CURRENT axis, or null if unset/invalid.
+ *  The stored fact is an absolute date; only its axis position depends on start_date. */
+export function actualWeeks(t: GanttTask, startISO: string): number | null {
+  if (!t.actualEnd || !/^\d{4}-\d{2}-\d{2}$/.test(t.actualEnd)) return null
+  const w = (parseDate(t.actualEnd).getTime() - parseDate(startISO).getTime()) / WEEK_MS
+  return isFinite(w) ? w : null
 }
 
 /* ── legacy migration ─────────────────────────────────────────────────────── */
@@ -211,6 +230,21 @@ export function layoutRange(c0: GanttChart): {
   let anchorEnd = 0
   const rows: LaidRowRange[] = c.tasks.map((t) => {
     const start = curL
+
+    // A done task pins the chain to reality: every lane collapses to its actual
+    // end (history has no uncertainty), its risks stop contributing, and the
+    // window narrows as the project progresses. Actuals earlier than the chain
+    // position are clamped (the linear model stays monotonic).
+    if (t.status === 'done') {
+      const raw = actualWeeks(t, c.start_date) ?? start + effDur(t, 'likely')
+      const end = Math.max(start, raw)
+      if (t.anchor) anchorEnd = end
+      curL = end
+      curB = end
+      curW = end
+      return { t, start, base: end - start, extra: 0, end, endBest: end, endWorst: end, ownWorstEnd: end }
+    }
+
     const base = effDur(t, 'likely')
     const extra = firedDelay(t, 'likely')
     const end = start + base + extra
@@ -227,6 +261,12 @@ export function layoutRange(c0: GanttChart): {
   if (c.baseline) {
     const s0 = parseDate(c.start_date).getTime()
     const byId = new Map(c.baseline.tasks.map((b) => [b.id, b]))
+    // Health is PLAN vs plan — the same convention as baselineVariance: fired
+    // what-ifs are excluded, or a toggled scenario would paint rows as "slipped
+    // vs baseline" while the variance stat says "on plan". (Done rows are facts
+    // and identical in both layouts.)
+    const anyFired = c.tasks.some((t) => t.status !== 'done' && t.risks?.some((r) => r.fired))
+    const planEnds = anyFired ? new Map(layoutRange(stripFired(c)).rows.map((r) => [r.t.id, r.end])) : null
     for (const r of rows) {
       const b = byId.get(r.t.id)
       if (!b) continue
@@ -236,6 +276,10 @@ export function layoutRange(c0: GanttChart): {
       r.baseClamped = bs < 0
       r.baseStart = Math.max(0, bs)
       r.baseEnd = be
+      // Health = deviation vs baseline, computed not hand-painted. On-plan stays
+      // quiet (calm design); only deviations get color.
+      const delta = (planEnds?.get(r.t.id) ?? r.end) - be
+      r.health = delta <= 0.5 ? 'on_track' : delta <= 2 ? 'at_risk' : 'slipped'
     }
   }
 
@@ -250,7 +294,7 @@ export function layout(c: GanttChart): { rows: LaidRow[]; ship: number; anchorEn
 
 /* ── baseline ─────────────────────────────────────────────────────────────── */
 
-function stripFired(c: GanttChart): GanttChart {
+export function stripFired(c: GanttChart): GanttChart {
   const n = normalizeChart(c)
   return {
     ...n,
@@ -357,37 +401,52 @@ export function monteCarlo(
   const iterations = Math.max(100, opts?.iterations ?? 5000)
   const rng = opts?.rng ?? Math.random
 
-  const riskRefs: { taskId: string; taskName: string; r: TaskRisk }[] = []
-  for (const t of c.tasks) for (const r of t.risks ?? []) riskRefs.push({ taskId: t.id, taskName: t.name, r })
+  // Done tasks are pinned to their actuals — no sampling, and their risks are
+  // history (either they happened, reflected in the actual, or they didn't).
+  const riskRefs: { taskId: string; taskName: string; r: TaskRisk; ti: number }[] = []
+  c.tasks.forEach((t, ti) => {
+    if (t.status === 'done') return
+    for (const r of t.risks ?? []) riskRefs.push({ taskId: t.id, taskName: t.name, r, ti })
+  })
+  const refsByTask: number[][] = c.tasks.map(() => [])
+  riskRefs.forEach((ref, j) => refsByTask[ref.ti].push(j))
 
   const ships = new Float64Array(iterations)
   const agg = riskRefs.map(() => ({ hits: 0, shipHit: 0, shipMiss: 0 }))
   const fired: boolean[] = new Array(riskRefs.length)
 
   for (let i = 0; i < iterations; i++) {
-    let ship = 0
-    for (const t of c.tasks) {
-      if (t.kind === 'milestone') continue
-      const a = Math.max(0, Number(t.durMin) || 0)
-      const b = Math.max(a, Number(t.durMax) || a)
-      ship += sampleTri(a, b, rng())
-    }
-    for (let j = 0; j < riskRefs.length; j++) {
-      const r = riskRefs[j].r
-      const hit = r.fired ? true : rng() * 100 < (Number(r.prob) || 0)
-      fired[j] = hit
-      if (hit) {
-        const dA = Math.max(0, Number(r.delayMin) || 0)
-        const dB = Math.max(dA, Number(r.delayMax) || dA)
-        ship += dA + (dB - dA) * rng()
+    // Walk the chain sequentially (mirrors layoutRange) so done-pins compose
+    // correctly with the sampled remainder.
+    let cur = 0
+    for (let ti = 0; ti < c.tasks.length; ti++) {
+      const t = c.tasks[ti]
+      if (t.status === 'done') {
+        cur = Math.max(cur, actualWeeks(t, c.start_date) ?? cur + effDur(t, 'likely'))
+        continue
+      }
+      if (t.kind !== 'milestone') {
+        const a = Math.max(0, Number(t.durMin) || 0)
+        const b = Math.max(a, Number(t.durMax) || a)
+        cur += sampleTri(a, b, rng())
+      }
+      for (const j of refsByTask[ti]) {
+        const r = riskRefs[j].r
+        const hit = r.fired ? true : rng() * 100 < (Number(r.prob) || 0)
+        fired[j] = hit
+        if (hit) {
+          const dA = Math.max(0, Number(r.delayMin) || 0)
+          const dB = Math.max(dA, Number(r.delayMax) || dA)
+          cur += dA + (dB - dA) * rng()
+        }
       }
     }
-    ships[i] = ship
+    ships[i] = cur
     for (let j = 0; j < riskRefs.length; j++) {
       if (fired[j]) {
         agg[j].hits++
-        agg[j].shipHit += ship
-      } else agg[j].shipMiss += ship
+        agg[j].shipHit += ships[i]
+      } else agg[j].shipMiss += ships[i]
     }
   }
 

@@ -42,14 +42,29 @@ function sanitizeRisks(risks: unknown): TaskRisk[] | undefined {
 }
 
 function sanitizeTasks(tasks: GanttTask[]): GanttTask[] {
-  return tasks.slice(0, 60).map((t) => ({
-    ...t,
-    name: String(t.name ?? '').slice(0, 140),
-    owner: t.owner ? String(t.owner).slice(0, 80) : undefined,
-    durMin: clamp(t.durMin, 0, 208),
-    durMax: clamp(t.durMax, 0, 208),
-    risks: sanitizeRisks(t.risks),
-  }))
+  return tasks.slice(0, 60).map((t) => {
+    const status = t.status === 'in_progress' || t.status === 'done' ? t.status : undefined
+    // Actuals are ABSOLUTE dates (recorded facts) — validate shape + a sane year
+    // band; the client clamps range against the chart axis.
+    const actual =
+      status === 'done' &&
+      typeof t.actualEnd === 'string' &&
+      /^\d{4}-\d{2}-\d{2}$/.test(t.actualEnd) &&
+      +t.actualEnd.slice(0, 4) >= 2000 &&
+      +t.actualEnd.slice(0, 4) <= 2100
+        ? t.actualEnd
+        : undefined
+    return {
+      ...t,
+      name: String(t.name ?? '').slice(0, 140),
+      owner: t.owner ? String(t.owner).slice(0, 80) : undefined,
+      durMin: clamp(t.durMin, 0, 208),
+      durMax: clamp(t.durMax, 0, 208),
+      risks: sanitizeRisks(t.risks),
+      status,
+      actualEnd: actual,
+    }
+  })
 }
 
 function sanitizeAssumptions(assumptions: unknown): GanttAssumption[] {
@@ -152,9 +167,10 @@ export async function duplicateChart(id: string): Promise<{ id: string }> {
   const s = normalizeChart(src as GanttChart)
 
   // Spread-with-id-drop (NOT a field whitelist) so future task fields survive the
-  // copy. Fresh ids; what-if `fired` flags reset — a copy is a new plan, so the
-  // baseline is intentionally not copied either.
-  const tasks: GanttTask[] = (s.tasks || []).map(({ id: _id, ...rest }) => ({
+  // copy. Fresh ids; a copy is a NEW PLAN, so ALL execution state is stripped:
+  // what-if `fired` flags reset, completion status/actuals cleared, and the
+  // baseline intentionally not copied.
+  const tasks: GanttTask[] = (s.tasks || []).map(({ id: _id, status: _st, actualEnd: _ae, ...rest }) => ({
     ...rest,
     id: nid(),
     risks: rest.risks?.map(({ id: _rid, ...rr }) => ({ ...rr, id: nid(), fired: false })),

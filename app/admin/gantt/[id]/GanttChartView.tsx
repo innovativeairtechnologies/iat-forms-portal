@@ -1,7 +1,7 @@
 'use client'
 
 import { MoveHorizontal } from 'lucide-react'
-import { addWeeks, fmtShort, anchorTask, firedDelay, layoutRange, type GanttChart } from '@/lib/gantt'
+import { addWeeks, fmtShort, parseDate, anchorTask, firedDelay, layoutRange, type GanttChart } from '@/lib/gantt'
 import { AXIS_H, ROW_H, BAR_CLS, DOT_CLS, Legend } from './ui'
 
 /* Render-only chart: axis, bars + range extensions, milestone whiskers,
@@ -21,7 +21,8 @@ export default function GanttChartView({ chart, R, H, tlRef, onArrivalPointerDow
   const x = (w: number) => (Math.max(0, Math.min(w, H)) / H) * 100
   const a = anchorTask(chart)
   const n = chart.tasks.length
-  const anyFired = chart.tasks.some((t) => t.risks?.some((r) => r.fired))
+  // legend counts only live tasks' fired risks — a done task's risks are history
+  const anyFired = chart.tasks.some((t) => t.status !== 'done' && t.risks?.some((r) => r.fired))
   const ticks: number[] = []
   for (let w = 0; w <= H; w += 4) ticks.push(w)
 
@@ -36,18 +37,29 @@ export default function GanttChartView({ chart, R, H, tlRef, onArrivalPointerDow
               const t = r.t
               const dot = t.kind === 'milestone' ? DOT_CLS.milestone : DOT_CLS[t.cat]
               const spread = t.durMax > t.durMin
-              const note =
-                t.kind === 'milestone'
+              const done = t.status === 'done'
+              // done label shows the RECORDED fact (t.actualEnd), even if the bar
+              // position clamps to the chain — the table and chart must agree
+              const note = done
+                ? `✓ done ${fmtShort(t.actualEnd ? parseDate(t.actualEnd) : addWeeks(chart.start_date, r.end))}`
+                : t.kind === 'milestone'
                   ? 'milestone'
-                  : `${t.durMin}${spread ? `–${t.durMax}` : ''} wks${t.anchor ? ' · TBD' : ''}${r.extra > 0 ? ` · +${r.extra} risk` : ''}`
+                  : `${t.durMin}${spread ? `–${t.durMax}` : ''} wks${t.anchor ? ' · TBD' : ''}${r.extra > 0 ? ` · +${r.extra} risk` : ''}${t.status === 'in_progress' ? ' · underway' : ''}`
+              // health: only deviations speak (calm) — on-plan stays quiet
+              const slipTxt =
+                r.health && r.health !== 'on_track' && r.baseEnd != null
+                  ? ` · +${Math.round((r.end - r.baseEnd) * 10) / 10} wks vs baseline`
+                  : ''
+              const slipCls = r.health === 'slipped' ? 'text-rose-500 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'
               return (
                 <div key={t.id} style={{ height: ROW_H }} className="px-3 flex flex-col justify-center">
-                  <div className="text-[12.5px] text-zinc-800 dark:text-zinc-200 truncate flex items-center gap-1.5">
+                  <div className={`text-[12.5px] truncate flex items-center gap-1.5 ${done ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
                     <span className={`w-[7px] h-[7px] rounded-sm flex-none ${dot}`} />
                     {t.name}
                   </div>
                   <div className="text-[11px] text-zinc-400 dark:text-zinc-500 pl-[13px] truncate">
-                    {note}
+                    <span className={done ? 'text-emerald-600 dark:text-emerald-400' : undefined}>{note}</span>
+                    {slipTxt && <span className={slipCls}>{slipTxt}</span>}
                     {t.owner ? ` · ${t.owner}` : ''}
                   </div>
                 </div>
@@ -119,14 +131,20 @@ export default function GanttChartView({ chart, R, H, tlRef, onArrivalPointerDow
               }
 
               const cat = BAR_CLS[t.cat]
-              const dashed = t.anchor && r.extra === 0 ? 'border-dashed' : ''
+              const done = t.status === 'done'
+              const dashed = t.anchor && r.extra === 0 && !done ? 'border-dashed' : ''
               return (
                 <div key={t.id}>
-                  {/* solid = plan (likely) */}
+                  {/* solid = plan (likely); done = fact (muted, no range) */}
                   <div
-                    title={t.name}
-                    className={`absolute h-[18px] rounded-[5px] border ${cat} ${dashed}`}
-                    style={{ left: `${x(r.start)}%`, width: `${x(r.start + r.base) - x(r.start)}%`, top: barTop }}
+                    title={done ? `${t.name} — done` : t.name}
+                    className={`absolute h-[18px] rounded-[5px] border ${cat} ${dashed} ${done ? 'opacity-60' : ''}`}
+                    style={{
+                      left: `${x(r.start)}%`,
+                      // a done task clamped to the chain (actual ≤ start) still gets a visible sliver
+                      width: `${Math.max(done ? 0.4 : 0, x(r.start + r.base) - x(r.start))}%`,
+                      top: barTop,
+                    }}
                   />
                   {/* fired-risk segment */}
                   {r.extra > 0 && (
@@ -150,11 +168,11 @@ export default function GanttChartView({ chart, R, H, tlRef, onArrivalPointerDow
               )
             })}
 
-            {/* arrival marker + drag pill */}
+            {/* arrival marker + drag pill (pill hidden once arrival is fact) */}
             {a && (
               <>
                 <div className="absolute bg-amber-500" style={{ left: `${x(R.anchorEnd)}%`, top: AXIS_H, bottom: 0, width: 2, transform: 'translateX(-1px)' }} />
-                {interactive && (
+                {interactive && a.status !== 'done' && (
                   <div
                     onPointerDown={onArrivalPointerDown}
                     className="absolute z-10 flex items-center gap-1 cursor-grab select-none rounded-full border border-amber-400 dark:border-amber-500/50 bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px] font-medium px-2 py-[2px]"

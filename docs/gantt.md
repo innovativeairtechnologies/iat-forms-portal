@@ -1,6 +1,7 @@
 # Gantt / Project Timelines (`/admin/gantt`)
 
-Phase 1 — 2026-07-01. v2 "Honest Schedules" — 2026-07-02. An internal, admin-only
+Phase 1 — 2026-07-01. v2 "Honest Schedules" — 2026-07-02. v2.1 "Living Schedule"
+(per-task status + actuals + health) — built 2026-07-02. An internal, admin-only
 tool for building and tracking **customer project schedules** as interactive Gantt
 charts. Born from a Sales request for a schedule on a specific customer build (the
 "Auckland" unit); made a persistent portal tab so charts save, update, and live in
@@ -52,6 +53,16 @@ projects with honest uncertainty):
   across renders) → P50/P80/P90 ship dates, histogram, per-risk hit impact.
   Runs in single-digit ms in a `useMemo`.
 - **Assumptions register** — editable list, printed with the chart.
+- **Living schedule (v2.1)** — every task carries a status (not started / underway
+  / done). Marking a task **done** records its actual end (seeded from the plan,
+  editable as a date) and **pins the chain to reality**: all three lanes collapse
+  to the actual, downstream reflows from it, its risks leave the simulation, and
+  the ship window narrows as work completes. When the anchor is done, arrival is
+  fact — the drag pill and slider are replaced by an "arrived" note. **Health**
+  is computed vs the baseline per task (≤0.5 wks on-track, ≤2 at-risk, >2
+  slipped) and only deviations speak (amber/rose "+X wks vs baseline" in the
+  label; on-plan stays quiet). Status lives inside the `tasks` jsonb — no
+  migration.
 
 Legacy v1 charts (chart-level `failure`/`reset_weeks`) migrate lazily:
 `normalizeChart()` synthesizes the equivalent risk on the anchor (30% / reset
@@ -87,10 +98,9 @@ The old columns are DEPRECATED and never written again. New charts write
   marks `failure`/`reset_weeks` deprecated.
 
 ## Not yet (planned)
-- **Phase 3 "living schedule":** per-task status + actual dates (done tasks pin
-  to reality, downstream reflows), health colors vs baseline.
-- **Role-based access** (Sales sees Gantt, not PTO/Time Off).
 - AI-seed a chart from a plain-English description; customer-facing read-only view.
+- (Role-based access shipped separately 2026-07-02 — see
+  `docs/roles-and-permissions.md`; Gantt is a grantable permission.)
 
 ## Deploy
 Run `041_gantt_ranges_risks.sql` in the Supabase SQL editor **before** deploying

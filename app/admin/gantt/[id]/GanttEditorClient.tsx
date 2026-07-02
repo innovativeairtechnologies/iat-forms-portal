@@ -7,8 +7,8 @@ import {
   ArrowLeft, Printer, Copy, Trash2, Check, Loader2, Flag, FlagOff, Zap, Info,
 } from 'lucide-react'
 import {
-  layoutRange, effDur, firedDelay, anchorTask, addWeeks, fmtDate, fmtShort, fmtDelta, nid,
-  normalizeChart, makeBaseline, baselineVariance, monteCarlo, mulberry32, hashChartInputs,
+  layoutRange, firedDelay, anchorTask, addWeeks, fmtDate, fmtShort, fmtDelta, nid,
+  normalizeChart, makeBaseline, baselineVariance, monteCarlo, mulberry32, hashChartInputs, stripFired,
   type GanttChart, type GanttTask, type ChartStatus,
 } from '@/lib/gantt'
 import { updateChart, duplicateChart, deleteChart, saveBaseline } from '../actions'
@@ -62,10 +62,11 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
   const startDrag = (e: React.PointerEvent) => {
     e.preventDefault()
     const a = anchorTask(chart)
-    if (!a) return
-    let sumOther = 0
-    for (const t of chart.tasks) if (!t.anchor) sumOther += effDur(t, 'likely') + firedDelay(t, 'likely')
-    dragRef.current = { H: Math.ceil(sumOther + MAX_ANCHOR + firedDelay(a, 'likely')) + 2 }
+    if (!a || a.status === 'done') return // arrival is fact — nothing to drag
+    // Freeze the axis wide enough for the anchor at MAX (replacing durMin→MAX
+    // shifts the worst-lane ship by exactly that delta, spread preserved).
+    const R0 = layoutRange(chart)
+    dragRef.current = { H: Math.ceil(R0.shipWorst + (MAX_ANCHOR - a.durMin)) + 2 }
     setDragging(true)
   }
   useEffect(() => {
@@ -74,8 +75,10 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
       const a = anchorTask(chart); const tl = tlRef.current; const d = dragRef.current
       if (!a || !tl || !d) return
       const rect = tl.getBoundingClientRect()
-      let before = 0
-      for (const t of chart.tasks) { if (t.anchor) break; before += effDur(t, 'likely') + firedDelay(t, 'likely') }
+      // The anchor row's start already accounts for everything upstream — incl.
+      // done tasks pinned to actuals — so read it from the layout, not a re-sum.
+      const row = layoutRange(chart).rows.find((r) => r.t.anchor)
+      const before = row ? row.start : 0
       const wk = ((e.clientX - rect.left) / rect.width) * d.H
       let dur = Math.round(wk - before - firedDelay(a, 'likely'))
       dur = Math.max(1, Math.min(MAX_ANCHOR, dur))
@@ -135,13 +138,22 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
   )
   const variance = useMemo(() => baselineVariance(chart), [chart])
 
-  const firedList = chart.tasks.flatMap((t) => (t.risks ?? []).filter((r) => r.fired).map((r) => ({ t, r })))
-  const firedTotal = chart.tasks.reduce((s, t) => s + firedDelay(t, 'likely'), 0)
-  const allRiskChips = chart.tasks.flatMap((t) => (t.risks ?? []).map((r) => ({ t, r })))
+  // Fired-risk surfaces count only NON-done tasks — the engines ignore a done
+  // task's risks (they're history), so the banner/chips must not claim them.
+  const liveTasks = chart.tasks.filter((t) => t.status !== 'done')
+  const firedList = liveTasks.flatMap((t) => (t.risks ?? []).filter((r) => r.fired).map((r) => ({ t, r })))
+  const firedTotal = liveTasks.reduce((s, t) => s + firedDelay(t, 'likely'), 0)
+  const allRiskChips = liveTasks.flatMap((t) => (t.risks ?? []).map((r) => ({ t, r })))
 
   const dt = (w: number) => fmtDate(addWeeks(chart.start_date, w))
-  const arrDate = dt(R.anchorEnd - (a ? firedDelay(a, 'likely') : 0))
+  const anchorDone = a?.status === 'done'
+  const arrDate = dt(anchorDone ? R.anchorEnd : R.anchorEnd - (a ? firedDelay(a, 'likely') : 0))
   const deltaTone = variance ? (variance.shipDeltaWeeks <= 0 ? 'emerald' : variance.shipDeltaWeeks > 2 ? 'rose' : 'amber') : undefined
+  // "Done" seeds the actual from the PLAN (what-ifs stripped) — a fired scenario
+  // must never be baked into a recorded fact.
+  const Rplan = useMemo(() => layoutRange(stripFired(chart)), [chart])
+  const plannedEnd = Object.fromEntries(Rplan.rows.map((r) => [r.t.id, r.end]))
+  const doneCount = chart.tasks.filter((t) => t.status === 'done').length
 
   const toggleRisk = (taskId: string, riskId: string) => {
     const t = chart.tasks.find((x) => x.id === taskId)
@@ -204,18 +216,26 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
         <div className="px-6 pt-3 flex flex-wrap items-end gap-5">
           {a && (
             <div className="flex-1 min-w-[240px]">
-              <div className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 truncate">
-                {a.name} · <span className="text-zinc-600 dark:text-zinc-300">{a.durMin}{a.durMax > a.durMin ? `–${a.durMax}` : ''} wks → arrives {arrDate}</span>
-              </div>
-              <input
-                type="range" min={1} max={MAX_ANCHOR} step={1} value={a.durMin}
-                onChange={(e) => {
-                  const dur = +e.target.value
-                  const spread = Math.max(0, a.durMax - a.durMin)
-                  setTasks(chart.tasks.map((t) => (t.anchor ? { ...t, durMin: dur, durMax: dur + spread } : t)))
-                }}
-                className="w-full accent-emerald-600"
-              />
+              {anchorDone ? (
+                <div className="text-[13px] text-emerald-700 dark:text-emerald-400 pb-1">
+                  ✓ {a.name} arrived {arrDate} — the schedule now runs from actuals.
+                </div>
+              ) : (
+                <>
+                  <div className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 truncate">
+                    {a.name} · <span className="text-zinc-600 dark:text-zinc-300">{a.durMin}{a.durMax > a.durMin ? `–${a.durMax}` : ''} wks → arrives {arrDate}</span>
+                  </div>
+                  <input
+                    type="range" min={1} max={MAX_ANCHOR} step={1} value={a.durMin}
+                    onChange={(e) => {
+                      const dur = +e.target.value
+                      const spread = Math.max(0, a.durMax - a.durMin)
+                      setTasks(chart.tasks.map((t) => (t.anchor ? { ...t, durMin: dur, durMax: dur + spread } : t)))
+                    }}
+                    className="w-full accent-emerald-600"
+                  />
+                </>
+              )}
             </div>
           )}
           <div>
@@ -280,9 +300,11 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
           <div className="rounded-lg border px-3.5 py-2.5 text-[13.5px] flex items-start gap-2 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300">
             <Info size={16} className="mt-[2px] flex-shrink-0" />
             <span>
-              If long-lead items arrive by <b className="font-semibold text-zinc-900 dark:text-zinc-100">{arrDate}</b>, the shipment window is{' '}
+              {anchorDone ? <>Long-lead items arrived <b className="font-semibold text-zinc-900 dark:text-zinc-100">{arrDate}</b>; the shipment window is </>
+                : <>If long-lead items arrive by <b className="font-semibold text-zinc-900 dark:text-zinc-100">{arrDate}</b>, the shipment window is </>}
               <b className="font-semibold text-zinc-900 dark:text-zinc-100">{fmtShort(addWeeks(chart.start_date, R.shipBest))} – {dt(R.shipWorst)}</b>{' '}
               — 80% confident by <b className="font-semibold text-zinc-900 dark:text-zinc-100">{dt(mc.ship.p80)}</b>.
+              {doneCount > 0 && <span className="text-emerald-700/80 dark:text-emerald-400/80"> {doneCount} of {chart.tasks.length} steps complete.</span>}
             </span>
           </div>
         </div>
@@ -302,6 +324,8 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
         <div className="px-6 py-6">
           <TaskTable
             tasks={chart.tasks}
+            startDate={chart.start_date}
+            plannedEnd={plannedEnd}
             onEditTask={editTask}
             onSetTasks={setTasks}
             onAdd={() => { if (chart.tasks.length >= 60) return; setTasks([...chart.tasks, { id: nid(), name: 'New task', kind: 'task', cat: 'routine', owner: '', durMin: 1, durMax: 1 }]) }}

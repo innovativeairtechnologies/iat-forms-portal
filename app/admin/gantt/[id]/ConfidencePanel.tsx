@@ -66,6 +66,7 @@ export default function ConfidencePanel({ chart, mc }: { chart: GanttChart; mc: 
 
       <div className="px-4 py-2 border-t border-zinc-100 dark:border-zinc-800/60 text-[11.5px] text-zinc-400 dark:text-zinc-500">
         P80 = 8-in-10 odds of shipping on or before that date. Commit externally to P80, not the plan date.
+        {chart.tasks.some((t) => t.status === 'done') && ' Completed tasks are pinned to their actual dates — the window narrows as work finishes.'}
       </div>
     </div>
   )
