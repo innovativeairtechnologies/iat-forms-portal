@@ -11,6 +11,7 @@ import { updateTicket } from './actions'
 import {
   HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, TICKET_STATUS, PRIORITY,
 } from '@/components/admin/list'
+import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
 type TicketRow = TicketType & { owner?: { id: string; name: string } | null }
 type Filter  = 'all' | 'open' | 'in_progress' | 'resolved' | 'closed'
@@ -62,6 +63,10 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuFor])
+
+  // Drop the selection when the visible set narrows (tab/search/sort) so a bulk
+  // delete can never act on rows the admin can no longer see.
+  useEffect(() => { setSelected(new Set()) }, [filter, search, sortKey, sortDir])
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
@@ -271,9 +276,10 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-zinc-200 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap disabled:opacity-50">
             <CheckCircle2 size={13} /> Resolve
           </button>
+          <BulkDeleteButton entity="tickets" ids={Array.from(selected)} onDone={() => setSelected(new Set())} />
           <button onClick={() => setSelected(new Set())} disabled={pending}
-            className="ml-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-colors disabled:opacity-50">
-            Discard
+            className="ml-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-zinc-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50">
+            Clear
           </button>
         </div>
       )}

@@ -2,6 +2,51 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-02 — Multi-select bulk delete across every admin list
+
+Checkbox multi-select + a bulk **Delete** in every list view, for fast cleanup.
+
+### Added
+- Multi-select on Submissions, Tickets, Equipment, Employees, Customers, and the
+  PTO/Sick time-off queue (checkbox per row + select-all + a floating action bar).
+  Submissions & Tickets already had multi-select for status changes — Delete was
+  added to their bars (and the misleading "Discard", which only cleared the
+  selection, is now "Clear").
+- One generic admin-only, audit-logged endpoint (`/api/admin/bulk-delete`) behind
+  a two-step confirm. Reuses the per-record safety: account deletes free the email,
+  the employees bulk-delete skips your own account, ticket/submission deletes clear
+  child notes first, and partial outcomes (skipped/failed) are surfaced.
+
+### Hardened (adversarial review)
+- Selection is cleared whenever the visible set changes (filter, tab, search, sort,
+  or pagination), so a bulk delete can never act on rows the admin has scrolled or
+  filtered out of view.
+
+## 2026-07-02 — Gantt v2.1 "Living Schedule": task status, actuals, computed health
+
+Phase 3 of the Gantt plan: the chart stays honest **during execution**, not just
+at planning time. No migration — status lives inside the `tasks` jsonb.
+
+### Added
+- **Per-task status** (not started / underway / done) in the task table. Marking
+  a task done records its actual end date (seeded from the plan, editable) and
+  **pins the chain to reality**: all lanes collapse to the actual, downstream
+  reflows, the task's risks leave the Monte Carlo, and the ship window narrows
+  as work completes. Done bars render muted with "✓ done <date>".
+- **Anchor arrival as fact** — once the long-lead task is done, the drag pill and
+  slider are replaced by an "arrived <date>" note; the callout switches from
+  "if items arrive by" to "items arrived".
+- **Computed health vs baseline** — per task: ≤0.5 wks on-track (silent, calm),
+  ≤2 at-risk (amber), >2 slipped (rose), shown as "+X wks vs baseline" in the
+  chart labels and print. The "conditional formatting" leadership pictured,
+  derived from data instead of hand-painted.
+- Progress readouts: "N of M steps complete" in the callout and printed sheet.
+
+### Verified
+- Math script grown to 45 assertions (pinning arithmetic, lane collapse, clamped
+  early actuals, MC pin bounds, done-risk exclusion, health thresholds,
+  downstream slip inheritance) — all green; tsc + production build pass.
+
 ## 2026-07-02 — Per-record delete (individual submissions, tickets, employees, …)
 
 Complements the bulk Data Reset with surgical, one-at-a-time deletion for cleanup.

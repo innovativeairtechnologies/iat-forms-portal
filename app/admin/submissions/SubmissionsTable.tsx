@@ -7,6 +7,7 @@ import { markSubmissionRead, updateSubmissionStatus } from './actions'
 import {
   HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, SUBMISSION_STATUS,
 } from '@/components/admin/list'
+import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
 export type SubmissionRow = {
   id: string
@@ -34,6 +35,10 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuFor])
+
+  // Never carry a selection across a page change (pagination swaps the rows prop
+  // without remounting) — a bulk delete must only ever touch visible rows.
+  useEffect(() => { setSelected(new Set()) }, [submissions])
 
   const toggle = (id: string) =>
     setSelected(prev => {
@@ -156,9 +161,10 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
           <BulkButton icon={<CheckCheck size={13} />} label="Mark read" disabled={pending} onClick={() => runBulk(markSubmissionRead)} />
           <BulkButton icon={<Clock size={13} />} label="In Progress" disabled={pending} onClick={() => runBulk((id) => updateSubmissionStatus(id, 'in_progress'))} />
           <BulkButton icon={<CheckCircle2 size={13} />} label="Resolve" disabled={pending} onClick={() => runBulk((id) => updateSubmissionStatus(id, 'resolved'))} />
+          <BulkDeleteButton entity="submissions" ids={Array.from(selected)} onDone={() => setSelected(new Set())} />
           <button onClick={() => setSelected(new Set())} disabled={pending}
-            className="ml-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-rose-400 hover:text-rose-300 hover:bg-white/5 transition-colors disabled:opacity-50">
-            Discard
+            className="ml-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-zinc-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50">
+            Clear
           </button>
         </div>
       )}

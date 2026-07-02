@@ -1,11 +1,12 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TimeOffRequest, Employee } from '@/lib/supabase'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
+import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 
 type RequestWithEmployee = TimeOffRequest & { employees: Employee }
 
@@ -29,6 +30,7 @@ export default function RequestsQueueClient({
   title?: string
 }) {
   const router = useRouter()
+  const sel = useBulkSelect()
   const [isPending, startTransition] = useTransition()
   const [filter, setFilter] = useState<Filter>('pending')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -37,6 +39,11 @@ export default function RequestsQueueClient({
   const pendingCount = requests.filter(r => r.status === 'pending').length
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
+  const allSelected = filtered.length > 0 && filtered.every(r => sel.has(r.id))
+
+  // Clear the selection when the tab changes so a bulk delete can never touch
+  // requests outside the current view.
+  useEffect(() => { sel.clear() }, [filter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const review = async (id: string, decision: 'approved' | 'denied') => {
     setActionLoading(id + decision)
@@ -82,6 +89,14 @@ export default function RequestsQueueClient({
             </button>
           )
         })}
+        {filtered.length > 0 && (
+          <label className="ml-auto flex items-center gap-2 pb-2.5 text-[12px] text-gray-400 dark:text-gray-500 cursor-pointer select-none">
+            <input type="checkbox" checked={allSelected}
+              onChange={() => sel.setAll(filtered.map(r => r.id), !allSelected)}
+              className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
+            Select all
+          </label>
+        )}
       </div>
 
       {actionError && (
@@ -111,6 +126,7 @@ export default function RequestsQueueClient({
                   {/* Top row */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
+                      <SelectBox checked={sel.has(req.id)} onChange={() => sel.toggle(req.id)} />
                       {/* Employee avatar */}
                       <div className="w-9 h-9 rounded-full bg-gray-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
                         {employee?.name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
@@ -189,6 +205,10 @@ export default function RequestsQueueClient({
         </div>
       )}
       </div>{/* p-8 */}
+
+      <BulkBar count={sel.count} onClear={sel.clear}>
+        <BulkDeleteButton entity="time_off" ids={sel.ids} onDone={sel.clear} />
+      </BulkBar>
     </div>
   )
 }

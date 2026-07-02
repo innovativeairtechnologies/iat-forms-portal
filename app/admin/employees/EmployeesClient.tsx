@@ -1,15 +1,16 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, X, Search, Shield, User, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 import Link from 'next/link'
 import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th } from '@/components/admin/list'
+import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
-const COLS = 'grid-cols-[1.5fr_1.5fr_1.2fr_104px_70px_70px_28px]'
+const COLS = 'grid-cols-[34px_1.5fr_1.5fr_1.2fr_104px_70px_70px_28px]'
 
 const EMPTY_FORM = { name: '', email: '', job_title: '', department: '', role: 'production' as StaffRole, temp_password: '' }
 
@@ -38,6 +39,7 @@ type EmployeeWithRole = Employee & { role?: StaffRole }
 
 export default function EmployeesClient({ employees }: { employees: EmployeeWithRole[] }) {
   const router = useRouter()
+  const sel = useBulkSelect()
   const [search, setSearch]     = useState('')
   const [tab, setTab]           = useState<Tab>('all')
   const [showModal, setShowModal] = useState(false)
@@ -68,6 +70,12 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
       e.email.toLowerCase().includes(search.toLowerCase())
     )
   )
+
+  const allSelected = filtered.length > 0 && filtered.every(e => sel.has(e.id))
+
+  // Clear the selection when the visible set changes so a bulk delete can never
+  // touch rows outside the current tab/search.
+  useEffect(() => { sel.clear() }, [tab, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openModal = () => {
     setForm({ ...EMPTY_FORM, temp_password: generatePassword() })
@@ -175,6 +183,7 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
 
         {/* Floating header */}
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
+          <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Employee</Th>
           <Th>Email</Th>
           <Th>Role / Dept</Th>
@@ -194,7 +203,9 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
           ) : (
             filtered.map((emp, i) => (
               <Link key={emp.id} href={`/admin/employees/${emp.id}`}
-                className={`${rowCx(COLS, { i })} group ${emp.is_active === false ? 'opacity-60' : ''}`}>
+                className={`${rowCx(COLS, { i, selected: sel.has(emp.id) })} group ${emp.is_active === false ? 'opacity-60' : ''}`}>
+                {/* Select */}
+                <SelectBox checked={sel.has(emp.id)} onChange={() => sel.toggle(emp.id)} />
                 {/* Employee */}
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar name={emp.name} />
@@ -236,6 +247,10 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
           )}
         </div>
       </div>{/* p-8 */}
+
+      <BulkBar count={sel.count} onClear={sel.clear}>
+        <BulkDeleteButton entity="employees" ids={sel.ids} onDone={sel.clear} />
+      </BulkBar>
 
       {/* Create employee modal */}
       <AnimatePresence>

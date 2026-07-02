@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Building2, Search, Plus, ChevronRight, Boxes } from 'lucide-react'
 import type { Customer } from '@/lib/supabase'
 import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
+import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 import CustomerRequestsQueue, { type CustomerPortalRequestRow } from './CustomerRequestsQueue'
 import WarrantyRequestsQueue, { type WarrantyRequestRow } from './WarrantyRequestsQueue'
@@ -13,7 +14,7 @@ import WarrantyRequestsQueue, { type WarrantyRequestRow } from './WarrantyReques
 type CustomerRow = Customer & { unit_count: number }
 type Filter = 'all' | 'active' | 'inactive' | 'requests' | 'warranty'
 
-const COLS = 'grid-cols-[1.5fr_1.5fr_1fr_84px_104px_28px]'
+const COLS = 'grid-cols-[34px_1.5fr_1.5fr_1fr_84px_104px_28px]'
 
 export default function CustomersClient({
   customers,
@@ -25,6 +26,7 @@ export default function CustomersClient({
   warrantyRequests: WarrantyRequestRow[]
 }) {
   const router = useRouter()
+  const sel = useBulkSelect()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [showWizard, setShowWizard] = useState(false)
@@ -43,6 +45,12 @@ export default function CustomersClient({
       (c.contact_email || '').toLowerCase().includes(q)
     return matchesSearch && matchesTab(c, filter)
   })
+
+  const allSelected = filtered.length > 0 && filtered.every(c => sel.has(c.id))
+
+  // Clear the selection when the visible set changes (filter/search/tab) so a
+  // bulk delete can never touch rows outside the current view.
+  useEffect(() => { sel.clear() }, [filter, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
@@ -125,6 +133,7 @@ export default function CustomersClient({
 
         {/* Floating header */}
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
+          <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(c => c.id), !allSelected)} />
           <Th>Company</Th>
           <Th>Contact</Th>
           <Th>Location</Th>
@@ -149,8 +158,10 @@ export default function CustomersClient({
               <Link
                 key={c.id}
                 href={`/admin/customers/${c.id}`}
-                className={`${rowCx(COLS, { i })} group ${c.status === 'inactive' ? 'opacity-60' : ''}`}
+                className={`${rowCx(COLS, { i, selected: sel.has(c.id) })} group ${c.status === 'inactive' ? 'opacity-60' : ''}`}
               >
+                {/* Select */}
+                <SelectBox checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} />
                 {/* Company */}
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
@@ -193,6 +204,12 @@ export default function CustomersClient({
         </>
         )}
       </div>
+
+      {filter !== 'requests' && filter !== 'warranty' && (
+        <BulkBar count={sel.count} onClear={sel.clear}>
+          <BulkDeleteButton entity="customers" ids={sel.ids} onDone={sel.clear} />
+        </BulkBar>
+      )}
 
       {/* New customer wizard */}
       {showWizard && <NewCustomerWizard onClose={() => setShowWizard(false)} onCreated={() => router.refresh()} />}

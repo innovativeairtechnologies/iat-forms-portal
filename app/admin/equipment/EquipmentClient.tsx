@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Wrench, Sparkles } from 'lucide-react'
@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { Equipment } from '@/lib/supabase'
 import { warrantyState, isExpiringSoon, daysUntilWarrantyEnd, pmState, nextPmDue } from '@/lib/equipment'
 import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
+import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 
 type EquipmentRow = Equipment & { last_service_at: string | null }
@@ -15,7 +16,7 @@ type Filter = 'all' | 'in' | 'expiring' | 'out' | 'pm_due' | 'unknown'
 
 const EMPTY = { serial_number: '', model_number: '', voltage: '', customer_company: '', customer_name: '', customer_email: '', ship_date: '' }
 
-const COLS = 'grid-cols-[1.2fr_1fr_1.3fr_150px_132px_96px_28px]'
+const COLS = 'grid-cols-[34px_1.2fr_1fr_1.3fr_150px_132px_96px_28px]'
 
 function WarrantyPill({ eq }: { eq: Equipment }) {
   const s = warrantyState(eq)
@@ -45,6 +46,7 @@ function fmtShip(d: string | null) {
 
 export default function EquipmentClient({ equipment }: { equipment: EquipmentRow[] }) {
   const router = useRouter()
+  const sel = useBulkSelect()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [showModal, setShowModal] = useState(false)
@@ -68,6 +70,12 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
       (e.customer_name || '').toLowerCase().includes(q)
     return matchesSearch && matchesTab(e, filter)
   })
+
+  const allSelected = filtered.length > 0 && filtered.every(e => sel.has(e.id))
+
+  // Clear the selection when the visible set changes so a bulk delete can never
+  // touch rows outside the current filter/search.
+  useEffect(() => { sel.clear() }, [filter, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault()
@@ -142,6 +150,7 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
 
         {/* Floating header */}
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
+          <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Serial</Th>
           <Th>Model</Th>
           <Th>Customer</Th>
@@ -161,7 +170,9 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
           ) : (
             filtered.map((eq, i) => (
               <Link key={eq.id} href={`/admin/equipment/${eq.id}`}
-                className={`${rowCx(COLS, { i })} group ${eq.status === 'decommissioned' ? 'opacity-60' : ''}`}>
+                className={`${rowCx(COLS, { i, selected: sel.has(eq.id) })} group ${eq.status === 'decommissioned' ? 'opacity-60' : ''}`}>
+                {/* Select */}
+                <SelectBox checked={sel.has(eq.id)} onChange={() => sel.toggle(eq.id)} />
                 {/* Serial */}
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
@@ -192,6 +203,10 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
           )}
         </div>
       </div>
+
+      <BulkBar count={sel.count} onClear={sel.clear}>
+        <BulkDeleteButton entity="equipment" ids={sel.ids} onDone={sel.clear} />
+      </BulkBar>
 
       {/* Add modal */}
       <AnimatePresence>
