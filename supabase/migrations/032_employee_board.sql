@@ -8,7 +8,7 @@
 --     layouts: { lg: [{ i, x, y, w, h, static }], xs: [...] } }
 --
 -- Self-service, per-user data. Written from a server action (app/employee/
--- (protected)/board/actions.ts) that resolves the user from the authenticated
+-- (canvas)/board/actions.ts) that resolves the user from the authenticated
 -- session and writes only that user's row — same trust model as the org-chart
 -- actions. Default '{}'::jsonb means "never customised", so the app falls back to
 -- the curated default layout. Additive + idempotent.

@@ -2,15 +2,17 @@ import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserLearnStats } from '@/lib/learn'
-import { PortalHero } from '@/components/PortalHero'
 import type { Employee } from '@/lib/supabase'
 import { normalizeState, type BoardState } from './board-config'
 import BoardClient, { type BoardCardData } from './BoardClient'
 
-/* Employee "My Board" — the opt-in, FigJam-style whiteboard view of the employee
-   portal. Same live data as the /employee/profile dashboard, re-skinned as
-   draggable post-it cards the team can arrange to taste. Real data only — no
-   fabricated numbers, same rule as the dashboard. */
+/* Employee "My Board" — the full-screen whiteboard view of the employee portal.
+   No shell, no hero: the greeting is written on the board itself in marker. Same
+   live data as /employee/profile, re-skinned as sticky notes. Real data only.
+
+   NOTE (future flip): when the whiteboard becomes the employee landing page,
+   point the login/role-router redirect at /employee/board — this page is already
+   self-sufficient (auth, data, nav via the dock). */
 
 export const dynamic = 'force-dynamic'
 
@@ -68,20 +70,12 @@ export default async function BoardPage() {
   const firstName = emp.name?.trim().split(' ')[0] || ''
 
   return (
-    <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-      <div className="space-y-4 p-5 sm:p-6">
-        <PortalHero
-          eyebrow={dateET}
-          title={`${greeting(hourET)}${firstName ? `, ${firstName}` : ''}`}
-          subtitle={
-            <>
-              This is <span className="font-semibold text-zinc-700 dark:text-zinc-200">your board</span>
-              {' '}— drag the notes to make it yours. It saves automatically.
-            </>
-          }
-        />
-        <BoardClient cards={cards} initialState={initialState} />
-      </div>
-    </div>
+    <BoardClient
+      cards={cards}
+      initialState={initialState}
+      firstName={firstName}
+      greetingText={greeting(hourET)}
+      dateText={dateET}
+    />
   )
 }
