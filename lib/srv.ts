@@ -648,6 +648,7 @@ export function srvFormFieldDefs(): SrvFieldDef[] {
   // page, so triage reads result + failures without expanding anything.
   defs.push(sh('SRV Summary'))
   defs.push({ label: 'Overall result', field_type: 'text', options: null, is_required: true, placeholder: null })
+  defs.push({ label: 'Revision', field_type: 'text', options: null, is_required: false, placeholder: null })
   defs.push({ label: 'Flagged items', field_type: 'textarea', options: null, is_required: false, placeholder: null })
   defs.push({ label: 'Sections not applicable', field_type: 'text', options: null, is_required: false, placeholder: null })
 
@@ -696,8 +697,9 @@ export function srvFormFieldDefs(): SrvFieldDef[] {
 const ANSWER_DISPLAY: Record<SrvItemAnswer, string> = { pass: 'Pass', fail: 'Fail', na: 'N/A' }
 
 /** Flatten a validated payload into submissions.data (field label → value). */
-export function flattenSrvPayload(payload: SrvPayload): Record<string, unknown> {
+export function flattenSrvPayload(payload: SrvPayload, opts?: { revision?: number }): Record<string, unknown> {
   const data: Record<string, unknown> = {}
+  data['Revision'] = String(opts?.revision ?? 1)
 
   // Summary
   const flagged: string[] = []
@@ -754,4 +756,59 @@ export function flattenSrvPayload(payload: SrvPayload): Record<string, unknown> 
   data['Date'] = payload.certification.date
 
   return data
+}
+
+const DISPLAY_ANSWER: Record<string, SrvItemAnswer> = { Pass: 'pass', Fail: 'fail', 'N/A': 'na' }
+
+/**
+ * Reverse of flattenSrvPayload — rebuild editable client state from a
+ * submission's data so a returned SRV can be revised. The signature is
+ * intentionally NOT restored: a revision must be re-certified.
+ */
+export function unflattenSrvData(data: Record<string, unknown>): {
+  project: SrvProjectInfo
+  config: SrvConfig
+  sections: Record<string, SrvSectionAnswers>
+} {
+  const s = (v: unknown) => (typeof v === 'string' ? v : '')
+
+  const project: SrvProjectInfo = {
+    project_name: s(data['Project Name']),
+    customer: s(data['Customer / Company']),
+    model_number: s(data['Unit Model Number']),
+    serial_number: s(data['Unit Serial Number']),
+    installation_address: s(data['Installation Address']),
+    date_inspected: s(data['Date Inspected']),
+    inspected_by: s(data['Inspected By']),
+    phone: s(data['Phone Number']),
+    email: s(data['Email Address']),
+  }
+
+  const config = { has_gas: false, has_coils: false, has_refrigeration: false } as SrvConfig
+  for (const q of SRV_CONFIG_QUESTIONS) config[q.key] = data[q.label] === 'Yes'
+
+  const sections: Record<string, SrvSectionAnswers> = {}
+  for (const section of SRV_SECTIONS) {
+    if (!sectionApplies(section, config)) continue
+    const a: SrvSectionAnswers = { items: {}, photos: {} }
+    for (const group of section.groups) {
+      for (const item of group.items) {
+        const v = DISPLAY_ANSWER[s(data[itemFieldLabel(group, item)])]
+        if (v) a.items[item.key] = v
+      }
+    }
+    for (const reading of section.readings || []) {
+      const v = s(data[readingFieldLabel(reading)])
+      if (v) (a.readings ||= {})[reading.key] = v
+    }
+    for (const photo of section.photos) {
+      const v = s(data[photoFieldLabel(photo)])
+      if (v) a.photos[photo.key] = v
+    }
+    const notes = s(data[sectionNotesLabel(section)])
+    if (notes) a.notes = notes
+    sections[section.key] = a
+  }
+
+  return { project, config, sections }
 }

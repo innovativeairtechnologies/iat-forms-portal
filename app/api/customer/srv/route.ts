@@ -3,10 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getCustomerUser } from '@/lib/customer-auth'
 import { rateLimit } from '@/lib/rate-limit'
 import { sendSubmissionEmail } from '@/lib/resend'
-import type { Form, FormField, NotificationRule } from '@/lib/supabase'
+import type { NotificationRule } from '@/lib/supabase'
+import { ensureSrvForm, getSrvReview } from '@/lib/srv-form'
 import {
-  SRV_FORM_SLUG, SRV_FORM_TITLE, SRV_FORM_DESCRIPTION, SRV_FORM_CATEGORY,
-  srvFormFieldDefs, flattenSrvPayload, validateSrvPayload,
+  flattenSrvPayload, validateSrvPayload,
   SRV_SECTIONS, applicableSections,
   type SrvPayload,
 } from '@/lib/srv'
@@ -15,109 +15,10 @@ import {
 // SrvPayload; it's validated against lib/srv.ts, flattened to label→value, and
 // inserted into the shared `submissions` queue so the whole admin side (list,
 // detail, print/PDF, notes, notification emails) works unchanged.
-
-const SRV_NOTIFY_FALLBACK = 'jacob.younker@dehumidifiers.com'
-
-/**
- * Find-or-create the SRV form row and keep its form_fields in sync with
- * lib/srv.ts (the admin detail page renders a submission by iterating its
- * form's fields, so they must exactly match the flattened labels). The form
- * stays is_active=false: /customer/srv is the only entry point.
- */
-async function ensureSrvForm(): Promise<{ form: Form; fields: FormField[] } | null> {
-  let { data: form } = await supabaseAdmin
-    .from('forms')
-    .select('*')
-    .eq('slug', SRV_FORM_SLUG)
-    .single()
-
-  if (!form) {
-    // Category is best-effort — the form is functional without one.
-    const { data: cat } = await supabaseAdmin
-      .from('categories')
-      .select('id')
-      .eq('name', SRV_FORM_CATEGORY)
-      .single()
-
-    const { data: created, error } = await supabaseAdmin
-      .from('forms')
-      .insert({
-        title: SRV_FORM_TITLE,
-        description: SRV_FORM_DESCRIPTION,
-        slug: SRV_FORM_SLUG,
-        category_id: cat?.id ?? null,
-        is_active: false,
-        success_message: 'Thank you. Your Start-Up Readiness Verification has been received.',
-      })
-      .select()
-      .single()
-    if (error || !created) {
-      console.error('[srv] Failed to create SRV form:', error)
-      return null
-    }
-    form = created
-  }
-
-  // An SRV landing silently would stall a start-up — if the form has NO
-  // notification rules at all, seed the default. Admin-edited rules are
-  // untouched (we only act on zero).
-  const { count: ruleCount } = await supabaseAdmin
-    .from('notification_rules')
-    .select('*', { count: 'exact', head: true })
-    .eq('form_id', form.id)
-  if ((ruleCount ?? 0) === 0) {
-    await supabaseAdmin.from('notification_rules').insert({
-      form_id: form.id,
-      recipient_email: SRV_NOTIFY_FALLBACK,
-      recipient_name: 'IAT Service',
-      send_on_submit: true,
-      email_subject: 'New Start-Up Readiness Verification (SRV)',
-    })
-  }
-
-  const expected = srvFormFieldDefs()
-  const { data: existing } = await supabaseAdmin
-    .from('form_fields')
-    .select('*')
-    .eq('form_id', form.id)
-    .order('sort_order')
-
-  const projection = (rows: Array<{ label: string; field_type: string; options: string[] | null; is_required: boolean }>) =>
-    JSON.stringify(rows.map((f) => [f.label, f.field_type, f.options ?? null, f.is_required]))
-
-  if (projection(existing || []) !== projection(expected)) {
-    // Content model changed (or the old draft's fields are still there) — replace
-    // wholesale. Submission data is denormalized by label, so history is safe.
-    if (existing?.length) {
-      await supabaseAdmin.from('form_fields').delete().eq('form_id', form.id)
-    }
-    const { error } = await supabaseAdmin.from('form_fields').insert(
-      expected.map((f, i) => ({
-        form_id: form!.id,
-        label: f.label,
-        field_type: f.field_type,
-        placeholder: f.placeholder,
-        options: f.options,
-        is_required: f.is_required,
-        sort_order: i,
-      }))
-    )
-    if (error) console.error('[srv] Field sync failed:', error)
-    // Title/description drift too when the model changes.
-    await supabaseAdmin
-      .from('forms')
-      .update({ title: SRV_FORM_TITLE, description: SRV_FORM_DESCRIPTION })
-      .eq('id', form.id)
-  }
-
-  const { data: fields } = await supabaseAdmin
-    .from('form_fields')
-    .select('*')
-    .eq('form_id', form.id)
-    .order('sort_order')
-
-  return { form: form as Form, fields: (fields || []) as FormField[] }
-}
+//
+// Revisions: when a reviewer RETURNS an SRV, the customer reopens it prefilled
+// (/customer/srv?resume=<id>) and resubmits with prior_id — the new submission
+// carries Revision N+1 and the old one is marked superseded + resolved.
 
 /** Photo values must be uploads from OUR public bucket — they render as <img> in admin. */
 function isOurUpload(url: string): boolean {
@@ -136,7 +37,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const payload = (await req.json()) as SrvPayload
+    const body = (await req.json()) as SrvPayload & { prior_id?: string }
+    const payload = body as SrvPayload
 
     if (!payload?.project || !payload?.config || !payload?.sections || !payload?.certification) {
       return NextResponse.json({ error: 'Malformed submission' }, { status: 400 })
@@ -172,13 +74,37 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Revision chain: prior must be this customer's own returned SRV.
+    let revision = 1
+    let prior: { id: string; data: Record<string, unknown> } | null = null
+    if (body.prior_id) {
+      const { data: p } = await supabaseAdmin
+        .from('submissions')
+        .select('id, form_id, data')
+        .eq('id', body.prior_id)
+        .single()
+      const ownsPrior =
+        p &&
+        (p.data?.['_customer_id'] === session.customerId ||
+          String(p.data?.['Email Address'] || '').toLowerCase() === (session.user.email || '').toLowerCase())
+      if (!ownsPrior) {
+        return NextResponse.json({ error: 'Prior submission not found' }, { status: 404 })
+      }
+      prior = p as { id: string; data: Record<string, unknown> }
+      revision = (parseInt(String(prior.data?.['Revision'] || '1'), 10) || 1) + 1
+    }
+
     const ensured = await ensureSrvForm()
     if (!ensured) {
       return NextResponse.json({ error: 'SRV form unavailable — please try again' }, { status: 500 })
     }
     const { form, fields } = ensured
 
-    const data = flattenSrvPayload(payload)
+    const data = flattenSrvPayload(payload, { revision })
+    // Non-field keys: invisible in the admin detail (it renders form_fields only),
+    // but they drive ownership checks and the review workflow.
+    data['_customer_id'] = session.customerId
+    if (prior) data['_prior_submission_id'] = prior.id
 
     const { data: submission, error: subError } = await supabaseAdmin
       .from('submissions')
@@ -190,6 +116,25 @@ export async function POST(req: NextRequest) {
       console.error('[srv] Submission insert failed:', subError)
       return NextResponse.json({ error: 'Failed to save submission' }, { status: 500 })
     }
+
+    // Supersede the returned submission (best-effort — the new revision is in).
+    if (prior) {
+      const review = getSrvReview(prior.data) || { decision: 'return' as const, notes: '', at: '', by: '' }
+      await supabaseAdmin
+        .from('submissions')
+        .update({
+          status: 'resolved',
+          data: { ...prior.data, _review: { ...review, superseded_by: submission.id } },
+        })
+        .eq('id', prior.id)
+    }
+
+    // The server draft served its purpose.
+    await supabaseAdmin
+      .from('form_drafts')
+      .delete()
+      .eq('user_id', session.user.id)
+      .eq('form_id', form.id)
 
     // Notification emails — non-blocking, mirrors /api/submit.
     const { data: rules } = await supabaseAdmin
@@ -204,7 +149,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(
-      `[srv] SRV received from ${session.customer.company_name} — ` +
+      `[srv] SRV rev ${revision} received from ${session.customer.company_name} — ` +
       `${SRV_SECTIONS.length - applicableSections(payload.config).length} sections N/A, ` +
       `result: ${String(data['Overall result'])}`
     )

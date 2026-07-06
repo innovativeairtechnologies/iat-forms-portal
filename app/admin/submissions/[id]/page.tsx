@@ -11,6 +11,9 @@ import SubmissionNotes from './SubmissionNotes'
 import SubmissionStatus from './SubmissionStatus'
 import MarkAsRead from './MarkAsRead'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
+import SrvReviewCard from '@/components/admin/SrvReviewCard'
+import { SRV_FORM_TITLE } from '@/lib/srv'
+import { getSrvReview } from '@/lib/srv-form'
 
 async function getData(id: string) {
   const { data: submission } = await supabaseAdmin
@@ -247,6 +250,13 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
 
           {/* Right rail — details + notes */}
           <aside className="w-full xl:w-[340px] flex-shrink-0 xl:sticky xl:top-[72px] space-y-4">
+            {submission.form_title === SRV_FORM_TITLE && (
+              <SrvReviewCard
+                submissionId={submission.id}
+                flagged={String(submission.data?.['Flagged items'] || '').split('\n').filter(Boolean)}
+                review={getSrvReview(submission.data)}
+              />
+            )}
             <Card>
               <CardHead title="Details" icon={<Info size={14} />} />
               <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">

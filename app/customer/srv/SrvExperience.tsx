@@ -76,6 +76,19 @@ type Draft = {
   certCompany: string
 }
 
+/** Cross-device draft loaded server-side from form_drafts. */
+export type SrvServerDraft = { draft: Draft; updated_at: string | null }
+
+/** A returned submission reopened for revision (?resume=<id>). */
+export type SrvRevision = {
+  priorId: string
+  reviewerNotes: string
+  revisionNumber: number
+  project: SrvProjectInfo
+  config: SrvConfig
+  sections: Record<string, SrvSectionAnswers>
+}
+
 const EMPTY_ANSWERS: SrvSectionAnswers = { items: {}, photos: {} }
 
 function todayISO() {
@@ -90,30 +103,48 @@ class SceneBoundary extends Component<{ onFail: () => void; children: ReactNode 
   render() { return this.state.failed ? null : this.props.children }
 }
 
-export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
+export default function SrvExperience({
+  prefill, serverDraft = null, revision = null,
+}: {
+  prefill: SrvPrefill
+  serverDraft?: SrvServerDraft | null
+  revision?: SrvRevision | null
+}) {
   const { setTheme } = useTheme()
-  const draftKey = `iat-srv-draft:${prefill.email || 'anon'}`
+  // Revisions keep their local fallback under the prior submission's key so an
+  // interrupted revision resumes from the same email link.
+  const draftKey = revision
+    ? `iat-srv-draft:rev:${revision.priorId}`
+    : `iat-srv-draft:${prefill.email || 'anon'}`
 
-  const [stage, setStage] = useState<Stage>('intro')
-  const [project, setProject] = useState<SrvProjectInfo>({
-    project_name: '',
-    customer: prefill.companyName,
-    model_number: prefill.units[0]?.model_number || '',
-    serial_number: prefill.units[0]?.serial_number || '',
-    installation_address: prefill.units[0]?.location || prefill.location || '',
-    date_inspected: todayISO(),
-    inspected_by: prefill.contactName,
-    phone: prefill.phone,
-    email: prefill.email,
-  })
+  // Initial state precedence: revision (returned submission) > server draft
+  // (cross-device) > blank prefill. localStorage (device fallback) is merged in
+  // an effect below since it's client-only.
+  const seed = revision ?? serverDraft?.draft ?? null
+  const [stage, setStage] = useState<Stage>(
+    revision ? 'unit' : serverDraft?.draft.stage === 'unit' || serverDraft?.draft.stage === 'certify' ? 'unit' : 'intro'
+  )
+  const [project, setProject] = useState<SrvProjectInfo>(
+    seed?.project ?? {
+      project_name: '',
+      customer: prefill.companyName,
+      model_number: prefill.units[0]?.model_number || '',
+      serial_number: prefill.units[0]?.serial_number || '',
+      installation_address: prefill.units[0]?.location || prefill.location || '',
+      date_inspected: todayISO(),
+      inspected_by: prefill.contactName,
+      phone: prefill.phone,
+      email: prefill.email,
+    }
+  )
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(prefill.units[0]?.id ?? null)
-  const [config, setConfig] = useState<SrvConfig>({ has_gas: false, has_coils: false, has_refrigeration: false })
-  const [sections, setSections] = useState<Record<string, SrvSectionAnswers>>({})
+  const [config, setConfig] = useState<SrvConfig>(seed?.config ?? { has_gas: false, has_coils: false, has_refrigeration: false })
+  const [sections, setSections] = useState<Record<string, SrvSectionAnswers>>(seed?.sections ?? {})
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [listMode, setListMode] = useState(false)
   const [introTried, setIntroTried] = useState(false)
-  const [certName, setCertName] = useState(prefill.contactName)
-  const [certCompany, setCertCompany] = useState(prefill.companyName)
+  const [certName, setCertName] = useState(serverDraft?.draft.certName || prefill.contactName)
+  const [certCompany, setCertCompany] = useState(serverDraft?.draft.certCompany || prefill.companyName)
   const [signature, setSignature] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -127,7 +158,11 @@ export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
   }, [setTheme])
 
   // ── Draft: restore once, then autosave ──────────────────────────────────────
+  // localStorage is the device-local fallback. When a server draft was loaded
+  // (cross-device resume) it wins and localStorage is skipped; in revision mode
+  // the rev-scoped local key restores in-progress fixes over the prefill.
   useEffect(() => {
+    if (serverDraft) { setResumed(true); return }
     try {
       const raw = localStorage.getItem(draftKey)
       if (!raw) return
@@ -138,23 +173,37 @@ export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
       setSections(d.sections || {})
       setCertName(d.certName || prefill.contactName)
       setCertCompany(d.certCompany || prefill.companyName)
-      if (d.stage === 'unit' || d.stage === 'certify') setStage('unit')
+      if (revision || d.stage === 'unit' || d.stage === 'certify') setStage('unit')
       const hasProgress = Object.keys(d.sections || {}).length > 0 || d.project.project_name
-      if (hasProgress) setResumed(true)
+      if (hasProgress && !revision) setResumed(true)
     } catch { /* corrupt draft — start fresh */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     if (stage === 'done') return
+    const d: Draft = { v: 1, stage, project, config, sections, certName, certCompany }
     const t = setTimeout(() => {
       try {
-        const d: Draft = { v: 1, stage, project, config, sections, certName, certCompany }
         localStorage.setItem(draftKey, JSON.stringify(d))
       } catch { /* storage full/blocked — autosave is best-effort */ }
     }, 400)
-    return () => clearTimeout(t)
-  }, [stage, project, config, sections, certName, certCompany, draftKey])
+    // Server copy (cross-device). Fire-and-forget; localStorage still covers
+    // signal loss. Revisions stay local — their source of truth is the
+    // returned submission, not a fresh draft. No server row until there's
+    // actual progress (a blank page-load shouldn't create drafts).
+    const hasProgress = stage !== 'intro' || project.project_name.trim() !== '' || Object.keys(sections).length > 0
+    const ts = revision || !hasProgress
+      ? null
+      : setTimeout(() => {
+          fetch('/api/customer/srv/draft', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ draft: d }),
+          }).catch(() => { /* offline — localStorage has it */ })
+        }, 1500)
+    return () => { clearTimeout(t); if (ts) clearTimeout(ts) }
+  }, [stage, project, config, sections, certName, certCompany, draftKey, revision])
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const applicable = useMemo(() => applicableSections(config), [config])
@@ -199,6 +248,7 @@ export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
         body: JSON.stringify({
           project, config, sections,
           certification: { name: certName, company: certCompany, signature, date: todayISO() },
+          prior_id: revision?.priorId,
         }),
       })
       const data = await res.json()
@@ -266,12 +316,13 @@ export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
           {resumed && (
             <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
               <p className="flex items-center gap-2 text-[13px] font-medium text-emerald-800 dark:text-emerald-300">
-                <RotateCcw size={14} /> Welcome back — your earlier progress was saved on this device.
+                <RotateCcw size={14} /> Welcome back — your earlier progress was saved{serverDraft ? ' to your account' : ' on this device'}.
               </p>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   try { localStorage.removeItem(draftKey) } catch { /* noop */ }
+                  try { await fetch('/api/customer/srv/draft', { method: 'DELETE' }) } catch { /* noop */ }
                   window.location.reload()
                 }}
                 className="flex flex-shrink-0 items-center gap-1 text-[12px] font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
@@ -398,6 +449,18 @@ export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
       {/* ── Stage: unit (3D or list) ── */}
       {stage === 'unit' && (
         <main className="relative flex flex-1 flex-col">
+          {revision && (
+            <div className="border-b border-amber-200 bg-amber-50 px-5 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/30">
+              <div className="mx-auto max-w-[1200px]">
+                <p className="text-[12px] font-bold text-amber-800 dark:text-amber-300">
+                  Revision {revision.revisionNumber} — IAT returned your verification with notes:
+                </p>
+                <p className="mt-0.5 whitespace-pre-wrap text-[12px] leading-relaxed text-amber-700 dark:text-amber-400/90">
+                  {revision.reviewerNotes || 'Update the flagged items below, then re-sign and resubmit.'}
+                </p>
+              </div>
+            </div>
+          )}
           {listMode ? (
             <div className="mx-auto w-full max-w-[760px] flex-1 px-5 py-6">
               <p className="mb-4 text-[13px] text-zinc-400">Complete each section below — tap to open.</p>
@@ -569,10 +632,12 @@ export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
                   ref={sigRef}
                   penColor="#18181b"
                   onEnd={() => {
-                    requestAnimationFrame(() => {
+                    // setTimeout, not rAF: the canvas needs a beat to commit the
+                    // stroke, but rAF never fires in a hidden/throttled tab.
+                    setTimeout(() => {
                       const c = sigRef.current
                       if (c && !c.isEmpty()) setSignature(c.toDataURL('image/png'))
-                    })
+                    }, 50)
                   }}
                   canvasProps={{ className: 'w-full touch-none', style: { width: '100%', height: '140px', display: 'block' } }}
                 />
@@ -611,10 +676,13 @@ export default function SrvExperience({ prefill }: { prefill: SrvPrefill }) {
           >
             <CheckCircle2 size={32} className="text-emerald-600" />
           </motion.div>
-          <h1 className="mt-5 text-[22px] font-bold tracking-tight text-zinc-900 dark:text-white">Verification received</h1>
+          <h1 className="mt-5 text-[22px] font-bold tracking-tight text-zinc-900 dark:text-white">
+            {revision ? `Revision ${revision.revisionNumber} received` : 'Verification received'}
+          </h1>
           <p className="mt-2 text-[14px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Thank you — IAT will review your responses and photos and confirm your start-up date, or contact you
-            about any outstanding items. Start-up is scheduled only after this review is complete.
+            {revision
+              ? 'Thank you — IAT will re-review the updated items and confirm your start-up date, or follow up if anything is still outstanding.'
+              : 'Thank you — IAT will review your responses and photos and confirm your start-up date, or contact you about any outstanding items. Start-up is scheduled only after this review is complete.'}
           </p>
           <Link
             href="/customer"
