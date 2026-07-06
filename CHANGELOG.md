@@ -33,6 +33,16 @@ A batch of admin-surface fixes and features.
   via a negative-z-index layer, no motion (calm-design convention).
 
 ### Fixed
+- **The new gradient-orb background wasn't actually visible.** The orb layer sits
+  at `-z-10` inside the `/admin` scroll container, but that container has an
+  opaque `bg-zinc-50`/`#0a0a0b` fill and was `position: relative` with no
+  `z-index`, so it never formed its own stacking context — per the CSS painting
+  order the negative-z layer dropped *behind* the container's own background and
+  was painted over (the classic "negative z-index child disappears behind the
+  parent background" trap). Added `isolate` (`isolation: isolate`) so the
+  container owns the stacking context — the negative-z orb now paints over its
+  own background and under the content — and nudged the dark-mode opacities up so
+  the intended very-transparent glow actually reads (`app/admin/page.tsx`).
 - **"View as [role]" dropdown was clipped after 2-3 options.** Root cause: the
   sidebar `<aside>` is `overflow-hidden` (for its rounded/sticky layout), which
   clipped the absolutely-positioned dropdown once it extended past the

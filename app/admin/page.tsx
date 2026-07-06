@@ -463,14 +463,16 @@ export default async function AdminDashboard() {
   )
 
   return (
-    <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
+    <div className="relative isolate flex-1 overflow-y-auto overflow-x-hidden bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
       {/* Ambient background — a soft, very transparent gradient orb behind the
-          dashboard content. Negative z-index so it paints behind normal-flow
-          content without touching the top bar's own z-10 stacking. Purely
-          decorative + static (no motion, per the calm-design convention). */}
+          dashboard content. `isolate` makes THIS scroll container own the
+          stacking context, so the `-z-10` orb below paints over the container's
+          own opaque bg instead of dropping behind it (the classic negative-z
+          "disappears behind the parent background" trap). Purely decorative +
+          static (no motion, per the calm-design convention). */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[720px] overflow-hidden">
-        <div className="absolute -top-52 right-[-160px] w-[620px] h-[620px] rounded-full bg-gradient-to-br from-emerald-400/20 via-emerald-500/8 to-transparent blur-3xl dark:from-emerald-500/12 dark:via-emerald-600/5" />
-        <div className="absolute top-16 -left-40 w-[380px] h-[380px] rounded-full bg-gradient-to-tr from-sky-400/10 via-teal-400/6 to-transparent blur-3xl dark:from-sky-500/8 dark:via-teal-500/4" />
+        <div className="absolute -top-44 right-[-120px] w-[620px] h-[620px] rounded-full bg-gradient-to-br from-emerald-400/25 via-emerald-500/10 to-transparent blur-3xl dark:from-emerald-500/20 dark:via-emerald-600/8" />
+        <div className="absolute top-16 -left-32 w-[380px] h-[380px] rounded-full bg-gradient-to-tr from-sky-400/15 via-teal-400/8 to-transparent blur-3xl dark:from-sky-500/14 dark:via-teal-500/7" />
       </div>
 
       {/* Top bar */}
