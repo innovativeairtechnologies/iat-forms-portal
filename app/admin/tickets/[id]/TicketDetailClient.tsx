@@ -7,7 +7,7 @@ import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/s
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import dynamic from 'next/dynamic'
-import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import { DetailShell, DetailTopBar, Card, CardHead, Field } from '@/components/admin/detail-ui'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { StatusPill } from '@/components/admin/list'
 import JerryWidget from '@/components/shared/JerryWidget'
@@ -32,15 +32,6 @@ function YesNo({ val }: { val: boolean | null | undefined }) {
   return val
     ? <span className="text-emerald-600 dark:text-emerald-400 font-medium">Yes</span>
     : <span className="text-rose-500 font-medium">No</span>
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-3 py-2 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">
-      <span className="text-[12px] text-zinc-400 dark:text-zinc-500 w-44 flex-shrink-0 pt-0.5">{label}</span>
-      <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-200 flex-1 min-w-0 break-words">{children}</span>
-    </div>
-  )
 }
 
 /** A titled card whose body is padded — used for the read-only info sections. */

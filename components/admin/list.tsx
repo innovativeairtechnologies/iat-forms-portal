@@ -35,6 +35,22 @@ export function rowCx(cols: string, opts?: { i?: number; selected?: boolean }) {
   ].join(' ')
 }
 
+/** Wraps a HEADER_BOX + BODY_BOX pair so a table with more columns than a
+ *  phone screen scrolls horizontally instead of squeezing every column
+ *  illegible-thin. The grid columns are fixed-width (COLS), so without a
+ *  floor width the row would just shrink past readable; `minWidth` sets that
+ *  floor and the wrapper becomes the horizontal-scroll surface once the
+ *  viewport is narrower than it. `-mx-4 px-4 sm:mx-0 sm:px-0` lets the scroll
+ *  area bleed to the page edge on mobile (matching the page's own gutter)
+ *  without adding extra padding back on larger screens. */
+export function TableScroll({ children, minWidth = 720 }: { children: ReactNode; minWidth?: number }) {
+  return (
+    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div style={{ minWidth }}>{children}</div>
+    </div>
+  )
+}
+
 // ── Status pills (one canonical tone system) ──────────────────────────────────
 export type Tone = 'slate' | 'emerald' | 'amber' | 'sky' | 'rose' | 'violet'
 

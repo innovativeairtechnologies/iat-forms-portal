@@ -1,13 +1,15 @@
 export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import { TopBarSearch, TopBarBell } from './TopBarActions'
 import DashboardPresetPicker from './DashboardPresetPicker'
 import ExecutiveBriefing from './ExecutiveBriefing'
+import DepartmentDashboard from '@/components/admin/DepartmentDashboard'
+import type { StaffRole } from '@/lib/roles'
 import { PRESETS, DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 import {
   ChevronRight, Plus,
@@ -411,6 +413,17 @@ const STATUS_PILL: Record<string, { label: string; color: string; bg: string }> 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default async function AdminDashboard() {
+  // The admin layout already gates this page to admin-surface roles (loose:
+  // full admin OR a scoped role). Scoped roles get their own department
+  // dashboard — a real page scoped to their permissions, not a stripped-down
+  // preview of the executive view below.
+  const surfaceUser = await getAdminSurfaceUser()
+  if (surfaceUser && surfaceUser.role !== 'admin') {
+    // isAdminSurfaceRole (inside getAdminSurfaceUser) already ruled out
+    // 'production' and 'customer', so this is one of the 5 scoped roles.
+    return <DepartmentDashboard role={surfaceUser.role as Exclude<StaffRole, 'admin' | 'production'>} displayName={surfaceUser.displayName} />
+  }
+
   const d = await getData()
 
   const attentionCount = d.attention.unread + d.attention.openTickets + d.attention.pendingApprovals
@@ -419,10 +432,8 @@ export default async function AdminDashboard() {
   const presetRaw = (await cookies()).get(DASH_PRESET_COOKIE)?.value
   const preset: Preset = (PRESETS as readonly string[]).includes(presetRaw ?? '') ? (presetRaw as Preset) : 'balanced'
 
-  // Logged-in admin's first name for the greeting (the admin layout already gates
-  // this page to admins; split on space/dot covers "Jacob Younker" + "jacob.younker").
-  const admin = await getAdminUser()
-  const firstName = (admin?.displayName ?? '').trim().split(/[\s.]+/)[0]
+  // Logged-in admin's first name for the greeting.
+  const firstName = (surfaceUser?.displayName ?? '').trim().split(/[\s.]+/)[0]
   const firstNameDisplay = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : ''
 
   // KPI cards defined once, placed in two layouts (mobile grid vs. xl split) below.
@@ -452,7 +463,16 @@ export default async function AdminDashboard() {
   )
 
   return (
-    <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
+    <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
+      {/* Ambient background — a soft, very transparent gradient orb behind the
+          dashboard content. Negative z-index so it paints behind normal-flow
+          content without touching the top bar's own z-10 stacking. Purely
+          decorative + static (no motion, per the calm-design convention). */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[720px] overflow-hidden">
+        <div className="absolute -top-52 right-[-160px] w-[620px] h-[620px] rounded-full bg-gradient-to-br from-emerald-400/20 via-emerald-500/8 to-transparent blur-3xl dark:from-emerald-500/12 dark:via-emerald-600/5" />
+        <div className="absolute top-16 -left-40 w-[380px] h-[380px] rounded-full bg-gradient-to-tr from-sky-400/10 via-teal-400/6 to-transparent blur-3xl dark:from-sky-500/8 dark:via-teal-500/4" />
+      </div>
+
       {/* Top bar */}
       <div className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0b]/90 backdrop-blur">
         <div className="flex items-center gap-1.5 text-[13px]">

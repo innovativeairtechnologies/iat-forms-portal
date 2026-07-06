@@ -6,7 +6,7 @@ import {
   Search, CornerDownLeft, ArrowUp, ArrowDown,
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
-  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock,
+  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot,
 } from 'lucide-react'
 import { hasPermission, type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -32,6 +32,7 @@ type Item = {
 // role (same matrix as AdminSidebar) so scoped roles don't see dead-end links.
 const STATIC: Item[] = [
   { id: 'nav-dash',    label: 'Dashboard',        group: 'Go to', icon: LayoutDashboard, href: '/admin', keywords: 'home overview', perm: 'dashboard' },
+  { id: 'nav-jerry',   label: 'Jerry',            group: 'Go to', icon: Bot, href: '/admin/jerry', keywords: 'ai assistant chat ask ask jerry', perm: 'jerry' },
   { id: 'nav-forms',   label: 'Forms',            group: 'Go to', icon: FileText,        href: '/admin/forms', perm: 'forms' },
   { id: 'nav-empforms', label: 'Employee Forms',  group: 'Go to', icon: FileText,        href: '/admin/employee-forms', keywords: 'jotform fill submit resources library', perm: 'employee_forms' },
   { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions', perm: 'submissions' },

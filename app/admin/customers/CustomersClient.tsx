@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Building2, Search, Plus, ChevronRight, Boxes } from 'lucide-react'
 import type { Customer } from '@/lib/supabase'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll } from '@/components/admin/list'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 import CustomerRequestsQueue, { type CustomerPortalRequestRow } from './CustomerRequestsQueue'
@@ -55,8 +55,8 @@ export default function CustomersClient({
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-start justify-between">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Operations</p>
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Customers</h1>
@@ -74,7 +74,7 @@ export default function CustomersClient({
         </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {/* Filter tabs */}
         <div className="flex items-center gap-6 mb-4 border-b border-zinc-200 dark:border-zinc-800 flex-wrap">
           {(
@@ -132,6 +132,7 @@ export default function CustomersClient({
         </div>
 
         {/* Floating header */}
+        <TableScroll minWidth={760}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(c => c.id), !allSelected)} />
           <Th>Company</Th>
@@ -201,6 +202,7 @@ export default function CustomersClient({
             ))
           )}
         </div>
+        </TableScroll>
         </>
         )}
       </div>

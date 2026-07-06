@@ -7,7 +7,7 @@ import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQ
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Equipment } from '@/lib/supabase'
 import { warrantyState, isExpiringSoon, daysUntilWarrantyEnd, pmState, nextPmDue } from '@/lib/equipment'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll } from '@/components/admin/list'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 
@@ -97,14 +97,14 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-start justify-between">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Operations</p>
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Equipment</h1>
             <p className="text-[13px] text-gray-400 mt-0.5">{equipment.length} {equipment.length === 1 ? 'unit' : 'units'} in the installed base</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button onClick={() => setShowWizard(true)}
               className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
               <Sparkles size={15} />New from Submittal
@@ -117,7 +117,7 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
         </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {/* Filter tabs */}
         <div className="flex items-center gap-6 mb-4 border-b border-zinc-200 dark:border-zinc-800 flex-wrap">
           {([['all', 'All'], ['in', 'In warranty'], ['expiring', 'Expiring soon'], ['out', 'Out of warranty'], ['pm_due', 'PM due'], ['unknown', 'No date']] as [Filter, string][]).map(([f, label]) => {
@@ -149,6 +149,7 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
         </div>
 
         {/* Floating header */}
+        <TableScroll minWidth={880}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Serial</Th>
@@ -202,6 +203,7 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
             ))
           )}
         </div>
+        </TableScroll>
       </div>
 
       <BulkBar count={sel.count} onClear={sel.clear}>

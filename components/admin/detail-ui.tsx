@@ -71,3 +71,17 @@ export function MetaRow({ label, children }: { label: string; children: ReactNod
     </div>
   )
 }
+
+/** A compact label/value row for card bodies — label in a fixed-width left
+ *  column, value flowing right on the same line. Used inside a padded wrapper
+ *  (e.g. `<div className="px-5 py-1">`) so rows only need their own vertical
+ *  rhythm + divider. Shared by the ticket and submission detail pages so short
+ *  answers read as a dense, scannable list rather than one row per screen. */
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 py-2 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">
+      <span className="text-[12px] text-zinc-400 dark:text-zinc-500 w-44 flex-shrink-0 pt-0.5">{label}</span>
+      <span className="text-[13px] font-medium text-zinc-700 dark:text-zinc-200 flex-1 min-w-0 break-words">{children}</span>
+    </div>
+  )
+}

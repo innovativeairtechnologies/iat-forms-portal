@@ -3,9 +3,9 @@ export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import { formatDateTime } from '@/lib/utils'
-import { FileText, Calendar, ClipboardList, Info, BarChart3, Printer } from 'lucide-react'
+import { FileText, Calendar, ClipboardList, Info, BarChart3, Printer, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
-import { DetailShell, DetailTopBar, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
+import { DetailShell, DetailTopBar, Card, CardHead, MetaRow, Field } from '@/components/admin/detail-ui'
 import SubmissionDetailClient from './SubmissionDetailClient'
 import SubmissionNotes from './SubmissionNotes'
 import SubmissionStatus from './SubmissionStatus'
@@ -185,31 +185,63 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
                 <div className="py-14 text-center text-[13px] text-zinc-400 dark:text-zinc-600">No field data</div>
               </Card>
             ) : (
-              sections.map((sec, i) => (
-                <Card key={i}>
-                  <CardHead
-                    title={sec.title}
-                    icon={<ClipboardList size={14} />}
-                    action={
-                      i === 0 && questionCount > 0 ? (
-                        <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
-                          {answered}/{questionCount} answered
+              <>
+                {/* Primary section — always open, so the page reads as focused
+                    content up top instead of the whole form dumping down the
+                    screen at once (mirrors the ticket detail's rhythm). */}
+                {sections[0] && (
+                  <Card>
+                    <CardHead
+                      title={sections[0].title}
+                      icon={<ClipboardList size={14} />}
+                      action={
+                        questionCount > 0 ? (
+                          <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 tabular-nums">
+                            {answered}/{questionCount} answered
+                          </span>
+                        ) : undefined
+                      }
+                    />
+                    <div className="px-5 py-1">
+                      {sections[0].fields.map((field) => (
+                        <FieldRow key={field.id} label={field.label} value={submission.data[field.label]} fieldType={field.field_type} />
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {/* Remaining sections — folded into one collapsed accordion
+                    (mirrors the ticket detail's "Intake details") so a long,
+                    multi-section form doesn't read as an endless scroll. */}
+                {sections.length > 1 && (
+                  <Card>
+                    <details className="group">
+                      <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none list-none marker:content-none [&::-webkit-details-marker]:hidden">
+                        <ClipboardList size={14} className="text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
+                        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">More responses</h3>
+                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                          {sections.length - 1} more section{sections.length - 1 === 1 ? '' : 's'}
                         </span>
-                      ) : undefined
-                    }
-                  />
-                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                    {sec.fields.map((field) => (
-                      <FieldRow
-                        key={field.id}
-                        label={field.label}
-                        value={submission.data[field.label]}
-                        fieldType={field.field_type}
-                      />
-                    ))}
-                  </div>
-                </Card>
-              ))
+                        <ChevronDown size={14} className="ml-auto text-zinc-400 transition-transform group-open:rotate-180" />
+                      </summary>
+                      <div className="border-t border-zinc-200/70 dark:border-zinc-800/80 pb-2">
+                        {sections.slice(1).map((sec, i) => (
+                          <div key={i} className="border-t border-zinc-100 dark:border-zinc-800/50 first:border-0">
+                            <div className="px-5 pt-4 pb-1">
+                              <h4 className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-200">{sec.title}</h4>
+                            </div>
+                            <div className="px-5 pb-2.5">
+                              {sec.fields.map((field) => (
+                                <FieldRow key={field.id} label={field.label} value={submission.data[field.label]} fieldType={field.field_type} />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </Card>
+                )}
+              </>
             )}
           </main>
 
@@ -236,6 +268,18 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
   )
 }
 
+/** A field whose value needs real width — its own full-width block (label
+ *  eyebrow above, content below) rather than squeezed into the compact
+ *  label/value row. Used for images, signatures, and long free text. */
+function WideField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="py-3 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">
+      <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">{label}</p>
+      {children}
+    </div>
+  )
+}
+
 function FieldRow({ label, value, fieldType }: { label: string; value: unknown; fieldType: string }) {
   // Section headers become subheading bands rather than label/value rows.
   if (fieldType === 'section_header') {
@@ -247,46 +291,61 @@ function FieldRow({ label, value, fieldType }: { label: string; value: unknown; 
   }
 
   const isEmpty = value === undefined || value === null || value === ''
-  let display: React.ReactNode = <span className="text-zinc-300 dark:text-zinc-600 text-[13px]">—</span>
 
-  if (!isEmpty) {
-    if (fieldType === 'signature' && typeof value === 'string' && value.startsWith('data:image')) {
-      display = (
+  if (!isEmpty && fieldType === 'signature' && typeof value === 'string' && value.startsWith('data:image')) {
+    return (
+      <WideField label={label}>
         <img src={value} alt="Signature" className="max-w-[280px] border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white" />
-      )
-    } else if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
-      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(value)
-      display = isImage ? (
-        <div>
-          <img src={value} alt={label} className="max-w-[280px] max-h-48 object-contain border border-zinc-200 dark:border-zinc-800 rounded-lg mb-2" />
-          <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-emerald-600 dark:text-emerald-400 hover:underline">
-            View full file
-          </a>
-        </div>
-      ) : (
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-emerald-600 dark:text-emerald-400 hover:underline break-all">
-          {value}
-        </a>
-      )
-    } else if (Array.isArray(value)) {
-      display = (
-        <div className="flex flex-wrap gap-1.5">
-          {value.map((v, i) => (
-            <span key={i} className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 rounded-lg">
-              {String(v)}
-            </span>
-          ))}
-        </div>
-      )
-    } else {
-      display = <span className="text-[14px] text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{String(value)}</span>
-    }
+      </WideField>
+    )
   }
 
-  return (
-    <div className="px-5 py-3.5">
-      <dt className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">{label}</dt>
-      <dd>{display}</dd>
-    </div>
-  )
+  if (!isEmpty && fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
+    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(value)
+    return (
+      <WideField label={label}>
+        {isImage ? (
+          <div>
+            <img src={value} alt={label} className="max-w-[280px] max-h-48 object-contain border border-zinc-200 dark:border-zinc-800 rounded-lg mb-2" />
+            <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-emerald-600 dark:text-emerald-400 hover:underline">
+              View full file
+            </a>
+          </div>
+        ) : (
+          <a href={value} target="_blank" rel="noopener noreferrer" className="text-[13px] text-emerald-600 dark:text-emerald-400 hover:underline break-all">
+            {value}
+          </a>
+        )}
+      </WideField>
+    )
+  }
+
+  // Long free text reads better full-width (fewer wrapped lines) than
+  // squeezed into the fixed-width label column.
+  if (!isEmpty && typeof value === 'string' && value.length > 90) {
+    return (
+      <WideField label={label}>
+        <p className="text-[13px] text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap break-words leading-relaxed">{value}</p>
+      </WideField>
+    )
+  }
+
+  let display: React.ReactNode
+  if (isEmpty) {
+    display = <span className="text-zinc-300 dark:text-zinc-600">—</span>
+  } else if (Array.isArray(value)) {
+    display = (
+      <div className="flex flex-wrap gap-1.5">
+        {value.map((v, i) => (
+          <span key={i} className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md">
+            {String(v)}
+          </span>
+        ))}
+      </div>
+    )
+  } else {
+    display = <span className="whitespace-pre-wrap break-words">{String(value)}</span>
+  }
+
+  return <Field label={label}>{display}</Field>
 }

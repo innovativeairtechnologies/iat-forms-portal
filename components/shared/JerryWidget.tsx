@@ -21,6 +21,10 @@ export type JerryWidgetProps = {
   suggestions: string[]
   idleSubtitle: string
   footerNote: string
+  /** Stretch to fill the parent's height instead of the fixed card sizing —
+   *  used by the standalone /admin/jerry page so it reads as a full chat
+   *  surface (composer pinned at the bottom) rather than a sidebar widget. */
+  fullHeight?: boolean
 }
 
 // Jerry's small "presence" — the abstract emerald orb (halo + spinning ring + glowing
@@ -57,7 +61,7 @@ function JerryFigure() {
   )
 }
 
-export default function JerryWidget({ apiEndpoint, suggestions, idleSubtitle, footerNote }: JerryWidgetProps) {
+export default function JerryWidget({ apiEndpoint, suggestions, idleSubtitle, footerNote, fullHeight = false }: JerryWidgetProps) {
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -118,7 +122,7 @@ export default function JerryWidget({ apiEndpoint, suggestions, idleSubtitle, fo
   }
 
   return (
-    <section className={`${CARD} flex flex-col overflow-hidden`}>
+    <section className={`${CARD} flex flex-col overflow-hidden ${fullHeight ? 'h-full' : ''}`}>
       {/* Header — Jerry's presence + status */}
       <div className="flex items-center gap-2.5 border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
         {!idle && (
@@ -141,7 +145,10 @@ export default function JerryWidget({ apiEndpoint, suggestions, idleSubtitle, fo
       </div>
 
       {/* Conversation */}
-      <div ref={scrollRef} className="relative max-h-[460px] min-h-[340px] flex-1 overflow-y-auto px-5 py-4">
+      <div
+        ref={scrollRef}
+        className={`relative flex-1 overflow-y-auto px-5 py-4 ${fullHeight ? 'min-h-0' : 'max-h-[460px] min-h-[340px]'}`}
+      >
         {idle ? (
           <div className="flex h-full flex-col items-center justify-center py-3 text-center">
             <JerryFigure />

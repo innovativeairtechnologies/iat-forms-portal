@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Inbox, MoreHorizontal, CheckCheck, Clock, CheckCircle2, ExternalLink } from 'lucide-react'
 import { markSubmissionRead, updateSubmissionStatus } from './actions'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, SUBMISSION_STATUS,
+  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, SUBMISSION_STATUS, TableScroll,
 } from '@/components/admin/list'
 import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
@@ -70,6 +70,7 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
 
   return (
     <>
+    <TableScroll minWidth={760}>
       {/* Floating header */}
       <div className={`grid ${COLS} ${HEADER_BOX}`}>
         <div className="flex items-center justify-center">
@@ -153,6 +154,7 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
           })
         )}
       </div>
+    </TableScroll>
 
       {/* Floating bulk-action bar */}
       {selected.size > 0 && (

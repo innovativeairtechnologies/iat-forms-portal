@@ -6,7 +6,7 @@ import { UserPlus, X, Search, Shield, User, ChevronRight, Eye, EyeOff, Copy, Che
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 import Link from 'next/link'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th, TableScroll } from '@/components/admin/list'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
@@ -116,8 +116,8 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-start justify-between">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">People</p>
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Employees</h1>
@@ -130,7 +130,7 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
         </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
 
         {/* Tabs — underline style */}
         <div className="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-4">
@@ -182,6 +182,7 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
         </div>
 
         {/* Floating header */}
+        <TableScroll minWidth={820}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Employee</Th>
@@ -246,6 +247,7 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
             ))
           )}
         </div>
+        </TableScroll>
       </div>{/* p-8 */}
 
       <BulkBar count={sel.count} onClear={sel.clear}>

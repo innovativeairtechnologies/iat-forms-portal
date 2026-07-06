@@ -66,7 +66,7 @@ export default function RequestsQueueClient({
     <div className="flex-1 overflow-auto">
 
       {/* Header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
         <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">{title}</h1>
         <p className="text-[13px] text-gray-400 mt-0.5">
@@ -74,7 +74,7 @@ export default function RequestsQueueClient({
         </p>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
 
       {/* Filter tabs */}
       <div className="flex items-center gap-1 mb-5 border-b border-gray-100 dark:border-zinc-800">

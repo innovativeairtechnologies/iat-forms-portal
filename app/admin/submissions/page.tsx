@@ -71,7 +71,7 @@ export default async function SubmissionsPage(props: { searchParams: Promise<Sea
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Page header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Inbox</p>
@@ -91,7 +91,7 @@ export default async function SubmissionsPage(props: { searchParams: Promise<Sea
         </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
 
         {/* Toolbar */}
         <Suspense>

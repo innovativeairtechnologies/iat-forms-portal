@@ -76,17 +76,17 @@ export type Perm =
   | 'audit'
   | 'employees' // account management (create / delete / assign roles)
   | 'us_rotors'
-  | 'system' // destructive tools (data reset, settings) — admin only
+  | 'jerry' // internal AI assistant page — granted to every admin-surface role
 
 // The matrix. `admin` implicitly gets everything (see hasPermission). Any perm
-// NOT listed for a scoped role — including 'dashboard', 'system', 'us_rotors' —
-// is admin-only, so those are fail-closed by omission.
+// NOT listed for a scoped role — including 'dashboard', 'us_rotors' — is
+// admin-only, so those are fail-closed by omission.
 const ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
-  sales: ['tickets', 'equipment', 'customers', 'gantt'],
-  hr: ['org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees'],
-  marketing: ['presentations'],
-  engineering: ['submissions', 'tickets', 'equipment', 'gantt'],
-  production_manager: ['tickets', 'equipment', 'gantt', 'scheduling'],
+  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry'],
+  hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry'],
+  marketing: ['dashboard', 'presentations', 'jerry'],
+  engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry'],
+  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry'],
   production: [],
 }
 
@@ -144,6 +144,10 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
 export function homeForRole(role: Role | null): string {
   if (role === 'admin') return '/admin'
   if (isAdminSurfaceRole(role)) {
+    // Scoped roles with a department dashboard (see DepartmentDashboard.tsx)
+    // land on it, same as admin, instead of jumping straight to their first
+    // permitted section.
+    if (hasPermission(role, 'dashboard')) return '/admin'
     const first = ADMIN_SECTIONS.find((s) => hasPermission(role, s.perm))
     return first?.href ?? '/admin/profile' // profile is always accessible
   }
@@ -161,6 +165,7 @@ const OPEN_ADMIN_PREFIXES = ['/admin/profile']
 // to admin only — new admin routes are protected by default until mapped.
 const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin', perm: 'dashboard' },
+  { prefix: '/admin/jerry', perm: 'jerry' },
   { prefix: '/admin/submissions', perm: 'submissions' },
   { prefix: '/admin/tickets', perm: 'tickets' },
   { prefix: '/admin/troubleshooting', perm: 'tickets' },
@@ -180,7 +185,6 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/audit', perm: 'audit' },
   { prefix: '/admin/employees', perm: 'employees' },
   { prefix: '/admin/us-rotors', perm: 'us_rotors' },
-  { prefix: '/admin/reset', perm: 'system' },
 ]
 
 function matchesPrefix(pathname: string, prefix: string): boolean {

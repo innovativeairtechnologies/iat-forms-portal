@@ -100,8 +100,8 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
       {/* Header */}
-      <div className="px-8 pt-8 pb-0 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-center justify-between mb-5">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-0 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
             <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Manage</p>
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Forms</h1>
@@ -154,7 +154,7 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
           </div>
         </div>
       </div>
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-8 space-y-6">
         {categoryFiltered.length === 0 ? (
           <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none py-20 text-center">
             <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">

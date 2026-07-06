@@ -2,6 +2,73 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-06 — Department dashboards, a standalone Jerry page, "View as" fix, mobile pass
+
+A batch of admin-surface fixes and features.
+
+### Added
+- **Department dashboards.** Every scoped role (sales/hr/marketing/engineering/
+  production_manager) now has `dashboard` in its permission list, so `/admin`
+  is a real landing page for them (`homeForRole` sends anyone with `dashboard`
+  to `/admin`) instead of redirecting to their first permitted section.
+  `app/admin/page.tsx` branches: `admin` still renders the unchanged executive
+  dashboard; every scoped role renders the new
+  `components/admin/DepartmentDashboard.tsx` — real Supabase counts + a short
+  recent-activity list scoped to what that role can see, plus a "Quick Links"
+  grid generated from `ADMIN_SECTIONS` filtered by `hasPermission` (stays in
+  sync automatically as sections/permissions change). No migration.
+- **Jerry gets a standalone, full-page "GPT style" chat** at `/admin/jerry` —
+  any admin-surface role can use it (new `jerry` permission, granted to every
+  scoped role) to ask internal questions or just try Jerry out. Backed by a new
+  general-purpose route (`app/api/admin/assistant/route.ts`, same RAG pipeline
+  as the ticket assistant with `includeInternal: true`, gated by the loose
+  `getAdminSurfaceUser()` rather than the strict `getAdminUser()`) — deliberately
+  separate from the per-ticket Jerry, which stays grounded in one ticket's
+  equipment/problem context. `components/shared/JerryWidget.tsx` gained a
+  `fullHeight` prop so the same widget renders as either the compact sidebar
+  card or a full chat surface with the composer pinned to the bottom. Added to
+  `AdminSidebar` (right after Dashboard) and the command palette.
+- **A soft, static gradient-orb background** behind the `/admin` executive
+  dashboard's content — two large, very-transparent blurred emerald/sky circles
+  via a negative-z-index layer, no motion (calm-design convention).
+
+### Fixed
+- **"View as [role]" dropdown was clipped after 2-3 options.** Root cause: the
+  sidebar `<aside>` is `overflow-hidden` (for its rounded/sticky layout), which
+  clipped the absolutely-positioned dropdown once it extended past the
+  sidebar's own box — not a missing scrollbar. Rebuilt as a `document.body`
+  portal with `position: fixed`, measured from the button's own bounding rect,
+  so it always escapes ancestor clipping regardless of viewport height
+  (`components/admin/ViewAs.tsx`).
+- **Removed the `/admin/reset` Data Reset panel** (page, API route,
+  `lib/reset-targets.ts`, nav entry, the now-unused `system` permission, and its
+  docs section) per request — it was a pre-launch cleanup tool, not something
+  meant to stick around.
+- **Submissions detail page restyled to match the ticket detail's rhythm.**
+  Short answers now render as compact label/value rows (a new shared `Field`
+  component in `components/admin/detail-ui.tsx`, also adopted by
+  `TicketDetailClient` to drop its own duplicate copy) instead of one
+  label-above-value block per field; only the first form section is open by
+  default, and every section after that folds into one collapsed "More
+  responses" `<details>` accordion — so a long, multi-section form no longer
+  reads as one endless scroll. Signatures, file/image values, and long free
+  text (>90 chars) still get their own full-width block.
+- **Mobile pass on the admin surface.** Added a `TableScroll` wrapper
+  (`components/admin/list.tsx`) around the 6 shared-primitive tables
+  (Submissions, Tickets, Equipment, Customers, Employees, Troubleshooting) so a
+  table with more fixed-width columns than a phone screen scrolls horizontally
+  instead of squeezing every column illegible-thin. Reduced fixed `px-8`/`p-8`
+  page padding to responsive (`px-4 sm:px-8` etc.) across essentially every
+  admin page shell, and added `flex-wrap` to a few header rows that packed a
+  title + action button on one line.
+
+`tsc --noEmit` and `next build` both green (all routes registered, including
+the new `/admin/jerry`). Auth-gated throughout — no login session was
+available to click through interactively this pass, so this was verified by
+type-check + production build + careful manual review rather than a logged-in
+screenshot; a real click-through (especially the department dashboards,
+Jerry's new page, and the mobile table scrolling) is still worth a human pass.
+
 ## 2026-07-02 — Multi-select bulk delete across every admin list
 
 Checkbox multi-select + a bulk **Delete** in every list view, for fast cleanup.

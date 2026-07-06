@@ -10,12 +10,12 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 
 | Role | Lands in | Sees |
 |------|----------|------|
-| `admin` | `/admin` | Everything |
-| `sales` | `/admin` | Tickets, Equipment, Customers, Gantt |
-| `hr` | `/admin` | Accounts, Org Chart, Forms, Employee Forms, PTO, Sick Time, Scheduling, Accrual |
-| `marketing` | `/admin` | Presentations |
-| `engineering` | `/admin` | Submissions, Tickets, Equipment, Gantt |
-| `production_manager` | `/admin` | Tickets, Equipment, Gantt, Scheduling |
+| `admin` | `/admin` (executive dashboard) | Everything |
+| `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Gantt, Jerry |
+| `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, Employee Forms, PTO, Sick Time, Scheduling, Accrual, Jerry |
+| `marketing` | `/admin` (department dashboard) | Presentations, Jerry |
+| `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Jerry |
+| `production_manager` | `/admin` (department dashboard) | Tickets, Equipment, Gantt, Scheduling, Jerry |
 | `production` | `/employee` | Employee self-service only (personal dashboard, time off, org chart, resources) |
 | `customer` | `/customer` | External customer portal |
 
@@ -34,7 +34,7 @@ exports:
 - `STAFF_ROLES`, `ROLE_LABELS`, `ROLE_DESCRIPTIONS` — the vocabulary.
 - `hasPermission(role, perm)` — the matrix. `admin` implicitly has every
   permission; any permission not listed for a scoped role (including `dashboard`,
-  `system`, `us_rotors`) is admin-only by omission (fail-closed).
+  `us_rotors`) is admin-only by omission (fail-closed).
 - `normalizeRole(raw)` — legacy `employee` → `production`; validates the value.
 - `isAdminSurfaceRole(role)`, `homeForRole(role)` — routing helpers.
 - `canAccessAdminPath(role, pathname)` — used by middleware for page gating.
@@ -67,6 +67,29 @@ roles can **see** their tabs but their write actions return 403 until each API i
 opened per-permission. That per-endpoint write-enablement is the planned next
 pass; it's an intentional v1 scope cut, not a bug.
 
+## Department dashboards
+
+Every scoped role now has `dashboard` in its permission list, so `/admin` is a
+real landing page for all of them (`homeForRole` sends anyone with `dashboard`
+to `/admin`, same as full `admin`) instead of a redirect to their first
+permitted section. `app/admin/page.tsx` branches on the effective role: `admin`
+renders the existing executive dashboard unchanged; every scoped role renders
+`components/admin/DepartmentDashboard.tsx` — real Supabase counts + a short
+recent-activity list scoped to what that role can see, plus a "Quick Links"
+grid generated from `ADMIN_SECTIONS` filtered by `hasPermission`, so it stays
+in sync automatically as sections are added or a role's permissions change.
+
+## Jerry (internal assistant)
+
+`jerry` is a permission granted to every scoped role (plus implicit for
+`admin`) — it gates the `/admin/jerry` nav item and page, a standalone "GPT
+style" chat page any staff member can use to ask internal questions or just
+try Jerry out. It's a separate route from the per-ticket Jerry embedded in
+`/admin/tickets/[id]` (which is grounded in that ticket's equipment/problem
+context); this one only knows IAT's documentation (same RAG pipeline,
+`includeInternal: true`), with no live ticket/equipment lookup. See
+`app/api/admin/assistant/route.ts`.
+
 ## "View as [role]"
 
 `components/admin/ViewAs.tsx` — an admin-only control in the sidebar that
@@ -74,19 +97,6 @@ re-renders the nav (and command palette) as any role would see it. It's a pure
 client-side display override: it never touches the session, cookies, or
 middleware, so it cannot change the admin's real access or lock them out. A hard
 refresh resets to the real role.
-
-## Data Reset
-
-`/admin/reset` (admin-only, `system` permission) bulk-deletes a single dataset
-for pre-launch cleanup: submissions, tickets, equipment, customers, PTO requests,
-sick requests, or employees. Each is behind a type-`DELETE` confirm and is
-audit-logged.
-
-Account deletes (employees, customers) go through `auth.admin.deleteUser()`,
-which removes the row in `auth.users` — that's what frees the email address for
-re-invite. Safety rails: the employees wipe never deletes an `admin` account or
-the acting admin, and the route surfaces any account it couldn't delete rather
-than silently skipping it. See `app/api/admin/reset/route.ts`.
 
 ## Migration 042
 

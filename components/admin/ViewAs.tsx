@@ -8,7 +8,8 @@
 // resets to the real role.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Eye, X, ChevronDown } from 'lucide-react'
 import { ROLE_LABELS, STAFF_ROLES, type Role, type StaffRole } from '@/lib/roles'
 
@@ -59,11 +60,31 @@ const PREVIEW_ROLES: StaffRole[] = STAFF_ROLES.filter((r) => r !== 'admin')
 export function ViewAsControl() {
   const { canPreview, viewAs, setViewAs } = useViewAs()
   const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ left: number; bottom: number; width: number } | null>(null)
+
+  // The sidebar's <aside> is `overflow-hidden` (for its rounded/sticky layout),
+  // which clips an absolutely-positioned dropdown after just 2-3 rows — it's
+  // being cut by the sidebar's own box, not missing a scrollbar. Portaling to
+  // <body> with fixed positioning (measured from the button) escapes that
+  // clipping entirely, regardless of viewport height or sidebar scroll state.
+  useEffect(() => {
+    if (!open) return
+    const update = () => {
+      const r = btnRef.current?.getBoundingClientRect()
+      if (r) setPos({ left: r.left, bottom: window.innerHeight - r.top + 4, width: r.width })
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [open])
+
   if (!canPreview) return null
 
   return (
     <div className="relative px-3 mt-2">
       <button
+        ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-[12px] font-medium transition-all ${
           viewAs
@@ -78,10 +99,13 @@ export function ViewAsControl() {
         <ChevronDown size={13} className="flex-shrink-0 opacity-60" />
       </button>
 
-      {open && (
+      {open && pos && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-3 right-3 z-50 mt-1 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1">
+          <div
+            className="fixed z-50 max-h-[60vh] overflow-y-auto rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1"
+            style={{ left: pos.left, bottom: pos.bottom, width: pos.width }}
+          >
             {viewAs && (
               <button
                 onClick={() => { setViewAs(null); setOpen(false) }}
@@ -104,7 +128,8 @@ export function ViewAsControl() {
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   )

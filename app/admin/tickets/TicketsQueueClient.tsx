@@ -9,7 +9,7 @@ import {
 import type { Ticket as TicketType } from '@/lib/supabase'
 import { updateTicket } from './actions'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, TICKET_STATUS, PRIORITY,
+  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, TICKET_STATUS, PRIORITY, TableScroll,
 } from '@/components/admin/list'
 import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
@@ -121,12 +121,12 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Page header */}
-      <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Support</p>
         <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Tickets</h1>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
 
         {/* Status tabs */}
         <div className="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-4">
@@ -164,6 +164,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
         </div>
 
         {/* Floating header */}
+        <TableScroll minWidth={920}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <div className="flex items-center justify-center">
             <input type="checkbox" checked={allSelected} onChange={toggleAll}
@@ -262,6 +263,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
             })
           )}
         </div>
+        </TableScroll>
       </div>
 
       {/* Floating bulk-action bar */}
