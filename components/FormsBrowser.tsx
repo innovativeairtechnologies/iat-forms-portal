@@ -1,5 +1,6 @@
 'use client'
 
+import type { LucideIcon } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import {
   Search, X, Clock, ClipboardCheck, UserPlus, Send, Wrench, FolderOpen, ChevronDown,
@@ -8,7 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { Category, Form } from '@/lib/supabase'
 import StepFormModal from './StepFormModal'
 
-const ICON_MAP: Record<string, React.ElementType> = {
+const ICON_MAP: Record<string, LucideIcon> = {
   'clock':           Clock,
   'clipboard-check': ClipboardCheck,
   'user-plus':       UserPlus,
@@ -16,7 +17,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   'tool':            Wrench,
 }
 
-function getIcon(icon: string | null | undefined): React.ElementType {
+function getIcon(icon: string | null | undefined): LucideIcon {
   return (icon && ICON_MAP[icon]) || FolderOpen
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { LucideIcon } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import {
@@ -19,7 +20,7 @@ import type { LearnHeaderStats } from '@/lib/learn'
    mirroring the /admin and employee layouts. Client component so it can own the
    mobile drawer, sign-out, and theme toggle; server data arrives as props. */
 
-type NavItem = { href: string; label: string; icon: React.ElementType; exact?: boolean }
+type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean }
 
 export default function LearnShell({
   displayName,

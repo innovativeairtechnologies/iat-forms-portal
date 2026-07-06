@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import type { LucideIcon } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import Link from 'next/link'
 import {
@@ -60,7 +61,7 @@ const METHOD_LABEL: Record<string, string> = {
   recovery: 'Password reset',
 }
 
-function deviceIcon(device: string | null): React.ElementType {
+function deviceIcon(device: string | null): LucideIcon {
   if (device === 'mobile') return Smartphone
   if (device === 'tablet') return Tablet
   return Monitor
@@ -91,7 +92,7 @@ function initialsOf(name: string | null) {
 }
 
 // Visual treatment per action key.
-const ACTION_META: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
+const ACTION_META: Record<string, { label: string; icon: LucideIcon; color: string; bg: string }> = {
   'role.update':         { label: 'Role change',     icon: UserCog,       color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
   'form.create':         { label: 'Form created',    icon: FilePlus,      color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   'form.approve':        { label: 'Form approved',   icon: FileCheck2,    color: '#10b981', bg: 'rgba(16,185,129,0.12)' },

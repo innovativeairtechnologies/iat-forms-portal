@@ -1,5 +1,6 @@
 'use client'
 
+import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
@@ -153,7 +154,7 @@ export default function EditProfilePage() {
 }
 
 function Field({ icon: Icon, label, note, children }: {
-  icon: React.ElementType
+  icon: LucideIcon
   label: string
   note?: string
   children: React.ReactNode

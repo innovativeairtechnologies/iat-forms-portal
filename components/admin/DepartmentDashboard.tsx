@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { LucideIcon } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { ADMIN_SECTIONS, hasPermission, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 import { Card, CardHead } from '@/components/admin/detail-ui'
@@ -155,7 +156,7 @@ const TONE_DOT: Record<NonNullable<RecentRow['tone']>, string> = {
   amber: 'bg-amber-500', emerald: 'bg-emerald-500', rose: 'bg-rose-500', zinc: 'bg-zinc-300 dark:bg-zinc-600',
 }
 
-const SECTION_ICON: Partial<Record<string, React.ElementType>> = {
+const SECTION_ICON: Partial<Record<string, LucideIcon>> = {
   submissions: Inbox, tickets: Ticket, equipment: Boxes, customers: Building2, gantt: CalendarRange,
   org_chart: Users, forms: FileText, employee_forms: FileText, pto: Calendar, sick: Clock,
   scheduling: Calendar, accrual: Clock, presentations: Presentation, employees: Users,

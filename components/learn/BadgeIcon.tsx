@@ -1,9 +1,10 @@
+import type { LucideIcon } from 'lucide-react'
 import {
   Footprints, Zap, BookMarked, Award, Trophy, Flame, GraduationCap, Crown, Medal,
 } from 'lucide-react'
 
 // Badge `icon` strings (from lib/learn-gamification) → lucide components.
-const ICONS: Record<string, React.ElementType> = {
+const ICONS: Record<string, LucideIcon> = {
   Footprints, Zap, BookMarked, Award, Trophy, Flame, GraduationCap, Crown,
 }
 

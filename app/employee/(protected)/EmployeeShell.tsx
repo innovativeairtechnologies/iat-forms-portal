@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { LucideIcon } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Calendar, Network, LayoutGrid, LayoutDashboard, FileText, Wrench,
@@ -18,7 +19,7 @@ import { PortalSearch, type SearchItem } from '@/components/PortalSearch'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type NavItem = { href: string; label: string; icon: React.ElementType; exact?: boolean }
+type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean }
 type NavSection = { label: string; href?: string; items: NavItem[]; hidden?: boolean }
 
 // ─── Nav structure ────────────────────────────────────────────────────────────

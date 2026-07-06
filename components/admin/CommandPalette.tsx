@@ -1,5 +1,6 @@
 'use client'
 
+import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -22,7 +23,7 @@ type Item = {
   label: string
   sublabel?: string
   group: string
-  icon: React.ElementType
+  icon: LucideIcon
   href: string
   keywords?: string
   perm?: Perm
@@ -84,7 +85,7 @@ function hrefForRecent(r: RecentRow): string {
   }
 }
 
-const RECENT_ICON: Record<string, React.ElementType> = {
+const RECENT_ICON: Record<string, LucideIcon> = {
   submission: Inbox, ticket: LifeBuoy, employee: UserRound, form: FileCheck2,
 }
 

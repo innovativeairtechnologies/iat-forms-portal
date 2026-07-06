@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import {
   Package, ShieldCheck, Truck, BookOpen, LifeBuoy, Search,
-  ChevronDown, LogOut, CheckCircle2,
+  ChevronDown, LogOut, CheckCircle2, ClipboardCheck,
   Send, Cpu, MapPin, Image as ImageIcon, X, ChevronLeft, ChevronRight,
   Headphones, Loader2,
 } from 'lucide-react'
@@ -219,6 +219,7 @@ export default function CustomerDashboard({
           actions={
             <>
               <HeroAction href="/support/equipment-support" icon={LifeBuoy} label="Submit a request" variant="primary" />
+              <HeroAction href="/customer/srv" icon={ClipboardCheck} label="Start-up readiness" />
               <HeroAction href="/support/status" icon={Search} label="Check status" />
             </>
           }

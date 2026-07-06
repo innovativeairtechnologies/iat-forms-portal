@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { LucideIcon } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
@@ -23,7 +24,7 @@ type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' 
 type NavItem = {
   href: string
   label: string
-  icon: React.ElementType
+  icon: LucideIcon
   exact?: boolean
   badge?: BadgeKind
   hidden?: boolean
