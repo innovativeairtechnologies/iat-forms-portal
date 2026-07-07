@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import {
@@ -64,6 +64,44 @@ export default function FormBuilder({ categories, initialForm }: Props) {
   const [editingRuleIds, setEditingRuleIds] = useState<Set<string>>(new Set())
 
   const selectedField = fields.find((f) => f._id === selectedFieldId) || null
+
+  // Keep the "Field Settings" panel vertically aligned with the field you clicked,
+  // so editing a field far down the form doesn't send the editor back to the top.
+  // Tracks scroll (capture → catches the inner canvas). Degrades to top-anchored
+  // (settingsTop = 0) if a measurement is unavailable, so it's never worse than before.
+  const builderRef = useRef<HTMLDivElement>(null)
+  const settingsRef = useRef<HTMLDivElement>(null)
+  const [settingsTop, setSettingsTop] = useState(0)
+
+  useEffect(() => {
+    const id = selectedFieldId
+    const root = builderRef.current
+    if (!id || !root) { setSettingsTop(0); return }
+    const align = () => {
+      const fieldEl = root.querySelector(`[data-field-id="${CSS.escape(id)}"]`) as HTMLElement | null
+      if (!fieldEl) return
+      const rootTop = root.getBoundingClientRect().top
+      const fieldTop = fieldEl.getBoundingClientRect().top
+      const panelH = settingsRef.current?.offsetHeight ?? 0
+      const maxTop = Math.max(0, root.clientHeight - panelH - 16)
+      setSettingsTop(Math.max(0, Math.min(fieldTop - rootTop, maxTop)))
+    }
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => { ticking = false; align() })
+    }
+    align()
+    const raf = requestAnimationFrame(align)          // re-measure once the panel has painted
+    window.addEventListener('scroll', onScroll, true) // capture = also fires for the inner canvas
+    window.addEventListener('resize', onScroll)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [selectedFieldId])
 
   const addField = (type: FormField['field_type']) => {
     const newField: BuilderField = {
@@ -173,7 +211,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
   }
 
   return (
-    <div className="flex h-full">
+    <div ref={builderRef} className="flex h-full">
 
       {/* Left: Field palette */}
       <aside className="w-52 bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col overflow-y-auto flex-shrink-0">
@@ -316,6 +354,7 @@ export default function FormBuilder({ categories, initialForm }: Props) {
                         <div
                           ref={prov.innerRef}
                           {...prov.draggableProps}
+                          data-field-id={field._id}
                           onClick={() => setSelectedFieldId(field._id === selectedFieldId ? null : field._id)}
                           className={`bg-white dark:bg-zinc-900 border rounded-xl px-4 py-3 cursor-pointer transition-all flex items-center gap-3 ${
                             snapshot.isDragging ? 'shadow-lg' : ''
@@ -441,13 +480,15 @@ export default function FormBuilder({ categories, initialForm }: Props) {
       {/* Right: Field settings panel */}
       {selectedField && (
         <aside className="w-72 bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-zinc-800 overflow-y-auto flex-shrink-0">
-          <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Field Settings</p>
-            <button onClick={() => setSelectedFieldId(null)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
-              <X size={15} />
-            </button>
+          <div ref={settingsRef} style={{ marginTop: settingsTop }}>
+            <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Field Settings</p>
+              <button onClick={() => setSelectedFieldId(null)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                <X size={15} />
+              </button>
+            </div>
+            <FieldSettings field={selectedField} allFields={fields} onUpdate={(u) => updateField(selectedField._id, u)} />
           </div>
-          <FieldSettings field={selectedField} allFields={fields} onUpdate={(u) => updateField(selectedField._id, u)} />
         </aside>
       )}
     </div>

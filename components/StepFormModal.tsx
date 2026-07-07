@@ -503,6 +503,9 @@ export default function StepFormModal({ slug, onClose, serverDrafts = false, res
               </div>
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight truncate">
                 {form.title}
+                {deriveDraftLabel(answers) && (
+                  <span className="font-normal text-gray-400"> — {deriveDraftLabel(answers)}</span>
+                )}
               </h2>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0 ml-3">
