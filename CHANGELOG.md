@@ -2,6 +2,50 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-07 — Deals: sales pipeline MVP ("Forecast Pulse"), the first scoped write
+
+The Monday.com Sales Forecasting board rebuilt natively at `/admin/deals` — a
+parallel MVP that runs alongside Monday until Sales proves it out. Requires
+migration `043_deals.sql` (applied to prod 2026-07-07 before deploy). Full
+docs: `docs/deals.md`.
+
+- **One `deals` table, three tabs.** Pipeline (financial forecast: summary
+  strip with total/weighted/win-rate, group-by-rep subtotals, inline
+  Won/Lost/Active status), CRM (relationship view: rep + contact + quoted date,
+  click-to-expand notes, recent-activity flag), Focused (action list: open
+  deals with confidence ≥ 60 / a timeline / notes, inline-editable
+  confidence/projected/notes that persist on blur). All three stay mounted so
+  each keeps its own filter/sort state across tab switches; sortable columns
+  follow the Tickets-queue pattern. New Deal modal + row delete round out CRUD.
+- **`weighted` is derived, never stored** — always
+  `total_cost × (confidence / 100)`, computed in `lib/deals.ts`
+  (`computeWeighted`/`computeSummary`, pure functions via `useMemo`), same
+  convention as Gantt's derived values.
+- **First scoped write for a non-admin role.** New `deals` permission granted
+  to `sales`; its API routes (`app/api/admin/deals`) gate on a new
+  `requireDealsAuth()` (`lib/api-auth.ts`) accepting any role with the `deals`
+  permission — a deliberate, narrow exception to the "scoped roles are
+  view-only" v1 boundary (inline editing by reps *is* the feature). Documented
+  in `docs/roles-and-permissions.md`; every other write API still gates on the
+  strict admin-only guard.
+- Also: `formatCurrency` added to `lib/utils.ts` (first shared currency
+  helper), `DEAL_STATUS` tone map in `components/admin/list.tsx`, nav/⌘K/
+  department-dashboard wiring.
+- **Pre-ship review fixes** (multi-agent review, 18 confirmed findings → 6
+  deduped fixes): full field validation on both API routes via a shared
+  sanitizer (`app/api/admin/deals/validate.ts` — `total_cost` bounds,
+  integer-rounded confidence, null-safe customer check, date format, clean
+  400s instead of raw Postgres 500s; PATCH now 404s on a stale/deleted id);
+  `date_quoted` formatted as a local calendar date (bare-`date` columns parsed
+  UTC render a day early in US timezones); Focused rows stay mounted while an
+  inline input has focus (editing confidence below 60 used to unmount the row
+  before blur, silently dropping the save); failed/network-dropped saves now
+  roll back to the last-known-server value instead of leaving phantom numbers
+  in the totals (and the New Deal modal can't wedge in "Creating…");
+  expanded CRM notes grow the row instead of painting over rows below;
+  grouped-Pipeline corner/divider styling and CRM first-click sort direction
+  (A→Z, blanks always last) corrected.
+
 ## 2026-07-07 — Form UX: reviewee name in the fill-modal header + field-settings follows the field
 
 Two form editing/filling niceties. No migration.

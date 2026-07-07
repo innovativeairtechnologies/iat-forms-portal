@@ -7,7 +7,7 @@ import {
   Search, CornerDownLeft, ArrowUp, ArrowDown,
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
-  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot,
+  FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
 } from 'lucide-react'
 import { hasPermission, type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -39,6 +39,7 @@ const STATIC: Item[] = [
   { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions', perm: 'submissions' },
   { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets', perm: 'tickets' },
   { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty', perm: 'equipment' },
+  { id: 'nav-deals',   label: 'Deals',            group: 'Go to', icon: DollarSign,      href: '/admin/deals', keywords: 'pipeline crm forecast sales opportunities', perm: 'deals' },
   // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
   // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series', perm: 'us_rotors' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },

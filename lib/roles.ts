@@ -48,7 +48,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
   admin: 'Full access to every section and setting.',
-  sales: 'Tickets, equipment, customers, and project timelines.',
+  sales: 'Tickets, equipment, customers, deal pipeline, and project timelines.',
   hr: 'People, forms, time off, scheduling, and accruals.',
   marketing: 'Presentations and content.',
   engineering: 'Submissions, tickets, equipment, and project timelines.',
@@ -77,12 +77,13 @@ export type Perm =
   | 'employees' // account management (create / delete / assign roles)
   | 'us_rotors'
   | 'jerry' // internal AI assistant page — granted to every admin-surface role
+  | 'deals' // sales deal pipeline ("Forecast Pulse") — sales gets read AND write, see docs
 
 // The matrix. `admin` implicitly gets everything (see hasPermission). Any perm
 // NOT listed for a scoped role — including 'dashboard', 'us_rotors' — is
 // admin-only, so those are fail-closed by omission.
 const ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
-  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry'],
+  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals'],
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry'],
   marketing: ['dashboard', 'presentations', 'jerry'],
   engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry'],
@@ -127,6 +128,7 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
   { perm: 'tickets', href: '/admin/tickets' },
   { perm: 'equipment', href: '/admin/equipment' },
   { perm: 'customers', href: '/admin/customers' },
+  { perm: 'deals', href: '/admin/deals' },
   { perm: 'gantt', href: '/admin/gantt' },
   { perm: 'org_chart', href: '/admin/org-chart' },
   { perm: 'forms', href: '/admin/forms' },
@@ -171,6 +173,7 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/troubleshooting', perm: 'tickets' },
   { prefix: '/admin/equipment', perm: 'equipment' },
   { prefix: '/admin/customers', perm: 'customers' },
+  { prefix: '/admin/deals', perm: 'deals' },
   { prefix: '/admin/gantt', perm: 'gantt' },
   { prefix: '/admin/org-chart', perm: 'org_chart' },
   { prefix: '/admin/forms', perm: 'forms' },

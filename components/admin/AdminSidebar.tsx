@@ -8,7 +8,7 @@ import {
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
   Calendar, Clock, Boxes, Building2,
   ChevronRight, ShieldCheck, Package, Network, FileText, FilePen, Presentation, CalendarRange,
-  Users, Bot,
+  Users, Bot, DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -65,6 +65,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting', hidden: true, perm: 'tickets' },
       { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes, perm: 'equipment' },
       { href: '/admin/customers',    label: 'Customers',   icon: Building2, perm: 'customers' },
+      { href: '/admin/deals',        label: 'Deals',       icon: DollarSign, perm: 'deals' },
       // Gantt / Project Timelines. Leadership flagged concerns (a simple Gantt
       // oversimplifies these projects' branching/conditional schedules), but it's
       // kept visible for now to demo. To pause later, add `hidden: true`.

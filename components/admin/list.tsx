@@ -92,6 +92,12 @@ export const TROUBLESHOOTING_STATUS: Record<string, { label: string; tone: Tone 
   closed:   { label: 'Closed',   tone: 'emerald' },
 }
 
+export const DEAL_STATUS: Record<string, { label: string; tone: Tone }> = {
+  Won:    { label: 'Won',    tone: 'emerald' },
+  Lost:   { label: 'Lost',   tone: 'rose' },
+  active: { label: 'Active', tone: 'sky' }, // synthetic key for null status — not a DB value
+}
+
 export const PRIORITY: Record<string, { label: string; dot: string }> = {
   low:      { label: 'Low',      dot: 'bg-sky-400' },
   med:      { label: 'Med',      dot: 'bg-amber-400' },

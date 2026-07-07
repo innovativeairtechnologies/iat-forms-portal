@@ -11,7 +11,7 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 | Role | Lands in | Sees |
 |------|----------|------|
 | `admin` | `/admin` (executive dashboard) | Everything |
-| `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Gantt, Jerry |
+| `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Deals, Gantt, Jerry |
 | `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, Employee Forms, PTO, Sick Time, Scheduling, Accrual, Jerry |
 | `marketing` | `/admin` (department dashboard) | Presentations, Jerry |
 | `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Jerry |
@@ -66,6 +66,14 @@ read-only pages so scoped roles can view their sections. Consequence: scoped
 roles can **see** their tabs but their write actions return 403 until each API is
 opened per-permission. That per-endpoint write-enablement is the planned next
 pass; it's an intentional v1 scope cut, not a bug.
+
+**First scoped write exception (2026-07-07): Deals.** The `deals` permission
+(sales pipeline, `/admin/deals`) is read **and write** for `sales` — the whole
+point of that tool is reps editing their own pipeline inline. Its API routes
+gate on `requireDealsAuth()` (`lib/api-auth.ts`), which accepts any role with
+the `deals` permission rather than the strict admin-only guard. It's a
+deliberately narrow, clearly-named exception — don't reuse it for other routes;
+add a similarly-scoped guard per feature as write-enablement rolls out.
 
 ## Department dashboards
 

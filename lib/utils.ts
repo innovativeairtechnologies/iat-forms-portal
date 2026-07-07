@@ -18,6 +18,12 @@ export function formatDateTime(dateStr: string) {
   })
 }
 
+export function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', maximumFractionDigits: 0,
+  }).format(amount)
+}
+
 export function slugify(text: string) {
   return text
     .toLowerCase()

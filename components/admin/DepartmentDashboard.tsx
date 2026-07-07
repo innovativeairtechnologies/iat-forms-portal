@@ -5,7 +5,7 @@ import { ADMIN_SECTIONS, hasPermission, ROLE_LABELS, ROLE_DESCRIPTIONS, type Sta
 import { Card, CardHead } from '@/components/admin/detail-ui'
 import {
   ArrowRight, Ticket, Boxes, Building2, Clock, Inbox,
-  Calendar, Users, FileText, Presentation, CalendarRange, ChevronRight,
+  Calendar, Users, FileText, Presentation, CalendarRange, ChevronRight, DollarSign,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ const TONE_DOT: Record<NonNullable<RecentRow['tone']>, string> = {
 }
 
 const SECTION_ICON: Partial<Record<string, LucideIcon>> = {
-  submissions: Inbox, tickets: Ticket, equipment: Boxes, customers: Building2, gantt: CalendarRange,
+  submissions: Inbox, tickets: Ticket, equipment: Boxes, customers: Building2, deals: DollarSign, gantt: CalendarRange,
   org_chart: Users, forms: FileText, employee_forms: FileText, pto: Calendar, sick: Clock,
   scheduling: Calendar, accrual: Clock, presentations: Presentation, employees: Users,
 }

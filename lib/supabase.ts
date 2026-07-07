@@ -326,6 +326,31 @@ export type KbChunk = {
   created_at: string
 }
 
+// A sales deal/opportunity (migration 043) — the "Forecast Pulse" pipeline
+// rebuilt from Monday.com. One flat record viewed through three admin lenses
+// (Pipeline / CRM / Focused, app/admin/deals). `weighted` is deliberately NOT
+// a column — it's always total_cost * (confidence / 100), computed client-side
+// (lib/deals.ts) so it can never drift out of sync. Service-role only; admin +
+// sales can both read and write (see lib/api-auth.ts requireDealsAuth).
+export type Deal = {
+  id: string
+  customer: string
+  assigned_to: string | null
+  date_quoted: string | null
+  status: 'Won' | 'Lost' | null // null = active/open
+  unit_model: string | null
+  job_name: string | null
+  total_cost: number
+  confidence: number // 0–100
+  projected: string | null
+  rep: string | null
+  rep_contact: string | null
+  notes: string | null
+  group_name: string
+  created_at: string
+  updated_at: string
+}
+
 export type USRotorsOrder = {
   id: string
   order_ref: string
