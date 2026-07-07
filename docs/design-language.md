@@ -1,5 +1,14 @@
 # Design language — calm first
 
+> **2026-07-07 — "Quiet Precision" supersedes ad-hoc styling.** The full design system
+> (semantic tokens, type scale, component recipes, dark-mode surface ladder, migration plan)
+> lives in `DESIGN.md` at the IAT-Portal workspace root, with the always-on rules mirrored in
+> the workspace `CLAUDE.md`. Phase 0 (token layer: CSS variables in `app/globals.css`,
+> semantic Tailwind colors `canvas/surface/hairline/ink/brand`, Inter via `next/font`,
+> indigo-override + green-theme dead code removed) shipped 2026-07-07. New/edited components
+> use the semantic tokens — raw `gray-*`/`zinc-*`/`slate-*` and hex literals are banned.
+> The principles below predate that doc and still hold; DESIGN.md is the token-level authority.
+
 The IAT Portal's visual baseline is **calm**. The layout, spacing, type scale,
 and the shared card/list kit are already restrained and should stay that way.
 The recurring failure mode is **decoration without meaning** — visual weight

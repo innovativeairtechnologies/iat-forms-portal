@@ -10,33 +10,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        navy: {
-          DEFAULT: '#1a1a2e',
-          light: '#22223f',
-          dark: '#0f0f1a',
+        // Quiet Precision semantic tokens (DESIGN.md §2) — values live in globals.css
+        // so they theme automatically. Components use these, never raw palettes.
+        canvas: 'var(--canvas)',
+        surface: {
+          DEFAULT: 'var(--surface)',
+          soft: 'var(--surface-soft)',
+          strong: 'var(--surface-strong)',
+        },
+        hairline: {
+          DEFAULT: 'var(--hairline)',
+          soft: 'var(--hairline-soft)',
+          strong: 'var(--hairline-strong)',
+        },
+        ink: {
+          DEFAULT: 'var(--ink)',
+          secondary: 'var(--ink-secondary)',
+          muted: 'var(--ink-muted)',
+          faint: 'var(--ink-faint)',
         },
         brand: {
-          DEFAULT: '#089447',
-          hover: '#077a3c',
-          light: '#f0faf4',
-        },
-        // Override Tailwind indigo with IAT green so all admin indigo-* classes cascade
-        indigo: {
-          50:  '#f0faf4',
-          100: '#dcf5e6',
-          200: '#b9ebce',
-          300: '#7dd9a8',
-          400: '#44c07d',
-          500: '#089447',
-          600: '#077a3c',
-          700: '#066832',
-          800: '#055229',
-          900: '#04401f',
-          950: '#022d12',
+          DEFAULT: 'var(--brand)',
+          hover: 'var(--brand-hover)',
+          soft: 'var(--brand-soft)',
+          ink: 'var(--brand-ink)',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '8px',

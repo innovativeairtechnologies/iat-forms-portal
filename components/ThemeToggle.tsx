@@ -3,13 +3,10 @@
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { Sun, Moon } from 'lucide-react'
-// import Image from 'next/image' // needed when IAT theme is re-enabled
 
 const OPTIONS = [
   { id: 'light', label: 'Light', icon: <Sun  size={13} /> },
   { id: 'dark',  label: 'Dark',  icon: <Moon size={13} /> },
-  // IAT green theme — commented out, re-enable with ThemeProvider + globals.css changes
-  // { id: 'green', label: 'IAT', icon: null },
 ] as const
 
 export default function ThemeToggle({ className }: { className?: string }) {
@@ -38,17 +35,6 @@ export default function ThemeToggle({ className }: { className?: string }) {
             }`}
           >
             {icon}
-            {/* IAT logo button — uncomment when green theme is re-enabled
-            {icon ?? (
-              <Image
-                src="/iat-logo.png"
-                alt="IAT"
-                width={13}
-                height={13}
-                style={{ mixBlendMode: theme === 'light' ? 'multiply' : 'normal' }}
-              />
-            )}
-            */}
           </button>
         )
       })}

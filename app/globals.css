@@ -1,6 +1,3 @@
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,11 +7,25 @@
      autofill) to the active theme. Without this, an OS in dark mode paints
      background-less form controls dark even on our light pages. */
   color-scheme: light;
-  --navy: #1a1a2e;
+
+  /* ── Quiet Precision tokens (DESIGN.md §2) — the only source of color truth ── */
+  --canvas: #f7f6f3;
+  --surface: #ffffff;
+  --surface-soft: #fbfaf8;
+  --surface-strong: #efede8;
+  --hairline: #e8e6e1;
+  --hairline-soft: #f0eee9;
+  --hairline-strong: #d6d3cc;
+  --ink: #1f1e1b;
+  --ink-secondary: #57544d;
+  --ink-muted: #8a867c;
+  --ink-faint: #b3afa5;
   --brand: #089447;
   --brand-hover: #077a3c;
-  --brand-light: #f0faf4;
-  --surface: #ffffff;
+  --brand-soft: #e9f6ee;
+  --brand-ink: #0b6b36;
+
+  /* Legacy vars (pre-token era) — retire during the Phase 2 page sweep */
   --bg: #f5f5f7;
   --border: rgba(0, 0, 0, 0.07);
   --text-primary: #0a0a0b;
@@ -24,7 +35,24 @@
 
 .dark {
   color-scheme: dark;
-  --surface: #18181b;
+
+  /* Dark = surface ladder (DESIGN.md §2.2); no shadows in dark mode */
+  --canvas: #0e0e0d;
+  --surface: #161614;
+  --surface-soft: #131312;
+  --surface-strong: #22221f;
+  --hairline: #2a2a27;
+  --hairline-soft: #232320;
+  --hairline-strong: #3a3934;
+  --ink: #f4f3f0;
+  --ink-secondary: #b5b2aa;
+  --ink-muted: #84817a;
+  --ink-faint: #57554f;
+  --brand: #1fb668;
+  --brand-hover: #2bc474;
+  --brand-soft: rgba(31, 182, 104, 0.12);
+  --brand-ink: #4ed292;
+
   --bg: #09090b;
   --border: rgba(255, 255, 255, 0.08);
   --text-primary: #f9fafb;
@@ -39,56 +67,6 @@
 .dark .hero-gradient {
   background: linear-gradient(135deg, #18181b 0%, #1c1c1f 40%, #121214 100%);
 }
-/*
-  ── IAT Green Theme (disabled) ────────────────────────────────────────────────
-  To re-enable:
-    1. Uncomment this entire block
-    2. Uncomment the 'green' entry in ThemeProvider.tsx
-    3. Uncomment the IAT option in ThemeToggle.tsx
-
-html.green .hero-gradient { background: linear-gradient(135deg, #0e2f1e 0%, #102d20 50%, #0c2318 100%); }
-html.green { color-scheme: dark; --bg: #06130e; --surface: #0c1f16; --border: rgba(8,148,71,0.15); --text-primary: #f9fafb; --text-secondary: #9ca3af; --text-muted: #6b7280; }
-html.green body, html.green .bg-\[\#F7F6F3\] { background-color: #06130e; }
-html.green .bg-white    { background-color: #0c1f16; }
-html.green .bg-gray-50  { background-color: #0e2419; }
-html.green .bg-gray-100 { background-color: #112a1e; }
-html.green .bg-\[\#f0faf4\] { background-color: rgba(8,148,71,0.15); }
-html.green .border-gray-100 { border-color: #1c3e2b; }
-html.green .border-gray-200 { border-color: #224934; }
-html.green .border-black\/\[0\.08\] { border-color: rgba(8,148,71,0.15); }
-html.green .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: #1a3826; }
-html.green .shadow-card { box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 2px 12px rgba(0,0,0,0.3); }
-html.green .hover\:bg-gray-50\/80:hover { background-color: rgba(8,148,71,0.07); }
-html.green .hover\:bg-gray-50:hover     { background-color: rgba(8,148,71,0.07); }
-html.green .hover\:bg-gray-100:hover    { background-color: rgba(8,148,71,0.12); }
-html.green .text-gray-900  { color: #f9fafb; }
-html.green .text-gray-800  { color: #f3f4f6; }
-html.green .text-gray-700  { color: #e5e7eb; }
-html.green .text-gray-600  { color: #d1d5db; }
-html.green .text-gray-500  { color: #9ca3af; }
-html.green .text-gray-400  { color: #6b7280; }
-html.green .text-gray-300  { color: #4b5563; }
-html.green .text-\[\#0a0a0b\] { color: #f9fafb; }
-html.green .placeholder\:text-gray-300::placeholder { color: #4b5563; }
-html.green .bg-blue-100    { background-color: rgba(59,130,246,0.15); }
-html.green .bg-violet-100  { background-color: rgba(139,92,246,0.15); }
-html.green .bg-rose-100    { background-color: rgba(244,63,94,0.15); }
-html.green .bg-amber-100   { background-color: rgba(251,191,36,0.15); }
-html.green .bg-emerald-100 { background-color: rgba(52,211,153,0.15); }
-html.green .bg-sky-100     { background-color: rgba(14,165,233,0.15); }
-html.green .bg-pink-100    { background-color: rgba(236,72,153,0.15); }
-html.green .bg-indigo-100  { background-color: rgba(8,148,71,0.15); }
-html.green .text-blue-600   { color: #60a5fa; }
-html.green .text-violet-600 { color: #a78bfa; }
-html.green .text-rose-600   { color: #fb7185; }
-html.green .text-amber-600  { color: #fbbf24; }
-html.green .text-amber-700  { color: #fbbf24; }
-html.green .text-emerald-600 { color: #34d399; }
-html.green .text-sky-600    { color: #38bdf8; }
-html.green .text-pink-600   { color: #f472b6; }
-html.green .text-indigo-600 { color: #4ade80; }
-  ────────────────────────────────────────────────────────────────────────────── */
-
 @layer base {
   * { box-sizing: border-box; }
 
@@ -106,11 +84,14 @@ html.green .text-indigo-600 { color: #4ade80; }
   }
 
   body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
     background: var(--bg);
     color: var(--text-primary);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+
+  /* Comparable numbers align (DESIGN.md §3.1) */
+  .tnum { font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'tnum'; font-variant-numeric: tabular-nums; }
 }
 
 @layer components {
