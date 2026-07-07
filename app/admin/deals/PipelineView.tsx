@@ -5,13 +5,13 @@ import { Search, ChevronsUpDown, ChevronUp, ChevronDown, Layers } from 'lucide-r
 import type { Deal } from '@/lib/supabase'
 import { computeWeighted, computeSummary } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
-import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, IdentityCell } from '@/components/admin/list'
 
 type Row = Deal & { weighted: number }
 type SortKey = 'customer' | 'group_name' | 'assigned_to' | 'total_cost' | 'confidence' | 'weighted' | 'projected' | 'status'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[1.7fr_84px_1.1fr_110px_84px_110px_100px_130px]'
+const COLS = 'grid-cols-[2fr_1.1fr_110px_84px_110px_100px_130px]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 
 function cmpStr(a: string | null, b: string | null) {
@@ -124,7 +124,6 @@ export default function PipelineView({
       <TableScroll minWidth={860}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <Th><button onClick={() => toggleSort('customer')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer" sortKey={sortKey} sortDir={sortDir} /></button></Th>
-          <Th><button onClick={() => toggleSort('group_name')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Group <SortIcon col="group_name" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('assigned_to')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Assigned <SortIcon col="assigned_to" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('total_cost')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Total Cost <SortIcon col="total_cost" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('confidence')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Conf. <SortIcon col="confidence" sortKey={sortKey} sortDir={sortDir} /></button></Th>
@@ -165,8 +164,7 @@ export default function PipelineView({
 function DealRow({ d, i, onStatusChange }: { d: Row; i: number; onStatusChange: (id: string, status: 'Won' | 'Lost' | null) => void }) {
   return (
     <div className={rowCx(COLS, { i })}>
-      <div className="min-w-0 font-semibold text-zinc-900 dark:text-zinc-100 truncate">{d.customer}</div>
-      <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{d.group_name}</div>
+      <IdentityCell title={d.customer} subtitle={d.group_name} />
       <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.assigned_to || '—'}</div>
       <div className="text-right tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(d.total_cost)}</div>
       <div className="text-right tabular-nums text-zinc-500 dark:text-zinc-400">{d.confidence}%</div>

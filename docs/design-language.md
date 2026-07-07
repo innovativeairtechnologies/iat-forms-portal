@@ -51,3 +51,50 @@ and prefer **subtracting** over adding.
 
 _History: the whole portal got a subtractive density pass on 2026-07-01; see the
 CHANGELOG entry of that date._
+
+## List views — one house style
+
+Every `/admin` list (Tickets, Submissions, Equipment, Customers, Employees,
+Deals, Forms, Employee Forms, PTO/Sick queues, Presentations, Gantt, Audit,
+Accrual, and the hidden Troubleshooting / US Rotors queues) uses one shared
+visual language so they read as a single system. The pattern is defined in
+`components/admin/list.tsx` — build new list pages from these primitives rather
+than hand-rolling a header or row.
+
+**The anatomy:**
+
+1. **`<ListPageHeader overline title count? actions? >`** — the white header band:
+   a small-caps overline (the section word, e.g. "Support", "People", "Sales"),
+   a bold 26px title, a light count/summary line, and right-aligned primary
+   actions. The page's tabs/filters go in its `children`, rendered inside the
+   same band so an underline tab's border meets the header's bottom edge.
+
+2. **`<IdentityCell icon|leading title subtitle? mono? >`** — the signature of
+   the whole system and the **first column of every row**: a bold primary line
+   stacked over a muted secondary line. `leading` takes an `<Avatar/>` (people /
+   customers), `icon` takes a lucide glyph in a subtle chip (objects), `mono`
+   makes the subtitle monospace (slugs, reference numbers). Fold a row's
+   secondary fields (IDs, a category, a rep) into the subtitle instead of
+   spending a whole column on them.
+
+3. **`tabCx(active)` / `tabCountCx(active)`** for underline tabs, **`filterPillCx(active)`**
+   for rounded status pills — the same tab/pill look everywhere, whether the
+   caller uses `<Link>` (query-param tabs) or `<button>` (client-state tabs).
+
+4. **Airier rows** — the shared `ROW` token is `min-h-[52px]` (grows if a cell
+   expands), giving the stacked identity room to breathe.
+
+**Simplify, don't cram.** A list row is identity + a few genuinely useful
+columns + real actions — never a spreadsheet of every field. When a column
+duplicates what's in the identity subtitle or only matters on the detail page,
+drop it. Copy (title, subtitle, counts) must say something real; no filler
+labels or dead buttons.
+
+The gold-standard references to match are `app/admin/customers/CustomersClient.tsx`
+(icon-chip identity, client-state tabs) and `app/admin/tickets/TicketsQueueClient.tsx`
+(avatar identity, folded columns). The **Forms** page (`app/admin/forms/page.tsx`)
+is the one that keeps category cards — that grouping is specific to forms having
+real categories; every other list is a flat table.
+
+_History: the whole-admin list-view standardization shipped 2026-07-07; see the
+CHANGELOG entry of that date._

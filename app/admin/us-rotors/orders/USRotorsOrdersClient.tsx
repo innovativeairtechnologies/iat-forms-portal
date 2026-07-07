@@ -2,8 +2,12 @@
 
 import { useState } from 'react'
 import type { USRotorsOrder } from '@/lib/supabase'
-import { Package, Search, ChevronDown } from 'lucide-react'
+import { Package, Search, X, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, timeAgo,
+  ListPageHeader, IdentityCell, tabCx, tabCountCx,
+} from '@/components/admin/list'
 
 const STATUSES = ['all', 'pending', 'processing', 'shipped', 'complete'] as const
 type StatusFilter = (typeof STATUSES)[number]
@@ -22,14 +26,7 @@ const STATUS_COLORS: Record<USRotorsOrder['status'], string> = {
   complete:   'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
 }
 
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 60) return `${m}m`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h`
-  return `${Math.floor(h / 24)}d`
-}
+const COLS = 'grid-cols-[1.8fr_120px_120px_72px_128px]'
 
 interface Props {
   orders: USRotorsOrder[]
@@ -74,94 +71,81 @@ export default function USRotorsOrdersClient({ orders }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Status tabs */}
-      <div className="flex items-center gap-1 border-b border-gray-100 dark:border-zinc-800">
-        {STATUSES.map(s => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={cn(
-              'px-4 py-2.5 text-[13px] font-medium capitalize border-b-2 -mb-px transition-colors',
-              filter === s
-                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
-            )}
-          >
-            {s === 'all' ? 'All' : STATUS_LABELS[s as USRotorsOrder['status']]}
-            {counts[s] > 0 && (
-              <span className={cn(
-                'ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full',
-                filter === s ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500',
-              )}>
-                {counts[s]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search orders…"
-          className="w-full text-[13px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-gray-300 dark:focus:border-zinc-700 transition-all"
-        />
-      </div>
-
-      {/* Table */}
-      {visible.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-zinc-800 flex items-center justify-center mb-3">
-            <Package size={18} className="text-gray-400" />
-          </div>
-          <p className="text-[14px] font-semibold text-gray-500 dark:text-gray-400">No orders found</p>
-          <p className="text-[12px] text-gray-300 dark:text-gray-600 mt-1">Orders submitted from the employee portal will appear here.</p>
+      {/* Page header */}
+      <ListPageHeader
+        overline="US Rotors"
+        title="Orders"
+        count={`${orders.length} C-Series ${orders.length === 1 ? 'order' : 'orders'} from the employee portal`}
+      >
+        {/* Status tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          {STATUSES.map(s => {
+            const active = filter === s
+            return (
+              <button key={s} onClick={() => setFilter(s)} className={tabCx(active)}>
+                {s === 'all' ? 'All' : STATUS_LABELS[s as USRotorsOrder['status']]}
+                <span className={tabCountCx(active)}>{counts[s]}</span>
+              </button>
+            )
+          })}
         </div>
-      ) : (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-          {/* Header row */}
-          <div className="grid grid-cols-[90px_1.2fr_1fr_80px_80px_110px_72px_110px] gap-0 px-4 py-2.5 border-b border-gray-50 dark:border-zinc-800">
-            {['Ref', 'Company / Contact', 'Model', 'Qty', 'Config', 'Voltage', 'Age', 'Status'].map(h => (
-              <span key={h} className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">{h}</span>
-            ))}
+      </ListPageHeader>
+
+      <div className="p-4 sm:p-8">
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
+            <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
+              className="pl-8 pr-8 h-9 text-[12.5px] w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all" />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400 transition-colors">
+                <X size={11} />
+              </button>
+            )}
           </div>
+        </div>
 
-          <ul className="divide-y divide-gray-50 dark:divide-zinc-800/60">
-            {visible.map(o => (
-              <li
-                key={o.id}
-                className="grid grid-cols-[90px_1.2fr_1fr_80px_80px_110px_72px_110px] gap-0 px-4 py-3 items-center hover:bg-gray-50/50 dark:hover:bg-zinc-800/20 transition-colors"
-              >
-                {/* Ref */}
-                <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400 truncate">{o.order_ref}</span>
+        {/* Floating header */}
+        <TableScroll minWidth={680}>
+        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+          <Th>Company</Th>
+          <Th>Config</Th>
+          <Th>Voltage</Th>
+          <Th>Age</Th>
+          <Th>Status</Th>
+        </div>
 
-                {/* Company / Contact */}
-                <div className="min-w-0 pr-3">
-                  <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{o.company}</p>
-                  <p className="text-[11px] text-gray-400 truncate">{o.contact_name} · {o.contact_email}</p>
-                </div>
-
-                {/* Model */}
-                <span className="text-[12px] text-gray-600 dark:text-gray-300 truncate pr-2">{o.model}</span>
-
-                {/* Qty */}
-                <span className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{o.quantity}</span>
-
+        {/* Body */}
+        <div className={BODY_BOX}>
+          {visible.length === 0 ? (
+            <div className="py-16 text-center">
+              <Package size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
+              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">
+                {search
+                  ? `No orders match "${search}"`
+                  : 'No orders yet. Orders submitted from the employee portal will appear here.'}
+              </p>
+            </div>
+          ) : (
+            visible.map((o, i) => (
+              <div key={o.id} className={rowCx(COLS, { i })}>
+                {/* Identity — company over ref · model ×qty */}
+                <IdentityCell
+                  icon={<Package size={13} />}
+                  title={o.company}
+                  subtitle={`${o.order_ref} · ${o.model} ×${o.quantity}`}
+                />
                 {/* Config */}
-                <span className="text-[12px] text-gray-500 dark:text-gray-400">{o.config}</span>
-
+                <div className="text-zinc-500 dark:text-zinc-400 truncate">{o.config}</div>
                 {/* Voltage */}
-                <span className="text-[12px] font-mono text-gray-500 dark:text-gray-400">{o.motor_voltage}</span>
-
+                <div className="font-mono text-zinc-500 dark:text-zinc-400 truncate">{o.motor_voltage}</div>
                 {/* Age */}
-                <span className="text-[12px] text-gray-400">{timeAgo(o.created_at)}</span>
-
-                {/* Status */}
+                <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(o.created_at)}</div>
+                {/* Status — inline change dropdown */}
                 <div className="relative">
                   <div className={cn(
                     'flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold cursor-pointer select-none',
@@ -182,11 +166,12 @@ export default function USRotorsOrdersClient({ orders }: Props) {
                     <ChevronDown size={11} />
                   </div>
                 </div>
-              </li>
-            ))}
-          </ul>
+              </div>
+            ))
+          )}
         </div>
-      )}
+        </TableScroll>
+      </div>
     </div>
   )
 }

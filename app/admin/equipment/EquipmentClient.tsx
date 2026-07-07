@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Wrench, Sparkles } from 'lucide-react'
+import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Equipment } from '@/lib/supabase'
-import { warrantyState, isExpiringSoon, daysUntilWarrantyEnd, pmState, nextPmDue } from '@/lib/equipment'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll } from '@/components/admin/list'
+import { warrantyState, isExpiringSoon, daysUntilWarrantyEnd, pmState } from '@/lib/equipment'
+import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll, ListPageHeader, IdentityCell, tabCx, tabCountCx } from '@/components/admin/list'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 
@@ -16,7 +16,7 @@ type Filter = 'all' | 'in' | 'expiring' | 'out' | 'pm_due' | 'unknown'
 
 const EMPTY = { serial_number: '', model_number: '', voltage: '', customer_company: '', customer_name: '', customer_email: '', ship_date: '' }
 
-const COLS = 'grid-cols-[34px_1.2fr_1fr_1.3fr_150px_132px_96px_28px]'
+const COLS = 'grid-cols-[34px_2fr_150px_132px_28px]'
 
 function WarrantyPill({ eq }: { eq: Equipment }) {
   const s = warrantyState(eq)
@@ -29,19 +29,6 @@ function WarrantyPill({ eq }: { eq: Equipment }) {
   }
   if (s === 'out') return <StatusPill tone="rose" icon={<ShieldAlert size={10} />}>Out of warranty</StatusPill>
   return <StatusPill tone="slate" icon={<ShieldQuestion size={10} />}>No date</StatusPill>
-}
-
-function PmCell({ eq }: { eq: EquipmentRow }) {
-  const s = pmState(eq, eq.last_service_at)
-  if (s === 'due')  return <StatusPill tone="rose" icon={<Wrench size={10} />}>PM due</StatusPill>
-  if (s === 'soon') return <StatusPill tone="amber" icon={<Wrench size={10} />}>PM soon</StatusPill>
-  if (s === 'ok')   return <span className="text-zinc-400 dark:text-zinc-500 tabular-nums text-[12px]">{fmtShip(nextPmDue(eq, eq.last_service_at))}</span>
-  return <span className="text-zinc-300 dark:text-zinc-600">—</span>
-}
-
-function fmtShip(d: string | null) {
-  if (!d) return '—'
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export default function EquipmentClient({ equipment }: { equipment: EquipmentRow[] }) {
@@ -97,14 +84,12 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
       {/* Header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Operations</p>
-            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Equipment</h1>
-            <p className="text-[13px] text-gray-400 mt-0.5">{equipment.length} {equipment.length === 1 ? 'unit' : 'units'} in the installed base</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      <ListPageHeader
+        overline="Operations"
+        title="Equipment"
+        count={`${equipment.length} ${equipment.length === 1 ? 'unit' : 'units'} in the installed base`}
+        actions={
+          <>
             <button onClick={() => setShowWizard(true)}
               className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
               <Sparkles size={15} />New from Submittal
@@ -113,29 +98,25 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
               <Plus size={15} />Add Unit
             </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-8">
+          </>
+        }
+      >
         {/* Filter tabs */}
-        <div className="flex items-center gap-6 mb-4 border-b border-zinc-200 dark:border-zinc-800 flex-wrap">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {([['all', 'All'], ['in', 'In warranty'], ['expiring', 'Expiring soon'], ['out', 'Out of warranty'], ['pm_due', 'PM due'], ['unknown', 'No date']] as [Filter, string][]).map(([f, label]) => {
             const count = equipment.filter(e => matchesTab(e, f)).length
             const active = filter === f
             return (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
-                  active ? 'font-semibold text-zinc-900 dark:text-white' : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
-                }`}>
+              <button key={f} onClick={() => setFilter(f)} className={tabCx(active)}>
                 {label}
-                <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>{count}</span>
-                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
+                <span className={tabCountCx(active)}>{count}</span>
               </button>
             )
           })}
         </div>
+      </ListPageHeader>
 
+      <div className="p-4 sm:p-8">
         {/* Search */}
         <div className="flex items-center gap-2.5 mb-4 flex-wrap">
           <div className="relative">
@@ -149,14 +130,11 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
         </div>
 
         {/* Floating header */}
-        <TableScroll minWidth={880}>
+        <TableScroll minWidth={680}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Serial</Th>
-          <Th>Model</Th>
-          <Th>Customer</Th>
           <Th>Warranty</Th>
-          <Th>PM</Th>
           <Th>State</Th>
           <Th />
         </div>
@@ -174,21 +152,20 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
                 className={`${rowCx(COLS, { i, selected: sel.has(eq.id) })} group ${eq.status === 'decommissioned' ? 'opacity-60' : ''}`}>
                 {/* Select */}
                 <SelectBox checked={sel.has(eq.id)} onChange={() => sel.toggle(eq.id)} />
-                {/* Serial */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                    <Boxes size={13} className="text-zinc-500 dark:text-zinc-400" />
-                  </span>
-                  <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{eq.serial_number}</span>
-                </div>
-                {/* Model */}
-                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{eq.model_number || '—'}</div>
-                {/* Customer */}
-                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{eq.customer_company || eq.customer_name || '—'}</div>
+                {/* Identity — serial over model · customer */}
+                {(() => {
+                  const company = eq.customer_company || eq.customer_name || ''
+                  const model = eq.model_number || ''
+                  return (
+                    <IdentityCell
+                      icon={<Boxes size={13} />}
+                      title={eq.serial_number}
+                      subtitle={model && company ? `${model} · ${company}` : model || company || undefined}
+                    />
+                  )
+                })()}
                 {/* Warranty */}
                 <div><WarrantyPill eq={eq} /></div>
-                {/* PM */}
-                <div><PmCell eq={eq} /></div>
                 {/* State */}
                 <div>
                   {eq.status === 'decommissioned'

@@ -7,6 +7,7 @@ import ExportButton from './ExportButton'
 import PullReportButton from './PullReportButton'
 import SubmissionsToolbar from './SubmissionsToolbar'
 import SubmissionsTable, { type SubmissionRow } from './SubmissionsTable'
+import { ListPageHeader } from '@/components/admin/list'
 import { Suspense } from 'react'
 
 interface SearchParams {
@@ -71,15 +72,12 @@ export default async function SubmissionsPage(props: { searchParams: Promise<Sea
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Page header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Inbox</p>
-            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">
-              {activeForm ? activeForm.title : 'All Submissions'}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 pt-1">
+      <ListPageHeader
+        overline="Inbox"
+        title="Submissions"
+        count={`${count} ${count === 1 ? 'submission' : 'submissions'}`}
+        actions={
+          <>
             {activeForm && <PullReportButton formId={activeForm.id} formTitle={activeForm.title} />}
             <ExportButton
               formId={searchParams.form_id}
@@ -87,21 +85,28 @@ export default async function SubmissionsPage(props: { searchParams: Promise<Sea
               search={searchParams.search}
               formTitle={activeForm?.title}
             />
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      >
+        <Suspense>
+          <SubmissionsToolbar
+            variant="header"
+            currentStatus={searchParams.status}
+            currentRead={searchParams.is_read}
+            counts={counts}
+          />
+        </Suspense>
+      </ListPageHeader>
 
       <div className="p-4 sm:p-8">
 
-        {/* Toolbar */}
+        {/* Toolbar — search + form filter */}
         <Suspense>
           <SubmissionsToolbar
-            currentStatus={searchParams.status}
+            variant="toolbar"
             currentSearch={searchParams.search}
-            currentRead={searchParams.is_read}
             currentForm={searchParams.form_id}
             forms={forms}
-            counts={counts}
           />
         </Suspense>
 

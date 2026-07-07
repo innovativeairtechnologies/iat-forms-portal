@@ -2,6 +2,31 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-07 — Admin list views: one shared "Forms-style" design language
+
+Every admin list now speaks the same visual language — the clean, professional
+look of the Forms page, applied portal-wide. New shared primitives in
+`components/admin/list.tsx` (documented in `docs/design-language.md`); no
+migration, presentation-only.
+
+- **New primitives**: `ListPageHeader` (small-caps overline + bold title + light
+  count + right-aligned actions, with tabs/filters in the header band),
+  `IdentityCell` (the signature bold-title-over-muted-subtitle row identity, with
+  `icon`/`leading`/`mono` slots), and shared `tabCx`/`tabCountCx`/`filterPillCx`
+  styles so underline tabs and status pills look identical everywhere. The
+  shared `ROW` is now airier (`min-h-[52px]`).
+- **Converted** (header + stacked identity + simplified columns): Tickets,
+  Submissions, Equipment, Customers, Employees, Deals (all three views),
+  Employee Forms, PTO/Sick queues, Presentations, Gantt, Audit/Logins, Accrual,
+  and the hidden Troubleshooting + US Rotors queues. Each row leads with a bold
+  primary line over a muted secondary line; redundant columns (IDs, a rep, a
+  category) fold into that subtitle, and low-value columns were dropped so each
+  list reads as identity + a few meaningful columns + real actions rather than a
+  spreadsheet. All behavior (sorting, bulk-select, filters, modals, links,
+  permissions) is unchanged.
+- Because `EmployeeFormsView` is shared, the employee-facing `/employee/resources`
+  list inherits the same look — consistent by design.
+
 ## 2026-07-07 — Jerry: IAT unit-nomenclature internal reference
 
 The **internal Jerry** (the standalone `/admin/jerry` page and the per-ticket

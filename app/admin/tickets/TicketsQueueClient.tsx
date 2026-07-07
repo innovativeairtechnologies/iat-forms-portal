@@ -10,6 +10,7 @@ import type { Ticket as TicketType } from '@/lib/supabase'
 import { updateTicket } from './actions'
 import {
   HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, TICKET_STATUS, PRIORITY, TableScroll,
+  ListPageHeader, IdentityCell, tabCx, tabCountCx,
 } from '@/components/admin/list'
 import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
@@ -28,7 +29,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'closed',      label: 'Closed'      },
 ]
 
-const COLS = 'grid-cols-[34px_104px_1.3fr_1.3fr_128px_96px_116px_72px_40px]'
+const COLS = 'grid-cols-[34px_2fr_1fr_120px_150px_76px_40px]'
 
 function matchesSearch(ticket: TicketRow, q: string): boolean {
   if (!q) return true
@@ -121,30 +122,28 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Page header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Support</p>
-        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Tickets</h1>
-      </div>
-
-      <div className="p-4 sm:p-8">
-
+      <ListPageHeader
+        overline="Support"
+        title="Tickets"
+        count={`${sorted.length} ${sorted.length === 1 ? 'ticket' : 'tickets'}`}
+      >
         {/* Status tabs */}
-        <div className="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-4">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {FILTERS.map(({ value, label }) => {
             const count = value === 'all' ? tickets.length : tickets.filter(t => t.status === value).length
             const active = filter === value
             return (
-              <button key={value} onClick={() => setFilter(value)}
-                className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
-                  active ? 'font-semibold text-zinc-900 dark:text-white' : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
-                }`}>
+              <button key={value} onClick={() => setFilter(value)} className={tabCx(active)}>
                 {label}
-                <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>{count}</span>
-                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
+                <span className={tabCountCx(active)}>{count}</span>
               </button>
             )
           })}
         </div>
+      </ListPageHeader>
+
+      <div className="p-4 sm:p-8">
+
 
         {/* Toolbar */}
         <div className="flex items-center gap-2.5 mb-4 flex-wrap">
@@ -158,9 +157,6 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
               </button>
             )}
           </div>
-          <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {sorted.length} {sorted.length === 1 ? 'ticket' : 'tickets'}
-          </span>
         </div>
 
         {/* Floating header */}
@@ -170,9 +166,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
             <input type="checkbox" checked={allSelected} onChange={toggleAll}
               className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
           </div>
-          <Th>ID</Th>
           <Th><button onClick={() => toggleSort('customer_name')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer_name" /></button></Th>
-          <Th>Equipment</Th>
           <Th>Assignee</Th>
           <Th><button onClick={() => toggleSort('priority')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Priority <SortIcon col="priority" /></button></Th>
           <Th><button onClick={() => toggleSort('status')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Status <SortIcon col="status" /></button></Th>
@@ -202,28 +196,12 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
                     <input type="checkbox" checked={isSel} onChange={() => toggle(ticket.id)}
                       className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
                   </div>
-                  {/* ID */}
-                  <div className="font-mono text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 truncate">{ticket.ticket_number}</div>
-                  {/* Customer */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar name={ticket.customer_name} />
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      {ticket.customer_name}
-                    </span>
-                  </div>
-                  {/* Equipment */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-zinc-600 dark:text-zinc-300 truncate">
-                      {ticket.model_number}<span className="text-zinc-400 dark:text-zinc-500"> · S/N {ticket.serial_number}</span>
-                    </span>
-                    {(() => {
-                      const w = warrantyBySerial[ticket.serial_number]
-                      if (w === 'in')       return <StatusPill tone="emerald" icon={<ShieldCheck size={9} />}>In</StatusPill>
-                      if (w === 'expiring') return <StatusPill tone="amber" icon={<ShieldAlert size={9} />}>Exp</StatusPill>
-                      if (w === 'out')      return <StatusPill tone="rose" icon={<ShieldAlert size={9} />}>Out</StatusPill>
-                      return null
-                    })()}
-                  </div>
+                  {/* Identity — customer over ticket # · model */}
+                  <IdentityCell
+                    leading={<Avatar name={ticket.customer_name} />}
+                    title={ticket.customer_name}
+                    subtitle={`${ticket.ticket_number} · ${ticket.model_number}`}
+                  />
                   {/* Assignee */}
                   <div className="flex items-center gap-2 min-w-0">
                     {ticket.owner ? (
@@ -240,8 +218,17 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${prio.dot}`} />
                     {prio.label}
                   </div>
-                  {/* Status */}
-                  <div><StatusPill tone={st.tone}>{st.label}</StatusPill></div>
+                  {/* Status + warranty signal */}
+                  <div className="flex items-center gap-1.5">
+                    <StatusPill tone={st.tone}>{st.label}</StatusPill>
+                    {(() => {
+                      const w = warrantyBySerial[ticket.serial_number]
+                      if (w === 'in')       return <StatusPill tone="emerald" icon={<ShieldCheck size={9} />}>In</StatusPill>
+                      if (w === 'expiring') return <StatusPill tone="amber" icon={<ShieldAlert size={9} />}>Exp</StatusPill>
+                      if (w === 'out')      return <StatusPill tone="rose" icon={<ShieldAlert size={9} />}>Out</StatusPill>
+                      return null
+                    })()}
+                  </div>
                   {/* Created */}
                   <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(ticket.created_at)}</div>
                   {/* Kebab */}

@@ -6,11 +6,11 @@ import { UserPlus, X, Search, Shield, User, ChevronRight, Eye, EyeOff, Copy, Che
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 import Link from 'next/link'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th, TableScroll } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th, TableScroll, ListPageHeader, IdentityCell, tabCx, tabCountCx } from '@/components/admin/list'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
-const COLS = 'grid-cols-[34px_1.5fr_1.5fr_1.2fr_104px_70px_70px_28px]'
+const COLS = 'grid-cols-[34px_2fr_1.5fr_104px_70px_70px_28px]'
 
 const EMPTY_FORM = { name: '', email: '', job_title: '', department: '', role: 'production' as StaffRole, temp_password: '' }
 
@@ -116,45 +116,35 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">People</p>
-            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Employees</h1>
-            <p className="text-[13px] text-gray-400 mt-0.5">{employees.length} {employees.length === 1 ? 'employee' : 'employees'}</p>
-          </div>
-          <button onClick={openModal}
-            className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
-            <UserPlus size={15} />Add Employee
+      <ListPageHeader
+        overline="People"
+        title="Employees"
+        count={`${employees.length} ${employees.length === 1 ? 'employee' : 'employees'}`}
+        actions={
+          <button
+            onClick={openModal}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm"
+          >
+            <UserPlus size={15} />
+            Add Employee
           </button>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-8">
-
-        {/* Tabs — underline style */}
-        <div className="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-4">
+        }
+      >
+        {/* Status tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {TABS.map(({ value, label }) => {
             const active = tab === value
             return (
-              <button
-                key={value}
-                onClick={() => setTab(value)}
-                className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
-                  active
-                    ? 'font-semibold text-zinc-900 dark:text-white'
-                    : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
-                }`}
-              >
+              <button key={value} onClick={() => setTab(value)} className={tabCx(active)}>
                 {label}
-                <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>
-                  {tabCount(value)}
-                </span>
-                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
+                <span className={tabCountCx(active)}>{tabCount(value)}</span>
               </button>
             )
           })}
         </div>
+      </ListPageHeader>
+
+      <div className="p-4 sm:p-8">
 
         {/* Toolbar row */}
         <div className="flex items-center gap-2.5 mb-4 flex-wrap">
@@ -182,11 +172,10 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
         </div>
 
         {/* Floating header */}
-        <TableScroll minWidth={820}>
+        <TableScroll minWidth={720}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Employee</Th>
-          <Th>Email</Th>
           <Th>Role / Dept</Th>
           <Th>Status</Th>
           <Th align="right">PTO</Th>
@@ -207,27 +196,22 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
                 className={`${rowCx(COLS, { i, selected: sel.has(emp.id) })} group ${emp.is_active === false ? 'opacity-60' : ''}`}>
                 {/* Select */}
                 <SelectBox checked={sel.has(emp.id)} onChange={() => sel.toggle(emp.id)} />
-                {/* Employee */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Avatar name={emp.name} />
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    {emp.name || '—'}
-                  </span>
-                  {emp.role === 'admin' ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-md border border-violet-300/60 bg-violet-50 text-violet-600 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-400 flex-shrink-0">
-                      <Shield size={9} />Admin
-                    </span>
-                  ) : emp.role && emp.role !== 'production' ? (
-                    <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-1.5 py-[2px] rounded-md border border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 flex-shrink-0">
-                      {ROLE_LABELS[emp.role]}
-                    </span>
-                  ) : null}
-                </div>
-                {/* Email */}
-                <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{emp.email}</div>
+                {/* Identity — name over job title / email */}
+                <IdentityCell
+                  leading={<Avatar name={emp.name} />}
+                  title={emp.name || '—'}
+                  subtitle={emp.job_title || emp.email}
+                />
                 {/* Role / Dept */}
-                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">
-                  {emp.job_title || '—'}{emp.department ? <span className="text-zinc-400 dark:text-zinc-500"> · {emp.department}</span> : ''}
+                <div className="min-w-0 truncate text-zinc-600 dark:text-zinc-300">
+                  {emp.role === 'admin' ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-violet-600 dark:text-violet-400">
+                      <Shield size={11} />Admin
+                    </span>
+                  ) : (
+                    emp.role ? ROLE_LABELS[emp.role] : '—'
+                  )}
+                  {emp.department ? <span className="text-zinc-400 dark:text-zinc-500"> · {emp.department}</span> : ''}
                 </div>
                 {/* Status */}
                 <div>

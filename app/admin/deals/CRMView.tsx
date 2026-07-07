@@ -4,12 +4,12 @@ import { useMemo, useState } from 'react'
 import { Search, ChevronsUpDown, ChevronUp, ChevronDown, MessageSquareText } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
 import { hasRecentActivity } from '@/lib/deals'
-import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, StatusPill, DEAL_STATUS } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, StatusPill, DEAL_STATUS, IdentityCell } from '@/components/admin/list'
 
 type SortKey = 'customer' | 'job_name' | 'unit_model' | 'rep' | 'rep_contact' | 'date_quoted' | 'status'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[1.3fr_1fr_1fr_0.9fr_1fr_100px_90px_1.7fr]'
+const COLS = 'grid-cols-[1.6fr_1fr_0.9fr_1fr_100px_90px_1.7fr]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 
 // date_quoted is a bare Postgres `date` ('YYYY-MM-DD'). The shared formatDate
@@ -93,7 +93,6 @@ export default function CRMView({ deals }: { deals: Deal[] }) {
       <TableScroll minWidth={900}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <Th><button onClick={() => toggleSort('customer')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer" sortKey={sortKey} sortDir={sortDir} /></button></Th>
-          <Th><button onClick={() => toggleSort('job_name')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Job Name <SortIcon col="job_name" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('unit_model')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Unit Model <SortIcon col="unit_model" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('rep')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Rep <SortIcon col="rep" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('rep_contact')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Rep Contact <SortIcon col="rep_contact" sortKey={sortKey} sortDir={sortDir} /></button></Th>
@@ -118,12 +117,12 @@ export default function CRMView({ deals }: { deals: Deal[] }) {
                 // Expanded notes need the row to grow — the shared ROW token
                 // hard-codes h-[44px] and nothing clips overflow, so without
                 // the override a wrapped note paints over the rows below it.
-                <div key={d.id} className={`${rowCx(COLS, { i })} ${isExpanded ? '!h-auto min-h-[44px] py-2.5' : ''}`}>
-                  <div className="min-w-0 flex items-center gap-1.5">
-                    {flagged && <MessageSquareText size={12} className="text-emerald-500 flex-shrink-0" aria-label="Recent activity" />}
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{d.customer}</span>
-                  </div>
-                  <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.job_name || '—'}</div>
+                <div key={d.id} className={`${rowCx(COLS, { i })} ${isExpanded ? 'py-2.5' : ''}`}>
+                  <IdentityCell
+                    leading={flagged ? <MessageSquareText size={13} className="text-emerald-500 flex-shrink-0" aria-label="Recent activity" /> : undefined}
+                    title={d.customer}
+                    subtitle={d.job_name || undefined}
+                  />
                   <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.unit_model || '—'}</div>
                   <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.rep || '—'}</div>
                   <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{d.rep_contact || '—'}</div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Building2, Search, Plus, ChevronRight, Boxes } from 'lucide-react'
 import type { Customer } from '@/lib/supabase'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll, ListPageHeader, IdentityCell, tabCx, tabCountCx } from '@/components/admin/list'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 import CustomerRequestsQueue, { type CustomerPortalRequestRow } from './CustomerRequestsQueue'
@@ -14,7 +14,7 @@ import WarrantyRequestsQueue, { type WarrantyRequestRow } from './WarrantyReques
 type CustomerRow = Customer & { unit_count: number }
 type Filter = 'all' | 'active' | 'inactive' | 'requests' | 'warranty'
 
-const COLS = 'grid-cols-[34px_1.5fr_1.5fr_1fr_84px_104px_28px]'
+const COLS = 'grid-cols-[34px_2fr_1fr_84px_104px_28px]'
 
 export default function CustomersClient({
   customers,
@@ -55,15 +55,11 @@ export default function CustomersClient({
   return (
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
       {/* Header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="flex items-start justify-between flex-wrap gap-3">
-          <div>
-            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Operations</p>
-            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Customers</h1>
-            <p className="text-[13px] text-gray-400 mt-0.5">
-              {customers.length} {customers.length === 1 ? 'account' : 'accounts'} with portal access
-            </p>
-          </div>
+      <ListPageHeader
+        overline="Operations"
+        title="Customers"
+        count={`${customers.length} ${customers.length === 1 ? 'account' : 'accounts'} with portal access`}
+        actions={
           <button
             onClick={() => setShowWizard(true)}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm"
@@ -71,12 +67,10 @@ export default function CustomersClient({
             <Plus size={15} />
             New Customer
           </button>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-8">
+        }
+      >
         {/* Filter tabs */}
-        <div className="flex items-center gap-6 mb-4 border-b border-zinc-200 dark:border-zinc-800 flex-wrap">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {(
             [
               ['all', 'All'],
@@ -90,24 +84,16 @@ export default function CustomersClient({
               f === 'requests' ? pendingRequestCount : f === 'warranty' ? pendingWarrantyCount : customers.filter((c) => matchesTab(c, f)).length
             const active = filter === f
             return (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
-                  active
-                    ? 'font-semibold text-zinc-900 dark:text-white'
-                    : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
-                }`}
-              >
+              <button key={f} onClick={() => setFilter(f)} className={tabCx(active)}>
                 {label}
-                <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>
-                  {count}
-                </span>
-                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
+                <span className={tabCountCx(active)}>{count}</span>
               </button>
             )
           })}
         </div>
+      </ListPageHeader>
+
+      <div className="p-4 sm:p-8">
 
         {filter === 'requests' ? (
           <CustomerRequestsQueue requests={requests} />
@@ -136,7 +122,6 @@ export default function CustomersClient({
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(c => c.id), !allSelected)} />
           <Th>Company</Th>
-          <Th>Contact</Th>
           <Th>Location</Th>
           <Th>Units</Th>
           <Th>Status</Th>
@@ -163,22 +148,16 @@ export default function CustomersClient({
               >
                 {/* Select */}
                 <SelectBox checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} />
-                {/* Company */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                    <Building2 size={13} className="text-zinc-500 dark:text-zinc-400" />
-                  </span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    {c.company_name}
-                  </span>
-                </div>
-                {/* Contact */}
-                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">
-                  {c.primary_contact_name || c.contact_email || '—'}
-                  {c.primary_contact_name && c.contact_email && (
-                    <span className="text-zinc-400 dark:text-zinc-500"> · {c.contact_email}</span>
-                  )}
-                </div>
+                {/* Identity — company over contact */}
+                <IdentityCell
+                  icon={<Building2 size={13} />}
+                  title={c.company_name}
+                  subtitle={
+                    c.primary_contact_name && c.contact_email
+                      ? `${c.primary_contact_name} · ${c.contact_email}`
+                      : c.primary_contact_name || c.contact_email || undefined
+                  }
+                />
                 {/* Location */}
                 <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{c.location || '—'}</div>
                 {/* Units */}

@@ -1,26 +1,31 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Calendar, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import type { TimeOffRequest, Employee } from '@/lib/supabase'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
+import {
+  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th, TableScroll,
+  ListPageHeader, IdentityCell, tabCx, tabCountCx, type Tone,
+} from '@/components/admin/list'
 
 type RequestWithEmployee = TimeOffRequest & { employees: Employee }
+type Filter = 'all' | 'pending' | 'approved' | 'denied'
 
-const STATUS_STYLES = {
-  pending:  { icon: AlertCircle,  cls: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',  label: 'Pending'  },
-  approved: { icon: CheckCircle2, cls: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800',  label: 'Approved' },
-  denied:   { icon: XCircle,      cls: 'bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400 border-red-200 dark:border-red-800',              label: 'Denied'   },
+const STATUS_TONE: Record<string, { label: string; tone: Tone }> = {
+  pending:  { label: 'Pending',  tone: 'amber'   },
+  approved: { label: 'Approved', tone: 'emerald' },
+  denied:   { label: 'Denied',   tone: 'rose'    },
 }
 
+// Date-only strings ("2026-07-07") — pin to local midnight so they never shift a day.
 function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-type Filter = 'all' | 'pending' | 'approved' | 'denied'
+const COLS = 'grid-cols-[34px_2fr_92px_132px_104px_236px]'
 
 export default function RequestsQueueClient({
   requests,
@@ -63,148 +68,118 @@ export default function RequestsQueueClient({
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
-      {/* Header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
-        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">{title}</h1>
-        <p className="text-[13px] text-gray-400 mt-0.5">
-          {pendingCount > 0 ? `${pendingCount} pending review` : 'All caught up'}
-        </p>
-      </div>
+      {/* Page header */}
+      <ListPageHeader
+        overline="Time Off"
+        title={title}
+        count={pendingCount > 0 ? `${pendingCount} pending review` : 'All caught up'}
+      >
+        {/* Status tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          {(['pending', 'approved', 'denied', 'all'] as Filter[]).map(f => {
+            const count = f === 'all' ? requests.length : requests.filter(r => r.status === f).length
+            const active = filter === f
+            return (
+              <button key={f} onClick={() => setFilter(f)} className={`${tabCx(active)} capitalize`}>
+                {f}
+                <span className={tabCountCx(active)}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      </ListPageHeader>
 
       <div className="p-4 sm:p-8">
 
-      {/* Filter tabs */}
-      <div className="flex items-center gap-1 mb-5 border-b border-gray-100 dark:border-zinc-800">
-        {(['pending', 'approved', 'denied', 'all'] as Filter[]).map(f => {
-          const count = f === 'all' ? requests.length : requests.filter(r => r.status === f).length
-          return (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-4 py-2.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-all capitalize ${
-                filter === f ? 'border-[#089447] text-[#089447]' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
-              }`}>
-              {f} <span className={`text-[11px] tabular-nums ${filter === f ? 'text-gray-500' : 'text-gray-300'}`}>{count}</span>
-            </button>
-          )
-        })}
-        {filtered.length > 0 && (
-          <label className="ml-auto flex items-center gap-2 pb-2.5 text-[12px] text-gray-400 dark:text-gray-500 cursor-pointer select-none">
-            <input type="checkbox" checked={allSelected}
-              onChange={() => sel.setAll(filtered.map(r => r.id), !allSelected)}
-              className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
-            Select all
-          </label>
+        {actionError && (
+          <div className="mb-4 text-[13px] text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-xl px-4 py-3">{actionError}</div>
         )}
-      </div>
 
-      {actionError && (
-        <div className="mb-4 text-[13px] text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{actionError}</div>
-      )}
-
-      {filtered.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-12 text-center">
-          <Calendar size={32} className="text-gray-200 dark:text-gray-700 mx-auto mb-3" />
-          <p className="text-[14px] text-gray-400">No {filter !== 'all' ? filter : ''} requests.</p>
+        {/* Floating header */}
+        <TableScroll minWidth={900}>
+        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+          <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(r => r.id), !allSelected)} />
+          <Th>Employee</Th>
+          <Th>Type</Th>
+          <Th>Balance</Th>
+          <Th>Status</Th>
+          <Th />
         </div>
-      ) : (
-        <div className="space-y-3">
-          <AnimatePresence initial={false}>
-            {filtered.map(req => {
-              const s = STATUS_STYLES[req.status]
-              const StatusIcon = s.icon
+
+        {/* Body */}
+        <div className={BODY_BOX}>
+          {filtered.length === 0 ? (
+            <div className="py-16 text-center">
+              <Calendar size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
+              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">No {filter !== 'all' ? filter : ''} requests.</p>
+            </div>
+          ) : (
+            filtered.map((req, i) => {
+              const st = STATUS_TONE[req.status] ?? STATUS_TONE.pending
               const employee = req.employees
+              const name = employee?.name || employee?.email || 'Unknown'
               const balance = req.type === 'pto' ? employee?.pto_balance : employee?.sick_balance
               const insufficient = (balance ?? Infinity) < req.hours_requested
+              const overWarn = insufficient && req.status === 'pending'
+              const range = req.start_date === req.end_date
+                ? formatDate(req.start_date)
+                : `${formatDate(req.start_date)}–${formatDate(req.end_date)}`
 
               return (
-                <motion.div key={req.id}
-                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
-                  className={`bg-white dark:bg-zinc-900 rounded-2xl border p-5 transition-all ${insufficient && req.status === 'pending' ? 'border-amber-200 dark:border-amber-800' : 'border-gray-100 dark:border-zinc-800'}`}>
-
-                  {/* Top row */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <SelectBox checked={sel.has(req.id)} onChange={() => sel.toggle(req.id)} />
-                      {/* Employee avatar */}
-                      <div className="w-9 h-9 rounded-full bg-gray-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
-                        {employee?.name.trim().split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
-                      </div>
-                      <div>
-                        <p className="text-[14px] font-semibold text-gray-800 dark:text-white">{employee?.name || employee?.email}</p>
-                        <p className="text-[12px] text-gray-400">{employee?.job_title || 'Employee'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${s.cls}`}>
-                        <StatusIcon size={11} />{s.label}
-                      </span>
-                      <DeleteRecordButton
-                        endpoint={`/api/requests/${req.id}`}
-                        entityLabel="request"
-                        compact
-                      />
-                    </div>
+                <div key={req.id} className={rowCx(COLS, { i, selected: sel.has(req.id) })} title={req.notes || undefined}>
+                  {/* Select */}
+                  <SelectBox checked={sel.has(req.id)} onChange={() => sel.toggle(req.id)} />
+                  {/* Identity — employee over date range · hours */}
+                  <IdentityCell
+                    leading={<Avatar name={name} />}
+                    title={name}
+                    subtitle={`${range} · ${req.hours_requested}h`}
+                  />
+                  {/* Type */}
+                  <div className="flex items-center gap-1.5 text-[12px] text-zinc-600 dark:text-zinc-300">
+                    {req.type === 'pto'
+                      ? <Calendar size={13} className="text-sky-500" />
+                      : <Clock size={13} className="text-amber-500" />}
+                    {req.type === 'pto' ? 'PTO' : 'Sick'}
                   </div>
-
-                  {/* Details */}
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Type</p>
-                      <div className="flex items-center gap-1.5">
-                        {req.type === 'pto' ? <Calendar size={13} className="text-blue-500" /> : <Clock size={13} className="text-amber-500" />}
-                        <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{req.type === 'pto' ? 'PTO' : 'Sick Time'}</p>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Hours</p>
-                      <p className={`text-[13px] font-semibold ${insufficient ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                        {req.hours_requested} hrs
-                        {insufficient && <span className="text-[10px] ml-1">(⚠️ over)</span>}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Balance</p>
-                      <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{balance ?? '—'} hrs</p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Dates</p>
-                      <p className="text-[12px] font-medium text-gray-700 dark:text-gray-200">{formatDate(req.start_date)}</p>
-                      <p className="text-[11px] text-gray-400 dark:text-gray-500">→ {formatDate(req.end_date)}</p>
-                    </div>
+                  {/* Balance */}
+                  <div className={`text-[12px] tabular-nums ${overWarn ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                    {balance ?? '—'} hrs
+                    {overWarn && <span className="text-[10px] ml-1">(over)</span>}
                   </div>
-
-                  {req.notes && (
-                    <p className="mt-3 text-[13px] text-gray-400 bg-gray-50 dark:bg-zinc-800 rounded-xl px-4 py-2.5 italic">&ldquo;{req.notes}&rdquo;</p>
-                  )}
-
+                  {/* Status */}
+                  <div><StatusPill tone={st.tone}>{st.label}</StatusPill></div>
                   {/* Actions */}
-                  {req.status === 'pending' && (
-                    <div className="flex items-center gap-2 mt-4">
-                      <button
-                        onClick={() => review(req.id, 'approved')}
-                        disabled={!!actionLoading}
-                        className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-50 shadow-sm">
-                        <CheckCircle2 size={14} />
-                        {actionLoading === req.id + 'approved' ? 'Approving…' : 'Approve'}
-                      </button>
-                      <button
-                        onClick={() => review(req.id, 'denied')}
-                        disabled={!!actionLoading}
-                        className="flex items-center gap-2 bg-white hover:bg-red-50 text-red-500 border border-red-200 text-[13px] font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-50">
-                        <XCircle size={14} />
-                        {actionLoading === req.id + 'denied' ? 'Denying…' : 'Deny'}
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
+                  <div className="flex items-center justify-end gap-1.5">
+                    {req.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => review(req.id, 'approved')}
+                          disabled={!!actionLoading}
+                          className="flex items-center gap-1.5 bg-[#089447] hover:bg-[#077a3c] text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 shadow-sm">
+                          <CheckCircle2 size={13} />
+                          {actionLoading === req.id + 'approved' ? 'Approving…' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => review(req.id, 'denied')}
+                          disabled={!!actionLoading}
+                          className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-500 border border-red-200 dark:border-red-900/50 text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50">
+                          <XCircle size={13} />
+                          {actionLoading === req.id + 'denied' ? 'Denying…' : 'Deny'}
+                        </button>
+                      </>
+                    )}
+                    <DeleteRecordButton endpoint={`/api/requests/${req.id}`} entityLabel="request" compact />
+                  </div>
+                </div>
               )
-            })}
-          </AnimatePresence>
+            })
+          )}
         </div>
-      )}
-      </div>{/* p-8 */}
+        </TableScroll>
+      </div>
 
       <BulkBar count={sel.count} onClear={sel.clear}>
         <BulkDeleteButton entity="time_off" ids={sel.ids} onDone={sel.clear} />

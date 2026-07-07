@@ -2,10 +2,29 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Play, CheckCircle2, AlertCircle, Calendar, Clock, TrendingUp, AlertTriangle, X, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee, AccrualLog, AccrualTier, AccrualConfig } from '@/lib/supabase'
 import type { AccrualRunResult } from '@/lib/accrual'
+import {
+  HEADER_BOX, BODY_BOX, rowCx, Avatar, Th, TableScroll, ListPageHeader, IdentityCell,
+} from '@/components/admin/list'
+
+const EMP_COLS = 'grid-cols-[2fr_120px_130px_120px_130px]'
+
+// Tenure derived from hire_date (the accrual tier is a tenure band), with the
+// job title appended when both are known — falls back to whichever exists.
+function tenureText(emp: Employee): string | undefined {
+  if (emp.hire_date) {
+    const yrs = Math.floor((Date.now() - new Date(emp.hire_date).getTime()) / (365.25 * 24 * 3600 * 1000))
+    const tenure = yrs >= 1
+      ? `${yrs} yr${yrs === 1 ? '' : 's'}`
+      : `${Math.max(0, Math.floor((Date.now() - new Date(emp.hire_date).getTime()) / (30.44 * 24 * 3600 * 1000)))} mo`
+    return emp.job_title ? `${tenure} · ${emp.job_title}` : tenure
+  }
+  return emp.job_title || undefined
+}
 
 type AccrualLogWithEmployee = AccrualLog & { employees: Pick<Employee, 'name' | 'email'> }
 
@@ -57,14 +76,14 @@ export default function AccrualClient({
   const nextRun = nextMonday()
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">HR</p>
-        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Accrual</h1>
-        <p className="text-[13px] text-gray-400 mt-0.5">Weekly PTO &amp; sick time accrual — runs every Monday at 8 AM</p>
-      </div>
+      <ListPageHeader
+        overline="Time Off"
+        title="Accrual"
+        count="Weekly PTO & sick time accrual — runs every Monday at 8 AM"
+      />
 
       <div className="p-4 sm:p-8 space-y-6">
 
@@ -223,52 +242,55 @@ export default function AccrualClient({
           </div>
         )}
 
-        {/* Employee rates table */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
+        {/* Employee rates list */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
             <TrendingUp size={15} className="text-gray-400" />
             <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Employee Accrual Rates</h2>
             <span className="ml-auto text-[11px] text-gray-400">Rates update automatically on anniversary</span>
           </div>
-          {employees.length === 0 ? (
-            <p className="text-[13px] text-gray-400 p-6">No employees yet.</p>
-          ) : (
-            <table className="w-full text-[12px]">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
-                  <th className="text-left px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Employee</th>
-                  <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Balance</th>
-                  <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Rate / wk</th>
-                  <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sick Balance</th>
-                  <th className="text-right px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sick Rate / wk</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
-                {employees.map(emp => (
-                  <tr key={emp.id} className="group">
-                    <td className="px-6 py-3">
-                      <a href={`/admin/employees/${emp.id}`} className="font-medium text-gray-800 dark:text-gray-200 hover:text-[#089447] transition-colors">
-                        {emp.name || emp.email}
-                      </a>
-                      {emp.job_title && <p className="text-[11px] text-gray-400">{emp.job_title}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">{emp.pto_balance} hrs</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`font-semibold ${emp.pto_accrual_rate > 0 ? 'text-[#089447]' : 'text-gray-300 dark:text-gray-600'}`}>
-                        {emp.pto_accrual_rate > 0 ? `+${emp.pto_accrual_rate} hrs` : '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-700 dark:text-gray-300">{emp.sick_balance} hrs</td>
-                    <td className="px-6 py-3 text-right">
-                      <span className={`font-semibold ${emp.sick_accrual_rate > 0 ? 'text-amber-600' : 'text-gray-300 dark:text-gray-600'}`}>
-                        {emp.sick_accrual_rate > 0 ? `+${emp.sick_accrual_rate} hrs` : '—'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+
+          <TableScroll minWidth={760}>
+            <div className={`grid ${EMP_COLS} ${HEADER_BOX}`}>
+              <Th>Employee</Th>
+              <Th align="right">PTO Balance</Th>
+              <Th align="right">PTO Rate / wk</Th>
+              <Th align="right">Sick Balance</Th>
+              <Th align="right">Sick Rate / wk</Th>
+            </div>
+
+            <div className={BODY_BOX}>
+              {employees.length === 0 ? (
+                <div className="py-16 text-center">
+                  <TrendingUp size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
+                  <p className="text-[13px] text-zinc-400 dark:text-zinc-500">No employees yet.</p>
+                </div>
+              ) : (
+                employees.map((emp, i) => (
+                  <Link key={emp.id} href={`/admin/employees/${emp.id}`} className={`${rowCx(EMP_COLS, { i })} group`}>
+                    {/* Identity — name over tenure / title */}
+                    <IdentityCell
+                      leading={<Avatar name={emp.name || emp.email} />}
+                      title={emp.name || emp.email}
+                      subtitle={tenureText(emp)}
+                    />
+                    {/* PTO balance */}
+                    <div className="text-right font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{emp.pto_balance} hrs</div>
+                    {/* PTO rate */}
+                    <div className={`text-right font-semibold tabular-nums ${emp.pto_accrual_rate > 0 ? 'text-[#089447]' : 'text-zinc-300 dark:text-zinc-600'}`}>
+                      {emp.pto_accrual_rate > 0 ? `+${emp.pto_accrual_rate} hrs` : '—'}
+                    </div>
+                    {/* Sick balance */}
+                    <div className="text-right font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{emp.sick_balance} hrs</div>
+                    {/* Sick rate */}
+                    <div className={`text-right font-semibold tabular-nums ${emp.sick_accrual_rate > 0 ? 'text-amber-600' : 'text-zinc-300 dark:text-zinc-600'}`}>
+                      {emp.sick_accrual_rate > 0 ? `+${emp.sick_accrual_rate} hrs` : '—'}
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </TableScroll>
         </div>
 
         {/* Recent accrual log */}

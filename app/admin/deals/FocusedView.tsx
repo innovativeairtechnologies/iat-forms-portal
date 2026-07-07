@@ -5,13 +5,13 @@ import { ChevronsUpDown, ChevronUp, ChevronDown, Trash2 } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
 import { computeWeighted, isFocused } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
-import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, IdentityCell } from '@/components/admin/list'
 
 type Row = Deal & { weighted: number }
 type SortKey = 'customer' | 'assigned_to' | 'total_cost' | 'confidence' | 'weighted' | 'projected'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[1.3fr_1fr_100px_100px_110px_120px_1.8fr_32px]'
+const COLS = 'grid-cols-[1.6fr_100px_100px_110px_120px_1.8fr_32px]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 const editable = 'w-full bg-transparent border border-transparent rounded-md px-1.5 py-1 -mx-1.5 text-zinc-800 dark:text-zinc-100 outline-none hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-emerald-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors'
 
@@ -115,7 +115,6 @@ export default function FocusedView({
       <TableScroll minWidth={880}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <Th><button onClick={() => toggleSort('customer')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer" sortKey={sortKey} sortDir={sortDir} /></button></Th>
-          <Th><button onClick={() => toggleSort('assigned_to')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Assigned <SortIcon col="assigned_to" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('total_cost')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Cost <SortIcon col="total_cost" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('confidence')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Conf. <SortIcon col="confidence" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('weighted')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Weighted <SortIcon col="weighted" sortKey={sortKey} sortDir={sortDir} /></button></Th>
@@ -134,8 +133,7 @@ export default function FocusedView({
           ) : (
             sorted.map((d, i) => (
               <div key={d.id} className={rowCx(COLS, { i })}>
-                <div className="min-w-0 font-semibold text-zinc-900 dark:text-zinc-100 truncate">{d.customer}</div>
-                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.assigned_to || '—'}</div>
+                <IdentityCell title={d.customer} subtitle={d.assigned_to || undefined} />
                 <div className="text-right tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(d.total_cost)}</div>
                 <div className="text-right">
                   <input

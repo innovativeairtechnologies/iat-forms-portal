@@ -10,6 +10,7 @@ import type { TroubleshootingIntake } from '@/lib/supabase'
 import { updateTroubleshootingStatus } from './actions'
 import {
   HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, TROUBLESHOOTING_STATUS, TableScroll,
+  ListPageHeader, IdentityCell, tabCx, tabCountCx,
 } from '@/components/admin/list'
 
 type Filter  = 'all' | 'new' | 'reviewed' | 'closed'
@@ -23,7 +24,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'closed',   label: 'Closed'   },
 ]
 
-const COLS = 'grid-cols-[34px_120px_1.3fr_1.7fr_104px_72px_40px]'
+const COLS = 'grid-cols-[34px_1fr_104px_72px_40px]'
 
 function matchesSearch(t: TroubleshootingIntake, q: string): boolean {
   if (!q) return true
@@ -106,30 +107,27 @@ export default function TroubleshootingQueueClient({ intakes }: { intakes: Troub
     <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
 
       {/* Page header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Support</p>
-        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Troubleshooting</h1>
-      </div>
-
-      <div className="p-4 sm:p-8">
-
+      <ListPageHeader
+        overline="Support"
+        title="Troubleshooting"
+        count={`${sorted.length} ${sorted.length === 1 ? 'case' : 'cases'}`}
+      >
         {/* Status tabs */}
-        <div className="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-4">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {FILTERS.map(({ value, label }) => {
             const count = value === 'all' ? intakes.length : intakes.filter(t => t.status === value).length
             const active = filter === value
             return (
-              <button key={value} onClick={() => setFilter(value)}
-                className={`relative pb-2.5 text-[13px] whitespace-nowrap transition-colors ${
-                  active ? 'font-semibold text-zinc-900 dark:text-white' : 'font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
-                }`}>
+              <button key={value} onClick={() => setFilter(value)} className={tabCx(active)}>
                 {label}
-                <span className={`ml-1.5 text-[11px] tabular-nums ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-300 dark:text-zinc-600'}`}>{count}</span>
-                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-emerald-500" />}
+                <span className={tabCountCx(active)}>{count}</span>
               </button>
             )
           })}
         </div>
+      </ListPageHeader>
+
+      <div className="p-4 sm:p-8">
 
         {/* Toolbar */}
         <div className="flex items-center gap-2.5 mb-4 flex-wrap">
@@ -143,21 +141,16 @@ export default function TroubleshootingQueueClient({ intakes }: { intakes: Troub
               </button>
             )}
           </div>
-          <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {sorted.length} {sorted.length === 1 ? 'case' : 'cases'}
-          </span>
         </div>
 
         {/* Floating header */}
-        <TableScroll minWidth={760}>
+        <TableScroll minWidth={600}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
           <div className="flex items-center justify-center">
             <input type="checkbox" checked={allSelected} onChange={toggleAll}
               className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
           </div>
-          <Th>Reference</Th>
           <Th><button onClick={() => toggleSort('customer_name')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer_name" /></button></Th>
-          <Th>Problem</Th>
           <Th><button onClick={() => toggleSort('status')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Status <SortIcon col="status" /></button></Th>
           <Th><button onClick={() => toggleSort('created_at')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Created <SortIcon col="created_at" /></button></Th>
           <Th />
@@ -184,19 +177,12 @@ export default function TroubleshootingQueueClient({ intakes }: { intakes: Troub
                     <input type="checkbox" checked={isSel} onChange={() => toggle(intake.id)}
                       className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
                   </div>
-                  {/* Reference */}
-                  <div className="font-mono text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 truncate">{intake.reference_number}</div>
-                  {/* Customer */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar name={intake.customer_name} />
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      {intake.customer_name}
-                    </span>
-                  </div>
-                  {/* Problem */}
-                  <div className="min-w-0">
-                    <span className="text-zinc-600 dark:text-zinc-300 truncate block">{intake.problem_description}</span>
-                  </div>
+                  {/* Identity — customer over reference · model */}
+                  <IdentityCell
+                    leading={<Avatar name={intake.customer_name} />}
+                    title={intake.customer_name}
+                    subtitle={intake.model_number ? `${intake.reference_number} · ${intake.model_number}` : intake.reference_number}
+                  />
                   {/* Status */}
                   <div><StatusPill tone={st.tone}>{st.label}</StatusPill></div>
                   {/* Created */}

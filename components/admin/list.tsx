@@ -20,7 +20,11 @@ export const HEADER_BOX =
 export const BODY_BOX =
   'mt-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none'
 
-export const ROW = 'items-center gap-3 px-4 h-[44px] text-[13px] transition-colors'
+// Airier than a plain data grid — the stacked IdentityCell (bold title over a
+// muted subtitle) needs the height to breathe. This matches the Forms list, the
+// house style every admin list follows. `min-h` not fixed `h` so a row that
+// expands (an inline-expanded note) can grow instead of clipping.
+export const ROW = 'items-center gap-3 px-4 min-h-[52px] py-1.5 text-[13px] transition-colors'
 export const ROW_DIVIDE = 'border-t border-zinc-100 dark:border-zinc-800/60'
 export const ROW_HOVER = 'hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
 export const ROW_SELECTED = 'bg-emerald-50/60 dark:bg-emerald-500/[0.06]'
@@ -138,4 +142,109 @@ export function timeAgo(dateStr: string) {
 export function Th({ children, align = 'left', className = '' }: { children?: ReactNode; align?: 'left' | 'right' | 'center'; className?: string }) {
   const a = align === 'right' ? 'text-right justify-end' : align === 'center' ? 'text-center justify-center' : 'text-left'
   return <div className={`flex items-center gap-1 ${a} ${className}`}>{children}</div>
+}
+
+// ── List page header ──────────────────────────────────────────────────────────
+/**
+ * The standard admin list-page header band: a small-caps overline, a bold page
+ * title, a light count/summary line, right-aligned primary actions, and an
+ * optional row of tabs/filters below (rendered inside the same white band, so
+ * an underline tab's border meets the header's bottom border like the Forms
+ * page). This is the house style — every /admin list uses it so they read as
+ * one system.
+ */
+export function ListPageHeader({
+  overline, title, count, actions, children,
+}: {
+  overline: string
+  title: string
+  count?: ReactNode
+  actions?: ReactNode
+  children?: ReactNode
+}) {
+  return (
+    <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-0 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
+        <div>
+          <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">{overline}</p>
+          <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">{title}</h1>
+          {count != null && <p className="text-[13px] text-gray-400 mt-0.5">{count}</p>}
+        </div>
+        {actions != null && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ── Identity cell ─────────────────────────────────────────────────────────────
+/**
+ * The signature row-identity element: a bold primary line stacked over a muted
+ * secondary line (optionally monospace, e.g. a slug or reference number), with
+ * an optional leading icon chip. This is the first column of every list row —
+ * it's what makes the lists read as "clean and professional" rather than a
+ * dense spreadsheet. Wrap the row in a `group` so the title picks up the
+ * emerald hover when the row is a link.
+ */
+export function IdentityCell({
+  icon, leading, title, subtitle, mono = false,
+}: {
+  icon?: ReactNode        // wrapped in a subtle square chip
+  leading?: ReactNode     // rendered as-is (e.g. an <Avatar/>), takes precedence over icon
+  title: ReactNode
+  subtitle?: ReactNode
+  mono?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      {leading != null ? (
+        leading
+      ) : icon != null ? (
+        <span className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 text-zinc-500 dark:text-zinc-400">
+          {icon}
+        </span>
+      ) : null}
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+          {title}
+        </p>
+        {subtitle != null && subtitle !== '' && (
+          <p className={`text-[11px] text-zinc-400 dark:text-zinc-500 truncate ${mono ? 'font-mono' : ''}`}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Tabs + filter pills (class helpers) ───────────────────────────────────────
+// Class-string helpers rather than components, because callers mix <Link>
+// (query-param tabs) and <button> (client-state tabs) — the styling is shared,
+// the element isn't. Underline tabs go left, rounded filter pills go right,
+// matching the Forms header.
+
+/** Underline tab (left side of the header's tab row). */
+export function tabCx(active: boolean) {
+  return `flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium whitespace-nowrap border-b-2 transition-all ${
+    active
+      ? 'border-[#089447] text-[#089447]'
+      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:border-gray-300 dark:hover:border-zinc-600'
+  }`
+}
+
+/** The count chip inside an underline tab. */
+export function tabCountCx(active: boolean) {
+  return `text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+    active ? 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400'
+  }`
+}
+
+/** Rounded status filter pill (right side of the header's tab row). */
+export function filterPillCx(active: boolean) {
+  return `flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${
+    active
+      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+      : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800'
+  }`
 }

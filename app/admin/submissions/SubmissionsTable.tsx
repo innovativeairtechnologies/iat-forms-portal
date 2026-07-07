@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Inbox, MoreHorizontal, CheckCheck, Clock, CheckCircle2, ExternalLink } from 'lucide-react'
 import { markSubmissionRead, updateSubmissionStatus } from './actions'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, SUBMISSION_STATUS, TableScroll,
+  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, SUBMISSION_STATUS, TableScroll, IdentityCell,
 } from '@/components/admin/list'
 import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
@@ -18,7 +18,7 @@ export type SubmissionRow = {
   data: Record<string, unknown>
 }
 
-const COLS = 'grid-cols-[34px_1.5fr_1.4fr_1.1fr_116px_84px_40px]'
+const COLS = 'grid-cols-[34px_2fr_140px_90px_40px]'
 
 export default function SubmissionsTable({ submissions, emptyHint }: { submissions: SubmissionRow[]; emptyHint?: string }) {
   const router = useRouter()
@@ -70,7 +70,7 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
 
   return (
     <>
-    <TableScroll minWidth={760}>
+    <TableScroll minWidth={620}>
       {/* Floating header */}
       <div className={`grid ${COLS} ${HEADER_BOX}`}>
         <div className="flex items-center justify-center">
@@ -78,8 +78,6 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
             className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
         </div>
         <Th>Submitter</Th>
-        <Th>Email</Th>
-        <Th>Form</Th>
         <Th>Status</Th>
         <Th>Created</Th>
         <Th />
@@ -96,8 +94,6 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
         ) : (
           submissions.map((sub, i) => {
             const name = String(sub.data?.['Employee Name'] || sub.data?.['Full Name'] || sub.data?.['Name'] || 'Anonymous')
-            const emailRaw = sub.data?.['Employee Email'] || sub.data?.['Email'] || sub.data?.['Email Address']
-            const email = emailRaw ? String(emailRaw) : '—'
             const st = SUBMISSION_STATUS[sub.status || 'open'] ?? SUBMISSION_STATUS.open
             const isSel = selected.has(sub.id)
 
@@ -113,20 +109,20 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
                     className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
                 </div>
 
-                {/* Submitter */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Avatar name={name} />
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    {name}
-                  </span>
-                  {!sub.is_read && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" title="Unread" />}
-                </div>
-
-                {/* Email */}
-                <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{email}</div>
-
-                {/* Form */}
-                <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{sub.form_title || '—'}</div>
+                {/* Identity — submitter over form; leading unread dot + avatar */}
+                <IdentityCell
+                  leading={
+                    <span className="flex items-center gap-2 flex-shrink-0">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${sub.is_read ? 'bg-transparent' : 'bg-emerald-500'}`}
+                        title={sub.is_read ? undefined : 'Unread'}
+                      />
+                      <Avatar name={name} />
+                    </span>
+                  }
+                  title={name}
+                  subtitle={sub.form_title || undefined}
+                />
 
                 {/* Status */}
                 <div><StatusPill tone={st.tone}>{st.label}</StatusPill></div>
