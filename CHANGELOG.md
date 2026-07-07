@@ -2,6 +2,28 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-07 — Jerry: IAT unit-nomenclature internal reference
+
+The **internal Jerry** (the standalone `/admin/jerry` page and the per-ticket
+assistant) can now decode any IAT model or serial number. Added a curated
+internal reference — **"IAT Unit Nomenclature (2022)"** — to the KB pool from the
+2022 nomenclature sheet plus the current product lineup provided by leadership:
+the model-number breakdown (nominal CFM, system type `R`/`D`/`B`/`AHU`,
+reactivation `E`/`S`/`G`/`HW`, `HC` high-capacity, `/IDP` integrated package,
+actual-CFM suffix), the serial-number format (year of sale + perpetual sequence),
+and the Compact / Rotor / IDP model lists with worked IDP examples.
+
+- **Internal-only** (`is_internal=true`) — surfaces for the two staff-facing
+  Jerrys (`includeInternal: true`), never for the customer assistant. Verified:
+  it's the top hit on decode questions for internal, and absent from the customer
+  pool.
+- **New "curated reference docs" ingest path.** IAT-authored references now live
+  as committed Markdown in `scripts/kb-reference/` (unlike the gitignored
+  third-party `ocr-cache/`, since this is IAT's own content) and ingest into the
+  same pool via `node scripts/ingest-kb-docs.mjs --curated` (also folded into
+  `--all`). Data-only — no migration, no app change (the internal routes already
+  retrieve with `includeInternal: true`). Full docs: `docs/kb-rag-assistant.md`.
+
 ## 2026-07-07 — Deals: sales pipeline MVP ("Forecast Pulse"), the first scoped write
 
 The Monday.com Sales Forecasting board rebuilt natively at `/admin/deals` — a

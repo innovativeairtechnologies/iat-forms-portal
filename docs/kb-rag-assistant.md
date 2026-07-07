@@ -73,6 +73,30 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   Honeywell / Setra / TAMCO…); anything not in the map falls back to a tidied
   filename. True duplicates are given identical titles so the chips collapse.
 
+## Curated internal reference docs (2026-07-07)
+Not everything worth citing is a third-party PDF. **IAT-authored references** —
+knowledge that isn't in any source manual, or where a PDF's layout extracts too
+poorly to be useful (columnar spec sheets) — live as committed Markdown in
+`scripts/kb-reference/` and ingest into the same pool:
+```
+node scripts/ingest-kb-docs.mjs --curated   # just the curated refs
+node scripts/ingest-kb-docs.mjs --all       # PDFs + curated refs
+```
+- Registered in the `CURATED_DOCS` array in `ingest-kb-docs.mjs` (`file`, `title`,
+  `category`, `isInternal`). The `.md` name is the `source_filename` (won't collide
+  with the PDF pool; `--all`'s folder scan only reads PDFs, so these are stable).
+- **Committed to the repo** (unlike the gitignored `ocr-cache/`, which holds
+  third-party copyrighted manual text) — because this is IAT's *own* content.
+  Ingest is idempotent per file, same as the PDF path.
+- **First one: "IAT Unit Nomenclature (2022)"** (`iat-unit-nomenclature.md`,
+  `is_internal=true`) — how to decode an IAT model number (nominal CFM; system
+  type `R`/`D`/`B`/`AHU`; reactivation `E`/`S`/`G`/`HW`; `HC` = high capacity;
+  `/IDP` = integrated dehumidification package; trailing number = actual CFM), the
+  serial-number format (year of sale + perpetual sequence), and the current
+  Compact / Rotor / IDP model lists with worked examples. Internal-only, so only
+  the two staff-facing Jerrys see it. Verified: top hit on decode questions for
+  `include_internal => true`; absent from the customer pool.
+
 ## Pool status (2026-06-30)
 - Pool: **67 documents, ~3,228 chunks** (the full IAT documentation folder, after
   pruning duplicate source files and OCR'ing the image-only PDFs — below). **6 are

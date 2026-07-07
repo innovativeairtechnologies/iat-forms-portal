@@ -12,8 +12,9 @@
  *   Prereqs:  migration 030 applied in the Supabase SQL editor; `pdftotext` on PATH
  *             (ships with Git for Windows: C:\Program Files\Git\mingw64\bin).
  *   Run POC:  node scripts/ingest-kb-docs.mjs            # the chosen starter docs
- *   Run all:  node scripts/ingest-kb-docs.mjs --all      # every PDF in the folder
+ *   Run all:  node scripts/ingest-kb-docs.mjs --all      # every PDF + curated refs
  *   Subset :  node scripts/ingest-kb-docs.mjs --docs="A1094 Manual.pdf,gs1m.pdf"
+ *   Curated:  node scripts/ingest-kb-docs.mjs --curated  # just the IAT-authored refs
  *
  * Idempotent per file: an existing kb_documents row for the same source_filename
  * (and its chunks, via ON DELETE CASCADE) is deleted and re-inserted. Re-runnable.
@@ -40,6 +41,25 @@ const DOCS_DIR =
 // Committed OCR transcriptions for image-only/scanned PDFs (see scripts/ocr-image-pdfs.mjs).
 // Used as a fallback when pdftotext extracts no text, so `--all` folds those docs in.
 const OCR_CACHE_DIR = join(__dirname, 'ocr-cache')
+
+// ── Curated internal reference docs (IAT-authored, not third-party PDFs) ──────
+// Hand-written Markdown/text references that live IN THE REPO (scripts/kb-reference,
+// committed — unlike the gitignored ocr-cache, since this is IAT's OWN content) and
+// get ingested into the same pool so the internal Jerry can cite them. Use this for
+// knowledge that isn't in a source PDF, or where a PDF's layout extracts too poorly
+// to be useful (columnar spec sheets). `source_filename` is the .md name (won't
+// collide with the PDF pool, and `--all` never touches these — it only reads PDFs
+// from DOCS_DIR). Ingest with `--curated` (also included under `--all`).
+const KB_REFERENCE_DIR = join(__dirname, 'kb-reference')
+const CURATED_DOCS = [
+  {
+    file: 'iat-unit-nomenclature.md',
+    title: 'IAT Unit Nomenclature (2022)',
+    category: 'Reference',
+    // Internal decode reference for staff — kept out of the customer-facing pool.
+    isInternal: true,
+  },
+]
 
 // ── The starter docs Jacob chose for the POC (exact filenames) ───────────────
 // 'A1094 Manual.pdf' (Maxitrol Selectra Series 94) was image-only and excluded from
@@ -448,6 +468,61 @@ async function ingestDoc(sb, filename) {
   return { ok: true, pages: pages.length, chunks: chunks.length }
 }
 
+// ── ingest one curated internal reference doc (a committed .md, not a PDF) ─────
+async function ingestCuratedDoc(sb, entry) {
+  const absPath = join(KB_REFERENCE_DIR, entry.file)
+  if (!existsSync(absPath)) {
+    console.log(`  SKIP  ${entry.file} — not found in ${KB_REFERENCE_DIR}`)
+    return { ok: false }
+  }
+
+  // Curated references are short; treat the whole file as a single "page" (page 1)
+  // and let chunkPageWords split it if it's long. buildChunks also scrubs competitor
+  // names (a no-op for IAT-authored text, but keeps the guarantee uniform).
+  const text = readFileSync(absPath, 'utf8')
+  const chunks = buildChunks([text])
+  if (chunks.length === 0) {
+    console.log(`  WARN  ${entry.file} — 0 text chunks, skipped`)
+    return { ok: false }
+  }
+
+  // Idempotent: drop any prior rows for this source_filename (chunks cascade), re-insert.
+  const { error: delErr } = await sb.from('kb_documents').delete().eq('source_filename', entry.file)
+  if (delErr) {
+    console.log(`  ERR   ${entry.file} — pre-delete failed: ${delErr.message}`)
+    return { ok: false }
+  }
+
+  const { data: doc, error: docErr } = await sb
+    .from('kb_documents')
+    .insert({
+      title: entry.title,
+      source_filename: entry.file,
+      category: entry.category ?? 'Reference',
+      is_internal: entry.isInternal ?? true,
+      page_count: 1,
+    })
+    .select('id')
+    .single()
+  if (docErr || !doc) {
+    console.log(`  ERR   ${entry.file} — document insert failed: ${docErr?.message}`)
+    return { ok: false }
+  }
+
+  const rows = chunks.map((c) => ({ ...c, document_id: doc.id }))
+  const { error: chErr } = await sb.from('kb_chunks').insert(rows)
+  if (chErr) {
+    console.log(`  ERR   ${entry.file} — chunk insert failed: ${chErr.message}`)
+    return { ok: false }
+  }
+
+  console.log(
+    `  OK    ${entry.file} — curated reference, ${chunks.length} chunks` +
+      ((entry.isInternal ?? true) ? '  [internal: hidden from customers]' : ''),
+  )
+  return { ok: true, chunks: chunks.length }
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const args = process.argv.slice(2)
@@ -466,9 +541,14 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
+  const all = args.includes('--all')
+  const curatedOnly = args.includes('--curated')
+
   let docs
   const docsArg = args.find((a) => a.startsWith('--docs='))
-  if (args.includes('--all')) {
+  if (curatedOnly) {
+    docs = [] // curated-only run: skip the PDF pool entirely
+  } else if (all) {
     docs = readdirSync(DOCS_DIR)
       .filter((f) => f.toLowerCase().endsWith('.pdf'))
       .filter((f) => !SKIP_DOCS.has(f)) // drop known duplicate source files
@@ -479,14 +559,30 @@ async function main() {
     docs = POC_DOCS
   }
 
-  console.log(`Ingesting ${docs.length} document(s) from:\n  ${DOCS_DIR}\n`)
+  // Curated internal reference docs come in on --curated (only these) or --all (alongside PDFs).
+  const curated = curatedOnly || all ? CURATED_DOCS : []
+
   let okCount = 0
   let totalChunks = 0
-  for (const f of docs) {
-    const r = await ingestDoc(sb, f)
-    if (r.ok) { okCount++; totalChunks += r.chunks }
+
+  if (docs.length) {
+    console.log(`Ingesting ${docs.length} document(s) from:\n  ${DOCS_DIR}\n`)
+    for (const f of docs) {
+      const r = await ingestDoc(sb, f)
+      if (r.ok) { okCount++; totalChunks += r.chunks }
+    }
   }
-  console.log(`\nDone. ${okCount}/${docs.length} documents ingested, ${totalChunks} chunks total.`)
+
+  if (curated.length) {
+    console.log(`\nIngesting ${curated.length} curated reference doc(s) from:\n  ${KB_REFERENCE_DIR}\n`)
+    for (const entry of curated) {
+      const r = await ingestCuratedDoc(sb, entry)
+      if (r.ok) { okCount++; totalChunks += r.chunks }
+    }
+  }
+
+  const attempted = docs.length + curated.length
+  console.log(`\nDone. ${okCount}/${attempted} documents ingested, ${totalChunks} chunks total.`)
   console.log('Verify in Supabase:  SELECT * FROM match_kb_chunks(\'reset the humidistat\', 5);')
 }
 
