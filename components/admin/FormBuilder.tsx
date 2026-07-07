@@ -65,26 +65,25 @@ export default function FormBuilder({ categories, initialForm }: Props) {
 
   const selectedField = fields.find((f) => f._id === selectedFieldId) || null
 
-  // Keep the "Field Settings" panel vertically aligned with the field you clicked,
-  // so editing a field far down the form doesn't send the editor back to the top.
-  // Tracks scroll (capture → catches the inner canvas). Degrades to top-anchored
+  // Keep the "Field Settings" panel pinned to the top of the viewport as you scroll,
+  // so editing a field far down a long form never leaves the editor stranded off-screen.
+  // Tracks scroll (capture → catches the inner canvas too). Degrades to top-anchored
   // (settingsTop = 0) if a measurement is unavailable, so it's never worse than before.
   const builderRef = useRef<HTMLDivElement>(null)
   const settingsRef = useRef<HTMLDivElement>(null)
   const [settingsTop, setSettingsTop] = useState(0)
 
   useEffect(() => {
-    const id = selectedFieldId
+    if (!selectedFieldId) { setSettingsTop(0); return }
     const root = builderRef.current
-    if (!id || !root) { setSettingsTop(0); return }
+    if (!root) return
     const align = () => {
-      const fieldEl = root.querySelector(`[data-field-id="${CSS.escape(id)}"]`) as HTMLElement | null
-      if (!fieldEl) return
       const rootTop = root.getBoundingClientRect().top
-      const fieldTop = fieldEl.getBoundingClientRect().top
       const panelH = settingsRef.current?.offsetHeight ?? 0
       const maxTop = Math.max(0, root.clientHeight - panelH - 16)
-      setSettingsTop(Math.max(0, Math.min(fieldTop - rootTop, maxTop)))
+      // Push the panel down by however far the builder has scrolled above the viewport,
+      // so it stays pinned at the top of the visible area (clamped inside the column).
+      setSettingsTop(Math.max(0, Math.min(-rootTop, maxTop)))
     }
     let ticking = false
     const onScroll = () => {
@@ -354,7 +353,6 @@ export default function FormBuilder({ categories, initialForm }: Props) {
                         <div
                           ref={prov.innerRef}
                           {...prov.draggableProps}
-                          data-field-id={field._id}
                           onClick={() => setSelectedFieldId(field._id === selectedFieldId ? null : field._id)}
                           className={`bg-white dark:bg-zinc-900 border rounded-xl px-4 py-3 cursor-pointer transition-all flex items-center gap-3 ${
                             snapshot.isDragging ? 'shadow-lg' : ''

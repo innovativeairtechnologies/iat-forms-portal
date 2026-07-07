@@ -11,11 +11,11 @@ Two form editing/filling niceties. No migration.
   **"Performance Review Form — Jacob Younker"**, updating live as it's typed. Uses the
   same helper as the draft label, so the header and the "Continue where you left off"
   entry stay consistent. (`components/StepFormModal.tsx`)
-- **Form builder: the "Field Settings" panel follows the field you click.** Editing a
-  field near the bottom of a long form no longer sends the editor back to the top — the
-  right-column settings panel aligns to the selected field's vertical position and
-  tracks scroll. Degrades to the previous top-anchored behavior if a measurement is
-  unavailable (so it's never worse than before). (`components/admin/FormBuilder.tsx`)
+- **Form builder: the "Field Settings" panel sticks to the top of the viewport.** Editing a
+  field near the bottom of a long form no longer leaves the editor stranded off-screen — the
+  right-column settings panel stays pinned at the top of the visible area as you scroll.
+  Degrades to the previous top-anchored behavior if a measurement is unavailable (so it's
+  never worse than before). (`components/admin/FormBuilder.tsx`)
 
 ## 2026-07-06 — Department dashboards, a standalone Jerry page, "View as" fix, mobile pass
 
