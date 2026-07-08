@@ -110,12 +110,24 @@ approval:**
    reactor sizes on); `DELETE /api/admin/kb/documents/[id]` forgets a doc (chunks
    cascade).
 
-- **The page is a full-screen scene:** the desiccant-wheel reactor sits alone
-  mid-page (tilts toward the mouse, ambient emerald motes drifting, charges while
-  reading, absorb-pulses on commit, grows with the pool); the explainer, live
-  activity, stats, and the full document inventory live in a collapsible
-  **"Jerry's knowledge" panel pinned top-right**. All animation honors
+- **The page is a full-screen scene:** the reactor sits alone mid-page (tilts
+  toward the mouse, ambient emerald motes drifting, charges while reading,
+  absorb-pulses on commit, grows with the pool); the explainer, live activity,
+  stats, and the full document inventory live in a collapsible **"Jerry's
+  knowledge" panel pinned top-right**. All animation honors
   `prefers-reduced-motion`.
+- **The reactor core is a real-time shader plasma sun**
+  (`components/admin/ReactorSun.tsx`, react-three-fiber — already a dependency
+  via the SRV 3D scene; loaded `ssr:false` with the CSS gradient wheel as the
+  loading/WebGL fallback). Custom GLSL: domain-warped 5-octave simplex fbm for
+  molten convection, vertex displacement for a roiling silhouette, a deep-teal →
+  IAT-emerald → white-gold temperature ramp with white-hot crackle filaments,
+  world-space fresnel rim + an additive corona shell. While Jerry reads
+  (`uActivity`) it boils faster/hotter ("FEED ME" mode); an absorb (`uFlash`)
+  blooms it white for a beat. Honors `prefers-reduced-motion` (time freeze).
+  Verified outside the auth wall via a throwaway shader harness: 0 GLSL compile
+  errors; idle sampled deep emerald (textured), feed/flash states screenshot-
+  confirmed.
 - **Bucket `kb-uploads`** was provisioned programmatically (private) — **no migration
   and no manual Storage step**. Verified end-to-end against the live pool: a
   synthesized policy doc was uploaded → transcribed → chunked → inserted →

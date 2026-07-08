@@ -2,6 +2,20 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-08 — Jerry's Brain v3: the reactor core is now a real plasma sun
+
+The CSS-gradient wheel at the heart of `/admin/knowledge` is replaced with a
+**real-time shader plasma sun** (Jacob's Doc-Ock reference, IAT edition) —
+`components/admin/ReactorSun.tsx`, react-three-fiber (already a dependency via
+the SRV 3D scene), no new packages. Custom GLSL: domain-warped noise for molten
+convection, a roiling displaced silhouette, deep-teal → emerald → white-gold
+heat ramp with crackle filaments, fresnel rim + additive corona. While Jerry
+reads a document it visibly **boils harder and brighter** ("FEED ME" mode); an
+absorb **blooms it white** for a beat. Loads client-side with the old CSS wheel
+as the loading/WebGL fallback; honors `prefers-reduced-motion`. Verified via a
+throwaway local shader harness: zero GLSL compile errors, idle/feed/flash states
+confirmed visually.
+
 ## 2026-07-08 — Jerry's Brain v2: scrub preview gate + immersive reactor
 
 Same-day follow-up to Jerry's Brain (below), on Jacob's direction. Two changes:

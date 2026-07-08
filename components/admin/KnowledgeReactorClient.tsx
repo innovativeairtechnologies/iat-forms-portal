@@ -15,11 +15,24 @@
 // commit time is unconditional — the preview is a human gate on top of it.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Brain, UploadCloud, FileText, Trash2, Loader2, Check, AlertCircle, Lock, Globe,
-  Sparkles, X, ChevronRight, ShieldCheck, Mail, Phone, Building2, User, EyeOff,
+  X, ChevronRight, ShieldCheck, Mail, Phone, Building2, User, EyeOff,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+
+// The shader plasma sun (three.js) — client-only (r3f can't SSR); while the
+// chunk loads, the CSS gradient wheel stands in so the reactor never looks dead.
+const ReactorSun = dynamic(() => import('@/components/admin/ReactorSun'), {
+  ssr: false,
+  loading: () => (
+    <>
+      <span className="kb-wheel" />
+      <span className="kb-core" />
+    </>
+  ),
+})
 
 type KbDoc = {
   id: string
@@ -291,12 +304,11 @@ export default function KnowledgeReactorClient() {
           <div className="kb-wheel-wrap" style={{ width: size, height: size }}>
             <span className="kb-halo" />
             <span key={`pulse-${absorb}`} className="kb-pulse" />
-            <span className={`kb-wheel ${reading || saving ? 'is-charging' : ''}`} />
-            <span className="kb-core" />
+            {/* The plasma sun itself — boils harder while reading, flashes on absorb */}
+            <ReactorSun charging={reading || saving} flash={absorb} />
             <span className="kb-orbit"><i /></span>
             <span className="kb-orbit kb-orbit2"><i /></span>
             <span className="kb-orbit kb-orbit3"><i /></span>
-            <span className="kb-wheel-icon"><Sparkles size={Math.round(size * 0.15)} strokeWidth={1.75} /></span>
           </div>
         </div>
 
