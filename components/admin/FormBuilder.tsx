@@ -6,7 +6,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import {
   GripVertical, Plus, Trash2, Save, ChevronRight, X, Check, Pencil,
   Type, AlignLeft, Hash, Mail, ListOrdered, CheckSquare,
-  Calendar, Upload, Pen, ToggleLeft, Bell, Eye, SeparatorHorizontal, BarChart3, Printer,
+  Calendar, Upload, Pen, ToggleLeft, Bell, Eye, SeparatorHorizontal, BarChart3, FileDown,
 } from 'lucide-react'
 import type { Form, FormField, NotificationRule, Category } from '@/lib/supabase'
 import { slugify } from '@/lib/utils'
@@ -275,10 +275,11 @@ export default function FormBuilder({ categories, initialForm }: Props) {
               href={`/print/forms/${initialForm.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-[#089447] transition-colors flex-shrink-0"
+              title="Open a printable blank form and save it as a PDF"
+              className="flex items-center gap-1.5 rounded-[8px] border border-gray-200 dark:border-zinc-700 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:border-[#089447] hover:text-[#089447] transition-colors flex-shrink-0"
             >
-              <Printer size={14} />
-              Print
+              <FileDown size={14} />
+              Download PDF
             </a>
           )}
           <button

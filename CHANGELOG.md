@@ -2,6 +2,28 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-08 — Blank forms print far shorter + a "Download PDF" button
+
+The blank-form print view (`/print/forms/[id]`) — the fill-by-hand / save-as-PDF
+version of any form — was redesigned to print much shorter, and the form editor
+now surfaces it as a clear **Download PDF** button instead of a small "Print"
+icon. No form's questions, options, scale, or data changed — this is purely how a
+*blank* form renders on paper. See [docs/form-print-pdf.md](docs/form-print-pdf.md).
+
+- **Rating matrix**: a run of 2+ choice questions sharing the same options (e.g.
+  every Superstar/Rockstar/Star/Performer rating on the Performance Review) now
+  prints as one table — the scale printed once as a repeating column header, one
+  row per question — instead of relisting the four options under all ~26
+  questions. Each rating keeps its own comment line, folded in from its
+  "— Brief Explanation" box.
+- **Untouched**: one-off choice questions and every other form render exactly as
+  before (the matrix only groups 2+ questions sharing a scale); the conditional
+  controller (e.g. `Department`) is never matrixed.
+- **Result**: the Performance Review prints in ~2 pages (individual contributor)
+  / ~3 (manager), down from ~7 / ~9.
+- **Files**: `app/print/forms/[id]/BlankFormPrint.tsx` (layout),
+  `components/admin/FormBuilder.tsx` (the toolbar "Download PDF" button).
+
 ## 2026-07-07 — Admin list views: one shared "Forms-style" design language
 
 Every admin list now speaks the same visual language — the clean, professional

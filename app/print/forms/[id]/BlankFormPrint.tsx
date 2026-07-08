@@ -34,6 +34,67 @@ function groupIntoSections(fields: FormField[]) {
   return out.filter((s) => s.fields.length > 0)
 }
 
+// ── Rating matrix ─────────────────────────────────────────────────────────────
+// A run of consecutive choice fields that all share the same options (e.g. every
+// Superstar/Rockstar/Star/Performer rating) is rendered as ONE table: the scale
+// prints once as a column header, one row per question. This is the single biggest
+// space saving vs. relisting the four-option scale under all ~26 questions. Each
+// rating keeps its own comment line — the "— Brief Explanation" box that follows it
+// is folded in as that row's comment, so no comment is lost, just compacted.
+
+type MatrixRow = { rating: FormField; comment: FormField | null }
+type Block =
+  | { kind: 'matrix'; options: string[]; rows: MatrixRow[] }
+  | { kind: 'single'; field: FormField }
+
+const EXPLANATION_RE = /explanation|comment|note|why|—/i
+const sameOptions = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])
+
+function partitionSection(fields: FormField[], controllingLabel: string | null): Block[] {
+  const blocks: Block[] = []
+  let run: { options: string[]; rows: MatrixRow[] } | null = null
+  // Only a run of 2+ questions sharing a scale is worth a matrix (the shared column
+  // header pays off). A lone choice field renders the classic way, so one-off
+  // questions on other forms are untouched.
+  const flush = () => {
+    if (run && run.rows.length >= 2) {
+      blocks.push({ kind: 'matrix', options: run.options, rows: run.rows })
+    } else if (run) {
+      for (const r of run.rows) {
+        blocks.push({ kind: 'single', field: r.rating })
+        if (r.comment) blocks.push({ kind: 'single', field: r.comment })
+      }
+    }
+    run = null
+  }
+
+  const isScale = (f: FormField) =>
+    (f.field_type === 'radio' || f.field_type === 'select') &&
+    !!f.options?.length &&
+    f.label !== controllingLabel // never fold the department controller into a matrix
+
+  for (const f of fields) {
+    if (isScale(f)) {
+      const opts = f.options as string[]
+      if (run && !sameOptions(run.options, opts)) flush()
+      if (!run) run = { options: opts, rows: [] }
+      run.rows.push({ rating: f, comment: null })
+    } else if (
+      f.field_type === 'textarea' &&
+      run && run.rows.length &&
+      run.rows[run.rows.length - 1].comment === null &&
+      EXPLANATION_RE.test(f.label)
+    ) {
+      run.rows[run.rows.length - 1].comment = f // this rating's explanation box
+    } else {
+      flush()
+      blocks.push({ kind: 'single', field: f })
+    }
+  }
+  flush()
+  return blocks
+}
+
 export default function BlankFormPrint({ formId, title, description, fields, controllingLabel, departments }: Props) {
   const hasDepts = !!controllingLabel && departments.length > 0
   const [dept, setDept] = useState<string>(hasDepts ? departments[0] : '')
@@ -66,16 +127,17 @@ export default function BlankFormPrint({ formId, title, description, fields, con
             ))}
           </div>
         )}
-        <PrintButton label="Print" />
+        <span className="hidden text-[11px] text-zinc-400 sm:inline print:hidden">Choose “Save as PDF” in the print dialog</span>
+        <PrintButton label="Download PDF" />
       </div>
     </>
   )
 
   return (
     <PrintFrame toolbar={toolbar}>
-      <header className="mb-6 border-b border-zinc-200 pb-5">
+      <header className="mb-5 border-b border-zinc-200 pb-4">
         <p className="text-[12px] font-semibold uppercase tracking-widest text-emerald-700">Innovative Air Technologies</p>
-        <h1 className="mt-1 text-[24px] font-bold tracking-tight text-zinc-900">
+        <h1 className="mt-1 text-[22px] font-bold tracking-tight text-zinc-900">
           {title}
           {hasDepts && <span className="font-semibold text-zinc-400"> — {dept}</span>}
         </h1>
@@ -90,20 +152,74 @@ export default function BlankFormPrint({ formId, title, description, fields, con
       {sections.length === 0 ? (
         <p className="text-[14px] text-zinc-400">This form has no questions{hasDepts ? ` for ${dept}` : ''}.</p>
       ) : (
-        sections.map((sec, i) => (
-          <section key={i} className="mb-6">
-            {sec.title && (
-              <h2 className="mb-3 break-after-avoid border-b border-zinc-200 pb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">{sec.title}</h2>
-            )}
-            <div className="space-y-4">
-              {sec.fields.map((f) => (
-                <BlankField key={f.id} field={f} controllingLabel={controllingLabel} dept={dept} />
-              ))}
-            </div>
-          </section>
-        ))
+        sections.map((sec, i) => {
+          const blocks = partitionSection(sec.fields, controllingLabel)
+          return (
+            <section key={i} className="mb-5">
+              {sec.title && (
+                <h2 className="mb-2.5 break-after-avoid border-b border-zinc-200 pb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">{sec.title}</h2>
+              )}
+              <div className="space-y-3">
+                {blocks.map((b, j) =>
+                  b.kind === 'matrix' ? (
+                    <RatingMatrix key={j} options={b.options} rows={b.rows} />
+                  ) : (
+                    <BlankField key={j} field={b.field} controllingLabel={controllingLabel} dept={dept} />
+                  ),
+                )}
+              </div>
+            </section>
+          )
+        })
       )}
     </PrintFrame>
+  )
+}
+
+/** The four-column rating table: scale printed once in the header, one row per
+ *  competency, a compact comment line under each row it has an explanation for. */
+function RatingMatrix({ options, rows }: { options: string[]; rows: MatrixRow[] }) {
+  return (
+    <table className="w-full border-collapse">
+      <thead className="table-header-group">
+        <tr>
+          <th className="w-auto" />
+          {options.map((o) => (
+            <th
+              key={o}
+              className="w-[15%] border-b border-zinc-300 px-1 pb-1 text-center align-bottom text-[9.5px] font-bold uppercase tracking-wide text-zinc-500"
+            >
+              {o}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      {rows.map((r, i) => (
+        <tbody key={i} className="break-inside-avoid">
+          <tr className="border-b border-zinc-100">
+            <td className="py-1.5 pr-3 align-top text-[13px] leading-snug text-zinc-800">
+              {r.rating.label}
+              {r.rating.is_required && <span className="text-red-500"> *</span>}
+            </td>
+            {options.map((o) => (
+              <td key={o} className="py-1.5 text-center align-middle">
+                <span className="inline-block h-3.5 w-3.5 rounded-full border border-zinc-400" />
+              </td>
+            ))}
+          </tr>
+          {r.comment && (
+            <tr>
+              <td colSpan={1 + options.length} className="pb-2 pt-0.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[9.5px] font-semibold uppercase tracking-wide text-zinc-400">Comments</span>
+                  <span className="h-[18px] flex-1 border-b border-zinc-300" />
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      ))}
+    </table>
   )
 }
 
@@ -116,7 +232,7 @@ function FieldLabel({ field }: { field: FormField }) {
   )
 }
 
-/** A single blank question, rendered for filling in by hand (or reviewing). */
+/** A single blank question (used for anything not folded into a rating matrix). */
 function BlankField({ field, controllingLabel, dept }: { field: FormField; controllingLabel: string | null; dept: string }) {
   const isController = !!controllingLabel && field.label === controllingLabel
 
@@ -160,7 +276,7 @@ function BlankField({ field, controllingLabel, dept }: { field: FormField; contr
     return (
       <div className="break-inside-avoid">
         <FieldLabel field={field} />
-        <div className="mt-1.5 h-20 rounded-md border border-zinc-300" />
+        <div className="mt-1.5 h-16 rounded-md border border-zinc-300" />
       </div>
     )
   }
