@@ -2,6 +2,30 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-08 — Jerry's Brain v2: scrub preview gate + immersive reactor
+
+Same-day follow-up to Jerry's Brain (below), on Jacob's direction. Two changes:
+
+- **Scrub preview — nothing enters the pool without approval.** Feeding a file is
+  now two phases: `POST /api/admin/kb/analyze` transcribes it (Claude, scans
+  included) and returns a **scrub report** — competitor names (authoritative
+  local check + the model flagging other HVAC brands), emails, phone numbers,
+  customer-company and person names, plus a one-line summary — without writing
+  anything. A **review card** shows the findings (competitors struck-through as
+  "removed automatically"; PII as amber flags), lets the admin pick *Staff only*
+  vs *Customer-facing* right there (warning if customer-facing + flagged names),
+  then Approve sends the transcript to `POST /api/admin/kb/ingest` (now the
+  commit phase) or Discard throws it away. The unconditional competitor scrub at
+  chunk time is unchanged — the preview is a human gate on top. Verified live: a
+  planted test doc's competitor name, customer, person, email, and phone were all
+  flagged, and the committed text was confirmed competitor-free.
+- **The reactor became the page.** The desiccant wheel now sits alone mid-screen —
+  bigger, tilting toward the mouse (3D parallax), ambient emerald motes drifting
+  across the scene, charging while it reads, pulsing on absorb, still growing
+  with the pool. The explainer ("how this works"), live activity, stats, and the
+  full document inventory moved to a collapsible **"Jerry's knowledge" panel
+  pinned top-right**. Honors `prefers-reduced-motion`.
+
 ## 2026-07-08 — "Jerry's Brain": drag-and-drop documents into the knowledge base
 
 A page where staff **feed documents straight into Jerry's knowledge** — the

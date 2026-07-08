@@ -80,25 +80,42 @@ perm `knowledge`; `components/admin/KnowledgeReactorClient.tsx`) shows an animat
 desiccant-wheel reactor that grows with the pool, and the live list of everything
 Jerry knows.
 
-Flow (reuses the Submittal-scanner pattern, so no local binaries):
+Flow (reuses the Submittal-scanner pattern, so no local binaries). **Two phases
+with a human SCRUB PREVIEW gate between them — nothing enters the pool without
+approval:**
 1. `POST /api/admin/kb/upload-url` → a signed upload URL; the browser uploads the
    file **directly** to the private `kb-uploads` bucket (bypasses Vercel's ~4.5MB
    body limit).
-2. `POST /api/admin/kb/ingest` downloads it server-side and has **Claude
-   (`claude-sonnet-4-6`) transcribe it** to page-delimited text. Because it's
-   vision-based this handles **scanned/image docs too** — no `pdftotext` or OCR
-   binary needed (the whole reason the CLI script couldn't run serverless).
-   `lib/kb-chunking.mjs` (shared: `buildChunks` runs the same competitor-scrub +
-   page-number chunking as the CLI) turns it into chunks, inserted into
-   `kb_documents` / `kb_chunks`. Idempotent per filename (re-feeding replaces).
-   The original upload is deleted after ingest — the knowledge lives in the pool.
-3. `GET /api/admin/kb/documents` lists the pool (+ a head count of total chunks the
+2. **Analyze** — `POST /api/admin/kb/analyze` downloads it server-side, has
+   **Claude (`claude-sonnet-4-6`) transcribe it** to page-delimited text (vision-
+   based, so **scanned/image docs work too** — no `pdftotext`/OCR binary), then
+   runs a **scrub analysis**: competitor names (authoritative local check against
+   `COMPETITOR_NAMES` + the model flagging other HVAC brands), plus emails, phone
+   numbers, customer-company and person names (model; component suppliers
+   excluded). Returns the transcript + findings + a summary; deletes the storage
+   object; **writes nothing to the pool**. A failed analysis degrades to
+   local-findings-only rather than blocking.
+3. **Review card** (client) — shows what the doc is, what was found (competitor
+   names shown struck-through as "removed automatically"; PII/customer names as
+   amber flags), and the **visibility choice**: *Staff only* (`is_internal=true`,
+   default) vs *Customer-facing* — with a warning when choosing customer-facing
+   on a doc with flagged names/contacts. Approve or Discard. Multiple files queue
+   ("1 of N").
+4. **Commit** — `POST /api/admin/kb/ingest` takes the approved transcript back,
+   chunks it via `lib/kb-chunking.mjs` (`buildChunks` runs the **unconditional
+   competitor scrub** — the preview is a gate on top, not instead), and inserts
+   into `kb_documents` / `kb_chunks`. Idempotent per filename (re-feeding
+   replaces).
+5. `GET /api/admin/kb/documents` lists the pool (+ a head count of total chunks the
    reactor sizes on); `DELETE /api/admin/kb/documents/[id]` forgets a doc (chunks
    cascade).
 
-- **Visibility toggle per upload:** *Staff only* (`is_internal=true`, the default —
-  only the internal Jerry sees it) vs *Customer-facing* (`is_internal=false` — the
-  customer assistant can use it too). Competitor scrubbing runs regardless.
+- **The page is a full-screen scene:** the desiccant-wheel reactor sits alone
+  mid-page (tilts toward the mouse, ambient emerald motes drifting, charges while
+  reading, absorb-pulses on commit, grows with the pool); the explainer, live
+  activity, stats, and the full document inventory live in a collapsible
+  **"Jerry's knowledge" panel pinned top-right**. All animation honors
+  `prefers-reduced-motion`.
 - **Bucket `kb-uploads`** was provisioned programmatically (private) — **no migration
   and no manual Storage step**. Verified end-to-end against the live pool: a
   synthesized policy doc was uploaded → transcribed → chunked → inserted →

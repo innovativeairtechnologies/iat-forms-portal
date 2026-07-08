@@ -23,7 +23,9 @@ export default async function KnowledgePage() {
           <span className="font-semibold text-zinc-900 dark:text-zinc-100">Jerry&apos;s Brain</span>
         </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* Full-height immersive scene — the client fixes its own height (the
+          reactor stays centered; the corner panel scrolls internally). */}
+      <div className="flex-1 min-h-0">
         <KnowledgeReactorClient />
       </div>
     </div>
