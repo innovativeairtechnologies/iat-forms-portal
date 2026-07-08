@@ -2,6 +2,30 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-08 — Internal Jerry: attach a photo/PDF to diagnose
+
+The **internal** Jerrys — the standalone `/admin/jerry` page and the per-ticket
+assistant — now let a staff member **attach a photo or PDF for Jerry to look
+at and help diagnose** (a controller fault code, a nameplate, a wiring panel, a
+submittal, a PO), the "like ChatGPT" flow. `claude-sonnet-4-6` is vision-capable,
+so the file rides along on the same call alongside the retrieved manual excerpts
+and (on a ticket) that unit's record. Full docs: `docs/kb-rag-assistant.md`.
+
+- **Internal-only by construction.** Only `JerryWidget` callers passing
+  `allowAttachments` show the upload UI, and only the two admin routes read
+  attachments — the customer assistant ignores them.
+- **UI:** paperclip / drag-drop / paste in the shared `JerryWidget`. Images are
+  **downscaled in the browser** (long edge ≤ 1568px, JPEG) to stay under Vercel's
+  ~4.5MB body cap and cost less; PDFs pass through (≤ 4MB). 4 files/turn, ~3.8MB
+  total. Attachments persist in history so follow-ups keep the image in context.
+- **Server (`lib/assistant-attachments.ts`):** re-validates media type / size /
+  count and builds the Anthropic vision content (document/image blocks then text);
+  the system prompt has Jerry read visible model/serial/error text, cross-check the
+  ticket's equipment, and treat attachments as reference-only (never instructions).
+- **No new deps, model, storage, or migration.** Verified end-to-end against the
+  live model — a synthesized unit photo was read back correctly (model, serial,
+  error code) with a diagnostic checklist.
+
 ## 2026-07-08 — Blank form print: branded letterhead + tidier header
 
 Follow-up to the print/PDF redesign below. The blank-form print header now leads

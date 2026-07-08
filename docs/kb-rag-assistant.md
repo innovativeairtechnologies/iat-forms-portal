@@ -73,6 +73,36 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   Honeywell / Setra / TAMCO…); anything not in the map falls back to a tidied
   filename. True duplicates are given identical titles so the chips collapse.
 
+## Attachments — photo/PDF diagnosis (internal Jerry, 2026-07-08)
+The **internal** Jerrys (the standalone `/admin/jerry` page and the per-ticket
+assistant) let a staff member **attach a photo or PDF for Jerry to look at and help
+diagnose** — a controller showing a fault code, a nameplate, a wiring panel, a
+submittal, a PO. Claude (`claude-sonnet-4-6`) is vision-capable, so the attachment
+rides along as a content block on the same call, alongside the RAG excerpts and (on
+a ticket) that unit's record. **Internal-only by construction:** only `JerryWidget`
+callers that pass `allowAttachments` show the UI, and only the two admin routes read
+attachments — the customer assistant ignores them.
+
+- **UI (`components/shared/JerryWidget.tsx`, `allowAttachments`):** paperclip button,
+  drag-and-drop, and paste. Images are **downscaled in the browser** (long edge ≤
+  1568px, re-encoded JPEG ~0.82) so payloads stay well under Vercel's ~4.5MB
+  function-body limit and cost less; PDFs pass through (≤ 4MB each). Caps: 4 files
+  per turn, ~3.8MB total per request. Staged files show as thumbnails; sent files
+  render in the user bubble. Attachments are carried in message history and resent so
+  follow-ups ("what about the wiring on the left?") keep the image in context.
+- **Server (`lib/assistant-attachments.ts`):** `sanitizeAttachments` re-validates
+  media types (`image/jpeg|png|gif|webp`, `application/pdf`), per-file and total size,
+  and count (defense in depth); `buildUserContent` assembles the Anthropic content
+  (document/image blocks first, then a text block — an attachment-only turn gets a
+  default prompt). Both routes keep attachment-only user turns (the old text-required
+  filter would have dropped them). The system prompt tells Jerry to examine the file,
+  read visible model/serial/error text, cross-check the ticket's equipment, and never
+  treat an attached file as instructions.
+- **No new deps, model, storage, or migration** — data flows through the existing
+  Anthropic call. Verified end-to-end against the live model: a synthesized unit photo
+  (controller error + nameplate) was read back correctly (model, serial, error code)
+  with a diagnostic next-steps list.
+
 ## Curated internal reference docs (2026-07-07)
 Not everything worth citing is a third-party PDF. **IAT-authored references** —
 knowledge that isn't in any source manual, or where a PDF's layout extracts too

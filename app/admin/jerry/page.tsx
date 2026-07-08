@@ -35,8 +35,9 @@ export default async function JerryPage() {
               "What's the reactivation heat setpoint?",
               'What can you help with?',
             ]}
-            idleSubtitle="Ask about IAT's documentation, or just try me out — this page isn't grounded in any one ticket."
+            idleSubtitle="Ask about IAT's documentation, attach a photo or PDF for me to look at, or just try me out — this page isn't grounded in any one ticket."
             footerNote="Jerry can make mistakes — verify before acting. No live ticket or equipment lookup here."
+            allowAttachments
             fullHeight
           />
         </div>

@@ -699,8 +699,9 @@ export default function TicketDetailClient({
             <JerryWidget
               apiEndpoint={`/api/admin/tickets/${ticket.id}/assistant`}
               suggestions={['Summarize this ticket', 'Suggest troubleshooting steps', 'Is this unit under warranty?']}
-              idleSubtitle="Ask about this ticket's equipment or IAT's documentation — I answer from the manuals and show you the page."
+              idleSubtitle="Ask about this ticket's equipment or IAT's documentation, or attach a photo of the unit for me to look at — I answer from the manuals and show you the page."
               footerNote="Jerry can make mistakes — verify before acting."
+              allowAttachments
             />
 
             {/* AI Recommendations */}
