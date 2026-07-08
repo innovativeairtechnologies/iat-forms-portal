@@ -269,7 +269,7 @@ export default function ReactorSun({ charging, flash }: SunProps) {
   return (
     <Canvas
       className="!absolute !inset-0"
-      camera={{ position: [0, 0, 2.55], fov: 45 }}
+      camera={{ position: [0, 0, 3.8], fov: 45 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       fallback={<CssFallback />}
