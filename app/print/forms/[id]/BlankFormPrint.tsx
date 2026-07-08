@@ -1,13 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft } from 'lucide-react'
 import type { FormField } from '@/lib/supabase'
 import { visibleFields } from '@/lib/forms'
 import { cn } from '@/lib/utils'
 import PrintFrame from '@/components/PrintFrame'
 import PrintButton from '@/components/PrintButton'
+
+// The IAT mark's intrinsic aspect (width / height); see components/Logo.tsx.
+const LOGO_ASPECT = 3020 / 3857
 
 interface Props {
   formId: string
@@ -49,6 +53,10 @@ type Block =
 
 const EXPLANATION_RE = /explanation|comment|note|why|—/i
 const sameOptions = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])
+
+// Single-line field types that read well two-per-row on paper.
+const SHORT_TYPES = new Set<FormField['field_type']>(['text', 'email', 'number', 'date', 'file'])
+const isShortSingle = (b: Block) => b.kind === 'single' && SHORT_TYPES.has(b.field.field_type)
 
 function partitionSection(fields: FormField[], controllingLabel: string | null): Block[] {
   const blocks: Block[] = []
@@ -95,7 +103,42 @@ function partitionSection(fields: FormField[], controllingLabel: string | null):
   return blocks
 }
 
-export default function BlankFormPrint({ formId, title, description, fields, controllingLabel, departments }: Props) {
+/** Render a section's blocks; pack consecutive short single-line fields (name,
+ *  date, …) two-per-row so they share a line instead of each taking a whole line. */
+function SectionBody({ blocks, controllingLabel, dept }: { blocks: Block[]; controllingLabel: string | null; dept: string }) {
+  const out: ReactNode[] = []
+  for (let i = 0; i < blocks.length; ) {
+    if (isShortSingle(blocks[i])) {
+      const run: FormField[] = []
+      while (i < blocks.length && isShortSingle(blocks[i])) {
+        run.push((blocks[i] as Extract<Block, { kind: 'single' }>).field)
+        i++
+      }
+      for (let k = 0; k < run.length; k += 2) {
+        out.push(
+          <div key={`pair-${k}-${i}`} className="grid grid-cols-2 gap-x-6 gap-y-3">
+            {run.slice(k, k + 2).map((f) => (
+              <BlankField key={f.id} field={f} controllingLabel={controllingLabel} dept={dept} />
+            ))}
+          </div>,
+        )
+      }
+    } else {
+      const b = blocks[i]
+      out.push(
+        b.kind === 'matrix' ? (
+          <RatingMatrix key={`m-${i}`} options={b.options} rows={b.rows} />
+        ) : (
+          <BlankField key={b.field.id} field={b.field} controllingLabel={controllingLabel} dept={dept} />
+        ),
+      )
+      i++
+    }
+  }
+  return <div className="space-y-3">{out}</div>
+}
+
+export default function BlankFormPrint({ formId, title, fields, controllingLabel, departments }: Props) {
   const hasDepts = !!controllingLabel && departments.length > 0
   const [dept, setDept] = useState<string>(hasDepts ? departments[0] : '')
 
@@ -135,17 +178,21 @@ export default function BlankFormPrint({ formId, title, description, fields, con
 
   return (
     <PrintFrame toolbar={toolbar}>
-      <header className="mb-5 border-b border-zinc-200 pb-4">
-        <p className="text-[12px] font-semibold uppercase tracking-widest text-emerald-700">Innovative Air Technologies</p>
-        <h1 className="mt-1 text-[22px] font-bold tracking-tight text-zinc-900">
-          {title}
-          {hasDepts && <span className="font-semibold text-zinc-400"> — {dept}</span>}
-        </h1>
-        {description && <p className="mt-1 text-[13px] text-zinc-500">{description}</p>}
-        <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-[13px] text-zinc-500">
-          <span>Employee:&nbsp;<span className="inline-block w-48 border-b border-zinc-300">&nbsp;</span></span>
-          <span>Reviewer:&nbsp;<span className="inline-block w-48 border-b border-zinc-300">&nbsp;</span></span>
-          <span>Date:&nbsp;<span className="inline-block w-28 border-b border-zinc-300">&nbsp;</span></span>
+      <header className="mb-5 flex items-center gap-4 border-b border-zinc-200 pb-4">
+        <Image
+          src="/iat-logo-transparent.png"
+          alt="Innovative Air Technologies"
+          width={Math.round(48 * LOGO_ASPECT)}
+          height={48}
+          priority
+          className="flex-shrink-0"
+        />
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold uppercase tracking-widest text-emerald-700">Innovative Air Technologies</p>
+          <h1 className="mt-0.5 text-[22px] font-bold tracking-tight text-zinc-900">
+            {title}
+            {hasDepts && <span className="font-semibold text-zinc-400"> — {dept}</span>}
+          </h1>
         </div>
       </header>
 
@@ -159,15 +206,7 @@ export default function BlankFormPrint({ formId, title, description, fields, con
               {sec.title && (
                 <h2 className="mb-2.5 break-after-avoid border-b border-zinc-200 pb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">{sec.title}</h2>
               )}
-              <div className="space-y-3">
-                {blocks.map((b, j) =>
-                  b.kind === 'matrix' ? (
-                    <RatingMatrix key={j} options={b.options} rows={b.rows} />
-                  ) : (
-                    <BlankField key={j} field={b.field} controllingLabel={controllingLabel} dept={dept} />
-                  ),
-                )}
-              </div>
+              <SectionBody blocks={blocks} controllingLabel={controllingLabel} dept={dept} />
             </section>
           )
         })

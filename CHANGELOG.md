@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-08 — Blank form print: branded letterhead + tidier header
+
+Follow-up to the print/PDF redesign below. The blank-form print header now leads
+with the IAT logo (a proper letterhead), and drops the generic, review-specific
+"Employee / Reviewer / Date" band that was hard-coded onto every form's print —
+forms capture identity via their own fields instead. Consecutive short
+single-line fields (e.g. a name + a date) now pair two-per-row rather than each
+taking a full line. Print-code only (`app/print/forms/[id]/BlankFormPrint.tsx`);
+a form's own `description` still prints when set.
+
 ## 2026-07-08 — Blank forms print far shorter + a "Download PDF" button
 
 The blank-form print view (`/print/forms/[id]`) — the fill-by-hand / save-as-PDF

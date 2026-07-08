@@ -13,6 +13,15 @@ that the browser's print dialog can "Save as PDF".
 - `components/PrintFrame.tsx` / `components/PrintButton.tsx` — the shared print
   chrome (centered white sheet, `@page` margins, toolbar hidden when printing).
 
+## Header
+The sheet leads with a letterhead: the IAT logo (`/iat-logo-transparent.png`)
+top-left, then the "Innovative Air Technologies" overline and the form title (plus
+`— <department>` when a department is selected). The form's `description` prints
+beneath when set. There is no hard-coded "Employee / Reviewer / Date" band —
+identity is captured by the form's own fields (e.g. an "Employee Name" text field
++ a "Review Date" date field). Consecutive short single-line fields (text / email /
+number / date / file) pair two-per-row.
+
 ## Department selector
 If a form has conditional fields (`show_when_field` / `show_when_value`; see
 [form-conditional-fields.md](form-conditional-fields.md)), the print view shows a
