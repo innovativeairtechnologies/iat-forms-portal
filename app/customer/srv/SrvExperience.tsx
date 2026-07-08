@@ -27,8 +27,8 @@ import ThemeToggle from '@/components/ThemeToggle'
 import SectionPanel from '@/components/customer/srv/SectionPanel'
 import type { SceneHotspot, HotspotState } from '@/components/customer/srv/UnitScene'
 import {
-  SRV_SECTIONS, SRV_CONFIG_QUESTIONS,
-  type SrvConfig, type SrvProjectInfo, type SrvSectionAnswers,
+  SRV_CONFIG_QUESTIONS,
+  type SrvConfig, type SrvProjectInfo, type SrvSectionAnswers, type SrvSection,
   applicableSections, sectionProgress, overallProgress,
 } from '@/lib/srv'
 
@@ -104,8 +104,9 @@ class SceneBoundary extends Component<{ onFail: () => void; children: ReactNode 
 }
 
 export default function SrvExperience({
-  prefill, serverDraft = null, revision = null,
+  sectionDefs, prefill, serverDraft = null, revision = null,
 }: {
+  sectionDefs: SrvSection[]
   prefill: SrvPrefill
   serverDraft?: SrvServerDraft | null
   revision?: SrvRevision | null
@@ -206,8 +207,8 @@ export default function SrvExperience({
   }, [stage, project, config, sections, certName, certCompany, draftKey, revision])
 
   // ── Derived ─────────────────────────────────────────────────────────────────
-  const applicable = useMemo(() => applicableSections(config), [config])
-  const progress = overallProgress(config, sections)
+  const applicable = useMemo(() => applicableSections(config, sectionDefs), [config, sectionDefs])
+  const progress = overallProgress(config, sections, sectionDefs)
   const allComplete = progress.done === progress.total
   const totalFailures = applicable.reduce(
     (n, s) => n + sectionProgress(s, sections[s.key]).failures, 0)
@@ -262,7 +263,7 @@ export default function SrvExperience({
     }
   }
 
-  const openedSection = openSection ? SRV_SECTIONS.find((s) => s.key === openSection) : null
+  const openedSection = openSection ? sectionDefs.find((s) => s.key === openSection) : null
 
   // ── Shared shell ────────────────────────────────────────────────────────────
   return (
@@ -405,7 +406,7 @@ export default function SrvExperience({
             <p className="mb-2.5 text-[12px] text-zinc-400">Only the systems your unit actually has are verified — this keeps the checklist short.</p>
             <div className="space-y-2">
               {SRV_CONFIG_QUESTIONS.map((q) => {
-                const section = SRV_SECTIONS.find((s) => s.conditional?.key === q.key)
+                const section = sectionDefs.find((s) => s.conditional?.key === q.key)
                 return (
                   <div key={q.key} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
                     <p className="text-[13px] font-medium text-zinc-700 dark:text-zinc-200">{section?.conditional?.question || q.label}</p>

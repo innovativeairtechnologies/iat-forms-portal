@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import type { Equipment } from '@/lib/supabase'
 import { unflattenSrvData } from '@/lib/srv'
 import { getSrvForm, getSrvReview } from '@/lib/srv-form'
+import { getSrvSections } from '@/lib/srv-config'
 import SrvExperience, { type SrvUnitOption, type SrvRevision, type SrvServerDraft } from './SrvExperience'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,9 @@ export default async function SrvPage(props: { searchParams: Promise<{ resume?: 
   const { customerId, customer, displayName, user } = session
   const email = (user.email || customer.contact_email || '').toLowerCase()
   const { resume } = await props.searchParams
+
+  // The SRV content (DB-backed, editable at /admin/srv; falls back to code).
+  const sections = await getSrvSections()
 
   const { data: equipmentData } = await supabaseAdmin
     .from('equipment')
@@ -50,7 +54,7 @@ export default async function SrvPage(props: { searchParams: Promise<{ resume?: 
         String(sub.data?.['Email Address'] || '').toLowerCase() === email)
     const review = sub ? getSrvReview(sub.data) : null
     if (owns && review?.decision === 'return' && !review.superseded_by) {
-      const state = unflattenSrvData(sub.data as Record<string, unknown>)
+      const state = unflattenSrvData(sub.data as Record<string, unknown>, sections)
       revision = {
         priorId: sub!.id,
         reviewerNotes: review.notes,
@@ -81,6 +85,7 @@ export default async function SrvPage(props: { searchParams: Promise<{ resume?: 
 
   return (
     <SrvExperience
+      sectionDefs={sections}
       prefill={{
         companyName: customer.company_name,
         contactName: displayName,

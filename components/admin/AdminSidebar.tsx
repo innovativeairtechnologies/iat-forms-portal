@@ -72,6 +72,7 @@ const NAV_SECTIONS: NavSection[] = [
       // oversimplifies these projects' branching/conditional schedules), but it's
       // kept visible for now to demo. To pause later, add `hidden: true`.
       { href: '/admin/gantt',        label: 'Gantt',       icon: CalendarRange, perm: 'gantt' },
+      { href: '/admin/srv',          label: 'SRV Form',    icon: ClipboardCheck, perm: 'srv' },
     ],
   },
   {

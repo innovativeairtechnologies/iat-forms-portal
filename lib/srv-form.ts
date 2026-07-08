@@ -2,8 +2,9 @@ import { supabaseAdmin } from './supabase-admin'
 import type { Form, FormField } from './supabase'
 import {
   SRV_FORM_SLUG, SRV_FORM_TITLE, SRV_FORM_DESCRIPTION, SRV_FORM_CATEGORY,
-  srvFormFieldDefs,
+  srvFormFieldDefs, type SrvSection,
 } from './srv'
+import { getSrvSections } from './srv-config'
 
 const SRV_NOTIFY_FALLBACK = 'jacob.younker@dehumidifiers.com'
 
@@ -14,7 +15,7 @@ const SRV_NOTIFY_FALLBACK = 'jacob.younker@dehumidifiers.com'
  * stays is_active-agnostic: /customer/srv is the canonical entry point.
  * Shared by the submit + draft routes.
  */
-export async function ensureSrvForm(): Promise<{ form: Form; fields: FormField[] } | null> {
+export async function ensureSrvForm(sectionsOverride?: SrvSection[]): Promise<{ form: Form; fields: FormField[] } | null> {
   let { data: form } = await supabaseAdmin
     .from('forms')
     .select('*')
@@ -65,7 +66,7 @@ export async function ensureSrvForm(): Promise<{ form: Form; fields: FormField[]
     })
   }
 
-  const expected = srvFormFieldDefs()
+  const expected = srvFormFieldDefs(sectionsOverride ?? await getSrvSections())
   const { data: existing } = await supabaseAdmin
     .from('form_fields')
     .select('*')

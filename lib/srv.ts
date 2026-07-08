@@ -59,6 +59,12 @@ export type SrvSection = {
 
 export type SrvConfigKey = 'has_gas' | 'has_coils' | 'has_refrigeration'
 
+// The DEFAULT SRV content, in code. Since 2026-07-08 the content is also
+// editable live from /admin/srv — lib/srv-config.ts `getSrvSections()` reads the
+// DB override (migration 046) and falls back to THIS array when none is saved.
+// The helpers below take an explicit `sections` arg (defaulting here) so the
+// server threads the DB content through; section KEYS + numbers + conditionals
+// stay fixed (the 3D hotspot map keys off them), only their content is editable.
 export const SRV_SECTIONS: SrvSection[] = [
   {
     key: 'equipment_condition',
@@ -481,8 +487,8 @@ export function sectionApplies(section: SrvSection, config: SrvConfig): boolean 
 }
 
 /** Sections that apply under the given unit configuration. */
-export function applicableSections(config: SrvConfig): SrvSection[] {
-  return SRV_SECTIONS.filter((s) => sectionApplies(s, config))
+export function applicableSections(config: SrvConfig, sections: SrvSection[] = SRV_SECTIONS): SrvSection[] {
+  return sections.filter((s) => sectionApplies(s, config))
 }
 
 export type SectionProgress = {
@@ -523,7 +529,7 @@ export function sectionProgress(section: SrvSection, answers: SrvSectionAnswers 
 }
 
 /** Full-payload validation used by the submit API. Returns human-readable problems. */
-export function validateSrvPayload(payload: SrvPayload): string[] {
+export function validateSrvPayload(payload: SrvPayload, sections: SrvSection[] = SRV_SECTIONS): string[] {
   const problems: string[] = []
   const p = payload.project || ({} as SrvProjectInfo)
   const required: Array<[keyof SrvProjectInfo, string]> = [
@@ -541,7 +547,7 @@ export function validateSrvPayload(payload: SrvPayload): string[] {
     if (!(p[key] || '').trim()) problems.push(`${label} is required`)
   }
 
-  for (const section of applicableSections(payload.config)) {
+  for (const section of applicableSections(payload.config, sections)) {
     const prog = sectionProgress(section, payload.sections?.[section.key])
     if (!prog.complete) {
       problems.push(`Section ${section.number} (${section.title}) is incomplete`)
@@ -567,9 +573,9 @@ export function validateSrvPayload(payload: SrvPayload): string[] {
 }
 
 /** Overall completion across applicable sections (for the progress ring). */
-export function overallProgress(config: SrvConfig, sections: Record<string, SrvSectionAnswers>) {
-  const applicable = applicableSections(config)
-  const done = applicable.filter((s) => sectionProgress(s, sections[s.key]).complete).length
+export function overallProgress(config: SrvConfig, answers: Record<string, SrvSectionAnswers>, sectionDefs: SrvSection[] = SRV_SECTIONS) {
+  const applicable = applicableSections(config, sectionDefs)
+  const done = applicable.filter((s) => sectionProgress(s, answers[s.key]).complete).length
   return { done, total: applicable.length }
 }
 
@@ -645,7 +651,7 @@ export type SrvFieldDef = {
 }
 
 /** The full ordered field list the SRV form must have in the form builder. */
-export function srvFormFieldDefs(): SrvFieldDef[] {
+export function srvFormFieldDefs(sections: SrvSection[] = SRV_SECTIONS): SrvFieldDef[] {
   const sh = (label: string): SrvFieldDef =>
     ({ label, field_type: 'section_header', options: null, is_required: false, placeholder: null })
   const defs: SrvFieldDef[] = []
@@ -666,7 +672,7 @@ export function srvFormFieldDefs(): SrvFieldDef[] {
     defs.push({ label: q.label, field_type: 'radio', options: ['Yes', 'No'], is_required: true, placeholder: null })
   }
 
-  for (const section of SRV_SECTIONS) {
+  for (const section of sections) {
     defs.push(sh(sectionHeaderLabel(section)))
     if (section.conditional) {
       defs.push({ label: sectionAppliesLabel(section), field_type: 'radio', options: ['Yes', 'No'], is_required: true, placeholder: null })
@@ -706,13 +712,13 @@ export function srvFormFieldDefs(): SrvFieldDef[] {
 const ANSWER_DISPLAY: Record<SrvItemAnswer, string> = { pass: 'Pass', fail: 'Fail', na: 'N/A' }
 
 /** Flatten a validated payload into submissions.data (field label → value). */
-export function flattenSrvPayload(payload: SrvPayload, opts?: { revision?: number }): Record<string, unknown> {
+export function flattenSrvPayload(payload: SrvPayload, sectionDefs: SrvSection[] = SRV_SECTIONS, opts?: { revision?: number }): Record<string, unknown> {
   const data: Record<string, unknown> = {}
   data['Revision'] = String(opts?.revision ?? 1)
 
   // Summary
   const flagged: string[] = []
-  for (const section of applicableSections(payload.config)) {
+  for (const section of applicableSections(payload.config, sectionDefs)) {
     const a = payload.sections[section.key]
     if (!a) continue
     for (const group of section.groups) {
@@ -723,7 +729,7 @@ export function flattenSrvPayload(payload: SrvPayload, opts?: { revision?: numbe
       }
     }
   }
-  const skipped = SRV_SECTIONS.filter((s) => !sectionApplies(s, payload.config))
+  const skipped = sectionDefs.filter((s) => !sectionApplies(s, payload.config))
   data['Overall result'] = flagged.length === 0
     ? 'READY — all applicable items passed'
     : `${flagged.length} item${flagged.length === 1 ? '' : 's'} FAILED — review before scheduling`
@@ -735,7 +741,7 @@ export function flattenSrvPayload(payload: SrvPayload, opts?: { revision?: numbe
   for (const q of SRV_CONFIG_QUESTIONS) data[q.label] = payload.config[q.key] ? 'Yes' : 'No'
 
   // Sections
-  for (const section of SRV_SECTIONS) {
+  for (const section of sectionDefs) {
     const applies = sectionApplies(section, payload.config)
     if (section.conditional) data[sectionAppliesLabel(section)] = applies ? 'Yes' : 'No'
     if (!applies) continue
@@ -774,7 +780,7 @@ const DISPLAY_ANSWER: Record<string, SrvItemAnswer> = { Pass: 'pass', Fail: 'fai
  * submission's data so a returned SRV can be revised. The signature is
  * intentionally NOT restored: a revision must be re-certified.
  */
-export function unflattenSrvData(data: Record<string, unknown>): {
+export function unflattenSrvData(data: Record<string, unknown>, sectionDefs: SrvSection[] = SRV_SECTIONS): {
   project: SrvProjectInfo
   config: SrvConfig
   sections: Record<string, SrvSectionAnswers>
@@ -797,7 +803,7 @@ export function unflattenSrvData(data: Record<string, unknown>): {
   for (const q of SRV_CONFIG_QUESTIONS) config[q.key] = data[q.label] === 'Yes'
 
   const sections: Record<string, SrvSectionAnswers> = {}
-  for (const section of SRV_SECTIONS) {
+  for (const section of sectionDefs) {
     if (!sectionApplies(section, config)) continue
     const a: SrvSectionAnswers = { items: {}, photos: {} }
     for (const group of section.groups) {

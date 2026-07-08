@@ -81,6 +81,7 @@ export type Perm =
   | 'knowledge' // "Jerry's Brain" — feed docs into the RAG pool; admin-only (fed by omission)
   | 'customer_jerry' // admin preview of the customer-facing Jerry; admin-only
   | 'permissions' // the role-permission matrix editor itself; admin-only, non-delegatable
+  | 'srv' // the SRV content editor (/admin/srv); admin-only by omission
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -106,6 +107,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   knowledge: "Jerry's Brain (KB)",
   customer_jerry: 'Customer Jerry (preview)',
   permissions: 'Permissions',
+  srv: 'SRV editor',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -225,6 +227,7 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/customer-jerry', perm: 'customer_jerry' },
   { prefix: '/admin/knowledge', perm: 'knowledge' },
   { prefix: '/admin/permissions', perm: 'permissions' },
+  { prefix: '/admin/srv', perm: 'srv' },
   { prefix: '/admin/submissions', perm: 'submissions' },
   { prefix: '/admin/tickets', perm: 'tickets' },
   { prefix: '/admin/troubleshooting', perm: 'tickets' },

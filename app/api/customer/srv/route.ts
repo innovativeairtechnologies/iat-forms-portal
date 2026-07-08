@@ -5,9 +5,10 @@ import { rateLimit } from '@/lib/rate-limit'
 import { sendSubmissionEmail } from '@/lib/resend'
 import type { NotificationRule } from '@/lib/supabase'
 import { ensureSrvForm, getSrvReview } from '@/lib/srv-form'
+import { getSrvSections } from '@/lib/srv-config'
 import {
   flattenSrvPayload, validateSrvPayload,
-  SRV_SECTIONS, applicableSections,
+  applicableSections,
   type SrvPayload,
 } from '@/lib/srv'
 
@@ -44,7 +45,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Malformed submission' }, { status: 400 })
     }
 
-    const problems = validateSrvPayload(payload)
+    // Validate + flatten against the live (DB-backed) SRV content, so an
+    // admin's edits at /admin/srv take effect immediately and consistently.
+    const sections = await getSrvSections()
+    const problems = validateSrvPayload(payload, sections)
     if (problems.length) {
       return NextResponse.json(
         { error: problems[0], errors: problems.slice(0, 10) },
@@ -53,7 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Harden the values that render as media in the admin detail page.
-    for (const section of applicableSections(payload.config)) {
+    for (const section of applicableSections(payload.config, sections)) {
       const a = payload.sections[section.key]
       if (!a) continue
       for (const photo of section.photos) {
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
     }
     const { form, fields } = ensured
 
-    const data = flattenSrvPayload(payload, { revision })
+    const data = flattenSrvPayload(payload, sections, { revision })
     // Non-field keys: invisible in the admin detail (it renders form_fields only),
     // but they drive ownership checks and the review workflow.
     data['_customer_id'] = session.customerId
@@ -150,7 +154,7 @@ export async function POST(req: NextRequest) {
 
     console.log(
       `[srv] SRV rev ${revision} received from ${session.customer.company_name} — ` +
-      `${SRV_SECTIONS.length - applicableSections(payload.config).length} sections N/A, ` +
+      `${sections.length - applicableSections(payload.config, sections).length} sections N/A, ` +
       `result: ${String(data['Overall result'])}`
     )
 
