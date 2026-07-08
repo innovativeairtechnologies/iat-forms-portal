@@ -275,3 +275,56 @@
 @keyframes jerryFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4%); } }
 @media (prefers-reduced-motion: reduce) { .jerry-orb, .jerry-orb > span, .jerry-orb i, .jerry-status-dot { animation: none !important; } }
 
+/* ── Jerry's Brain — the desiccant-wheel "reactor" (/admin/knowledge) ─────────
+   A spinning desiccant wheel that harnesses knowledge from the docs fed to it
+   (the bossman's Doc-Ock reactor). IAT-emerald motes orbit it; it pulses when a
+   document is absorbed and speeds up while charging. The wheel's SIZE is set
+   inline from the chunk count, so it grows a hair with everything learned. */
+.kb-reactor--drag { border-color: #34d399; }
+.kb-wheel-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+.kb-wheel-wrap > span { position: absolute; }
+
+.kb-halo {
+  inset: -14%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(16,185,129,.28), rgba(16,185,129,0) 68%);
+  animation: kbHalo 4.6s ease-in-out infinite;
+}
+/* The desiccant wheel: radial spokes (conic) + concentric rings (repeating radial). */
+.kb-wheel {
+  inset: 8%; border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, rgba(16,185,129,.14) 0 6%, rgba(16,185,129,0) 6% 12%),
+    conic-gradient(from 0deg,
+      #10b981 0 8deg, #0d9f74 8deg 15deg, rgba(16,185,129,.35) 15deg 22.5deg, #0d9f74 22.5deg 30deg);
+  -webkit-mask: radial-gradient(circle, transparent 20%, #000 21%);
+          mask: radial-gradient(circle, transparent 20%, #000 21%);
+  box-shadow: 0 0 26px rgba(16,185,129,.35), inset 0 0 22px rgba(0,0,0,.28);
+  animation: kbSpin 14s linear infinite;
+}
+.kb-wheel.is-charging { animation-duration: 2.6s; }
+.kb-core {
+  inset: 34%; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #d1fae5, #10b981 62%, #047857);
+  box-shadow: 0 0 20px rgba(16,185,129,.8);
+  animation: kbCore 3.6s ease-in-out infinite;
+}
+.kb-wheel-icon { inset: 0; display: flex; align-items: center; justify-content: center; color: #ecfdf5; filter: drop-shadow(0 0 6px rgba(16,185,129,.9)); pointer-events: none; }
+/* Absorb pulse — one expanding ring, replayed by remounting via React key. */
+.kb-pulse {
+  inset: 6%; border-radius: 50%; border: 2px solid rgba(52,211,153,.75);
+  opacity: 0; animation: kbPulse 900ms ease-out 1;
+}
+/* Orbiting motes in IAT greens (plus one warm accent) at three radii/speeds. */
+.kb-orbit { inset: 2%; border-radius: 50%; animation: kbSpin 9s linear infinite; }
+.kb-orbit > i { position: absolute; top: -2.5%; left: 50%; width: 6%; aspect-ratio: 1; border-radius: 50%; background: #6ee7b7; box-shadow: 0 0 8px #10b981; transform: translateX(-50%); }
+.kb-orbit.kb-orbit2 { inset: 11%; animation-duration: 13s; animation-direction: reverse; }
+.kb-orbit.kb-orbit2 > i { width: 4.6%; background: #34d399; box-shadow: 0 0 8px #10b981; }
+.kb-orbit.kb-orbit3 { inset: -4%; animation-duration: 18s; }
+.kb-orbit.kb-orbit3 > i { width: 4%; background: #fbbf24; box-shadow: 0 0 8px #f59e0b; }
+
+@keyframes kbSpin { to { transform: rotate(360deg); } }
+@keyframes kbHalo { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: .9; transform: scale(1.05); } }
+@keyframes kbCore { 0%, 100% { transform: scale(1); opacity: .92; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes kbPulse { 0% { opacity: .85; transform: scale(.62); } 100% { opacity: 0; transform: scale(1.4); } }
+@media (prefers-reduced-motion: reduce) { .kb-wheel-wrap > span, .kb-wheel-wrap i { animation: none !important; } }
+

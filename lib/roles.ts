@@ -78,6 +78,7 @@ export type Perm =
   | 'us_rotors'
   | 'jerry' // internal AI assistant page — granted to every admin-surface role
   | 'deals' // sales deal pipeline ("Forecast Pulse") — sales gets read AND write, see docs
+  | 'knowledge' // "Jerry's Brain" — feed docs into the RAG pool; admin-only (fed by omission)
 
 // The matrix. `admin` implicitly gets everything (see hasPermission). Any perm
 // NOT listed for a scoped role — including 'dashboard', 'us_rotors' — is
@@ -168,6 +169,7 @@ const OPEN_ADMIN_PREFIXES = ['/admin/profile']
 const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin', perm: 'dashboard' },
   { prefix: '/admin/jerry', perm: 'jerry' },
+  { prefix: '/admin/knowledge', perm: 'knowledge' },
   { prefix: '/admin/submissions', perm: 'submissions' },
   { prefix: '/admin/tickets', perm: 'tickets' },
   { prefix: '/admin/troubleshooting', perm: 'tickets' },

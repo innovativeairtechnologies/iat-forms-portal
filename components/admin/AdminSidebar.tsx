@@ -8,7 +8,7 @@ import {
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
   Calendar, Clock, Boxes, Building2,
   ChevronRight, ShieldCheck, Package, Network, FileText, FilePen, Presentation, CalendarRange,
-  Users, Bot, DollarSign,
+  Users, Bot, DollarSign, Brain,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -51,6 +51,7 @@ type NavSection = {
 
 const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, perm: 'dashboard' }
 const JERRY: NavItem = { href: '/admin/jerry', label: 'Jerry', icon: Bot, perm: 'jerry' }
+const KNOWLEDGE: NavItem = { href: '/admin/knowledge', label: "Jerry's Brain", icon: Brain, perm: 'knowledge' }
 
 const NAV_SECTIONS: NavSection[] = [
   {
@@ -196,6 +197,9 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
       )}
       {hasPermission(effectiveRole, JERRY.perm) && (
         <NavLink item={JERRY} pathname={pathname} counts={counts} onClose={onClose} />
+      )}
+      {hasPermission(effectiveRole, KNOWLEDGE.perm) && (
+        <NavLink item={KNOWLEDGE} pathname={pathname} counts={counts} onClose={onClose} />
       )}
 
       {NAV_SECTIONS.filter(s => !s.hidden).map(section => {

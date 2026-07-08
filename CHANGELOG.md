@@ -2,6 +2,33 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-08 — "Jerry's Brain": drag-and-drop documents into the knowledge base
+
+A page where staff **feed documents straight into Jerry's knowledge** — the
+Doc-Ock reactor the bossman described: drop a doc on the machine and Jerry learns
+it. `/admin/knowledge` (admin-only) shows an animated **desiccant-wheel reactor**
+that grows a hair with every passage learned, IAT-emerald motes orbiting, an
+"absorb" pulse when a doc lands — plus the live list of everything in the pool.
+Full docs: `docs/kb-rag-assistant.md`.
+
+- **How it works** (reuses the Submittal-scanner pattern — no local binaries):
+  signed upload URL → the file goes **straight to a private `kb-uploads` bucket** →
+  the ingest route reads it back and has **Claude transcribe it** (vision-based, so
+  **scanned/image docs work too** — this is why the CLI's `pdftotext` path couldn't
+  run serverless) → chunk + competitor-scrub (`lib/kb-chunking.mjs`, shared with the
+  CLI) → insert into the same `kb_documents`/`kb_chunks` pool Jerry retrieves from.
+  Jerry can cite it in the very next answer.
+- **Per-upload visibility toggle:** *Staff only* (default — internal Jerry only) vs
+  *Customer-facing* (the customer assistant too). Delete = Jerry forgets it (chunks
+  cascade).
+- **No migration, no manual setup.** The `kb-uploads` bucket was provisioned
+  programmatically (private). Verified end-to-end on the live pool: a doc was
+  uploaded → transcribed → chunked → retrieved by the internal assistant, and
+  confirmed hidden from the customer pool.
+- The CLI `scripts/ingest-kb-docs.mjs` stays the bulk loader for the doc folder;
+  this page is for ad-hoc additions. New nav item "Jerry's Brain" + `knowledge`
+  permission (admin-only).
+
 ## 2026-07-08 — Internal Jerry: attach a photo/PDF to diagnose
 
 The **internal** Jerrys — the standalone `/admin/jerry` page and the per-ticket

@@ -73,6 +73,41 @@ node scripts/ingest-kb-docs.mjs --docs="A.pdf,B.pdf"   # a specific subset
   Honeywell / Setra / TAMCO…); anything not in the map falls back to a tidied
   filename. True duplicates are given identical titles so the chips collapse.
 
+## Feeding the brain — "Jerry's Brain" upload page (2026-07-08)
+A page where staff **drag-and-drop documents straight into the RAG pool** — the
+"Doc-Ock reactor": feed it a doc, Jerry learns it. `/admin/knowledge` (admin-only,
+perm `knowledge`; `components/admin/KnowledgeReactorClient.tsx`) shows an animated
+desiccant-wheel reactor that grows with the pool, and the live list of everything
+Jerry knows.
+
+Flow (reuses the Submittal-scanner pattern, so no local binaries):
+1. `POST /api/admin/kb/upload-url` → a signed upload URL; the browser uploads the
+   file **directly** to the private `kb-uploads` bucket (bypasses Vercel's ~4.5MB
+   body limit).
+2. `POST /api/admin/kb/ingest` downloads it server-side and has **Claude
+   (`claude-sonnet-4-6`) transcribe it** to page-delimited text. Because it's
+   vision-based this handles **scanned/image docs too** — no `pdftotext` or OCR
+   binary needed (the whole reason the CLI script couldn't run serverless).
+   `lib/kb-chunking.mjs` (shared: `buildChunks` runs the same competitor-scrub +
+   page-number chunking as the CLI) turns it into chunks, inserted into
+   `kb_documents` / `kb_chunks`. Idempotent per filename (re-feeding replaces).
+   The original upload is deleted after ingest — the knowledge lives in the pool.
+3. `GET /api/admin/kb/documents` lists the pool (+ a head count of total chunks the
+   reactor sizes on); `DELETE /api/admin/kb/documents/[id]` forgets a doc (chunks
+   cascade).
+
+- **Visibility toggle per upload:** *Staff only* (`is_internal=true`, the default —
+  only the internal Jerry sees it) vs *Customer-facing* (`is_internal=false` — the
+  customer assistant can use it too). Competitor scrubbing runs regardless.
+- **Bucket `kb-uploads`** was provisioned programmatically (private) — **no migration
+  and no manual Storage step**. Verified end-to-end against the live pool: a
+  synthesized policy doc was uploaded → transcribed → chunked → inserted →
+  retrieved by the internal assistant, and confirmed absent from the customer pool.
+- The CLI `scripts/ingest-kb-docs.mjs` remains the **bulk** loader for the doc
+  folder; this page is for **ad-hoc additions**. Both now share the pool and the
+  competitor scrub; chunking logic is duplicated in the script (kept working) but
+  centralized in `lib/kb-chunking.mjs` for the serverless path.
+
 ## Attachments — photo/PDF diagnosis (internal Jerry, 2026-07-08)
 The **internal** Jerrys (the standalone `/admin/jerry` page and the per-ticket
 assistant) let a staff member **attach a photo or PDF for Jerry to look at and help
