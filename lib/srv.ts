@@ -5,7 +5,9 @@
 // against it, and the admin detail page renders answers with it. The content
 // mirrors the SRV document provided by management (2026-07): all critical
 // items are Pass/Fail (N/A allowed only where the source form says
-// "if applicable/supplied/required"), and each major section requires photos.
+// "if applicable/supplied/required"). Photos are strongly recommended per
+// section but OPTIONAL — some client sites don't permit on-campus photography,
+// so a missing photo never blocks section completion or submission.
 
 export type SrvItemAnswer = 'pass' | 'fail' | 'na'
 
@@ -510,9 +512,12 @@ export function sectionProgress(section: SrvSection, answers: SrvSectionAnswers 
     readingsDone,
     readingsTotal: readings.length,
     failures,
+    // Photos are recommended, not required — they intentionally do NOT gate
+    // completion (photosDone is still reported for the "Recommended photos X/Y"
+    // sub-counter). A section is complete once every item is answered and every
+    // reading is recorded.
     complete:
       answered === allItems.length &&
-      photosDone === section.photos.length &&
       readingsDone === readings.length,
   }
 }
@@ -585,8 +590,9 @@ export const SRV_FORM_SLUG = 'start-up-readiness-verification'
 export const SRV_FORM_TITLE = 'Start-Up Readiness Verification (SRV)'
 export const SRV_FORM_DESCRIPTION =
   'Interactive pre-start-up verification completed by customers at /customer/srv. ' +
-  'Start-up services are not scheduled until a completed SRV and all required photos are received, ' +
+  'Start-up services are not scheduled until a completed SRV is received, ' +
   'a minimum of 7 calendar days before the requested start-up date. ' +
+  'Photos are strongly recommended but optional (some sites restrict on-campus photography). ' +
   'This form is managed in code (lib/srv.ts) — edits made here in the form builder will be overwritten.'
 export const SRV_FORM_CATEGORY = 'QC & Production'
 
@@ -680,7 +686,10 @@ export function srvFormFieldDefs(): SrvFieldDef[] {
       defs.push({ label: readingFieldLabel(reading), field_type: 'text', options: null, is_required: !section.conditional, placeholder: null })
     }
     for (const photo of section.photos) {
-      defs.push({ label: photoFieldLabel(photo), field_type: 'file', options: null, is_required: !section.conditional, placeholder: null })
+      // Photos are recommended, not required (see sectionProgress) — keep the
+      // mirrored form definition consistent so the admin/form-builder view
+      // doesn't show them as required.
+      defs.push({ label: photoFieldLabel(photo), field_type: 'file', options: null, is_required: false, placeholder: null })
     }
     defs.push({ label: sectionNotesLabel(section), field_type: 'textarea', options: null, is_required: false, placeholder: null })
   }

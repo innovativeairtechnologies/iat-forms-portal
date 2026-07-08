@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown, ShieldCheck } from 'lucide-react'
+import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown, ShieldCheck, CheckCircle2 } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import dynamic from 'next/dynamic'
 import { DetailShell, DetailTopBar, Card, CardHead, Field } from '@/components/admin/detail-ui'
+import { isInlineViewable, AttachmentViewerModal } from '@/components/shared/AttachmentViewer'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { StatusPill } from '@/components/admin/list'
 import JerryWidget from '@/components/shared/JerryWidget'
@@ -90,6 +91,7 @@ type EmailPreview = {
 // saving the file and launching Outlook.
 function NoteAttachments({ ticketId, attachments }: { ticketId: string; attachments: TicketNoteAttachment[] }) {
   const [preview, setPreview] = useState<{ path: string; name: string } | null>(null)
+  const [viewer, setViewer] = useState<{ path: string; name: string } | null>(null)
   return (
     <>
       <div className="mt-2 flex flex-wrap gap-2">
@@ -114,6 +116,23 @@ function NoteAttachments({ ticketId, attachments }: { ticketId: string; attachme
             )
           }
 
+          // Images + PDFs open in an in-app viewer instead of downloading.
+          if (isInlineViewable(att.name)) {
+            return (
+              <button
+                key={att.path}
+                type="button"
+                onClick={() => setViewer({ path: att.path, name: att.name })}
+                className={chipCls}
+                title={`View ${att.name}`}
+              >
+                <ImageIcon size={13} className="text-zinc-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 flex-shrink-0 transition-colors" />
+                <span className="truncate text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{att.name}</span>
+                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex-shrink-0">View</span>
+              </button>
+            )
+          }
+
           return (
             <a
               key={att.path}
@@ -131,6 +150,7 @@ function NoteAttachments({ ticketId, attachments }: { ticketId: string; attachme
         })}
       </div>
       {preview && <EmailPreviewModal ticketId={ticketId} att={preview} onClose={() => setPreview(null)} />}
+      {viewer && <AttachmentViewerModal ticketId={ticketId} att={viewer} onClose={() => setViewer(null)} />}
     </>
   )
 }
@@ -362,6 +382,9 @@ export default function TicketDetailClient({
             </h1>
             {ticket.request_type === 'warranty' && (
               <StatusPill tone="amber" icon={<ShieldCheck size={11} />}>Warranty Claim</StatusPill>
+            )}
+            {ticket.customer_marked_resolved && ticket.status !== 'closed' && (
+              <StatusPill tone="emerald" icon={<CheckCircle2 size={11} />}>Customer confirmed resolved</StatusPill>
             )}
           </div>
           <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-1">
@@ -628,7 +651,7 @@ export default function TicketDetailClient({
 
             {/* Admin Notes Log */}
             <Card>
-              <CardHead title="Admin Notes" icon={<MessageSquare size={14} />} />
+              <CardHead title="Notes" icon={<MessageSquare size={14} />} />
               <div className="px-5 py-4">
                 {/* Legacy note from old system */}
                 {ticket.notes && (

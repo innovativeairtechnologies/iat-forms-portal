@@ -308,8 +308,8 @@ export default function SrvExperience({
             <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-emerald-600">Before we schedule your start-up</p>
             <h1 className="text-[26px] font-bold tracking-tight text-zinc-900 dark:text-white">Start-Up Readiness Verification</h1>
             <p className="mt-2 max-w-[560px] text-[14px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Walk around a 3D model of your unit and verify each system — most items are a single tap, plus a
-              photo where we need proof. It takes about 15 minutes at the unit.
+              Walk around a 3D model of your unit and verify each system — most items are a single tap. Photos are
+              strongly recommended where site rules allow, but optional. It takes about 15 minutes at the unit.
             </p>
           </div>
 
@@ -333,9 +333,10 @@ export default function SrvExperience({
           )}
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-            <strong>Important:</strong> start-up services are not scheduled until this completed verification and all
-            required photos are received by IAT — a minimum of <strong>7 calendar days</strong> before your requested
-            start-up date. Incomplete items may result in delays, additional trip charges, or rescheduling.
+            <strong>Important:</strong> start-up services are not scheduled until this completed verification is received
+            by IAT — a minimum of <strong>7 calendar days</strong> before your requested start-up date. Photos are
+            strongly recommended (some sites restrict on-campus photography). Incomplete items may result in delays,
+            additional trip charges, or rescheduling.
           </div>
 
           {/* Unit picker */}

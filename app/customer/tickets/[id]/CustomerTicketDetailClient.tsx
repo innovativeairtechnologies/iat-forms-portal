@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { User, FileText, MessageSquare, Image as ImageIcon, Pencil } from 'lucide-react'
+import { User, FileText, MessageSquare, Image as ImageIcon, Pencil, CheckCircle2 } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment } from '@/lib/supabase'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
 import { StatusPill, TICKET_STATUS, PRIORITY } from '@/components/admin/list'
+import { isInlineViewable, AttachmentViewerModal } from '@/components/shared/AttachmentViewer'
 
 const RichTextEditor = dynamic(() => import('@/components/shared/RichTextEditor'), { ssr: false })
 
@@ -24,28 +25,52 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Read-only attachment chips — download only (no email preview modal on the
-// customer side; the .eml/.msg preview is an internal admin convenience).
+// Attachment chips. Images + PDFs open in an in-app viewer; everything else
+// downloads. (No email preview on the customer side — that .eml/.msg parsing is
+// an internal admin convenience.)
 function NoteAttachments({ ticketId, attachments }: { ticketId: string; attachments: TicketNoteAttachment[] }) {
+  const [viewer, setViewer] = useState<{ path: string; name: string } | null>(null)
+  const chipCls =
+    'group inline-flex items-center gap-2 max-w-full text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 hover:border-emerald-500 transition-colors'
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {attachments.map(att => {
-        const downloadHref = `/api/tickets/${ticketId}/attachments/download?path=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.name)}`
-        return (
-          <a
-            key={att.path}
-            href={downloadHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-center gap-2 max-w-full text-[12px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 hover:border-emerald-500 transition-colors"
-            title={`Download ${att.name}`}
-          >
-            <span className="truncate text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{att.name}</span>
-            {att.size > 0 && <span className="text-[11px] text-zinc-400 flex-shrink-0">{formatBytes(att.size)}</span>}
-          </a>
-        )
-      })}
-    </div>
+    <>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {attachments.map(att => {
+          const downloadHref = `/api/tickets/${ticketId}/attachments/download?path=${encodeURIComponent(att.path)}&name=${encodeURIComponent(att.name)}`
+
+          if (isInlineViewable(att.name)) {
+            return (
+              <button
+                key={att.path}
+                type="button"
+                onClick={() => setViewer({ path: att.path, name: att.name })}
+                className={chipCls}
+                title={`View ${att.name}`}
+              >
+                <ImageIcon size={13} className="text-zinc-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 flex-shrink-0 transition-colors" />
+                <span className="truncate text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{att.name}</span>
+                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex-shrink-0">View</span>
+              </button>
+            )
+          }
+
+          return (
+            <a
+              key={att.path}
+              href={downloadHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={chipCls}
+              title={`Download ${att.name}`}
+            >
+              <span className="truncate text-zinc-700 dark:text-zinc-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{att.name}</span>
+              {att.size > 0 && <span className="text-[11px] text-zinc-400 flex-shrink-0">{formatBytes(att.size)}</span>}
+            </a>
+          )
+        })}
+      </div>
+      {viewer && <AttachmentViewerModal ticketId={ticketId} att={viewer} onClose={() => setViewer(null)} />}
+    </>
   )
 }
 
@@ -59,6 +84,33 @@ export default function CustomerTicketDetailClient({
   const [notes, setNotes] = useState<TicketNote[]>(initialNotes)
   const [savingNote, setSavingNote] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Customer "mark resolved" — an advisory signal to staff, not a status change.
+  const [markedResolved, setMarkedResolved] = useState(ticket.customer_marked_resolved)
+  const [resolving, setResolving] = useState(false)
+  const [resolveError, setResolveError] = useState<string | null>(null)
+
+  const markResolved = async (resolved: boolean) => {
+    setResolving(true)
+    setResolveError(null)
+    try {
+      const res = await fetch(`/api/customer/tickets/${ticket.id}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolved }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setResolveError(data.error || 'Something went wrong — please try again.')
+        return
+      }
+      setMarkedResolved(!!data.customer_marked_resolved)
+    } catch {
+      setResolveError('Something went wrong — please try again.')
+    } finally {
+      setResolving(false)
+    }
+  }
 
   // Contact card — inline edit for phone + preferred contact method only.
   const [editingContact, setEditingContact] = useState(false)
@@ -172,6 +224,48 @@ export default function CustomerTicketDetailClient({
           </div>
           <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-1">Submitted {submitted}</p>
         </div>
+
+        {/* Mark resolved — advisory signal; staff still formally close the ticket.
+            Hidden once staff have already moved it to resolved/closed. */}
+        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+          <Card>
+            <div className="px-5 py-4">
+              {markedResolved ? (
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="flex-1">
+                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Thanks — you marked this resolved.</p>
+                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                      Our team will close it out. Still having trouble?{' '}
+                      <button
+                        onClick={() => markResolved(false)}
+                        disabled={resolving}
+                        className="font-semibold text-emerald-600 hover:text-emerald-500 disabled:opacity-50"
+                      >
+                        Undo
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Is this issue resolved?</p>
+                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">Let our team know so we can close the ticket.</p>
+                  </div>
+                  <button
+                    onClick={() => markResolved(true)}
+                    disabled={resolving}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-9 rounded-lg disabled:opacity-50 transition-colors"
+                  >
+                    <CheckCircle2 size={15} /> {resolving ? 'Saving…' : 'Mark as resolved'}
+                  </button>
+                </div>
+              )}
+              {resolveError && <p className="text-[12px] text-rose-500 mt-2">{resolveError}</p>}
+            </div>
+          </Card>
+        )}
 
         {saveError && (
           <div className="text-[13px] text-rose-500 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-xl px-4 py-3">

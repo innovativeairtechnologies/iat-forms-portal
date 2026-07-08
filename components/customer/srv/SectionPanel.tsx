@@ -225,9 +225,12 @@ export default function SectionPanel({
 
           {section.photos.length > 0 && (
             <div className="pt-5">
-              <h3 className="mb-2 text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                Required photos <span className="ml-1 normal-case tracking-normal text-zinc-300 dark:text-zinc-600">{prog.photosDone}/{prog.photosTotal}</span>
+              <h3 className="mb-1 text-[11px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                Recommended photos <span className="ml-1 normal-case tracking-normal text-zinc-300 dark:text-zinc-600">{prog.photosDone}/{prog.photosTotal}</span>
               </h3>
+              <p className="mb-2.5 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+                Highly recommended, but optional — some sites don&apos;t permit photography on campus. Upload what you can.
+              </p>
               <div className="grid grid-cols-3 gap-2.5">
                 {section.photos.map((p) => (
                   <PhotoTile key={p.key} label={p.label} url={answers.photos[p.key]} onUploaded={(u) => setPhoto(p.key, u)} />
@@ -265,7 +268,7 @@ export default function SectionPanel({
           >
             {prog.complete
               ? 'Section complete — back to unit'
-              : `${prog.answered + prog.photosDone + prog.readingsDone}/${prog.total + prog.photosTotal + prog.readingsTotal} done — back to unit`}
+              : `${prog.answered + prog.readingsDone}/${prog.total + prog.readingsTotal} done — back to unit`}
           </button>
         </div>
       </motion.div>

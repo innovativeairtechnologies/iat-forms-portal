@@ -209,6 +209,11 @@ export type Ticket = {
   owner_id: string | null
   notes: string | null
   resolved_reason: string | null
+  // migration 044 — advisory customer signal (NOT the staff-owned status enum):
+  // a logged-in customer marks their own ticket resolved so staff know to close
+  // it out. Set/cleared from /customer/tickets/[id]; staff still formally close.
+  customer_marked_resolved: boolean
+  customer_resolved_at: string | null
   ai_recommendations: string[] | null
   viewed_kb_articles: ViewedKbArticle[] | null
   created_at: string

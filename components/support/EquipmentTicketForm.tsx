@@ -721,6 +721,10 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
 
   // ── Success ──────────────────────────────────────────────────────────────
   if (stage === 'success') {
+    // Logged-in customers came from their portal — send them back there, not to
+    // the public /support flow. customerContext is the only reliable signal
+    // (both flows render this same component at the same /support URL).
+    const isCustomer = !!customerContext
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
         <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
@@ -754,10 +758,10 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
                 Our service team will reach out to <strong className="text-gray-700 dark:text-gray-200">{form.customer_email}</strong> shortly.
               </p>
               <Link
-                href={`/support/status?ticket=${encodeURIComponent(ticketNumber)}`}
+                href={isCustomer ? '/customer' : `/support/status?ticket=${encodeURIComponent(ticketNumber)}`}
                 className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#089447] hover:text-[#077a3c] mt-3 transition-colors"
               >
-                Track this ticket&apos;s status
+                {isCustomer ? 'View this in my portal' : "Track this ticket's status"}
                 <ArrowRight size={14} />
               </Link>
             </div>
@@ -799,17 +803,17 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
 
             <div className="px-8 py-5 flex items-center justify-between gap-4">
               <button
-                onClick={() => { setForm(EMPTY); setPhotos([]); setStep(1); setStage('form'); setRecommendations([]); setAnalyzed(false); setAnalyzeError(null) }}
+                onClick={() => { setForm(seedForm(customerContext)); setPhotos([]); setStep(1); setStage('form'); setRecommendations([]); setAnalyzed(false); setAnalyzeError(null) }}
                 className="flex items-center gap-2 text-[13px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 <RotateCcw size={14} />
                 Submit another ticket
               </button>
               <Link
-                href="/support"
+                href={isCustomer ? '/customer' : '/support'}
                 className="flex items-center gap-2 text-[13px] font-semibold text-white bg-[#089447] hover:bg-[#077a3c] px-5 py-2.5 rounded-xl transition-all"
               >
-                Back to support
+                {isCustomer ? 'Back to my portal' : 'Back to support'}
                 <ArrowRight size={14} />
               </Link>
             </div>

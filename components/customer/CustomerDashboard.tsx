@@ -345,7 +345,18 @@ export default function CustomerDashboard({
           <aside className="space-y-5">
             <JerryWidget
               apiEndpoint="/api/customer/assistant"
-              suggestions={['Where is my unit?', 'How do I set the humidistat?', 'Is it under warranty?']}
+              suggestions={[
+                'Where is my unit right now?',
+                "What's my lead time or ship date?",
+                'Is my equipment under warranty?',
+                'How do I set the humidistat or RH target?',
+                "What's the reactivation setpoint for my unit?",
+                'How often should I change the filters?',
+                'How do I start a support request?',
+                'What routine maintenance does my unit need?',
+                'How do I read my nameplate or model number?',
+                'How do I order replacement parts?',
+              ]}
               idleSubtitle={`Ask about ${companyName}'s equipment or IAT's documentation — I answer from the manuals and show you the page.`}
               footerNote="Jerry can make mistakes. For service or orders, use Submit a request or Contact Us."
             />
