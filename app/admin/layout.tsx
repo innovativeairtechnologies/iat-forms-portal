@@ -7,6 +7,7 @@ import CommandPalette from '@/components/admin/CommandPalette'
 import { ViewAsProvider, ViewAsBanner } from '@/components/admin/ViewAs'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFormDraftCount } from '@/lib/drafts'
+import { getPermMatrix } from '@/lib/permissions'
 
 export const metadata: Metadata = {
   title: 'IAT Operations',
@@ -37,8 +38,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     getUserFormDraftCount(),
   ])
 
+  const permMatrix = await getPermMatrix()
+
   return (
-    <ViewAsProvider realRole={admin.role}>
+    <ViewAsProvider realRole={admin.role} permMatrix={permMatrix}>
       <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
         <RefreshOnNavigate />
         <CommandPalette />

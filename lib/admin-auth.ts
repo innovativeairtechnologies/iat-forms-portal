@@ -1,6 +1,7 @@
 import { createSupabaseServer } from './supabase-server'
 import { supabaseAdmin } from './supabase-admin'
 import { normalizeRole, isAdminSurfaceRole, hasPermission, type Role, type Perm } from './roles'
+import { getPermMatrix } from './permissions'
 
 /**
  * STRICT full-admin gate. Returns the user only if they hold the top-level
@@ -50,12 +51,15 @@ export async function getAdminSurfaceUser() {
 
   const role = normalizeRole(profile?.role)
   if (!isAdminSurfaceRole(role)) return null
+  // Read the DB-backed matrix (cached per request) so can() reflects live
+  // permission toggles; falls back to code defaults if unavailable.
+  const matrix = await getPermMatrix()
   return {
     user,
     displayName: profile?.display_name || user.email?.split('@')[0] || 'User',
     role: role as Role,
     isSuperAdmin: profile?.is_super_admin === true,
-    can: (perm: Perm) => hasPermission(role, perm),
+    can: (perm: Perm) => hasPermission(role, perm, matrix),
   }
 }
 

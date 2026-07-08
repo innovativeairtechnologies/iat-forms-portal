@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { normalizeRole, homeForRole, isAdminSurfaceRole, canAccessAdminPath } from '@/lib/roles'
+import { normalizeRole, homeForRole, isAdminSurfaceRole, canAccessAdminPath, type PermMatrix, type Perm } from '@/lib/roles'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -78,8 +78,31 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/admin')) {
     if (!user) return redirectTo(new URL('/login', request.url))
     if (!isAdminSurfaceRole(role)) return redirectTo(new URL(homeForRole(role), request.url))
-    if (!canAccessAdminPath(role, pathname)) {
-      return redirectTo(new URL(homeForRole(role), request.url))
+
+    // Scoped roles are gated by the DB-backed permission matrix (migration 045),
+    // read here for just this one role via the request's own RLS-scoped client.
+    // Full admin bypasses (canAccessAdminPath short-circuits on 'admin').
+    //
+    // Fail behavior: a real read ERROR (e.g. the table doesn't exist yet,
+    // pre-migration) leaves matrix undefined, so gating + the redirect target
+    // fall back to the code defaults — a transient hiccup never locks a scoped
+    // role out. A SUCCESSFUL read of zero rows is honored as "all perms revoked"
+    // (fail-closed): that's the intended state when an admin toggles a role's
+    // access fully off, which also means migration 045's authenticated-SELECT
+    // policy must stay in place — dropping it would read as revocation, not
+    // fallback. homeForRole gets the SAME matrix so a revoked perm can't bounce
+    // the redirect target back through the gate and loop; /admin/profile is the floor.
+    let matrix: PermMatrix | undefined
+    if (role && role !== 'admin') {
+      const { data: permRows, error: permErr } = await supabase
+        .from('role_permissions')
+        .select('perm')
+        .eq('role', role)
+      if (!permErr && permRows) matrix = { [role]: permRows.map((r) => r.perm as Perm) } as PermMatrix
+    }
+
+    if (!canAccessAdminPath(role, pathname, matrix)) {
+      return redirectTo(new URL(homeForRole(role, matrix), request.url))
     }
     return supabaseResponse
   }

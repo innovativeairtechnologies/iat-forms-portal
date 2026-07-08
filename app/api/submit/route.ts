@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { sendSubmissionEmail } from '@/lib/resend'
 import { rateLimit } from '@/lib/rate-limit'
 import type { Form, FormField, NotificationRule } from '@/lib/supabase'
@@ -82,10 +83,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validationErrors[0], errors: validationErrors }, { status: 400 })
     }
 
+    // Best-effort: stamp the signed-in submitter's identity so we always know
+    // WHO filled an authenticated form, even when the form itself has no
+    // name/email fields. The `_`-prefixed keys are not form fields, so they
+    // never render as response rows (the admin detail iterates form_fields) but
+    // are stored on the record.
+    //
+    // SECURITY: strip any client-supplied _submitted_by_* keys FIRST, so an
+    // anonymous poster can't forge a stamp (e.g. _submitted_by_email:"ceo@…").
+    // We only re-add them from a server-verified session.
+    const dataToStore: Record<string, unknown> = { ...(data as Record<string, unknown>) }
+    delete dataToStore._submitted_by_id
+    delete dataToStore._submitted_by_email
+    try {
+      const supabase = await createSupabaseServer()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        dataToStore._submitted_by_id = user.id
+        dataToStore._submitted_by_email = user.email ?? null
+      }
+    } catch {
+      /* anonymous / no session — store the cleaned data as-is */
+    }
+
     // Save submission
     const { data: submission, error: subError } = await supabaseAdmin
       .from('submissions')
-      .insert({ form_id, form_title: form.title, data })
+      .insert({ form_id, form_title: form.title, data: dataToStore })
       .select()
       .single()
 

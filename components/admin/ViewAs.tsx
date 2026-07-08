@@ -11,7 +11,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Eye, X, ChevronDown } from 'lucide-react'
-import { ROLE_LABELS, STAFF_ROLES, type Role, type StaffRole } from '@/lib/roles'
+import { ROLE_LABELS, STAFF_ROLES, hasPermission, homeForRole, type Role, type StaffRole, type Perm, type PermMatrix } from '@/lib/roles'
 
 type ViewAsCtx = {
   realRole: Role
@@ -22,16 +22,25 @@ type ViewAsCtx = {
   setViewAs: (r: StaffRole | null) => void
   /** only a full admin may preview */
   canPreview: boolean
+  /** perm check for the effective role against the live DB-backed matrix */
+  hasPerm: (perm: Perm) => boolean
+  /** landing href for the effective role (matrix-aware) */
+  home: string
 }
 
 const Ctx = createContext<ViewAsCtx | null>(null)
 
-export function ViewAsProvider({ realRole, children }: { realRole: Role; children: ReactNode }) {
+// `permMatrix` is the DB-backed role→perm matrix, fetched server-side in the
+// admin layout and passed down so nav visibility (and "View as" previews)
+// reflect live permission toggles rather than the static code defaults.
+export function ViewAsProvider({ realRole, permMatrix, children }: { realRole: Role; permMatrix?: PermMatrix; children: ReactNode }) {
   const [viewAs, setViewAs] = useState<StaffRole | null>(null)
   const canPreview = realRole === 'admin'
   const effectiveRole: Role = canPreview && viewAs ? viewAs : realRole
+  const hasPerm = (perm: Perm) => hasPermission(effectiveRole, perm, permMatrix)
+  const home = homeForRole(effectiveRole, permMatrix)
   return (
-    <Ctx.Provider value={{ realRole, viewAs, effectiveRole, setViewAs, canPreview }}>
+    <Ctx.Provider value={{ realRole, viewAs, effectiveRole, setViewAs, canPreview, hasPerm, home }}>
       {children}
     </Ctx.Provider>
   )
@@ -47,6 +56,8 @@ export function useViewAs(): ViewAsCtx {
       effectiveRole: 'admin',
       setViewAs: () => {},
       canPreview: false,
+      hasPerm: () => true,
+      home: '/admin',
     }
   }
   return ctx

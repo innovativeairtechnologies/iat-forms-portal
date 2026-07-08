@@ -8,13 +8,13 @@ import {
   CalendarClock, TrendingUp, Ticket, ClipboardCheck,
   Calendar, Clock, Boxes, Building2,
   ChevronRight, ShieldCheck, Package, Network, FileText, FilePen, Presentation, CalendarRange,
-  Users, Bot, DollarSign, Brain,
+  Users, Bot, DollarSign, Brain, MessageCircle, KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import Logo from '@/components/Logo'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { hasPermission, homeForRole, type Perm } from '@/lib/roles'
+import { type Perm } from '@/lib/roles'
 import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -51,6 +51,7 @@ type NavSection = {
 
 const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, perm: 'dashboard' }
 const JERRY: NavItem = { href: '/admin/jerry', label: 'Jerry', icon: Bot, perm: 'jerry' }
+const CUSTOMER_JERRY: NavItem = { href: '/admin/customer-jerry', label: 'Customer Jerry', icon: MessageCircle, perm: 'customer_jerry' }
 const KNOWLEDGE: NavItem = { href: '/admin/knowledge', label: "Jerry's Brain", icon: Brain, perm: 'knowledge' }
 
 const NAV_SECTIONS: NavSection[] = [
@@ -105,6 +106,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'System',
     items: [
       { href: '/admin/audit', label: 'Audit Log', icon: ShieldCheck, perm: 'audit' },
+      { href: '/admin/permissions', label: 'Permissions', icon: KeyRound, perm: 'permissions' },
     ],
   },
 ]
@@ -175,13 +177,13 @@ interface Props {
 export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, adminName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
-  const { effectiveRole } = useViewAs()
+  const { hasPerm, home } = useViewAs()
   const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders, drafts: draftCount }
   const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
   const displayName = adminName || 'Admin'
   const initial = displayName.charAt(0).toUpperCase()
-  const homeHref = homeForRole(effectiveRole)
+  const homeHref = home
 
   const logout = async () => {
     const supabase = createSupabaseBrowser()
@@ -192,18 +194,21 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-2 overflow-y-auto">
-      {hasPermission(effectiveRole, DASHBOARD.perm) && (
+      {hasPerm(DASHBOARD.perm) && (
         <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
       )}
-      {hasPermission(effectiveRole, JERRY.perm) && (
+      {hasPerm(JERRY.perm) && (
         <NavLink item={JERRY} pathname={pathname} counts={counts} onClose={onClose} />
       )}
-      {hasPermission(effectiveRole, KNOWLEDGE.perm) && (
+      {hasPerm(CUSTOMER_JERRY.perm) && (
+        <NavLink item={CUSTOMER_JERRY} pathname={pathname} counts={counts} onClose={onClose} />
+      )}
+      {hasPerm(KNOWLEDGE.perm) && (
         <NavLink item={KNOWLEDGE} pathname={pathname} counts={counts} onClose={onClose} />
       )}
 
       {NAV_SECTIONS.filter(s => !s.hidden).map(section => {
-        const items = section.items.filter(i => !i.hidden && hasPermission(effectiveRole, i.perm))
+        const items = section.items.filter(i => !i.hidden && hasPerm(i.perm))
         if (items.length === 0) return null
         return (
           <div key={section.label} className="mt-5">

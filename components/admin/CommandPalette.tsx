@@ -8,8 +8,9 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
+  MessageCircle, KeyRound,
 } from 'lucide-react'
-import { hasPermission, type Perm } from '@/lib/roles'
+import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ type Item = {
 const STATIC: Item[] = [
   { id: 'nav-dash',    label: 'Dashboard',        group: 'Go to', icon: LayoutDashboard, href: '/admin', keywords: 'home overview', perm: 'dashboard' },
   { id: 'nav-jerry',   label: 'Jerry',            group: 'Go to', icon: Bot, href: '/admin/jerry', keywords: 'ai assistant chat ask ask jerry', perm: 'jerry' },
+  { id: 'nav-custjerry', label: 'Customer Jerry',  group: 'Go to', icon: MessageCircle, href: '/admin/customer-jerry', keywords: 'ai assistant customer preview test', perm: 'customer_jerry' },
   { id: 'nav-forms',   label: 'Forms',            group: 'Go to', icon: FileText,        href: '/admin/forms', perm: 'forms' },
   { id: 'nav-empforms', label: 'Employee Forms',  group: 'Go to', icon: FileText,        href: '/admin/employee-forms', keywords: 'jotform fill submit resources library', perm: 'employee_forms' },
   { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions', perm: 'submissions' },
@@ -48,6 +50,7 @@ const STATIC: Item[] = [
   { id: 'nav-sched',   label: 'Scheduling',       group: 'Go to', icon: Calendar,        href: '/admin/schedule', keywords: 'calendar', perm: 'scheduling' },
   { id: 'nav-accrual', label: 'Accrual',          group: 'Go to', icon: TrendingUp,      href: '/admin/accrual', keywords: 'balances hours', perm: 'accrual' },
   { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability', perm: 'audit' },
+  { id: 'nav-perms',   label: 'Permissions',      group: 'Go to', icon: KeyRound,        href: '/admin/permissions', keywords: 'roles access control matrix toggles', perm: 'permissions' },
   { id: 'act-newform', label: 'Create a new form',           group: 'Actions', icon: Plus,       href: '/admin/forms/new', keywords: 'add build', perm: 'forms' },
   { id: 'act-aiform',  label: 'Build a form with AI',        group: 'Actions', icon: Sparkles,   href: '/admin/forms/ai', keywords: 'generate claude pdf import', perm: 'forms' },
   { id: 'act-unread',  label: 'Review unread submissions',   group: 'Actions', icon: Inbox,      href: '/admin/submissions?is_read=false', perm: 'submissions' },
@@ -101,7 +104,7 @@ function timeAgo(dateStr: string): string {
 
 export default function CommandPalette() {
   const router = useRouter()
-  const { effectiveRole } = useViewAs()
+  const { hasPerm } = useViewAs()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults>(EMPTY)
@@ -180,8 +183,8 @@ export default function CommandPalette() {
   // Static destinations the current (effective) role may actually reach — so
   // scoped roles don't see palette links that dead-end at a middleware redirect.
   const visibleStatic = useMemo<Item[]>(
-    () => STATIC.filter((i) => !i.perm || hasPermission(effectiveRole, i.perm)),
-    [effectiveRole],
+    () => STATIC.filter((i) => !i.perm || hasPerm(i.perm)),
+    [hasPerm],
   )
 
   // ── Build the flat, ordered list of visible items ───────────────────────────

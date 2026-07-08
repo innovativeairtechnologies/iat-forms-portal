@@ -79,11 +79,52 @@ export type Perm =
   | 'jerry' // internal AI assistant page — granted to every admin-surface role
   | 'deals' // sales deal pipeline ("Forecast Pulse") — sales gets read AND write, see docs
   | 'knowledge' // "Jerry's Brain" — feed docs into the RAG pool; admin-only (fed by omission)
+  | 'customer_jerry' // admin preview of the customer-facing Jerry; admin-only
+  | 'permissions' // the role-permission matrix editor itself; admin-only, non-delegatable
 
-// The matrix. `admin` implicitly gets everything (see hasPermission). Any perm
-// NOT listed for a scoped role — including 'dashboard', 'us_rotors' — is
-// admin-only, so those are fail-closed by omission.
-const ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
+// Human-readable labels for the permissions matrix UI.
+export const PERM_LABELS: Record<Perm, string> = {
+  dashboard: 'Dashboard',
+  submissions: 'Submissions',
+  tickets: 'Tickets',
+  equipment: 'Equipment',
+  customers: 'Customers',
+  gantt: 'Gantt / Timelines',
+  org_chart: 'Org Chart',
+  forms: 'Forms',
+  employee_forms: 'Employee Forms',
+  pto: 'PTO Requests',
+  sick: 'Sick Time',
+  scheduling: 'Scheduling',
+  accrual: 'Accrual',
+  presentations: 'Presentations',
+  audit: 'Audit Log',
+  employees: 'Accounts (roles)',
+  us_rotors: 'US Rotors',
+  jerry: 'Jerry (assistant)',
+  deals: 'Deals pipeline',
+  knowledge: "Jerry's Brain (KB)",
+  customer_jerry: 'Customer Jerry (preview)',
+  permissions: 'Permissions',
+}
+
+// Perms an admin can grant to scoped roles from the /admin/permissions matrix.
+// The rest are privilege-sensitive and stay admin-only: 'permissions' (granting
+// it would let a scoped role edit access — a privilege-escalation hole),
+// 'customer_jerry' (exposes a customer's data) and 'knowledge' (edits the RAG
+// pool). They render locked (admin-only) in the matrix and are rejected server-side.
+export const NON_DELEGATABLE_PERMS: Perm[] = ['permissions', 'customer_jerry', 'knowledge']
+
+/** A role → granted-perms override, as stored in the DB (migration 045). */
+export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
+
+// The DEFAULT matrix, in code. `admin` implicitly gets everything (see
+// hasPermission). Any perm NOT listed for a scoped role — including 'dashboard',
+// 'us_rotors' — is admin-only, so those are fail-closed by omission. Migration
+// 045 seeds the editable role_permissions table from this; once seeded, the DB
+// is the source of truth and this stays the seed + the fail-safe fallback used
+// whenever the DB matrix is unavailable (table missing / read error).
+export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
   sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals'],
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry'],
   marketing: ['dashboard', 'presentations', 'jerry'],
@@ -92,11 +133,18 @@ const ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
   production: [],
 }
 
-export function hasPermission(role: Role | null, perm: Perm): boolean {
+/**
+ * Whether `role` holds `perm`. `matrix` is the DB-backed override (from
+ * getPermMatrix / a middleware read); when omitted or missing the role, we fall
+ * back to DEFAULT_ROLE_PERMS — so a DB hiccup never changes access from the
+ * code default. An explicitly-empty list in the matrix (admin toggled a role's
+ * perms all off) IS honored (it's not nullish), so access can be revoked.
+ */
+export function hasPermission(role: Role | null, perm: Perm, matrix?: PermMatrix | null): boolean {
   if (!role) return false
   if (role === 'admin') return true
   if (role === 'customer') return false
-  const list = ROLE_PERMS[role]
+  const list = matrix?.[role] ?? DEFAULT_ROLE_PERMS[role]
   return Array.isArray(list) && list.includes(perm)
 }
 
@@ -143,15 +191,20 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
   { perm: 'audit', href: '/admin/audit' },
 ]
 
-/** Where a role lands after login / when redirected home. */
-export function homeForRole(role: Role | null): string {
+/**
+ * Where a role lands after login / when redirected home. Pass the same `matrix`
+ * used for gating (middleware does) so the landing page a denied request bounces
+ * to is one the role can actually access — otherwise a revoked perm could send
+ * the redirect target right back through the gate and loop.
+ */
+export function homeForRole(role: Role | null, matrix?: PermMatrix | null): string {
   if (role === 'admin') return '/admin'
   if (isAdminSurfaceRole(role)) {
     // Scoped roles with a department dashboard (see DepartmentDashboard.tsx)
     // land on it, same as admin, instead of jumping straight to their first
     // permitted section.
-    if (hasPermission(role, 'dashboard')) return '/admin'
-    const first = ADMIN_SECTIONS.find((s) => hasPermission(role, s.perm))
+    if (hasPermission(role, 'dashboard', matrix)) return '/admin'
+    const first = ADMIN_SECTIONS.find((s) => hasPermission(role, s.perm, matrix))
     return first?.href ?? '/admin/profile' // profile is always accessible
   }
   if (role === 'customer') return '/customer'
@@ -169,7 +222,9 @@ const OPEN_ADMIN_PREFIXES = ['/admin/profile']
 const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin', perm: 'dashboard' },
   { prefix: '/admin/jerry', perm: 'jerry' },
+  { prefix: '/admin/customer-jerry', perm: 'customer_jerry' },
   { prefix: '/admin/knowledge', perm: 'knowledge' },
+  { prefix: '/admin/permissions', perm: 'permissions' },
   { prefix: '/admin/submissions', perm: 'submissions' },
   { prefix: '/admin/tickets', perm: 'tickets' },
   { prefix: '/admin/troubleshooting', perm: 'tickets' },
@@ -212,9 +267,9 @@ export function requiredPermForPath(pathname: string): Perm | null {
 }
 
 /** True if `role` may view `pathname` under /admin. */
-export function canAccessAdminPath(role: Role | null, pathname: string): boolean {
+export function canAccessAdminPath(role: Role | null, pathname: string, matrix?: PermMatrix | null): boolean {
   if (role === 'admin') return true
   const perm = requiredPermForPath(pathname)
   if (perm === null) return isAdminSurfaceRole(role) // open path, staff-admin only
-  return hasPermission(role, perm)
+  return hasPermission(role, perm, matrix)
 }

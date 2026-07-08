@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { ADMIN_SECTIONS, hasPermission, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
+import { getPermMatrix } from '@/lib/permissions'
 import { Card, CardHead } from '@/components/admin/detail-ui'
 import {
   ArrowRight, Ticket, Boxes, Building2, Clock, Inbox,
@@ -164,7 +165,8 @@ const SECTION_ICON: Partial<Record<string, LucideIcon>> = {
 
 export default async function DepartmentDashboard({ role, displayName }: { role: Exclude<StaffRole, 'admin' | 'production'>; displayName: string }) {
   const { stats, recent } = await getRoleData(role)
-  const quickLinks = ADMIN_SECTIONS.filter((s) => hasPermission(role, s.perm))
+  const matrix = await getPermMatrix()
+  const quickLinks = ADMIN_SECTIONS.filter((s) => hasPermission(role, s.perm, matrix))
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">

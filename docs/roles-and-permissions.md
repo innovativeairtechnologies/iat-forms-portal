@@ -32,17 +32,49 @@ edge middleware, server components, and client components all import it. Key
 exports:
 
 - `STAFF_ROLES`, `ROLE_LABELS`, `ROLE_DESCRIPTIONS` — the vocabulary.
-- `hasPermission(role, perm)` — the matrix. `admin` implicitly has every
-  permission; any permission not listed for a scoped role (including `dashboard`,
-  `us_rotors`) is admin-only by omission (fail-closed).
+- `hasPermission(role, perm, matrix?)` — the matrix check. `admin` implicitly has
+  every permission; any permission not listed for a scoped role (including
+  `dashboard`, `us_rotors`) is admin-only by omission (fail-closed). The optional
+  `matrix` is the DB-backed override (see below); omit it and it falls back to the
+  code defaults (`DEFAULT_ROLE_PERMS`).
+- `DEFAULT_ROLE_PERMS` — the code seed + fail-safe fallback for the matrix (was
+  the private `ROLE_PERMS`).
 - `normalizeRole(raw)` — legacy `employee` → `production`; validates the value.
-- `isAdminSurfaceRole(role)`, `homeForRole(role)` — routing helpers.
-- `canAccessAdminPath(role, pathname)` — used by middleware for page gating.
+- `isAdminSurfaceRole(role)`, `homeForRole(role, matrix?)` — routing helpers.
+- `canAccessAdminPath(role, pathname, matrix?)` — used by middleware for page gating.
 
-To change who sees what, edit `ROLE_PERMS` (nav/page permissions) and, if you add
-a section, keep `ADMIN_SECTIONS`, `ADMIN_PATH_PERMS`, and the `AdminSidebar` item
-`perm` in sync. (Moving the matrix into a DB table for no-deploy edits is a
-planned follow-up.)
+The set of permissions (columns) and their nav/route bindings stay in **code**: to
+add a section, add the `Perm`, and keep `ADMIN_SECTIONS`, `ADMIN_PATH_PERMS`, the
+`AdminSidebar`/`CommandPalette` item `perm`, and `PERM_LABELS` in sync. Which role
+holds which permission is now editable **live** from the DB — see below.
+
+## Editing permissions live — `/admin/permissions` (migration 045)
+
+Since 2026-07-08 the role→permission membership lives in a DB table
+(`role_permissions`, migration `045`) and is editable from **`/admin/permissions`**
+(admin-only) with no deploy. Toggling a permission on adds that section's tab to
+the role's sidebar and lets them reach its pages on their next navigation.
+
+- **Source of truth.** `lib/permissions.ts` `getPermMatrix()` reads the table
+  (service role, cached per request) → a `role → perm[]` map. It **falls back to
+  `DEFAULT_ROLE_PERMS`** if the table is missing (pre-migration), the read errors,
+  or it's empty — so a DB hiccup never changes access from the code defaults. A
+  successful read of zero rows for a role is honored as "revoked".
+- **Who reads it.** The server layout fetches the matrix and feeds it to the
+  client via the `ViewAs` context (`hasPerm`, `home`); middleware reads just the
+  current role's rows via the request's RLS-scoped client and threads it into
+  `canAccessAdminPath` + `homeForRole`; `getAdminSurfaceUser().can()` and
+  `requireDealsAuth()` read it server-side. All layers share the one matrix, so
+  nav, page-gating, and the deals write-guard stay consistent.
+- **Non-delegatable perms.** `permissions`, `customer_jerry`, and `knowledge` are
+  admin-only and can't be granted to a scoped role (rejected server-side, shown
+  locked in the UI) — delegating `permissions` would be a privilege-escalation
+  hole. `admin` is all-access and isn't stored/editable, so an admin can't lock
+  themselves out via this page.
+- **Writes** go through `POST /api/admin/permissions` (strict `getAdminUser`,
+  audit-logged as `permission.update`). RLS: authenticated may SELECT
+  `role_permissions`; there is no write policy, so only the service-role API can
+  modify it. Keep the SELECT policy in place — dropping it reads as revocation.
 
 ## Two-layer enforcement
 
@@ -71,7 +103,9 @@ pass; it's an intentional v1 scope cut, not a bug.
 (sales pipeline, `/admin/deals`) is read **and write** for `sales` — the whole
 point of that tool is reps editing their own pipeline inline. Its API routes
 gate on `requireDealsAuth()` (`lib/api-auth.ts`), which accepts any role with
-the `deals` permission rather than the strict admin-only guard. It's a
+the `deals` permission — read live from the matrix, so revoking Deals in
+`/admin/permissions` actually blocks writes — rather than the strict admin-only
+guard. It's a
 deliberately narrow, clearly-named exception — don't reuse it for other routes;
 add a similarly-scoped guard per feature as write-enablement rolls out.
 
@@ -124,5 +158,7 @@ transitional `employee` value once this release is confirmed live.
 
 - Per-endpoint write-enablement so scoped roles can act, not just view.
 - A personal self-service surface for admin-surface roles (their own PTO, etc.).
-- Move the permission matrix into a DB table for no-deploy edits.
 - Gate individual dashboard widgets by permission.
+
+_(Live DB-editable matrix — shipped 2026-07-08, migration `045`. See "Editing
+permissions live" above.)_

@@ -2,6 +2,7 @@ import { createSupabaseServer } from './supabase-server'
 import { supabaseAdmin } from './supabase-admin'
 import { NextResponse } from 'next/server'
 import { normalizeRole, hasPermission } from './roles'
+import { getPermMatrix } from './permissions'
 
 export async function requireAdminAuth(): Promise<NextResponse | null> {
   const supabase = await createSupabaseServer()
@@ -40,7 +41,13 @@ export async function requireDealsAuth(): Promise<NextResponse | null> {
     .single()
 
   const role = normalizeRole(profile?.role)
-  if (!hasPermission(role, 'deals')) {
+  // Consult the DB-backed matrix (migration 045) — the same source middleware
+  // and the nav use — so revoking 'deals' in /admin/permissions actually blocks
+  // deal writes (not just hides the page), and granting it to another scoped
+  // role enables writes to match the page access. Falls back to code defaults if
+  // the matrix is unavailable.
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'deals', matrix)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   return null
