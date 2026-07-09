@@ -5,13 +5,13 @@ import type { LucideIcon } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
-  ChevronRight, ChevronDown, ShieldCheck, Package,
-  Users, Bot, DollarSign,
+  ChevronDown, ShieldCheck, Package,
+  Users, Bot, DollarSign, Sun, Moon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
+import { useTheme } from 'next-themes'
 import Logo from '@/components/Logo'
-import ThemeToggle from '@/components/ThemeToggle'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { type Perm } from '@/lib/roles'
 import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
@@ -144,6 +144,24 @@ function Badge({ kind, count }: { kind: BadgeKind; count: number }) {
   )
 }
 
+/** Footer theme row — the label names the mode you'd switch TO. Renders a
+    neutral placeholder until mounted so server and client HTML match. */
+function ThemeRow() {
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const dark = mounted && resolvedTheme === 'dark'
+  return (
+    <button
+      onClick={() => setTheme(dark ? 'light' : 'dark')}
+      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-ink-muted hover:bg-surface-strong hover:text-ink transition-colors"
+    >
+      {dark ? <Sun size={14} className="flex-shrink-0" /> : <Moon size={14} className="flex-shrink-0" />}
+      {mounted ? (dark ? 'Light mode' : 'Dark mode') : 'Theme'}
+    </button>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
@@ -157,14 +175,14 @@ interface Props {
   adminName: string
 }
 
-export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, adminName }: Props) {
+// adminName stays in Props (the layout passes it) but is no longer rendered here —
+// identity moved to the top-bar avatar.
+export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount }: Props) {
   const pathname = usePathname()
   const router = useRouter()
-  const { hasPerm, home } = useViewAs()
+  const { hasPerm, home, canPreview } = useViewAs()
   const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders, drafts: draftCount }
   const [mobileOpen, setMobileOpen] = useState(false)
-  const displayName = adminName || 'Admin'
-  const initial = displayName.charAt(0).toUpperCase()
 
   const isChildActive = (c: NavChild) => pathname.startsWith(c.href)
   const activeParent = NAV_PARENTS.find(p => p.children.some(isChildActive))?.label ?? null
@@ -217,7 +235,10 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
       {NAV_PARENTS.filter(p => !p.hidden).map(parent => {
         const children = parent.children.filter(c => !c.hidden && hasPerm(c.perm))
-        if (children.length === 0) return null
+        // System also hosts the admin-only "View as" row, so it stays visible for
+        // a real admin even while previewing a role that can't see its pages.
+        const isSystem = parent.label === 'System'
+        if (children.length === 0 && !(isSystem && canPreview)) return null
         const isOpen = open.includes(parent.label)
         const hasActive = parent.label === activeParent
         const collapsedCount = children.reduce((n, c) => n + (c.badge ? counts[c.badge] : 0), 0)
@@ -265,6 +286,8 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
                     </Link>
                   )
                 })}
+                {/* Admin-only role preview, housed with the other admin meta-tools. */}
+                {isSystem && <ViewAsControl variant="nav" />}
               </div>
             )}
           </div>
@@ -273,33 +296,17 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
     </nav>
   )
 
-  const renderFooter = (onClose?: () => void) => (
+  // Profile lives in the top bar avatar now; the footer is just theme + log out.
+  const renderFooter = () => (
     <div className="px-3 pb-3 pt-2 border-t border-hairline-soft">
-      {/* Admin-only "View as [role]" nav preview (no effect on real access). */}
-      <ViewAsControl />
-
-      <div className="flex items-center gap-2">
-        <ThemeToggle />
-        <button
-          onClick={logout}
-          className="flex-1 flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-ink-muted hover:bg-surface-strong hover:text-ink transition-colors"
-        >
-          <LogOut size={14} className="flex-shrink-0" />
-          Sign Out
-        </button>
-      </div>
-
-      <Link
-        href="/admin/profile"
-        onClick={onClose}
-        className="mt-2 flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-hairline bg-surface hover:bg-surface-soft transition-colors group"
+      <ThemeRow />
+      <button
+        onClick={logout}
+        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-ink-muted hover:bg-surface-strong hover:text-ink transition-colors"
       >
-        <div className="w-7 h-7 rounded-full bg-brand flex items-center justify-center flex-shrink-0">
-          <span className="text-[12px] font-semibold text-canvas">{initial}</span>
-        </div>
-        <span className="flex-1 text-[12.5px] font-semibold text-ink truncate">{displayName}</span>
-        <ChevronRight size={14} className="text-ink-faint group-hover:text-ink-muted transition-colors flex-shrink-0" />
-      </Link>
+        <LogOut size={14} className="flex-shrink-0" />
+        Log out
+      </button>
     </div>
   )
 
@@ -357,7 +364,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               </button>
             </div>
             {renderNav(() => setMobileOpen(false))}
-            {renderFooter(() => setMobileOpen(false))}
+            {renderFooter()}
           </div>
         </div>
       )}

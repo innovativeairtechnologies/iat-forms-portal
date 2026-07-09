@@ -484,9 +484,6 @@ export default async function AdminDashboard() {
         <div className="flex-1" />
         <TopBarSearch />
         <DashboardPresetPicker current={preset} />
-        <Link href="/admin/forms/new" className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-brand hover:bg-brand-hover text-white dark:text-canvas text-[12px] font-semibold transition-colors">
-          <Plus size={14} /> New Form
-        </Link>
         <TopBarBell unreadCount={d.kpi.unread} ticketCount={d.kpi.openTickets} />
         <Link
           href="/admin/profile"

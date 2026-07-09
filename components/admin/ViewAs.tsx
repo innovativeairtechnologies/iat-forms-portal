@@ -67,12 +67,16 @@ export function useViewAs(): ViewAsCtx {
 // for nav purposes — all staff roles except staying as themselves is "Exit").
 const PREVIEW_ROLES: StaffRole[] = STAFF_ROLES.filter((r) => r !== 'admin')
 
-/** Compact dropdown that lives in the sidebar. Only rendered for full admins. */
-export function ViewAsControl() {
+/** "View as" dropdown. Only rendered for full admins.
+    variant="panel": bordered pill (standalone placement).
+    variant="nav": indented child-row styling for living inside a nav group;
+    the dropdown opens downward instead of up. */
+export function ViewAsControl({ variant = 'panel' }: { variant?: 'panel' | 'nav' }) {
   const { canPreview, viewAs, setViewAs } = useViewAs()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ left: number; bottom: number; width: number } | null>(null)
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number; width: number } | null>(null)
+  const nav = variant === 'nav'
 
   // The sidebar's <aside> is `overflow-hidden` (for its rounded/sticky layout),
   // which clips an absolutely-positioned dropdown after just 2-3 rows — it's
@@ -83,27 +87,38 @@ export function ViewAsControl() {
     if (!open) return
     const update = () => {
       const r = btnRef.current?.getBoundingClientRect()
-      if (r) setPos({ left: r.left, bottom: window.innerHeight - r.top + 4, width: r.width })
+      if (!r) return
+      setPos(nav
+        ? { left: r.left, top: r.bottom + 4, width: r.width }
+        : { left: r.left, bottom: window.innerHeight - r.top + 4, width: r.width })
     }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
-  }, [open])
+  }, [open, nav])
 
   if (!canPreview) return null
 
   return (
-    <div className="relative px-3 mt-2">
+    <div className={nav ? 'relative' : 'relative px-3 mt-2'}>
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-[12px] font-medium transition-all ${
-          viewAs
-            ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400'
-            : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
-        }`}
+        className={
+          nav
+            ? `w-full flex items-center gap-2 py-1.5 pl-[34px] pr-2.5 rounded-md text-[12px] transition-colors ${
+                viewAs
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium'
+                  : 'text-ink-muted hover:bg-surface-strong hover:text-ink'
+              }`
+            : `w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-[12px] font-medium transition-colors ${
+                viewAs
+                  ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400'
+                  : 'border-hairline text-ink-muted hover:bg-surface-strong hover:text-ink'
+              }`
+        }
       >
-        <Eye size={14} className="flex-shrink-0" />
+        {!nav && <Eye size={14} className="flex-shrink-0" />}
         <span className="flex-1 text-left truncate">
           {viewAs ? `Viewing as ${ROLE_LABELS[viewAs]}` : 'View as…'}
         </span>
@@ -114,8 +129,8 @@ export function ViewAsControl() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-50 max-h-[60vh] overflow-y-auto rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1"
-            style={{ left: pos.left, bottom: pos.bottom, width: pos.width }}
+            className="fixed z-50 max-h-[60vh] overflow-y-auto rounded-xl border border-hairline bg-surface shadow-lg dark:shadow-none dark:ring-1 dark:ring-white/10 py-1"
+            style={{ left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width }}
           >
             {viewAs && (
               <button
@@ -131,8 +146,8 @@ export function ViewAsControl() {
                 onClick={() => { setViewAs(r); setOpen(false) }}
                 className={`w-full text-left px-3 py-1.5 text-[12px] transition-colors ${
                   viewAs === r
-                    ? 'font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-zinc-800'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                    ? 'font-semibold text-ink bg-surface-strong'
+                    : 'text-ink-muted hover:bg-surface-soft hover:text-ink'
                 }`}
               >
                 {ROLE_LABELS[r]}
