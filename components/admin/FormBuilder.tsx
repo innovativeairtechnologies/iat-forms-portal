@@ -272,7 +272,9 @@ export default function FormBuilder({ categories, initialForm }: Props) {
           )}
           {initialForm && (
             <a
-              href={`/print/forms/${initialForm.id}`}
+              // The bespoke Annual Review (slug "perf-new") prints via its own fixed
+              // branded 2-page sheet; every other form uses the generic blank print.
+              href={initialForm.slug === 'perf-new' ? '/print/annual-review' : `/print/forms/${initialForm.id}`}
               target="_blank"
               rel="noopener noreferrer"
               title="Open a printable blank form and save it as a PDF"

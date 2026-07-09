@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-08 — Annual Review: dedicated branded print sheet
+
+A fixed, branded two-page (front/back, **landscape**) print sheet for the Annual
+Review at `/print/annual-review`. Front: logo letterhead, three review sections
+(Results & Execution, Teamwork & Communication, Continuous Improvement) and the
+eight IAT core values, each rated Superstar / Rockstar / Star / Performer with a
+coaching-notes area. Back: the performance-scale legend, overall summary
+(strength / opportunity / development goal), overall rating, employee comments,
+a development plan, signatures, and a core-values footer.
+
+Unlike the generic `/print/forms/[id]` view this is **not** field-driven — it's a
+one-off branded layout (static markup, inline SVG icons, logo from `/public`).
+The Annual Review form's "Download PDF" button (slug `perf-new`) now opens it;
+every other form keeps the generic blank print. Admin-gated. See
+[docs/form-print-pdf.md](docs/form-print-pdf.md).
+
 ## 2026-07-08 — Jerry's Brain v3: the reactor core is now a real plasma sun
 
 The CSS-gradient wheel at the heart of `/admin/knowledge` is replaced with a

@@ -46,6 +46,16 @@ Performance Review) to ~2–3 pages instead of ~7–9.
 Everything else (text, date, checkbox, signature, long-text) renders as labelled
 blanks/boxes sized for writing by hand.
 
+## Annual Review — a bespoke fixed sheet
+The Annual Review is the exception to the field-driven model. It has its own
+fixed, branded two-page landscape sheet at `app/print/annual-review/page.tsx`
+(route `/print/annual-review`, admin-gated) — a static, trusted HTML string
+(inline SVG icons, logo from `/public`) rendered as-is so the print matches the
+approved design exactly. It is not generated from `form_fields`. The Annual
+Review form (slug `perf-new`) special-cases its editor "Download PDF" button to
+open this page instead of `/print/forms/[id]` (see `components/admin/FormBuilder.tsx`).
+To change its content, edit the markup in that page directly.
+
 ## Note
 This is a print/layout feature only — it never changes a form's questions,
 options, scale, or any submission. Editing what a form *asks* is done in the form
