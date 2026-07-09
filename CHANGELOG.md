@@ -2,6 +2,27 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-09 — Annual Review print sheet: wider coaching notes, no core-values footer, + a portrait option
+
+Follow-up tweaks to the bespoke `/print/annual-review` sheet:
+
+- **Rating columns pulled left, coaching notes widened.** Each review section's
+  ratings now sit in a fixed column right after the criteria text instead of being
+  pushed to the far right, so the coaching-notes box grows from 212px → ~458px
+  (landscape) — far more writing room. (`.sec .body` → `flex:none` + a fixed `.grid`
+  first column of 340px; `.coach` → `flex:1`.)
+- **Removed the core-values footer band** from the back (second) page.
+- **Portrait option.** A Landscape/Portrait toggle in the on-screen top bar
+  (`?orientation=portrait`, hidden in print) swaps the `@page` size and merges in a
+  new `PORTRAIT_STYLE` — core values reflow 4-up and the fit-to-page compaction is
+  relaxed since portrait has ~998px of vertical room. The "Download PDF" button + the
+  printed page size follow the selection.
+
+Both orientations verified to fit one sheet per page at 100% (measured on the actual
+markup): landscape front 722px / back 671px (≤758px); portrait front 914px / back
+781px (≤998px); no wrapped text, no overflow. `next build` green. Files:
+`app/print/annual-review/page.tsx`, `docs/form-print-pdf.md`.
+
 ## 2026-07-09 — Annual Review print sheet: content edits + fits one landscape sheet per page
 
 Requested edits to the bespoke `/print/annual-review` sheet (blank branded Annual

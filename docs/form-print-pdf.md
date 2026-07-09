@@ -48,7 +48,7 @@ blanks/boxes sized for writing by hand.
 
 ## Annual Review — a bespoke fixed sheet
 The Annual Review is the exception to the field-driven model. It has its own
-fixed, branded two-page landscape sheet at `app/print/annual-review/page.tsx`
+fixed, branded two-page sheet (landscape by default, with a portrait option) at `app/print/annual-review/page.tsx`
 (route `/print/annual-review`, admin-gated) — a static, trusted HTML string
 (inline SVG icons, logo from `/public`) rendered as-is so the print matches the
 approved design exactly. It is not generated from `form_fields`. The Annual
@@ -62,6 +62,13 @@ clean duplex front/back (print with "flip on short edge", scale = Actual size). 
 spacing to keep the front/back within the ~758px usable height (8.5in − 0.6in margins
 @ 96dpi). If you add rows/content, re-check the rendered height and re-tighten there —
 don't rely on the print dialog's "Fit to page" to rescue an overflow.
+
+**Orientation toggle.** A Landscape/Portrait switch in the on-screen top bar
+(`?orientation=portrait`, hidden in print) swaps the `@page` size and merges in
+`PORTRAIT_STYLE` — same content, core values reflowed 4-up, and the fit-to-page
+compaction relaxed since portrait has ~998px of usable height (vs ~758px landscape).
+Both orientations are verified to fit one sheet per page at 100%. The `PrintButton`
+label and printed `@page` follow the current selection.
 
 ## Note
 This is a print/layout feature only — it never changes a form's questions,

@@ -25,6 +25,9 @@ const STYLE = `:root{
   .bar .t{font-size:13px;color:var(--muted);}
   .bar .badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--green);background:#eafaef;border:1px solid #bfe6c8;border-radius:999px;padding:3px 9px;}
   .pdf{border:0;cursor:pointer;background:var(--green);color:#fff;font-weight:600;font-size:13px;font-family:inherit;padding:8px 14px;border-radius:8px;}
+  .otog{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12px;font-weight:600;}
+  .otog a{padding:7px 13px;color:var(--muted);text-decoration:none;}
+  .otog a.on{background:var(--navy);color:#fff;}
 
   .sheet{width:1040px;min-height:804px;margin:0 auto 22px;background:#fff;padding:26px 28px 20px;box-shadow:0 1px 4px rgba(0,0,0,.12);position:relative;display:flex;flex-direction:column;}
 
@@ -49,19 +52,19 @@ const STYLE = `:root{
 
   /* ---------- Review sections 1-3 ---------- */
   .sec{display:flex;gap:14px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
-  .sec .body{flex:1;min-width:0;}
+  .sec .body{flex:none;min-width:0;}
   .sec-title{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
   .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;}
   .ic.lg{width:34px;height:34px;} .ic.sm{width:22px;height:22px;}
   .ic svg{width:60%;height:60%;}
   .sec-title .nm{font-size:14px;font-weight:800;letter-spacing:.02em;color:var(--navy);text-transform:uppercase;}
-  .grid{display:grid;grid-template-columns:1fr 34px 34px 34px 34px;align-items:center;justify-items:center;column-gap:2px;row-gap:5px;}
+  .grid{display:grid;grid-template-columns:340px 30px 30px 30px 30px;align-items:center;justify-items:center;column-gap:2px;row-gap:5px;}
   .grid .hdr{display:flex;justify-content:center;}
   .grid .crit{font-size:12px;color:#33445c;padding-right:8px;justify-self:start;}
   .grid .crit .dot{color:var(--green);font-weight:800;}
   .rc{display:block;width:15px;height:15px;border-radius:50%;border:1.5px solid;}
   .rc.g{border-color:var(--green);} .rc.b{border-color:var(--blue);} .rc.y{border-color:var(--gold);} .rc.r{border-color:var(--red);}
-  .coach{width:212px;flex:none;border:1px dashed #cfd6de;border-radius:10px;background:var(--soft);padding:8px 10px;}
+  .coach{flex:1;min-width:0;border:1px dashed #cfd6de;border-radius:10px;background:var(--soft);padding:8px 10px;}
   .coach .lbl{font-size:9.5px;font-weight:800;letter-spacing:.1em;color:var(--green);text-transform:uppercase;}
 
   /* ---------- Core values ---------- */
@@ -171,6 +174,34 @@ const STYLE = `:root{
     .sheet{width:100%;min-height:0;box-shadow:none;margin:0;padding:14px 16px;break-after:page;}
     .sheet:last-child{break-after:auto;}
   }`
+
+// Portrait overrides — merged after STYLE when ?orientation=portrait. Same content;
+// the page just turns portrait (narrower + taller), the core-values row reflows to
+// 4-up, and the on-screen preview width matches a portrait Letter page. Portrait has
+// far more vertical room, so the fit-to-page compaction simply leaves extra whitespace.
+const PORTRAIT_STYLE = `
+  @media print{ @page{ size:letter portrait; } }
+  @media screen{ .sheet{ width:760px; } }
+  .cv-grid{ grid-template-columns:repeat(4,1fr); }
+  /* Portrait has far more vertical room than landscape — relax the fit-to-page
+     compaction (rules above) so the content breathes instead of hugging the top.
+     Verified front≈916px / back≈786px, both under the ~998px portrait usable height. */
+  .info{ margin-bottom:12px; padding:11px 16px; }
+  .sec{ margin-bottom:9px; padding:9px 12px; }
+  .grid{ row-gap:4px; }
+  .cv-wrap{ padding:11px 12px; }
+  .cv-h{ margin-bottom:9px; }
+  .cv .cl{ min-height:30px; }
+  .cv-coach{ margin-top:9px; padding:8px 10px; }
+  .scale-grid{ margin-bottom:10px; }
+  .scap{ margin:8px 0 14px; }
+  .hsec{ margin:2px 0 12px; }
+  .sum-grid{ margin-bottom:14px; }
+  .wl{ height:15px; margin-top:8px; }
+  .rate-grid{ margin-bottom:14px; }
+  .two{ margin-bottom:12px; }
+  .sig-grid{ gap:26px; }
+`
 
 const SHEETS = `<section class="sheet">
     <div class="head">
@@ -309,24 +340,15 @@ const SHEETS = `<section class="sheet">
       <div class="sig"><div class="sh">Reviewer Signature</div><div class="srow">Signature:<span class="ln"></span></div><div class="srow d">Date:<span class="ln"></span></div></div>
     </div>
 
-    <div class="footer">
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg> Enrich Lives</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg> Solve Problems</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7l2.5-2a2 2 0 0 1 2.6.2L21 9v5l-2 1"/><path d="M12 7 9.5 5a2 2 0 0 0-2.6.2L3 9v5l2 1"/><path d="M8 15l2.2 2.2a1.5 1.5 0 0 0 2.1 0L17 12.5"/><path d="M13 17l1.6 1.6a1.4 1.4 0 0 0 2-2"/></svg> Golden Rule Mentality</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg> Innovative Thinking</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6C10 4.5 7 4 4 4.5v13C7 17 10 17.5 12 19"/><path d="M12 6c2-1.5 5-2 8-1.5v13c-3-.5-6 0-8 1.5z"/><path d="M12 6v13"/></svg> Colossians 3:23</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg> Integrity is Key</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.5-4.6 5.5-4.6s5.5 1.6 5.5 4.6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1"/><path d="M17.5 15.6c2.4.4 4 1.9 4 4.4"/></svg> We Are a Team</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5L16.5 21 15 13.5"/></svg> Quality Matters</span>
-      <span class="fv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0-8 6-13 15-13 0 9-5 14-13 14a4 4 0 0 1-2-1z"/><path d="M6 18C10 14 12 12 17 10"/></svg> Clean is King</span>
-    </div>
   </section>`
 
-export default async function AnnualReviewPrintPage() {
+export default async function AnnualReviewPrintPage(props: { searchParams: Promise<{ orientation?: string }> }) {
+  const sp = await props.searchParams
   if (!(await getAdminUser())) redirect('/login')
+  const portrait = sp?.orientation === 'portrait'
   return (
     <div className="wrap">
-      <style dangerouslySetInnerHTML={{ __html: STYLE }} />
+      <style dangerouslySetInnerHTML={{ __html: STYLE + (portrait ? PORTRAIT_STYLE : '') }} />
       <div className="bar">
         <Link
           href="/admin/forms"
@@ -334,7 +356,13 @@ export default async function AnnualReviewPrintPage() {
         >
           <ArrowLeft size={15} /> Back to forms
         </Link>
-        <PrintButton label="Print / Save as PDF (landscape)" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="otog" role="group" aria-label="Page orientation">
+            <Link href="/print/annual-review" className={portrait ? '' : 'on'}>Landscape</Link>
+            <Link href="/print/annual-review?orientation=portrait" className={portrait ? 'on' : ''}>Portrait</Link>
+          </div>
+          <PrintButton label={`Print / Save as PDF (${portrait ? 'portrait' : 'landscape'})`} />
+        </div>
       </div>
       <div dangerouslySetInnerHTML={{ __html: SHEETS }} />
     </div>
