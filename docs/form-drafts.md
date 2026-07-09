@@ -25,10 +25,13 @@ saved. Click **Resume** to reopen exactly where they left off, or **Discard**.
 **Multiple drafts per form** are allowed on purpose (a manager mid-way through several
 reviews at once).
 
-In **admin**, the Employee Forms tab is reached from the sidebar ("Employees" →
-**Employee Forms**, beside the "Forms" manager). That nav item carries an **amber
-count badge** of the admin's unfinished drafts (`getUserFormDraftCount`, wired through
-the admin layout) so a reviewer sees at a glance they have reviews to finish.
+In **admin**, the Employee Forms tab was **merged into "Forms"** (2026-07-09) — the
+standalone sidebar item is now hidden, since `/admin/forms` already opens & fills any
+form via the ↗ preview arrow. The route `/admin/employee-forms` (with its resume list)
+is still reachable by URL, and re-listing it is a one-line change (`hidden: true` in
+`AdminSidebar.tsx`). While it was in the sidebar, that nav item carried an **amber
+count badge** of the admin's unfinished drafts (`getUserFormDraftCount`, still wired
+through the admin layout).
 
 ## Data + API
 - **`form_drafts`** (migration `033_form_drafts.sql`) — `id` (client-generated uuid),

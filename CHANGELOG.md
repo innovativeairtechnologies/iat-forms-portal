@@ -2,6 +2,27 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-09 — Admin nav: "Employee Forms" merged into "Forms"
+
+Removed the standalone **Employee Forms** item from the admin sidebar (Employees
+section). It was redundant — `/admin/forms` already opens & fills any form via the ↗
+preview arrow, so a second fill-gallery tab wasn't needed. The nav item is now
+`hidden: true` in `AdminSidebar.tsx` (comment left explaining the merge), and the ⌘K
+command-palette entry was delisted with its search keywords (`jotform / fill / submit /
+resources / library`) folded into the **Forms** entry so search still lands there.
+**Kept intact:** the `/admin/employee-forms` route, the `employee_forms`
+role/permission, and the shared `EmployeeFormsView` — which still powers the
+employee-facing `/employee/resources`. Re-enable the nav item by removing `hidden:
+true`. No route/data/migration change. `tsc --noEmit` + `next build` green. Files:
+`components/admin/AdminSidebar.tsx`, `components/admin/CommandPalette.tsx`.
+
+Alongside it, a read-only forms audit (57 forms): 52 open via the ↗ arrow; the 5 that
+show "This form is not available" are all **paused on purpose** (Annual Time Request &
+Sick Time Form → replaced by the dedicated PTO/Sick request system; Annual Review
+`[perf-new]` → throwaway test copy; Copy of Customer Satisfaction Survey → duplicate;
+Customer Order Form → old/superseded) — left as-is per Jacob. No duplicate slugs, no
+empty forms.
+
 ## 2026-07-09 — Gantt: sales onboarding (guided PDF + hover tooltips)
 
 Sales loved the Gantt tool but couldn't drive it, so two **onboarding-only** layers

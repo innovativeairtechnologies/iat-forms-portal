@@ -36,8 +36,9 @@ const STATIC: Item[] = [
   { id: 'nav-dash',    label: 'Dashboard',        group: 'Go to', icon: LayoutDashboard, href: '/admin', keywords: 'home overview', perm: 'dashboard' },
   { id: 'nav-jerry',   label: 'Jerry',            group: 'Go to', icon: Bot, href: '/admin/jerry', keywords: 'ai assistant chat ask ask jerry', perm: 'jerry' },
   { id: 'nav-custjerry', label: 'Customer Jerry',  group: 'Go to', icon: MessageCircle, href: '/admin/customer-jerry', keywords: 'ai assistant customer preview test', perm: 'customer_jerry' },
-  { id: 'nav-forms',   label: 'Forms',            group: 'Go to', icon: FileText,        href: '/admin/forms', perm: 'forms' },
-  { id: 'nav-empforms', label: 'Employee Forms',  group: 'Go to', icon: FileText,        href: '/admin/employee-forms', keywords: 'jotform fill submit resources library', perm: 'employee_forms' },
+  { id: 'nav-forms',   label: 'Forms',            group: 'Go to', icon: FileText,        href: '/admin/forms', keywords: 'jotform fill submit resources library employee forms', perm: 'forms' },
+  // Employee Forms merged into Forms (fill any form from /admin/forms via the ↗ arrow).
+  // Its search keywords now live on the Forms entry above; route kept, just delisted here.
   { id: 'nav-subs',    label: 'Submissions',      group: 'Go to', icon: Inbox,           href: '/admin/submissions', perm: 'submissions' },
   { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets', perm: 'tickets' },
   { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty', perm: 'equipment' },

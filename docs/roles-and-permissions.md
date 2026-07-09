@@ -12,7 +12,7 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 |------|----------|------|
 | `admin` | `/admin` (executive dashboard) | Everything |
 | `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Deals, Gantt, Jerry |
-| `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, Employee Forms, PTO, Sick Time, Scheduling, Accrual, Jerry |
+| `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, PTO, Sick Time, Scheduling, Accrual, Jerry |
 | `marketing` | `/admin` (department dashboard) | Presentations, Jerry |
 | `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Jerry |
 | `production_manager` | `/admin` (department dashboard) | Tickets, Equipment, Gantt, Scheduling, Jerry |

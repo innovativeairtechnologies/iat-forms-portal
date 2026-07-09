@@ -81,7 +81,11 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/employees',      label: 'Accounts',       icon: Users, perm: 'employees' },
       { href: '/admin/org-chart',      label: 'Org Chart',      icon: Network, perm: 'org_chart' },
       { href: '/admin/forms',          label: 'Forms',          icon: FileText, perm: 'forms' },
-      { href: '/admin/employee-forms', label: 'Employee Forms', icon: FilePen, badge: 'drafts', perm: 'employee_forms' },
+      // Employee Forms merged into Forms: /admin/forms already lets you open & fill any
+      // form via the ↗ preview arrow, so the separate fill-gallery is redundant. Route,
+      // roles, and the employee-portal /employee/resources view all stay live; re-enable
+      // this nav entry by removing `hidden: true`.
+      { href: '/admin/employee-forms', label: 'Employee Forms', icon: FilePen, badge: 'drafts', hidden: true, perm: 'employee_forms' },
       { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto', perm: 'pto' },
       { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick', perm: 'sick' },
       { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock, perm: 'scheduling' },
