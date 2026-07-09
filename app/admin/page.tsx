@@ -4,7 +4,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
-import ThemeToggle from '@/components/ThemeToggle'
 import { TopBarSearch, TopBarBell } from './TopBarActions'
 import DashboardPresetPicker from './DashboardPresetPicker'
 import ExecutiveBriefing from './ExecutiveBriefing'
@@ -475,20 +474,26 @@ export default async function AdminDashboard() {
         <div className="absolute top-16 -left-32 w-[380px] h-[380px] rounded-full bg-gradient-to-tr from-sky-400/15 via-teal-400/8 to-transparent blur-3xl dark:from-sky-500/14 dark:via-teal-500/7" />
       </div>
 
-      {/* Top bar */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0b]/90 backdrop-blur">
+      {/* Top bar — search · icon view-switcher · primary action · bell · avatar */}
+      <div className="sticky top-0 z-10 flex items-center gap-2.5 px-5 h-14 border-b border-hairline bg-canvas/90 backdrop-blur">
         <div className="flex items-center gap-1.5 text-[13px]">
-          <span className="text-zinc-400 dark:text-zinc-500">Operations</span>
-          <ChevronRight size={13} className="text-zinc-300 dark:text-zinc-700" />
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">Overview</span>
+          <span className="text-ink-muted">Operations</span>
+          <ChevronRight size={13} className="text-ink-faint" />
+          <span className="font-semibold text-ink">Overview</span>
         </div>
         <div className="flex-1" />
-        <DashboardPresetPicker current={preset} />
         <TopBarSearch />
-        <ThemeToggle />
-        <TopBarBell unreadCount={d.kpi.unread} ticketCount={d.kpi.openTickets} />
-        <Link href="/admin/forms/new" className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-semibold transition-colors">
+        <DashboardPresetPicker current={preset} />
+        <Link href="/admin/forms/new" className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-brand hover:bg-brand-hover text-white dark:text-canvas text-[12px] font-semibold transition-colors">
           <Plus size={14} /> New Form
+        </Link>
+        <TopBarBell unreadCount={d.kpi.unread} ticketCount={d.kpi.openTickets} />
+        <Link
+          href="/admin/profile"
+          title={surfaceUser?.displayName || 'Profile'}
+          className="w-8 h-8 rounded-full bg-ink flex items-center justify-center flex-shrink-0 hover:opacity-85 transition-opacity"
+        >
+          <span className="text-[12px] font-semibold text-canvas">{(surfaceUser?.displayName || 'A').charAt(0).toUpperCase()}</span>
         </Link>
       </div>
 
