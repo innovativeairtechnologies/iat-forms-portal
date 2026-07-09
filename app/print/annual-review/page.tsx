@@ -122,6 +122,48 @@ const STYLE = `:root{
   .footer .fv{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#e6ecf6;}
   .footer .fv svg{width:14px;height:14px;color:#8fb4e6;}
 
+  /* ── Fit-to-page compaction ───────────────────────────────────────────────
+     Tighten spacing so EACH sheet (front / back) prints on ONE landscape Letter
+     page at 100% scale — required for reliable duplex (front/back) printing.
+     Overrides the roomier values above (same selectors, later in source order).
+     Verified front≈722px / back≈719px, both under the ~758px usable height
+     (8.5in − 0.6in margins @ 96dpi), ~36px headroom each. */
+  .info{padding:7px 14px;margin-bottom:7px;}
+  .sec{padding:6px 12px;margin-bottom:4px;}
+  .sec-title{margin-bottom:3px;}
+  .ic.lg{width:26px;height:26px;}
+  .grid{row-gap:1px;}
+  .rc{width:13px;height:13px;}
+  .crit{font-size:11px;}
+  .coach{padding:5px 8px;}
+  .cv-wrap{padding:6px 12px;}
+  .cv-h{margin-bottom:5px;}
+  .cv .cvi{height:20px;margin-bottom:2px;}
+  .cv .cvi svg{width:20px;height:20px;}
+  .cv .cl{min-height:22px;font-size:9.5px;}
+  .cv .cc{margin-top:3px;}
+  .cv-coach{margin-top:5px;padding:5px 8px;}
+  .head{margin-bottom:7px;}
+  .head .brand img{height:44px;}
+  .title{font-size:25px;margin:2px 0 7px;}
+  .scale-grid{gap:10px;margin-bottom:4px;}
+  .scard{padding:10px 10px;}
+  .scap{margin:5px 0 9px;}
+  .hsec{margin:2px 0 8px;}
+  .sum-grid{gap:10px;margin-bottom:9px;}
+  .sumcard{padding:9px 12px;}
+  .sumcard .q{min-height:34px;}
+  .wl{height:13px;margin-top:6px;}
+  .rate-grid{gap:10px;margin-bottom:9px;}
+  .rpill{padding:9px;}
+  .two{gap:10px;margin-bottom:9px;}
+  .bcard{padding:9px 12px;}
+  .drow{margin-top:8px;}
+  .sig-grid{gap:24px;}
+  .sig .sh{margin-bottom:8px;}
+  .sig .srow{margin-top:8px;}
+  .footer{padding:7px 14px;}
+
   @media print{
     @page{size:letter landscape;margin:0.3in;}
     .wrap{background:#fff;padding:0;}
@@ -148,8 +190,8 @@ const SHEETS = `<section class="sheet">
     <div class="title">ANNUAL <span class="g">PERFORMANCE</span> REVIEW</div>
 
     <div class="info">
-      <div class="fld"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Employee Name:<span class="ln"></span></div>
-      <div class="fld"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Reviewer:<span class="ln"></span></div>
+      <div class="fld">Employee Name:<span class="ln"></span></div>
+      <div class="fld">Reviewer:<span class="ln"></span></div>
     </div>
 
     <!-- Section 1 -->
@@ -166,6 +208,7 @@ const SHEETS = `<section class="sheet">
           <div class="crit"><span class="dot">&bull;</span> Meets commitments and deadlines</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
           <div class="crit"><span class="dot">&bull;</span> Takes ownership and follows through</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
           <div class="crit"><span class="dot">&bull;</span> Solves problems instead of waiting on others</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
+          <div class="crit"><span class="dot">&bull;</span> Follows IAT safety protocols</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
         </div>
       </div>
       <div class="coach"><div class="lbl">Coaching Notes</div></div>
@@ -184,6 +227,7 @@ const SHEETS = `<section class="sheet">
           <div class="crit"><span class="dot">&bull;</span> Communicates clearly with customers and teammates</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
           <div class="crit"><span class="dot">&bull;</span> Lives the Golden Rule</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
           <div class="crit"><span class="dot">&bull;</span> Supports the team and contributes positively</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
+          <div class="crit"><span class="dot">&bull;</span> Attendance and punctuality</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
         </div>
       </div>
       <div class="coach"><div class="lbl">Coaching Notes</div></div>
@@ -218,7 +262,7 @@ const SHEETS = `<section class="sheet">
         <div class="cv"><div class="cvi" style="color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5L16.5 21 15 13.5"/></svg></div><div class="cl">Quality Matters</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
         <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg></div><div class="cl">Innovative Thinking</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
         <div class="cv"><div class="cvi" style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0-8 6-13 15-13 0 9-5 14-13 14a4 4 0 0 1-2-1z"/><path d="M6 18C10 14 12 12 17 10"/></svg></div><div class="cl">Clean is King</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--navy)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6C10 4.5 7 4 4 4.5v13C7 17 10 17.5 12 19"/><path d="M12 6c2-1.5 5-2 8-1.5v13c-3-.5-6 0-8 1.5z"/><path d="M12 6v13"/></svg></div><div class="cl">Colossians 3:23 Work with Excellence</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--navy)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6C10 4.5 7 4 4 4.5v13C7 17 10 17.5 12 19"/><path d="M12 6c2-1.5 5-2 8-1.5v13c-3-.5-6 0-8 1.5z"/><path d="M12 6v13"/></svg></div><div class="cl">Colossians 3:23</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
       </div>
       <div class="cv-coach"><div class="lbl">Coaching Notes</div></div>
     </div>
@@ -231,7 +275,7 @@ const SHEETS = `<section class="sheet">
       <div class="scard g"><span class="ic lg" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v4a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v2a3 3 0 0 0 3 3z"/><path d="M18 5h3v2a3 3 0 0 1-3 3z"/><rect x="11" y="13" width="2" height="4"/><rect x="8" y="17" width="8" height="2" rx="1"/></svg></span><div class="st">Superstar</div><div class="sd">Exceptionally rare. Sets pace for IAT and shapes future.</div></div>
       <div class="scard b"><span class="ic lg" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span><div class="st">Rockstar</div><div class="sd">Rare. Leads improvements. Stays ahead of company growth.</div></div>
       <div class="scard y"><span class="ic lg" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span><div class="st">Star</div><div class="sd">Keeps pace with company expectations and growth.</div></div>
-      <div class="scard r"><span class="ic lg" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span><div class="st">Performer</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
+      <div class="scard r"><span class="ic lg" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span><div class="st">Needs Development</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
     </div>
     <div class="scap">Select the rating that best describes the employee&rsquo;s overall performance for each area.</div>
 
@@ -239,7 +283,7 @@ const SHEETS = `<section class="sheet">
     <div class="sum-grid">
       <div class="sumcard g"><div class="sumhead"><span class="ic sm" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span><span class="tt">Biggest Strength</span></div><div class="q">What does this employee consistently do that makes IAT better?</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
       <div class="sumcard b"><div class="sumhead"><span class="ic sm" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span><span class="tt">Greatest Opportunity</span></div><div class="q">What is the one behavior that, if improved, would make the biggest impact?</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
-      <div class="sumcard y"><div class="sumhead"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span><span class="tt">Development Goal</span></div><div class="q">Measurable goals for development before the next review.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
+      <div class="sumcard y"><div class="sumhead"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span><span class="tt">Development Goals</span></div><div class="q">Measurable goals for development before the next review.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
     </div>
 
     <div class="hsec left">Overall Performance Rating <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(Select One)</span><span class="rule"></span></div>
@@ -247,12 +291,12 @@ const SHEETS = `<section class="sheet">
       <div class="rpill g"><span class="ic sm" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v4a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v2a3 3 0 0 0 3 3z"/><path d="M18 5h3v2a3 3 0 0 1-3 3z"/><rect x="11" y="13" width="2" height="4"/><rect x="8" y="17" width="8" height="2" rx="1"/></svg></span> Superstar</div>
       <div class="rpill b"><span class="ic sm" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span> Rockstar</div>
       <div class="rpill y"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span> Star</div>
-      <div class="rpill r"><span class="ic sm" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span> Performer</div>
+      <div class="rpill r"><span class="ic sm" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span> Needs Development</div>
     </div>
 
     <div class="two">
       <div class="bcard"><div class="bh">Employee Comments</div><div class="bs">Add any additional comments or context.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
-      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(If rating is Performer)</span></div>
+      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(if rating is Needs Development)</span></div>
         <div class="drow">Focus Area:<span class="ln"></span></div>
         <div class="drow">Action Plan:<span class="ln"></span></div>
         <div class="drow">Support Needed:<span class="ln"></span></div>

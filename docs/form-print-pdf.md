@@ -56,6 +56,13 @@ Review form (slug `perf-new`) special-cases its editor "Download PDF" button to
 open this page instead of `/print/forms/[id]` (see `components/admin/FormBuilder.tsx`).
 To change its content, edit the markup in that page directly.
 
+**Each sheet must fit ONE landscape Letter page at 100% scale** so it prints as a
+clean duplex front/back (print with "flip on short edge", scale = Actual size). A
+"Fit-to-page compaction" override block near the end of the page's `STYLE` tightens
+spacing to keep the front/back within the ~758px usable height (8.5in − 0.6in margins
+@ 96dpi). If you add rows/content, re-check the rendered height and re-tighten there —
+don't rely on the print dialog's "Fit to page" to rescue an overflow.
+
 ## Note
 This is a print/layout feature only — it never changes a form's questions,
 options, scale, or any submission. Editing what a form *asks* is done in the form

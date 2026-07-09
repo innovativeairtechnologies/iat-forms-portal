@@ -2,6 +2,31 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-09 — Annual Review print sheet: content edits + fits one landscape sheet per page
+
+Requested edits to the bespoke `/print/annual-review` sheet (blank branded Annual
+Review, front/back landscape):
+
+- Removed the person icons from **Employee Name** and **Reviewer**.
+- Added **"Follows IAT safety protocols"** to *Results & Execution* and **"Attendance
+  and punctuality"** to *Teamwork & Communication*.
+- Renamed the lowest rating **Performer → Needs Development** (performance-scale card,
+  Overall Performance Rating pill, and the Development Plan note "(if rating is Needs
+  Development)").
+- **Development Goal → Development Goals** in the Overall Summary.
+- Dropped **"Work with Excellence"** from the **Colossians 3:23** core value.
+
+**Pagination fix for reliable duplex printing.** The sheet already ran taller than one
+landscape Letter page at 100% (front ~946px / back ~849px vs ~758px usable) — so each
+page spilled onto a second physical sheet unless the print dialog was set to "Fit to
+page," which broke the front/back pairing. Added a **fit-to-page compaction** override
+block to `STYLE` (tighter section padding, 1px rating-circle row gaps, smaller
+header/title/core-value icons). Each sheet now measures **front ≈722px / back ≈719px**,
+under the ~758px budget with ~⅜in headroom, so it prints as clean front/back at 100%
+(flip on short edge). Content unchanged; verified by rendering the actual markup at the
+print box model (front + back screenshots). `next build` green. File:
+`app/print/annual-review/page.tsx` (+ `docs/form-print-pdf.md`).
+
 ## 2026-07-09 — Admin nav: "Employee Forms" merged into "Forms"
 
 Removed the standalone **Employee Forms** item from the admin sidebar (Employees
