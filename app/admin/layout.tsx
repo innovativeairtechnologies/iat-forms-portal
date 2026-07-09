@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <ViewAsProvider realRole={admin.role} permMatrix={permMatrix}>
-      <div className="min-h-screen flex bg-[#F7F6F3] dark:bg-zinc-950">
+      <div className="min-h-screen flex bg-canvas">
         <RefreshOnNavigate />
         <CommandPalette />
         <AdminSidebar

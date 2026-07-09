@@ -5,14 +5,13 @@ import type { LucideIcon } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
-  CalendarClock, TrendingUp, Ticket, ClipboardCheck,
-  Calendar, Clock, Boxes, Building2,
-  ChevronRight, ShieldCheck, Package, Network, FileText, FilePen, Presentation, CalendarRange,
-  Users, Bot, DollarSign, Brain, MessageCircle, KeyRound,
+  ChevronRight, ChevronDown, ShieldCheck, Package,
+  Users, Bot, DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Logo from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { type Perm } from '@/lib/roles'
 import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
@@ -21,14 +20,19 @@ import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
 
 type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'usrotors' | 'drafts'
 
-type NavItem = {
+type NavChild = {
   href: string
   label: string
-  icon: LucideIcon
-  exact?: boolean
   badge?: BadgeKind
   hidden?: boolean
   perm: Perm
+}
+
+type NavParent = {
+  label: string
+  icon: LucideIcon
+  hidden?: boolean
+  children: NavChild[]
 }
 
 type Counts = {
@@ -41,82 +45,82 @@ type Counts = {
   drafts: number
 }
 
-type NavSection = {
-  label: string
-  items: NavItem[]
-  hidden?: boolean
-}
+// ─── Nav structure — parents with expandable children ─────────────────────────
 
-// ─── Nav structure ────────────────────────────────────────────────────────────
+const DASHBOARD = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard' as Perm }
 
-const DASHBOARD: NavItem = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, perm: 'dashboard' }
-const JERRY: NavItem = { href: '/admin/jerry', label: 'Jerry', icon: Bot, perm: 'jerry' }
-const CUSTOMER_JERRY: NavItem = { href: '/admin/customer-jerry', label: 'Customer Jerry', icon: MessageCircle, perm: 'customer_jerry' }
-const KNOWLEDGE: NavItem = { href: '/admin/knowledge', label: "Jerry's Brain", icon: Brain, perm: 'knowledge' }
-
-const NAV_SECTIONS: NavSection[] = [
+const NAV_PARENTS: NavParent[] = [
   {
-    label: 'IAT',
-    items: [
-      { href: '/admin/submissions',  label: 'Submissions', icon: Inbox,       badge: 'submissions', perm: 'submissions' },
-      { href: '/admin/tickets',      label: 'Tickets',     icon: Ticket,      badge: 'tickets', perm: 'tickets' },
-      // Troubleshooting merged into Tickets: the two customer forms (Equipment Support +
-      // Troubleshooting Checklist) are now one form feeding the tickets pipeline, so the
-      // separate tab is hidden. Legacy intakes remain at /admin/troubleshooting by URL.
-      // Re-enable by removing `hidden: true`.
-      { href: '/admin/troubleshooting', label: 'Troubleshooting', icon: ClipboardCheck, badge: 'troubleshooting', hidden: true, perm: 'tickets' },
-      { href: '/admin/equipment',    label: 'Equipment',   icon: Boxes, perm: 'equipment' },
-      { href: '/admin/customers',    label: 'Customers',   icon: Building2, perm: 'customers' },
-      { href: '/admin/deals',        label: 'Deals',       icon: DollarSign, perm: 'deals' },
-      // Gantt / Project Timelines. Leadership flagged concerns (a simple Gantt
-      // oversimplifies these projects' branching/conditional schedules), but it's
-      // kept visible for now to demo. To pause later, add `hidden: true`.
-      { href: '/admin/gantt',        label: 'Gantt',       icon: CalendarRange, perm: 'gantt' },
-      { href: '/admin/srv',          label: 'SRV Form',    icon: ClipboardCheck, perm: 'srv' },
+    label: 'Operations',
+    icon: Inbox,
+    children: [
+      { href: '/admin/submissions', label: 'Submissions', badge: 'submissions', perm: 'submissions' },
+      { href: '/admin/tickets', label: 'Tickets', badge: 'tickets', perm: 'tickets' },
+      // Troubleshooting merged into Tickets (route stays live by URL). Re-enable by
+      // removing `hidden: true`.
+      { href: '/admin/troubleshooting', label: 'Troubleshooting', badge: 'troubleshooting', hidden: true, perm: 'tickets' },
+      { href: '/admin/forms', label: 'Forms', perm: 'forms' },
+      { href: '/admin/equipment', label: 'Equipment', perm: 'equipment' },
+      { href: '/admin/srv', label: 'SRV Form', perm: 'srv' },
+      // Gantt kept visible to demo despite leadership concerns; pause with `hidden: true`.
+      { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
     ],
   },
   {
-    label: 'Employees',
-    items: [
-      { href: '/admin/employees',      label: 'Accounts',       icon: Users, perm: 'employees' },
-      { href: '/admin/org-chart',      label: 'Org Chart',      icon: Network, perm: 'org_chart' },
-      { href: '/admin/forms',          label: 'Forms',          icon: FileText, perm: 'forms' },
-      // Employee Forms merged into Forms: /admin/forms already lets you open & fill any
-      // form via the ↗ preview arrow, so the separate fill-gallery is redundant. Route,
-      // roles, and the employee-portal /employee/resources view all stay live; re-enable
-      // this nav entry by removing `hidden: true`.
-      { href: '/admin/employee-forms', label: 'Employee Forms', icon: FilePen, badge: 'drafts', hidden: true, perm: 'employee_forms' },
-      { href: '/admin/requests/pto',  label: 'PTO',        icon: Calendar,     badge: 'pto', perm: 'pto' },
-      { href: '/admin/requests/sick', label: 'Sick Time',  icon: Clock,        badge: 'sick', perm: 'sick' },
-      { href: '/admin/schedule',      label: 'Scheduling', icon: CalendarClock, perm: 'scheduling' },
-      { href: '/admin/accrual',       label: 'Accrual',    icon: TrendingUp, perm: 'accrual' },
+    label: 'Sales',
+    icon: DollarSign,
+    children: [
+      { href: '/admin/deals', label: 'Deals', perm: 'deals' },
+      { href: '/admin/customers', label: 'Customers', perm: 'customers' },
+      { href: '/admin/presentations', label: 'Presentations', perm: 'presentations' },
     ],
   },
-  // US Rotors — hidden for now (not needed currently). Code, routes, API, and badge
-  // plumbing are kept for future use; re-enable by removing `hidden: true`.
+  {
+    label: 'People',
+    icon: Users,
+    children: [
+      { href: '/admin/employees', label: 'Accounts', perm: 'employees' },
+      { href: '/admin/org-chart', label: 'Org Chart', perm: 'org_chart' },
+      // Employee Forms merged into Forms (route + employee portal stay live). Re-enable
+      // by removing `hidden: true`.
+      { href: '/admin/employee-forms', label: 'Employee Forms', badge: 'drafts', hidden: true, perm: 'employee_forms' },
+      { href: '/admin/requests/pto', label: 'PTO', badge: 'pto', perm: 'pto' },
+      { href: '/admin/requests/sick', label: 'Sick Time', badge: 'sick', perm: 'sick' },
+      { href: '/admin/schedule', label: 'Scheduling', perm: 'scheduling' },
+      { href: '/admin/accrual', label: 'Accrual', perm: 'accrual' },
+    ],
+  },
+  {
+    label: 'Jerry',
+    icon: Bot,
+    children: [
+      { href: '/admin/jerry', label: 'Ask Jerry', perm: 'jerry' },
+      { href: '/admin/customer-jerry', label: 'Customer Jerry', perm: 'customer_jerry' },
+      { href: '/admin/knowledge', label: "Jerry's Brain", perm: 'knowledge' },
+    ],
+  },
+  // US Rotors — hidden for now; plumbing kept. Re-enable by removing `hidden: true`.
   {
     label: 'US Rotors',
+    icon: Package,
     hidden: true,
-    items: [
-      { href: '/admin/us-rotors/orders', label: 'Orders', icon: Package, badge: 'usrotors', perm: 'us_rotors' },
-    ],
-  },
-  {
-    label: 'Content',
-    items: [
-      { href: '/admin/presentations', label: 'Presentations', icon: Presentation, perm: 'presentations' },
+    children: [
+      { href: '/admin/us-rotors/orders', label: 'Orders', badge: 'usrotors', perm: 'us_rotors' },
     ],
   },
   {
     label: 'System',
-    items: [
-      { href: '/admin/audit', label: 'Audit Log', icon: ShieldCheck, perm: 'audit' },
-      { href: '/admin/permissions', label: 'Permissions', icon: KeyRound, perm: 'permissions' },
+    icon: ShieldCheck,
+    children: [
+      { href: '/admin/audit', label: 'Audit Log', perm: 'audit' },
+      { href: '/admin/permissions', label: 'Permissions', perm: 'permissions' },
     ],
   },
 ]
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const OPEN_KEY = 'admin-nav-open'
+
+// ─── Badges (Tone system: soft wash + colored text) ───────────────────────────
 
 const BADGE_CLS: Record<BadgeKind, string> = {
   submissions: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
@@ -128,41 +132,15 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   drafts:      'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 }
 
-function NavLink({ item, pathname, counts, onClose }: {
-  item: NavItem
-  pathname: string
-  counts: Counts
-  onClose?: () => void
-}) {
-  const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
-  const dashTheme = pathname === '/admin'
-  const badgeCount = item.badge ? counts[item.badge] : 0
+function Badge({ kind, count }: { kind: BadgeKind; count: number }) {
+  if (count <= 0) return null
   return (
-    <Link
-      href={item.href}
-      onClick={onClose}
-      className={cn(
-        'flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all text-[12px]',
-        active
-          ? dashTheme
-            ? 'bg-emerald-50 dark:bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-400'
-            : 'bg-gray-100 dark:bg-zinc-800 font-medium text-gray-900 dark:text-white'
-          : dashTheme
-            ? 'font-normal text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200'
-            : 'font-normal text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-700 dark:hover:text-gray-300',
-      )}
-    >
-      <item.icon size={16} className="flex-shrink-0" />
-      <span className="flex-1">{item.label}</span>
-      {item.badge && badgeCount > 0 && (
-        <span className={cn(
-          'text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
-          BADGE_CLS[item.badge],
-        )}>
-          {badgeCount > 99 ? '99+' : badgeCount}
-        </span>
-      )}
-    </Link>
+    <span className={cn(
+      'text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full',
+      BADGE_CLS[kind],
+    )}>
+      {count > 99 ? '99+' : count}
+    </span>
   )
 }
 
@@ -184,11 +162,32 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   const router = useRouter()
   const { hasPerm, home } = useViewAs()
   const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders, drafts: draftCount }
-  const dashTheme = pathname === '/admin'
   const [mobileOpen, setMobileOpen] = useState(false)
   const displayName = adminName || 'Admin'
   const initial = displayName.charAt(0).toUpperCase()
-  const homeHref = home
+
+  const isChildActive = (c: NavChild) => pathname.startsWith(c.href)
+  const activeParent = NAV_PARENTS.find(p => p.children.some(isChildActive))?.label ?? null
+
+  // Expanded parents: user toggles persist across reloads; the parent that owns
+  // the current page is always forced open. localStorage is read in an effect
+  // (not the initializer) so server and client render the same initial HTML.
+  const [open, setOpen] = useState<string[]>([])
+  useEffect(() => {
+    let stored: string[] = []
+    try { stored = JSON.parse(localStorage.getItem(OPEN_KEY) || '[]') } catch { /* private mode */ }
+    setOpen(prev => Array.from(new Set([...prev, ...stored])))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (activeParent) setOpen(prev => (prev.includes(activeParent) ? prev : [...prev, activeParent]))
+  }, [activeParent])
+  const toggle = (label: string) =>
+    setOpen(prev => {
+      const next = prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]
+      try { localStorage.setItem(OPEN_KEY, JSON.stringify(next)) } catch { /* private mode */ }
+      return next
+    })
 
   const logout = async () => {
     const supabase = createSupabaseBrowser()
@@ -200,83 +199,118 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-2 overflow-y-auto">
       {hasPerm(DASHBOARD.perm) && (
-        <NavLink item={DASHBOARD} pathname={pathname} counts={counts} onClose={onClose} />
-      )}
-      {hasPerm(JERRY.perm) && (
-        <NavLink item={JERRY} pathname={pathname} counts={counts} onClose={onClose} />
-      )}
-      {hasPerm(CUSTOMER_JERRY.perm) && (
-        <NavLink item={CUSTOMER_JERRY} pathname={pathname} counts={counts} onClose={onClose} />
-      )}
-      {hasPerm(KNOWLEDGE.perm) && (
-        <NavLink item={KNOWLEDGE} pathname={pathname} counts={counts} onClose={onClose} />
+        <Link
+          href={DASHBOARD.href}
+          onClick={onClose}
+          className={cn(
+            'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
+            pathname === DASHBOARD.href
+              ? 'bg-surface-strong text-ink'
+              : 'text-ink-secondary hover:bg-surface-strong hover:text-ink',
+          )}
+        >
+          {pathname === DASHBOARD.href && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-brand" />}
+          <DASHBOARD.icon size={15} className="flex-shrink-0 text-ink-muted" />
+          Dashboard
+        </Link>
       )}
 
-      {NAV_SECTIONS.filter(s => !s.hidden).map(section => {
-        const items = section.items.filter(i => !i.hidden && hasPerm(i.perm))
-        if (items.length === 0) return null
+      {NAV_PARENTS.filter(p => !p.hidden).map(parent => {
+        const children = parent.children.filter(c => !c.hidden && hasPerm(c.perm))
+        if (children.length === 0) return null
+        const isOpen = open.includes(parent.label)
+        const hasActive = parent.label === activeParent
+        const collapsedCount = children.reduce((n, c) => n + (c.badge ? counts[c.badge] : 0), 0)
         return (
-          <div key={section.label} className="mt-5">
-            <div className="px-3 mb-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">
-                {section.label}
-              </span>
-            </div>
-            {items.map(item => (
-              <NavLink key={item.href} item={item} pathname={pathname} counts={counts} onClose={onClose} />
-            ))}
+          <div key={parent.label} className="mt-0.5">
+            <button
+              onClick={() => toggle(parent.label)}
+              aria-expanded={isOpen}
+              className={cn(
+                'relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors text-left',
+                hasActive ? 'bg-surface-strong text-ink' : 'text-ink-secondary hover:bg-surface-strong hover:text-ink',
+              )}
+            >
+              {hasActive && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-brand" />}
+              <parent.icon size={15} className={cn('flex-shrink-0', hasActive ? 'text-ink' : 'text-ink-muted')} />
+              <span className="flex-1">{parent.label}</span>
+              {!isOpen && collapsedCount > 0 && (
+                <span className="text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  {collapsedCount > 99 ? '99+' : collapsedCount}
+                </span>
+              )}
+              <ChevronDown
+                size={12}
+                className={cn('flex-shrink-0 text-ink-faint transition-transform duration-150', isOpen && 'rotate-180')}
+              />
+            </button>
+            {isOpen && (
+              <div className="pb-1">
+                {children.map(child => {
+                  const active = isChildActive(child)
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={onClose}
+                      className={cn(
+                        'flex items-center gap-2 py-1.5 pl-[34px] pr-2.5 rounded-md text-[12px] transition-colors',
+                        active
+                          ? 'bg-surface-strong font-medium text-ink'
+                          : 'text-ink-muted hover:bg-surface-strong hover:text-ink',
+                      )}
+                    >
+                      <span className="flex-1">{child.label}</span>
+                      {child.badge && <Badge kind={child.badge} count={counts[child.badge]} />}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )
       })}
-
     </nav>
   )
 
   const renderFooter = (onClose?: () => void) => (
-    <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-zinc-800">
+    <div className="px-3 pb-3 pt-2 border-t border-hairline-soft">
       {/* Admin-only "View as [role]" nav preview (no effect on real access). */}
       <ViewAsControl />
 
-      <button
-        onClick={logout}
-        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white transition-all"
-      >
-        <LogOut size={15} className="flex-shrink-0" />
-        Sign Out
-      </button>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <button
+          onClick={logout}
+          className="flex-1 flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-ink-muted hover:bg-surface-strong hover:text-ink transition-colors"
+        >
+          <LogOut size={14} className="flex-shrink-0" />
+          Sign Out
+        </button>
+      </div>
 
       <Link
         href="/admin/profile"
         onClick={onClose}
-        className={cn(
-          'mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all group',
-          dashTheme
-            ? 'bg-gray-50 dark:bg-zinc-900/40 hover:bg-gray-100 dark:hover:bg-zinc-900 border-gray-100 dark:border-zinc-800'
-            : 'bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 border-gray-100 dark:border-zinc-700',
-        )}
+        className="mt-2 flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-hairline bg-surface hover:bg-surface-soft transition-colors group"
       >
-        <div className="w-7 h-7 rounded-full bg-gray-900 dark:bg-gray-100 flex items-center justify-center flex-shrink-0">
-          <span className="text-[12px] font-bold text-white dark:text-gray-900">{initial}</span>
+        <div className="w-7 h-7 rounded-full bg-brand flex items-center justify-center flex-shrink-0">
+          <span className="text-[12px] font-semibold text-canvas">{initial}</span>
         </div>
-        <span className="flex-1 text-[13px] font-semibold text-gray-700 dark:text-gray-200 truncate">{displayName}</span>
-        <ChevronRight size={14} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors flex-shrink-0" />
+        <span className="flex-1 text-[12.5px] font-semibold text-ink truncate">{displayName}</span>
+        <ChevronRight size={14} className="text-ink-faint group-hover:text-ink-muted transition-colors flex-shrink-0" />
       </Link>
     </div>
   )
 
   return (
     <>
-      {/* ── Desktop sidebar ── */}
-      <aside className={cn(
-        'hidden md:flex w-[240px] flex-shrink-0 flex-col h-screen sticky top-0 overflow-hidden border-r',
-        dashTheme
-          ? 'bg-white dark:bg-[#0a0a0b] border-zinc-200 dark:border-zinc-800'
-          : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800',
-      )}>
-        <div className="px-4 pt-5 pb-4">
-          <Link href={homeHref} className="flex items-center gap-2.5 group">
+      {/* ── Desktop sidebar — sits on the warm canvas; content cards carry the white ── */}
+      <aside className="hidden md:flex w-[240px] flex-shrink-0 flex-col h-screen sticky top-0 overflow-hidden bg-canvas border-r border-hairline">
+        <div className="px-4 pt-5 pb-3">
+          <Link href={home} className="flex items-center gap-2.5 group">
             <Logo size={26} className="flex-shrink-0" />
-            <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#089447] transition-colors">
+            <span className="text-[14px] font-semibold text-ink tracking-tight group-hover:text-brand-ink transition-colors">
               IAT Portal
             </span>
           </Link>
@@ -286,18 +320,18 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800">
-        <Link href={homeHref} className="flex items-center gap-2.5">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 bg-canvas border-b border-hairline">
+        <Link href={home} className="flex items-center gap-2.5">
           <Logo size={22} className="flex-shrink-0" />
-          <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
+          <span className="text-[13px] font-semibold text-ink">IAT Portal</span>
         </Link>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <span className="text-[10px] font-bold text-white bg-[#089447] min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full">
+            <span className="text-[10px] font-semibold text-canvas bg-brand min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-          <button onClick={() => setMobileOpen(true)} className="p-1 text-gray-600 dark:text-gray-400">
+          <button onClick={() => setMobileOpen(true)} className="p-1 text-ink-secondary">
             <Menu size={20} />
           </button>
         </div>
@@ -310,18 +344,15 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setMobileOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className={cn(
-              'relative w-[260px] flex flex-col h-full shadow-xl',
-              dashTheme ? 'bg-white dark:bg-[#0a0a0b]' : 'bg-white dark:bg-zinc-900',
-            )}
+            className="relative w-[260px] flex flex-col h-full bg-canvas"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
-              <Link href={homeHref} className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
+            <div className="flex items-center justify-between px-4 py-4 border-b border-hairline">
+              <Link href={home} className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
                 <Logo size={22} className="flex-shrink-0" />
-                <span className="text-[13px] font-bold text-gray-900 dark:text-white">IAT Portal</span>
+                <span className="text-[13px] font-semibold text-ink">IAT Portal</span>
               </Link>
-              <button onClick={() => setMobileOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <button onClick={() => setMobileOpen(false)} className="p-1 text-ink-faint hover:text-ink-secondary">
                 <X size={18} />
               </button>
             </div>
