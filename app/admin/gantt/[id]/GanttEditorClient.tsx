@@ -12,7 +12,7 @@ import {
   type GanttChart, type GanttTask, type ChartStatus,
 } from '@/lib/gantt'
 import { updateChart, duplicateChart, deleteChart, saveBaseline } from '../actions'
-import { MAX_ANCHOR, fieldCls, toolBtn, Stat } from './ui'
+import { MAX_ANCHOR, fieldCls, toolBtn, Stat, InfoTip } from './ui'
 import GanttChartView from './GanttChartView'
 import TaskTable from './TaskTable'
 import AssumptionsCard from './AssumptionsCard'
@@ -192,7 +192,10 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
               <input className={fieldCls} value={chart.customer ?? ''} onChange={(e) => patch({ customer: e.target.value })} />
             </label>
             <label className="block">
-              <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-1">Start date</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-1 flex items-center gap-1">
+                Start date
+                <InfoTip text={<>Day one of the schedule. Every date on the chart is measured from here — change it and the <b>whole timeline slides</b>, including any dates you’ve already quoted a customer.</>} />
+              </span>
               <input type="date" className={fieldCls} value={chart.start_date} onChange={(e) => { if (e.target.value) patch({ start_date: e.target.value }) }} />
             </label>
             <label className="block">
@@ -222,8 +225,9 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
                 </div>
               ) : (
                 <>
-                  <div className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 truncate">
-                    {a.name} · <span className="text-zinc-600 dark:text-zinc-300">{a.durMin}{a.durMax > a.durMin ? `–${a.durMax}` : ''} wks → arrives {arrDate}</span>
+                  <div className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 flex items-center gap-1">
+                    <span className="truncate">{a.name} · <span className="text-zinc-600 dark:text-zinc-300">{a.durMin}{a.durMax > a.durMin ? `–${a.durMax}` : ''} wks → arrives {arrDate}</span></span>
+                    <InfoTip className="flex-none" text={<>The <b>anchor</b> — your longest-lead item (the big purchased part everything waits on). Drag this slider, or the “arrival” tag on the chart, to try an earlier/later arrival and watch the whole timeline shift. Changes save to the live plan instantly — there’s no undo, so drag it back, or <b>Duplicate</b> the chart first to experiment safely.</>} />
                   </div>
                   <input
                     type="range" min={1} max={MAX_ANCHOR} step={1} value={a.durMin}
@@ -239,7 +243,10 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
             </div>
           )}
           <div>
-            <div className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5">Baseline</div>
+            <div className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mb-1.5 flex items-center gap-1">
+              Baseline
+              <InfoTip text={<>A saved snapshot of the plan — your <b>“original promise.”</b> Set it once the schedule is agreed. From then on the chart shows how far you’ve drifted from it (the “Vs baseline” number). Re-baseline only when the plan is officially re-agreed.</>} />
+            </div>
             {chart.baseline ? (
               <div className="flex items-center gap-2">
                 <span className="text-[12px] px-2 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1.5">
@@ -257,7 +264,10 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
         {/* risk what-if chips */}
         {allRiskChips.length > 0 && (
           <div className="px-6 pt-3 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">What-if:</span>
+            <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 inline-flex items-center gap-1">
+              What-if:
+              <InfoTip text={<>Each chip is a “what could go wrong.” Click one to <b>pretend it happened</b> — the schedule stretches and a red banner appears. It’s safe and private (nothing is sent to anyone); click again to switch it off. If a chart shows a red banner the moment you open it, someone left a what-if on — switch it off before you quote anything.</>} />
+            </span>
             {allRiskChips.map(({ t, r }) => (
               <button
                 key={r.id}
@@ -285,13 +295,25 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
 
         {/* stats */}
         <div className="px-6 pt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-3xl">
-          <Stat label="Ship window" value={`${fmtShort(addWeeks(chart.start_date, R.shipBest))} – ${dt(R.shipWorst)}`} sub={`plan ${dt(R.ship)}`} />
-          <Stat label="80% confident by" value={dt(mc.ship.p80)} sub={`P50 ${dt(mc.ship.p50)} · P90 ${dt(mc.ship.p90)}`} tone="emerald" />
+          <Stat
+            label="Ship window"
+            value={`${fmtShort(addWeeks(chart.start_date, R.shipBest))} – ${dt(R.shipWorst)}`}
+            sub={`plan ${dt(R.ship)}`}
+            tip="The realistic range for shipping — earliest to latest, not a single date. “Plan” is the middle-of-the-road guess. If everything goes perfectly you hit the early end; if a few things run long, the late end."
+          />
+          <Stat
+            label="80% confident by"
+            value={dt(mc.ship.p80)}
+            sub={`P50 ${dt(mc.ship.p50)} · P90 ${dt(mc.ship.p90)}`}
+            tone="emerald"
+            tip="This is the date to quote a customer — you ship on or before it 8 times out of 10. The plan date is only a middle guess (around 50/50, sometimes worse); this one has real cushion built in."
+          />
           <Stat
             label="Vs baseline"
             value={variance ? fmtDelta(variance.shipDeltaWeeks) : '—'}
             sub={chart.baseline ? `set ${fmtDate(new Date(chart.baseline.taken_at))}` : 'no baseline set'}
             tone={deltaTone}
+            tip="How much the plan has moved (later or earlier) since you saved your baseline. Green = on time or better, amber = slipping, red = well behind. Shows “—” until you set a baseline."
           />
         </div>
 

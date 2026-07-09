@@ -97,10 +97,36 @@ The old columns are DEPRECATED and never written again. New charts write
   `assumptions jsonb`; risks live inside the `tasks` jsonb (no new columns);
   marks `failure`/`reset_weeks` deprecated.
 
+## Onboarding: sales guide + in-app tooltips (2026-07-09)
+Sales found v2 powerful but opaque ("no idea how to use it"), so two low-risk
+onboarding layers were added — **no logic/data changes**:
+
+- **Guided tutorial PDF** — `docs/guides/gantt-sales-guide.html` (source) →
+  `docs/guides/gantt-sales-guide.pdf` (12pp, branded). Plain-English, sales-first:
+  the forecast-not-a-promise idea, a 60-second version, a tour of every control,
+  "which date do I quote" (P80), the customer do/don't script, and a pin-up
+  quick-reference card. Regenerate with `node docs/guides/render.mjs` (renders via
+  the repo's existing Playwright/Chromium + inlines the logo through `sharp`; the
+  HTML uses a `{{LOGO}}` placeholder). NOT in `public/` on purpose — the repo is
+  public and the app admin-gates Gantt; serve it through an admin route if it ever
+  needs an in-app link.
+- **Hoverable `InfoTip` reminders** — a shared `InfoTip` in
+  `app/admin/gantt/[id]/ui.tsx` (pure CSS hover + `focus-within`, `print:hidden`,
+  left-aligned so it survives the `overflow-hidden` cards). Placed on the three top
+  stats, the anchor slider, Baseline, the What-if row, Start date, and the
+  Confidence / Assumptions / Tasks headers, plus a one-hover tool summary on the
+  list page. Copy is deliberately non-technical ("the date to quote a customer",
+  "safe and private", "no undo — Duplicate first"). All copy was accuracy-checked
+  against `lib/gantt.ts` (a 4-lens review flagged only softening "plan = exactly
+  50/50", now "around 50/50, sometimes worse").
+
 ## Not yet (planned)
 - AI-seed a chart from a plain-English description; customer-facing read-only view.
 - (Role-based access shipped separately 2026-07-02 — see
   `docs/roles-and-permissions.md`; Gantt is a grantable permission.)
+- Optional: plainer wording on the printed `PrintSheet` ("Vs baseline" / "Risk
+  register" read as jargon if a sheet is handed to a customer — though it's footer-
+  labeled "IAT internal"). Not changed here; flagged for a later pass.
 
 ## Deploy
 Run `041_gantt_ranges_risks.sql` in the Supabase SQL editor **before** deploying

@@ -6,7 +6,7 @@ import {
   CAT_META, nid, addWeeks, toISODate, parseDate,
   type GanttTask, type TaskCat, type TaskKind, type TaskRisk, type TaskStatus,
 } from '@/lib/gantt'
-import { fieldCls, toolBtn, IconBtn } from './ui'
+import { fieldCls, toolBtn, IconBtn, InfoTip } from './ui'
 
 /* Editable task list + per-task risk rules (the structured IF-THEN layer) +
    per-task status (the living-schedule layer). Pure render + callbacks; all
@@ -38,7 +38,10 @@ export default function TaskTable({ tasks, startDate, plannedEnd, onEditTask, on
   return (
     <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-        <h3 className="text-[14px] font-medium text-zinc-900 dark:text-zinc-100">Tasks</h3>
+        <h3 className="text-[14px] font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+          Tasks
+          <InfoTip text={<>The step-by-step list that builds the chart — each step starts when the one above finishes. <b>Weeks (min–max)</b> = fastest to slowest a step could take. Pick one <b>Anchor</b> (the long-lead step everything waits on), and mark steps <b>Underway/Done</b> to track real progress.</>} />
+        </h3>
         <button onClick={onAdd} className={toolBtn}>
           <Plus size={14} /> Add task
         </button>
@@ -170,7 +173,7 @@ export default function TaskTable({ tasks, startDate, plannedEnd, onEditTask, on
                           type="radio"
                           name="anchor"
                           checked={!!t.anchor}
-                          title="This is the long-lead / critical-path driver"
+                          title="Set this as the anchor — your long-lead step (the big purchased part everything waits on). One per chart; everything after it moves when it moves."
                           onChange={() => onSetAnchor(t.id)}
                           className="accent-amber-500 w-4 h-4"
                         />

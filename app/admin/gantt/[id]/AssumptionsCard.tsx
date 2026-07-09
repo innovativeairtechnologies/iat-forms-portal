@@ -2,7 +2,7 @@
 
 import { Plus, X } from 'lucide-react'
 import { nid, type GanttAssumption } from '@/lib/gantt'
-import { fieldCls, IconBtn } from './ui'
+import { fieldCls, IconBtn, InfoTip } from './ui'
 
 /* The assumptions register — every chart carries its own caveats, on screen and
    in print. Render-only; state lives in the shell. */
@@ -14,7 +14,10 @@ export default function AssumptionsCard({ assumptions, onChange }: {
   return (
     <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40">
       <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-        <h3 className="text-[14px] font-medium text-zinc-900 dark:text-zinc-100">Assumptions</h3>
+        <h3 className="text-[14px] font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+          Assumptions
+          <InfoTip text={<>The “fine print” behind the dates — anything that has to be true for this schedule to hold (vendor quotes, one test cycle, no design changes). These print on the shared PDF, so the dates never travel without their caveats.</>} />
+        </h3>
         <p className="text-[12px] text-zinc-400 dark:text-zinc-500">What this schedule takes for granted — printed with the chart.</p>
       </div>
       <div className="px-4 py-3 space-y-2">

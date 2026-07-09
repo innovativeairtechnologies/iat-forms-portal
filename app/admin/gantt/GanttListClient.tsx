@@ -9,6 +9,7 @@ import {
   ListPageHeader, IdentityCell, type Tone,
 } from '@/components/admin/list'
 import { layoutRange, addWeeks, fmtDate, fmtShort, type GanttChart } from '@/lib/gantt'
+import { InfoTip } from './[id]/ui'
 import { createChart } from './actions'
 
 const STATUS_TONE: Record<string, { label: string; tone: Tone }> = {
@@ -39,7 +40,12 @@ export default function GanttListClient({ charts }: { charts: GanttChart[] }) {
       <ListPageHeader
         overline="Planning"
         title="Gantt"
-        count={`${charts.length} project ${charts.length === 1 ? 'timeline' : 'timelines'}`}
+        count={
+          <span className="inline-flex items-center gap-1 flex-wrap">
+            {charts.length} project {charts.length === 1 ? 'timeline' : 'timelines'} · realistic ship-date forecasts for customer builds
+            <InfoTip text={<>Each timeline shows a customer build as a <b>range</b> of ship dates, not one date — long-lead parts and testing rarely land exactly on plan. Open one and hover any <b>?</b> to see what a control does. The date to quote a customer is <b>“80% confident by.”</b></>} />
+          </span>
+        }
         actions={
           <>
             <button

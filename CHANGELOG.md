@@ -2,6 +2,29 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-09 — Gantt: sales onboarding (guided PDF + hover tooltips)
+
+Sales loved the Gantt tool but couldn't drive it, so two **onboarding-only** layers
+landed (no scheduling logic, data model, or migration touched):
+
+- **Guided tutorial PDF** — a 12-page, branded, plain-English field guide for Sales
+  at [docs/guides/gantt-sales-guide.pdf](docs/guides/gantt-sales-guide.pdf) (source
+  `gantt-sales-guide.html`, regen `node docs/guides/render.mjs`). Covers the
+  forecast-not-a-promise idea, a 60-second version, every control, which date to
+  quote (P80), a customer do/don't script, and a pin-up quick-reference card.
+- **Hoverable "?" reminders in the tool** — a shared `InfoTip` (CSS-only, keyboard-
+  accessible, hidden in print) on the three top stats, the anchor, Baseline, the
+  What-if row, Start date, and the Confidence / Assumptions / Tasks headers, plus a
+  one-hover summary on the Gantt list page. Non-technical copy, accuracy-checked
+  against `lib/gantt.ts`.
+
+Copy went through a 4-lens review (accuracy vs. source, plain-language, coverage,
+and a "software-shy sales rep" persona); the persona fixes — "which green box do I
+read," "how do I set the anchor," "can I break it / there's no undo," "clicking a
+what-if is safe," and "who owns the quoted date" — are baked into both deliverables.
+The in-tool tooltips shipped to prod; the PDF guide lives in `docs/guides/`
+(repo-only, not app-served). See [docs/gantt.md](docs/gantt.md).
+
 ## 2026-07-08 — Annual Review: dedicated branded print sheet
 
 A fixed, branded two-page (front/back, **landscape**) print sheet for the Annual

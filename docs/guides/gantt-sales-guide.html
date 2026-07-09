@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The Gantt Tool — A Field Guide for Sales</title>
+<style>
+  :root{
+    --canvas:#F7F6F3; --ink:#1B1A17; --ink-soft:#4A4843; --muted:#8A877F;
+    --hairline:#E8E6E1; --hairline-strong:#D6D3CC;
+    --brand:#089447; --brand-ink:#0B6B36; --brand-wash:#EAF6EF;
+    --amber:#E39A16; --amber-wash:#FBEFD7; --amber-border:#EDBE6A;
+    --rose:#D5453F; --rose-wash:#FBE7E6; --rose-border:#E79B98;
+    --sky:#2F7FB5;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  body{
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Inter",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); margin:0; font-size:11.5pt; line-height:1.55;
+    background:#fff;
+  }
+  @page{ size:Letter; margin:15mm 16mm; }
+
+  h1,h2,h3{ line-height:1.2; letter-spacing:-0.01em; }
+  h2{
+    font-size:19pt; color:var(--ink); margin:0 0 4px; font-weight:650;
+    display:flex; align-items:center; gap:11px;
+  }
+  h2 .n{
+    flex:none; width:30px; height:30px; border-radius:9px;
+    background:var(--brand); color:#fff; font-size:14pt; font-weight:650;
+    display:flex; align-items:center; justify-content:center; letter-spacing:0;
+  }
+  h3{ font-size:13pt; font-weight:650; margin:20px 0 5px; color:var(--ink); }
+  p{ margin:8px 0; }
+  strong{ font-weight:650; }
+  em{ font-style:normal; color:var(--brand-ink); font-weight:600; }
+  .muted{ color:var(--muted); }
+  .section{ break-inside:avoid; }
+  .page-break{ break-before:page; }
+  a{ color:var(--brand-ink); }
+
+  /* ---- cover ---- */
+  .cover{
+    height:calc(100vh - 30mm); display:flex; flex-direction:column;
+    justify-content:center; break-after:page;
+  }
+  .cover .brandrow{ display:flex; align-items:center; gap:12px; margin-bottom:34px; }
+  .cover .brandrow img{ height:40px; width:auto; }
+  .cover .brandrow .pname{ font-size:15pt; font-weight:650; letter-spacing:-0.01em; }
+  .cover .brandrow .pname .sep{ color:var(--muted); font-weight:400; margin:0 8px; }
+  .cover .kicker{
+    color:var(--brand); font-weight:650; font-size:11pt; letter-spacing:0.14em;
+    text-transform:uppercase; margin-bottom:14px;
+  }
+  .cover h1{ font-size:38pt; font-weight:680; margin:0 0 18px; letter-spacing:-0.025em; max-width:15ch; }
+  .cover .sub{ font-size:15pt; color:var(--ink-soft); max-width:46ch; line-height:1.5; }
+  .cover .foot{ margin-top:auto; padding-top:26px; border-top:1px solid var(--hairline); color:var(--muted); font-size:10.5pt; display:flex; justify-content:space-between; }
+
+  /* ---- callout boxes ---- */
+  .plain{
+    background:var(--brand-wash); border:1px solid #CDE9D8; border-left:4px solid var(--brand);
+    border-radius:11px; padding:13px 16px; margin:14px 0; break-inside:avoid;
+  }
+  .plain .lab{ color:var(--brand-ink); font-weight:650; font-size:9.5pt; text-transform:uppercase; letter-spacing:0.08em; display:block; margin-bottom:3px; }
+  .tip{ background:var(--canvas); border:1px solid var(--hairline); border-radius:11px; padding:13px 16px; margin:14px 0; break-inside:avoid; }
+  .warn{ background:var(--amber-wash); border:1px solid var(--amber-border); border-radius:11px; padding:12px 15px; margin:14px 0; break-inside:avoid; }
+  .warn .lab{ color:#9a6a10; font-weight:650; }
+
+  .lead{ font-size:13pt; color:var(--ink-soft); line-height:1.5; }
+
+  /* ---- button / control references ---- */
+  .ref{
+    display:inline-block; font-size:9.7pt; font-weight:600; padding:1px 7px; border-radius:6px;
+    border:1px solid var(--hairline-strong); background:#fff; color:var(--ink-soft); white-space:nowrap;
+  }
+  .ref.green{ background:var(--brand); border-color:var(--brand); color:#fff; }
+  .ref.amber{ background:var(--amber-wash); border-color:var(--amber-border); color:#9a6a10; }
+  .ref.rose{ background:var(--rose-wash); border-color:var(--rose-border); color:#a1322d; }
+
+  /* ---- lists ---- */
+  ol.steps{ margin:10px 0; padding-left:0; counter-reset:s; list-style:none; }
+  ol.steps li{ position:relative; padding:4px 0 8px 30px; break-inside:avoid; }
+  ol.steps li::before{
+    counter-increment:s; content:counter(s); position:absolute; left:0; top:3px;
+    width:20px; height:20px; border-radius:50%; background:var(--brand-wash); color:var(--brand-ink);
+    font-size:9.5pt; font-weight:650; display:flex; align-items:center; justify-content:center;
+  }
+  ul.clean{ margin:8px 0; padding-left:18px; }
+  ul.clean li{ margin:5px 0; }
+
+  /* ---- legend / color key ---- */
+  .legend{ display:grid; grid-template-columns:1fr 1fr; gap:9px 26px; margin:12px 0; break-inside:avoid; }
+  .legend .row{ display:flex; align-items:flex-start; gap:10px; font-size:10.5pt; }
+  .swatch{ flex:none; width:26px; height:14px; border-radius:4px; margin-top:2px; }
+  .swatch.crit{ background:var(--amber-wash); border:1.5px solid var(--amber-border); }
+  .swatch.build{ background:#D3EEDE; border:1.5px solid #62B98A; }
+  .swatch.routine{ background:#F0EFEC; border:1.5px solid var(--hairline-strong); }
+  .swatch.range{ background:#F0EFEC; border:1.5px dashed var(--hairline-strong); opacity:.75; }
+  .swatch.fired{ background:var(--rose-wash); border:1.5px solid var(--rose-border); }
+  .swatch.diamond{ width:14px; height:14px; background:#1B1A17; transform:rotate(45deg); border-radius:2px; margin:2px 6px 0 6px; }
+  .swatch.baseline{ height:0; border-top:3px dotted #A7A49D; width:26px; margin-top:8px; border-radius:0; }
+  .legend .row b{ font-weight:650; display:block; }
+  .legend .row span{ color:var(--ink-soft); }
+
+  /* ---- tables ---- */
+  table.grid{ width:100%; border-collapse:collapse; margin:12px 0; font-size:10.5pt; break-inside:avoid; }
+  table.grid th{ text-align:left; background:var(--canvas); color:var(--muted); font-weight:650; font-size:9pt; text-transform:uppercase; letter-spacing:0.06em; padding:8px 11px; border-bottom:1px solid var(--hairline-strong); }
+  table.grid td{ padding:9px 11px; border-bottom:1px solid var(--hairline); vertical-align:top; }
+  table.grid tr:last-child td{ border-bottom:none; }
+  table.grid .d{ font-weight:650; white-space:nowrap; }
+
+  /* ---- cheat two-col ---- */
+  .cheat{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:14px 0; break-inside:avoid; }
+  .cheat .col{ border:1px solid var(--hairline); border-radius:11px; padding:13px 15px; }
+  .cheat .col.do{ background:var(--brand-wash); border-color:#CDE9D8; }
+  .cheat .col.dont{ background:var(--rose-wash); border-color:var(--rose-border); }
+  .cheat h4{ margin:0 0 7px; font-size:11pt; }
+  .cheat .do h4{ color:var(--brand-ink); }
+  .cheat .dont h4{ color:#a1322d; }
+  .cheat ul{ margin:0; padding-left:16px; }
+  .cheat li{ margin:5px 0; font-size:10.5pt; }
+
+  /* ---- quick reference card ---- */
+  .qref{ border:2px solid var(--brand); border-radius:14px; padding:20px 22px; margin-top:6px; }
+  .qref .qh{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+  .qref .qh img{ height:24px; }
+  .qref .qh .t{ font-size:15pt; font-weight:680; }
+  .qref .two{ display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:14px; }
+  .qref h4{ font-size:9.5pt; text-transform:uppercase; letter-spacing:0.08em; color:var(--brand-ink); margin:0 0 7px; border-bottom:1px solid var(--hairline); padding-bottom:5px; }
+  .qref dl{ margin:0; }
+  .qref dt{ font-weight:650; font-size:10pt; margin-top:8px; }
+  .qref dd{ margin:1px 0 0; font-size:10pt; color:var(--ink-soft); }
+  .qref .big{ background:var(--brand); color:#fff; border-radius:10px; padding:12px 15px; margin-top:14px; font-size:11pt; }
+  .qref .big b{ font-size:12pt; }
+
+  .divider{ height:1px; background:var(--hairline); margin:22px 0; border:none; }
+  .toc{ margin:6px 0 0; }
+  .toc .ti{ display:flex; align-items:baseline; gap:10px; padding:6px 0; border-bottom:1px solid var(--hairline); font-size:11pt; }
+  .toc .ti .num{ color:var(--brand); font-weight:650; width:20px; }
+  .toc .ti .nm{ font-weight:600; }
+  .toc .ti .ds{ color:var(--muted); font-size:10pt; }
+</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="cover">
+  <div class="brandrow">
+    <img src="{{LOGO}}" alt="IAT" />
+    <span class="pname">IAT Portal<span class="sep">·</span>Field Guide</span>
+  </div>
+  <div class="kicker">Sales &amp; Project Timelines</div>
+  <h1>The Gantt Tool, in plain English</h1>
+  <p class="sub">How to read a project timeline, what every button actually does, and exactly which date to give a customer — without a single spreadsheet formula.</p>
+  <div class="foot">
+    <span>IAT internal · for Sales &amp; Project Management</span>
+    <span>Find it at <strong>Portal → Admin → Gantt</strong></span>
+  </div>
+</section>
+
+<!-- ============================== INTRO / TOC ============================== -->
+<section class="section">
+  <h2><span class="n">★</span>Read this first (2 minutes)</h2>
+  <p class="lead">This tool builds a <em>schedule</em> for a customer build — when the long-lead parts land, when we test, when we ship. It looks busy because it's honest: instead of promising one date it can't keep, it shows a realistic <strong>range</strong> and how confident we are.</p>
+
+  <div class="plain">
+    <span class="lab">The one idea that makes it all click</span>
+    A project timeline here is a <strong>weather forecast, not a calendar appointment.</strong> A forecast doesn't say "it will rain at 3:00." It says "80% chance of rain this afternoon." This tool does the same thing with ship dates — because on a custom build, the big purchased parts and the testing almost never land exactly on the day you first guessed. So we plan with a range and a confidence level, and everyone stops getting surprised.
+  </div>
+
+  <p>You do <strong>not</strong> need to understand the math. You need to read two numbers and know what they mean. That's most of this guide. The rest is "what does this button do" so you never have to ask.</p>
+
+  <h3>What's in here</h3>
+  <div class="toc">
+    <div class="ti"><span class="num">1</span><span><span class="nm">The 60-second version</span> <span class="ds">— open a chart, read two lines, done</span></span></div>
+    <div class="ti"><span class="num">2</span><span><span class="nm">Getting around</span> <span class="ds">— the list, opening a chart, and "is it saved?"</span></span></div>
+    <div class="ti"><span class="num">3</span><span><span class="nm">Reading the picture</span> <span class="ds">— bars, colors, the diamond, and the amber line</span></span></div>
+    <div class="ti"><span class="num">4</span><span><span class="nm">The three numbers at the top</span> <span class="ds">— the ones you quote</span></span></div>
+    <div class="ti"><span class="num">5</span><span><span class="nm">The anchor</span> <span class="ds">— the long-lead item everything waits on</span></span></div>
+    <div class="ti"><span class="num">6</span><span><span class="nm">Risks &amp; "what-if"</span> <span class="ds">— playing out what could go wrong</span></span></div>
+    <div class="ti"><span class="num">7</span><span><span class="nm">Baseline</span> <span class="ds">— saving the "original promise" and tracking drift</span></span></div>
+    <div class="ti"><span class="num">8</span><span><span class="nm">Tracking real progress</span> <span class="ds">— marking steps done as the job runs</span></span></div>
+    <div class="ti"><span class="num">9</span><span><span class="nm">Sharing it &amp; the customer script</span> <span class="ds">— print, and what to actually say</span></span></div>
+  </div>
+  <p class="muted" style="margin-top:10px; font-size:10.5pt;">The last page is a one-page cheat sheet. Print it and pin it up.</p>
+</section>
+
+<!-- ============================== 1. 60 SECOND ============================== -->
+<section class="section page-break">
+  <h2><span class="n">1</span>The 60-second version</h2>
+  <p class="lead">Someone sends you a chart and asks "when does this ship?" Here's all you have to do:</p>
+  <ol class="steps">
+    <li><strong>Open the chart</strong> — click its name in the Gantt list.</li>
+    <li><strong>Find the one green box</strong> labelled <span class="ref green">80% confident by</span> (top row, on the right). <strong>That date is your answer.</strong> Read it, say it — you can ignore everything else on screen until you're ready.</li>
+    <li><strong>Want the whole story in a sentence?</strong> The green banner just below spells it out: "If long-lead items arrive by X, the shipment window is A–B, 80% confident by C." Same date, more context.</li>
+  </ol>
+  <div class="plain">
+    <span class="lab">If you only remember one thing</span>
+    Quote the <strong>"80% confident by"</strong> date. Not the "plan" date. The plan date is a coin-flip (a 50/50 best guess). The "80% confident by" date has real cushion built in — you'll hit it or beat it 8 times out of 10.
+  </div>
+  <p>That's it for reading. Everything below is for when you want to understand <em>why</em> those dates are what they are, or you need to build or tweak a chart yourself.</p>
+</section>
+
+<!-- ============================== 2. GETTING AROUND ============================== -->
+<section class="section">
+  <h2><span class="n">2</span>Getting around</h2>
+
+  <h3>The list page</h3>
+  <p>Go to <strong>Admin → Gantt</strong>. You get a list of every project timeline — one row per customer build, showing its ship window, number of steps, and status. Click any row to open it.</p>
+  <p>Two buttons top-right:</p>
+  <ul class="clean">
+    <li><span class="ref">New from template</span> — starts a chart pre-filled with a typical unit build (planning → long-lead parts → testing → production → ship). <strong>Easiest way to start</strong> — you just rename the steps.</li>
+    <li><span class="ref green">New chart</span> — starts nearly blank, for when the job doesn't look like the usual one.</li>
+  </ul>
+
+  <h3>"Is my work saved?" — yes, there's no Save button on purpose</h3>
+  <p>It saves itself, every few seconds. That feels odd if you're used to hitting Save — but you <strong>can't lose your work.</strong> Just watch the little indicator at the top: <span class="ref">Saving…</span> for a second after any change, then <span class="ref green">✓ Saved</span>. Once it says Saved, you can close the tab.</p>
+
+  <div class="warn">
+    <span class="lab">⚠ "Wait — can I break it?"</span>
+    Not really — but because it saves instantly and there's <strong>no undo</strong>, you're always editing the <strong>live</strong> plan everyone else sees. So if you just want to poke around, click <span class="ref">Duplicate</span> first and play with the copy. To undo a change by hand: drag the slider back where it was, or click a switched-on risk chip again to turn it off.
+  </div>
+
+  <div class="tip">
+    <strong>The four boxes at the very top</strong> — Project name, Customer, Start date, Status — are just labels. <strong>Start date</strong> matters most: it's day one, and every date is measured from it, so changing it slides the whole timeline (including dates you may have already quoted).
+  </div>
+</section>
+
+<!-- ============================== 3. READING THE PICTURE ============================== -->
+<section class="section page-break">
+  <h2><span class="n">3</span>Reading the picture</h2>
+  <p class="lead">The chart is a set of horizontal bars. Time runs left → right; the dates along the top are weeks. Each bar is one step, and steps run one after another — each starts when the one above it finishes.</p>
+
+  <h3>The colors mean something</h3>
+  <div class="legend">
+    <div class="row"><span class="swatch crit"></span><span><b>Amber bar — the uncertain step everything waits on</b>Long-lead parts, testing. These drive the ship date. Watch them. <span class="muted">(The tool calls this the "critical path.")</span></span></div>
+    <div class="row"><span class="swatch build"></span><span><b>Green bar — production build</b>The step where we actually build the unit.</span></div>
+    <div class="row"><span class="swatch routine"></span><span><b>Grey bar — routine step</b>A predictable step (planning, paperwork, FAT).</span></div>
+    <div class="row"><span class="swatch diamond"></span><span><b>Black diamond — milestone</b>A moment, not a task (kickoff, design release, shipment). Zero length.</span></div>
+    <div class="row"><span class="swatch range"></span><span><b>Faded dashed tail</b>How far a bar could stretch in its <em>worst</em> case. The range.</span></div>
+    <div class="row"><span class="swatch baseline"></span><span><b>Grey dotted line under a bar</b>The <em>baseline</em> — where this step was originally planned (see §7).</span></div>
+    <div class="row"><span class="swatch fired"></span><span><b>Red bar segment</b>A "what-if" risk you switched on — extra time from something going wrong (see §6).</span></div>
+  </div>
+
+  <h3>The amber vertical line</h3>
+  <p>One tall amber line crosses the whole chart with a little <span class="ref amber">↔ arrival</span> tag on top. That's the moment your <strong>long-lead item arrives</strong> — the hinge the whole back half of the schedule swings on. More on that next.</p>
+
+  <div class="tip">
+    <strong>The little bracket around a diamond</strong> means that milestone has a window too — it shows its earliest-to-latest. A bar with no faded tail just means that step is predictable (its fast and slow cases match).
+  </div>
+
+  <div class="plain">
+    <span class="lab">Don't memorize the colors</span>
+    The chart has its own <strong>color key printed along the bottom</strong> — glance there anytime. One heads-up: once you set a baseline (§7), amber and red take on a <em>second</em> job — a step that's <strong>running late</strong> gets an amber or red "<strong>+X wks vs baseline</strong>" note beside its name. If you see that note, the color means "behind schedule," not "critical path."
+  </div>
+</section>
+
+<!-- ============================== 4. THREE NUMBERS ============================== -->
+<section class="section">
+  <h2><span class="n">4</span>The three numbers at the top</h2>
+  <p class="lead">These three boxes are the whole tool in a glance. Learn these and you can hold any customer conversation.</p>
+
+  <table class="grid">
+    <thead><tr><th style="width:26%">The box</th><th>What it means</th><th style="width:26%">Use it for</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="d">Ship window</td>
+        <td>The realistic <strong>range</strong> — earliest we could ship, to latest we reasonably would. Not one date. The small "plan" underneath is the middle-of-the-road guess.</td>
+        <td>Setting expectations: "we're looking at early-to-mid March."</td>
+      </tr>
+      <tr>
+        <td class="d" style="color:var(--brand-ink)">80% confident by</td>
+        <td>The date you'll ship <strong>on or before, 8 times out of 10.</strong> It already accounts for the ranges and the risks. This is the safe promise.</td>
+        <td><strong>The date you quote a customer.</strong></td>
+      </tr>
+      <tr>
+        <td class="d">Vs baseline</td>
+        <td>How much the plan has moved since you saved your "original promise." <span style="color:var(--brand-ink)">Green</span> = on time or better, amber = slipping, red = well behind. Shows "—" until a baseline is set.</td>
+        <td>Spotting slippage early, before the customer does.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>What's P50 / P80 / P90? (the small print under the green box)</h3>
+  <p>Don't let the codes scare you — the <strong>"P" just means "how often you'd make it."</strong> Three levels:</p>
+  <ul class="clean">
+    <li><strong>P50</strong> = you'd make it half the time. A coin-flip. This is basically the "plan" date. <span class="muted">Never quote it.</span></li>
+    <li><strong>P80</strong> = you'd make it 8 times in 10. <em>The sweet spot for a customer commitment.</em></li>
+    <li><strong>P90</strong> = 9 times in 10. Extra cautious — use it for a build where being late would be a really big deal.</li>
+  </ul>
+  <div class="plain">
+    <span class="lab">Rule of thumb</span>
+    Only ever say the <strong>P80</strong> date to a customer. The plan / coin-flip date is for the shop floor — <strong>never quote it.</strong> That way you look good to the customer and the team stays honest.
+  </div>
+</section>
+
+<!-- ============================== 5. ANCHOR ============================== -->
+<section class="section page-break">
+  <h2><span class="n">5</span>The anchor — the thing everything waits on</h2>
+  <p class="lead">Every build has one step that sets the pace: the <strong>long-lead item</strong> — the big part you order early and wait weeks for. In this tool that step is called the <strong>anchor</strong>, and it's marked with the amber line and the <span class="ref amber">↔ arrival</span> tag.</p>
+
+  <p>Because everything downstream (testing, build, ship) waits on the anchor arriving, moving it moves the entire back half of the schedule. The tool gives you two ways to play with that:</p>
+  <ul class="clean">
+    <li><strong>The slider</strong> just above the chart — drag it to make the long-lead item take more or fewer weeks.</li>
+    <li><strong>The arrival tag on the chart</strong> — grab it and drag left/right to the same effect. Watch the ship window and confidence dates update live.</li>
+  </ul>
+
+  <div class="tip">
+    <strong>Why would I drag it?</strong> To answer "what if the vendor quotes 12 weeks instead of 10?" — slide it out two weeks and read the new ship date. It's the fastest way to sanity-check a delivery promise before you make it.
+  </div>
+  <div class="tip">
+    <strong>Building your own chart? Here's how to set the anchor:</strong> in the task list below the chart, find the <strong>Anchor</strong> column and click the little circle on your long-lead step (the big purchased part everything waits on). There's exactly one per chart. If someone else built the chart, they already picked it — you won't need to touch it.
+  </div>
+</section>
+
+<!-- ============================== 6. RISKS / WHAT-IF ============================== -->
+<section class="section">
+  <h2><span class="n">6</span>Risks &amp; "what-if" — playing out what could go wrong</h2>
+  <p class="lead">Real builds have "if this goes wrong, add three weeks" moments — a test fails, a vendor slips. This tool keeps those <strong>on the chart</strong> instead of in someone's head, so nothing is a surprise.</p>
+
+  <h3>The risk chips</h3>
+  <p>Under the controls you'll see a row labeled <span class="ref">What-if:</span> with little chips like <span class="ref amber">⚡ Testing: test failure · 25%</span>. Each chip is a named thing that <em>could</em> go wrong, with a percentage chance and how many weeks it would add.</p>
+  <p>By default these do <strong>not</strong> move your dates — they just quietly feed the "80% confident" math (that's how the confidence date already accounts for bad luck). </p>
+
+  <h3>Switching one on ("assume it happens")</h3>
+  <ol class="steps">
+    <li><strong>Click a chip</strong> (or tick "assume it happens" in the task list). The schedule stretches to show the damage, the affected bar grows a <span class="ref rose">red</span> segment, and a red banner appears at the top.</li>
+    <li><strong>Read the new dates.</strong> This is your "if the test fails, here's where we land" answer.</li>
+    <li><strong>Click the chip again to switch it back off</strong> and return to the real plan.</li>
+  </ol>
+
+  <div class="plain">
+    <span class="lab">It's safe to click — really</span>
+    Clicking a chip only shows <em>you</em> a what-if. Nothing is sent to anyone, and clicking it again puts everything back exactly. A red chart only ever reaches a customer if <strong>you</strong> print it and hand it over. So poke around — you can't hurt anything.
+  </div>
+
+  <div class="warn">
+    <span class="lab">⚠ Two things to remember</span>
+    A switched-on risk is a <strong>what-if scenario, not the plan</strong> — the red banner says so on screen and on any printout. And if a chart <strong>already shows a red banner the moment you open it</strong>, someone left a chip switched on and the dates are inflated: find the lit chip, click it off, and check the banner clears <em>before you quote anything.</em>
+  </div>
+</section>
+
+<!-- ============================== 7. BASELINE ============================== -->
+<section class="section page-break">
+  <h2><span class="n">7</span>Baseline — your "original promise"</h2>
+  <p class="lead">A <strong>baseline</strong> is a saved snapshot of the plan the day everyone agreed to it. From then on, the chart quietly shows how far you've drifted from that promise — which is exactly what you want to know before a customer calls.</p>
+
+  <h3>The three baseline buttons</h3>
+  <table class="grid">
+    <thead><tr><th style="width:24%">Button</th><th>When to click it</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ref">⚑ Set baseline</span></td><td>Once, when the schedule is agreed and real. This freezes today's plan as the promise to measure against.</td></tr>
+      <tr><td><span class="ref">Re-baseline</span></td><td>Only when the plan is <strong>officially re-agreed</strong> with the customer. It replaces the old promise. Don't do this just to hide slippage.</td></tr>
+      <tr><td><span class="ref">⚑ (clear)</span></td><td>Rarely — removes the baseline and stops drift-tracking.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Once a baseline is set, two things appear: a faint <strong>grey dotted line under each bar</strong> (where it was originally planned), and the <span class="ref">Vs baseline</span> number lights up. If a step slips, its label shows a small "<strong style="color:var(--amber)">+2 wks vs baseline</strong>" note — only when it's actually behind, so a clean chart stays clean.</p>
+
+  <div class="plain">
+    <span class="lab">Plain version</span>
+    Set the baseline when you make the promise. After that, one glance tells you "are we still good, or have we slipped?" — long before it becomes an awkward phone call.
+  </div>
+
+  <div class="tip">
+    <strong>Three things that sound alike — the difference in one line each:</strong>
+    <ul class="clean" style="margin-top:6px; margin-bottom:0;">
+      <li><strong>Baseline</strong> — the promise you <em>froze</em>, so you can see if you've slipped.</li>
+      <li><strong>What-if</strong> — <em>pretend</em> something broke, just for a conversation (§6). Not the plan.</li>
+      <li><strong>Assumptions</strong> — the <em>fine print</em> that prints with the dates (e.g. "assumes the vendor's 10-week quote holds"). You'll find them in the Assumptions box under the chart.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================== 8. PROGRESS ============================== -->
+<section class="section">
+  <h2><span class="n">8</span>Tracking real progress as the job runs</h2>
+  <p class="lead">A chart isn't just a plan you make once — it updates as the build happens, so the ship date gets more certain over time.</p>
+  <p>In the task list, each step has a <strong>Status</strong>:</p>
+  <ul class="clean">
+    <li><strong>Not started</strong> — the default.</li>
+    <li><strong>Underway</strong> — work in progress.</li>
+    <li><strong>Done</strong> — finished. When you mark a step Done, it records the <strong>actual</strong> date it finished (you can adjust it). That step becomes a locked fact, and the ship window <em>narrows</em> — the more that's actually finished, the less guessing is left.</li>
+  </ul>
+  <div class="tip">
+    <strong>Why the window shrinks:</strong> the guesswork only lives in work that hasn't happened yet. Once the long-lead item has actually arrived, its guess is gone, so the range tightens around a firmer date. When the anchor is marked Done, the amber slider becomes an "arrived" note — it's history now, not a guess. <strong>So keep steps updated as they finish — your quoted dates get more accurate the further along the job is.</strong>
+  </div>
+</section>
+
+<!-- ============================== 9. SHARING + SCRIPT ============================== -->
+<section class="section page-break">
+  <h2><span class="n">9</span>Sharing it, &amp; what to tell the customer</h2>
+
+  <h3>Getting a clean copy to send</h3>
+  <ul class="clean">
+    <li><span class="ref">🖨 Print / PDF</span> — makes a tidy one-page sheet with the ship window, the chart, the risk list, and the assumptions. It <strong>always carries its caveats</strong> — including a "Forecast, not a commitment" footer — so the dates never travel naked. Use "Save as PDF" in the print dialog to email it.</li>
+    <li><span class="ref">Duplicate</span> — makes a fresh copy, perfect for trying a different plan without touching the real one. Note: a copy starts clean — it carries <strong>no baseline</strong> (set a new one if you want drift-tracking) and any what-ifs are switched back off.</li>
+    <li><span class="ref rose">Delete</span> — removes the chart for good. It asks first.</li>
+  </ul>
+
+  <h3>The customer script</h3>
+  <div class="cheat">
+    <div class="col do">
+      <h4>✓ Do say</h4>
+      <ul>
+        <li>"We're <strong>80% confident</strong> we'll ship by <strong>[the green date]</strong>."</li>
+        <li>"Our window is <strong>[early] to [late]</strong> depending on the long-lead parts."</li>
+        <li>"If testing needs a second pass, it'd push about <strong>[X] weeks</strong> — here's that scenario." <span class="muted">(show the what-if)</span></li>
+      </ul>
+    </div>
+    <div class="col dont">
+      <h4>✕ Don't say</h4>
+      <ul>
+        <li>"It'll ship <strong>exactly</strong> on [the plan date]." <span class="muted">(that's the 50/50 date)</span></li>
+        <li>Quote a <strong>what-if</strong> scenario as if it's the plan. <span class="muted">(red banner = not the plan)</span></li>
+        <li>Promise a date <strong>earlier</strong> than the 80% date to win the moment. <span class="muted">(you'll pay for it later)</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="warn">
+    <span class="lab">Before you quote it</span>
+    The person who owns the build — usually PM, or whoever set up the chart — is the source of truth for the schedule. If a date looks off, <strong>ask them</strong>; don't hand-edit someone else's live chart to "fix" it. A 30-second check beats an awkward call later.
+  </div>
+
+  <div class="plain">
+    <span class="lab">The whole job in one sentence</span>
+    Open the chart, read the <strong>green "80% confident by"</strong> date, and give the customer <em>that</em> — with the window as context. Everything else in this tool exists to make that one date trustworthy.
+  </div>
+
+  <hr class="divider" />
+  <p class="muted" style="font-size:10.5pt;">Still stuck on something after this guide? That's real feedback — tell us which part, and we'll make the tool or this guide clearer. The goal is that you never have to guess.</p>
+</section>
+
+<!-- ============================== QUICK REFERENCE CARD ============================== -->
+<section class="page-break">
+  <div class="qref">
+    <div class="qh">
+      <img src="{{LOGO}}" alt="IAT" />
+      <span class="t">Gantt — Quick Reference</span>
+    </div>
+    <p class="muted" style="margin:0; font-size:10pt;">Pin this up. Everything you need to read a chart lives here.</p>
+
+    <div class="two">
+      <div>
+        <h4>The words</h4>
+        <dl>
+          <dt>Ship window</dt><dd>Earliest–to–latest realistic ship. A range, not a date.</dd>
+          <dt>Plan date</dt><dd>Middle-of-the-road guess. A 50/50 bet. Internal only.</dd>
+          <dt>80% confident by (P80)</dt><dd><strong>The date you quote.</strong> Ship on/before it 8× in 10.</dd>
+          <dt>Anchor</dt><dd>The long-lead item everything waits on. The amber line.</dd>
+          <dt>Baseline</dt><dd>Saved "original promise." The dotted line + "Vs baseline."</dd>
+          <dt>What-if / risk</dt><dd>A "what could go wrong." Switch on to see the damage; off = the plan.</dd>
+        </dl>
+      </div>
+      <div>
+        <h4>The colors</h4>
+        <div class="legend" style="grid-template-columns:1fr; gap:7px; margin-top:2px;">
+          <div class="row"><span class="swatch crit"></span><span><b>Amber</b> critical path — watch it</span></div>
+          <div class="row"><span class="swatch build"></span><span><b>Green</b> production build</span></div>
+          <div class="row"><span class="swatch routine"></span><span><b>Grey</b> routine step</span></div>
+          <div class="row"><span class="swatch diamond"></span><span><b>Diamond</b> milestone (a moment)</span></div>
+          <div class="row"><span class="swatch range"></span><span><b>Dashed tail</b> worst-case range</span></div>
+          <div class="row"><span class="swatch fired"></span><span><b>Red</b> a what-if switched on</span></div>
+        </div>
+        <h4 style="margin-top:16px;">The "?" icons</h4>
+        <p style="font-size:10pt; margin:2px 0 0; color:var(--ink-soft);">Hover any small <strong>?</strong> in the tool for a plain-English reminder of what that control does.</p>
+      </div>
+    </div>
+
+    <div class="big">
+      When a customer asks "when does it ship?" → open the chart → read <b>"80% confident by"</b> → give them that date, with the window as context.
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
