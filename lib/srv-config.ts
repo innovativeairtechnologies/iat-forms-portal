@@ -99,16 +99,22 @@ export function validateSrvSections(incoming: unknown, reference: SrvSection[]):
     labels.add(sectionNotesLabel(s))
   }
 
-  // Keys must be unique across ALL items/readings/photos in the form — answers
-  // are keyed by these, so a collision would bind two fields to one slot.
-  const keys = new Set<string>()
+  // Key uniqueness is scoped to what actually shares an answer map: a section's
+  // answers live in three separate maps (items across all its groups, readings,
+  // photos), so a key must be unique within its own collection within its own
+  // section. Cross-collection and cross-section repeats are fine — the stock
+  // content has them (e.g. "exhaust_termination" is both a Ductwork checklist
+  // item and a Ductwork photo), so a global set would reject the unmodified form.
   for (const s of sections) {
+    const itemKeys = new Set<string>()
+    const readingKeys = new Set<string>()
+    const photoKeys = new Set<string>()
     for (const g of s.groups) {
       if (!Array.isArray(g.items)) return `A group in section ${s.number} is malformed.`
       for (const it of g.items) {
         if (!it.key?.trim() || !it.label?.trim()) return `Every checklist item needs a name (section ${s.number}).`
-        if (keys.has(it.key)) return `Duplicate field key "${it.key}".`
-        keys.add(it.key)
+        if (itemKeys.has(it.key)) return `Two checklist items in section ${s.number} share the internal key "${it.key}" — remove or recreate one of them.`
+        itemKeys.add(it.key)
         const lbl = itemFieldLabel(g, it)
         if (labels.has(lbl)) return `Two fields would share the label "${lbl}" — rename one (a group title disambiguates repeats).`
         labels.add(lbl)
@@ -116,16 +122,16 @@ export function validateSrvSections(incoming: unknown, reference: SrvSection[]):
     }
     for (const r of s.readings || []) {
       if (!r.key?.trim() || !r.label?.trim() || !r.unit?.trim()) return `Every reading needs a name and a unit (section ${s.number}).`
-      if (keys.has(r.key)) return `Duplicate field key "${r.key}".`
-      keys.add(r.key)
+      if (readingKeys.has(r.key)) return `Two readings in section ${s.number} share the internal key "${r.key}" — remove or recreate one of them.`
+      readingKeys.add(r.key)
       const lbl = readingFieldLabel(r)
       if (labels.has(lbl)) return `Two fields would share the label "${lbl}".`
       labels.add(lbl)
     }
     for (const p of s.photos) {
       if (!p.key?.trim() || !p.label?.trim()) return `Every photo needs a name (section ${s.number}).`
-      if (keys.has(p.key)) return `Duplicate field key "${p.key}".`
-      keys.add(p.key)
+      if (photoKeys.has(p.key)) return `Two photos in section ${s.number} share the internal key "${p.key}" — remove or recreate one of them.`
+      photoKeys.add(p.key)
       const lbl = photoFieldLabel(p)
       if (labels.has(lbl)) return `Two fields would share the label "${lbl}".`
       labels.add(lbl)
