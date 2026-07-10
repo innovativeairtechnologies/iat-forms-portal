@@ -6,6 +6,7 @@ import { sanitizeDealField } from '../validate'
 const EDITABLE_FIELDS = [
   'customer', 'assigned_to', 'date_quoted', 'status', 'unit_model', 'job_name',
   'total_cost', 'confidence', 'projected', 'rep', 'rep_contact', 'notes', 'group_name',
+  'checklist', // follow-up steps map (migration 047)
 ] as const
 
 // Inline-edit endpoint — the Focused view's patchLocal/persist-on-blur pattern

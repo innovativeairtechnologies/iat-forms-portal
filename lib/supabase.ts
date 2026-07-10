@@ -352,8 +352,24 @@ export type Deal = {
   rep_contact: string | null
   notes: string | null
   group_name: string
+  /** Follow-up checklist: step key → done (keys in lib/deals CHECKLIST_STEPS).
+   *  Optional because the column arrives with migration 047. */
+  checklist?: Record<string, boolean> | null
   created_at: string
   updated_at: string
+}
+
+export type DealActivityKind = 'call' | 'email' | 'meeting' | 'proposal' | 'checklist' | 'note'
+
+// One logged interaction on a deal (deal_activity, migration 047) — fed by the
+// detail modal's Quick Actions and checklist toggles.
+export type DealActivity = {
+  id: string
+  deal_id: string
+  kind: DealActivityKind
+  summary: string
+  actor: string | null
+  created_at: string
 }
 
 export type USRotorsOrder = {

@@ -68,6 +68,38 @@ Pipeline or CRM (inline controls stopPropagation), or the ⤢ icon in Focused
   persist → revert-on-fail); the modal never calls the API directly.
   Verified end-to-end: optimistic value → 401 (anon) → revert + error banner.
 
+## Deal workflow layer (2026-07-10, migration `047_deal_workflow.sql`)
+
+Matches the deal card the sales team works from (their screenshot): progress,
+quick-action logging, a fixed follow-up checklist, and an activity trail —
+all inside the detail modal.
+
+- **Follow-up Checklist** — the 5-step sales process (Preliminary Submittal
+  Sent → Quote Sent → Initial Follow-Up → 2nd Follow-Up → Job/PO Award).
+  Steps live in code (`lib/deals.ts` `CHECKLIST_STEPS`; relabel freely, never
+  rename a key); state is `deals.checklist` jsonb, toggled through the normal
+  PATCH (full-replace semantics, shape enforced in `validate.ts`). The **Deal
+  Progress** bar shows `N/5 completed`.
+- **Quick Actions** — Log Call · Send Email · Schedule Meeting · Send
+  Proposal. Each opens a one-line composer and writes a `deal_activity` row
+  (kind + summary + actor + timestamp); empty summaries get a sensible
+  default ("Logged a call").
+- **Activity Log** — reverse-chronological trail (max 100 shown) fed by quick
+  actions and checklist toggles (auto-entries: "Completed: Quote Sent").
+  Routes: `GET`/`POST /api/admin/deals/[id]/activity`, requireDealsAuth.
+- **Survives re-imports** — replace-mode import snapshots checklists +
+  activity before the wipe and carries them onto the re-imported rows
+  matched by customer + job + group (first match wins on true duplicates;
+  best-effort — a carry-over failure never fails the import). The import
+  preview shows what's at stake before you commit.
+- **Pre-migration behavior** — until 047 runs: activity shows a run-the-
+  migration hint (GET degrades to `unavailable: true`), checklist toggles
+  revert via the standard optimistic-revert path. Nothing crashes.
+
+The **Updates & notes** panel (dated free-text, imported board history) stays
+separate from the Activity Log on purpose: notes round-trip with the monday
+export; activity is portal-native structured data.
+
 ## The Dashboard (default tab, 2026-07-10)
 
 `app/admin/deals/SalesDashboard.tsx` — the sales "command center". **Every

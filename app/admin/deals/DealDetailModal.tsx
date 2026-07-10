@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import {
   X, ChevronLeft, ChevronRight, Pencil, Trash2, CornerDownLeft,
   User, Users, Cpu, Briefcase, CalendarDays, CalendarRange, Contact,
+  Phone, Mail, CalendarClock, FileText, Check, ClipboardList, StickyNote,
 } from 'lucide-react'
-import type { Deal } from '@/lib/supabase'
-import { computeWeighted } from '@/lib/deals'
+import type { Deal, DealActivity, DealActivityKind } from '@/lib/supabase'
+import { computeWeighted, CHECKLIST_STEPS, checklistProgress } from '@/lib/deals'
 import { formatCurrency, formatDateOnly } from '@/lib/utils'
 import { StatusPill, DEAL_STATUS, timeAgo } from '@/components/admin/list'
 import { inp, lbl } from './form'
@@ -76,6 +77,32 @@ function updateLine(text: string): string {
   return `${n.getMonth() + 1}.${n.getDate()}.${String(n.getFullYear()).slice(2)} — ${text.trim()}`
 }
 
+/* Quick actions — the sales team's four one-click loggers (from their deal
+   card): each opens a tiny composer and writes an activity entry. */
+const QUICK_ACTIONS: { kind: DealActivityKind; label: string; blurb: string; icon: React.ReactNode; placeholder: string }[] = [
+  { kind: 'call', label: 'Log Call', blurb: 'Record conversation', icon: <Phone size={15} />, placeholder: 'Who did you talk to? What happened?' },
+  { kind: 'email', label: 'Send Email', blurb: 'Follow up via email', icon: <Mail size={15} />, placeholder: 'What did you send, and to whom?' },
+  { kind: 'meeting', label: 'Schedule Meeting', blurb: 'Set up a call', icon: <CalendarClock size={15} />, placeholder: 'When, and with whom?' },
+  { kind: 'proposal', label: 'Send Proposal', blurb: 'Share quote', icon: <FileText size={15} />, placeholder: 'What did you quote?' },
+]
+
+const STEP_ICONS: Record<string, React.ReactNode> = {
+  submittal: <FileText size={13} />,
+  quote: <Mail size={13} />,
+  follow1: <Phone size={13} />,
+  follow2: <CalendarClock size={13} />,
+  award: <Check size={13} />,
+}
+
+const ACTIVITY_ICONS: Record<DealActivityKind, React.ReactNode> = {
+  call: <Phone size={12} />,
+  email: <Mail size={12} />,
+  meeting: <CalendarClock size={12} />,
+  proposal: <FileText size={12} />,
+  checklist: <ClipboardList size={12} />,
+  note: <StickyNote size={12} />,
+}
+
 export default function DealDetailModal({
   deal, index, total, prevId, nextId,
   onOpen, onClose, onPatchLocal, onPersist, onStatus, onDelete,
@@ -96,13 +123,68 @@ export default function DealDetailModal({
   const [form, setForm] = useState<EditForm>(() => toForm(deal))
   const [update, setUpdate] = useState('')
 
+  // Activity log + quick-action composer
+  const [activities, setActivities] = useState<DealActivity[] | null>(null) // null = loading
+  const [activityUnavailable, setActivityUnavailable] = useState(false)
+  const [composer, setComposer] = useState<DealActivityKind | null>(null)
+  const [composerText, setComposerText] = useState('')
+  const [logging, setLogging] = useState(false)
+
   // Navigating to another deal resets the modal to view mode for that deal.
   useEffect(() => {
     setEditing(false)
     setForm(toForm(deal))
     setUpdate('')
+    setComposer(null)
+    setComposerText('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id])
+
+  // Load this deal's activity log (100 most recent).
+  useEffect(() => {
+    let alive = true
+    setActivities(null)
+    setActivityUnavailable(false)
+    fetch(`/api/admin/deals/${deal.id}/activity`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive) return
+        setActivities(Array.isArray(j.activities) ? j.activities : [])
+        setActivityUnavailable(!!j.unavailable)
+      })
+      .catch(() => { if (alive) setActivities([]) })
+    return () => { alive = false }
+  }, [deal.id])
+
+  const logActivity = async (kind: DealActivityKind, summary: string) => {
+    const res = await fetch(`/api/admin/deals/${deal.id}/activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, summary }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (res.status === 503) { setActivityUnavailable(true); return false }
+    if (!res.ok) return false
+    if (json.activity) setActivities((prev) => [json.activity, ...(prev ?? [])])
+    return true
+  }
+
+  const submitComposer = async () => {
+    if (!composer || logging) return
+    setLogging(true)
+    const ok = await logActivity(composer, composerText)
+    setLogging(false)
+    if (ok) { setComposer(null); setComposerText('') }
+  }
+
+  const toggleStep = (key: string, label: string) => {
+    const current = deal.checklist ?? {}
+    const next = { ...current, [key]: !current[key] }
+    onPatchLocal(deal.id, { checklist: next })
+    onPersist(deal.id, { checklist: next })
+    // Fire-and-forget trail entry — checklist state itself lives on the deal.
+    void logActivity('checklist', `${next[key] ? 'Completed' : 'Unchecked'}: ${label}`)
+  }
 
   // Esc closes (cancels edit first); ←/→ page through deals in view mode.
   useEffect(() => {
@@ -140,6 +222,7 @@ export default function DealDetailModal({
 
   const statusInfo = DEAL_STATUS[deal.status ?? 'active']
   const weighted = computeWeighted(deal)
+  const progress = checklistProgress(deal)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onMouseDown={editing ? undefined : onClose}>
@@ -200,12 +283,136 @@ export default function DealDetailModal({
 
           {!editing ? (
             <>
-              {/* ── Status — one click, same semantics as the Pipeline select ── */}
-              <div className="flex items-center gap-2">
+              {/* ── Status + deal progress ── */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted mr-1">Status</span>
                 <Seg active={deal.status === null} tone="sky" onClick={() => onStatus(deal.id, null)}>Active</Seg>
                 <Seg active={deal.status === 'Won'} tone="emerald" onClick={() => onStatus(deal.id, 'Won')}>Won</Seg>
                 <Seg active={deal.status === 'Lost'} tone="rose" onClick={() => onStatus(deal.id, 'Lost')}>Lost</Seg>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Deal Progress</span>
+                  <span className="text-[11px] text-ink-muted tabular-nums">{progress.done}/{progress.total} completed</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-surface-strong overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-200"
+                    style={{ width: `${(progress.done / progress.total) * 100}%`, backgroundColor: 'var(--brand)' }}
+                  />
+                </div>
+              </div>
+
+              {/* ── Quick actions ── */}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted mb-2">Quick Actions</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {QUICK_ACTIONS.map((a) => (
+                    <button
+                      key={a.kind}
+                      onClick={() => { setComposer(composer === a.kind ? null : a.kind); setComposerText('') }}
+                      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                        composer === a.kind ? 'border-brand bg-brand-soft' : 'border-hairline bg-surface hover:bg-surface-soft hover:border-hairline-strong'
+                      }`}
+                    >
+                      <span className="w-8 h-8 rounded-lg bg-surface-strong flex items-center justify-center flex-shrink-0" style={{ color: 'var(--brand-ink)' }}>
+                        {a.icon}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[12.5px] font-medium text-ink truncate">{a.label}</span>
+                        <span className="block text-[11px] text-ink-muted truncate">{a.blurb}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {composer && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      autoFocus
+                      value={composerText}
+                      onChange={(e) => setComposerText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitComposer() } }}
+                      placeholder={QUICK_ACTIONS.find((a) => a.kind === composer)?.placeholder}
+                      className={inp}
+                    />
+                    <button
+                      onClick={submitComposer}
+                      disabled={logging}
+                      className="h-9 px-3.5 flex-shrink-0 rounded-lg text-[12.5px] font-medium text-white disabled:opacity-60 transition-colors"
+                      style={{ backgroundColor: 'var(--brand)' }}
+                    >
+                      {logging ? 'Logging…' : 'Log it'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Follow-up checklist ── */}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted mb-2">Follow-up Checklist</p>
+                <div className="rounded-xl border border-hairline overflow-hidden">
+                  {CHECKLIST_STEPS.map((s) => {
+                    const done = (deal.checklist ?? {})[s.key] === true
+                    return (
+                      <button
+                        key={s.key}
+                        onClick={() => toggleStep(s.key, s.label)}
+                        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left border-t border-hairline-soft first:border-t-0 hover:bg-surface-soft transition-colors"
+                      >
+                        <span
+                          className="w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors"
+                          style={done
+                            ? { backgroundColor: 'var(--brand)', borderColor: 'var(--brand)', color: '#fff' }
+                            : { borderColor: 'var(--hairline-strong)' }}
+                        >
+                          {done && <Check size={11} strokeWidth={3} />}
+                        </span>
+                        <span className="text-ink-faint flex-shrink-0">{STEP_ICONS[s.key]}</span>
+                        <span className={`text-[12.5px] leading-snug ${done ? 'text-ink-muted line-through decoration-hairline-strong' : 'text-ink-secondary'}`}>
+                          {s.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* ── Activity log ── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Activity Log</span>
+                  {activities !== null && activities.length > 0 && (
+                    <span className="text-[11px] text-ink-faint tabular-nums">{activities.length}{activities.length === 100 ? '+' : ''}</span>
+                  )}
+                </div>
+                <div className="rounded-xl border border-hairline bg-surface-soft max-h-56 overflow-y-auto">
+                  {activityUnavailable ? (
+                    <p className="px-3.5 py-4 text-[12px] text-amber-600 dark:text-amber-400 text-center">
+                      Activity &amp; checklist need migration <span className="font-mono">047_deal_workflow.sql</span> — run it in the Supabase SQL editor.
+                    </p>
+                  ) : activities === null ? (
+                    <p className="px-3.5 py-4 text-[12px] text-ink-faint text-center">Loading…</p>
+                  ) : activities.length === 0 ? (
+                    <p className="px-3.5 py-4 text-[12px] text-ink-faint text-center">
+                      No activity yet. Use the quick actions above to log your first interaction.
+                    </p>
+                  ) : (
+                    activities.map((a) => (
+                      <div key={a.id} className="flex items-start gap-2.5 px-3.5 py-2 border-t border-hairline-soft first:border-t-0">
+                        <span className="mt-0.5 w-6 h-6 rounded-md bg-surface-strong flex items-center justify-center text-ink-muted flex-shrink-0">
+                          {ACTIVITY_ICONS[a.kind] ?? ACTIVITY_ICONS.note}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12.5px] text-ink-secondary leading-snug break-words">{a.summary}</p>
+                          <p className="text-[10.5px] text-ink-faint tabular-nums">
+                            {a.actor ? `${a.actor} · ` : ''}{timeAgo(a.created_at)} ago
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* ── Fields ── */}

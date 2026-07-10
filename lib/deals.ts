@@ -56,6 +56,28 @@ export function hasRecentActivity(deal: Deal): boolean {
   return deal.status === null && !!(deal.notes && deal.notes.trim())
 }
 
+/* ── Follow-up checklist (deal detail modal) ─────────────────────────────────
+   The sales team's fixed 5-step follow-up process. KEYS are the contract —
+   they're what deals.checklist (jsonb, migration 047) stores and what the API
+   validates — so relabel freely, but never reuse or rename a key. */
+export const CHECKLIST_STEPS = [
+  { key: 'submittal', label: 'Preliminary Submittal Sent' },
+  { key: 'quote', label: 'Quote Sent' },
+  { key: 'follow1', label: 'Initial Follow-Up (1–2 weeks) — Timing & Confidence Level' },
+  { key: 'follow2', label: '2nd Follow-Up — Update Timing and Confidence' },
+  { key: 'award', label: 'Job/PO Award' },
+] as const
+
+export type ChecklistKey = (typeof CHECKLIST_STEPS)[number]['key']
+
+export function checklistProgress(deal: Deal): { done: number; total: number } {
+  const c = deal.checklist ?? {}
+  return {
+    done: CHECKLIST_STEPS.filter((s) => c[s.key] === true).length,
+    total: CHECKLIST_STEPS.length,
+  }
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
    Sales-dashboard derivations. All pure & deterministic given (deals, now) so
    the dashboard can render them on the server pass and hydrate identically.

@@ -2,6 +2,41 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-10 — Deal workflow: follow-up checklist, quick actions & activity log (migration 047)
+
+The deal detail modal now matches the deal card the sales team works from
+(per their screenshot): **Deal Progress** (`N/5 completed` bar), **Quick
+Actions** (Log Call / Send Email / Schedule Meeting / Send Proposal — each
+opens a one-line composer and writes an activity entry), the fixed 5-step
+**Follow-up Checklist** (Preliminary Submittal Sent → Quote Sent → Initial
+Follow-Up → 2nd Follow-Up → Job/PO Award; toggles persist per deal and log
+auto-entries), and a reverse-chronological **Activity Log** with actor +
+relative time.
+
+- **Migration `047_deal_workflow.sql`** (run in the Supabase SQL editor):
+  `deals.checklist` jsonb + `deal_activity` table (RLS on, no policies,
+  service-role only — same posture as deals). Until it runs, the modal shows
+  a run-the-migration hint and checklist toggles revert cleanly — nothing
+  crashes.
+- Checklist rides the normal deals PATCH (`checklist` whitelisted;
+  full-replace semantics, step keys + booleans enforced in validate.ts);
+  activity via new `GET`/`POST /api/admin/deals/[id]/activity`
+  (requireDealsAuth, actor from the session).
+- **Replace-imports keep workflow data**: the importer snapshots checklists +
+  activity before the wipe and carries them onto re-imported rows matched by
+  customer + job + group; the import preview shows what's at stake first.
+- Step KEYS are the storage contract (`lib/deals.ts CHECKLIST_STEPS`) —
+  relabel steps freely without a migration.
+
+Verified in-browser pre-migration (sections render with real deals, composer
+opens, optimistic check → revert + banner on rejected persist, zero console
+errors); `next build` green. Files: `supabase/migrations/047_deal_workflow.sql`
+(new), `app/api/admin/deals/[id]/activity/route.ts` (new),
+`app/admin/deals/DealDetailModal.tsx`, `app/admin/deals/SalesDashboard.tsx`,
+`app/api/admin/deals/import/route.ts`, `app/api/admin/deals/validate.ts`,
+`app/api/admin/deals/[id]/route.ts`, `lib/deals.ts`, `lib/supabase.ts`,
+`docs/deals.md`.
+
 ## 2026-07-10 — Deal detail modal: click into any deal (Monday-style item card)
 
 `/admin/deals` deals now open in a center modal from every list view — the

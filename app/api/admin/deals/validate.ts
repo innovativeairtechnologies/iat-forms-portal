@@ -4,9 +4,13 @@
 // trust boundary. Returns clean 400 messages instead of letting bad values
 // surface as raw Postgres constraint errors (500s).
 
+import { CHECKLIST_STEPS } from '@/lib/deals'
+
 const TEXT_FIELDS = ['assigned_to', 'unit_model', 'job_name', 'projected', 'rep', 'rep_contact', 'notes'] as const
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+const CHECKLIST_KEYS = new Set<string>(CHECKLIST_STEPS.map((s) => s.key))
 
 /**
  * Validate + coerce one whitelisted field value. Returns { value } with the
@@ -44,6 +48,21 @@ export function sanitizeDealField(field: string, raw: unknown): { value?: unknow
       if (raw === null || raw === '') return { value: null } // '' from a cleared <input type="date">
       if (typeof raw !== 'string' || !DATE_RE.test(raw)) return { error: 'date_quoted must be a YYYY-MM-DD date or null' }
       return { value: raw }
+    }
+    case 'checklist': {
+      // Full-replace semantics: the modal sends the complete map on each
+      // toggle. Only known step keys, only booleans — jsonb would happily
+      // store anything, so the shape is enforced here.
+      if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+        return { error: 'checklist must be an object of step → boolean' }
+      }
+      const clean: Record<string, boolean> = {}
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        if (!CHECKLIST_KEYS.has(k)) return { error: `checklist has unknown step "${k}"` }
+        if (typeof v !== 'boolean') return { error: `checklist.${k} must be a boolean` }
+        clean[k] = v
+      }
+      return { value: clean }
     }
     default: {
       // free-text nullables
