@@ -213,37 +213,52 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
                   </Card>
                 )}
 
-                {/* Remaining sections — folded into one collapsed accordion
-                    (mirrors the ticket detail's "Intake details") so a long,
-                    multi-section form doesn't read as an endless scroll. */}
-                {sections.length > 1 && (
-                  <Card>
-                    <details className="group">
-                      <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none list-none marker:content-none [&::-webkit-details-marker]:hidden">
-                        <ClipboardList size={14} className="text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
-                        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">More responses</h3>
-                        <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                          {sections.length - 1} more section{sections.length - 1 === 1 ? '' : 's'}
-                        </span>
-                        <ChevronDown size={14} className="ml-auto text-zinc-400 transition-transform group-open:rotate-180" />
-                      </summary>
-                      <div className="border-t border-zinc-200/70 dark:border-zinc-800/80 pb-2">
-                        {sections.slice(1).map((sec, i) => (
-                          <div key={i} className="border-t border-zinc-100 dark:border-zinc-800/50 first:border-0">
-                            <div className="px-5 pt-4 pb-1">
-                              <h4 className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-200">{sec.title}</h4>
-                            </div>
-                            <div className="px-5 pb-2.5">
-                              {sec.fields.map((field) => (
-                                <FieldRow key={field.id} label={field.label} value={submission.data[field.label]} fieldType={field.field_type} />
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  </Card>
-                )}
+                {/* Remaining sections — each its own collapsible card, so a long
+                    multi-section form (like the SRV's 10 sections) reads as a
+                    scannable stack. A section with failed items shows a red count
+                    on its header, so failures are visible without opening it. */}
+                {sections.slice(1).map((sec, i) => {
+                  const secFails = sec.fields.filter((f) => submission.data[f.label] === 'Fail').length
+                  return (
+                    <Card key={i}>
+                      <details className="group">
+                        <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none list-none marker:content-none [&::-webkit-details-marker]:hidden">
+                          <ClipboardList size={14} className="text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
+                          <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">{sec.title}</h3>
+                          {secFails > 0 && (
+                            <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-100 px-1.5 text-[11px] font-bold tabular-nums text-red-700 dark:bg-red-950/50 dark:text-red-400">
+                              {secFails}
+                            </span>
+                          )}
+                          <ChevronDown size={14} className="ml-auto text-zinc-400 transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div className="border-t border-zinc-200/70 dark:border-zinc-800/80 px-5 py-1">
+                          {sec.fields.map((field) => {
+                            const isFail = submission.data[field.label] === 'Fail'
+                            const failPhoto = isFail ? submission.data[`${field.label} — Failure photo`] : undefined
+                            return (
+                              <div key={field.id}>
+                                <FieldRow label={field.label} value={submission.data[field.label]} fieldType={field.field_type} />
+                                {typeof failPhoto === 'string' && failPhoto.startsWith('http') && (
+                                  <div className="pb-3 -mt-1">
+                                    <img
+                                      src={failPhoto}
+                                      alt={`${field.label} — issue`}
+                                      className="max-w-[280px] max-h-48 object-contain rounded-lg border border-red-200 dark:border-red-900/50 mb-1.5"
+                                    />
+                                    <a href={failPhoto} target="_blank" rel="noopener noreferrer" className="text-[12px] text-emerald-600 dark:text-emerald-400 hover:underline">
+                                      View full photo
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </details>
+                    </Card>
+                  )
+                })}
               </>
             )}
           </main>

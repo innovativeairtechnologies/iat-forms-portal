@@ -9,6 +9,7 @@ import CustomerDashboard, {
   type DashboardKb,
 } from '@/components/customer/CustomerDashboard'
 import type { Equipment, EquipmentMilestone, Ticket, TroubleshootingIntake } from '@/lib/supabase'
+import { SRV_FORM_SLUG } from '@/lib/srv'
 
 // Always reflect the latest build/ship status and request history for this login.
 export const dynamic = 'force-dynamic'
@@ -67,6 +68,26 @@ export default async function CustomerHome() {
   tickets = (tRes.data || []) as Ticket[]
   intakes = (iRes.data || []) as TroubleshootingIntake[]
 
+  // ── SRV verifications this customer submitted (interactive /customer/srv) ──
+  // Stamped with data._customer_id on submit. A returned SRV can be reopened for
+  // revision; a superseded old revision is folded into its replacement.
+  let srvSubs: Array<{ id: string; data: Record<string, unknown>; status: string | null; submitted_at: string }> = []
+  const { data: srvForm } = await supabaseAdmin
+    .from('forms')
+    .select('id')
+    .eq('slug', SRV_FORM_SLUG)
+    .maybeSingle()
+  if (srvForm) {
+    const { data: srvData } = await supabaseAdmin
+      .from('submissions')
+      .select('id, data, status, submitted_at')
+      .eq('form_id', srvForm.id)
+      .eq('data->>_customer_id', customerId)
+      .order('submitted_at', { ascending: false })
+      .limit(50)
+    srvSubs = (srvData || []) as typeof srvSubs
+  }
+
   // ── Knowledge base (published) ─────────────────────────────────────────────
   const { data: kbData } = await supabaseAdmin
     .from('kb_articles')
@@ -115,6 +136,21 @@ export default async function CustomerHome() {
       status: i.status as string,
       created_at: i.created_at,
     })),
+    ...srvSubs
+      // Drop superseded revisions — only the active verification is listed.
+      .filter((s) => !(s.data?.['_review'] as { superseded_by?: string } | undefined)?.superseded_by)
+      .map((s) => {
+        const rev = String(s.data?.['Revision'] || '1')
+        return {
+          kind: 'srv' as const,
+          id: s.id,
+          ref: `SRV-${s.id.slice(0, 8).toUpperCase()}`,
+          title: `Start-Up Readiness Verification${rev !== '1' ? ` · Rev ${rev}` : ''}`,
+          serial: String(s.data?.['Unit Serial Number'] || ''),
+          status: (s.status as string) || 'open',
+          created_at: s.submitted_at,
+        }
+      }),
   ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 
   const kb = (kbData || []) as DashboardKb[]

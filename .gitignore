@@ -53,3 +53,6 @@ next-env.d.ts
 /docs/*.xlsx
 /docs/*.xls
 /docs/*.csv
+
+# one-off SRV content backup (contains full checklist content)
+scripts/.srv-config-backup.json

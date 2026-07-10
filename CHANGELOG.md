@@ -2,6 +2,32 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-10 — SRV batch: required failure photos, My Requests, admin per-section view
+
+Fixes to the interactive Start-Up Readiness Verification (`/customer/srv`) and
+its admin review, per Jacob:
+
+- **Required failure photo, per item.** Marking any checklist item **Fail** now
+  reveals an inline "Photo of this issue required" capture tile directly under
+  that item (only on fail); it gates section completion and is validated
+  server-side. Stored in `submissions.data` under `<item label> — Failure photo`
+  keys (deliberately not in `form_fields`) and rendered inline under the failed
+  item on the admin detail page. Note: photo-restricted sites can't submit an SRV
+  containing a failure; and these photos appear in the admin web view but not the
+  PDF/print export.
+- **Electrical "Recorded readings" removed.** The L1–L2 … L3–G voltage inputs are
+  gone from the Electrical Power section — in code (`lib/srv.ts`) and in the
+  live, admin-edited `srv_config` row (`scripts/strip-electrical-readings.mjs`,
+  backup gitignored). The gas section keeps its readings.
+- **SRV now appears in the customer "My Requests" list** (matched on the
+  `_customer_id` stamp; superseded revisions folded out). A returned SRV links
+  back to `/customer/srv?resume=<id>` to fix flagged items.
+- **Admin detail: one collapsible card per section.** The former single "More
+  responses" accordion is now a card per form section, each with a **red
+  fail-count badge** so failures are visible without expanding. (Applies to all
+  forms; the badge only shows where a form has "Fail" answers.)
+- **Empathetic intro** added atop the SRV intro stage.
+
 ## 2026-07-10 — Dependency refresh: Dependabot PR #25 (15 minor/patch bumps)
 
 Merged the Dependabot minor-and-patch group. Notables: `@anthropic-ai/sdk`

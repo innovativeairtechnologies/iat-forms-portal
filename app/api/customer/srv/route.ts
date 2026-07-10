@@ -66,6 +66,12 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: `Invalid photo upload for "${photo.label}"` }, { status: 400 })
         }
       }
+      // Required failure photos are uploads too — same hardening.
+      for (const url of Object.values(a.failPhotos || {})) {
+        if (url && !isOurUpload(url)) {
+          return NextResponse.json({ error: 'Invalid failure-photo upload' }, { status: 400 })
+        }
+      }
     }
     const sig = payload.certification.signature
     if (!sig.startsWith('data:image/png;base64,') || sig.length > 500_000) {

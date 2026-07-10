@@ -124,6 +124,9 @@ export default function SectionPanel({
   const setPhoto = (key: string, url: string) => {
     onChange((a) => ({ ...a, photos: { ...a.photos, [key]: url } }))
   }
+  const setFailPhoto = (key: string, url: string) => {
+    onChange((a) => ({ ...a, failPhotos: { ...(a.failPhotos || {}), [key]: url } }))
+  }
 
   return (
     <>
@@ -168,28 +171,46 @@ export default function SectionPanel({
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const current = answers.items[item.key]
+                  const failed = current === 'fail'
                   return (
                     <div
                       key={item.key}
-                      className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+                      className="rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
                     >
-                      <p className="flex-1 text-[13px] leading-snug text-zinc-700 dark:text-zinc-200">{item.label}</p>
-                      <div className="flex flex-shrink-0 gap-1">
-                        {ANSWER_BUTTONS.filter((b) => b.value !== 'na' || item.naAllowed).map((b) => (
-                          <button
-                            key={b.value}
-                            type="button"
-                            onClick={() => setItem(item.key, b.value)}
-                            className={`h-7 rounded-md border px-2 text-[11px] font-bold transition-colors ${
-                              current === b.value
-                                ? b.active
-                                : 'border-zinc-200 bg-white text-zinc-400 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-500'
-                            }`}
-                          >
-                            {b.label}
-                          </button>
-                        ))}
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="flex-1 text-[13px] leading-snug text-zinc-700 dark:text-zinc-200">{item.label}</p>
+                        <div className="flex flex-shrink-0 gap-1">
+                          {ANSWER_BUTTONS.filter((b) => b.value !== 'na' || item.naAllowed).map((b) => (
+                            <button
+                              key={b.value}
+                              type="button"
+                              onClick={() => setItem(item.key, b.value)}
+                              className={`h-7 rounded-md border px-2 text-[11px] font-bold transition-colors ${
+                                current === b.value
+                                  ? b.active
+                                  : 'border-zinc-200 bg-white text-zinc-400 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-500'
+                              }`}
+                            >
+                              {b.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
+                      {/* A failed item needs a photo of the problem — appears only on fail. */}
+                      {failed && (
+                        <div className="mt-2 rounded-lg border border-red-200 bg-red-50/70 p-2.5 dark:border-red-900/50 dark:bg-red-950/20">
+                          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-red-700 dark:text-red-400">
+                            <Camera size={12} /> Photo of this issue required
+                          </p>
+                          <div className="max-w-[150px]">
+                            <PhotoTile
+                              label={answers.failPhotos?.[item.key] ? 'Retake if needed' : 'Tap to add photo'}
+                              url={answers.failPhotos?.[item.key]}
+                              onUploaded={(u) => setFailPhoto(item.key, u)}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -268,7 +289,7 @@ export default function SectionPanel({
           >
             {prog.complete
               ? 'Section complete — back to unit'
-              : `${prog.answered + prog.readingsDone}/${prog.total + prog.readingsTotal} done — back to unit`}
+              : `${prog.answered + prog.readingsDone + prog.failPhotosDone}/${prog.total + prog.readingsTotal + prog.failPhotosNeeded} done — back to unit`}
           </button>
         </div>
       </motion.div>

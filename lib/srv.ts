@@ -175,14 +175,6 @@ export const SRV_SECTIONS: SrvSection[] = [
         ],
       },
     ],
-    readings: [
-      { key: 'l1_l2', label: 'L1–L2', unit: 'V' },
-      { key: 'l2_l3', label: 'L2–L3', unit: 'V' },
-      { key: 'l1_l3', label: 'L1–L3', unit: 'V' },
-      { key: 'l1_g', label: 'L1–G', unit: 'V' },
-      { key: 'l2_g', label: 'L2–G', unit: 'V' },
-      { key: 'l3_g', label: 'L3–G', unit: 'V' },
-    ],
     photos: [
       { key: 'main_disconnect', label: 'Main disconnect' },
       { key: 'incoming_power', label: 'Incoming power connections' },
@@ -448,6 +440,13 @@ export type SrvSectionAnswers = {
   readings?: Record<string, string>
   /** photo key → storage path in the srv-photos bucket */
   photos: Record<string, string>
+  /**
+   * item key → storage path. A photo of the problem is REQUIRED for any item
+   * answered "fail" — captured inline right under the item, only when fail is
+   * selected. (This is the one photo that gates the section; section.photos are
+   * still optional.)
+   */
+  failPhotos?: Record<string, string>
   notes?: string
 }
 
@@ -498,6 +497,9 @@ export type SectionProgress = {
   photosTotal: number
   readingsDone: number
   readingsTotal: number
+  /** How many failed items still need their required problem photo. */
+  failPhotosNeeded: number
+  failPhotosDone: number
   complete: boolean
   failures: number
 }
@@ -507,9 +509,13 @@ export function sectionProgress(section: SrvSection, answers: SrvSectionAnswers 
   const readings = section.readings || []
   const a = answers || { items: {}, photos: {} }
   const answered = allItems.filter((i) => a.items[i.key]).length
-  const failures = allItems.filter((i) => a.items[i.key] === 'fail').length
+  const failedItems = allItems.filter((i) => a.items[i.key] === 'fail')
+  const failures = failedItems.length
   const photosDone = section.photos.filter((p) => a.photos[p.key]).length
   const readingsDone = readings.filter((r) => (a.readings?.[r.key] ?? '').trim() !== '').length
+  // Every failed item must carry a problem photo (see SrvSectionAnswers.failPhotos).
+  const failPhotosNeeded = failures
+  const failPhotosDone = failedItems.filter((i) => (a.failPhotos?.[i.key] ?? '').trim() !== '').length
   return {
     answered,
     total: allItems.length,
@@ -517,14 +523,16 @@ export function sectionProgress(section: SrvSection, answers: SrvSectionAnswers 
     photosTotal: section.photos.length,
     readingsDone,
     readingsTotal: readings.length,
+    failPhotosNeeded,
+    failPhotosDone,
     failures,
-    // Photos are recommended, not required — they intentionally do NOT gate
-    // completion (photosDone is still reported for the "Recommended photos X/Y"
-    // sub-counter). A section is complete once every item is answered and every
-    // reading is recorded.
+    // Recommended photos (section.photos) intentionally do NOT gate completion.
+    // A section is complete once every item is answered, every reading is
+    // recorded, and every failed item has its required problem photo.
     complete:
       answered === allItems.length &&
-      readingsDone === readings.length,
+      readingsDone === readings.length &&
+      failPhotosDone === failPhotosNeeded,
   }
 }
 
@@ -552,13 +560,17 @@ export function validateSrvPayload(payload: SrvPayload, sections: SrvSection[] =
     if (!prog.complete) {
       problems.push(`Section ${section.number} (${section.title}) is incomplete`)
     }
-    // N/A only allowed where the checklist item permits it.
+    // N/A only allowed where the checklist item permits it; a failed item
+    // requires a photo of the problem.
     const a = payload.sections?.[section.key]
     if (a) {
       for (const group of section.groups) {
         for (const item of group.items) {
           if (a.items[item.key] === 'na' && !item.naAllowed) {
             problems.push(`"${item.label}" (Section ${section.number}) cannot be N/A`)
+          }
+          if (a.items[item.key] === 'fail' && !(a.failPhotos?.[item.key] ?? '').trim()) {
+            problems.push(`"${item.label}" (Section ${section.number}) failed — a photo of the problem is required`)
           }
         }
       }
@@ -631,6 +643,16 @@ export function readingFieldLabel(reading: SrvReading): string {
 }
 export function photoFieldLabel(photo: SrvPhoto): string {
   return `Photo — ${photo.label}`
+}
+/**
+ * The submission-data key for an item's required failure photo. Derived from the
+ * (globally unique) item label, so these keys are unique too and never collide
+ * with a regular field. Intentionally NOT part of srvFormFieldDefs — the admin
+ * detail page renders it inline under the failed item instead of as its own row,
+ * so passing sections stay clean.
+ */
+export function failPhotoFieldLabel(group: SrvGroup, item: SrvItem): string {
+  return `${itemFieldLabel(group, item)} — Failure photo`
 }
 export function sectionHeaderLabel(section: SrvSection): string {
   return `Section ${section.number} — ${section.title}`
@@ -751,6 +773,11 @@ export function flattenSrvPayload(payload: SrvPayload, sectionDefs: SrvSection[]
       for (const item of group.items) {
         const v = a.items[item.key]
         if (v) data[itemFieldLabel(group, item)] = ANSWER_DISPLAY[v]
+        // The required problem photo for a failed item.
+        if (v === 'fail') {
+          const fp = a.failPhotos?.[item.key]
+          if (fp) data[failPhotoFieldLabel(group, item)] = fp
+        }
       }
     }
     for (const reading of section.readings || []) {
@@ -810,6 +837,8 @@ export function unflattenSrvData(data: Record<string, unknown>, sectionDefs: Srv
       for (const item of group.items) {
         const v = DISPLAY_ANSWER[s(data[itemFieldLabel(group, item)])]
         if (v) a.items[item.key] = v
+        const fp = s(data[failPhotoFieldLabel(group, item)])
+        if (fp) (a.failPhotos ||= {})[item.key] = fp
       }
     }
     for (const reading of section.readings || []) {

@@ -34,10 +34,11 @@ export type UnitView = {
   progress: { total: number; completed: number; percent: number; currentStage: string | null }
 }
 export type RequestView = {
-  kind: 'ticket' | 'troubleshooting'
-  // The ticket's UUID — only meaningful for kind==='ticket' (links to
-  // /customer/tickets/[id]). Troubleshooting-intake rows have no detail page,
-  // so this stays undefined for them and those rows render non-clickable.
+  kind: 'ticket' | 'troubleshooting' | 'srv'
+  // A UUID whose meaning depends on kind: for 'ticket' it links to
+  // /customer/tickets/[id]; for 'srv' it's the submission id (a returned SRV
+  // links to /customer/srv?resume=<id>). Troubleshooting-intake rows have no
+  // detail page, so this stays undefined and those rows render non-clickable.
   id?: string
   ref: string
   title: string
@@ -302,7 +303,7 @@ export default function CustomerDashboard({
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-[12px] font-semibold text-zinc-700 dark:text-zinc-300">{r.ref}</span>
                             <span className="text-[11px] text-zinc-300 dark:text-zinc-600">·</span>
-                            <span className="text-[11px] text-zinc-400">{r.kind === 'ticket' ? 'Support' : 'Checklist'}</span>
+                            <span className="text-[11px] text-zinc-400">{r.kind === 'ticket' ? 'Support' : r.kind === 'srv' ? 'Start-up' : 'Checklist'}</span>
                           </div>
                           <p className="mt-0.5 truncate text-[12.5px] text-zinc-500 dark:text-zinc-400">{r.title}</p>
                         </div>
@@ -318,6 +319,15 @@ export default function CustomerDashboard({
                         {r.kind === 'ticket' && r.id ? (
                           <Link
                             href={`/customer/tickets/${r.id}`}
+                            className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+                          >
+                            {rowContent}
+                            <ChevronRight size={14} className="shrink-0 text-zinc-300 transition-colors group-hover:text-emerald-500 dark:text-zinc-600" />
+                          </Link>
+                        ) : r.kind === 'srv' && r.id && r.status === 'in_progress' ? (
+                          // A returned SRV — reopen it prefilled to fix the flagged items.
+                          <Link
+                            href={`/customer/srv?resume=${r.id}`}
                             className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
                           >
                             {rowContent}

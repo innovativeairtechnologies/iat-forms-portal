@@ -308,6 +308,11 @@ export default function SrvExperience({
           <div className="mb-6">
             <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-emerald-600">Before we schedule your start-up</p>
             <h1 className="text-[26px] font-bold tracking-tight text-zinc-900 dark:text-white">Start-Up Readiness Verification</h1>
+            <p className="mt-2 max-w-[560px] text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+              We know one more checklist is the last thing you want before start-up. But a few minutes here is what lets
+              our technician arrive fully prepared and get your unit running right the first time — no wasted trips, no
+              surprise delays.
+            </p>
             <p className="mt-2 max-w-[560px] text-[14px] leading-relaxed text-zinc-500 dark:text-zinc-400">
               Walk around a 3D model of your unit and verify each system — most items are a single tap. Photos are
               strongly recommended where site rules allow, but optional. It takes about 15 minutes at the unit.
@@ -484,7 +489,7 @@ export default function SrvExperience({
                       <span className="min-w-0 flex-1">
                         <span className="block text-[14px] font-semibold text-zinc-900 dark:text-white">{s.title}</span>
                         <span className="block text-[12px] text-zinc-400">
-                          {p.answered + p.photosDone + p.readingsDone}/{p.total + p.photosTotal + p.readingsTotal} complete
+                          {p.answered + p.photosDone + p.readingsDone + p.failPhotosDone}/{p.total + p.photosTotal + p.readingsTotal + p.failPhotosNeeded} complete
                           {p.failures > 0 ? ` · ${p.failures} failed` : ''}
                         </span>
                       </span>
