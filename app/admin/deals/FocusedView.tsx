@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronsUpDown, ChevronUp, ChevronDown, Trash2 } from 'lucide-react'
+import { ChevronsUpDown, ChevronUp, ChevronDown, Trash2, Maximize2 } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
 import { computeWeighted, isFocused } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
@@ -11,7 +11,7 @@ type Row = Deal & { weighted: number }
 type SortKey = 'customer' | 'assigned_to' | 'total_cost' | 'confidence' | 'weighted' | 'projected'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[1.6fr_100px_100px_110px_120px_1.8fr_32px]'
+const COLS = 'grid-cols-[1.6fr_100px_100px_110px_120px_1.8fr_56px]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 const editable = 'w-full bg-transparent border border-transparent rounded-md px-1.5 py-1 -mx-1.5 text-zinc-800 dark:text-zinc-100 outline-none hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-emerald-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors'
 
@@ -27,11 +27,13 @@ export default function FocusedView({
   onPatchLocal,
   onPersist,
   onDelete,
+  onView,
 }: {
   deals: Deal[]
   onPatchLocal: (id: string, patch: Partial<Deal>) => void
   onPersist: (id: string, patch: Record<string, unknown>) => void
   onDelete: (id: string) => void
+  onView: (id: string, orderedIds: string[]) => void
 }) {
   const [assignedFilter, setAssignedFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
@@ -175,7 +177,14 @@ export default function FocusedView({
                     className={`${editable} placeholder:text-zinc-300 dark:placeholder:text-zinc-600`}
                   />
                 </div>
-                <div className="flex justify-center">
+                <div className="flex justify-center items-center gap-2">
+                  <button
+                    onClick={() => onView(d.id, sorted.map((s) => s.id))}
+                    className="text-zinc-300 dark:text-zinc-600 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                    title="View deal"
+                  >
+                    <Maximize2 size={13} />
+                  </button>
                   <button
                     onClick={() => { if (confirm(`Delete the ${d.customer} deal?`)) onDelete(d.id) }}
                     className="text-zinc-300 dark:text-zinc-600 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"

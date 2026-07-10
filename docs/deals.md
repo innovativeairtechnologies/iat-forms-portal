@@ -42,6 +42,32 @@ switching tabs. Sortable columns follow the Tickets-queue pattern.
 "New Deal" (header button) opens a modal; created deals prepend to the shared
 dataset so all views update at once.
 
+## Deal detail modal (2026-07-10)
+
+`app/admin/deals/DealDetailModal.tsx` — the "click into a deal" card, matching
+the monday.com item view the team is used to, without per-deal pages (440
+deals don't need 440 routes). **Open it from any list view**: click a row in
+Pipeline or CRM (inline controls stopPropagation), or the ⤢ icon in Focused
+(those rows are full of inline inputs, so no row-click there).
+
+- **View mode**: money strip (cost / weighted / confidence), one-click status
+  segmented control (same semantics as the Pipeline select), every field with
+  icons, an **Updates & notes** panel, created/updated meta, Delete.
+- **Add update**: a one-line input that PREPENDS a dated line to `notes`
+  ("7.10.26 — got the PO") — the sheet's own convention, so Monday's
+  updates-feed habit works with zero schema change and survives re-import
+  round-trips.
+- **Edit mode** ("Edit deal"): the same fields as the New Deal modal (shared
+  styles in `app/admin/deals/form.ts`), Save diffs against the live row and
+  PATCHes only changed fields; Cancel discards.
+- **Prev/next**: chevrons + ←/→ keys walk an ordered-id snapshot of the view
+  it was opened from (its filter/sort at that moment); deals deleted or
+  replaced mid-browse silently drop out of the order. Esc closes (cancels
+  edit first). Counter shows "N / M".
+- Persistence rides DealsClient's existing optimistic machinery (patchLocal →
+  persist → revert-on-fail); the modal never calls the API directly.
+  Verified end-to-end: optimistic value → 401 (anon) → revert + error banner.
+
 ## The Dashboard (default tab, 2026-07-10)
 
 `app/admin/deals/SalesDashboard.tsx` — the sales "command center". **Every

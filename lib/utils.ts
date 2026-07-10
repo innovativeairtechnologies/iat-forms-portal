@@ -11,6 +11,15 @@ export function formatDate(dateStr: string) {
   })
 }
 
+/** Format a bare Postgres `date` ('YYYY-MM-DD'). Parsing it directly would be
+ *  UTC midnight and render the PREVIOUS day anywhere west of UTC — the
+ *  T00:00:00 suffix pins it to local midnight instead. */
+export function formatDateOnly(d: string) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  })
+}
+
 export function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',

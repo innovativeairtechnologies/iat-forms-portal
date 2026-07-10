@@ -2,6 +2,33 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-10 — Deal detail modal: click into any deal (Monday-style item card)
+
+`/admin/deals` deals now open in a center modal from every list view — the
+monday.com "View" habit, without per-deal pages. Click a row in **Pipeline**
+or **CRM**, or the ⤢ icon in **Focused** (those rows keep their inline edits).
+
+- View mode: money strip (cost/weighted/confidence), one-click Active/Won/Lost
+  segmented status, all fields, an **Updates & notes** panel with a dated
+  "Add update" composer (prepends "7.10.26 — …" lines to `notes`, the sheet's
+  own convention — no schema change, survives re-imports), created/updated
+  meta, Delete.
+- "Edit deal" flips the card to the same form as New Deal (shared field styles
+  in `app/admin/deals/form.ts`); Save PATCHes only the changed fields, Cancel
+  discards.
+- Prev/next chevrons + ←/→ keys page through the opening view's current
+  filter/sort order ("14 / 440"); Esc closes. Deleted deals drop out of the
+  browse order silently.
+- Persistence rides the existing optimistic patchLocal → persist →
+  revert-on-fail machinery — verified end-to-end in-browser (optimistic value,
+  forced 401, revert + error banner, plus modal open/navigate/edit/cancel
+  across all three tabs). `formatDateOnly` promoted to `lib/utils` (CRM's
+  local copy removed).
+
+No migration; `next build` green. Files: `app/admin/deals/DealDetailModal.tsx`
+(new), `DealsClient.tsx`, `PipelineView.tsx`, `CRMView.tsx`, `FocusedView.tsx`,
+`form.ts` (new), `lib/utils.ts`, `docs/deals.md`.
+
 ## 2026-07-10 — Sales Dashboard + monday.com board import (the real numbers are in)
 
 `/admin/deals` grew a **Dashboard** tab (now the default) and a real Excel

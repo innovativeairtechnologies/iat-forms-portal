@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Search, ChevronsUpDown, ChevronUp, ChevronDown, MessageSquareText } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
 import { hasRecentActivity } from '@/lib/deals'
+import { formatDateOnly } from '@/lib/utils'
 import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, StatusPill, DEAL_STATUS, IdentityCell } from '@/components/admin/list'
 
 type SortKey = 'customer' | 'job_name' | 'unit_model' | 'rep' | 'rep_contact' | 'date_quoted' | 'status'
@@ -11,16 +12,6 @@ type SortDir = 'asc' | 'desc'
 
 const COLS = 'grid-cols-[1.6fr_1fr_0.9fr_1fr_100px_90px_1.7fr]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
-
-// date_quoted is a bare Postgres `date` ('YYYY-MM-DD'). The shared formatDate
-// would parse it as UTC midnight and render the PREVIOUS day anywhere west of
-// UTC (all US timezones) — same trap RequestsQueueClient/EmployeeDetailClient
-// already dodge with the T00:00:00 local-midnight suffix.
-function formatDateOnly(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  })
-}
 
 // Nulls always sort last regardless of direction — flipping asc/desc should
 // reorder the deals that HAVE a value, not surface the blank ones.
@@ -32,7 +23,10 @@ function cmpNullsLast(a: string | null, b: string | null, dir: SortDir, isDate =
   return dir === 'asc' ? cmp : -cmp
 }
 
-export default function CRMView({ deals }: { deals: Deal[] }) {
+export default function CRMView({ deals, onView }: {
+  deals: Deal[]
+  onView: (id: string, orderedIds: string[]) => void
+}) {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('date_quoted')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -117,7 +111,11 @@ export default function CRMView({ deals }: { deals: Deal[] }) {
                 // Expanded notes need the row to grow — the shared ROW token
                 // hard-codes h-[44px] and nothing clips overflow, so without
                 // the override a wrapped note paints over the rows below it.
-                <div key={d.id} className={`${rowCx(COLS, { i })} ${isExpanded ? 'py-2.5' : ''}`}>
+                <div
+                  key={d.id}
+                  className={`${rowCx(COLS, { i })} ${isExpanded ? 'py-2.5' : ''} cursor-pointer`}
+                  onClick={() => onView(d.id, sorted.map((s) => s.id))}
+                >
                   <IdentityCell
                     leading={flagged ? <MessageSquareText size={13} className="text-emerald-500 flex-shrink-0" aria-label="Recent activity" /> : undefined}
                     title={d.customer}
@@ -131,7 +129,7 @@ export default function CRMView({ deals }: { deals: Deal[] }) {
                   <div className="min-w-0 text-zinc-500 dark:text-zinc-400">
                     {note ? (
                       <button
-                        onClick={() => toggleExpanded(d.id)}
+                        onClick={(e) => { e.stopPropagation(); toggleExpanded(d.id) }}
                         className={`text-left ${isExpanded ? 'whitespace-pre-wrap break-words' : 'truncate block w-full'} hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors`}
                         title={isLong ? (isExpanded ? 'Click to collapse' : 'Click to expand') : undefined}
                       >

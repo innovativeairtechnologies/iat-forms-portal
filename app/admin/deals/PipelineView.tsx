@@ -25,9 +25,11 @@ function cmpNum(a: number, b: number) { return a - b }
 export default function PipelineView({
   deals,
   onStatusChange,
+  onView,
 }: {
   deals: Deal[]
   onStatusChange: (id: string, status: 'Won' | 'Lost' | null) => void
+  onView: (id: string, orderedIds: string[]) => void
 }) {
   const [search, setSearch] = useState('')
   const [groupBy, setGroupBy] = useState(false)
@@ -81,6 +83,13 @@ export default function PipelineView({
     }
     return [...byGroup.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [sorted, groupBy])
+
+  // The ids in on-screen order — the detail modal's prev/next walks this.
+  const visibleIds = useMemo(
+    () => (groups ? groups.flatMap(([, rows]) => rows) : sorted).map((d) => d.id),
+    [groups, sorted],
+  )
+  const view = (id: string) => onView(id, visibleIds)
 
   return (
     <div>
@@ -148,12 +157,12 @@ export default function PipelineView({
                     <span className="uppercase tracking-wider">{group} · {groupRows.length}</span>
                     <span className="tabular-nums">{formatCurrency(groupSummary.totalCost)} · {formatCurrency(groupSummary.totalWeighted)} weighted</span>
                   </div>
-                  {groupRows.map((d, i) => <DealRow key={d.id} d={d} i={i + 1} onStatusChange={onStatusChange} />)}
+                  {groupRows.map((d, i) => <DealRow key={d.id} d={d} i={i + 1} onStatusChange={onStatusChange} onOpen={view} />)}
                 </Fragment>
               )
             })
           ) : (
-            sorted.map((d, i) => <DealRow key={d.id} d={d} i={i} onStatusChange={onStatusChange} />)
+            sorted.map((d, i) => <DealRow key={d.id} d={d} i={i} onStatusChange={onStatusChange} onOpen={view} />)
           )}
         </div>
       </TableScroll>
@@ -161,9 +170,13 @@ export default function PipelineView({
   )
 }
 
-function DealRow({ d, i, onStatusChange }: { d: Row; i: number; onStatusChange: (id: string, status: 'Won' | 'Lost' | null) => void }) {
+function DealRow({ d, i, onStatusChange, onOpen }: {
+  d: Row; i: number
+  onStatusChange: (id: string, status: 'Won' | 'Lost' | null) => void
+  onOpen: (id: string) => void
+}) {
   return (
-    <div className={rowCx(COLS, { i })}>
+    <div className={`${rowCx(COLS, { i })} cursor-pointer`} onClick={() => onOpen(d.id)}>
       <IdentityCell title={d.customer} subtitle={d.group_name} />
       <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.assigned_to || '—'}</div>
       <div className="text-right tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(d.total_cost)}</div>

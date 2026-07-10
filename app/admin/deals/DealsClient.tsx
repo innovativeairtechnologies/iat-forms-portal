@@ -10,6 +10,8 @@ import SalesDashboard from './SalesDashboard'
 import PipelineView from './PipelineView'
 import CRMView from './CRMView'
 import FocusedView from './FocusedView'
+import DealDetailModal from './DealDetailModal'
+import { inp, lbl } from './form'
 
 /* ────────────────────────────────────────────────────────────────────────────
    Deals — the "Forecast Pulse" MVP. One in-memory dataset (mirrors the Gantt
@@ -27,9 +29,6 @@ const TABS: { value: Tab; label: string; blurb: string }[] = [
   { value: 'focused', label: 'Focused', blurb: "today's priorities" },
 ]
 
-const inp = 'w-full text-[13px] text-zinc-800 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all placeholder:text-zinc-300 dark:placeholder:text-zinc-600'
-const lbl = 'text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block mb-1'
-
 const EMPTY_FORM = {
   customer: '', group_name: 'MAIN', assigned_to: '', total_cost: '', confidence: '50',
   unit_model: '', job_name: '', projected: '', rep: '', rep_contact: '', date_quoted: '', notes: '',
@@ -44,6 +43,11 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
   const [form, setForm] = useState(EMPTY_FORM)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+
+  // Deal detail modal: the id + an ordered snapshot of the ids visible in the
+  // view it was opened from (its current filter/sort), powering prev/next.
+  const [detail, setDetail] = useState<{ id: string; ids: string[] } | null>(null)
+  const openDetail = (id: string, ids: string[]) => setDetail({ id, ids })
 
   const summary = useMemo(() => computeSummary(deals), [deals])
 
@@ -150,6 +154,14 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
     }
   }
 
+  // Resolve the open detail deal against live state; deals deleted (or
+  // replaced by an import) since the snapshot silently drop out of the
+  // prev/next order rather than 404ing mid-browse.
+  const dealIdSet = new Set(deals.map((d) => d.id))
+  const detailDeal = detail ? deals.find((d) => d.id === detail.id) ?? null : null
+  const detailIds = detail && detailDeal ? detail.ids.filter((id) => dealIdSet.has(id)) : []
+  const detailIndex = detailDeal ? detailIds.indexOf(detailDeal.id) : -1
+
   return (
     <div className="flex-1 overflow-auto bg-canvas">
       {/* Header */}
@@ -196,15 +208,32 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
           <SalesDashboard deals={deals} onImported={applyImported} />
         </div>
         <div className={tab === 'pipeline' ? '' : 'hidden'}>
-          <PipelineView deals={deals} onStatusChange={setStatus} />
+          <PipelineView deals={deals} onStatusChange={setStatus} onView={openDetail} />
         </div>
         <div className={tab === 'crm' ? '' : 'hidden'}>
-          <CRMView deals={deals} />
+          <CRMView deals={deals} onView={openDetail} />
         </div>
         <div className={tab === 'focused' ? '' : 'hidden'}>
-          <FocusedView deals={deals} onPatchLocal={patchLocal} onPersist={persist} onDelete={removeDeal} />
+          <FocusedView deals={deals} onPatchLocal={patchLocal} onPersist={persist} onDelete={removeDeal} onView={openDetail} />
         </div>
       </div>
+
+      {/* Deal detail modal */}
+      {detailDeal && (
+        <DealDetailModal
+          deal={detailDeal}
+          index={detailIndex}
+          total={detailIds.length}
+          prevId={detailIndex > 0 ? detailIds[detailIndex - 1] : null}
+          nextId={detailIndex >= 0 && detailIndex < detailIds.length - 1 ? detailIds[detailIndex + 1] : null}
+          onOpen={(id) => setDetail((cur) => (cur ? { ...cur, id } : cur))}
+          onClose={() => setDetail(null)}
+          onPatchLocal={patchLocal}
+          onPersist={persist}
+          onStatus={setStatus}
+          onDelete={removeDeal}
+        />
+      )}
 
       {/* New deal modal */}
       {showNew && (
