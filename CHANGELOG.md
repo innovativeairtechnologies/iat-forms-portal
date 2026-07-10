@@ -2,6 +2,27 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-10 — Dependency refresh: Dependabot PR #25 (15 minor/patch bumps)
+
+Merged the Dependabot minor-and-patch group. Notables: `@anthropic-ai/sdk`
+0.104.2 → 0.110.0 (all Jerry/AI routes use plain `messages.create`; the
+0.105–0.110 releases are additive — new model IDs and managed-agents/beta
+surfaces we don't call), `@supabase/supabase-js` 2.108.2 → 2.110.2, tiptap
+3.26.0 → 3.27.3, Next 15.5.19 → 15.5.20 (patch), and **three 0.170.0 →
+0.185.1** (+ matching `@types/three`) — the widest jump; audited both three
+consumers (`components/customer/srv/UnitScene.tsx`,
+`components/admin/ReactorSun.tsx`): they touch only stable core APIs
+(Vector3, Mesh, ShaderMaterial, AdditiveBlending, BackSide), and the pinned
+r3f 9.6.1 / drei 10.7.7 support three 0.18x. Also react-hook-form 7.81,
+postal-mime 2.7.5, autoprefixer 10.5.2, postcss 8.5.16, eslint-config-next
+15.5.20. One new (unused) transitive optional dep, `@dimforge/rapier3d-compat`,
+arrives with three's physics addon.
+
+No code changes, no migration. Verified: `npm ci` + `next build` green on
+the merged tree; Playwright smoke suite 9/9 against a local `next start`
+prod server; Vercel preview deploy READY pre-merge. Files: `package.json`,
+`package-lock.json`.
+
 ## 2026-07-10 — Deal workflow: follow-up checklist, quick actions & activity log (migration 047)
 
 The deal detail modal now matches the deal card the sales team works from
