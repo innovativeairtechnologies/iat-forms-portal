@@ -48,3 +48,8 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# real sales pipeline exports (customer data) must never enter this public repo
+/docs/*.xlsx
+/docs/*.xls
+/docs/*.csv

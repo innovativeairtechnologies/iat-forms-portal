@@ -2,6 +2,43 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-10 — Sales Dashboard + monday.com board import (the real numbers are in)
+
+`/admin/deals` grew a **Dashboard** tab (now the default) and a real Excel
+importer, and the deals table now holds the sales team's actual forecasting
+board — **440 deals, ~$91.3M raw / ~$23.6M weighted** — replacing the 5
+migration-043 demo seeds.
+
+- **Dashboard** (`app/admin/deals/SalesDashboard.tsx`): weighted-forecast hero
+  with blended confidence, KPI row, $-quoted-per-month activity chart,
+  pipeline-by-confidence funnel, Won/Open/Lost donut, group leaderboard
+  (share of expected value), projected-close buckets parsed from the board's
+  free-text `projected` column, largest open deals, a blended-confidence
+  gauge, and derived "Needs attention" signals (stale >90-day quotes, big
+  deals at ≤10% confidence, $0-value rows, undated rows). Every figure is
+  computed live from the deals table — no sample numbers anywhere; cards that
+  need data the board doesn't carry (quotas, activity counters) wait until
+  Sales provides it. Quiet Precision throughout.
+- **Importer**: `lib/deals-import.ts` parses the monday.com export's group
+  blocks and maps columns by name; `POST /api/admin/deals/import` does
+  dry-run preview → commit with Replace-board (default) or Add-on-top modes,
+  `requireDealsAuth`-gated + audit-logged (`deal.import`); the Dashboard's
+  "Import from Excel" modal shows per-group counts/$ and row warnings before
+  writing. `scripts/import-sales-forecast.mts` (npx tsx) is the same-parser
+  backfill path used for the initial load — per-group totals verified to the
+  dollar against the sheet's own summary rows.
+- **Deps/safety**: SheetJS pinned to the fixed 0.20.3 CDN tarball (npm's
+  0.18.5 carries unfixed high advisories); `/docs/*.xlsx|xls|csv` gitignored
+  so real pipeline exports can never land in this public repo; SVG trig
+  coordinates rounded to dodge a Node-vs-browser `Math.sin` ulp
+  hydration mismatch.
+
+`next build` green; dashboard verified in-browser against the live import
+(totals, funnel, buckets, attention signals) with zero console errors. Files:
+`app/admin/deals/SalesDashboard.tsx`, `app/admin/deals/DealsClient.tsx`,
+`app/api/admin/deals/import/route.ts`, `lib/deals-import.ts`, `lib/deals.ts`,
+`lib/utils.ts`, `scripts/import-sales-forecast.mts`, `docs/deals.md`.
+
 ## 2026-07-09 — Annual Review print sheet: wider coaching notes, no core-values footer, + a portrait option
 
 Follow-up tweaks to the bespoke `/print/annual-review` sheet:

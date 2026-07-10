@@ -6,6 +6,7 @@ import type { Deal } from '@/lib/supabase'
 import { computeSummary } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
 import { ListPageHeader, tabCx } from '@/components/admin/list'
+import SalesDashboard from './SalesDashboard'
 import PipelineView from './PipelineView'
 import CRMView from './CRMView'
 import FocusedView from './FocusedView'
@@ -17,9 +18,10 @@ import FocusedView from './FocusedView'
    independently when the tab switches (no remount, no refetch).
    ──────────────────────────────────────────────────────────────────────────── */
 
-type Tab = 'pipeline' | 'crm' | 'focused'
+type Tab = 'dashboard' | 'pipeline' | 'crm' | 'focused'
 
 const TABS: { value: Tab; label: string; blurb: string }[] = [
+  { value: 'dashboard', label: 'Dashboard', blurb: 'metrics overview' },
   { value: 'pipeline', label: 'Pipeline', blurb: 'financial forecast' },
   { value: 'crm', label: 'CRM', blurb: 'relationships' },
   { value: 'focused', label: 'Focused', blurb: "today's priorities" },
@@ -35,7 +37,7 @@ const EMPTY_FORM = {
 
 export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals)
-  const [tab, setTab] = useState<Tab>('pipeline')
+  const [tab, setTab] = useState<Tab>('dashboard')
   const [err, setErr] = useState<string | null>(null)
 
   const [showNew, setShowNew] = useState(false)
@@ -54,6 +56,14 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
 
   const patchLocal = (id: string, patch: Partial<Deal>) =>
     setDeals((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)))
+
+  // Excel import replaced/extended the whole board server-side: swap in the
+  // fresh rows AND rebuild the last-known-server-good map, otherwise a failed
+  // edit after an import would "revert" a deal to its pre-import snapshot.
+  const applyImported = (fresh: Deal[]) => {
+    serverDeals.current = new Map(fresh.map((d) => [d.id, d]))
+    setDeals(fresh)
+  }
 
   const revertToServer = (id: string) =>
     setDeals((prev) => prev.map((d) => (d.id === id ? serverDeals.current.get(id) ?? d : d)))
@@ -141,7 +151,7 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
+    <div className="flex-1 overflow-auto bg-canvas">
       {/* Header */}
       <ListPageHeader
         overline="Sales"
@@ -180,8 +190,11 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
           </div>
         )}
 
-        {/* All three views stay mounted so switching tabs never resets a view's
+        {/* All views stay mounted so switching tabs never resets a view's
             own filter/sort state — see the module comment above. */}
+        <div className={tab === 'dashboard' ? '' : 'hidden'}>
+          <SalesDashboard deals={deals} onImported={applyImported} />
+        </div>
         <div className={tab === 'pipeline' ? '' : 'hidden'}>
           <PipelineView deals={deals} onStatusChange={setStatus} />
         </div>
