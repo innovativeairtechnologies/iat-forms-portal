@@ -5,9 +5,10 @@ import {
   X, ChevronLeft, ChevronRight, Pencil, Trash2, CornerDownLeft,
   User, Users, Cpu, Briefcase, CalendarDays, CalendarRange, Contact,
   Phone, Mail, CalendarClock, FileText, Check, ClipboardList, StickyNote,
+  Star, CalendarPlus, Factory,
 } from 'lucide-react'
-import type { Deal, DealActivity, DealActivityKind } from '@/lib/supabase'
-import { computeWeighted, CHECKLIST_STEPS, checklistProgress } from '@/lib/deals'
+import type { Deal, DealActivity, DealActivityKind, DealFollowUp } from '@/lib/supabase'
+import { computeWeighted, CHECKLIST_STEPS, checklistProgress, PROJECT_TYPES, followUpDateFrom } from '@/lib/deals'
 import { formatCurrency, formatDateOnly } from '@/lib/utils'
 import { StatusPill, DEAL_STATUS, timeAgo } from '@/components/admin/list'
 import { inp, lbl } from './form'
@@ -32,7 +33,7 @@ import { inp, lbl } from './form'
 type EditForm = {
   customer: string; group_name: string; assigned_to: string; total_cost: string
   confidence: string; unit_model: string; job_name: string; date_quoted: string
-  projected: string; rep: string; rep_contact: string; notes: string
+  projected: string; rep: string; rep_contact: string; notes: string; project_type: string
 }
 
 const toForm = (d: Deal): EditForm => ({
@@ -48,6 +49,7 @@ const toForm = (d: Deal): EditForm => ({
   rep: d.rep ?? '',
   rep_contact: d.rep_contact ?? '',
   notes: d.notes ?? '',
+  project_type: d.project_type ?? '',
 })
 
 /** Diff the edit buffer against the live deal → minimal PATCH payload. */
@@ -68,6 +70,7 @@ function buildPatch(d: Deal, f: EditForm): Record<string, unknown> {
   if (txt(f.rep) !== d.rep) patch.rep = txt(f.rep)
   if (txt(f.rep_contact) !== d.rep_contact) patch.rep_contact = txt(f.rep_contact)
   if ((f.notes.trim() === '' ? null : f.notes) !== d.notes) patch.notes = f.notes.trim() === '' ? null : f.notes
+  if ((f.project_type || null) !== (d.project_type ?? null)) patch.project_type = f.project_type || null
   return patch
 }
 
@@ -104,20 +107,26 @@ const ACTIVITY_ICONS: Record<DealActivityKind, React.ReactNode> = {
 }
 
 export default function DealDetailModal({
-  deal, index, total, prevId, nextId,
+  deal, index, total, prevId, nextId, followUps,
   onOpen, onClose, onPatchLocal, onPersist, onStatus, onDelete,
+  onToggleFocus, onScheduleFollowUp, onToggleFollowUpDone, onRemoveFollowUp,
 }: {
   deal: Deal
   index: number
   total: number
   prevId: string | null
   nextId: string | null
+  followUps: DealFollowUp[]
   onOpen: (id: string) => void
   onClose: () => void
   onPatchLocal: (id: string, patch: Partial<Deal>) => void
   onPersist: (id: string, patch: Record<string, unknown>) => void
   onStatus: (id: string, status: 'Won' | 'Lost' | null) => void
   onDelete: (id: string) => void
+  onToggleFocus: (id: string, next: boolean) => void
+  onScheduleFollowUp: (dealId: string, dueDate: string, note: string) => void
+  onToggleFollowUpDone: (id: string) => void
+  onRemoveFollowUp: (id: string) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditForm>(() => toForm(deal))
@@ -130,6 +139,11 @@ export default function DealDetailModal({
   const [composerText, setComposerText] = useState('')
   const [logging, setLogging] = useState(false)
 
+  // Schedule-follow-up composer (default 2 weeks out, matching the automation)
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [fuDate, setFuDate] = useState('')
+  const [fuNote, setFuNote] = useState('')
+
   // Navigating to another deal resets the modal to view mode for that deal.
   useEffect(() => {
     setEditing(false)
@@ -137,6 +151,9 @@ export default function DealDetailModal({
     setUpdate('')
     setComposer(null)
     setComposerText('')
+    setShowSchedule(false)
+    setFuNote('')
+    setFuDate(followUpDateFrom(new Date(), 14))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id])
 
@@ -220,9 +237,23 @@ export default function DealDetailModal({
     setUpdate('')
   }
 
+  const submitSchedule = () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fuDate)) return
+    onScheduleFollowUp(deal.id, fuDate, fuNote)
+    setShowSchedule(false)
+    setFuNote('')
+    setFuDate(followUpDateFrom(new Date(), 14))
+  }
+
   const statusInfo = DEAL_STATUS[deal.status ?? 'active']
   const weighted = computeWeighted(deal)
   const progress = checklistProgress(deal)
+  const focused = deal.focused === true
+  // Open follow-ups first (soonest due), completed ones after.
+  const sortedFollowUps = [...followUps].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1
+    return a.due_date.localeCompare(b.due_date)
+  })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onMouseDown={editing ? undefined : onClose}>
@@ -237,9 +268,21 @@ export default function DealDetailModal({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => onToggleFocus(deal.id, !focused)}
+                  title={focused ? 'Remove from Focused' : 'Add to Focused'}
+                  className="flex-shrink-0 p-0.5 -ml-0.5"
+                >
+                  <Star size={16} className={focused ? 'fill-amber-400 text-amber-400' : 'text-ink-faint hover:text-amber-400 transition-colors'} />
+                </button>
                 <h2 className="text-[17px] font-semibold text-ink tracking-[-0.01em] truncate">{deal.customer}</h2>
                 <StatusPill tone={statusInfo.tone}>{statusInfo.label}</StatusPill>
                 <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">{deal.group_name}</span>
+                {deal.project_type && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">
+                    <Factory size={10} /> {deal.project_type}
+                  </span>
+                )}
               </div>
               {(deal.job_name || deal.unit_model) && (
                 <p className="mt-0.5 text-[12.5px] text-ink-muted truncate">
@@ -378,6 +421,82 @@ export default function DealDetailModal({
                 </div>
               </div>
 
+              {/* ── Follow-ups ── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Follow-ups</span>
+                  <button
+                    onClick={() => setShowSchedule((v) => !v)}
+                    className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-ink-secondary hover:text-ink transition-colors"
+                  >
+                    <CalendarPlus size={13} /> Schedule Follow-up
+                  </button>
+                </div>
+
+                {showSchedule && (
+                  <div className="mb-2 rounded-xl border border-hairline bg-surface-soft p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input type="date" value={fuDate} onChange={(e) => setFuDate(e.target.value)} className={`${inp} flex-shrink-0 w-[160px]`} />
+                      <input
+                        value={fuNote}
+                        onChange={(e) => setFuNote(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitSchedule() } }}
+                        placeholder="What's the follow-up? (optional)"
+                        className={inp}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setShowSchedule(false)} className="h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary hover:bg-surface transition-colors">Cancel</button>
+                      <button
+                        onClick={submitSchedule}
+                        className="h-8 px-3 rounded-lg text-[12px] font-medium text-white transition-colors"
+                        style={{ backgroundColor: 'var(--brand)' }}
+                      >
+                        Add reminder
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {sortedFollowUps.length === 0 ? (
+                  <p className="rounded-xl border border-hairline bg-surface-soft px-3.5 py-3 text-[12px] text-ink-faint">
+                    No follow-ups scheduled. New deals auto-schedule one 2 weeks out.
+                  </p>
+                ) : (
+                  <div className="rounded-xl border border-hairline overflow-hidden">
+                    {sortedFollowUps.map((f) => (
+                      <div key={f.id} className="flex items-center gap-3 px-3.5 py-2.5 border-t border-hairline-soft first:border-t-0">
+                        <button
+                          onClick={() => onToggleFollowUpDone(f.id)}
+                          title={f.done ? 'Mark not done' : 'Mark done'}
+                          className="w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors"
+                          style={f.done
+                            ? { backgroundColor: 'var(--brand)', borderColor: 'var(--brand)', color: '#fff' }
+                            : { borderColor: 'var(--hairline-strong)' }}
+                        >
+                          {f.done && <Check size={11} strokeWidth={3} />}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[12.5px] leading-snug ${f.done ? 'text-ink-muted line-through' : 'text-ink-secondary'}`}>
+                            {f.note || 'Follow up'}
+                          </p>
+                          <p className="text-[11px] text-ink-faint tabular-nums">
+                            {formatDateOnly(f.due_date)}{f.auto_generated ? ' · auto' : ''}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => onRemoveFollowUp(f.id)}
+                          title="Delete follow-up"
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-ink-faint hover:text-rose-500 hover:bg-surface-soft transition-colors flex-shrink-0"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* ── Activity log ── */}
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -425,6 +544,7 @@ export default function DealDetailModal({
                   <Field icon={<Briefcase size={13} />} label="Job Name" value={deal.job_name} />
                   <Field icon={<CalendarDays size={13} />} label="Date Quoted" value={deal.date_quoted ? formatDateOnly(deal.date_quoted) : null} />
                   <Field icon={<CalendarRange size={13} />} label="Projected Close" value={deal.projected} />
+                  <Field icon={<Factory size={13} />} label="Project Type" value={deal.project_type ?? null} />
                   <Field icon={<Users size={13} />} label="Group" value={deal.group_name} />
                 </div>
               </div>
@@ -516,6 +636,13 @@ export default function DealDetailModal({
               <div>
                 <label className={lbl}>Rep Contact</label>
                 <input className={inp} value={form.rep_contact} onChange={(e) => set('rep_contact', e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <label className={lbl}>Project Type</label>
+                <select className={inp} value={form.project_type} onChange={(e) => set('project_type', e.target.value)}>
+                  <option value="">— None —</option>
+                  {PROJECT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
               </div>
               <div className="col-span-2">
                 <label className={lbl}>Notes</label>

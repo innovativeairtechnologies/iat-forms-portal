@@ -1,17 +1,17 @@
 'use client'
 
 import { Fragment, useMemo, useState } from 'react'
-import { Search, ChevronsUpDown, ChevronUp, ChevronDown, Layers } from 'lucide-react'
+import { Search, ChevronsUpDown, ChevronUp, ChevronDown, Star } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
 import { computeWeighted, computeSummary } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
-import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, IdentityCell } from '@/components/admin/list'
+import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, IdentityCell, filterPillCx } from '@/components/admin/list'
 
 type Row = Deal & { weighted: number }
 type SortKey = 'customer' | 'group_name' | 'assigned_to' | 'total_cost' | 'confidence' | 'weighted' | 'projected' | 'status'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[2fr_1.1fr_110px_84px_110px_100px_130px]'
+const COLS = 'grid-cols-[30px_2fr_1.1fr_110px_84px_110px_100px_130px]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 
 function cmpStr(a: string | null, b: string | null) {
@@ -26,13 +26,15 @@ export default function PipelineView({
   deals,
   onStatusChange,
   onView,
+  onToggleFocus,
 }: {
   deals: Deal[]
   onStatusChange: (id: string, status: 'Won' | 'Lost' | null) => void
   onView: (id: string, orderedIds: string[]) => void
+  onToggleFocus: (id: string, next: boolean) => void
 }) {
   const [search, setSearch] = useState('')
-  const [groupBy, setGroupBy] = useState(false)
+  const [repFilter, setRepFilter] = useState<string | null>(null) // null = All (grouped)
   const [sortKey, setSortKey] = useState<SortKey>('total_cost')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
@@ -43,8 +45,10 @@ export default function PipelineView({
 
   const rows: Row[] = useMemo(() => deals.map((d) => ({ ...d, weighted: computeWeighted(d) })), [deals])
 
+  const repOptions = useMemo(() => [...new Set(rows.map((r) => r.group_name))].sort(), [rows])
+
   const q = search.trim().toLowerCase()
-  const filtered = q
+  const searched = q
     ? rows.filter((d) =>
         d.customer.toLowerCase().includes(q) ||
         d.group_name.toLowerCase().includes(q) ||
@@ -53,10 +57,8 @@ export default function PipelineView({
       )
     : rows
 
-  const summary = useMemo(() => computeSummary(filtered), [filtered])
-
   const sorted = useMemo(() => {
-    const out = [...filtered].sort((a, b) => {
+    const out = [...searched].sort((a, b) => {
       let cmp = 0
       switch (sortKey) {
         case 'customer':    cmp = a.customer.localeCompare(b.customer); break
@@ -71,10 +73,13 @@ export default function PipelineView({
       return sortDir === 'asc' ? cmp : -cmp
     })
     return out
-  }, [filtered, sortKey, sortDir])
+  }, [searched, sortKey, sortDir])
+
+  // A specific rep → flat filtered list; All → grouped sections with a band.
+  const shown = repFilter ? sorted.filter((d) => d.group_name === repFilter) : sorted
 
   const groups = useMemo(() => {
-    if (!groupBy) return null
+    if (repFilter) return null
     const byGroup = new Map<string, Row[]>()
     for (const d of sorted) {
       const list = byGroup.get(d.group_name) ?? []
@@ -82,18 +87,20 @@ export default function PipelineView({
       byGroup.set(d.group_name, list)
     }
     return [...byGroup.entries()].sort(([a], [b]) => a.localeCompare(b))
-  }, [sorted, groupBy])
+  }, [sorted, repFilter])
 
-  // The ids in on-screen order — the detail modal's prev/next walks this.
+  const summary = useMemo(() => computeSummary(shown), [shown])
+
+  // Ids in on-screen order — the detail modal's prev/next walks this.
   const visibleIds = useMemo(
-    () => (groups ? groups.flatMap(([, rows]) => rows) : sorted).map((d) => d.id),
-    [groups, sorted],
+    () => (groups ? groups.flatMap(([, r]) => r) : shown).map((d) => d.id),
+    [groups, shown],
   )
   const view = (id: string) => onView(id, visibleIds)
 
   return (
     <div>
-      {/* Summary strip — reacts to the current search filter */}
+      {/* Summary strip — reacts to the current search + rep filter */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
         <StatTile label="Total Value" value={formatCurrency(summary.totalCost)} />
         <StatTile label="Weighted" value={formatCurrency(summary.totalWeighted)} accent />
@@ -103,7 +110,7 @@ export default function PipelineView({
         <StatTile label="Win Rate" value={summary.winRate === null ? '—' : `${summary.winRate.toFixed(0)}%`} />
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar: search + rep filter pills */}
       <div className="flex items-center gap-2.5 mb-4 flex-wrap">
         <div className="relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
@@ -114,24 +121,17 @@ export default function PipelineView({
             className="pl-8 pr-3 h-9 text-[12.5px] w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
           />
         </div>
-        <button
-          onClick={() => setGroupBy((g) => !g)}
-          className={`flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] font-medium border transition-colors ${
-            groupBy
-              ? 'border-emerald-500/40 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-              : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-          }`}
-        >
-          <Layers size={13} />
-          Group by rep
-        </button>
-        <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
-          {filtered.length} {filtered.length === 1 ? 'deal' : 'deals'}
-        </span>
+        <div className="flex items-center gap-1 flex-wrap ml-auto">
+          <button onClick={() => setRepFilter(null)} className={filterPillCx(repFilter === null)}>All reps</button>
+          {repOptions.map((g) => (
+            <button key={g} onClick={() => setRepFilter(g)} className={filterPillCx(repFilter === g)}>{g}</button>
+          ))}
+        </div>
       </div>
 
-      <TableScroll minWidth={860}>
+      <TableScroll minWidth={900}>
         <div className={`grid ${COLS} ${HEADER_BOX}`}>
+          <Th />
           <Th><button onClick={() => toggleSort('customer')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('assigned_to')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Assigned <SortIcon col="assigned_to" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('total_cost')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Total Cost <SortIcon col="total_cost" sortKey={sortKey} sortDir={sortDir} /></button></Th>
@@ -142,27 +142,20 @@ export default function PipelineView({
         </div>
 
         <div className={BODY_BOX}>
-          {sorted.length === 0 ? (
+          {shown.length === 0 ? (
             <EmptyRow />
           ) : groups ? (
-            // Fragments, not wrapper divs — headers and rows must be direct
-            // children of BODY_BOX or the first:/last: rounding + divider
-            // classes (here and inside rowCx) match per-group instead of
-            // per-table, rounding corners mid-table and dropping separators.
             groups.map(([group, groupRows]) => {
-              const groupSummary = computeSummary(groupRows)
+              const gs = computeSummary(groupRows)
               return (
                 <Fragment key={group}>
-                  <div className="flex items-center justify-between px-4 py-1.5 bg-zinc-50 dark:bg-zinc-800/40 border-t border-zinc-100 dark:border-zinc-800/60 first:border-t-0 first:rounded-t-xl text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-                    <span className="uppercase tracking-wider">{group} · {groupRows.length}</span>
-                    <span className="tabular-nums">{formatCurrency(groupSummary.totalCost)} · {formatCurrency(groupSummary.totalWeighted)} weighted</span>
-                  </div>
-                  {groupRows.map((d, i) => <DealRow key={d.id} d={d} i={i + 1} onStatusChange={onStatusChange} onOpen={view} />)}
+                  <RepBand group={group} count={groupRows.length} total={gs.totalCost} weighted={gs.totalWeighted} />
+                  {groupRows.map((d, i) => <DealRow key={d.id} d={d} i={i + 1} onStatusChange={onStatusChange} onOpen={view} onToggleFocus={onToggleFocus} />)}
                 </Fragment>
               )
             })
           ) : (
-            sorted.map((d, i) => <DealRow key={d.id} d={d} i={i} onStatusChange={onStatusChange} onOpen={view} />)
+            shown.map((d, i) => <DealRow key={d.id} d={d} i={i} onStatusChange={onStatusChange} onOpen={view} onToggleFocus={onToggleFocus} />)
           )}
         </div>
       </TableScroll>
@@ -170,13 +163,45 @@ export default function PipelineView({
   )
 }
 
-function DealRow({ d, i, onStatusChange, onOpen }: {
+// Prominent per-rep separator band (replaces the old thin group line).
+function RepBand({ group, count, total, weighted }: { group: string; count: number; total: number; weighted: number }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/40 border-t border-zinc-100 dark:border-zinc-800/60 first:border-t-0 first:rounded-t-xl">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-semibold text-zinc-500 dark:text-zinc-300 flex-shrink-0">
+          {group.slice(0, 2).toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-semibold text-zinc-800 dark:text-zinc-100 truncate">{group}</p>
+          <p className="text-[10.5px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider tabular-nums">{count} {count === 1 ? 'deal' : 'deals'}</p>
+        </div>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className="text-[12.5px] font-semibold tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(total)}</p>
+        <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(weighted)} weighted</p>
+      </div>
+    </div>
+  )
+}
+
+function DealRow({ d, i, onStatusChange, onOpen, onToggleFocus }: {
   d: Row; i: number
   onStatusChange: (id: string, status: 'Won' | 'Lost' | null) => void
   onOpen: (id: string) => void
+  onToggleFocus: (id: string, next: boolean) => void
 }) {
+  const focused = d.focused === true
   return (
     <div className={`${rowCx(COLS, { i })} cursor-pointer`} onClick={() => onOpen(d.id)}>
+      <div className="flex items-center justify-center">
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleFocus(d.id, !focused) }}
+          title={focused ? 'Remove from Focused' : 'Add to Focused'}
+          className="p-0.5 -m-0.5"
+        >
+          <Star size={15} className={focused ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-600 hover:text-amber-400 transition-colors'} />
+        </button>
+      </div>
       <IdentityCell title={d.customer} subtitle={d.group_name} />
       <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.assigned_to || '—'}</div>
       <div className="text-right tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(d.total_cost)}</div>

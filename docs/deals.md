@@ -22,22 +22,28 @@ active/open**), `unit_model`, `job_name`, `total_cost`, `confidence` (0–100),
 **`weighted` is never stored.** It's always `total_cost * (confidence / 100)`,
 computed client-side in `lib/deals.ts` (`computeWeighted`) so it can never
 drift out of sync — same convention as the Gantt feature's derived values.
-`computeSummary` (totals, open/won/lost counts, win rate), `isFocused`, and
-`hasRecentActivity` live there too, as pure functions consumed via `useMemo`.
+`computeSummary` (totals, open/won/lost counts, win rate), `checklistProgress`,
+and `hasRecentActivity` live there too, as pure functions consumed via `useMemo`.
+`PROJECT_TYPES`, `CHECKLIST_STEPS`, `followUpDateFrom`, and `isRealDate` are here
+as well. (The old derived `isFocused` predicate was removed with migration 048 —
+Focused is now a hand-picked flag, see below.)
 
-## The four views
+## The five views
 
 All views read the same in-memory dataset (single `useState` in
-`app/admin/deals/DealsClient.tsx`, hydrated by the server page). All stay
-mounted with only one visible, so each keeps its own filter/sort state when
-switching tabs. Sortable columns follow the Tickets-queue pattern.
+`app/admin/deals/DealsClient.tsx`, hydrated by the server page). Follow-up
+reminders are lifted here too so the Calendar tab and the deal modal share one
+source of truth. All stay mounted with only one visible, so each keeps its own
+filter/sort state when switching tabs. Sortable columns follow the Tickets-queue
+pattern.
 
 | View | Question it answers | Notes |
 |------|--------------------|-------|
 | **Dashboard** | How does the whole book look? | Default tab; see "The Dashboard" below. |
-| **Pipeline** | What's the financial forecast? | All deals, default sort `total_cost` desc. Summary strip (total, weighted, open/won/lost, win rate) recomputes from the current search filter. Optional group-by-rep with per-group subtotals. Inline Won/Lost/Active status select. |
-| **CRM** | Who are we selling to? | Default sort `date_quoted` desc, **nulls always last** regardless of direction. Notes truncate at ~70 chars with click-to-expand. Deals with notes + still active get a small emerald "recent activity" flag. |
-| **Focused** | What needs attention today? | Open deals where `confidence >= 60` OR `projected` set OR `notes` set. Default sort `weighted` desc. Filter by assignee/group. `confidence` / `projected` / `notes` are inline-editable (edit → optimistic local update → PATCH on blur, the `CustomerPortalCard` pattern); `weighted` recalculates live as confidence changes. Row delete lives here too. |
+| **Pipeline** | What's the financial forecast? | All deals, default sort `total_cost` desc. Leading **★ star** toggles a deal into Focused. **Rep filter pills** (All / MAIN / JACOB / MIKE / DAVE): "All" shows prominent per-rep bands (initials + count + $ totals); a specific rep filters to just them. Inline Won/Lost/Active status select. Row click opens the detail modal. |
+| **CRM** | Who are we selling to? | Default sort `date_quoted` desc, **nulls always last**. Notes truncate at ~70 chars with click-to-expand. Deals with notes + still active get a small emerald "recent activity" flag. |
+| **Focused** | What am I working right now? | **Hand-picked** — deals where `focused = true` (starred in Pipeline or the modal). No longer derived. `confidence` / `projected` / `notes` inline-editable (optimistic → PATCH on blur); ★ unstars; row delete lives here too. |
+| **Calendar** | What follow-ups are due? | Month grid of `deal_follow_ups` (date-fns, matching `app/admin/schedule/SchedulingCalendar.tsx`). Overdue = rose, due-today = brand green, scheduled = sky, done = muted. Click a day → detail list with mark-done / open-deal / delete. |
 
 "New Deal" (header button) opens a modal; created deals prepend to the shared
 dataset so all views update at once.
@@ -132,6 +138,37 @@ SVG gotcha, learned the hard way: `Math.sin`/`Math.cos` are
 implementation-approximated, so Node (SSR) and the browser can differ by one
 ulp on computed SVG coordinates → React hydration-mismatch errors. Round any
 trig-derived attribute (`.toFixed(2)`) before rendering.
+
+## Focus, follow-ups & project type (2026-07-13, migration `048_deal_focus_followups.sql`)
+
+Four sales-requested additions, all degrading gracefully before 048 is run
+(missing columns/table → friendly hints, optimistic edits revert cleanly):
+
+- **Focused is now hand-picked.** `deals.focused` boolean, toggled by the ★ in
+  the Pipeline rows and the deal modal header. The Focused tab filters on the
+  flag instead of the old derived predicate — so it starts empty and reps curate
+  it. Unstar from Focused or Pipeline to remove.
+- **Rep separator upgrade.** Pipeline's old group-by-rep toggle is now filter
+  pills (`filterPillCx`) + a proper per-rep band (initials chip, count, $ /
+  weighted totals) in "All" mode. Flat single-rep list when a pill is picked.
+- **Project type** (`deals.project_type`, free text). The New Deal + edit forms
+  offer `lib/deals.ts PROJECT_TYPES` as a dropdown (placeholder industry set —
+  swap for the real list anytime, the column is free text). Shown as a header
+  chip + a field in the modal. Only sent on create when set (keeps New Deal
+  working pre-048).
+- **Follow-up calendar** (`deal_follow_ups` table). New deals auto-schedule a
+  reminder 2 weeks out (`auto_generated=true`); the date is computed in the
+  **browser's** timezone and passed to the create route (the server runs UTC).
+  The modal's "Schedule Follow-up" adds dated ones; the **Calendar** tab is the
+  month view. Bulk imports do NOT auto-generate (would spawn one per row).
+  Routes: `POST /api/admin/deals/follow-ups`, `PATCH`/`DELETE
+  /api/admin/deals/follow-ups/[id]`; dates validated with `isRealDate` (rejects
+  2026-02-31 before Postgres does). Follow-up state is lifted into `DealsClient`
+  with optimistic temp-ids; a delete/complete during the insert's in-flight
+  window is reconciled once the real row lands (`pendingFollowUp` ref).
+- **Re-import carry-over** now also preserves `focused`, `project_type`, and
+  follow-ups (matched by customer+job+group, same as checklists/activity), and
+  the import preview discloses all of them before a replace.
 
 ## Importing the board (Excel)
 

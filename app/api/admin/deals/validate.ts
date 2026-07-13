@@ -49,6 +49,17 @@ export function sanitizeDealField(field: string, raw: unknown): { value?: unknow
       if (typeof raw !== 'string' || !DATE_RE.test(raw)) return { error: 'date_quoted must be a YYYY-MM-DD date or null' }
       return { value: raw }
     }
+    case 'focused': {
+      if (typeof raw !== 'boolean') return { error: 'focused must be a boolean' }
+      return { value: raw }
+    }
+    case 'project_type': {
+      if (raw === null || raw === '') return { value: null }
+      if (typeof raw !== 'string') return { error: 'project_type must be a string or null' }
+      const v = raw.trim()
+      if (v.length > 100) return { error: 'project_type is too long' }
+      return { value: v }
+    }
     case 'checklist': {
       // Full-replace semantics: the modal sends the complete map on each
       // toggle. Only known step keys, only booleans — jsonb would happily

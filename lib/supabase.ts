@@ -355,8 +355,24 @@ export type Deal = {
   /** Follow-up checklist: step key → done (keys in lib/deals CHECKLIST_STEPS).
    *  Optional because the column arrives with migration 047. */
   checklist?: Record<string, boolean> | null
+  /** Hand-picked into the Focused tab via the Pipeline ★ (migration 048). */
+  focused?: boolean
+  /** Industry / vertical — values in lib/deals PROJECT_TYPES (migration 048). */
+  project_type?: string | null
   created_at: string
   updated_at: string
+}
+
+// A dated reminder on a deal (deal_follow_ups, migration 048). auto_generated
+// marks the New-Deal automation's 2-week reminder vs a hand-scheduled one.
+export type DealFollowUp = {
+  id: string
+  deal_id: string
+  due_date: string // YYYY-MM-DD
+  note: string | null
+  done: boolean
+  auto_generated: boolean
+  created_at: string
 }
 
 export type DealActivityKind = 'call' | 'email' | 'meeting' | 'proposal' | 'checklist' | 'note'

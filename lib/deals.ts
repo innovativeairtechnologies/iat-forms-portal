@@ -45,15 +45,57 @@ export function computeSummary(deals: Deal[]): DealSummary {
   }
 }
 
-/** Focused view's default filter: open deals worth someone's attention today. */
-export function isFocused(deal: Deal): boolean {
-  if (deal.status !== null) return false
-  return deal.confidence >= 60 || !!deal.projected || !!(deal.notes && deal.notes.trim())
-}
-
 /** CRM view's "recent activity" flag: has commentary, still active. */
 export function hasRecentActivity(deal: Deal): boolean {
   return deal.status === null && !!(deal.notes && deal.notes.trim())
+}
+
+/* ── Project type / industry (New Deal dropdown) ─────────────────────────────
+   Stored free-text in deals.project_type; the New Deal + edit forms offer
+   these as a dropdown. Placeholder industry set for IAT's desiccant-dehum
+   verticals — swap for the sales team's real list when it lands (nothing else
+   depends on the exact strings; the column is free-text). */
+export const PROJECT_TYPES = [
+  'Ice Rinks & Arenas',
+  'Pharmaceutical & Life Sciences',
+  'Food & Beverage Processing',
+  'Cold Storage & Refrigeration',
+  'Cannabis & Controlled Grow',
+  'Water & Wastewater Treatment',
+  'Manufacturing & Industrial',
+  'Battery & Energy Storage',
+  'Lithium & EV',
+  'Military & Defense',
+  'Aerospace',
+  'Data Centers',
+  'Warehousing & Logistics',
+  'Seed & Grain Storage',
+  'Indoor Agriculture',
+  'Museums & Archives',
+  'Electronics & Cleanrooms',
+  'Other',
+] as const
+
+/* ── Follow-ups ──────────────────────────────────────────────────────────────
+   The New-Deal automation drops a reminder this many days out (Monday parity). */
+export const AUTO_FOLLOW_UP_DAYS = 14
+
+/** 'YYYY-MM-DD' `days` from `from` (default now), in local time. */
+export function followUpDateFrom(from: Date, days: number): string {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + days)
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+/** True only for a real calendar date. A shape-only regex passes 2026-02-31 /
+ *  2026-13-01, which Postgres' `date` type would reject as a raw 500 — so the
+ *  follow-up routes validate with this before inserting. */
+export function isRealDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const [y, m, d] = s.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() + 1 === m && dt.getUTCDate() === d
 }
 
 /* ── Follow-up checklist (deal detail modal) ─────────────────────────────────

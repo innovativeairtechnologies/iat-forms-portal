@@ -2,6 +2,46 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-13 — Deals: hand-picked Focused (★), follow-up calendar, rep bands, project type (migration 048)
+
+Four sales-requested changes to `/admin/deals`, plus a new **Calendar** tab
+(now five views: Dashboard · Pipeline · CRM · Focused · Calendar).
+
+- **Focused is now a hand-picked list.** A ★ in the Pipeline rows (and the deal
+  modal header) toggles `deals.focused`; the Focused tab filters on the flag
+  instead of the old derived "confidence≥60 OR projected OR notes" predicate —
+  so it clears itself on switchover and reps curate what they're working.
+- **Follow-up calendar.** New deals auto-schedule a reminder 2 weeks out
+  (Monday-parity automation; date computed in the browser's timezone so it
+  doesn't drift on the UTC server). A "Schedule Follow-up" button in the deal
+  modal adds dated ones; the Calendar tab is the month grid (overdue = rose,
+  due-today = brand green, scheduled = sky, done = muted), with mark-done /
+  open-deal / delete. Bulk imports deliberately don't auto-generate.
+- **Rep separator cleanup.** Pipeline's group-by-rep toggle → filter pills
+  (All / MAIN / JACOB / MIKE / DAVE) + a proper per-rep band (initials, count,
+  $ + weighted totals) in "All" mode.
+- **Project type dropdown** on the New Deal + edit forms (industry field,
+  placeholder set in `lib/deals.ts PROJECT_TYPES`, swappable), shown as a modal
+  header chip + field.
+- **Migration `048_deal_focus_followups.sql`** (run in the Supabase SQL editor):
+  `deals.focused`, `deals.project_type`, `deal_follow_ups` table (RLS on, no
+  policies — service-role, same posture as deals). Everything degrades before
+  it runs (friendly hints, clean optimistic reverts). Re-import carry-over now
+  also preserves focused/project_type/follow-ups (matched by customer+job+group)
+  and the import preview discloses them.
+
+Adversarially reviewed (multi-agent) before ship; 12 confirmed findings fixed —
+notably the replace-import wiping focused/project_type, New Deal breaking
+pre-048, a follow-up temp-id delete/complete race, invalid-date 500s, and design
+drift (RepBand gradient, New Deal modal shell, calendar tone/green). `tsc` +
+`next build` green; rendering + graceful-degradation verified in-browser. Files:
+`supabase/migrations/048_deal_focus_followups.sql` (new),
+`app/api/admin/deals/follow-ups/route.ts` + `[id]/route.ts` (new),
+`app/admin/deals/CalendarView.tsx` (new), `DealsClient.tsx`, `PipelineView.tsx`,
+`FocusedView.tsx`, `DealDetailModal.tsx`, `SalesDashboard.tsx`,
+`app/api/admin/deals/route.ts` + `[id]/route.ts` + `validate.ts` + `import/route.ts`,
+`lib/deals.ts`, `lib/supabase.ts`, `docs/deals.md`.
+
 ## 2026-07-13 — Security: force Next's bundled postcss to ≥ 8.5.10 (Dependabot #26)
 
 Dependabot alert #26 (GHSA-qx2v-qp2m-jg93 / CVE-2026-41305, moderate) flagged

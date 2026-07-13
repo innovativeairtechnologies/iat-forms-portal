@@ -7,6 +7,7 @@ const EDITABLE_FIELDS = [
   'customer', 'assigned_to', 'date_quoted', 'status', 'unit_model', 'job_name',
   'total_cost', 'confidence', 'projected', 'rep', 'rep_contact', 'notes', 'group_name',
   'checklist', // follow-up steps map (migration 047)
+  'focused', 'project_type', // migration 048
 ] as const
 
 // Inline-edit endpoint — the Focused view's patchLocal/persist-on-blur pattern
@@ -33,7 +34,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   // two people work this pipeline, so a row edited in one tab can have been
   // deleted in another.
   const { data, error } = await supabaseAdmin.from('deals').update(patch).eq('id', id).select('id')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // focused / project_type land with migration 048 — before it's run, editing
+    // those two surfaces a friendly hint instead of a raw column-missing 500.
+    if (/column .*(focused|project_type).* does not exist/i.test(error.message)) {
+      return NextResponse.json(
+        { error: 'Focus & project type need migration 048_deal_focus_followups.sql (run it in the Supabase SQL editor).' },
+        { status: 503 },
+      )
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
   if (!data || data.length === 0) return NextResponse.json({ error: 'Deal not found — it may have been deleted.' }, { status: 404 })
   return NextResponse.json({ ok: true })
 }

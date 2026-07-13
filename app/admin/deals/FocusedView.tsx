@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronsUpDown, ChevronUp, ChevronDown, Trash2, Maximize2 } from 'lucide-react'
+import { ChevronsUpDown, ChevronUp, ChevronDown, Trash2, Maximize2, Star } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
-import { computeWeighted, isFocused } from '@/lib/deals'
+import { computeWeighted } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
 import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, IdentityCell } from '@/components/admin/list'
 
@@ -11,7 +11,7 @@ type Row = Deal & { weighted: number }
 type SortKey = 'customer' | 'assigned_to' | 'total_cost' | 'confidence' | 'weighted' | 'projected'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[1.6fr_100px_100px_110px_120px_1.8fr_56px]'
+const COLS = 'grid-cols-[1.6fr_100px_100px_110px_120px_1.7fr_84px]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 const editable = 'w-full bg-transparent border border-transparent rounded-md px-1.5 py-1 -mx-1.5 text-zinc-800 dark:text-zinc-100 outline-none hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-emerald-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors'
 
@@ -28,22 +28,24 @@ export default function FocusedView({
   onPersist,
   onDelete,
   onView,
+  onToggleFocus,
 }: {
   deals: Deal[]
   onPatchLocal: (id: string, patch: Partial<Deal>) => void
   onPersist: (id: string, patch: Record<string, unknown>) => void
   onDelete: (id: string) => void
   onView: (id: string, orderedIds: string[]) => void
+  onToggleFocus: (id: string, next: boolean) => void
 }) {
   const [assignedFilter, setAssignedFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('weighted')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  // Rows whose inline inputs currently have focus. isFocused() is re-evaluated
-  // on every keystroke (the inputs patch shared state onChange), so without
-  // this a deal qualifying only via confidence would unmount mid-edit the
-  // moment a partial value dips below 60 — and an unmounted input never fires
-  // onBlur, silently dropping the persist. Editing rows stay mounted until blur.
+  // Rows whose inline inputs currently have focus. Membership is `deal.focused`
+  // now (hand-picked via the Pipeline ★), so a row only leaves when it's
+  // unstarred — but keep the edit-protection anyway: if a rep unstars a deal
+  // while mid-typing in one of its inline inputs, we let the input stay mounted
+  // to its blur (which fires the persist) instead of yanking the row instantly.
   const [editing, setEditing] = useState<Set<string>>(new Set())
 
   function toggleSort(key: SortKey) {
@@ -59,7 +61,7 @@ export default function FocusedView({
 
   const rows: Row[] = useMemo(() => deals.map((d) => ({ ...d, weighted: computeWeighted(d) })), [deals])
 
-  const focused = rows.filter((d) => isFocused(d) || editing.has(d.id))
+  const focused = rows.filter((d) => d.focused === true || editing.has(d.id))
   const filtered = focused.filter((d) =>
     (!assignedFilter || d.assigned_to === assignedFilter) &&
     (!groupFilter || d.group_name === groupFilter),
@@ -129,7 +131,9 @@ export default function FocusedView({
           {sorted.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-[13px] text-zinc-400 dark:text-zinc-500">
-                {focused.length === 0 ? 'Nothing needs attention right now.' : 'No focused deals match this filter.'}
+                {focused.length === 0
+                  ? 'No focused deals yet. Star a deal in the Pipeline to pin it here.'
+                  : 'No focused deals match this filter.'}
               </p>
             </div>
           ) : (
@@ -178,6 +182,13 @@ export default function FocusedView({
                   />
                 </div>
                 <div className="flex justify-center items-center gap-2">
+                  <button
+                    onClick={() => onToggleFocus(d.id, false)}
+                    className="text-amber-400 hover:text-amber-500 transition-colors"
+                    title="Remove from Focused"
+                  >
+                    <Star size={13} className="fill-amber-400" />
+                  </button>
                   <button
                     onClick={() => onView(d.id, sorted.map((s) => s.id))}
                     className="text-zinc-300 dark:text-zinc-600 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"

@@ -2,40 +2,51 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
-import type { Deal } from '@/lib/supabase'
-import { computeSummary } from '@/lib/deals'
+import type { Deal, DealFollowUp } from '@/lib/supabase'
+import { computeSummary, PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
 import { ListPageHeader, tabCx } from '@/components/admin/list'
 import SalesDashboard from './SalesDashboard'
 import PipelineView from './PipelineView'
 import CRMView from './CRMView'
 import FocusedView from './FocusedView'
+import CalendarView from './CalendarView'
 import DealDetailModal from './DealDetailModal'
 import { inp, lbl } from './form'
 
 /* ────────────────────────────────────────────────────────────────────────────
    Deals — the "Forecast Pulse" MVP. One in-memory dataset (mirrors the Gantt
    editor's single-useState-lifted-to-the-parent pattern), rendered through
-   three simultaneously-mounted views so each keeps its own filter/sort state
-   independently when the tab switches (no remount, no refetch).
+   simultaneously-mounted views so each keeps its own filter/sort state
+   independently when the tab switches (no remount, no refetch). Follow-up
+   reminders are lifted here too so the Calendar tab and the deal modal share
+   one source of truth.
    ──────────────────────────────────────────────────────────────────────────── */
 
-type Tab = 'dashboard' | 'pipeline' | 'crm' | 'focused'
+type Tab = 'dashboard' | 'pipeline' | 'crm' | 'focused' | 'calendar'
 
 const TABS: { value: Tab; label: string; blurb: string }[] = [
   { value: 'dashboard', label: 'Dashboard', blurb: 'metrics overview' },
   { value: 'pipeline', label: 'Pipeline', blurb: 'financial forecast' },
   { value: 'crm', label: 'CRM', blurb: 'relationships' },
-  { value: 'focused', label: 'Focused', blurb: "today's priorities" },
+  { value: 'focused', label: 'Focused', blurb: 'hand-picked' },
+  { value: 'calendar', label: 'Calendar', blurb: 'follow-ups' },
 ]
 
 const EMPTY_FORM = {
   customer: '', group_name: 'MAIN', assigned_to: '', total_cost: '', confidence: '50',
   unit_model: '', job_name: '', projected: '', rep: '', rep_contact: '', date_quoted: '', notes: '',
+  project_type: '',
 }
 
-export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) {
+export default function DealsClient({
+  initialDeals, initialFollowUps = [],
+}: {
+  initialDeals: Deal[]
+  initialFollowUps?: DealFollowUp[]
+}) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals)
+  const [followUps, setFollowUps] = useState<DealFollowUp[]>(initialFollowUps)
   const [tab, setTab] = useState<Tab>('dashboard')
   const [err, setErr] = useState<string | null>(null)
 
@@ -48,6 +59,12 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
   // view it was opened from (its current filter/sort), powering prev/next.
   const [detail, setDetail] = useState<{ id: string; ids: string[] } | null>(null)
   const openDetail = (id: string, ids: string[]) => setDetail({ id, ids })
+
+  const tmpId = useRef(0) // client-side temp ids for optimistic follow-up inserts
+  // Intent recorded against a temp id when the user deletes/completes a
+  // follow-up that's still mid-POST — reconciled once the real row lands, so
+  // the server INSERT (which already committed) isn't orphaned or its toggle lost.
+  const pendingFollowUp = useRef<Map<string, 'delete' | { done: boolean }>>(new Map())
 
   const summary = useMemo(() => computeSummary(deals), [deals])
 
@@ -64,9 +81,11 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
   // Excel import replaced/extended the whole board server-side: swap in the
   // fresh rows AND rebuild the last-known-server-good map, otherwise a failed
   // edit after an import would "revert" a deal to its pre-import snapshot.
-  const applyImported = (fresh: Deal[]) => {
+  // Follow-ups come back fresh too (they may have been carried over server-side).
+  const applyImported = (fresh: Deal[], freshFollowUps?: DealFollowUp[]) => {
     serverDeals.current = new Map(fresh.map((d) => [d.id, d]))
     setDeals(fresh)
+    if (freshFollowUps) setFollowUps(freshFollowUps)
   }
 
   const revertToServer = (id: string) =>
@@ -99,6 +118,12 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
     persist(id, { status })
   }
 
+  // ★ Focused toggle — same optimistic machinery as any inline edit.
+  const toggleFocus = (id: string, next: boolean) => {
+    patchLocal(id, { focused: next })
+    persist(id, { focused: next })
+  }
+
   const removeDeal = async (id: string) => {
     const removed = deals.find((d) => d.id === id)
     setDeals((p) => p.filter((d) => d.id !== id))
@@ -106,12 +131,89 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
       const res = await fetch(`/api/admin/deals/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error()
       serverDeals.current.delete(id)
+      setFollowUps((p) => p.filter((f) => f.deal_id !== id)) // cascade-deleted server-side
       setErr(null)
     } catch {
       // Re-insert just this deal (not a full snapshot restore, which would
       // clobber other edits made while the DELETE was in flight).
       if (removed) setDeals((p) => (p.some((d) => d.id === id) ? p : [removed, ...p]))
       setErr('Could not delete that deal.')
+    }
+  }
+
+  // ── Follow-up handlers (optimistic; temp ids until the POST resolves) ──
+  const addFollowUp = async (dealId: string, dueDate: string, note: string) => {
+    const tmp = `temp-${++tmpId.current}`
+    const optimistic: DealFollowUp = {
+      id: tmp, deal_id: dealId, due_date: dueDate, note: note.trim() || null,
+      done: false, auto_generated: false, created_at: new Date().toISOString(),
+    }
+    setFollowUps((prev) => [...prev, optimistic])
+    try {
+      const res = await fetch('/api/admin/deals/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deal_id: dealId, due_date: dueDate, note }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFollowUps((prev) => prev.filter((f) => f.id !== tmp))
+        pendingFollowUp.current.delete(tmp)
+        setErr(json.error || 'Could not schedule that follow-up.')
+        return
+      }
+      // Reconcile any delete/toggle the user did while this POST was in flight.
+      const real = json.followUp as DealFollowUp
+      const intent = pendingFollowUp.current.get(tmp)
+      pendingFollowUp.current.delete(tmp)
+      if (intent === 'delete') {
+        // Row was removed from state already; delete the now-persisted server row.
+        fetch(`/api/admin/deals/follow-ups/${real.id}`, { method: 'DELETE' }).catch(() => {})
+      } else if (intent) {
+        setFollowUps((prev) => prev.map((f) => (f.id === tmp ? { ...real, done: intent.done } : f)))
+        fetch(`/api/admin/deals/follow-ups/${real.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: intent.done }),
+        }).catch(() => {})
+      } else {
+        setFollowUps((prev) => prev.map((f) => (f.id === tmp ? real : f)))
+      }
+      setErr(null)
+    } catch {
+      setFollowUps((prev) => prev.filter((f) => f.id !== tmp))
+      pendingFollowUp.current.delete(tmp)
+      setErr('Network error — the follow-up was not saved.')
+    }
+  }
+
+  const toggleFollowUpDone = async (id: string) => {
+    const cur = followUps.find((f) => f.id === id)
+    if (!cur) return
+    const next = !cur.done
+    setFollowUps((prev) => prev.map((f) => (f.id === id ? { ...f, done: next } : f)))
+    if (id.startsWith('temp-')) { pendingFollowUp.current.set(id, { done: next }); return } // reconciled when the POST resolves
+    try {
+      const res = await fetch(`/api/admin/deals/follow-ups/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: next }),
+      })
+      if (!res.ok) throw new Error()
+      setErr(null)
+    } catch {
+      setFollowUps((prev) => prev.map((f) => (f.id === id ? { ...f, done: cur.done } : f)))
+      setErr('Could not update that follow-up.')
+    }
+  }
+
+  const removeFollowUp = async (id: string) => {
+    const removed = followUps.find((f) => f.id === id)
+    setFollowUps((prev) => prev.filter((f) => f.id !== id))
+    if (id.startsWith('temp-')) { pendingFollowUp.current.set(id, 'delete'); return } // reconciled when the POST resolves
+    try {
+      const res = await fetch(`/api/admin/deals/follow-ups/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      setErr(null)
+    } catch {
+      if (removed) setFollowUps((prev) => (prev.some((f) => f.id === id) ? prev : [...prev, removed]))
+      setErr('Could not delete that follow-up.')
     }
   }
 
@@ -138,14 +240,24 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
           rep_contact: form.rep_contact || null,
           date_quoted: form.date_quoted || null,
           notes: form.notes || null,
+          // Only send project_type when set: omitting it keeps New Deal working
+          // before migration 048 exists (an always-present column reference
+          // would make the whole insert fail pre-048).
+          ...(form.project_type ? { project_type: form.project_type } : {}),
           total_cost: Number(form.total_cost) || 0,
           confidence: Math.round(Math.max(0, Math.min(100, Number(form.confidence) || 0))),
+          // Compute the auto-reminder date in the browser's timezone (the server
+          // runs UTC — see the auto-follow-up note in the POST route).
+          auto_follow_up_date: followUpDateFrom(new Date(), AUTO_FOLLOW_UP_DAYS),
         }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) { setCreateError(json.error || 'Could not create that deal.'); return }
       serverDeals.current.set(json.deal.id, json.deal)
       setDeals((prev) => [json.deal, ...prev])
+      // The auto 2-week reminder the API created alongside the deal (if the
+      // follow-ups table exists) — surface it on the calendar immediately.
+      if (json.followUp) setFollowUps((prev) => [...prev, json.followUp as DealFollowUp])
       setShowNew(false)
     } catch {
       setCreateError('Network error — the deal was not created.')
@@ -161,6 +273,7 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
   const detailDeal = detail ? deals.find((d) => d.id === detail.id) ?? null : null
   const detailIds = detail && detailDeal ? detail.ids.filter((id) => dealIdSet.has(id)) : []
   const detailIndex = detailDeal ? detailIds.indexOf(detailDeal.id) : -1
+  const detailFollowUps = detailDeal ? followUps.filter((f) => f.deal_id === detailDeal.id) : []
 
   return (
     <div className="flex-1 overflow-auto bg-canvas">
@@ -208,13 +321,22 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
           <SalesDashboard deals={deals} onImported={applyImported} />
         </div>
         <div className={tab === 'pipeline' ? '' : 'hidden'}>
-          <PipelineView deals={deals} onStatusChange={setStatus} onView={openDetail} />
+          <PipelineView deals={deals} onStatusChange={setStatus} onView={openDetail} onToggleFocus={toggleFocus} />
         </div>
         <div className={tab === 'crm' ? '' : 'hidden'}>
           <CRMView deals={deals} onView={openDetail} />
         </div>
         <div className={tab === 'focused' ? '' : 'hidden'}>
-          <FocusedView deals={deals} onPatchLocal={patchLocal} onPersist={persist} onDelete={removeDeal} onView={openDetail} />
+          <FocusedView deals={deals} onPatchLocal={patchLocal} onPersist={persist} onDelete={removeDeal} onView={openDetail} onToggleFocus={toggleFocus} />
+        </div>
+        <div className={tab === 'calendar' ? '' : 'hidden'}>
+          <CalendarView
+            deals={deals}
+            followUps={followUps}
+            onToggleDone={toggleFollowUpDone}
+            onRemove={removeFollowUp}
+            onOpenDeal={(id) => openDetail(id, deals.map((d) => d.id))}
+          />
         </div>
       </div>
 
@@ -226,12 +348,17 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
           total={detailIds.length}
           prevId={detailIndex > 0 ? detailIds[detailIndex - 1] : null}
           nextId={detailIndex >= 0 && detailIndex < detailIds.length - 1 ? detailIds[detailIndex + 1] : null}
+          followUps={detailFollowUps}
           onOpen={(id) => setDetail((cur) => (cur ? { ...cur, id } : cur))}
           onClose={() => setDetail(null)}
           onPatchLocal={patchLocal}
           onPersist={persist}
           onStatus={setStatus}
           onDelete={removeDeal}
+          onToggleFocus={toggleFocus}
+          onScheduleFollowUp={addFollowUp}
+          onToggleFollowUpDone={toggleFollowUpDone}
+          onRemoveFollowUp={removeFollowUp}
         />
       )}
 
@@ -242,11 +369,12 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
           <form
             onSubmit={submitNew}
             onMouseDown={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl p-5 max-h-[85vh] overflow-y-auto"
+            className="relative w-full max-w-lg rounded-2xl border border-hairline bg-surface p-5 max-h-[85vh] overflow-y-auto"
+            style={{ boxShadow: '0 8px 24px rgba(31,30,27,.10), 0 2px 6px rgba(31,30,27,.05)' }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] font-bold text-zinc-900 dark:text-white">New Deal</h2>
-              <button type="button" onClick={() => setShowNew(false)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+              <h2 className="text-[16px] font-semibold text-ink">New Deal</h2>
+              <button type="button" onClick={() => setShowNew(false)} className="text-ink-faint hover:text-ink-secondary transition-colors">
                 <X size={18} />
               </button>
             </div>
@@ -269,6 +397,13 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
               <div>
                 <label className={lbl}>Assigned To</label>
                 <input className={inp} value={form.assigned_to} onChange={(e) => set('assigned_to', e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                <label className={lbl}>Project Type</label>
+                <select className={inp} value={form.project_type} onChange={(e) => set('project_type', e.target.value)}>
+                  <option value="">— Select industry —</option>
+                  {PROJECT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
               </div>
               <div>
                 <label className={lbl}>Total Cost</label>
@@ -308,8 +443,12 @@ export default function DealsClient({ initialDeals }: { initialDeals: Deal[] }) 
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-5">
-              <button type="button" onClick={() => setShowNew(false)} className="px-4 py-2 rounded-xl text-[13px] font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+            <p className="mt-3 text-[11px] text-ink-faint">
+              A follow-up reminder is auto-scheduled 2 weeks out — find it on the Calendar tab.
+            </p>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button type="button" onClick={() => setShowNew(false)} className="px-4 py-2 rounded-xl text-[13px] font-medium text-ink-secondary hover:bg-surface-soft transition-colors">
                 Cancel
               </button>
               <button

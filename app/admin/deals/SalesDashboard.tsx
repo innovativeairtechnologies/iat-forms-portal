@@ -6,7 +6,7 @@ import {
   AlertTriangle, FileSpreadsheet, DollarSign, Percent, Layers, CalendarRange,
   CheckCircle2, Loader2, Inbox,
 } from 'lucide-react'
-import type { Deal } from '@/lib/supabase'
+import type { Deal, DealFollowUp } from '@/lib/supabase'
 import { formatCurrency, formatCompactCurrency as fmtC } from '@/lib/utils'
 import {
   computeSummary, monthlyQuoteSeries, confidenceBands, groupStats,
@@ -245,12 +245,12 @@ type ImportPreview = {
   totalWeighted: number
   warnings: string[]
   existingCount: number
-  portalData?: { checklists: number; activities: number }
+  portalData?: { checklists: number; activities: number; followUps: number; focused: number; projectTypes: number }
 }
 
 type ImportStage = 'pick' | 'checking' | 'preview' | 'importing'
 
-function ImportModal({ onClose, onImported }: { onClose: () => void; onImported: (fresh: Deal[]) => void }) {
+function ImportModal({ onClose, onImported }: { onClose: () => void; onImported: (fresh: Deal[], followUps?: DealFollowUp[]) => void }) {
   const [stage, setStage] = useState<ImportStage>('pick')
   const [error, setError] = useState('')
   const [preview, setPreview] = useState<ImportPreview | null>(null)
@@ -290,7 +290,7 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
     setStage('importing')
     try {
       const json = await send(true)
-      if (Array.isArray(json.deals)) onImported(json.deals as Deal[])
+      if (Array.isArray(json.deals)) onImported(json.deals as Deal[], json.followUps as DealFollowUp[] | undefined)
       else window.location.reload() // insert succeeded but re-select failed — reload to refetch
       onClose()
     } catch (e) {
@@ -407,11 +407,15 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
             )}
 
             {/* Mode */}
-            {mode === 'replace' && preview.portalData && (preview.portalData.checklists > 0 || preview.portalData.activities > 0) && (
+            {mode === 'replace' && preview.portalData && (preview.portalData.checklists > 0 || preview.portalData.activities > 0 || preview.portalData.followUps > 0 || preview.portalData.focused > 0 || preview.portalData.projectTypes > 0) && (
               <p className="text-[12px] text-ink-muted leading-snug rounded-lg border border-hairline bg-surface-soft px-3 py-2">
-                {preview.portalData.checklists > 0 && <>{preview.portalData.checklists} deal{preview.portalData.checklists === 1 ? ' has' : 's have'} checklist progress</>}
-                {preview.portalData.checklists > 0 && preview.portalData.activities > 0 && ' · '}
-                {preview.portalData.activities > 0 && <>{preview.portalData.activities} activity entr{preview.portalData.activities === 1 ? 'y' : 'ies'}</>}
+                {[
+                  preview.portalData.checklists > 0 && `${preview.portalData.checklists} deal${preview.portalData.checklists === 1 ? '' : 's'} with checklist progress`,
+                  preview.portalData.activities > 0 && `${preview.portalData.activities} activity entr${preview.portalData.activities === 1 ? 'y' : 'ies'}`,
+                  preview.portalData.followUps > 0 && `${preview.portalData.followUps} follow-up${preview.portalData.followUps === 1 ? '' : 's'}`,
+                  preview.portalData.focused > 0 && `${preview.portalData.focused} ★ focused`,
+                  preview.portalData.projectTypes > 0 && `${preview.portalData.projectTypes} project type${preview.portalData.projectTypes === 1 ? '' : 's'}`,
+                ].filter(Boolean).join(' · ')}
                 {' '}— carried onto matching deals (same customer, job &amp; group) during the replace.
               </p>
             )}
@@ -482,7 +486,7 @@ function ModeRadio({ checked, onSelect, title, blurb }: { checked: boolean; onSe
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function SalesDashboard({ deals, onImported }: { deals: Deal[]; onImported: (fresh: Deal[]) => void }) {
+export default function SalesDashboard({ deals, onImported }: { deals: Deal[]; onImported: (fresh: Deal[], followUps?: DealFollowUp[]) => void }) {
   const [showImport, setShowImport] = useState(false)
 
   // One timestamp per mount — every derivation shares it, so the whole view is
