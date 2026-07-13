@@ -2,6 +2,35 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-10 — Security: force Next's bundled postcss to ≥ 8.5.10 (Dependabot #26)
+
+Dependabot alert #26 (GHSA-qx2v-qp2m-jg93 / CVE-2026-41305, moderate) flagged
+the postcss copy that Next pins for itself at
+`node_modules/next/node_modules/postcss` — 8.4.31, vulnerable to XSS via an
+unescaped `</style>` in its stringifier output when that output is embedded
+into an HTML `<style>` block. Not actually exploitable here (Next only
+stringifies our own trusted Tailwind/global CSS at build time — no
+attacker-controlled CSS enters that pipeline), but the real fix is cheap.
+Waiting on Next wasn't viable: every 15.5.x (including the final backport
+release, 15.5.20) pins 8.4.31, and even Next 16.2.10 stable still does — only
+the 16.3 canary has moved to 8.5.10.
+
+- New npm **`overrides`** entry (scoped to `next` only) forces its postcss to
+  `^8.5.10`; it dedupes onto the root postcss 8.5.16, leaving a **single**
+  postcss copy in the entire lockfile.
+- npm quirk worth remembering: changing `overrides` does **not** invalidate an
+  existing lockfile entry — `npm install`, `npm dedupe`, and
+  `npm update postcss` (npm 11.13) all left the stale nested 8.4.31 in place,
+  merely flagging it `invalid`. Fixed by deleting the nested entry from
+  `package-lock.json` plus the directory, then re-running `npm install`.
+- Drop the override once we're on a Next release whose own pin is ≥ 8.5.10
+  (16.3+).
+
+No code changes, no migration. Verified: `npm ci` from the updated lockfile
+green (`npm audit`: 0 vulnerabilities); `next build` green; Playwright smoke
+suite 9/9 against a local `next start` prod server. Files: `package.json`,
+`package-lock.json`.
+
 ## 2026-07-10 — SRV batch: required failure photos, My Requests, admin per-section view
 
 Fixes to the interactive Start-Up Readiness Verification (`/customer/srv`) and
