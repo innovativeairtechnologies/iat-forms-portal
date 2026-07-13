@@ -2,7 +2,7 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
-## 2026-07-10 — Security: force Next's bundled postcss to ≥ 8.5.10 (Dependabot #26)
+## 2026-07-13 — Security: force Next's bundled postcss to ≥ 8.5.10 (Dependabot #26)
 
 Dependabot alert #26 (GHSA-qx2v-qp2m-jg93 / CVE-2026-41305, moderate) flagged
 the postcss copy that Next pins for itself at
