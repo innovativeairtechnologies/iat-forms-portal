@@ -18,7 +18,9 @@ const STATUS_TONE: Record<string, { label: string; tone: Tone }> = {
   draft: { label: 'Draft', tone: 'slate' },
 }
 
-const COLS = 'grid-cols-[2fr_200px_88px_100px_64px_28px]'
+// Mobile keeps the project identity + ship window (the page's core answer);
+// tasks/status/updated/chevron return at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[2fr_200px_88px_100px_64px_28px]'
 
 export default function GanttListClient({ charts }: { charts: GanttChart[] }) {
   const router = useRouter()
@@ -67,9 +69,9 @@ export default function GanttListClient({ charts }: { charts: GanttChart[] }) {
       />
 
       <div className="p-4 sm:p-8">
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={820}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <Th>Project</Th>
           <Th>Ship Window</Th>
           <Th>Tasks</Th>
@@ -110,15 +112,15 @@ export default function GanttListClient({ charts }: { charts: GanttChart[] }) {
                     <div className="text-[11px] text-zinc-400 dark:text-zinc-500 tabular-nums truncate">plan {plan}</div>
                   </div>
                   {/* Tasks */}
-                  <div className="text-zinc-600 dark:text-zinc-300 tabular-nums">{tcount} {tcount === 1 ? 'task' : 'tasks'}</div>
+                  <div className="hidden sm:block text-zinc-600 dark:text-zinc-300 tabular-nums">{tcount} {tcount === 1 ? 'task' : 'tasks'}</div>
                   {/* Status */}
-                  <div>
+                  <div className="hidden sm:block">
                     <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
                   </div>
                   {/* Updated */}
-                  <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{c.updated_at ? timeAgo(c.updated_at) : '—'}</div>
+                  <div className="hidden sm:block text-zinc-400 dark:text-zinc-500 tabular-nums">{c.updated_at ? timeAgo(c.updated_at) : '—'}</div>
                   {/* Chevron */}
-                  <div className="flex justify-center">
+                  <div className="hidden sm:flex justify-center">
                     <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
                   </div>
                 </Link>

@@ -11,7 +11,9 @@ import {
   HEADER_BOX, BODY_BOX, rowCx, Avatar, Th, TableScroll, ListPageHeader, IdentityCell,
 } from '@/components/admin/list'
 
-const EMP_COLS = 'grid-cols-[2fr_120px_130px_120px_130px]'
+// Mobile keeps identity + the two balances (header stays visible so the bare
+// numbers keep their labels); the per-week rate columns return at sm+.
+const EMP_COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[2fr_120px_130px_120px_130px]'
 
 // Tenure derived from hire_date (the accrual tier is a tenure band), with the
 // job title appended when both are known — falls back to whichever exists.
@@ -253,10 +255,10 @@ export default function AccrualClient({
           <TableScroll minWidth={760}>
             <div className={`grid ${EMP_COLS} ${HEADER_BOX}`}>
               <Th>Employee</Th>
-              <Th align="right">PTO Balance</Th>
-              <Th align="right">PTO Rate / wk</Th>
-              <Th align="right">Sick Balance</Th>
-              <Th align="right">Sick Rate / wk</Th>
+              <Th align="right">PTO<span className="hidden sm:inline">&nbsp;Balance</span></Th>
+              <Th align="right" className="hidden sm:flex">PTO Rate / wk</Th>
+              <Th align="right">Sick<span className="hidden sm:inline">&nbsp;Balance</span></Th>
+              <Th align="right" className="hidden sm:flex">Sick Rate / wk</Th>
             </div>
 
             <div className={BODY_BOX}>
@@ -277,13 +279,13 @@ export default function AccrualClient({
                     {/* PTO balance */}
                     <div className="text-right font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{emp.pto_balance} hrs</div>
                     {/* PTO rate */}
-                    <div className={`text-right font-semibold tabular-nums ${emp.pto_accrual_rate > 0 ? 'text-[#089447]' : 'text-zinc-300 dark:text-zinc-600'}`}>
+                    <div className={`hidden sm:block text-right font-semibold tabular-nums ${emp.pto_accrual_rate > 0 ? 'text-[#089447]' : 'text-zinc-300 dark:text-zinc-600'}`}>
                       {emp.pto_accrual_rate > 0 ? `+${emp.pto_accrual_rate} hrs` : '—'}
                     </div>
                     {/* Sick balance */}
                     <div className="text-right font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{emp.sick_balance} hrs</div>
                     {/* Sick rate */}
-                    <div className={`text-right font-semibold tabular-nums ${emp.sick_accrual_rate > 0 ? 'text-amber-600' : 'text-zinc-300 dark:text-zinc-600'}`}>
+                    <div className={`hidden sm:block text-right font-semibold tabular-nums ${emp.sick_accrual_rate > 0 ? 'text-amber-600' : 'text-zinc-300 dark:text-zinc-600'}`}>
                       {emp.sick_accrual_rate > 0 ? `+${emp.sick_accrual_rate} hrs` : '—'}
                     </div>
                   </Link>

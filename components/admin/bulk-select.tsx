@@ -34,11 +34,13 @@ export function useBulkSelect() {
   }
 }
 
-/** Checkbox that stops the click from bubbling to a row link/nav. */
-export function SelectBox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+/** Checkbox that stops the click from bubbling to a row link/nav.
+ *  `className` replaces the display class so lists can hide the select column
+ *  on phones (pass "hidden sm:flex") — the mobile row grids drop bulk-select. */
+export function SelectBox({ checked, onChange, className = 'flex' }: { checked: boolean; onChange: () => void; className?: string }) {
   return (
     <div
-      className="flex items-center justify-center"
+      className={`${className} items-center justify-center`}
       onClick={(e) => { e.stopPropagation(); e.preventDefault() }}
     >
       <input

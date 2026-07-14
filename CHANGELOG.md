@@ -2,6 +2,43 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-14 — Mobile audit: no sideways-scrolling lists, headers un-hidden, org chart toolbar
+
+Portal-wide mobile sweep (no migration). Three classes of fix:
+
+- **Page headers no longer start behind the fixed mobile top bar.** The admin
+  and employee shells rendered an `h-14` spacer as a *flex-row* sibling, so it
+  never pushed content down; the spacer is gone and the content column now
+  carries `pt-14 md:pt-0` (`app/admin/layout.tsx`, `AdminSidebar.tsx`,
+  `EmployeeShell.tsx`).
+- **Every admin list now fits the phone viewport — no left-right scroll.**
+  `TableScroll` only enforces its min-width floor from `sm` up, and each list's
+  grid template is responsive: phones get a reduced column set (identity +
+  status/key metric + age, audit-log style), the full grid returns at `sm+`,
+  and column headers hide on phones. Rows stay clickable into their detail
+  page/modal, which carries the rest of the data. Converted: Submissions,
+  Tickets, Forms, Equipment, Gantt, Customers, Presentations, PTO/Sick
+  requests (Approve/Deny wrap onto their own line — no detail page there),
+  Employees, Accrual (balances keep their header labels), Troubleshooting,
+  US Rotors. Deals Pipeline/CRM/Focused keep the top 2–3 metrics per row
+  (customer/cost/status · customer/quoted/status · customer/weighted/open) and
+  the Pipeline summary strip shows only Total Value + Weighted on phones.
+  Bulk-select, kebab menus, and inline-edit fields are desktop-only
+  (`SelectBox` gained a `className` passthrough for this).
+- **Forms page was fully broken on phones** — 572px of fixed grid tracks inside
+  an `overflow-hidden` card crushed the `1.7fr` name column to zero width,
+  leaving just category/toggle/count. Phones now get name / toggle / Edit, and
+  the tabs+status-pills header row stacks instead of squeezing.
+- **Org chart:** the chart toolbar (title, Chart/List toggle, Edit/Erase, zoom
+  cluster) wraps on phones instead of crushing into one 56px row, and the page
+  wrapper dropped its hard `h-screen` (it overflowed by the top bar's 56px and
+  clipped the canvas bottom).
+
+Pattern notes in `docs/mobile.md`. `next build` green; Playwright smoke suite
+9/9 passed; all new responsive utilities verified present in the compiled CSS.
+Visual spot-check on a phone still recommended (admin pages are auth-gated, so
+the sweep was verified structurally, not eyeballed page-by-page).
+
 ## 2026-07-13 — Deals: hand-picked Focused (★), follow-up calendar, rep bands, project type (migration 048)
 
 Four sales-requested changes to `/admin/deals`, plus a new **Calendar** tab

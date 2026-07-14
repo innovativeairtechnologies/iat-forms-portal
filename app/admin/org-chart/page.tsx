@@ -35,7 +35,9 @@ async function getEmployees(): Promise<OrgEmployee[]> {
 export default async function OrgChartPage() {
   const [admin, employees] = await Promise.all([getAdminUser(), getEmployees()])
   return (
-    <div className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden">
+    // flex-1 fills the layout column (viewport minus the mobile top bar) — a
+    // hard h-screen would overflow by the bar's 56px and clip the canvas
+    <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
       <OrgDirectory employees={employees} canEdit title="Org Chart" adminName={admin?.displayName || 'Admin'} />
     </div>
   )

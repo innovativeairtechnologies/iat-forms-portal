@@ -17,7 +17,9 @@ import { createPresentation, duplicatePresentation, setPresentationStatus } from
 
 type Tab = 'all' | PresentationStatus
 
-const COLS = 'grid-cols-[1fr_100px_128px_40px]'
+// Mobile keeps deck-identity + status; the Present button and kebab return at
+// sm+ (the deck title already links into the editor).
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[1fr_100px_128px_40px]'
 
 export default function BuildsListClient({ decks }: { decks: DeckSummary[] }) {
   const router = useRouter()
@@ -79,9 +81,9 @@ export default function BuildsListClient({ decks }: { decks: DeckSummary[] }) {
       </ListPageHeader>
 
       <div className="p-4 sm:p-8">
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={620}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <Th>Deck</Th>
           <Th>Status</Th>
           <Th />
@@ -116,7 +118,7 @@ export default function BuildsListClient({ decks }: { decks: DeckSummary[] }) {
                     <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
                   </div>
                   {/* Present / Resume / Restore */}
-                  <div>
+                  <div className="hidden sm:block">
                     {isArchived ? (
                       <button onClick={() => archive(d.id, 'saved')} className="text-[12px] inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800">
                         <ArrowUpFromLine size={13} /> Restore
@@ -129,7 +131,7 @@ export default function BuildsListClient({ decks }: { decks: DeckSummary[] }) {
                     )}
                   </div>
                   {/* Kebab */}
-                  <div className="flex justify-center relative">
+                  <div className="hidden sm:flex justify-center relative">
                     <button onClick={() => setMenuFor(menuFor === d.id ? null : d.id)} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"><MoreHorizontal size={16} /></button>
                     {menuFor === d.id && (
                       <>

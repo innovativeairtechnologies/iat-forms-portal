@@ -18,7 +18,9 @@ export type SubmissionRow = {
   data: Record<string, unknown>
 }
 
-const COLS = 'grid-cols-[34px_2fr_140px_90px_40px]'
+// Mobile keeps the audit-log trio (identity / status / age) so the row fits the
+// viewport with no sideways scroll; the checkbox + kebab columns appear at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[34px_2fr_140px_90px_40px]'
 
 export default function SubmissionsTable({ submissions, emptyHint }: { submissions: SubmissionRow[]; emptyHint?: string }) {
   const router = useRouter()
@@ -71,8 +73,8 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
   return (
     <>
     <TableScroll minWidth={620}>
-      {/* Floating header */}
-      <div className={`grid ${COLS} ${HEADER_BOX}`}>
+      {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
+      <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
         <div className="flex items-center justify-center">
           <input type="checkbox" checked={allSelected} onChange={toggleAll}
             className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
@@ -104,7 +106,7 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
                 className={`${rowCx(COLS, { i, selected: isSel })} cursor-pointer group`}
               >
                 {/* Checkbox */}
-                <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                <div className="hidden sm:flex items-center justify-center" onClick={e => e.stopPropagation()}>
                   <input type="checkbox" checked={isSel} onChange={() => toggle(sub.id)}
                     className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
                 </div>
@@ -131,7 +133,7 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
                 <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(sub.submitted_at)}</div>
 
                 {/* Kebab */}
-                <div className="flex justify-center relative" onClick={e => e.stopPropagation()}>
+                <div className="hidden sm:flex justify-center relative" onClick={e => e.stopPropagation()}>
                   <button onClick={() => setMenuFor(menuFor === sub.id ? null : sub.id)}
                     className="p-1.5 rounded-md text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                     <MoreHorizontal size={15} />

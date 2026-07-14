@@ -11,7 +11,9 @@ type Row = Deal & { weighted: number }
 type SortKey = 'customer' | 'group_name' | 'assigned_to' | 'total_cost' | 'confidence' | 'weighted' | 'projected' | 'status'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[30px_2fr_1.1fr_110px_84px_110px_100px_130px]'
+// Mobile shows the top metrics only (customer / total cost / status) and the row
+// opens the detail modal for everything else; the full grid appears at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[30px_2fr_1.1fr_110px_84px_110px_100px_130px]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 
 function cmpStr(a: string | null, b: string | null) {
@@ -100,14 +102,15 @@ export default function PipelineView({
 
   return (
     <div>
-      {/* Summary strip — reacts to the current search + rep filter */}
+      {/* Summary strip — reacts to the current search + rep filter. Phones keep
+          only the two headline numbers; the count tiles return at sm+. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
         <StatTile label="Total Value" value={formatCurrency(summary.totalCost)} />
         <StatTile label="Weighted" value={formatCurrency(summary.totalWeighted)} accent />
-        <StatTile label="Open" value={String(summary.openCount)} />
-        <StatTile label="Won" value={String(summary.wonCount)} tone="emerald" />
-        <StatTile label="Lost" value={String(summary.lostCount)} tone="rose" />
-        <StatTile label="Win Rate" value={summary.winRate === null ? '—' : `${summary.winRate.toFixed(0)}%`} />
+        <StatTile label="Open" value={String(summary.openCount)} className="hidden sm:block" />
+        <StatTile label="Won" value={String(summary.wonCount)} tone="emerald" className="hidden sm:block" />
+        <StatTile label="Lost" value={String(summary.lostCount)} tone="rose" className="hidden sm:block" />
+        <StatTile label="Win Rate" value={summary.winRate === null ? '—' : `${summary.winRate.toFixed(0)}%`} className="hidden sm:block" />
       </div>
 
       {/* Toolbar: search + rep filter pills */}
@@ -130,7 +133,7 @@ export default function PipelineView({
       </div>
 
       <TableScroll minWidth={900}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <Th />
           <Th><button onClick={() => toggleSort('customer')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('assigned_to')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Assigned <SortIcon col="assigned_to" sortKey={sortKey} sortDir={sortDir} /></button></Th>
@@ -193,7 +196,7 @@ function DealRow({ d, i, onStatusChange, onOpen, onToggleFocus }: {
   const focused = d.focused === true
   return (
     <div className={`${rowCx(COLS, { i })} cursor-pointer`} onClick={() => onOpen(d.id)}>
-      <div className="flex items-center justify-center">
+      <div className="hidden sm:flex items-center justify-center">
         <button
           onClick={(e) => { e.stopPropagation(); onToggleFocus(d.id, !focused) }}
           title={focused ? 'Remove from Focused' : 'Add to Focused'}
@@ -203,11 +206,11 @@ function DealRow({ d, i, onStatusChange, onOpen, onToggleFocus }: {
         </button>
       </div>
       <IdentityCell title={d.customer} subtitle={d.group_name} />
-      <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.assigned_to || '—'}</div>
+      <div className="hidden sm:block min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.assigned_to || '—'}</div>
       <div className="text-right tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(d.total_cost)}</div>
-      <div className="text-right tabular-nums text-zinc-500 dark:text-zinc-400">{d.confidence}%</div>
-      <div className="text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(d.weighted)}</div>
-      <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{d.projected || '—'}</div>
+      <div className="hidden sm:block text-right tabular-nums text-zinc-500 dark:text-zinc-400">{d.confidence}%</div>
+      <div className="hidden sm:block text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(d.weighted)}</div>
+      <div className="hidden sm:block min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{d.projected || '—'}</div>
       <div>
         <select
           value={d.status ?? ''}
@@ -228,13 +231,13 @@ function DealRow({ d, i, onStatusChange, onOpen, onToggleFocus }: {
   )
 }
 
-function StatTile({ label, value, tone, accent }: { label: string; value: string; tone?: 'emerald' | 'rose'; accent?: boolean }) {
+function StatTile({ label, value, tone, accent, className = '' }: { label: string; value: string; tone?: 'emerald' | 'rose'; accent?: boolean; className?: string }) {
   const valueCls = tone === 'emerald' ? 'text-emerald-600 dark:text-emerald-400'
     : tone === 'rose' ? 'text-rose-500 dark:text-rose-400'
     : accent ? 'text-emerald-600 dark:text-emerald-400'
     : 'text-zinc-900 dark:text-white'
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none px-3 py-2.5">
+    <div className={`rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none px-3 py-2.5 ${className}`}>
       <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600 mb-1">{label}</p>
       <p className={`text-[17px] font-bold tabular-nums leading-none ${valueCls}`}>{value}</p>
     </div>

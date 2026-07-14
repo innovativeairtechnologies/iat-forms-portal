@@ -55,7 +55,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           draftCount={draftCount}
           adminName={admin.displayName}
         />
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        {/* pt-14 clears the fixed mobile top bar (the sidebar's old h-14 spacer sat in
+            this flex-row, so it never actually pushed content down) */}
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden pt-14 md:pt-0">
           <ViewAsBanner />
           {children}
         </div>

@@ -10,7 +10,8 @@ import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th, TableScroll, ListP
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
-const COLS = 'grid-cols-[34px_2fr_1.5fr_104px_70px_70px_28px]'
+// Mobile keeps identity + status; select/role/balances/chevron return at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[34px_2fr_1.5fr_104px_70px_70px_28px]'
 
 const EMPTY_FORM = { name: '', email: '', job_title: '', department: '', role: 'production' as StaffRole, temp_password: '' }
 
@@ -171,9 +172,9 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
           </span>
         </div>
 
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={720}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Employee</Th>
           <Th>Role / Dept</Th>
@@ -195,7 +196,7 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
               <Link key={emp.id} href={`/admin/employees/${emp.id}`}
                 className={`${rowCx(COLS, { i, selected: sel.has(emp.id) })} group ${emp.is_active === false ? 'opacity-60' : ''}`}>
                 {/* Select */}
-                <SelectBox checked={sel.has(emp.id)} onChange={() => sel.toggle(emp.id)} />
+                <SelectBox className="hidden sm:flex" checked={sel.has(emp.id)} onChange={() => sel.toggle(emp.id)} />
                 {/* Identity — name over job title / email */}
                 <IdentityCell
                   leading={<Avatar name={emp.name} />}
@@ -203,7 +204,7 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
                   subtitle={emp.job_title || emp.email}
                 />
                 {/* Role / Dept */}
-                <div className="min-w-0 truncate text-zinc-600 dark:text-zinc-300">
+                <div className="hidden sm:block min-w-0 truncate text-zinc-600 dark:text-zinc-300">
                   {emp.role === 'admin' ? (
                     <span className="inline-flex items-center gap-1 font-medium text-violet-600 dark:text-violet-400">
                       <Shield size={11} />Admin
@@ -220,11 +221,11 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
                     : <StatusPill tone="emerald">Active</StatusPill>}
                 </div>
                 {/* PTO */}
-                <div className="text-right font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.pto_balance}</div>
+                <div className="hidden sm:block text-right font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.pto_balance}</div>
                 {/* Sick */}
-                <div className="text-right font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.sick_balance}</div>
+                <div className="hidden sm:block text-right font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.sick_balance}</div>
                 {/* Chevron */}
-                <div className="flex justify-center">
+                <div className="hidden sm:flex justify-center">
                   <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
                 </div>
               </Link>

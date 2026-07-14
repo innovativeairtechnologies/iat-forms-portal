@@ -406,8 +406,9 @@ export default function OrgChart({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300">
-      {/* ── Header row ── */}
-      <div className="flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 flex-shrink-0">
+      {/* ── Header row — wraps on phones so the edit/zoom cluster gets its own
+             line instead of crushing every button into 56px ── */}
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-2 px-4 sm:px-5 py-2.5 sm:py-0 sm:h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Network size={18} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
           <h1 className="text-[15px] font-bold text-zinc-900 dark:text-white">{title}</h1>

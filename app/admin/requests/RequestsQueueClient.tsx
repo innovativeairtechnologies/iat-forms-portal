@@ -25,7 +25,9 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const COLS = 'grid-cols-[34px_2fr_92px_132px_104px_236px]'
+// Mobile keeps identity / balance / status, with the Approve–Deny tray wrapping
+// onto its own line (this queue has no detail page, so the actions must stay).
+const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[34px_2fr_92px_132px_104px_236px]'
 
 export default function RequestsQueueClient({
   requests,
@@ -97,9 +99,9 @@ export default function RequestsQueueClient({
           <div className="mb-4 text-[13px] text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-xl px-4 py-3">{actionError}</div>
         )}
 
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={900}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(r => r.id), !allSelected)} />
           <Th>Employee</Th>
           <Th>Type</Th>
@@ -130,7 +132,7 @@ export default function RequestsQueueClient({
               return (
                 <div key={req.id} className={rowCx(COLS, { i, selected: sel.has(req.id) })} title={req.notes || undefined}>
                   {/* Select */}
-                  <SelectBox checked={sel.has(req.id)} onChange={() => sel.toggle(req.id)} />
+                  <SelectBox className="hidden sm:flex" checked={sel.has(req.id)} onChange={() => sel.toggle(req.id)} />
                   {/* Identity — employee over date range · hours */}
                   <IdentityCell
                     leading={<Avatar name={name} />}
@@ -138,7 +140,7 @@ export default function RequestsQueueClient({
                     subtitle={`${range} · ${req.hours_requested}h`}
                   />
                   {/* Type */}
-                  <div className="flex items-center gap-1.5 text-[12px] text-zinc-600 dark:text-zinc-300">
+                  <div className="hidden sm:flex items-center gap-1.5 text-[12px] text-zinc-600 dark:text-zinc-300">
                     {req.type === 'pto'
                       ? <Calendar size={13} className="text-sky-500" />
                       : <Clock size={13} className="text-amber-500" />}
@@ -151,8 +153,8 @@ export default function RequestsQueueClient({
                   </div>
                   {/* Status */}
                   <div><StatusPill tone={st.tone}>{st.label}</StatusPill></div>
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-1.5">
+                  {/* Actions — full-width second line on mobile, trailing column at sm+ */}
+                  <div className="col-span-full sm:col-auto flex items-center justify-end gap-1.5">
                     {req.status === 'pending' && (
                       <>
                         <button

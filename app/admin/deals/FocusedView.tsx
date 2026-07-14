@@ -11,7 +11,9 @@ type Row = Deal & { weighted: number }
 type SortKey = 'customer' | 'assigned_to' | 'total_cost' | 'confidence' | 'weighted' | 'projected'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[1.6fr_100px_100px_110px_120px_1.7fr_84px]'
+// Mobile keeps customer / weighted / the open button; the inline-edit fields
+// (confidence, projected, notes) are desktop tools and return at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[1.6fr_100px_100px_110px_120px_1.7fr_84px]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 const editable = 'w-full bg-transparent border border-transparent rounded-md px-1.5 py-1 -mx-1.5 text-zinc-800 dark:text-zinc-100 outline-none hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-emerald-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors'
 
@@ -117,7 +119,7 @@ export default function FocusedView({
       </div>
 
       <TableScroll minWidth={880}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <Th><button onClick={() => toggleSort('customer')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('total_cost')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Cost <SortIcon col="total_cost" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th align="right"><button onClick={() => toggleSort('confidence')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Conf. <SortIcon col="confidence" sortKey={sortKey} sortDir={sortDir} /></button></Th>
@@ -140,8 +142,8 @@ export default function FocusedView({
             sorted.map((d, i) => (
               <div key={d.id} className={rowCx(COLS, { i })}>
                 <IdentityCell title={d.customer} subtitle={d.assigned_to || undefined} />
-                <div className="text-right tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(d.total_cost)}</div>
-                <div className="text-right">
+                <div className="hidden sm:block text-right tabular-nums text-zinc-700 dark:text-zinc-200">{formatCurrency(d.total_cost)}</div>
+                <div className="hidden sm:block text-right">
                   <input
                     type="number" min={0} max={100} step={1}
                     value={d.confidence}
@@ -155,7 +157,7 @@ export default function FocusedView({
                   />
                 </div>
                 <div className="text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(d.weighted)}</div>
-                <div className="min-w-0">
+                <div className="hidden sm:block min-w-0">
                   <input
                     value={d.projected || ''}
                     placeholder="e.g. Q4 2026"
@@ -168,7 +170,7 @@ export default function FocusedView({
                     className={`${editable} placeholder:text-zinc-300 dark:placeholder:text-zinc-600`}
                   />
                 </div>
-                <div className="min-w-0">
+                <div className="hidden sm:block min-w-0">
                   <input
                     value={d.notes || ''}
                     placeholder="Add a note…"
@@ -184,7 +186,7 @@ export default function FocusedView({
                 <div className="flex justify-center items-center gap-2">
                   <button
                     onClick={() => onToggleFocus(d.id, false)}
-                    className="text-amber-400 hover:text-amber-500 transition-colors"
+                    className="hidden sm:block text-amber-400 hover:text-amber-500 transition-colors"
                     title="Remove from Focused"
                   >
                     <Star size={13} className="fill-amber-400" />
@@ -198,7 +200,7 @@ export default function FocusedView({
                   </button>
                   <button
                     onClick={() => { if (confirm(`Delete the ${d.customer} deal?`)) onDelete(d.id) }}
-                    className="text-zinc-300 dark:text-zinc-600 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
+                    className="hidden sm:block text-zinc-300 dark:text-zinc-600 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
                     title="Delete deal"
                   >
                     <Trash2 size={13} />

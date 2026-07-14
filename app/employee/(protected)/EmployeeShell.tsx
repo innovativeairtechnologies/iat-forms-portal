@@ -203,8 +203,6 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
           <button onClick={() => setMobileOpen(true)} className="p-1 text-gray-600 dark:text-gray-400"><Menu size={20} /></button>
         </div>
       </div>
-      <div className="md:hidden h-14 flex-shrink-0" />
-
       {/* ── Mobile drawer ── */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setMobileOpen(false)}>
@@ -230,7 +228,8 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
       )}
 
       {/* ── Main content ── */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      {/* pt-14 clears the fixed mobile top bar (a spacer div in this flex-row can't) */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden pt-14 md:pt-0">
         <PortalTopBar crumbs={crumbsFor(pathname)}>
           <PortalSearch items={SEARCH_ITEMS} placeholder="Search the portal…" />
           <ThemeToggle />

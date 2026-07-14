@@ -344,8 +344,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
         </div>
       </div>
 
-      <div className="md:hidden h-14 flex-shrink-0" />
-
       {/* ── Mobile drawer ── */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setMobileOpen(false)}>

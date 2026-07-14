@@ -10,7 +10,9 @@ import { HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, StatusPill, DEAL_STATUS, 
 type SortKey = 'customer' | 'job_name' | 'unit_model' | 'rep' | 'rep_contact' | 'date_quoted' | 'status'
 type SortDir = 'asc' | 'desc'
 
-const COLS = 'grid-cols-[1.6fr_1fr_0.9fr_1fr_100px_90px_1.7fr]'
+// Mobile keeps customer / quoted date / status; the rest lives in the deal
+// modal the row opens. Full grid at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[1.6fr_1fr_0.9fr_1fr_100px_90px_1.7fr]'
 const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
 
 // Nulls always sort last regardless of direction — flipping asc/desc should
@@ -85,7 +87,7 @@ export default function CRMView({ deals, onView }: {
       </div>
 
       <TableScroll minWidth={900}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <Th><button onClick={() => toggleSort('customer')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('unit_model')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Unit Model <SortIcon col="unit_model" sortKey={sortKey} sortDir={sortDir} /></button></Th>
           <Th><button onClick={() => toggleSort('rep')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Rep <SortIcon col="rep" sortKey={sortKey} sortDir={sortDir} /></button></Th>
@@ -121,12 +123,12 @@ export default function CRMView({ deals, onView }: {
                     title={d.customer}
                     subtitle={d.job_name || undefined}
                   />
-                  <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.unit_model || '—'}</div>
-                  <div className="min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.rep || '—'}</div>
-                  <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{d.rep_contact || '—'}</div>
-                  <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{d.date_quoted ? formatDateOnly(d.date_quoted) : '—'}</div>
+                  <div className="hidden sm:block min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.unit_model || '—'}</div>
+                  <div className="hidden sm:block min-w-0 text-zinc-600 dark:text-zinc-300 truncate">{d.rep || '—'}</div>
+                  <div className="hidden sm:block min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{d.rep_contact || '—'}</div>
+                  <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate tabular-nums">{d.date_quoted ? formatDateOnly(d.date_quoted) : '—'}</div>
                   <div><StatusPill tone={statusInfo.tone}>{statusInfo.label}</StatusPill></div>
-                  <div className="min-w-0 text-zinc-500 dark:text-zinc-400">
+                  <div className="hidden sm:block min-w-0 text-zinc-500 dark:text-zinc-400">
                     {note ? (
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleExpanded(d.id) }}

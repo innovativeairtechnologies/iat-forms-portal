@@ -29,7 +29,9 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'closed',      label: 'Closed'      },
 ]
 
-const COLS = 'grid-cols-[34px_2fr_1fr_120px_150px_76px_40px]'
+// Mobile keeps the audit-log trio (identity / status / age); assignee, priority,
+// checkbox and kebab appear at sm+ so the row never scrolls sideways on a phone.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[34px_2fr_1fr_120px_150px_76px_40px]'
 
 function matchesSearch(ticket: TicketRow, q: string): boolean {
   if (!q) return true
@@ -159,9 +161,9 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
           </div>
         </div>
 
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={920}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <div className="flex items-center justify-center">
             <input type="checkbox" checked={allSelected} onChange={toggleAll}
               className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
@@ -192,7 +194,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
                 <div key={ticket.id} onClick={() => router.push(`/admin/tickets/${ticket.id}`)}
                   className={`${rowCx(COLS, { i, selected: isSel })} cursor-pointer group`}>
                   {/* Checkbox */}
-                  <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                  <div className="hidden sm:flex items-center justify-center" onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={isSel} onChange={() => toggle(ticket.id)}
                       className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
                   </div>
@@ -203,7 +205,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
                     subtitle={`${ticket.ticket_number} · ${ticket.model_number}`}
                   />
                   {/* Assignee */}
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="hidden sm:flex items-center gap-2 min-w-0">
                     {ticket.owner ? (
                       <>
                         <Avatar name={ticket.owner.name} size={20} />
@@ -214,7 +216,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
                     )}
                   </div>
                   {/* Priority */}
-                  <div className="flex items-center gap-1.5 text-[12px] text-zinc-600 dark:text-zinc-300">
+                  <div className="hidden sm:flex items-center gap-1.5 text-[12px] text-zinc-600 dark:text-zinc-300">
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${prio.dot}`} />
                     {prio.label}
                   </div>
@@ -232,7 +234,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
                   {/* Created */}
                   <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(ticket.created_at)}</div>
                   {/* Kebab */}
-                  <div className="flex justify-center relative" onClick={e => e.stopPropagation()}>
+                  <div className="hidden sm:flex justify-center relative" onClick={e => e.stopPropagation()}>
                     <button onClick={() => setMenuFor(menuFor === ticket.id ? null : ticket.id)}
                       className="p-1.5 rounded-md text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                       <MoreHorizontal size={15} />

@@ -123,8 +123,8 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
           </div>
         </div>
 
-        {/* Category tabs + status filter pills */}
-        <div className="flex items-end justify-between gap-4">
+        {/* Category tabs + status filter pills — stacked on phones so neither squeezes */}
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             <CategoryTab label="All" count={forms.length} href="/admin/forms" active={activeCategory === 'all'} activeStatus={activeStatus} />
             {categories.map((cat: { id: string; name: string }) => (
@@ -135,7 +135,7 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
           </div>
 
           {/* Status filter pills */}
-          <div className="flex items-center gap-1 pb-1 flex-shrink-0">
+          <div className="flex items-center gap-1 pb-2 sm:pb-1 flex-shrink-0 flex-wrap">
             {(['all', 'active', 'inactive', 'pending'] as const).map((s) => (
               <Link key={s} href={statusHref(s)}
                 className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${
@@ -171,7 +171,7 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
           (grouped.map(({ name, id, forms: catForms, activeCount, inactiveCount }) => (
             <div key={id} className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
               {/* Category header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60">
+              <div className="flex items-center justify-between flex-wrap gap-y-1.5 px-5 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60">
                 <div className="flex items-center gap-2.5">
                   <FolderOpen size={14} className="text-zinc-400 dark:text-zinc-500" />
                   <span className="text-[13px] font-bold text-zinc-800 dark:text-zinc-100">{name}</span>
@@ -219,11 +219,13 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false, isSu
   // All tracks fixed except the first (1.7fr) so the header grid and each row
   // grid resolve identically and line up. A trailing `auto` would size to its
   // own content (narrow in the header, wide in the rows) → columns drift.
-  const COLS = 'grid-cols-[1.7fr_180px_96px_64px_232px]'
+  // On mobile the fixed tracks (572px) would crush the fr name column to zero
+  // width, so phones get a 3-track template: name / toggle / Edit.
+  const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[1.7fr_180px_96px_64px_232px]'
   return (
     <>
       {showHeaders && (
-        <div className={`grid ${COLS} items-center gap-3 px-5 h-10 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600`}>
+        <div className={`hidden sm:grid ${COLS} items-center gap-3 px-5 h-10 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-600`}>
           <span>Form</span>
           <span>Category</span>
           <span className="text-center">Status</span>
@@ -243,7 +245,7 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false, isSu
           </div>
 
           {/* Category */}
-          <div className="min-w-0">
+          <div className="hidden sm:block min-w-0">
             {form.categories?.name ? (
               showCategory ? (
                 <Link href={`/admin/forms?category=${encodeURIComponent(form.categories.name)}`}
@@ -265,25 +267,29 @@ function FormsList({ forms, countByForm, showCategory, showHeaders = false, isSu
 
           {/* Submission count */}
           <Link href={`/admin/submissions?form_id=${form.id}`}
-            className="text-right text-[12px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 tabular-nums transition-colors">
+            className="hidden sm:block text-right text-[12px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 tabular-nums transition-colors">
             {countByForm[form.id] || 0}
           </Link>
 
-          {/* Actions */}
+          {/* Actions — phones keep only Edit; the full tray appears at sm+ */}
           <div className="flex items-center justify-end gap-0.5">
-            <QRModal formTitle={form.title} formSlug={form.slug} />
-            <EmbedModal formTitle={form.title} formSlug={form.slug} />
-            <DuplicateButton formId={form.id} />
-            <a href={`/forms/${form.slug}`} target="_blank" rel="noopener noreferrer"
-              className="p-2 rounded-lg text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-              title="Preview form">
-              <ExternalLink size={13} />
-            </a>
+            <span className="hidden sm:flex items-center gap-0.5">
+              <QRModal formTitle={form.title} formSlug={form.slug} />
+              <EmbedModal formTitle={form.title} formSlug={form.slug} />
+              <DuplicateButton formId={form.id} />
+              <a href={`/forms/${form.slug}`} target="_blank" rel="noopener noreferrer"
+                className="p-2 rounded-lg text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                title="Preview form">
+                <ExternalLink size={13} />
+              </a>
+            </span>
             <Link href={`/admin/forms/${form.id}/edit`}
               className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-500 px-2 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all">
               Edit
             </Link>
-            <DeleteFormButton formId={form.id} formTitle={form.title} submissionCount={countByForm[form.id] || 0} />
+            <span className="hidden sm:block">
+              <DeleteFormButton formId={form.id} formTitle={form.title} submissionCount={countByForm[form.id] || 0} />
+            </span>
           </div>
         </li>
       ))}

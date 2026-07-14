@@ -14,7 +14,8 @@ import WarrantyRequestsQueue, { type WarrantyRequestRow } from './WarrantyReques
 type CustomerRow = Customer & { unit_count: number }
 type Filter = 'all' | 'active' | 'inactive' | 'requests' | 'warranty'
 
-const COLS = 'grid-cols-[34px_2fr_1fr_84px_104px_28px]'
+// Mobile keeps company-identity + status; select/location/units/chevron at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[34px_2fr_1fr_84px_104px_28px]'
 
 export default function CustomersClient({
   customers,
@@ -117,9 +118,9 @@ export default function CustomersClient({
           </span>
         </div>
 
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={760}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(c => c.id), !allSelected)} />
           <Th>Company</Th>
           <Th>Location</Th>
@@ -147,7 +148,7 @@ export default function CustomersClient({
                 className={`${rowCx(COLS, { i, selected: sel.has(c.id) })} group ${c.status === 'inactive' ? 'opacity-60' : ''}`}
               >
                 {/* Select */}
-                <SelectBox checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} />
+                <SelectBox className="hidden sm:flex" checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} />
                 {/* Identity — company over contact */}
                 <IdentityCell
                   icon={<Building2 size={13} />}
@@ -159,9 +160,9 @@ export default function CustomersClient({
                   }
                 />
                 {/* Location */}
-                <div className="min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{c.location || '—'}</div>
+                <div className="hidden sm:block min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{c.location || '—'}</div>
                 {/* Units */}
-                <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 tabular-nums">
+                <div className="hidden sm:flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 tabular-nums">
                   <Boxes size={13} className="text-zinc-300 dark:text-zinc-600" />
                   {c.unit_count}
                 </div>
@@ -174,7 +175,7 @@ export default function CustomersClient({
                   )}
                 </div>
                 {/* Chevron */}
-                <div className="flex justify-center">
+                <div className="hidden sm:flex justify-center">
                   <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
                 </div>
               </Link>

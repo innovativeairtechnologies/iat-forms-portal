@@ -26,7 +26,8 @@ const STATUS_COLORS: Record<USRotorsOrder['status'], string> = {
   complete:   'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
 }
 
-const COLS = 'grid-cols-[1.8fr_120px_120px_72px_128px]'
+// Mobile keeps identity + status; config/voltage/age return at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[1.8fr_120px_120px_72px_128px]'
 
 interface Props {
   orders: USRotorsOrder[]
@@ -109,9 +110,9 @@ export default function USRotorsOrdersClient({ orders }: Props) {
           </div>
         </div>
 
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={680}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <Th>Company</Th>
           <Th>Config</Th>
           <Th>Voltage</Th>
@@ -140,11 +141,11 @@ export default function USRotorsOrdersClient({ orders }: Props) {
                   subtitle={`${o.order_ref} · ${o.model} ×${o.quantity}`}
                 />
                 {/* Config */}
-                <div className="text-zinc-500 dark:text-zinc-400 truncate">{o.config}</div>
+                <div className="hidden sm:block text-zinc-500 dark:text-zinc-400 truncate">{o.config}</div>
                 {/* Voltage */}
-                <div className="font-mono text-zinc-500 dark:text-zinc-400 truncate">{o.motor_voltage}</div>
+                <div className="hidden sm:block font-mono text-zinc-500 dark:text-zinc-400 truncate">{o.motor_voltage}</div>
                 {/* Age */}
-                <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(o.created_at)}</div>
+                <div className="hidden sm:block text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(o.created_at)}</div>
                 {/* Status — inline change dropdown */}
                 <div className="relative">
                   <div className={cn(

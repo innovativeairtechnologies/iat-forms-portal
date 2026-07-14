@@ -16,7 +16,8 @@ type Filter = 'all' | 'in' | 'expiring' | 'out' | 'pm_due' | 'unknown'
 
 const EMPTY = { serial_number: '', model_number: '', voltage: '', customer_company: '', customer_name: '', customer_email: '', ship_date: '' }
 
-const COLS = 'grid-cols-[34px_2fr_150px_132px_28px]'
+// Mobile keeps serial-identity + warranty; select/state/chevron return at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[34px_2fr_150px_132px_28px]'
 
 function WarrantyPill({ eq }: { eq: Equipment }) {
   const s = warrantyState(eq)
@@ -129,9 +130,9 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
           </span>
         </div>
 
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={680}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
           <Th>Serial</Th>
           <Th>Warranty</Th>
@@ -151,7 +152,7 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
               <Link key={eq.id} href={`/admin/equipment/${eq.id}`}
                 className={`${rowCx(COLS, { i, selected: sel.has(eq.id) })} group ${eq.status === 'decommissioned' ? 'opacity-60' : ''}`}>
                 {/* Select */}
-                <SelectBox checked={sel.has(eq.id)} onChange={() => sel.toggle(eq.id)} />
+                <SelectBox className="hidden sm:flex" checked={sel.has(eq.id)} onChange={() => sel.toggle(eq.id)} />
                 {/* Identity — serial over model · customer */}
                 {(() => {
                   const company = eq.customer_company || eq.customer_name || ''
@@ -167,13 +168,13 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
                 {/* Warranty */}
                 <div><WarrantyPill eq={eq} /></div>
                 {/* State */}
-                <div>
+                <div className="hidden sm:block">
                   {eq.status === 'decommissioned'
                     ? <StatusPill tone="slate">Decommissioned</StatusPill>
                     : <StatusPill tone="emerald">Active</StatusPill>}
                 </div>
                 {/* Chevron */}
-                <div className="flex justify-center">
+                <div className="hidden sm:flex justify-center">
                   <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
                 </div>
               </Link>

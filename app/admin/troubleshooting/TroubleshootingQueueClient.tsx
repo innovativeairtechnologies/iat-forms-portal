@@ -24,7 +24,8 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'closed',   label: 'Closed'   },
 ]
 
-const COLS = 'grid-cols-[34px_1fr_104px_72px_40px]'
+// Mobile keeps the audit-log trio (identity / status / age); checkbox + kebab at sm+.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[34px_1fr_104px_72px_40px]'
 
 function matchesSearch(t: TroubleshootingIntake, q: string): boolean {
   if (!q) return true
@@ -143,9 +144,9 @@ export default function TroubleshootingQueueClient({ intakes }: { intakes: Troub
           </div>
         </div>
 
-        {/* Floating header */}
+        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
         <TableScroll minWidth={600}>
-        <div className={`grid ${COLS} ${HEADER_BOX}`}>
+        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
           <div className="flex items-center justify-center">
             <input type="checkbox" checked={allSelected} onChange={toggleAll}
               className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
@@ -173,7 +174,7 @@ export default function TroubleshootingQueueClient({ intakes }: { intakes: Troub
                 <div key={intake.id} onClick={() => router.push(`/admin/troubleshooting/${intake.id}`)}
                   className={`${rowCx(COLS, { i, selected: isSel })} cursor-pointer group`}>
                   {/* Checkbox */}
-                  <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                  <div className="hidden sm:flex items-center justify-center" onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={isSel} onChange={() => toggle(intake.id)}
                       className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
                   </div>
@@ -188,7 +189,7 @@ export default function TroubleshootingQueueClient({ intakes }: { intakes: Troub
                   {/* Created */}
                   <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(intake.created_at)}</div>
                   {/* Kebab */}
-                  <div className="flex justify-center relative" onClick={e => e.stopPropagation()}>
+                  <div className="hidden sm:flex justify-center relative" onClick={e => e.stopPropagation()}>
                     <button onClick={() => setMenuFor(menuFor === intake.id ? null : intake.id)}
                       className="p-1.5 rounded-md text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                       <MoreHorizontal size={15} />
