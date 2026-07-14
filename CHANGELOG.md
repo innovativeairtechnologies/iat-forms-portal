@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-14 — Annual Review print sheet: rating words restored + total is /48 (12 questions)
+
+Two corrections to the numeric Annual Review sheet, per Jacob:
+
+- **Superstar / Rockstar / Star / Needs Development are back on the back-page
+  Performance Scale** (shown as the numeral + word + description), and the scale
+  caption / Development-Plan note reference the words again. The 1–4 numbered
+  scoring on every row stays.
+- **Total is now `/ 48`, not `/ 80`.** Only the **12 review questions** (Sections
+  1–3) count toward the score (12 × 4). The **8 Core Values are no longer scored
+  into the total** — they keep their 4/3/2/1 rating for feedback, with a note that
+  reads "rated for feedback, not counted in the score." The Total-Score label reads
+  "sum of the 12 review questions — Sections 1–3."
+
+Static markup only, no migration. Both sheets still fit one page each (landscape
+front 702px / back 706px; portrait front 895px / back 815px), verified by rendering
+the real markup. `next build` green.
+
 ## 2026-07-14 — Annual Review print sheet: 1–4 point score (no more star-picking)
 
 Reworked the bespoke blank Annual Review print sheet (`app/print/annual-review/page.tsx`)

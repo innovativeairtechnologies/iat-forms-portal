@@ -296,7 +296,7 @@ const SHEETS = `<section class="sheet">
 
     <!-- Section 4: core values -->
     <div class="cv-wrap">
-      <div class="cv-h">4. Living the IAT Core Values</div>
+      <div class="cv-h">4. Living the IAT Core Values <span style="font-weight:600;text-transform:none;letter-spacing:0;font-size:10px;color:var(--muted);">&mdash; rated for feedback, not counted in the score</span></div>
       <div class="cv-grid">
         <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="cl">Integrity is Key</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
         <div class="cv"><div class="cvi" style="color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg></div><div class="cl">Solve Problems</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
@@ -315,12 +315,12 @@ const SHEETS = `<section class="sheet">
   <section class="sheet">
     <div class="hsec">Performance Scale</div>
     <div class="scale-grid">
-      <div class="scard g"><div class="snum">4</div><div class="sd">Exceptionally rare. Sets pace for IAT and shapes future.</div></div>
-      <div class="scard b"><div class="snum">3</div><div class="sd">Rare. Leads improvements. Stays ahead of company growth.</div></div>
-      <div class="scard y"><div class="snum">2</div><div class="sd">Keeps pace with company expectations and growth.</div></div>
-      <div class="scard r"><div class="snum">1</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
+      <div class="scard g"><div class="snum">4</div><div class="st">Superstar</div><div class="sd">Exceptionally rare. Sets pace for IAT and shapes future.</div></div>
+      <div class="scard b"><div class="snum">3</div><div class="st">Rockstar</div><div class="sd">Rare. Leads improvements. Stays ahead of company growth.</div></div>
+      <div class="scard y"><div class="snum">2</div><div class="st">Star</div><div class="sd">Keeps pace with company expectations and growth.</div></div>
+      <div class="scard r"><div class="snum">1</div><div class="st">Needs Development</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
     </div>
-    <div class="scap">Score each item 1&ndash;4 using the scale above (4 = highest, 1 = lowest), then add up the points for a total score.</div>
+    <div class="scap">Score each item 1&ndash;4 using the scale above (4 = Superstar &hellip; 1 = Needs Development). Add up the Section 1&ndash;3 scores for the total.</div>
 
     <div class="hsec left">Overall Summary<span class="rule"></span></div>
     <div class="sum-grid">
@@ -329,16 +329,16 @@ const SHEETS = `<section class="sheet">
       <div class="sumcard y"><div class="sumhead"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span><span class="tt">Development Goals</span></div><div class="q">Measurable goals for development before the next review.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
     </div>
 
-    <div class="hsec left">Total Score<span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(add up every circled number &mdash; 20 items)</span><span class="rule"></span></div>
+    <div class="hsec left">Total Score<span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(sum of the 12 review questions &mdash; Sections 1&ndash;3)</span><span class="rule"></span></div>
     <div class="totalbox">
       <span class="tl">Total Score</span>
       <span class="tv"></span>
-      <span class="tm">/ 80</span>
+      <span class="tm">/ 48</span>
     </div>
 
     <div class="two">
       <div class="bcard"><div class="bh">Employee Comments</div><div class="bs">Add any additional comments or context.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
-      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(for any area scored 1)</span></div>
+      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(for any area scored 1 &ndash; Needs Development)</span></div>
         <div class="drow">Focus Area:<span class="ln"></span></div>
         <div class="drow">Action Plan:<span class="ln"></span></div>
         <div class="drow">Support Needed:<span class="ln"></span></div>
