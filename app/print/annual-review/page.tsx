@@ -315,12 +315,12 @@ const SHEETS = `<section class="sheet">
   <section class="sheet">
     <div class="hsec">Performance Scale</div>
     <div class="scale-grid">
-      <div class="scard g"><div class="snum">4</div><div class="st">Superstar</div><div class="sd">Exceptionally rare. Sets pace for IAT and shapes future.</div></div>
-      <div class="scard b"><div class="snum">3</div><div class="st">Rockstar</div><div class="sd">Rare. Leads improvements. Stays ahead of company growth.</div></div>
-      <div class="scard y"><div class="snum">2</div><div class="st">Star</div><div class="sd">Keeps pace with company expectations and growth.</div></div>
-      <div class="scard r"><div class="snum">1</div><div class="st">Needs Development</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
+      <div class="scard g"><div class="snum">4</div><div class="sd">Exceptionally rare. Sets pace for IAT and shapes future.</div></div>
+      <div class="scard b"><div class="snum">3</div><div class="sd">Rare. Leads improvements. Stays ahead of company growth.</div></div>
+      <div class="scard y"><div class="snum">2</div><div class="sd">Keeps pace with company expectations and growth.</div></div>
+      <div class="scard r"><div class="snum">1</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
     </div>
-    <div class="scap">Score each item 1&ndash;4 using the scale above (4 = Superstar &hellip; 1 = Needs Development), then add up the points for a total score.</div>
+    <div class="scap">Score each item 1&ndash;4 using the scale above (4 = highest, 1 = lowest), then add up the points for a total score.</div>
 
     <div class="hsec left">Overall Summary<span class="rule"></span></div>
     <div class="sum-grid">
@@ -338,7 +338,7 @@ const SHEETS = `<section class="sheet">
 
     <div class="two">
       <div class="bcard"><div class="bh">Employee Comments</div><div class="bs">Add any additional comments or context.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
-      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(for any area scored 1 &ndash; Needs Development)</span></div>
+      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(for any area scored 1)</span></div>
         <div class="drow">Focus Area:<span class="ln"></span></div>
         <div class="drow">Action Plan:<span class="ln"></span></div>
         <div class="drow">Support Needed:<span class="ln"></span></div>

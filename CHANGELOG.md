@@ -10,11 +10,13 @@ from a pick-a-rating-word form into a numeric point rubric. No migration; static
 - **Rows are now scored 4/3/2/1.** The four rating columns (Sections 1–3 and the
   8 Core Values) show numbered bubbles **④③②①** to circle; the column headers
   are the numerals **4 3 2 1** (green→red) instead of the old trophy/star/bars icons.
-- **Back-page scale is a numeric legend** — the Performance Scale cards lead with the
-  numeral (**4 = Superstar … 1 = Needs Development**), keeping the word + description.
+- **Back-page scale is numeric** — the Performance Scale cards show the numeral over its
+  plain description; the Superstar/Rockstar/Star/Needs-Development **wording is removed
+  entirely** (numbers + descriptions only, everywhere on the sheet).
 - **Total instead of a pick.** The old "Overall Performance Rating (Select One)" pill
   row is replaced by a **Total Score ___ / 80** tally (20 scored items × 4). The
-  Development-Plan note now reads "for any area scored 1 – Needs Development."
+  scale caption reads "4 = highest, 1 = lowest"; the Development-Plan note reads
+  "for any area scored 1."
 - **Coaching-note lines** added to Sections 1–3 (5 / 4 / 3 lines, one per question)
   filling the box beside each grid.
 - **Still one landscape page each** (front ≈702px / back ≈706px vs ~758px usable),
