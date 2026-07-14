@@ -82,6 +82,7 @@ export type Perm =
   | 'customer_jerry' // admin preview of the customer-facing Jerry; admin-only
   | 'permissions' // the role-permission matrix editor itself; admin-only, non-delegatable
   | 'srv' // the SRV content editor (/admin/srv); admin-only by omission
+  | 'tools' // /admin/tools — the internal field-tool/app launcher (duct traverse, calculators)
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -108,6 +109,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   customer_jerry: 'Customer Jerry (preview)',
   permissions: 'Permissions',
   srv: 'SRV editor',
+  tools: 'Tools & Apps',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -127,11 +129,11 @@ export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
 // is the source of truth and this stays the seed + the fail-safe fallback used
 // whenever the DB matrix is unavailable (table missing / read error).
 export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
-  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals'],
-  hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry'],
-  marketing: ['dashboard', 'presentations', 'jerry'],
-  engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry'],
-  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry'],
+  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools'],
+  hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools'],
+  marketing: ['dashboard', 'presentations', 'jerry', 'tools'],
+  engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools'],
+  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools'],
   production: [],
 }
 
@@ -248,6 +250,7 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/audit', perm: 'audit' },
   { prefix: '/admin/employees', perm: 'employees' },
   { prefix: '/admin/us-rotors', perm: 'us_rotors' },
+  { prefix: '/admin/tools', perm: 'tools' },
 ]
 
 function matchesPrefix(pathname: string, prefix: string): boolean {

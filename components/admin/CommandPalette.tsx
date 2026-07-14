@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
-  MessageCircle, KeyRound,
+  MessageCircle, KeyRound, Wrench,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -53,6 +53,7 @@ const STATIC: Item[] = [
   { id: 'nav-accrual', label: 'Accrual',          group: 'Go to', icon: TrendingUp,      href: '/admin/accrual', keywords: 'balances hours', perm: 'accrual' },
   { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability', perm: 'audit' },
   { id: 'nav-perms',   label: 'Permissions',      group: 'Go to', icon: KeyRound,        href: '/admin/permissions', keywords: 'roles access control matrix toggles', perm: 'permissions' },
+  { id: 'nav-tools',   label: 'Tools & Apps',     group: 'Go to', icon: Wrench,          href: '/admin/tools', keywords: 'duct traverse calculator voltage field apps launcher', perm: 'tools' },
   { id: 'act-newform', label: 'Create a new form',           group: 'Actions', icon: Plus,       href: '/admin/forms/new', keywords: 'add build', perm: 'forms' },
   { id: 'act-aiform',  label: 'Build a form with AI',        group: 'Actions', icon: Sparkles,   href: '/admin/forms/ai', keywords: 'generate claude pdf import', perm: 'forms' },
   { id: 'act-unread',  label: 'Review unread submissions',   group: 'Actions', icon: Inbox,      href: '/admin/submissions?is_read=false', perm: 'submissions' },

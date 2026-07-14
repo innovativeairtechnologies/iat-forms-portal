@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
-  Users, Bot, DollarSign, Sun, Moon,
+  Users, Bot, DollarSign, Sun, Moon, Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -48,6 +48,7 @@ type Counts = {
 // ─── Nav structure — parents with expandable children ─────────────────────────
 
 const DASHBOARD = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard' as Perm }
+const TOOLS = { href: '/admin/tools', label: 'Tools', icon: Wrench, perm: 'tools' as Perm }
 
 const NAV_PARENTS: NavParent[] = [
   {
@@ -232,6 +233,24 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
           Dashboard
         </Link>
       )}
+
+      {hasPerm(TOOLS.perm) && (() => {
+        const active = pathname === TOOLS.href || pathname.startsWith(TOOLS.href + '/')
+        return (
+          <Link
+            href={TOOLS.href}
+            onClick={onClose}
+            className={cn(
+              'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
+              active ? 'bg-surface-strong text-ink' : 'text-ink-secondary hover:bg-surface-strong hover:text-ink',
+            )}
+          >
+            {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-brand" />}
+            <TOOLS.icon size={15} className={cn('flex-shrink-0', active ? 'text-ink' : 'text-ink-muted')} />
+            Tools
+          </Link>
+        )
+      })()}
 
       {NAV_PARENTS.filter(p => !p.hidden).map(parent => {
         const children = parent.children.filter(c => !c.hidden && hasPerm(c.perm))
