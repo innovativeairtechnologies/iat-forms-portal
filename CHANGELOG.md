@@ -2,6 +2,25 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-14 — Annual Review print sheet: 1–4 point score (no more star-picking)
+
+Reworked the bespoke blank Annual Review print sheet (`app/print/annual-review/page.tsx`)
+from a pick-a-rating-word form into a numeric point rubric. No migration; static markup only.
+
+- **Rows are now scored 4/3/2/1.** The four rating columns (Sections 1–3 and the
+  8 Core Values) show numbered bubbles **④③②①** to circle; the column headers
+  are the numerals **4 3 2 1** (green→red) instead of the old trophy/star/bars icons.
+- **Back-page scale is a numeric legend** — the Performance Scale cards lead with the
+  numeral (**4 = Superstar … 1 = Needs Development**), keeping the word + description.
+- **Total instead of a pick.** The old "Overall Performance Rating (Select One)" pill
+  row is replaced by a **Total Score ___ / 80** tally (20 scored items × 4). The
+  Development-Plan note now reads "for any area scored 1 – Needs Development."
+- **Coaching-note lines** added to Sections 1–3 (5 / 4 / 3 lines, one per question)
+  filling the box beside each grid.
+- **Still one landscape page each** (front ≈702px / back ≈706px vs ~758px usable),
+  verified by rendering the real markup. Portrait toggle + Download-PDF unchanged.
+  `next build` green.
+
 ## 2026-07-14 — Mobile audit: no sideways-scrolling lists, headers un-hidden, org chart toolbar
 
 Portal-wide mobile sweep (no migration). Three classes of fix:

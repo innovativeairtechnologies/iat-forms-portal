@@ -62,10 +62,15 @@ const STYLE = `:root{
   .grid .hdr{display:flex;justify-content:center;}
   .grid .crit{font-size:12px;color:#33445c;padding-right:8px;justify-self:start;}
   .grid .crit .dot{color:var(--green);font-weight:800;}
-  .rc{display:block;width:15px;height:15px;border-radius:50%;border:1.5px solid;}
-  .rc.g{border-color:var(--green);} .rc.b{border-color:var(--blue);} .rc.y{border-color:var(--gold);} .rc.r{border-color:var(--red);}
-  .coach{flex:1;min-width:0;border:1px dashed #cfd6de;border-radius:10px;background:var(--soft);padding:8px 10px;}
+  .rc{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1.5px solid;font-size:9.5px;font-weight:800;line-height:1;}
+  .rc.g{border-color:var(--green);color:var(--green);} .rc.b{border-color:var(--blue);color:var(--blue);} .rc.y{border-color:var(--gold);color:#b9820f;} .rc.r{border-color:var(--red);color:var(--red);}
+  /* Column-header score numerals (replace the old rating icons) */
+  .hn{font-size:15px;font-weight:800;line-height:1;}
+  .hn.g{color:var(--green);} .hn.b{color:var(--blue);} .hn.y{color:#b9820f;} .hn.r{color:var(--red);}
+  .coach{flex:1;min-width:0;display:flex;flex-direction:column;border:1px dashed #cfd6de;border-radius:10px;background:var(--soft);padding:8px 10px;}
   .coach .lbl{font-size:9.5px;font-weight:800;letter-spacing:.1em;color:var(--green);text-transform:uppercase;}
+  /* One write-in line per criterion, evenly filling the box beside the grid */
+  .coach .cline{flex:1;min-height:9px;border-bottom:1px solid #cfd6de;margin-top:7px;}
 
   /* ---------- Core values ---------- */
   .cv-wrap{border:1px solid var(--line);border-radius:14px;padding:12px 14px;}
@@ -88,11 +93,18 @@ const STYLE = `:root{
   .scard .ic{margin:0 auto 8px;}
   .scard .st{font-size:14px;font-weight:800;letter-spacing:.02em;text-transform:uppercase;}
   .scard .sd{font-size:11.5px;color:#4b5563;margin-top:6px;line-height:1.35;}
-  .scard.g{border-color:#bfe6c8;} .scard.g .st{color:var(--green);}
-  .scard.b{border-color:#b9d6ef;} .scard.b .st{color:var(--blue);}
-  .scard.y{border-color:#f3ddab;} .scard.y .st{color:#b9820f;}
-  .scard.r{border-color:#f2c2c2;} .scard.r .st{color:var(--red);}
+  .scard.g{border-color:#bfe6c8;} .scard.g .st{color:var(--green);} .scard.g .snum{color:var(--green);}
+  .scard.b{border-color:#b9d6ef;} .scard.b .st{color:var(--blue);} .scard.b .snum{color:var(--blue);}
+  .scard.y{border-color:#f3ddab;} .scard.y .st{color:#b9820f;} .scard.y .snum{color:#b9820f;}
+  .scard.r{border-color:#f2c2c2;} .scard.r .st{color:var(--red);} .scard.r .snum{color:var(--red);}
+  .scard .snum{font-size:34px;font-weight:800;line-height:1;margin-bottom:6px;}
   .scap{text-align:center;font-size:11.5px;color:var(--muted);margin:8px 0 16px;}
+
+  /* Overall total-score tally (replaces the old select-one rating pills) */
+  .totalbox{display:flex;align-items:center;justify-content:center;gap:16px;border:1.5px solid #bfe6c8;background:#f6fbf7;border-radius:14px;padding:16px 20px;margin-bottom:16px;}
+  .totalbox .tl{font-size:14px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--navy);}
+  .totalbox .tv{flex:none;width:130px;border-bottom:2px solid #9fb0c2;height:30px;}
+  .totalbox .tm{font-size:22px;font-weight:800;color:var(--muted);}
 
   .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
   .sumcard{border:1px solid #ece7cf;background:var(--cream);border-radius:14px;padding:13px 14px;}
@@ -136,7 +148,7 @@ const STYLE = `:root{
   .sec-title{margin-bottom:3px;}
   .ic.lg{width:26px;height:26px;}
   .grid{row-gap:1px;}
-  .rc{width:13px;height:13px;}
+  .rc{width:14px;height:14px;font-size:8.5px;}
   .crit{font-size:11px;}
   .coach{padding:5px 8px;}
   .cv-wrap{padding:6px 12px;}
@@ -231,18 +243,18 @@ const SHEETS = `<section class="sheet">
         <div class="sec-title"><span class="ic lg" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg></span><span class="nm">1. Results &amp; Execution</span></div>
         <div class="grid">
           <div></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v4a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v2a3 3 0 0 0 3 3z"/><path d="M18 5h3v2a3 3 0 0 1-3 3z"/><rect x="11" y="13" width="2" height="4"/><rect x="8" y="17" width="8" height="2" rx="1"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span></div>
-          <div class="crit"><span class="dot">&bull;</span> Delivers quality work right the first time</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Meets commitments and deadlines</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Takes ownership and follows through</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Solves problems instead of waiting on others</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Follows IAT safety protocols</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
+          <div class="hdr"><span class="hn g">4</span></div>
+          <div class="hdr"><span class="hn b">3</span></div>
+          <div class="hdr"><span class="hn y">2</span></div>
+          <div class="hdr"><span class="hn r">1</span></div>
+          <div class="crit"><span class="dot">&bull;</span> Delivers quality work right the first time</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Meets commitments and deadlines</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Takes ownership and follows through</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Solves problems instead of waiting on others</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Follows IAT safety protocols</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
         </div>
       </div>
-      <div class="coach"><div class="lbl">Coaching Notes</div></div>
+      <div class="coach"><div class="lbl">Coaching Notes</div><div class="cline"></div><div class="cline"></div><div class="cline"></div><div class="cline"></div><div class="cline"></div></div>
     </div>
 
     <!-- Section 2 -->
@@ -251,17 +263,17 @@ const SHEETS = `<section class="sheet">
         <div class="sec-title"><span class="ic lg" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.5-4.6 5.5-4.6s5.5 1.6 5.5 4.6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1"/><path d="M17.5 15.6c2.4.4 4 1.9 4 4.4"/></svg></span><span class="nm">2. Teamwork &amp; Communication</span></div>
         <div class="grid">
           <div></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v4a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v2a3 3 0 0 0 3 3z"/><path d="M18 5h3v2a3 3 0 0 1-3 3z"/><rect x="11" y="13" width="2" height="4"/><rect x="8" y="17" width="8" height="2" rx="1"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span></div>
-          <div class="crit"><span class="dot">&bull;</span> Communicates clearly with customers and teammates</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Lives the Golden Rule</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Supports the team and contributes positively</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Attendance and punctuality</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
+          <div class="hdr"><span class="hn g">4</span></div>
+          <div class="hdr"><span class="hn b">3</span></div>
+          <div class="hdr"><span class="hn y">2</span></div>
+          <div class="hdr"><span class="hn r">1</span></div>
+          <div class="crit"><span class="dot">&bull;</span> Communicates clearly with customers and teammates</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Lives the Golden Rule</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Supports the team and contributes positively</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Attendance and punctuality</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
         </div>
       </div>
-      <div class="coach"><div class="lbl">Coaching Notes</div></div>
+      <div class="coach"><div class="lbl">Coaching Notes</div><div class="cline"></div><div class="cline"></div><div class="cline"></div><div class="cline"></div></div>
     </div>
 
     <!-- Section 3 -->
@@ -270,30 +282,30 @@ const SHEETS = `<section class="sheet">
         <div class="sec-title"><span class="ic lg" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 7 13.5 15 9.5 11 3 17.5"/><polyline points="16 7 21 7 21 12"/></svg></span><span class="nm">3. Continuous Improvement</span></div>
         <div class="grid">
           <div></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v4a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v2a3 3 0 0 0 3 3z"/><path d="M18 5h3v2a3 3 0 0 1-3 3z"/><rect x="11" y="13" width="2" height="4"/><rect x="8" y="17" width="8" height="2" rx="1"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span></div>
-          <div class="hdr"><span class="ic sm" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span></div>
-          <div class="crit"><span class="dot">&bull;</span> Looks for better ways to improve work</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Learns new skills and accepts coaching</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
-          <div class="crit"><span class="dot">&bull;</span> Keeps pace with IAT&rsquo;s growth and change</div><div class="rc g"></div><div class="rc b"></div><div class="rc y"></div><div class="rc r"></div>
+          <div class="hdr"><span class="hn g">4</span></div>
+          <div class="hdr"><span class="hn b">3</span></div>
+          <div class="hdr"><span class="hn y">2</span></div>
+          <div class="hdr"><span class="hn r">1</span></div>
+          <div class="crit"><span class="dot">&bull;</span> Looks for better ways to improve work</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Learns new skills and accepts coaching</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
+          <div class="crit"><span class="dot">&bull;</span> Keeps pace with IAT&rsquo;s growth and change</div><div class="rc g">4</div><div class="rc b">3</div><div class="rc y">2</div><div class="rc r">1</div>
         </div>
       </div>
-      <div class="coach"><div class="lbl">Coaching Notes</div></div>
+      <div class="coach"><div class="lbl">Coaching Notes</div><div class="cline"></div><div class="cline"></div><div class="cline"></div></div>
     </div>
 
     <!-- Section 4: core values -->
     <div class="cv-wrap">
       <div class="cv-h">4. Living the IAT Core Values</div>
       <div class="cv-grid">
-        <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="cl">Integrity is Key</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg></div><div class="cl">Solve Problems</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.5-4.6 5.5-4.6s5.5 1.6 5.5 4.6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1"/><path d="M17.5 15.6c2.4.4 4 1.9 4 4.4"/></svg></div><div class="cl">We Are a Team</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7l2.5-2a2 2 0 0 1 2.6.2L21 9v5l-2 1"/><path d="M12 7 9.5 5a2 2 0 0 0-2.6.2L3 9v5l2 1"/><path d="M8 15l2.2 2.2a1.5 1.5 0 0 0 2.1 0L17 12.5"/><path d="M13 17l1.6 1.6a1.4 1.4 0 0 0 2-2"/></svg></div><div class="cl">Golden Rule Mentality</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5L16.5 21 15 13.5"/></svg></div><div class="cl">Quality Matters</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg></div><div class="cl">Innovative Thinking</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0-8 6-13 15-13 0 9-5 14-13 14a4 4 0 0 1-2-1z"/><path d="M6 18C10 14 12 12 17 10"/></svg></div><div class="cl">Clean is King</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
-        <div class="cv"><div class="cvi" style="color:var(--navy)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6C10 4.5 7 4 4 4.5v13C7 17 10 17.5 12 19"/><path d="M12 6c2-1.5 5-2 8-1.5v13c-3-.5-6 0-8 1.5z"/><path d="M12 6v13"/></svg></div><div class="cl">Colossians 3:23</div><div class="cc"><span class="rc g"></span><span class="rc b"></span><span class="rc y"></span><span class="rc r"></span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="cl">Integrity is Key</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg></div><div class="cl">Solve Problems</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.5-4.6 5.5-4.6s5.5 1.6 5.5 4.6"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6.1"/><path d="M17.5 15.6c2.4.4 4 1.9 4 4.4"/></svg></div><div class="cl">We Are a Team</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7l2.5-2a2 2 0 0 1 2.6.2L21 9v5l-2 1"/><path d="M12 7 9.5 5a2 2 0 0 0-2.6.2L3 9v5l2 1"/><path d="M8 15l2.2 2.2a1.5 1.5 0 0 0 2.1 0L17 12.5"/><path d="M13 17l1.6 1.6a1.4 1.4 0 0 0 2-2"/></svg></div><div class="cl">Golden Rule Mentality</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5L16.5 21 15 13.5"/></svg></div><div class="cl">Quality Matters</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.5 1.1.5 1.6h6c0-.5 0-1.2.5-1.6A6 6 0 0 0 12 3z"/></svg></div><div class="cl">Innovative Thinking</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0-8 6-13 15-13 0 9-5 14-13 14a4 4 0 0 1-2-1z"/><path d="M6 18C10 14 12 12 17 10"/></svg></div><div class="cl">Clean is King</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
+        <div class="cv"><div class="cvi" style="color:var(--navy)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6C10 4.5 7 4 4 4.5v13C7 17 10 17.5 12 19"/><path d="M12 6c2-1.5 5-2 8-1.5v13c-3-.5-6 0-8 1.5z"/><path d="M12 6v13"/></svg></div><div class="cl">Colossians 3:23</div><div class="cc"><span class="rc g">4</span><span class="rc b">3</span><span class="rc y">2</span><span class="rc r">1</span></div></div>
       </div>
       <div class="cv-coach"><div class="lbl">Coaching Notes</div></div>
     </div>
@@ -303,12 +315,12 @@ const SHEETS = `<section class="sheet">
   <section class="sheet">
     <div class="hsec">Performance Scale</div>
     <div class="scale-grid">
-      <div class="scard g"><span class="ic lg" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v4a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v2a3 3 0 0 0 3 3z"/><path d="M18 5h3v2a3 3 0 0 1-3 3z"/><rect x="11" y="13" width="2" height="4"/><rect x="8" y="17" width="8" height="2" rx="1"/></svg></span><div class="st">Superstar</div><div class="sd">Exceptionally rare. Sets pace for IAT and shapes future.</div></div>
-      <div class="scard b"><span class="ic lg" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span><div class="st">Rockstar</div><div class="sd">Rare. Leads improvements. Stays ahead of company growth.</div></div>
-      <div class="scard y"><span class="ic lg" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span><div class="st">Star</div><div class="sd">Keeps pace with company expectations and growth.</div></div>
-      <div class="scard r"><span class="ic lg" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span><div class="st">Needs Development</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
+      <div class="scard g"><div class="snum">4</div><div class="st">Superstar</div><div class="sd">Exceptionally rare. Sets pace for IAT and shapes future.</div></div>
+      <div class="scard b"><div class="snum">3</div><div class="st">Rockstar</div><div class="sd">Rare. Leads improvements. Stays ahead of company growth.</div></div>
+      <div class="scard y"><div class="snum">2</div><div class="st">Star</div><div class="sd">Keeps pace with company expectations and growth.</div></div>
+      <div class="scard r"><div class="snum">1</div><div class="st">Needs Development</div><div class="sd">Needs coaching to keep pace with company growth expectations.</div></div>
     </div>
-    <div class="scap">Select the rating that best describes the employee&rsquo;s overall performance for each area.</div>
+    <div class="scap">Score each item 1&ndash;4 using the scale above (4 = Superstar &hellip; 1 = Needs Development), then add up the points for a total score.</div>
 
     <div class="hsec left">Overall Summary<span class="rule"></span></div>
     <div class="sum-grid">
@@ -317,17 +329,16 @@ const SHEETS = `<section class="sheet">
       <div class="sumcard y"><div class="sumhead"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span><span class="tt">Development Goals</span></div><div class="q">Measurable goals for development before the next review.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
     </div>
 
-    <div class="hsec left">Overall Performance Rating <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(Select One)</span><span class="rule"></span></div>
-    <div class="rate-grid">
-      <div class="rpill g"><span class="ic sm" style="background:var(--green)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h12v4a6 6 0 0 1-12 0V4z"/><path d="M6 5H3v2a3 3 0 0 0 3 3z"/><path d="M18 5h3v2a3 3 0 0 1-3 3z"/><rect x="11" y="13" width="2" height="4"/><rect x="8" y="17" width="8" height="2" rx="1"/></svg></span> Superstar</div>
-      <div class="rpill b"><span class="ic sm" style="background:var(--blue)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span> Rockstar</div>
-      <div class="rpill y"><span class="ic sm" style="background:var(--gold)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.1l1-5.8-4.3-4.1 5.9-.9L12 3z"/></svg></span> Star</div>
-      <div class="rpill r"><span class="ic sm" style="background:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="12" width="3.5" height="7" rx="1"/><rect x="10.25" y="8" width="3.5" height="11" rx="1"/><rect x="16.5" y="4" width="3.5" height="15" rx="1"/></svg></span> Needs Development</div>
+    <div class="hsec left">Total Score<span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;">(add up every circled number &mdash; 20 items)</span><span class="rule"></span></div>
+    <div class="totalbox">
+      <span class="tl">Total Score</span>
+      <span class="tv"></span>
+      <span class="tm">/ 80</span>
     </div>
 
     <div class="two">
       <div class="bcard"><div class="bh">Employee Comments</div><div class="bs">Add any additional comments or context.</div><div class="wl"></div><div class="wl"></div><div class="wl"></div></div>
-      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(if rating is Needs Development)</span></div>
+      <div class="bcard dev"><div class="bh">Development Plan <span style="font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;font-size:10.5px;">(for any area scored 1 &ndash; Needs Development)</span></div>
         <div class="drow">Focus Area:<span class="ln"></span></div>
         <div class="drow">Action Plan:<span class="ln"></span></div>
         <div class="drow">Support Needed:<span class="ln"></span></div>
