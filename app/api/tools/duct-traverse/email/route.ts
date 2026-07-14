@@ -15,7 +15,11 @@ import { normalizeRole, isStaffRole } from '@/lib/roles'
 export const runtime = 'nodejs'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = 'IAT Portal <onboarding@resend.dev>'
+// Uses the shared sandbox sender by default. Set RESEND_FROM (e.g.
+// "IAT Reports <reports@yourdomain.com>") once a domain is verified at
+// resend.com/domains — then reports can be emailed to outside addresses with
+// no code change. Until then, Resend test mode only delivers to the account owner.
+const FROM = process.env.RESEND_FROM || 'IAT Portal <onboarding@resend.dev>'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const MAX_PDF_B64 = 8_000_000 // ~6MB decoded — a traverse PDF is a few dozen KB
@@ -112,7 +116,18 @@ export async function POST(req: NextRequest) {
       html,
       attachments: [{ filename, content: pdf }],
     })
-    if (error) throw new Error(error.message || 'Resend error')
+    if (error) {
+      const m = (error.message || '').toLowerCase()
+      // Resend test mode (no verified domain) only delivers to the account owner.
+      // Surface a human, actionable message instead of the raw API text.
+      if (m.includes('verify a domain') || m.includes('testing emails') || m.includes('own email address')) {
+        return NextResponse.json({
+          code: 'email_not_enabled',
+          error: 'Emailing outside addresses isn’t enabled yet — a sending domain still needs to be verified in Resend. For now, use “Download PDF” and attach it to your own email.',
+        }, { status: 503 })
+      }
+      return NextResponse.json({ error: `Could not send the email. ${error.message || ''}`.trim() }, { status: 502 })
+    }
   } catch (e) {
     const detail = e instanceof Error ? e.message : 'Send failed'
     return NextResponse.json({ error: `Could not send the email. ${detail}` }, { status: 502 })
