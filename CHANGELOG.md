@@ -11,6 +11,8 @@ Bossman tweaks to the 3D model:
   airflow" toggle): the top-right quadrant = **reactivation (red)**, the other three =
   **process (blue)**, rendered as stationary semi-transparent sectors over the spinning
   media so the spokes still read through. The reactivation arrow + legend key are red to match.
+- The **airflow arrows are now bold 3D arrows** (thick cylinder shaft + big cone head)
+  instead of thin ArrowHelper lines (which WebGL can't thicken), so they read clearly.
 
 ## 2026-07-15 — US Rotors 3D model: photo-accurate rotor + cassette
 
