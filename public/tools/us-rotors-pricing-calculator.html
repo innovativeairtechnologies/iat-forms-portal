@@ -470,6 +470,8 @@
   .viewer-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 11px; }
   .vl-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
   .vl-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .viewer-toggle { display: none; align-items: center; gap: 7px; margin-top: 11px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer; user-select: none; }
+  .viewer-toggle input { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; margin: 0; }
   .viewer-hint { margin-top: 8px; font-size: 10.5px; color: var(--text-muted); font-family: var(--mono); }
 
   /* PDF styles (injected into print window) */
@@ -517,7 +519,10 @@
         <div class="viewer-badge" id="viewer_badge">Rotor + Cassette</div>
         <div class="viewer-fallback" id="viewer_fallback">Preparing 3D preview&hellip;</div>
       </div>
-      <div class="viewer-legend" id="viewer_legend">
+      <label class="viewer-toggle" id="viewer_airflow_row">
+        <input type="checkbox" id="viewer_airflow" /> Show airflow
+      </label>
+      <div class="viewer-legend" id="viewer_legend" style="display:none">
         <span class="vl-item"><span class="vl-dot" style="background:#0274db"></span>Process air</span>
         <span class="vl-item"><span class="vl-dot" style="background:#3a3a46"></span>Reactivation</span>
         <span class="vl-item" id="vl_purge" style="display:none"><span class="vl-dot" style="background:#16acf8"></span>Purge</span>
@@ -1597,10 +1602,11 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
   const stage = document.getElementById('viewer_stage');
   if (!stage) return;
 
-  let THREE, OrbitControls;
+  let THREE, OrbitControls, RoomEnvironment;
   try {
     THREE = await import('three');
     ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+    ({ RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js'));
   } catch (err) {
     console.warn('[us-rotors] 3D viewer unavailable:', err);
     const fb = document.getElementById('viewer_fallback');
@@ -1608,12 +1614,15 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
     return;
   }
 
+  // Palette tuned to the real IAT cassettes: dark charcoal desiccant media, thin
+  // light spokes, brushed-aluminum frame, dark drive chain.
   const COL = { process: 0x0274db, react: 0x3a3a46, purge: 0x16acf8,
-    media: 0xcabfa3, metal: 0xb7bec6, metalSS: 0xd7dce2, steel: 0x6e747c, frame: 0x9aa2ab };
+    media: 0x2b2b30, mediaEdge: 0x202024, alu: 0xd7dce1, aluBright: 0xeef1f4,
+    spoke: 0x969ca4, chain: 0x40434a };
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const R = 1.0; // constant on-screen rotor radius; the real size is shown as a label
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.appendChild(renderer.domElement);
@@ -1621,13 +1630,18 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
   if (fbEl) fbEl.style.display = 'none';
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-  camera.position.set(3.4, 2.0, 4.6);
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8b8f96, 0.55));
-  scene.add(new THREE.AmbientLight(0xffffff, 0.42));
-  const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(5, 8, 6); scene.add(key);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(-5, 2, -4); scene.add(fill);
+  // Image-based lighting so the brushed aluminum actually reflects like metal.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+  camera.position.set(2.6, 1.6, 4.6);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8b8f96, 0.5));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+  const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(5, 8, 6); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-6, 2, 3); scene.add(fill);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = 0.09;
@@ -1667,68 +1681,99 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
     while (g.children.length) g.remove(g.children[0]);
   }
 
-  function metalMat(stainless) {
+  function aluMat(bright) {
     return new THREE.MeshStandardMaterial({
-      color: stainless ? COL.metalSS : COL.metal,
-      roughness: stainless ? 0.28 : 0.55, metalness: stainless ? 0.85 : 0.55 });
+      color: bright ? COL.aluBright : COL.alu,
+      metalness: 0.82, roughness: bright ? 0.26 : 0.38, envMapIntensity: 1.5 });
   }
 
-  // Desiccant-wheel face: honeycomb rings + spokes, hub bore, optional segment lines.
-  function faceTexture(segmented) {
-    const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S;
-    const x = cv.getContext('2d'), cx = S / 2, cy = S / 2, rad = S * 0.475;
-    x.fillStyle = '#cabfa3'; x.beginPath(); x.arc(cx, cy, rad, 0, Math.PI * 2); x.fill();
-    x.strokeStyle = 'rgba(120,110,86,0.32)'; x.lineWidth = 1;
-    for (let i = 1; i <= 13; i++) { x.beginPath(); x.arc(cx, cy, rad * i / 13, 0, Math.PI * 2); x.stroke(); }
-    for (let a = 0; a < 72; a++) { const t = a / 72 * Math.PI * 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(t) * rad, cy + Math.sin(t) * rad); x.stroke(); }
-    if (segmented) {
-      x.strokeStyle = 'rgba(70,64,48,0.7)'; x.lineWidth = 4;
-      for (let a = 0; a < 12; a++) { const t = a / 12 * Math.PI * 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(t) * rad, cy + Math.sin(t) * rad); x.stroke(); }
+  // Dark desiccant media: charcoal base, faint concentric honeycomb rings, and the
+  // thin light radial spokes that segment the wheel (these rotate with the media).
+  function faceTexture() {
+    const S = 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const x = cv.getContext('2d'), cx = S / 2, cy = S / 2, rad = S * 0.487;
+    x.fillStyle = '#2b2b30'; x.beginPath(); x.arc(cx, cy, rad, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = 'rgba(205,210,216,0.05)'; x.lineWidth = 1;
+    for (let i = 1; i <= 26; i++) { x.beginPath(); x.arc(cx, cy, rad * i / 26, 0, Math.PI * 2); x.stroke(); }
+    x.strokeStyle = 'rgba(150,156,164,0.8)'; x.lineWidth = 2.5; x.lineCap = 'round';
+    const SPOKES = 24;
+    for (let a = 0; a < SPOKES; a++) {
+      const t = a / SPOKES * Math.PI * 2;
+      x.beginPath();
+      x.moveTo(cx + Math.cos(t) * rad * 0.1, cy + Math.sin(t) * rad * 0.1);
+      x.lineTo(cx + Math.cos(t) * rad, cy + Math.sin(t) * rad);
+      x.stroke();
     }
-    x.strokeStyle = 'rgba(90,84,66,0.85)'; x.lineWidth = 6; x.beginPath(); x.arc(cx, cy, rad - 3, 0, Math.PI * 2); x.stroke();
-    x.fillStyle = '#2f3238'; x.beginPath(); x.arc(cx, cy, rad * 0.1, 0, Math.PI * 2); x.fill();
-    x.strokeStyle = '#6e747c'; x.lineWidth = 5; x.beginPath(); x.arc(cx, cy, rad * 0.1, 0, Math.PI * 2); x.stroke();
+    x.fillStyle = '#c9ced3'; x.beginPath(); x.arc(cx, cy, rad * 0.085, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#33363b'; x.beginPath(); x.arc(cx, cy, rad * 0.04, 0, Math.PI * 2); x.fill();
     const tex = new THREE.CanvasTexture(cv);
     if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
+    tex.anisotropy = 8;
     return tex;
   }
 
-  function buildRotor(depth, opts) {
+  // Rotating wheel: dark spoked media disc + bright aluminum rim band.
+  function buildWheel(depth) {
     const g = new THREE.Group();
-    const sideMat = new THREE.MeshStandardMaterial({ color: COL.media, roughness: 0.92, metalness: 0.04 });
-    const faceMat = new THREE.MeshStandardMaterial({ map: faceTexture(opts.segmented), roughness: 0.85, metalness: 0.05 });
+    const edge = new THREE.MeshStandardMaterial({ color: COL.mediaEdge, roughness: 0.95, metalness: 0.02 });
+    const face = new THREE.MeshStandardMaterial({ map: faceTexture(), roughness: 0.82, metalness: 0.04 });
     // CylinderGeometry material groups: 0 = lateral, 1 = top cap, 2 = bottom cap.
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(R, R, depth, 96, 1, false), [sideMat, faceMat, faceMat]);
-    wheel.rotation.x = Math.PI / 2; g.add(wheel); // lay the axis along Z (airflow direction)
-    const band = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.015, R * 1.015, depth * 0.99, 96, 1, true), metalMat(opts.stainless));
+    const media = new THREE.Mesh(new THREE.CylinderGeometry(R, R, depth, 128, 1, false), [edge, face, face]);
+    media.rotation.x = Math.PI / 2; g.add(media); // axis along Z (airflow direction)
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.012, R * 1.012, depth * 1.04, 128, 1, true), aluMat(true));
     band.rotation.x = Math.PI / 2; g.add(band);
-    const hubR = Math.max(0.055, R * 20 / opts.diameter); // 20 mm bore, scaled to the on-screen radius
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(hubR, hubR, depth * 1.25, 28),
-      new THREE.MeshStandardMaterial({ color: COL.steel, roughness: 0.4, metalness: 0.72 }));
-    hub.rotation.x = Math.PI / 2; g.add(hub);
     return g;
   }
 
-  // Sheet-metal housing: four panels forming a square tube, open on the airflow
-  // faces so the rotor shows through, plus a thin flange frame at each open face.
-  function buildCassette(depth, opts) {
+  // Stationary cassette modeled on the real unit: brushed-aluminum face plates with a
+  // round bore hugging the wheel, a bright bore ring, the structural "+" cross + center
+  // hub, diagonal corner braces, box side walls, and a simplified perimeter drive chain.
+  function buildCassette(depth) {
     const g = new THREE.Group();
-    const side = R * 2 * 1.16, L = depth + 0.34, t = 0.055;
-    const mat = metalMat(opts.stainless);
-    const addPanel = function (w, h, d, px, py) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(px, py, 0); g.add(m); };
-    addPanel(side + t, t, L, 0, side / 2);
-    addPanel(side + t, t, L, 0, -side / 2);
-    addPanel(t, side - t, L, -side / 2, 0);
-    addPanel(t, side - t, L, side / 2, 0);
-    const fmat = new THREE.MeshStandardMaterial({ color: opts.stainless ? COL.metalSS : COL.frame, roughness: 0.45, metalness: 0.66 });
-    const fw = side * 1.05, bar = 0.05;
-    [-1, 1].forEach(function (s) {
-      const z = s * (L / 2 + 0.01);
-      const mk = function (w, h, px, py) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), fmat); m.position.set(px, py, z); g.add(m); };
-      mk(fw, bar, 0, side / 2); mk(fw, bar, 0, -side / 2);
-      mk(bar, fw, side / 2, 0); mk(bar, fw, -side / 2, 0);
+    const half = R * 1.10;     // square half-width — the wheel nearly fills it
+    const L = depth + 0.24;    // cassette box depth
+    const bore = R * 1.05;
+    const alu = aluMat(false);
+
+    // front + back face plates: a square sheet with a round hole
+    const shape = new THREE.Shape();
+    shape.moveTo(-half, -half); shape.lineTo(half, -half); shape.lineTo(half, half); shape.lineTo(-half, half); shape.closePath();
+    const hole = new THREE.Path(); hole.absarc(0, 0, bore, 0, Math.PI * 2, true); shape.holes.push(hole);
+    const plate = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false, curveSegments: 96 });
+    const front = new THREE.Mesh(plate, alu); front.position.z = L / 2 - 0.05; g.add(front);
+    const back = new THREE.Mesh(plate, alu); back.position.z = -L / 2; g.add(back);
+
+    // outer box side walls
+    const t = 0.05;
+    const wall = function (w, h, px, py) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, L), alu); m.position.set(px, py, 0); g.add(m); };
+    wall(half * 2, t, 0, half); wall(half * 2, t, 0, -half);
+    wall(t, half * 2, half, 0); wall(t, half * 2, -half, 0);
+
+    // bright bore ring (round duct wall around the wheel)
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(bore, bore, L * 0.98, 128, 1, true), aluMat(true));
+    ring.rotation.x = Math.PI / 2; g.add(ring);
+
+    // structural "+" cross on the front + center hub
+    const zc = L / 2 + 0.005, crossW = 0.085, crossD = 0.09;
+    const hb = new THREE.Mesh(new THREE.BoxGeometry(half * 2, crossW, crossD), alu); hb.position.z = zc; g.add(hb);
+    const vb = new THREE.Mesh(new THREE.BoxGeometry(crossW, half * 2, crossD), alu); vb.position.z = zc; g.add(vb);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, crossD * 1.7, 32), aluMat(true));
+    hub.rotation.x = Math.PI / 2; hub.position.z = zc; g.add(hub);
+
+    // diagonal corner braces (gussets), proud of the face so they read like the real unit
+    const braceLen = half * 0.72, braceW = 0.07;
+    [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (s) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(braceLen, braceW, 0.07), alu);
+      bar.position.set(s[0] * half * 0.64, s[1] * half * 0.64, zc + 0.01);
+      bar.rotation.z = -s[0] * s[1] * Math.PI / 4;
+      g.add(bar);
     });
+
+    // simplified perimeter drive chain (thin dark ring in the wheel-to-frame gap)
+    const chain = new THREE.Mesh(new THREE.TorusGeometry(R * 1.032, 0.013, 10, 150),
+      new THREE.MeshStandardMaterial({ color: COL.chain, roughness: 0.55, metalness: 0.8 }));
+    g.add(chain);
+
     return { group: g, L: L };
   }
 
@@ -1747,29 +1792,33 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
     return g;
   }
 
+  function airflowOn() {
+    const t = document.getElementById('viewer_airflow');
+    return !!(t && t.checked);
+  }
+
   function update3D(calc) {
     const c = calc || window.__usrCalc || {};
     const diameter = parseFloat(c.sizeVal) || 550;
     const depthMm = parseInt(c.series || '100mm', 10) || 100;
     const prodType = c.prodType || 'both';
-    const showRotor = prodType !== 'cassette';
+    const showWheel = prodType !== 'cassette';
     const showCassette = prodType !== 'rotor';
-    const opts = { diameter: diameter, stainless: !!c.stainless, segmented: !!c.segmented, purge: !!c.purge };
     // Diameter is normalized to a constant on-screen size; depth stays proportional
     // to it (a 100 mm-deep wheel reads thin, a 400 mm-deep wheel reads chunky).
-    const depth = Math.min(2.4, Math.max(0.1, 2 * depthMm / diameter));
+    const depth = Math.min(2.2, Math.max(0.12, 2 * depthMm / diameter));
 
     disposeGroup(root);
     spinner = null;
-    let L = depth + 0.34;
+    let L = depth + 0.24;
     if (showCassette) {
-      const cas = buildCassette(depth, opts);
+      const cas = buildCassette(depth);
       L = cas.L;
       root.add(cas.group);
-      root.add(buildAirflow(L, opts));
+      if (airflowOn()) root.add(buildAirflow(L, { purge: !!c.purge }));
     }
-    if (showRotor) {
-      spinner = buildRotor(depth, opts);
+    if (showWheel) {
+      spinner = buildWheel(depth);
       root.add(spinner);
     }
 
@@ -1777,10 +1826,13 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
     if (dims) dims.textContent = '⌀ ' + Math.round(diameter) + ' × ' + depthMm + ' mm';
     const badge = document.getElementById('viewer_badge');
     if (badge) badge.textContent = prodType === 'rotor' ? 'Rotor only' : (prodType === 'cassette' ? 'Cassette' : 'Rotor + Cassette');
+    // "Show airflow" toggle is only meaningful with a cassette; legend follows it.
+    const air = document.getElementById('viewer_airflow_row');
+    if (air) air.style.display = showCassette ? 'inline-flex' : 'none';
     const legend = document.getElementById('viewer_legend');
-    if (legend) legend.style.display = showCassette ? 'flex' : 'none';
+    if (legend) legend.style.display = (showCassette && airflowOn()) ? 'flex' : 'none';
     const vp = document.getElementById('vl_purge');
-    if (vp) vp.style.display = (showCassette && opts.purge) ? 'inline-flex' : 'none';
+    if (vp) vp.style.display = (showCassette && airflowOn() && !!c.purge) ? 'inline-flex' : 'none';
   }
 
   function onResize() {
@@ -1798,8 +1850,25 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
     renderer.render(scene, camera);
   })();
 
+  const airToggle = document.getElementById('viewer_airflow');
+  if (airToggle) airToggle.addEventListener('change', function () { update3D(window.__usrCalc); });
+
   window.update3D = update3D;
   window.resize3D = onResize;
+  // Dev aid: return a small JPEG snapshot of the current view (for visual checks).
+  window.__capture3D = function (maxW) {
+    maxW = maxW || 640;
+    renderer.render(scene, camera); // force a fresh frame (rAF is throttled in headless tabs)
+    const src = renderer.domElement, scale = Math.min(1, maxW / src.width);
+    const w = Math.round(src.width * scale), h = Math.round(src.height * scale);
+    const cc = document.createElement('canvas'); cc.width = w; cc.height = h;
+    const g = cc.getContext('2d');
+    const bg = g.createRadialGradient(w * 0.5, h * 0.32, 8, w * 0.5, h * 0.32, Math.max(w, h) * 0.85);
+    bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#eef1f5');
+    g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.drawImage(src, 0, 0, w, h);
+    return cc.toDataURL('image/jpeg', 0.72);
+  };
   update3D(window.__usrCalc); // draw the current selection (recalc ran on DOMContentLoaded)
 })();
 </script>

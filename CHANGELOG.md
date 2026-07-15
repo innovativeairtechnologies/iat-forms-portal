@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-15 — US Rotors 3D model: photo-accurate rotor + cassette
+
+Reworked the calculator's 3D viewer to match IAT's real desiccant cassettes (from
+reference photos of a shipped unit), per bossman:
+- **Dark charcoal honeycomb media with thin radial spokes** (was a tan wheel), a bright
+  **aluminum rim band**, and a **brushed-aluminum square cassette frame that hugs the
+  wheel** — square face plates with a round bore, the structural **"+" cross** meeting at
+  a **center hub**, **diagonal corner gussets**, box side walls, and a simplified
+  **perimeter drive chain**.
+- **Reflective metal** via image-based lighting (three `RoomEnvironment` + PMREM) so the
+  aluminum reads shiny, not flat.
+- **Airflow arrows are now a subtle "Show airflow" toggle** (off by default, cassette
+  only) so the model matches the bare unit; the process/reactivation/purge legend follows
+  the toggle.
+- Still fully parametric and live off the PO inputs (diameter / depth / product-type drive
+  the model and the price together); rotor-only shows the bare spoked wheel. Verified the
+  render against the photos before ship.
+
 ## 2026-07-15 — Support page focus, /forms retired, live 3D US Rotors model
 
 Batch of misc fixes (Jacob).
