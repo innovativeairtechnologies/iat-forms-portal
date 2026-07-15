@@ -2,6 +2,12 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-15 — US Rotors calculator: link out to the Desiccant Simulator
+
+Added a **"Desiccant Simulator" tab** to the pricing calculator's tab nav (right-aligned,
+external-link icon) that opens the companion sizing tool at **calculator.usrotors.com** in
+a new tab — `window.open(…, 'noopener')`, so it doesn't disturb the current view.
+
 ## 2026-07-15 — US Rotors 3D: two-sided casing + process/reactivation zone shading
 
 Bossman tweaks to the 3D model:
