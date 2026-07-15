@@ -108,8 +108,8 @@ export function ViewAsControl({ variant = 'panel' }: { variant?: 'panel' | 'nav'
           nav
             ? `w-full flex items-center gap-2 py-1.5 pl-[34px] pr-2.5 rounded-md text-[12px] transition-colors ${
                 viewAs
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium'
-                  : 'text-ink-muted hover:bg-surface-strong hover:text-ink'
+                  ? 'bg-amber-500/15 text-amber-400 font-medium'
+                  : 'text-sidebar-ink-muted hover:bg-sidebar-strong hover:text-sidebar-ink'
               }`
             : `w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-[12px] font-medium transition-colors ${
                 viewAs

@@ -2,6 +2,23 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-15 — Admin sidebar color + cool-graphite dark mode
+
+Gave the admin left nav a color identity and retoned dark mode:
+- **Light mode:** the sidebar rail is now **deep pine** (a desaturated, warmed brand-green
+  950) instead of the plain warm canvas — a dark rail on the light canvas, so the green
+  active-row indicator and status pills finally pop. Brand green stays a pure accent (active
+  row + 2px left indicator), never a background fill.
+- **Dark mode:** the whole dark theme was retoned from the old **warm near-black** to a
+  subtle **cool graphite** (blue-slate) surface ladder — canvas, cards, table header bands,
+  chips, hairlines, and the nav rail all share one cool family, so dark mode reads as a
+  single deliberate surface. In dark mode the rail joins the graphite family (no green
+  field); green remains an accent only.
+- New semantic tokens: a `--sidebar-*` family (pine in light, graphite in dark) in
+  `globals.css` + `tailwind.config.ts`; documented in DESIGN.md §2.2. Light mode `:root`
+  content tokens are unchanged. Scope: `iat-forms-portal` admin shell only — the other
+  sub-apps still carry the previous dark palette and will be rolled over separately.
+
 ## 2026-07-15 — US Rotors calculator: link out to the Desiccant Simulator
 
 Added a **"Desiccant Simulator" tab** to the pricing calculator's tab nav (right-aligned,

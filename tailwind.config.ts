@@ -35,6 +35,17 @@ const config: Config = {
           soft: 'var(--brand-soft)',
           ink: 'var(--brand-ink)',
         },
+        sidebar: {
+          DEFAULT: 'var(--sidebar)',
+          strong: 'var(--sidebar-strong)',
+          hairline: 'var(--sidebar-hairline)',
+          ink: 'var(--sidebar-ink)',
+          'ink-secondary': 'var(--sidebar-ink-secondary)',
+          'ink-muted': 'var(--sidebar-ink-muted)',
+          'ink-faint': 'var(--sidebar-ink-faint)',
+          brand: 'var(--sidebar-brand)',
+          'brand-ink': 'var(--sidebar-brand-ink)',
+        },
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],

@@ -25,6 +25,19 @@
   --brand-soft: #e9f6ee;
   --brand-ink: #0b6b36;
 
+  /* ── Sidebar — deep pine (brand green 950, desaturated + warmed). In LIGHT mode
+     the rail is dark-on-light: strong separation from the warm canvas. Dark-mode
+     values are lifted (see .dark below) to keep that separation on a black canvas. ── */
+  --sidebar: #0e1a14;
+  --sidebar-strong: #1a2b20;
+  --sidebar-hairline: #223328;
+  --sidebar-ink: #f2f5f3;
+  --sidebar-ink-secondary: #a9baaf;
+  --sidebar-ink-muted: #7d9184;
+  --sidebar-ink-faint: #5a6e61;
+  --sidebar-brand: #1fb668;
+  --sidebar-brand-ink: #4ed292;
+
   /* Legacy vars (pre-token era) — retire during the Phase 2 page sweep */
   --bg: #f5f5f7;
   --border: rgba(0, 0, 0, 0.07);
@@ -36,22 +49,37 @@
 .dark {
   color-scheme: dark;
 
-  /* Dark = surface ladder (DESIGN.md §2.2); no shadows in dark mode */
-  --canvas: #0e0e0d;
-  --surface: #161614;
-  --surface-soft: #131312;
-  --surface-strong: #22221f;
-  --hairline: #2a2a27;
-  --hairline-soft: #232320;
-  --hairline-strong: #3a3934;
-  --ink: #f4f3f0;
-  --ink-secondary: #b5b2aa;
-  --ink-muted: #84817a;
-  --ink-faint: #57554f;
+  /* Dark = COOL GRAPHITE surface ladder. Retoned from the old warm near-black to a
+     subtle blue-slate graphite (supersedes DESIGN.md §2.2 — update the doc on finalize).
+     Ladder: canvas (darkest page gutter) < surface-soft < surface (cards) < surface-strong. */
+  --canvas: #101215;
+  --surface: #1c2026;
+  --surface-soft: #16191e;
+  --surface-strong: #262b32;
+  --hairline: #2a2f37;
+  --hairline-soft: #21252c;
+  --hairline-strong: #3a404a;
+  --ink: #f1f3f7;
+  --ink-secondary: #aeb4bd;
+  --ink-muted: #7f858f;
+  --ink-faint: #565c66;
   --brand: #1fb668;
   --brand-hover: #2bc474;
   --brand-soft: rgba(31, 182, 104, 0.12);
   --brand-ink: #4ed292;
+
+  /* Sidebar dark = part of the graphite family: a subtly raised rail (between the
+     canvas gutter and the cards). No green field — brand green stays a pure accent
+     on the active row + indicator only. Light mode keeps the pine rail (see :root). */
+  --sidebar: #1a1d22;
+  --sidebar-strong: #262a30;
+  --sidebar-hairline: #2b3038;
+  --sidebar-ink: #f1f3f7;
+  --sidebar-ink-secondary: #aeb4bd;
+  --sidebar-ink-muted: #7f858f;
+  --sidebar-ink-faint: #565c66;
+  --sidebar-brand: #1fb668;
+  --sidebar-brand-ink: #4ed292;
 
   --bg: #09090b;
   --border: rgba(255, 255, 255, 0.08);
@@ -65,7 +93,7 @@
   background: linear-gradient(135deg, #f0faf4 0%, #fafffe 50%, #f0f9ff 100%);
 }
 .dark .hero-gradient {
-  background: linear-gradient(135deg, #18181b 0%, #1c1c1f 40%, #121214 100%);
+  background: linear-gradient(135deg, #1b1f26 0%, #1d232b 40%, #12151a 100%);
 }
 @layer base {
   * { box-sizing: border-box; }

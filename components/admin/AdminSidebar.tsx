@@ -123,14 +123,16 @@ const OPEN_KEY = 'admin-nav-open'
 
 // ─── Badges (Tone system: soft wash + colored text) ───────────────────────────
 
+// The sidebar is always dark (deep pine), so badges use the dark-mode tone
+// stops unconditionally.
 const BADGE_CLS: Record<BadgeKind, string> = {
-  submissions: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  tickets:     'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  troubleshooting: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
-  pto:         'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  sick:        'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  usrotors:    'bg-sky-500/10 text-sky-600 dark:text-sky-400',
-  drafts:      'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  submissions: 'bg-emerald-500/15 text-emerald-400',
+  tickets:     'bg-amber-500/15 text-amber-400',
+  troubleshooting: 'bg-sky-500/15 text-sky-400',
+  pto:         'bg-amber-500/15 text-amber-400',
+  sick:        'bg-amber-500/15 text-amber-400',
+  usrotors:    'bg-sky-500/15 text-sky-400',
+  drafts:      'bg-amber-500/15 text-amber-400',
 }
 
 function Badge({ kind, count }: { kind: BadgeKind; count: number }) {
@@ -155,7 +157,7 @@ function ThemeRow() {
   return (
     <button
       onClick={() => setTheme(dark ? 'light' : 'dark')}
-      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-ink-muted hover:bg-surface-strong hover:text-ink transition-colors"
+      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-sidebar-ink-muted hover:bg-sidebar-strong hover:text-sidebar-ink transition-colors"
     >
       {dark ? <Sun size={14} className="flex-shrink-0" /> : <Moon size={14} className="flex-shrink-0" />}
       {mounted ? (dark ? 'Light mode' : 'Dark mode') : 'Theme'}
@@ -224,12 +226,12 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
           className={cn(
             'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
             pathname === DASHBOARD.href
-              ? 'bg-surface-strong text-ink'
-              : 'text-ink-secondary hover:bg-surface-strong hover:text-ink',
+              ? 'bg-sidebar-strong text-sidebar-ink'
+              : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
           )}
         >
-          {pathname === DASHBOARD.href && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-brand" />}
-          <DASHBOARD.icon size={15} className="flex-shrink-0 text-ink-muted" />
+          {pathname === DASHBOARD.href && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
+          <DASHBOARD.icon size={15} className="flex-shrink-0 text-sidebar-ink-muted" />
           Dashboard
         </Link>
       )}
@@ -242,11 +244,11 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
             onClick={onClose}
             className={cn(
               'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
-              active ? 'bg-surface-strong text-ink' : 'text-ink-secondary hover:bg-surface-strong hover:text-ink',
+              active ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
             )}
           >
-            {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-brand" />}
-            <TOOLS.icon size={15} className={cn('flex-shrink-0', active ? 'text-ink' : 'text-ink-muted')} />
+            {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
+            <TOOLS.icon size={15} className={cn('flex-shrink-0', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
             Tools
           </Link>
         )
@@ -268,20 +270,20 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               aria-expanded={isOpen}
               className={cn(
                 'relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors text-left',
-                hasActive ? 'bg-surface-strong text-ink' : 'text-ink-secondary hover:bg-surface-strong hover:text-ink',
+                hasActive ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
               )}
             >
-              {hasActive && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-brand" />}
-              <parent.icon size={15} className={cn('flex-shrink-0', hasActive ? 'text-ink' : 'text-ink-muted')} />
+              {hasActive && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
+              <parent.icon size={15} className={cn('flex-shrink-0', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
               <span className="flex-1">{parent.label}</span>
               {!isOpen && collapsedCount > 0 && (
-                <span className="text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <span className="text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500/15 text-amber-400">
                   {collapsedCount > 99 ? '99+' : collapsedCount}
                 </span>
               )}
               <ChevronDown
                 size={12}
-                className={cn('flex-shrink-0 text-ink-faint transition-transform duration-150', isOpen && 'rotate-180')}
+                className={cn('flex-shrink-0 text-sidebar-ink-faint transition-transform duration-150', isOpen && 'rotate-180')}
               />
             </button>
             {isOpen && (
@@ -296,8 +298,8 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
                       className={cn(
                         'flex items-center gap-2 py-1.5 pl-[34px] pr-2.5 rounded-md text-[12px] transition-colors',
                         active
-                          ? 'bg-surface-strong font-medium text-ink'
-                          : 'text-ink-muted hover:bg-surface-strong hover:text-ink',
+                          ? 'bg-sidebar-strong font-medium text-sidebar-ink'
+                          : 'text-sidebar-ink-muted hover:bg-sidebar-strong hover:text-sidebar-ink',
                       )}
                     >
                       <span className="flex-1">{child.label}</span>
@@ -317,11 +319,11 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
   // Profile lives in the top bar avatar now; the footer is just theme + log out.
   const renderFooter = () => (
-    <div className="px-3 pb-3 pt-2 border-t border-hairline-soft">
+    <div className="px-3 pb-3 pt-2 border-t border-sidebar-hairline">
       <ThemeRow />
       <button
         onClick={logout}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-ink-muted hover:bg-surface-strong hover:text-ink transition-colors"
+        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-sidebar-ink-muted hover:bg-sidebar-strong hover:text-sidebar-ink transition-colors"
       >
         <LogOut size={14} className="flex-shrink-0" />
         Log out
@@ -331,12 +333,12 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
   return (
     <>
-      {/* ── Desktop sidebar — sits on the warm canvas; content cards carry the white ── */}
-      <aside className="hidden md:flex w-[240px] flex-shrink-0 flex-col h-screen sticky top-0 overflow-hidden bg-canvas border-r border-hairline">
+      {/* ── Desktop sidebar — deep pine rail; always dark in both themes ── */}
+      <aside className="hidden md:flex w-[240px] flex-shrink-0 flex-col h-screen sticky top-0 overflow-hidden bg-sidebar border-r border-sidebar-hairline">
         <div className="px-4 pt-5 pb-3">
           <Link href={home} className="flex items-center gap-2.5 group">
-            <Logo size={26} className="flex-shrink-0" />
-            <span className="text-[14px] font-semibold text-ink tracking-tight group-hover:text-brand-ink transition-colors">
+            <Logo size={26} className="flex-shrink-0 [filter:brightness(0)_invert(1)]" />
+            <span className="text-[14px] font-semibold text-sidebar-ink tracking-tight group-hover:text-sidebar-brand-ink transition-colors">
               IAT Portal
             </span>
           </Link>
@@ -368,15 +370,15 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={() => setMobileOpen(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative w-[260px] flex flex-col h-full bg-canvas"
+            className="relative w-[260px] flex flex-col h-full bg-sidebar"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-4 border-b border-hairline">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-hairline">
               <Link href={home} className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
-                <Logo size={22} className="flex-shrink-0" />
-                <span className="text-[13px] font-semibold text-ink">IAT Portal</span>
+                <Logo size={22} className="flex-shrink-0 [filter:brightness(0)_invert(1)]" />
+                <span className="text-[13px] font-semibold text-sidebar-ink">IAT Portal</span>
               </Link>
-              <button onClick={() => setMobileOpen(false)} className="p-1 text-ink-faint hover:text-ink-secondary">
+              <button onClick={() => setMobileOpen(false)} className="p-1 text-sidebar-ink-faint hover:text-sidebar-ink-secondary">
                 <X size={18} />
               </button>
             </div>
