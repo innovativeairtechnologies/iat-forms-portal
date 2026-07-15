@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -449,6 +457,21 @@
   .ps-footnotes-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .ps-footnotes ol { padding-left: 16px; margin-bottom: 10px; }
   .ps-footnotes ol li { margin-bottom: 3px; }
+  /* ── Live 3D model viewer ── */
+  .viewer-card { padding-bottom: 1rem; }
+  .viewer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .viewer-title { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+  .viewer-dims { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); white-space: nowrap; }
+  .viewer-stage { position: relative; width: 100%; height: 300px; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; cursor: grab; background: radial-gradient(120% 130% at 50% 25%, #ffffff 0%, var(--bg3) 100%); }
+  .viewer-stage:active { cursor: grabbing; }
+  .viewer-stage canvas { display: block; width: 100% !important; height: 100% !important; }
+  .viewer-badge { position: absolute; top: 10px; left: 10px; z-index: 2; font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent); background: rgba(255,255,255,0.82); border: 1px solid var(--border); padding: 3px 9px; border-radius: 5px; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .viewer-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1.5rem; font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+  .viewer-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 11px; }
+  .vl-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+  .vl-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .viewer-hint { margin-top: 8px; font-size: 10.5px; color: var(--text-muted); font-family: var(--mono); }
+
   /* PDF styles (injected into print window) */
 </style>
 </head>
@@ -483,6 +506,24 @@
 <div id="tab-pricing" class="tab-panel active" style="display:block; padding-top:1.75rem;">
 <div class="main">
   <div class="left-col">
+
+    <!-- Live 3D model — follows the pricing selections (see update3D) -->
+    <div class="card viewer-card">
+      <div class="viewer-head">
+        <span class="viewer-title">Live Model</span>
+        <span class="viewer-dims" id="viewer_dims">&#8960; 550 &#215; 100 mm</span>
+      </div>
+      <div class="viewer-stage" id="viewer_stage">
+        <div class="viewer-badge" id="viewer_badge">Rotor + Cassette</div>
+        <div class="viewer-fallback" id="viewer_fallback">Preparing 3D preview&hellip;</div>
+      </div>
+      <div class="viewer-legend" id="viewer_legend">
+        <span class="vl-item"><span class="vl-dot" style="background:#0274db"></span>Process air</span>
+        <span class="vl-item"><span class="vl-dot" style="background:#3a3a46"></span>Reactivation</span>
+        <span class="vl-item" id="vl_purge" style="display:none"><span class="vl-dot" style="background:#16acf8"></span>Purge</span>
+      </div>
+      <div class="viewer-hint">Drag to rotate &middot; scroll to zoom &middot; updates with your selections</div>
+    </div>
 
     <!-- Product Selection -->
     <div class="card">
@@ -1118,6 +1159,12 @@ function recalc() {
   html += '<div class="metric-row subtotal"><span class="metric-label">Order Total</span><span class="metric-value blue big">' + fmt(grandTotal) + '</span></div>';
 
   document.getElementById("breakdown").innerHTML = html;
+
+  // Feed the live 3D model (defined in the module script below). Stash the calc
+  // too, so the viewer can draw the current state the moment three.js finishes
+  // loading (the CDN import may resolve after this first recalc runs).
+  window.__usrCalc = lastCalc;
+  if (typeof window.update3D === "function") window.update3D(lastCalc);
 }
 
 function generatePDF() {
@@ -1232,6 +1279,7 @@ function switchTab(name, btn) {
   target.classList.add('active');
   btn.classList.add('active');
   if (name === 'pricesheet') renderPriceSheet();
+  if (name === 'pricing' && typeof window.resize3D === 'function') window.resize3D();
 }
 
 function selectConfig(val, lbl) {
@@ -1537,6 +1585,223 @@ function generatePriceSheetPDF() {
 }
 
 document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
+</script>
+
+<script type="module">
+/* Live 3D rotor / cassette viewer — a parametric model that follows the pricing
+   inputs: rotor diameter (#size), axial depth (#series) and product type
+   (#product_type = rotor | both). Driven by update3D(lastCalc), called at the end
+   of recalc(). three.js loads from a CDN (as the tool's fonts already do); if that
+   import fails the pricing tool is unaffected and the fallback note stays. */
+(async function () {
+  const stage = document.getElementById('viewer_stage');
+  if (!stage) return;
+
+  let THREE, OrbitControls;
+  try {
+    THREE = await import('three');
+    ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+  } catch (err) {
+    console.warn('[us-rotors] 3D viewer unavailable:', err);
+    const fb = document.getElementById('viewer_fallback');
+    if (fb) fb.textContent = '3D preview needs an internet connection.';
+    return;
+  }
+
+  const COL = { process: 0x0274db, react: 0x3a3a46, purge: 0x16acf8,
+    media: 0xcabfa3, metal: 0xb7bec6, metalSS: 0xd7dce2, steel: 0x6e747c, frame: 0x9aa2ab };
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const R = 1.0; // constant on-screen rotor radius; the real size is shown as a label
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+  stage.appendChild(renderer.domElement);
+  const fbEl = document.getElementById('viewer_fallback');
+  if (fbEl) fbEl.style.display = 'none';
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  camera.position.set(3.4, 2.0, 4.6);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8b8f96, 0.55));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+  const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(5, 8, 6); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(-5, 2, -4); scene.add(fill);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.09;
+  controls.enablePan = false; controls.minDistance = 3.5; controls.maxDistance = 12;
+  controls.maxPolarAngle = Math.PI * 0.92; controls.target.set(0, 0, 0);
+
+  // Soft ground contact shadow.
+  (function () {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+    const g = cv.getContext('2d');
+    const grd = g.createRadialGradient(128, 128, 8, 128, 128, 124);
+    grd.addColorStop(0, 'rgba(25,30,40,0.26)'); grd.addColorStop(1, 'rgba(25,30,40,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+    const tex = new THREE.CanvasTexture(cv);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 4.6),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.position.y = -1.34; scene.add(m);
+  })();
+
+  const root = new THREE.Group(); scene.add(root);
+  let spinner = null; // the rotor group (spins on its own axis); null when cassette-only
+
+  function disposeGroup(g) {
+    g.traverse(function (o) {
+      // ArrowHelper's line/cone geometries are shared module-level singletons in
+      // three — disposing them would starve the next rebuild's arrows of buffers.
+      // Their materials are per-instance, so those are still safe to dispose.
+      const arrowInternal = o.parent && o.parent.type === 'ArrowHelper';
+      if (o.geometry && !arrowInternal) o.geometry.dispose();
+      if (o.material) {
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (mm) {
+          if (mm.map) mm.map.dispose();
+          mm.dispose();
+        });
+      }
+    });
+    while (g.children.length) g.remove(g.children[0]);
+  }
+
+  function metalMat(stainless) {
+    return new THREE.MeshStandardMaterial({
+      color: stainless ? COL.metalSS : COL.metal,
+      roughness: stainless ? 0.28 : 0.55, metalness: stainless ? 0.85 : 0.55 });
+  }
+
+  // Desiccant-wheel face: honeycomb rings + spokes, hub bore, optional segment lines.
+  function faceTexture(segmented) {
+    const S = 512, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const x = cv.getContext('2d'), cx = S / 2, cy = S / 2, rad = S * 0.475;
+    x.fillStyle = '#cabfa3'; x.beginPath(); x.arc(cx, cy, rad, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = 'rgba(120,110,86,0.32)'; x.lineWidth = 1;
+    for (let i = 1; i <= 13; i++) { x.beginPath(); x.arc(cx, cy, rad * i / 13, 0, Math.PI * 2); x.stroke(); }
+    for (let a = 0; a < 72; a++) { const t = a / 72 * Math.PI * 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(t) * rad, cy + Math.sin(t) * rad); x.stroke(); }
+    if (segmented) {
+      x.strokeStyle = 'rgba(70,64,48,0.7)'; x.lineWidth = 4;
+      for (let a = 0; a < 12; a++) { const t = a / 12 * Math.PI * 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(t) * rad, cy + Math.sin(t) * rad); x.stroke(); }
+    }
+    x.strokeStyle = 'rgba(90,84,66,0.85)'; x.lineWidth = 6; x.beginPath(); x.arc(cx, cy, rad - 3, 0, Math.PI * 2); x.stroke();
+    x.fillStyle = '#2f3238'; x.beginPath(); x.arc(cx, cy, rad * 0.1, 0, Math.PI * 2); x.fill();
+    x.strokeStyle = '#6e747c'; x.lineWidth = 5; x.beginPath(); x.arc(cx, cy, rad * 0.1, 0, Math.PI * 2); x.stroke();
+    const tex = new THREE.CanvasTexture(cv);
+    if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  function buildRotor(depth, opts) {
+    const g = new THREE.Group();
+    const sideMat = new THREE.MeshStandardMaterial({ color: COL.media, roughness: 0.92, metalness: 0.04 });
+    const faceMat = new THREE.MeshStandardMaterial({ map: faceTexture(opts.segmented), roughness: 0.85, metalness: 0.05 });
+    // CylinderGeometry material groups: 0 = lateral, 1 = top cap, 2 = bottom cap.
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(R, R, depth, 96, 1, false), [sideMat, faceMat, faceMat]);
+    wheel.rotation.x = Math.PI / 2; g.add(wheel); // lay the axis along Z (airflow direction)
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.015, R * 1.015, depth * 0.99, 96, 1, true), metalMat(opts.stainless));
+    band.rotation.x = Math.PI / 2; g.add(band);
+    const hubR = Math.max(0.055, R * 20 / opts.diameter); // 20 mm bore, scaled to the on-screen radius
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(hubR, hubR, depth * 1.25, 28),
+      new THREE.MeshStandardMaterial({ color: COL.steel, roughness: 0.4, metalness: 0.72 }));
+    hub.rotation.x = Math.PI / 2; g.add(hub);
+    return g;
+  }
+
+  // Sheet-metal housing: four panels forming a square tube, open on the airflow
+  // faces so the rotor shows through, plus a thin flange frame at each open face.
+  function buildCassette(depth, opts) {
+    const g = new THREE.Group();
+    const side = R * 2 * 1.16, L = depth + 0.34, t = 0.055;
+    const mat = metalMat(opts.stainless);
+    const addPanel = function (w, h, d, px, py) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(px, py, 0); g.add(m); };
+    addPanel(side + t, t, L, 0, side / 2);
+    addPanel(side + t, t, L, 0, -side / 2);
+    addPanel(t, side - t, L, -side / 2, 0);
+    addPanel(t, side - t, L, side / 2, 0);
+    const fmat = new THREE.MeshStandardMaterial({ color: opts.stainless ? COL.metalSS : COL.frame, roughness: 0.45, metalness: 0.66 });
+    const fw = side * 1.05, bar = 0.05;
+    [-1, 1].forEach(function (s) {
+      const z = s * (L / 2 + 0.01);
+      const mk = function (w, h, px, py) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), fmat); m.position.set(px, py, z); g.add(m); };
+      mk(fw, bar, 0, side / 2); mk(fw, bar, 0, -side / 2);
+      mk(bar, fw, side / 2, 0); mk(bar, fw, -side / 2, 0);
+    });
+    return { group: g, L: L };
+  }
+
+  function arrow(dx, dy, dz, ox, oy, oz, len, color, hl, hw) {
+    return new THREE.ArrowHelper(new THREE.Vector3(dx, dy, dz).normalize(), new THREE.Vector3(ox, oy, oz), len, color, hl, hw);
+  }
+
+  // Counterflow airflow: process one way through the lower sector, reactivation
+  // the other way through the upper sector, plus an optional purge stream.
+  function buildAirflow(L, opts) {
+    const g = new THREE.Group();
+    const ext = 0.7, zf = L / 2, len = L + ext * 2;
+    g.add(arrow(0, 0, 1, -0.34, -0.42, -zf - ext, len, COL.process, 0.26, 0.16));
+    g.add(arrow(0, 0, -1, 0.34, 0.5, zf + ext, len, COL.react, 0.26, 0.16));
+    if (opts.purge) g.add(arrow(0, 0, 1, 0.52, 0.06, -zf - 0.5, L + 1.0, COL.purge, 0.2, 0.12));
+    return g;
+  }
+
+  function update3D(calc) {
+    const c = calc || window.__usrCalc || {};
+    const diameter = parseFloat(c.sizeVal) || 550;
+    const depthMm = parseInt(c.series || '100mm', 10) || 100;
+    const prodType = c.prodType || 'both';
+    const showRotor = prodType !== 'cassette';
+    const showCassette = prodType !== 'rotor';
+    const opts = { diameter: diameter, stainless: !!c.stainless, segmented: !!c.segmented, purge: !!c.purge };
+    // Diameter is normalized to a constant on-screen size; depth stays proportional
+    // to it (a 100 mm-deep wheel reads thin, a 400 mm-deep wheel reads chunky).
+    const depth = Math.min(2.4, Math.max(0.1, 2 * depthMm / diameter));
+
+    disposeGroup(root);
+    spinner = null;
+    let L = depth + 0.34;
+    if (showCassette) {
+      const cas = buildCassette(depth, opts);
+      L = cas.L;
+      root.add(cas.group);
+      root.add(buildAirflow(L, opts));
+    }
+    if (showRotor) {
+      spinner = buildRotor(depth, opts);
+      root.add(spinner);
+    }
+
+    const dims = document.getElementById('viewer_dims');
+    if (dims) dims.textContent = '⌀ ' + Math.round(diameter) + ' × ' + depthMm + ' mm';
+    const badge = document.getElementById('viewer_badge');
+    if (badge) badge.textContent = prodType === 'rotor' ? 'Rotor only' : (prodType === 'cassette' ? 'Cassette' : 'Rotor + Cassette');
+    const legend = document.getElementById('viewer_legend');
+    if (legend) legend.style.display = showCassette ? 'flex' : 'none';
+    const vp = document.getElementById('vl_purge');
+    if (vp) vp.style.display = (showCassette && opts.purge) ? 'inline-flex' : 'none';
+  }
+
+  function onResize() {
+    const w = stage.clientWidth || 320, h = stage.clientHeight || 300;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', onResize);
+  onResize();
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    if (spinner && !REDUCED) spinner.rotation.z += 0.0045;
+    renderer.render(scene, camera);
+  })();
+
+  window.update3D = update3D;
+  window.resize3D = onResize;
+  update3D(window.__usrCalc); // draw the current selection (recalc ran on DOMContentLoaded)
+})();
 </script>
 </body>
 </html>

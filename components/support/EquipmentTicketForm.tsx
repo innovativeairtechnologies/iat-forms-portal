@@ -12,7 +12,6 @@ import {
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
 import { SampleLabelThumb } from './SampleLabelThumb'
-import RequestAccountCta from './RequestAccountCta'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 // This is the UNIFIED support form — the former "Equipment Support Ticket" and
@@ -757,21 +756,15 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
               <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
                 Our service team will reach out to <strong className="text-gray-700 dark:text-gray-200">{form.customer_email}</strong> shortly.
               </p>
-              <Link
-                href={isCustomer ? '/customer' : `/support/status?ticket=${encodeURIComponent(ticketNumber)}`}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#089447] hover:text-[#077a3c] mt-3 transition-colors"
-              >
-                {isCustomer ? 'View this in my portal' : "Track this ticket's status"}
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-
-            <div className="px-8 py-6 border-b border-gray-100 dark:border-zinc-800">
-              <RequestAccountCta
-                ticketNumber={ticketNumber}
-                email={form.customer_email}
-                suppress={!!customerContext}
-              />
+              {isCustomer && (
+                <Link
+                  href="/customer"
+                  className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#089447] hover:text-[#077a3c] mt-3 transition-colors"
+                >
+                  View this in my portal
+                  <ArrowRight size={14} />
+                </Link>
+              )}
             </div>
 
             {recommendations.length > 0 && (

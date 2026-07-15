@@ -378,7 +378,15 @@ export default function StepFormModal({ slug, onClose, serverDrafts = false, res
   // Keep advanceRef pointing at the latest action
   advanceRef.current = isLastStep ? submit : next
 
-  const handleClose = () => standalone ? router.push('/forms') : onClose?.()
+  // Return to wherever the user came from (the old /forms directory is gone).
+  // No history (anonymous filler opened a form via a shared/QR/email link in a
+  // fresh tab) → the public /support page, never '/' (which bounces anon → /login).
+  const goBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    else router.push('/support')
+  }
+
+  const handleClose = () => (standalone ? goBack() : onClose?.())
 
   // ── Progress calculation ────────────────────────────────────────────────────
   const progressPct = submitted
@@ -448,7 +456,7 @@ export default function StepFormModal({ slug, onClose, serverDrafts = false, res
         <div className="py-16 px-8 text-center">
           <p className="text-[14px] text-gray-400 mb-4">This form is not available.</p>
           <button onClick={handleClose} className="text-[13px] font-medium text-[#089447] hover:underline">
-            ← Back to forms
+            ← Back
           </button>
         </div>
       )}
@@ -483,7 +491,7 @@ export default function StepFormModal({ slug, onClose, serverDrafts = false, res
             onClick={handleClose}
             className="text-[13px] font-semibold text-[#089447] hover:text-[#077a3c] transition-colors"
           >
-            {standalone ? '← Back to forms' : 'Close'}
+            {standalone ? '← Back' : 'Close'}
           </button>
         </div>
       )}
@@ -660,11 +668,11 @@ export default function StepFormModal({ slug, onClose, serverDrafts = false, res
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0f0f2] dark:bg-zinc-950 px-4 py-8">
         <div className="w-full max-w-xl mb-3">
           <button
-            onClick={() => router.push('/forms')}
+            onClick={goBack}
             className="flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             <ArrowLeft size={13} />
-            All Forms
+            Exit
           </button>
         </div>
         {card}

@@ -2,6 +2,44 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-15 — Support page focus, /forms retired, live 3D US Rotors model
+
+Batch of misc fixes (Jacob).
+
+**Support (`/support`)**
+- **Redesigned into a single "do this" landing page.** One live action — Start a
+  support request → `/support/equipment-support` — as a big primary card, with a hero
+  headline, three reassurance points, an operational-status strip, and a quiet "coming
+  soon" note. Rebuilt on the Quiet-Precision semantic tokens (warm canvas, hairline
+  cards, brand green only on the one CTA + focus rings; dark mode auto-themes).
+- **Removed the customer-facing "Check ticket status" links** from the support landing
+  (header + hero) and the "Track this ticket's status" link on the ticket success screen
+  (kept only for logged-in customers, as "View this in my portal"). The `/support/status`
+  lookup route stays in place, just unlinked. **Emails left unchanged** (per Jacob).
+- **Removed the "Request portal access" CTA** from the end of the equipment support
+  ticket — the form is now purely: submit a ticket, our team is notified.
+
+**Public forms directory retired**
+- **Deleted the public `/forms` index** (and its now-orphaned `FormsPortal` /
+  `FormsBrowser` components). Individual forms still live at `/forms/[slug]`.
+- The **"All Forms" / "Back to forms"** buttons now **go back to the page you came from**
+  (`router.back()`, with a public `/support` fallback when there's no history — never `/`,
+  which would bounce an anonymous filler to `/login`) via a new shared `BackLink`. The
+  always-visible top-of-form control is labeled **Exit** (distinct from the step-nav "Back").
+  The `PublicHeader` logo is now a static brand mark (was → `/forms`). Smoke test updated.
+
+**US Rotors Pricing Calculator — live 3D model**
+- Added an **interactive 3D viewer** to `public/tools/us-rotors-pricing-calculator.html`
+  that updates live with the purchase-order inputs: a desiccant **rotor** (parametric
+  diameter/depth, hub bore, honeycomb face) and, when "Rotor + Cassette" is selected, the
+  rotor inside a **sheet-metal cassette** with process / reactivation / (optional) purge
+  **airflow arrows**. Diameter is normalized on-screen; depth stays proportional; stainless
+  → metallic finish, segmented → segment lines; the wheel spins. Drag to orbit, scroll to zoom.
+- Built in vanilla Three.js (CDN import map, mirroring the `/customer/srv` parametric
+  approach); driven by a single `update3D(lastCalc)` call at the end of `recalc()`, so the
+  model and the price move together. Degrades gracefully (pricing untouched) if the CDN is
+  unreachable. `next build` green; live updates verified across size / depth / type / options.
+
 ## 2026-07-14 — Annual Review print sheet: rating words restored + total is /48 (12 questions)
 
 Two corrections to the numeric Annual Review sheet, per Jacob:

@@ -1,7 +1,8 @@
 ﻿import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import PublicHeader from '@/components/PublicHeader'
+import BackLink from '@/components/BackLink'
 
 async function getForm(slug: string) {
   const { data } = await supabase
@@ -62,13 +63,10 @@ export default async function SuccessPage(props: { params: Promise<{ slug: strin
                 <RotateCcw size={13} />
                 Submit another response
               </Link>
-              <Link
-                href="/forms"
+              <BackLink
+                label="Back"
                 className="inline-flex items-center gap-2 text-[13px] font-medium text-gray-400 hover:text-[#0a0a0b] dark:hover:text-white px-4 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-              >
-                <ArrowLeft size={13} />
-                Back to forms
-              </Link>
+              />
             </div>
           </div>
 

@@ -6,7 +6,8 @@ import { normalizeRole, homeForRole } from '@/lib/roles'
 export const dynamic = 'force-dynamic'
 
 // Root is a role-aware router: it never renders UI, it just sends each visitor
-// to the right home. The public forms directory now lives at /forms.
+// to the right home. Individual public forms live at /forms/[slug]; there is no
+// public forms index (removed 2026-07-15 — forms are reached by direct link).
 export default async function RootRouter() {
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()

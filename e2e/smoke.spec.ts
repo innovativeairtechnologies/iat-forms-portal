@@ -15,7 +15,7 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('public entry points load', () => {
-  for (const path of ['/login', '/support', '/support/status', '/forms']) {
+  for (const path of ['/login', '/support', '/support/status']) {
     test(`${path} responds without a server error`, async ({ page }) => {
       const res = await page.goto(path)
       expect(res, `no response for ${path}`).toBeTruthy()
