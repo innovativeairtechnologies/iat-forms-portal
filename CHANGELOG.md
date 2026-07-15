@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-15 — US Rotors 3D: two-sided casing + process/reactivation zone shading
+
+Bossman tweaks to the 3D model:
+- The **aluminum casing look is now on both faces** — the "+" cross, center hub, and
+  diagonal corner gussets mirror onto the back, so front and back read identically.
+- The **wheel face is shaded by airflow zone** (always on, independent of the "Show
+  airflow" toggle): the top-right quadrant = **reactivation (red)**, the other three =
+  **process (blue)**, rendered as stationary semi-transparent sectors over the spinning
+  media so the spokes still read through. The reactivation arrow + legend key are red to match.
+
 ## 2026-07-15 — US Rotors 3D model: photo-accurate rotor + cassette
 
 Reworked the calculator's 3D viewer to match IAT's real desiccant cassettes (from

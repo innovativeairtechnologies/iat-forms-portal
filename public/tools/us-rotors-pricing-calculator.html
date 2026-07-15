@@ -524,7 +524,7 @@
       </label>
       <div class="viewer-legend" id="viewer_legend" style="display:none">
         <span class="vl-item"><span class="vl-dot" style="background:#0274db"></span>Process air</span>
-        <span class="vl-item"><span class="vl-dot" style="background:#3a3a46"></span>Reactivation</span>
+        <span class="vl-item"><span class="vl-dot" style="background:#d23f34"></span>Reactivation</span>
         <span class="vl-item" id="vl_purge" style="display:none"><span class="vl-dot" style="background:#16acf8"></span>Purge</span>
       </div>
       <div class="viewer-hint">Drag to rotate &middot; scroll to zoom &middot; updates with your selections</div>
@@ -1616,7 +1616,7 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
 
   // Palette tuned to the real IAT cassettes: dark charcoal desiccant media, thin
   // light spokes, brushed-aluminum frame, dark drive chain.
-  const COL = { process: 0x0274db, react: 0x3a3a46, purge: 0x16acf8,
+  const COL = { process: 0x0274db, react: 0xd23f34, purge: 0x16acf8,
     media: 0x2b2b30, mediaEdge: 0x202024, alu: 0xd7dce1, aluBright: 0xeef1f4,
     spoke: 0x969ca4, chain: 0x40434a };
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1753,20 +1753,33 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(bore, bore, L * 0.98, 128, 1, true), aluMat(true));
     ring.rotation.x = Math.PI / 2; g.add(ring);
 
-    // structural "+" cross on the front + center hub
-    const zc = L / 2 + 0.005, crossW = 0.085, crossD = 0.09;
-    const hb = new THREE.Mesh(new THREE.BoxGeometry(half * 2, crossW, crossD), alu); hb.position.z = zc; g.add(hb);
-    const vb = new THREE.Mesh(new THREE.BoxGeometry(crossW, half * 2, crossD), alu); vb.position.z = zc; g.add(vb);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, crossD * 1.7, 32), aluMat(true));
-    hub.rotation.x = Math.PI / 2; hub.position.z = zc; g.add(hub);
+    // structural "+" cross + center hub + diagonal corner gussets — on BOTH faces, so
+    // the front and back read identically (bossman: both sides need the casing look).
+    const crossW = 0.085, crossD = 0.09, braceLen = half * 0.72, braceW = 0.07;
+    [1, -1].forEach(function (sf) {
+      const zc = sf * (L / 2 + 0.005);
+      const hb = new THREE.Mesh(new THREE.BoxGeometry(half * 2, crossW, crossD), alu); hb.position.z = zc; g.add(hb);
+      const vb = new THREE.Mesh(new THREE.BoxGeometry(crossW, half * 2, crossD), alu); vb.position.z = zc; g.add(vb);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, crossD * 1.7, 32), aluMat(true));
+      hub.rotation.x = Math.PI / 2; hub.position.z = zc; g.add(hub);
+      [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (s) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(braceLen, braceW, 0.07), alu);
+        bar.position.set(s[0] * half * 0.64, s[1] * half * 0.64, zc + sf * 0.01);
+        bar.rotation.z = -s[0] * s[1] * Math.PI / 4;
+        g.add(bar);
+      });
+    });
 
-    // diagonal corner braces (gussets), proud of the face so they read like the real unit
-    const braceLen = half * 0.72, braceW = 0.07;
-    [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (s) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(braceLen, braceW, 0.07), alu);
-      bar.position.set(s[0] * half * 0.64, s[1] * half * 0.64, zc + 0.01);
-      bar.rotation.z = -s[0] * s[1] * Math.PI / 4;
-      g.add(bar);
+    // Airflow zones on the wheel face (stationary, both faces): the top-right quadrant is
+    // reactivation (red), the other three are process (blue). Semi-transparent so the
+    // spinning media + spokes still read through. Always shown whenever a cassette is shown.
+    const zoneMat = function (hex) { return new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }); };
+    [1, -1].forEach(function (sf) {
+      const zf = sf * (depth / 2 + 0.008);
+      const red = new THREE.Mesh(new THREE.CircleGeometry(R * 0.985, 72, 0, Math.PI / 2), zoneMat(COL.react));
+      red.position.z = zf; g.add(red);
+      const blue = new THREE.Mesh(new THREE.CircleGeometry(R * 0.985, 72, Math.PI / 2, Math.PI * 1.5), zoneMat(COL.process));
+      blue.position.z = zf; g.add(blue);
     });
 
     // simplified perimeter drive chain (thin dark ring in the wheel-to-frame gap)
@@ -1829,8 +1842,10 @@ document.addEventListener("DOMContentLoaded", function() { populateSizes(); });
     // "Show airflow" toggle is only meaningful with a cassette; legend follows it.
     const air = document.getElementById('viewer_airflow_row');
     if (air) air.style.display = showCassette ? 'inline-flex' : 'none';
+    // The red/blue zone shading is always on in cassette view, so the Process/Reactivation
+    // key is too; the purge item only when its arrow is shown.
     const legend = document.getElementById('viewer_legend');
-    if (legend) legend.style.display = (showCassette && airflowOn()) ? 'flex' : 'none';
+    if (legend) legend.style.display = showCassette ? 'flex' : 'none';
     const vp = document.getElementById('vl_purge');
     if (vp) vp.style.display = (showCassette && airflowOn() && !!c.purge) ? 'inline-flex' : 'none';
   }
