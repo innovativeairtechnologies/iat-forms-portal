@@ -2,6 +2,39 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-16 — Ticket notes follow the `tickets` perm; note authorship recorded
+
+`sales`/`engineering`/`production_manager` could reassign a ticket but **401'd posting a
+note** on it. `requireTicketAccess()` — the single boundary behind all four dual-auth
+ticket routes — now resolves a third caller, `staff` (holds `tickets`, read live from the
+matrix). `admin` is tried **before** `staff`: admins hold every perm, so the other order
+would downgrade them into the internal-only branch and cost them customer replies.
+
+- **Internal notes only for scoped roles.** Forced `visibility='internal'` server-side,
+  ignoring the client — the same mechanism that forces a customer's note public/customer.
+  The "Reply to customer" toggle is hidden for them, but that's honesty, not the control.
+  Replying to a customer under IAT's name stays an admin act. Note DELETE stays admin-only.
+- **Attachments too** — upload/download/preview. They could previously see an attachment's
+  name and size in a note but 401 opening it.
+- **Reading internal notes was already open** to any `tickets` holder (the page
+  server-renders them via `supabaseAdmin`, ungated), so nothing new is disclosed here.
+- **Authorship (migration `054`, pending).** `ticket_notes` recorded only `author_type` —
+  every staff note was an anonymous "admin". Adds `author_id` (FK `auth.users`, not
+  `employees`) + snapshotted `author_name`, resolved from the session, never the body.
+  No backfill: older notes stay unattributed rather than get a guessed author.
+- **Closed in passing:** notes are read with `select('*')`, so `author_name` would have
+  shipped **staff names to customers**. The GET strips `author_*` for customers and the
+  customer ticket page now lists columns explicitly.
+
+⚠️ `054` is additive and **nothing breaks without it** — the insert falls back to saving
+notes unattributed. That fallback keys on `PGRST204` **and** `42703`: PostgREST returns
+`PGRST204` for an *insert* with a missing column (`42703` is what a *select* returns), and
+handling only the latter would have 500'd every note save until the migration ran.
+
+Verified: `tsc --noEmit` + `next build` green; read-only live-DB checks confirmed the
+customer column list is valid and leaks no author identity, `054` is not yet applied, and
+the real error codes. Probes left zero rows in prod.
+
 ## 2026-07-16 — Tickets follow the `tickets` perm; last `is_admin` readers removed
 
 ⚠️ **Two findings that invert the earlier write-ups.** (1) The `is_admin` drift everything

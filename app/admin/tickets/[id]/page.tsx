@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { notFound } from 'next/navigation'
 import { sanitizeNoteHtml, sanitizeAttachments } from '@/lib/sanitize'
 import { getEmployeesWithPerm } from '@/lib/staff'
+import { getAdminUser } from '@/lib/admin-auth'
 import TicketDetailClient from './TicketDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -12,10 +13,15 @@ export default async function TicketDetailPage(props: { params: Promise<{ id: st
   // is gated on — so anyone who can work this ticket can own it. (This used to
   // list `is_admin` staff only, which locked out the sales / engineering /
   // production_manager roles who hold the perm and work the queue daily.)
-  const [{ data: ticket }, { data: notes }, permitted] = await Promise.all([
+  //
+  // `admin` here is only to decide whether to OFFER the "Reply to customer"
+  // toggle — the notes route forces a scoped role's note to internal regardless,
+  // so this is honesty in the UI, not the security boundary.
+  const [{ data: ticket }, { data: notes }, permitted, admin] = await Promise.all([
     supabaseAdmin.from('tickets').select('*, owner:employees(id, name)').eq('id', params.id).single(),
     supabaseAdmin.from('ticket_notes').select('*').eq('ticket_id', params.id).order('created_at', { ascending: true }),
     getEmployeesWithPerm('tickets'),
+    getAdminUser(),
   ])
 
   if (!ticket) notFound()
@@ -45,5 +51,13 @@ export default async function TicketDetailPage(props: { params: Promise<{ id: st
     equipmentId = eq?.id ?? null
   }
 
-  return <TicketDetailClient ticket={ticket} initialNotes={safeNotes} owners={owners} equipmentId={equipmentId} />
+  return (
+    <TicketDetailClient
+      ticket={ticket}
+      initialNotes={safeNotes}
+      owners={owners}
+      equipmentId={equipmentId}
+      canReplyToCustomer={!!admin}
+    />
+  )
 }

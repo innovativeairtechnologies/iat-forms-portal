@@ -329,6 +329,12 @@ export type TicketNote = {
   // historical note stays admin-only with no retroactive exposure.
   visibility: 'internal' | 'public'
   author_type: 'admin' | 'customer'
+  // migration 054 — WHICH person wrote it (author_type only says staff-vs-customer).
+  // Optional/nullable on purpose: notes written before 054 are unattributed and are
+  // never backfilled with a guess, and both fields are stripped before any note is
+  // sent to a customer, so they're absent on the customer thread by design.
+  author_id?: string | null
+  author_name?: string | null
 }
 
 export type AccrualTier = {

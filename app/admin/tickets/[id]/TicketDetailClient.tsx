@@ -242,12 +242,19 @@ export default function TicketDetailClient({
   initialNotes,
   owners,
   equipmentId,
+  canReplyToCustomer,
 }: {
   ticket: Ticket
   initialNotes: TicketNote[]
   /** Assignable owners — everyone holding the `tickets` perm, not just admins. */
   owners: Pick<Employee, 'id' | 'name'>[]
   equipmentId: string | null
+  /**
+   * Full admins only. Scoped `tickets` roles post internal notes, so they don't
+   * get the toggle. Presentation only — the notes route forces their note to
+   * internal whatever the client sends.
+   */
+  canReplyToCustomer: boolean
 }) {
   const [ticket, setTicket] = useState(initial)
   const [pendingStatus, setPendingStatus] = useState(initial.status)
@@ -306,7 +313,13 @@ export default function TicketDetailClient({
       const res = await fetch(`/api/tickets/${ticket.id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: html, attachments, visibility: replyToCustomer ? 'public' : 'internal' }),
+        // Belt-and-braces: a scoped role can't set the toggle because it isn't
+        // rendered, and the server forces their note internal regardless.
+        body: JSON.stringify({
+          content: html,
+          attachments,
+          visibility: canReplyToCustomer && replyToCustomer ? 'public' : 'internal',
+        }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
@@ -670,13 +683,20 @@ export default function TicketDetailClient({
                     {notes.map((note, idx) => (
                       <div key={note.id}>
                         {(idx > 0 || !!ticket.notes) && <div className="border-t border-zinc-100 dark:border-zinc-800/50 mb-4" />}
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           <p className="text-[11px] text-zinc-400 dark:text-zinc-600">{formatNoteDate(note.created_at)}</p>
+                          {/* Migration 054. Absent on notes written before it — those stay
+                              unattributed rather than be backfilled with a guess. */}
+                          {note.author_name && (
+                            <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">{note.author_name}</p>
+                          )}
                           <StatusPill tone={note.visibility === 'public' ? 'emerald' : 'slate'}>
                             {note.visibility === 'public' ? 'Sent to customer' : 'Internal'}
                           </StatusPill>
+                          {/* author_type is 'admin' for every staff note, incl. scoped
+                              `tickets` roles — it marks staff-vs-customer, not rank. */}
                           <StatusPill tone={note.author_type === 'customer' ? 'sky' : 'slate'}>
-                            {note.author_type === 'customer' ? 'Customer' : 'Admin'}
+                            {note.author_type === 'customer' ? 'Customer' : 'Staff'}
                           </StatusPill>
                         </div>
                         {note.content && (
@@ -699,17 +719,23 @@ export default function TicketDetailClient({
                     <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mb-3">New note</p>
                   </div>
                 )}
-                <label className="flex items-center gap-2 mb-2.5 cursor-pointer select-none w-fit">
-                  <input
-                    type="checkbox"
-                    checked={replyToCustomer}
-                    onChange={e => setReplyToCustomer(e.target.checked)}
-                    className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-600 text-emerald-600 focus:ring-emerald-500/40"
-                  />
-                  <span className="text-[12px] font-medium text-zinc-600 dark:text-zinc-300">
-                    Reply to customer <span className="text-zinc-400 dark:text-zinc-500 font-normal">— visible on their ticket page</span>
-                  </span>
-                </label>
+                {canReplyToCustomer ? (
+                  <label className="flex items-center gap-2 mb-2.5 cursor-pointer select-none w-fit">
+                    <input
+                      type="checkbox"
+                      checked={replyToCustomer}
+                      onChange={e => setReplyToCustomer(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-600 text-emerald-600 focus:ring-emerald-500/40"
+                    />
+                    <span className="text-[12px] font-medium text-zinc-600 dark:text-zinc-300">
+                      Reply to customer <span className="text-zinc-400 dark:text-zinc-500 font-normal">— visible on their ticket page</span>
+                    </span>
+                  </label>
+                ) : (
+                  <p className="text-[12px] text-zinc-400 dark:text-zinc-500 mb-2.5">
+                    Notes you add here are internal — only an admin can reply to the customer.
+                  </p>
+                )}
                 <RichTextEditor onSubmit={addNote} disabled={savingNote} onUpload={uploadAttachment} />
               </div>
             </Card>

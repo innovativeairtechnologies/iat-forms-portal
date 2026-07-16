@@ -33,9 +33,13 @@ export default async function CustomerTicketDetailPage(props: { params: Promise<
   // Defense in depth: filter to visibility='public' here too, even though the
   // notes API route (used for posting/refetching) also enforces this — the
   // initial server-rendered payload should never even fetch internal notes.
+  // Columns are listed explicitly for the same reason: `author_id`/`author_name`
+  // (migration 054) must never reach a customer's browser — a public note is IAT
+  // replying, and which staff member typed it isn't the customer's business.
+  // A bare '*' would ship the name the moment 054 lands.
   const { data: notes } = await supabaseAdmin
     .from('ticket_notes')
-    .select('*')
+    .select('id, ticket_id, content, attachments, created_at, visibility, author_type')
     .eq('ticket_id', params.id)
     .eq('visibility', 'public')
     .order('created_at', { ascending: true })

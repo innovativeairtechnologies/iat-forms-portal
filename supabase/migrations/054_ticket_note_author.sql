@@ -1,0 +1,66 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 054 — Record WHO wrote each ticket note.
+--
+-- WHY
+-- `ticket_notes` has recorded only `author_type` ('admin' | 'customer') since
+-- migration 037. That means every staff note is an anonymous "admin" — the row
+-- says a note was written by staff, never by whom. That was tolerable while the
+-- notes route was full-admin-only (a handful of people). As of the 2026-07-16
+-- change that lets every `tickets` perm holder (sales, engineering,
+-- production_manager) post internal notes, it is not: more hands writing
+-- untraceable notes, right next to status/priority/owner writes that ARE
+-- audit-logged with the real actor (app/admin/tickets/actions.ts → logAudit).
+--
+-- WHAT
+--   • author_id   — the auth user who wrote it. FK to auth.users so it covers
+--                   BOTH staff and customers (customers are auth users too).
+--                   Deliberately NOT a FK to employees(id): customers currently
+--                   have employees rows only because of the handle_new_user()
+--                   trigger side-effect (see docs/customer-portal.md), and that
+--                   wart is expected to be cleaned up — an employees FK would
+--                   break when it is. ON DELETE SET NULL, so deleting an account
+--                   never deletes the note.
+--   • author_name — a SNAPSHOT of the display name at write time, same rationale
+--                   as crib_events.actor_name (migration 050): /admin/reset hard-
+--                   deletes accounts, so without the snapshot, deleting an account
+--                   would erase the record of who said what — the one question
+--                   attribution exists to answer. History is immortal by design:
+--                   a later rename does NOT rewrite old notes.
+--
+-- NO BACKFILL. Every pre-existing note stays author_id/author_name NULL and
+-- renders unattributed. Backfilling would mean inventing an author for notes
+-- whose real author was never recorded — a guess written into permanent history.
+--
+-- SECURITY / RLS: unchanged. `ticket_notes` is RLS-on with NO policies (migration
+-- 010) — service-role only. This migration adds columns and grants nothing.
+-- Staff names are NEVER sent to customers: the notes GET route strips author_*
+-- for a customer caller and the customer ticket page doesn't select them.
+--
+-- ORDERING: safe to run BEFORE or AFTER the code deploy. ADD COLUMN is additive,
+-- so old code ignores the columns; and the notes route falls back to inserting
+-- without them if this migration hasn't run yet (PGRST204/42703), so note-saving
+-- can never break on the ordering. Attribution simply starts once it's applied.
+--
+-- Idempotent. Run by hand in the Supabase SQL editor.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.ticket_notes
+  ADD COLUMN IF NOT EXISTS author_id   uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS author_name text;
+
+-- ── VERIFY (run after applying) ──────────────────────────────────────────────
+-- Columns exist and are nullable:
+--   SELECT column_name, data_type, is_nullable FROM information_schema.columns
+--    WHERE table_name = 'ticket_notes' AND column_name IN ('author_id','author_name');
+--
+-- Still service-role only — expect ZERO rows:
+--   SELECT policyname FROM pg_policies WHERE tablename = 'ticket_notes';
+--
+-- Pre-existing notes are untouched and unattributed — expect every row NULL:
+--   SELECT count(*) AS total, count(author_id) AS with_author FROM public.ticket_notes;
+--
+-- After the deploy, post one note as an admin and one as a scoped role, then:
+--   SELECT created_at, author_type, author_name, visibility FROM public.ticket_notes
+--    ORDER BY created_at DESC LIMIT 5;
+--   -- expect: both rows carry a real author_name; the scoped role's row is
+--   -- visibility='internal' (it cannot be anything else — forced server-side).

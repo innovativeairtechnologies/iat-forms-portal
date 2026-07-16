@@ -156,12 +156,52 @@ queue daily. With an admin-only write the page rendered a form that **always fai
 save**, offering an action it then refused. Gating the write on the same editable perm
 as the page means the two can't drift when the matrix changes.
 
-**Still admin-only on that page: ticket notes.** `/api/tickets/[id]/notes` goes through
-`requireTicketAccess()` (`lib/ticket-access.ts`), the shared admin-or-owning-customer
-boundary for all four dual-auth ticket routes, so a scoped role gets a **401 posting a
-note** even though they can now reassign the ticket. Widening that is a separate
-decision — it changes note authorship and customer-visible note handling across notes,
-attachments, download and preview at once — and is tracked as a follow-up.
+**Ticket notes (resolved 2026-07-16, later the same day).** `requireTicketAccess()`
+(`lib/ticket-access.ts`) — the single boundary shared by all four dual-auth ticket routes
+(notes, attachments, attachments/download, attachments/preview) — now resolves **three**
+callers instead of two:
+
+| caller | sees | may post | may reply to the customer |
+|---|---|---|---|
+| `admin` | everything | yes | **yes** — the only role that can |
+| `staff` (holds `tickets`) | everything | yes, **internal only** | no |
+| `customer` (owns the ticket) | public notes only | yes (forced public/customer) | n/a |
+
+Order matters in that function: `admin` is tried **before** `staff`, because admins hold
+every perm and `getTicketsActor()` would otherwise accept them and silently downgrade
+them to the internal-only branch.
+
+**A scoped role's note is forced `visibility='internal'` server-side**, ignoring whatever
+the client sends — the same mechanism that forces a customer's note to public/customer.
+The UI hides the "Reply to customer" toggle for them, but that's honesty, not the control:
+hiding it is unnecessary for security precisely because the server doesn't trust it.
+Sending text to a customer under IAT's name stays an admin act. 037's internal-by-default
+is untouched.
+
+`author_type` stays `'admin' | 'customer'`: it marks **staff-vs-customer**, not rank, and
+it's what the customer thread keys on. A scoped role's note is `author_type='admin'` and
+never customer-visible, so this can't leak. The admin UI's pill now reads **"Staff"**
+rather than "Admin" to match.
+
+**Why widening the read side was a non-event:** the admin ticket page already
+server-renders *every* internal note to anyone with `tickets` (`page.tsx` reads
+`ticket_notes` via `supabaseAdmin`, ungated). Scoped roles have been reading internal
+notes all along — the 401 only ever blocked *writing*. What this change actually grants
+is posting, plus attachment upload/download/preview, which was its own live incoherence:
+they could see an attachment's name and size in a rendered note and get a 401 opening it.
+
+**Note authorship (migration `054`).** `ticket_notes` recorded only `author_type`, so
+every staff note was an anonymous "admin" — no record of who wrote it, right next to
+status/priority/owner writes that are audit-logged with the real actor. `054` adds
+`author_id` (FK `auth.users`, covering staff and customers alike; **not** `employees`,
+whose customer rows are a trigger side-effect due for cleanup) and a snapshotted
+`author_name` (same rationale as `crib_events.actor_name` — account deletion must not
+erase who said what). Resolved from the session, never from the request body. Pre-`054`
+notes stay unattributed rather than be backfilled with a guess.
+
+**Staff names never reach customers.** The notes `GET` strips `author_*` for a customer
+caller, and `app/customer/tickets/[id]/page.tsx` lists its columns explicitly instead of
+`select('*')` — a bare `*` would have started shipping the name the moment `054` landed.
 
 ## `employees.is_admin` is NOT an authorization input
 
