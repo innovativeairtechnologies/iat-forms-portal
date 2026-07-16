@@ -73,6 +73,17 @@ customer + equipment, seeds the tracker, and emails the invite):
    already exists), seeds the build/ship tracker, and emails a temp password + Sign In link.
    The dialog also shows the temp password to hand off if email delivery isn't set up.
 
+> ⚠️ **The invite also creates an `employees` row — as a side effect nobody asked for.**
+> `handle_new_user()` (migration 001) fires on every `auth.users` insert, so
+> `auth.admin.createUser()` above trips it. The route then sets `profiles.role='customer'`,
+> but the employees row it just caused stays, defaulted to `is_active=true` /
+> `org_visible=true`. So **every customer is in the `employees` table**, and any surface
+> that reads `employees` as a staff roster must exclude them via `getCustomerIds()` in
+> `lib/staff.ts`. Until 2026-07-16 nothing did, and 4 of the 12 nodes on the live org chart
+> and employee directory were customers rendered as staff with mailto: cards. Deleting the
+> row is **not** the fix (it would cascade oddly and the next invite recreates it) — the
+> filter is. If you add a new page or picker that lists `employees`, filter it there too.
+
 The same wizard (`components/admin/NewCustomerWizard.tsx`) is the equipment list's
 **"New from Submittal"** button.
 
