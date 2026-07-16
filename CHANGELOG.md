@@ -2,6 +2,59 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-16 — Tickets follow the `tickets` perm; last `is_admin` readers removed
+
+⚠️ **Two findings that invert the earlier write-ups.** (1) The `is_admin` drift everything
+called hypothetical is **already live in prod**: `jacob.younker@dehumidifiers.com` (Jacob's
+own admin account) and `jacob@dehumidifiers.com` both have `profiles.role = 'admin'` with
+`is_admin = false` — promoted by hand in the Supabase dashboard, which skips both writers.
+It runs **fail-closed** (zero rows are `is_admin = true` with a non-admin role), so nobody
+ever gained access; two real admins were **denied** — silently missing admin digests and
+every new-ticket/PTO notification, and unassignable on tickets. The code below fixes them
+with no migration. (2) `is_admin` does **not** have zero authorization readers — the RLS
+policies still gate on it (see the ⚠️ below). Migration **`053` (pending)** resyncs the
+column for those policies' sake.
+
+The ticket-owner picker listed `is_admin = true` staff only, so **only full admins could
+own a ticket** — even though `sales`, `engineering` and `production_manager` hold the
+`tickets` perm, are let onto the ticket page by middleware, and work the queue daily.
+Behind it sat a second bug: `updateTicket` gated on the strict full-admin
+`getAdminUser()`, so those roles saw a status/priority/owner form that **always failed on
+save**. Both now follow the `tickets` perm, read from the live matrix:
+
+- **`getEmployeesWithPerm(perm)`** (`lib/staff.ts`) builds the picker — "everyone who can
+  work this ticket", moved by `/admin/permissions` with no deploy. Fails **closed**
+  (empty list), the deliberate inverse of `getCustomerIds()` next to it. Customers and
+  profile-less rows are excluded by holding no permission, so no extra filter is needed.
+- **`getTicketsActor()`** (`lib/admin-auth.ts`) guards the write — the **second scoped
+  write exception** after Deals, and the server-action counterpart to the matrix-backed
+  route guards in `lib/api-auth.ts`. Audit logging unchanged.
+- **`getAdminRecipients()`** (`lib/staff.ts`) re-sources admin notification email (daily
+  digest, `/api/tickets`, `/api/requests`) from `profiles.role = 'admin'`, so a demoted
+  admin stops receiving it immediately. It **throws** on an unreadable `profiles` table;
+  the two routes catch and fall back to `ADMIN_NOTIFICATION_EMAIL` rather than 500 a
+  request whose row is already committed.
+
+Also fixed: `/api/tickets` and `/api/requests` never filtered `is_active`, so
+**deactivated admins were still being emailed**; and an owner who no longer qualified had
+no matching `<option>`, making an owned ticket render as unassigned (the current owner is
+now always kept in the list).
+
+⚠️ **`employees.is_admin` is kept, and the RLS policies are why.** No application code
+reads it now, but migrations `001`/`007`/`022` gate `employees`, `time_off_requests`,
+`accrual_log` and `us_rotors_orders` policies on it — real access decisions at the DB
+layer, mostly dormant only because the server uses the service-role key. Postgres refuses
+to drop a column its policies depend on, so rewriting them to join `profiles.role` is a
+tracked follow-up. Ticket **notes** stay admin-only (`requireTicketAccess`, the shared
+dual-auth boundary) — a scoped role can reassign a ticket but still 401s posting a note;
+widening that needs its own decision.
+
+Verified: `tsc --noEmit` + `next build` green; picker/write predicates exercised against
+the real `lib/roles.ts` across 13 roles × 5 matrices (150/150), negative-tested by
+replaying the old admin-only predicate (reproduces the bug, 24 failures). Read-only live
+DB check against the real matrix: picker **4 → 7** (loses nobody), admin mail **4 → 6**,
+**0** customers listed despite 4 customer rows in `employees`. No code depends on `053`.
+
 ## 2026-07-15 — Admin sidebar color + cool-graphite dark mode
 
 Gave the admin left nav a color identity and retoned dark mode:

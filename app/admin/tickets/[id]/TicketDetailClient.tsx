@@ -240,12 +240,13 @@ function EmailPreviewModal({ ticketId, att, onClose }: { ticketId: string; att: 
 export default function TicketDetailClient({
   ticket: initial,
   initialNotes,
-  admins,
+  owners,
   equipmentId,
 }: {
   ticket: Ticket
   initialNotes: TicketNote[]
-  admins: Pick<Employee, 'id' | 'name'>[]
+  /** Assignable owners — everyone holding the `tickets` perm, not just admins. */
+  owners: Pick<Employee, 'id' | 'name'>[]
   equipmentId: string | null
 }) {
   const [ticket, setTicket] = useState(initial)
@@ -293,7 +294,7 @@ export default function TicketDetailClient({
     })
     setUpdating(false)
     if (error) { setSaveError(error); return }
-    const owner = admins.find(a => a.id === pendingOwnerId)
+    const owner = owners.find(o => o.id === pendingOwnerId)
     const resolvedReason = pendingStatus === 'resolved' ? pendingResolvedReason : null
     setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId, resolved_reason: resolvedReason, owner: owner ? { ...owner } as Employee : undefined }))
   }
@@ -463,8 +464,8 @@ export default function TicketDetailClient({
                   className="text-[13px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-zinc-700 dark:text-zinc-200 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all disabled:opacity-50 w-full sm:w-auto min-w-[180px]"
                 >
                   <option value="">Unassigned</option>
-                  {admins.map(admin => (
-                    <option key={admin.id} value={admin.id}>{admin.name}</option>
+                  {owners.map(o => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
                 </select>
 

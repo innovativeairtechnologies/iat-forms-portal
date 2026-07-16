@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getTicketsActor } from '@/lib/admin-auth'
 import { logAudit } from '@/lib/audit'
 import type { Ticket } from '@/lib/supabase'
 
@@ -10,9 +10,11 @@ export async function updateTicket(
   ticketId: string,
   data: { status: Ticket['status']; priority: Ticket['priority']; owner_id: string | null; resolved_reason?: string | null }
 ): Promise<{ error: string | null }> {
-  // Service-role write — guard the caller explicitly.
-  const admin = await getAdminUser()
-  if (!admin) return { error: 'Forbidden' }
+  // Service-role write — guard the caller explicitly. Perm-scoped, not admin-only:
+  // everyone middleware lets onto the ticket page holds `tickets` and works the
+  // queue, so they may set status / priority / owner here.
+  const actor = await getTicketsActor()
+  if (!actor) return { error: 'Forbidden' }
 
   // Snapshot prior values so we only log genuine transitions (status / priority / owner).
   const { data: prior } = await supabaseAdmin
@@ -29,13 +31,13 @@ export async function updateTicket(
     revalidatePath('/admin/tickets')
     revalidatePath(`/admin/tickets/${ticketId}`)
 
-    const actor = { id: admin.user.id, name: admin.displayName }
+    const auditActor = { id: actor.user.id, name: actor.displayName }
     const who = prior.customer_name || 'Unknown'
     const tkt = prior.ticket_number
 
     if (prior.status !== data.status) {
       await logAudit({
-        actor,
+        actor: auditActor,
         action: 'ticket.status',
         entityType: 'ticket',
         entityId: ticketId,
@@ -46,7 +48,7 @@ export async function updateTicket(
 
     if (prior.priority !== data.priority) {
       await logAudit({
-        actor,
+        actor: auditActor,
         action: 'ticket.priority',
         entityType: 'ticket',
         entityId: ticketId,
@@ -66,7 +68,7 @@ export async function updateTicket(
       const fromName = prior.owner_id ? names[prior.owner_id] || 'someone' : 'Unassigned'
       const toName = data.owner_id ? names[data.owner_id] || 'someone' : 'Unassigned'
       await logAudit({
-        actor,
+        actor: auditActor,
         action: 'ticket.owner',
         entityType: 'ticket',
         entityId: ticketId,

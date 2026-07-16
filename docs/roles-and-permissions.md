@@ -142,12 +142,33 @@ guard. It's a
 deliberately narrow, clearly-named exception — don't reuse it for other routes;
 add a similarly-scoped guard per feature as write-enablement rolls out.
 
+**Second scoped write exception (2026-07-16): Tickets.** The ticket detail action
+`updateTicket` (`app/admin/tickets/actions.ts` — status / priority / owner) now gates
+on `getTicketsActor()` (`lib/admin-auth.ts`), which accepts any role holding the
+`tickets` perm, read live from the matrix. This is the **server-action** counterpart to
+the `lib/api-auth.ts` route guards (those return a `NextResponse`; an action needs an
+actor or null), and it is its own named guard rather than a general "any perm" helper,
+per `requireDealsAuth`'s note.
+
+Why it isn't admin-only: middleware already lets `tickets` holders — `sales`,
+`engineering`, `production_manager` — onto `/admin/tickets/[id]`, and they work the
+queue daily. With an admin-only write the page rendered a form that **always failed on
+save**, offering an action it then refused. Gating the write on the same editable perm
+as the page means the two can't drift when the matrix changes.
+
+**Still admin-only on that page: ticket notes.** `/api/tickets/[id]/notes` goes through
+`requireTicketAccess()` (`lib/ticket-access.ts`), the shared admin-or-owning-customer
+boundary for all four dual-auth ticket routes, so a scoped role gets a **401 posting a
+note** even though they can now reassign the ticket. Widening that is a separate
+decision — it changes note authorship and customer-visible note handling across notes,
+attachments, download and preview at once — and is tracked as a follow-up.
+
 ## `employees.is_admin` is NOT an authorization input
 
 `profiles.role` is the only source of truth for who may do what. `employees.is_admin`
 is a **denormalized legacy boolean**, written in exactly two places
-(`/api/employees/invite`, `/api/admin/users/[id]/role`) and read by nothing that
-makes an access decision. Never gate on it:
+(`/api/employees/invite`, `/api/admin/users/[id]/role`) and read by no *application*
+code that makes an access decision. Never gate on it:
 
 - It is a **copy**, so it can drift. Anything that writes `profiles.role` without
   also writing `is_admin` (a hand-edit in the Supabase dashboard, a future route,
@@ -166,11 +187,90 @@ empty list. It returns the actor **plus** `canManage` from one role read because
 GET scopes on it and PATCH refuses on it. This was not exploitable when fixed —
 it's the drift class that's the point.
 
-`is_admin` still survives as a **roster convenience** in three notification
-recipient queries (`lib/admin-digest.ts`, `/api/tickets`, `/api/requests`) and the
-ticket-owner picker (`app/admin/tickets/[id]/page.tsx`). Those are not access
-decisions, but they inherit the same drift (a demoted admin keeps receiving admin
-digests and ticket/PTO notifications) — see the changelog for the two follow-ups.
+**2026-07-16 (later the same day):** the four remaining application readers — the
+three notification recipient queries (`lib/admin-digest.ts`, `/api/tickets`,
+`/api/requests`) and the ticket-owner picker (`app/admin/tickets/[id]/page.tsx`) —
+now resolve people from `profiles.role` through two new `lib/staff.ts` helpers:
+
+- **`getAdminRecipients()`** — active `profiles.role = 'admin'`, joined to `employees`
+  for the email. It **throws** on an unreadable `profiles` table: a recipient list you
+  couldn't compute is not an empty recipient list, and silently mailing nobody is how
+  a digest dies unnoticed. The two notification *routes* catch it and fall back to
+  `ADMIN_NOTIFICATION_EMAIL`, because their row is already committed by then and a
+  lookup failure must not 500 the person who just filed the ticket/request.
+- **`getEmployeesWithPerm(perm)`** — active staff holding `perm`, read from the live
+  matrix. Fails **closed** (empty list), the opposite of `getCustomerIds()` right above
+  it: a roster's worst failure is a blank org chart reading as "everyone left", but a
+  picker's worst failure is offering the wrong people. Note it needs **no**
+  `getCustomerIds()` call — `hasPermission()` is false for `customer` and for the null
+  role a profile-less `employees` row resolves to, so both are excluded by holding no
+  permission rather than by being filtered.
+
+**No application code reads `is_admin` now.** The column stays (with its two writers),
+because the **RLS policies still depend on it** — see the next section.
+
+### The drift is not hypothetical — it is live (measured 2026-07-16)
+
+Every write-up above this line, including this document, described `is_admin` drift as a
+thing that *could* happen. A read-only check against **prod** found it already had, on
+two rows:
+
+| account | `is_admin` | `profiles.role` |
+|---|---|---|
+| `jacob.younker@dehumidifiers.com` | `false` | `admin` |
+| `jacob@dehumidifiers.com` (Jacob Reagan) | `false` | `admin` |
+
+The predicted third path is exactly what happened: an account created or promoted **by
+hand in the Supabase dashboard** skips both writers, so `is_admin` keeps its
+`default false` from migration 001. (This matches the 2026-07-16 `handle_new_user()`
+finding — `jacob.younker` is one of the three hand-made accounts with no
+`user_metadata.name`.)
+
+**The drift runs in the SAFE direction.** Zero rows hold `is_admin = true` with a
+non-admin role, so the copy never granted anyone access they lacked. It **denied two real
+admins** instead — they were silently missing admin digests, new-ticket and PTO
+notifications, and couldn't be assigned tickets. That is also why `4e90a06`'s
+"not exploitable" verdict still stands, though **its stated reason — "the two columns are
+currently in sync" — was false**: the endpoint was fail-closed for the drifted rows, not
+unaffected by them. The code fixes above make all four surfaces read `profiles.role`, so
+those two accounts are correct immediately, with no migration.
+
+`is_admin` itself is resynced by **migration `053` (pending — run by hand)**. It is a
+stopgap: it makes the copy correct today so the RLS policies below stop being wrong about
+Jacob's own account. The real fix is the policy rewrite.
+
+## ⚠️ The RLS policies DO gate on `is_admin` — the column cannot simply be dropped
+
+The claim "nothing makes an access decision from `is_admin`" is true of the app and
+**false of the database**. Migrations `001` (`employees`, `time_off_requests`,
+`accrual_log`), `007` (`accrual_log`) and `022` (`us_rotors_orders`) all carry policies
+of the form:
+
+```sql
+exists (select 1 from public.employees e where e.id = auth.uid() and e.is_admin = true)
+```
+
+Those are authorization decisions, at the database layer, on the drifting column. They
+are **mostly dormant** — every app read of these tables goes through `supabaseAdmin`
+(service role, bypasses RLS) — but not entirely: `app/employee/welcome/page.tsx` updates
+`employees` with the **browser** client, so `employees_update_own`, whose `WITH CHECK`
+pins `is_admin` to its current value, is live on that path.
+
+Consequences, both of which bit the earlier write-ups:
+
+- **Postgres will refuse `ALTER TABLE employees DROP COLUMN is_admin`** while those
+  policies reference it. Dropping the column means rewriting them (to join
+  `profiles.role = 'admin'`) in a migration first.
+- **A stale `is_admin` is a real, if latent, RLS-layer access bug** — not merely the
+  notification drift. Any future surface that talks to these tables with the anon key
+  inherits it. **This is live today:** with `jacob.younker` sitting at `is_admin = false`,
+  Jacob's own daily-driver account is **not an admin as far as RLS is concerned**.
+  Dormant only because every server read uses the service-role key; migration `053`
+  resyncs the column as a stopgap.
+
+Rewriting those policies is the outstanding follow-up; it was deliberately left out of
+the 2026-07-16 change because it touches live RLS on four tables and cannot be exercised
+against prod data from a dev box.
 
 ## Department dashboards
 

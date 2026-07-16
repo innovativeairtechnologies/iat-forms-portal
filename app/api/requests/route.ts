@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendRequestNotificationToAdmins } from '@/lib/resend-pto'
+import { getAdminRecipients } from '@/lib/staff'
 
 export async function GET() {
   const supabase = await createSupabaseServer()
@@ -53,13 +54,17 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Notify admins — awaited so Vercel doesn't kill the function before Resend fires
-  const { data: admins } = await supabaseAdmin
-    .from('employees')
-    .select('email')
-    .eq('is_admin', true)
+  // Notify admins — awaited so Vercel doesn't kill the function before Resend fires.
+  // Recipients resolve from profiles.role (lib/staff.ts), never employees.is_admin.
+  // Degrade instead of throwing: the request row is already committed above, so a
+  // failed lookup must not 500 the employee who just filed it — the env fallback
+  // below is the backstop.
+  const admins = await getAdminRecipients().catch(err => {
+    console.error('[requests] admin recipients unavailable, falling back to env:', err)
+    return []
+  })
 
-  const adminEmails = admins?.map(a => a.email) ?? []
+  const adminEmails = admins.map(a => a.email)
   const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
   if (fallback && !adminEmails.includes(fallback)) adminEmails.push(fallback)
   console.log(`[requests] notifying admins: ${adminEmails.join(', ') || 'NONE'}`)

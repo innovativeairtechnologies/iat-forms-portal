@@ -63,6 +63,28 @@ export async function getAdminSurfaceUser() {
   }
 }
 
+/**
+ * Scoped write gate for the ticket detail action (status / priority / owner) —
+ * the server-action counterpart to lib/api-auth.ts's matrix-backed route guards,
+ * and the SECOND scoped write exception after Deals (docs/roles-and-permissions.md).
+ *
+ * Accepts any role holding the `tickets` perm, read live from the matrix, rather
+ * than the strict getAdminUser() every other action uses. Rationale: middleware
+ * already lets `tickets` holders (sales, engineering, production_manager) onto
+ * /admin/tickets/[id] and they work tickets daily, so an admin-only write made
+ * the page offer a form that always failed — and gating on the same editable perm
+ * as the page means the two can't drift when the matrix changes.
+ *
+ * Like requireDealsAuth's note says: this is its own named guard, not a general
+ * "any perm" helper. Add a similarly-scoped one per feature as write-enablement
+ * rolls out, so widening one surface can never silently widen another.
+ */
+export async function getTicketsActor() {
+  const actor = await getAdminSurfaceUser()
+  if (!actor || !actor.can('tickets')) return null
+  return actor
+}
+
 export async function isAdminAuthenticated(): Promise<boolean> {
   return (await getAdminUser()) !== null
 }

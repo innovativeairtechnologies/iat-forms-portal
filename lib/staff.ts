@@ -1,4 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getPermMatrix } from '@/lib/permissions'
+import { hasPermission, normalizeRole, type Perm } from '@/lib/roles'
+import type { Employee } from '@/lib/supabase'
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Staff vs customers in the `employees` table.
@@ -62,4 +65,94 @@ export async function isCustomer(id: string): Promise<boolean> {
     return true
   }
   return data?.role === 'customer'
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Resolving people from `profiles.role`, not `employees.is_admin`.
+
+   `is_admin` is a denormalized copy of "profiles.role = admin" with exactly two
+   writers (/api/employees/invite, /api/admin/users/[id]/role). Any third path
+   that sets a role — a dashboard hand-edit, a migration, a new route — leaves it
+   stale, and a stale `is_admin` silently keeps a demoted admin on the recipient
+   lists below. Both helpers therefore resolve the role live and never read that
+   column. See docs/roles-and-permissions.md.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Active staff holding `perm`, as employees rows — for assignable-owner pickers,
+ * NOT for access decisions (the caller's own guard does that).
+ *
+ * Reads the role from `profiles` and the grant from the live matrix — the same
+ * pair the lib/api-auth.ts guards use — so granting or revoking a perm in
+ * /admin/permissions moves the list without a deploy, and the list can't disagree
+ * with who middleware lets onto the matching page.
+ *
+ * No getCustomerIds() call is needed here, and adding one would be redundant:
+ * hasPermission() is false for `customer` and for the null role an employees row
+ * with no profile resolves to, so both are already excluded — by holding no
+ * permission rather than by being filtered.
+ *
+ * Fails CLOSED, unlike getCustomerIds() above: an unreadable profiles table gives
+ * an empty list. That inverts on purpose — a roster's worst failure is a blank
+ * org chart reading as "everyone left", but a picker's worst failure is offering
+ * the wrong people, and every auth user has an employees row to offer. Callers
+ * needing a currently-set value to stay selectable must union it back in
+ * themselves (see the ticket-owner picker).
+ */
+export async function getEmployeesWithPerm(perm: Perm): Promise<Pick<Employee, 'id' | 'name'>[]> {
+  const [{ data: profiles, error }, matrix] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id, role'),
+    getPermMatrix(),
+  ])
+
+  if (error) {
+    console.error(`[staff] could not load roles for the '${perm}' roster:`, error)
+    return []
+  }
+
+  const ids = (profiles ?? [])
+    .filter((p) => hasPermission(normalizeRole(p.role as string | null), perm, matrix))
+    .map((p) => p.id as string)
+  if (ids.length === 0) return []
+
+  const { data, error: rosterErr } = await supabaseAdmin
+    .from('employees')
+    .select('id, name')
+    .in('id', ids)
+    .eq('is_active', true)
+    .order('name')
+
+  if (rosterErr) {
+    console.error(`[staff] could not load the '${perm}' roster:`, rosterErr)
+    return []
+  }
+  return data ?? []
+}
+
+/**
+ * Active admins, as employees rows — the recipients of admin notification email
+ * (daily digest, new ticket, new PTO/sick request).
+ *
+ * THROWS on an unreadable profiles table rather than returning []: a recipient
+ * list you couldn't compute is not an empty recipient list, and silently mailing
+ * nobody is how a digest dies unnoticed. Callers that would rather degrade than
+ * fail catch it and fall back to ADMIN_NOTIFICATION_EMAIL.
+ */
+export async function getAdminRecipients(): Promise<Employee[]> {
+  const { data: profiles, error } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+  if (error) throw error
+
+  const ids = (profiles ?? []).map((p) => p.id as string)
+  if (ids.length === 0) return []
+
+  const { data, error: rosterErr } = await supabaseAdmin
+    .from('employees')
+    .select('*')
+    .in('id', ids)
+    .eq('is_active', true)
+  if (rosterErr) throw rosterErr
+  return data ?? []
 }

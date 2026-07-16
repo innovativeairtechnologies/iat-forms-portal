@@ -6,6 +6,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
 import { sendTicketConfirmationToCustomer, sendTicketNotificationToAdmins } from '@/lib/resend-tickets'
+import { getAdminRecipients } from '@/lib/staff'
 
 // ── Merged-field validation (the unified support form carries the old
 // Troubleshooting Checklist fields too). Mirrors app/api/troubleshooting/route.ts.
@@ -181,11 +182,15 @@ export async function POST(req: NextRequest) {
     // logged but never fail the ticket.
     const fullTicket = { ...ticket, ai_recommendations: ai_recommendations.length ? ai_recommendations : null }
 
-    const { data: admins } = await supabaseAdmin
-      .from('employees')
-      .select('email')
-      .eq('is_admin', true)
-    const adminEmails = admins?.map(a => a.email) ?? []
+    // Recipients resolve from profiles.role (lib/staff.ts), never employees.is_admin.
+    // Degrade instead of throwing: the ticket is already committed above, so a failed
+    // recipient lookup must not 500 the customer who just filed it — the env fallback
+    // below is the backstop for exactly this.
+    const admins = await getAdminRecipients().catch(err => {
+      console.error('[tickets] admin recipients unavailable, falling back to env:', err)
+      return []
+    })
+    const adminEmails = admins.map(a => a.email)
     const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
     if (fallback && !adminEmails.includes(fallback)) adminEmails.push(fallback)
 

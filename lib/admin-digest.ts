@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { generateBriefing } from '@/lib/briefing'
+import { getAdminRecipients } from '@/lib/staff'
 import type { Employee, Ticket } from '@/lib/supabase'
 
 /* Shared logic behind the daily admin email digest (app/api/cron/admin-digest)
@@ -66,13 +67,7 @@ export function isDigestTime(): boolean {
 
 /** All admins who should receive the daily digest. */
 export async function getDigestRecipients(): Promise<Employee[]> {
-  const { data, error } = await supabaseAdmin
-    .from('employees')
-    .select('*')
-    .eq('is_admin', true)
-    .eq('is_active', true)
-  if (error) throw error
-  return data || []
+  return getAdminRecipients()
 }
 
 export type AdminTicketDigest = {
