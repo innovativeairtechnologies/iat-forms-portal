@@ -14,7 +14,9 @@ import SelectChipField from './fields/SelectChipField'
 import FileField from './fields/FileField'
 import SignatureField from './fields/SignatureField'
 
-type Step = { title: string | null; fields: FormField[] }
+// `description` carries a section header's placeholder text — the explanatory
+// blurb some sections open with (e.g. IDP's React Heat).
+type Step = { title: string | null; description: string | null; fields: FormField[] }
 
 // Weight of each field type when deciding how much a step can hold.
 // Heavier fields are taller on screen and fill the viewport faster.
@@ -30,12 +32,18 @@ function groupFieldsIntoSteps(fields: FormField[]): Step[] {
   let pending: FormField[] = []
   let weight = 0
   let sectionTitle: string | null = null
+  let sectionDescription: string | null = null
   let contIndex = 0  // how many steps we've flushed for the current section
 
   const flush = () => {
     if (pending.length === 0) return
-    const title = contIndex === 0 ? sectionTitle : `${sectionTitle} (Cont.)`
-    steps.push({ title, fields: pending })
+    // Fields before the first section header have no title; such a run spilling
+    // past one step must stay untitled rather than read "null (Cont.)".
+    const title = sectionTitle === null
+      ? null
+      : contIndex === 0 ? sectionTitle : `${sectionTitle} (Cont.)`
+    // Only the section's first step carries its description.
+    steps.push({ title, description: contIndex === 0 ? sectionDescription : null, fields: pending })
     pending = []
     weight = 0
     contIndex++
@@ -45,6 +53,7 @@ function groupFieldsIntoSteps(fields: FormField[]): Step[] {
     if (field.field_type === 'section_header') {
       flush()
       sectionTitle = field.label
+      sectionDescription = field.placeholder
       contIndex = 0
     } else {
       const w = FIELD_WEIGHT[field.field_type] ?? 1
@@ -576,11 +585,20 @@ export default function StepFormModal({ slug, onClose, serverDrafts = false, res
                 exit={{ x: direction > 0 ? -40 : 40, opacity: 0 }}
                 transition={{ duration: 0.2, ease: [0.25, 1, 0.35, 1] }}
               >
-                {/* Section label */}
-                {steps[currentStep]?.title && (
-                  <p className="text-[10px] font-bold text-[#089447] uppercase tracking-[0.12em] mb-4">
-                    {steps[currentStep].title}
-                  </p>
+                {/* Section label + optional blurb */}
+                {(steps[currentStep]?.title || steps[currentStep]?.description) && (
+                  <div className="mb-4">
+                    {steps[currentStep]?.title && (
+                      <p className="text-[10px] font-bold text-[#089447] uppercase tracking-[0.12em]">
+                        {steps[currentStep].title}
+                      </p>
+                    )}
+                    {steps[currentStep]?.description && (
+                      <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1.5">
+                        {steps[currentStep].description}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* 1 field → full width; multiple → 2-col grid (wide types always span both cols) */}

@@ -530,9 +530,12 @@ function FieldSettings({ field, allFields, onUpdate }: { field: BuilderField; al
         />
       </div>
 
-      {!['signature', 'file', 'date', 'radio', 'checkbox', 'select', 'section_header'].includes(field.field_type) && (
+      {/* Section headers reuse `placeholder` as the blurb shown under the section title. */}
+      {!['signature', 'file', 'date', 'radio', 'checkbox', 'select'].includes(field.field_type) && (
         <div>
-          <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">Placeholder</label>
+          <label className="block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">
+            {field.field_type === 'section_header' ? 'Description' : 'Placeholder'}
+          </label>
           <input
             value={field.placeholder || ''}
             onChange={(e) => onUpdate({ placeholder: e.target.value || null })}

@@ -2,6 +2,53 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-16 — IDP Pre/Post Test Report rebuilt from the live JotForm (18 → 253 fields)
+
+The portal's copy had drifted badly: 18 flat fields, no sections, while the live JotForm
+(`232424923646155`) had grown to **230 fields across 21 sections with 19 conditional
+rules**. Rebuilt via `scripts/update-idp-test-report.mjs` (dry-run by default, `--commit`
+to apply). The form now renders as a **30-step wizard** (32+ once branches open); the two
+existing submissions are untouched — they carry no FK to `form_fields`.
+
+Three things the portal's form model couldn't take verbatim, and what was done:
+
+- **Duplicate labels are data loss, not cosmetics.** Answers are keyed by field *label*
+  (`lib/forms.ts`), and the JotForm reuses labels heavily — `Notes` ×12, `FLA` ×5,
+  `Control Type` ×4. Ported as-is, React Motor Notes would overwrite Air Flows Notes. Every
+  label is now section-qualified (`React Motor Notes`, `Pre Heat FLA`). The rebuild script
+  asserts label uniqueness, that no condition points at a missing field, and that each
+  gated value actually exists on its controlling field — it exits non-zero otherwise.
+- **`show_when_value` now accepts several values**, pipe-separated (`Electric|Natural Gas`),
+  for the three React Heat fields JotForm shows under both. Single values behave exactly as
+  before; no migration (the column is already `text`).
+- **`control_matrix` has no portal equivalent.** The PXR controller table (4 rows × 9 cols)
+  is flattened to 4 sections × 9 fields, gated on `Controller Type = PXR`.
+
+Fixed while porting (both were accidents in the JotForm, confirmed with Jacob):
+
+- **React Heat `Notes` was gated to `Hot Water` only** — techs running Electric, Natural Gas
+  or Steam had nowhere to write React Heat notes.
+- **Controllers `Notes` + `Photos` were gated to PXR/Carel only** — Automation Direct,
+  Siemens and Allen Bradley units couldn't attach controller photos at all.
+- **`Current inlet steam pressure?` had no condition** and showed on every unit, including
+  electric ones. Now gated to `Heat Type = Steam` with the rest of its block.
+- Form description said IDP = "Industrial Desiccant Products"; it's **Integrated
+  Dehumidification Package** (per `scripts/kb-reference/iat-unit-nomenclature.md`).
+
+Two engine fixes this shook out, both benefiting every form:
+
+- **Conditions now resolve up the whole chain.** IDP has real 2-level cascades
+  (`Heat Type → Amps? → the no-amps checklist`). Previously a stale answer to a
+  now-hidden controlling field stranded its dependants on screen — answer Electric/No,
+  switch to Steam, and the no-amps checklist stayed. Cycle-guarded.
+- **`groupFieldsIntoSteps` rendered a literal `"null (Cont.)"`** as the section label when
+  fields before the first section header spilled past one step. Latent for any such form;
+  IDP was the first big enough to trigger it.
+
+Section headers can now carry a **description** (reusing `placeholder`), shown under the
+step title and editable in the form builder — this is what carries JotForm's React Heat and
+Pre-Cooling Coil explanatory blurbs across.
+
 ## 2026-07-16 — Ticket notes follow the `tickets` perm; note authorship recorded
 
 `sales`/`engineering`/`production_manager` could reassign a ticket but **401'd posting a
