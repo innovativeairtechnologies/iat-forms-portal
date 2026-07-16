@@ -82,6 +82,45 @@ export async function requireToolCribAuth(): Promise<NextResponse | null> {
 }
 
 /**
+ * US Rotors guard for the order queue API. Matrix-backed on `us_rotors` — the
+ * same perm middleware gates /admin/us-rotors on — so the page and the API can
+ * never disagree about who manages the queue. (Bare admin-only would drift the
+ * moment `us_rotors` is granted to a scoped role in /admin/permissions: the tab
+ * appears, the API 403s.) Per requireDealsAuth's note, this is its own guard
+ * rather than a second caller of that one.
+ *
+ * Returns the actor and whether they manage the queue, because the two callers
+ * need different things from one role read: GET scopes non-managers to their own
+ * submissions (the base `production` tier orders from /employee/us-rotors/order
+ * and must read those back), PATCH refuses them outright.
+ *
+ * Reads profiles.role, NOT employees.is_admin. Every auth user has an employees
+ * row — customers included (see lib/staff.ts) — so that row proves nothing about
+ * staffness, and is_admin is a denormalized copy that only two writers maintain.
+ * A profile that can't be read yields role null → canManage false, so the
+ * privileged answer fails closed.
+ */
+export async function requireUsRotorsActor(): Promise<{ userId: string; canManage: boolean } | NextResponse> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  if (role === 'customer') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const matrix = await getPermMatrix()
+  return { userId: user.id, canManage: hasPermission(role, 'us_rotors', matrix) }
+}
+
+/**
  * Scan guard: ANY signed-in staff member may check a tool out or back in —
  * including the base `production` role, who hold no admin perms at all. That's
  * the whole point: the person grabbing the drill is the person scanning it.

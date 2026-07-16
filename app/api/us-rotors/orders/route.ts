@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { requireUsRotorsActor } from '@/lib/api-auth'
 import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
@@ -51,24 +52,17 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = await createSupabaseServer()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: employee } = await supabaseAdmin
-    .from('employees')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+  const actor = await requireUsRotorsActor()
+  if (actor instanceof NextResponse) return actor
 
   const query = supabaseAdmin
     .from('us_rotors_orders')
     .select('*')
     .order('created_at', { ascending: false })
 
-  // Non-admins only see their own orders
-  if (!employee?.is_admin) {
-    query.eq('submitted_by', user.id)
+  // Everyone below the us_rotors perm only sees their own orders
+  if (!actor.canManage) {
+    query.eq('submitted_by', actor.userId)
   }
 
   const { data, error } = await query
@@ -77,17 +71,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createSupabaseServer()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: employee } = await supabaseAdmin
-    .from('employees')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
-
-  if (!employee?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const actor = await requireUsRotorsActor()
+  if (actor instanceof NextResponse) return actor
+  if (!actor.canManage) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
     const { id, status } = await req.json()

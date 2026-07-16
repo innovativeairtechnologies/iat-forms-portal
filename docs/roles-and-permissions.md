@@ -64,8 +64,9 @@ the role's sidebar and lets them reach its pages on their next navigation.
   client via the `ViewAs` context (`hasPerm`, `home`); middleware reads just the
   current role's rows via the request's RLS-scoped client and threads it into
   `canAccessAdminPath` + `homeForRole`; `getAdminSurfaceUser().can()` and
-  `requireDealsAuth()` read it server-side. All layers share the one matrix, so
-  nav, page-gating, and the deals write-guard stay consistent.
+  the `lib/api-auth.ts` guards (`requireDealsAuth()`, `requireToolCribAuth()`,
+  `requireUsRotorsActor()`) read it server-side. All layers share the one matrix,
+  so nav, page-gating, and the per-feature write-guards stay consistent.
 - **Non-delegatable perms.** `permissions`, `customer_jerry`, and `knowledge` are
   admin-only and can't be granted to a scoped role (rejected server-side, shown
   locked in the UI) — delegating `permissions` would be a privilege-escalation
@@ -140,6 +141,36 @@ the `deals` permission — read live from the matrix, so revoking Deals in
 guard. It's a
 deliberately narrow, clearly-named exception — don't reuse it for other routes;
 add a similarly-scoped guard per feature as write-enablement rolls out.
+
+## `employees.is_admin` is NOT an authorization input
+
+`profiles.role` is the only source of truth for who may do what. `employees.is_admin`
+is a **denormalized legacy boolean**, written in exactly two places
+(`/api/employees/invite`, `/api/admin/users/[id]/role`) and read by nothing that
+makes an access decision. Never gate on it:
+
+- It is a **copy**, so it can drift. Anything that writes `profiles.role` without
+  also writing `is_admin` (a hand-edit in the Supabase dashboard, a future route,
+  a migration) leaves a demoted admin still holding `is_admin = true` — the rest of
+  the portal denies them while an `is_admin` check keeps letting them in.
+- An `employees` row **proves nothing about staffness**. Every auth user gets one,
+  customers included (`lib/staff.ts`, `docs/customer-portal.md`).
+
+**2026-07-16:** `/api/us-rotors/orders` was the last authorization reader of
+`is_admin` (GET's own-orders scoping + PATCH's status-write gate) and now uses
+`requireUsRotorsActor()` (`lib/api-auth.ts`) — matrix-backed on `us_rotors`, the
+same perm middleware gates `/admin/us-rotors` on, so the page and the API can't
+disagree about who manages the queue. Non-holders keep the previous behavior
+(their own orders only); customers are now refused outright rather than handed an
+empty list. It returns the actor **plus** `canManage` from one role read because
+GET scopes on it and PATCH refuses on it. This was not exploitable when fixed —
+it's the drift class that's the point.
+
+`is_admin` still survives as a **roster convenience** in three notification
+recipient queries (`lib/admin-digest.ts`, `/api/tickets`, `/api/requests`) and the
+ticket-owner picker (`app/admin/tickets/[id]/page.tsx`). Those are not access
+decisions, but they inherit the same drift (a demoted admin keeps receiving admin
+digests and ticket/PTO notifications) — see the changelog for the two follow-ups.
 
 ## Department dashboards
 
