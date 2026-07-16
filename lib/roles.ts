@@ -83,6 +83,7 @@ export type Perm =
   | 'permissions' // the role-permission matrix editor itself; admin-only, non-delegatable
   | 'srv' // the SRV content editor (/admin/srv); admin-only by omission
   | 'tools' // /admin/tools — the internal field-tool/app launcher (duct traverse, calculators)
+  | 'tool_crib' // /admin/tool-crib — the warehouse tool check-out registry. NOT 'tools' (above).
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -110,6 +111,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   permissions: 'Permissions',
   srv: 'SRV editor',
   tools: 'Tools & Apps',
+  tool_crib: 'Tool Crib',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -133,9 +135,15 @@ export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools'],
   marketing: ['dashboard', 'presentations', 'jerry', 'tools'],
   engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools'],
-  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools'],
+  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib'],
   production: [],
 }
+// NOTE: editing this list alone changes NOTHING in a deployed environment. Once
+// role_permissions has any rows, lib/permissions.getPermMatrix() seeds every
+// scoped role to [] and fills from the DB, so matrix[role] is always non-nullish
+// and hasPermission() below never falls through to these defaults. A new grant
+// must ALSO be inserted into role_permissions by a migration (see 050 for
+// tool_crib). These defaults are only the fallback for an errored/empty table.
 
 /**
  * Whether `role` holds `perm`. `matrix` is the DB-backed override (from
@@ -251,6 +259,11 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/employees', perm: 'employees' },
   { prefix: '/admin/us-rotors', perm: 'us_rotors' },
   { prefix: '/admin/tools', perm: 'tools' },
+  // Distinct from /admin/tools above — matchesPrefix requires an exact match or a
+  // trailing '/', so these two never collide. Without this entry a
+  // production_manager hitting /admin/tool-crib would fall through to the
+  // 'dashboard' default below and get a silent 302 to /admin.
+  { prefix: '/admin/tool-crib', perm: 'tool_crib' },
 ]
 
 function matchesPrefix(pathname: string, prefix: string): boolean {

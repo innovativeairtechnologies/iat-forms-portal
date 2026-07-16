@@ -129,6 +129,26 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // ── /tool-crib/* and /t/* (the Tool Crib scan surface — any staff) ─────────
+  // Top-level, deliberately NOT under /employee/*: that block below bounces every
+  // admin-surface role to /admin, which would include production_manager — the
+  // person who actually runs the crib — and it would fail as a silent redirect,
+  // not an error.
+  //
+  // Any signed-in staff member may scan, including base `production` who hold no
+  // admin perms. Gating scans on the tool_crib perm would mean only managers
+  // could take tools out, which defeats the feature. The `tool_crib` perm gates
+  // /admin/tool-crib (the registry) only.
+  //
+  // /t/<code> is the URL printed on every physical label. toLogin() carries it
+  // as ?redirect= so scanning while logged out lands back on the tool after
+  // sign-in (see the safeRedirect fix in app/login/page.tsx).
+  if (pathname.startsWith('/tool-crib') || pathname === '/t' || pathname.startsWith('/t/')) {
+    if (!user) return toLogin()
+    if (role === 'customer') return redirectTo(new URL('/customer', request.url))
+    return supabaseResponse
+  }
+
   // ── /tools/* (internal static HTML tools — staff only) ─────────────────────
   // public/tools/*.html are self-contained internal calculators/generators.
   // Gate them behind any authenticated session (employee OR admin); anon → login.
@@ -141,5 +161,18 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/employee/:path*', '/learn/:path*', '/customer/:path*', '/tools/:path*', '/login'],
+  // Both the bare path AND the :path* form are needed — '/tool-crib/:path*' alone
+  // does NOT match '/tool-crib' itself, which would leave the scan home page
+  // completely ungated.
+  matcher: [
+    '/admin/:path*',
+    '/employee/:path*',
+    '/learn/:path*',
+    '/customer/:path*',
+    '/tools/:path*',
+    '/tool-crib',
+    '/tool-crib/:path*',
+    '/t/:path*',
+    '/login',
+  ],
 }

@@ -8,6 +8,7 @@ import Logo from '@/components/Logo'
 import { motion } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { normalizeRole, isAdminSurfaceRole, homeForRole } from '@/lib/roles'
+import { safeRedirect } from '@/lib/redirect'
 
 export default function LoginPage() {
   return (
@@ -62,9 +63,16 @@ function LoginForm() {
     }).catch(() => {})
 
     // Admin-surface roles (full admin + scoped: sales/hr/marketing/engineering/
-    // production_manager) land on their permitted home section.
+    // production_manager) land on their permitted home section — unless they were
+    // sent here from a deep link, in which case honor it.
+    //
+    // This branch used to ignore ?redirect= entirely, which silently broke every
+    // deep link for admins and scoped roles: a production_manager scanning a Tool
+    // Crib label while logged out would sign in and land on /admin, losing the
+    // scan. Middleware re-gates whatever we push to, so honoring it can't widen
+    // access — an unpermitted target just bounces to their home.
     if (isAdminSurfaceRole(role)) {
-      router.push(homeForRole(role))
+      router.push(safeRedirect(searchParams.get('redirect'), homeForRole(role)))
       router.refresh()
       return
     }
@@ -75,8 +83,9 @@ function LoginForm() {
       if (!setupComplete) {
         router.push('/customer/welcome')
       } else {
-        const redirect = searchParams.get('redirect')
-        router.push(redirect && redirect.startsWith('/customer') ? redirect : '/customer')
+        // Customers stay inside /customer regardless of what the param says.
+        const redirect = safeRedirect(searchParams.get('redirect'), '/customer')
+        router.push(redirect.startsWith('/customer') ? redirect : '/customer')
       }
       router.refresh()
       return
@@ -87,8 +96,9 @@ function LoginForm() {
     if (!setupComplete) {
       router.push('/employee/welcome')
     } else {
-      const redirect = searchParams.get('redirect') || '/employee/profile'
-      router.push(redirect)
+      // Was pushed unvalidated — /login?redirect=https://evil.com navigated
+      // off-site, since router.push follows absolute URLs. See lib/redirect.ts.
+      router.push(safeRedirect(searchParams.get('redirect'), '/employee/profile'))
     }
     router.refresh()
   }

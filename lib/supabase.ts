@@ -72,6 +72,60 @@ export type Equipment = {
   updated_at: string
 }
 
+// ─── Tool Crib (migration 050) ───────────────────────────────────────────────
+// One row per physical warehouse tool, keyed by the tag_code printed under its
+// QR label. NOT related to lib/tools.ts / the `tools` perm — that's the internal
+// field-app launcher (duct traverse, calculators).
+export type CribToolStatus = 'available' | 'checked_out' | 'maintenance' | 'lost' | 'retired'
+
+export type CribTool = {
+  id: string
+  tag_code: string          // 'IAT-0042' — minted by a DB sequence, printed on the label
+  name: string
+  category: string | null
+  make: string | null
+  model: string | null
+  serial_number: string | null   // the manufacturer's serial, NOT our tag_code
+  home_location: string | null
+  photo_urls: string[] | null
+  purchase_cost: number | null
+  purchase_date: string | null
+  status: CribToolStatus
+  held_by: string | null         // employees.id — null unless status is 'checked_out'
+  held_since: string | null
+  due_at: string | null          // reserved: no due-date UI/cron/email in v1
+  condition_note: string | null
+  kind: 'unique' | 'consumable'  // reserved: v1 is unique-only
+  quantity: number | null        // reserved: consumables
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type CribEventAction =
+  | 'created' | 'check_out' | 'check_in' | 'force_check_in'
+  | 'transfer' | 'status_change' | 'note'
+
+// Append-only custody history. actor_name/subject_name are snapshots taken at
+// write time so the trail survives an employee account being deleted — the FKs
+// are ON DELETE SET NULL and answering "who had it" is the whole point.
+export type CribEvent = {
+  id: string
+  tool_id: string
+  action: CribEventAction
+  actor_id: string | null        // who performed it
+  subject_id: string | null      // who custody moved TO
+  actor_name: string | null
+  subject_name: string | null
+  from_status: string | null
+  to_status: string | null
+  from_held_by: string | null
+  to_held_by: string | null
+  reason: string | null          // required for force_check_in / transfer
+  condition_note: string | null
+  created_at: string
+}
+
 // A customer COMPANY account (migration 026). One row per customer; one login
 // (profiles.role='customer', profiles.customer_id) sees all of this company's
 // equipment + support history on /customer. Service-role only.
