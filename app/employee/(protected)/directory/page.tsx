@@ -1,19 +1,27 @@
 export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getCustomerIds } from '@/lib/staff'
 import DirectoryView from './DirectoryView'
 import type { OrgEmployee } from '@/components/org-chart/OrgChart'
 
 /* Directory = the org chart (with a list toggle). Rendered server-side through
    the service-role client (read-only) and handed to the client view, so it needs
    no extra RLS and gets the hierarchy fields the chart draws from. select('*')
-   + defensive mapping → renders even before migration 023 lands (flat roster). */
+   + defensive mapping → renders even before migration 023 lands (flat roster).
+
+   Customers are excluded: they get an employees row too (see lib/staff.ts). This
+   one is the sharper of the two — it would show staff a customer's contact card
+   as if they were a colleague. */
 
 async function getEmployees(): Promise<OrgEmployee[]> {
-  const { data } = await supabaseAdmin.from('employees').select('*').order('name')
+  const [{ data }, customers] = await Promise.all([
+    supabaseAdmin.from('employees').select('*').order('name'),
+    getCustomerIds(),
+  ])
   return (data || [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((e: any) => e.is_active !== false)
+    .filter((e: any) => e.is_active !== false && !customers.has(e.id))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((e: any) => ({
       id: e.id,

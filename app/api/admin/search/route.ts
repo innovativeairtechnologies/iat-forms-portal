@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAdminAuthenticated } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getCustomerIds } from '@/lib/staff'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,18 +29,21 @@ export async function GET(req: NextRequest) {
   }
 
   const like = `%${q}%`
-  const [{ data: forms }, { data: employees }, { data: tickets }, { data: submissions }] = await Promise.all([
+  const [{ data: forms }, { data: employees }, { data: tickets }, { data: submissions }, customers] = await Promise.all([
     supabaseAdmin
       .from('forms')
       .select('id, title, slug, is_active')
       .ilike('title', like)
       .limit(5),
+    // Over-fetch: customers carry an employees row (see lib/staff.ts) and are
+    // dropped below. Filtering AFTER a .limit(5) would let five matching
+    // customers crowd out every real colleague and return an empty list.
     supabaseAdmin
       .from('employees')
       .select('id, name, email, job_title')
       .or(`name.ilike.${like},email.ilike.${like}`)
       .eq('is_active', true)
-      .limit(5),
+      .limit(25),
     supabaseAdmin
       .from('tickets')
       .select('id, ticket_number, customer_name, status')
@@ -52,11 +56,12 @@ export async function GET(req: NextRequest) {
       .or(`form_title.ilike.${like},data::text.ilike.${like}`)
       .order('submitted_at', { ascending: false })
       .limit(5),
+    getCustomerIds(),
   ])
 
   return NextResponse.json({
     forms: forms || [],
-    employees: employees || [],
+    employees: (employees || []).filter(e => !customers.has(e.id)).slice(0, 5),
     tickets: tickets || [],
     submissions: (submissions || []).map((s: { id: string; form_title: string | null; data: Record<string, unknown> | null }) => ({
       id: s.id,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireToolCribAuth, requireCribActor } from '@/lib/api-auth'
 import { cribErrorMessage } from '@/lib/tool-crib'
+import { isCustomer } from '@/lib/staff'
 
 /* Manager custody overrides: force-return a stuck tool, or hand custody to
    someone else without a physical trip to the crib.
@@ -49,10 +50,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // The recipient must be a real, active employee — held_by FKs to employees,
     // and handing a tool to a deactivated account creates custody that nobody
-    // can clear by scanning.
-    const { data: recipient } = await supabaseAdmin
-      .from('employees').select('id, is_active').eq('id', to).single()
-    if (!recipient || recipient.is_active === false) {
+    // can clear by scanning. Customers are refused too: they hold an employees
+    // row (see lib/staff.ts), so the FK alone would happily accept one.
+    // isCustomer() fails closed on purpose — this is an authorization decision,
+    // not a display filter.
+    const [{ data: recipient }, recipientIsCustomer] = await Promise.all([
+      supabaseAdmin.from('employees').select('id, is_active').eq('id', to).single(),
+      isCustomer(to),
+    ])
+    if (!recipient || recipient.is_active === false || recipientIsCustomer) {
       return NextResponse.json({ error: 'That person can’t hold tools.' }, { status: 400 })
     }
 

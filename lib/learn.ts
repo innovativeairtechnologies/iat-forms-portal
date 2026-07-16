@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getCustomerIds } from '@/lib/staff'
 import {
   computeUserStats, computeStreak, lessonXp, levelInfo,
   type UserLearnStats,
@@ -276,11 +277,15 @@ export type LeaderboardRow = {
   xp: number; lessonsCompleted: number; level: number; levelTitle: string
 }
 export async function getLeaderboard(): Promise<LeaderboardRow[]> {
-  const [{ data: employees }, { data: lessons }, { data: progress }] = await Promise.all([
+  // Customers hold an employees row too (see lib/staff.ts); without the filter
+  // they'd sit on the team leaderboard forever at 0 XP.
+  const [{ data: allEmployees }, { data: lessons }, { data: progress }, customers] = await Promise.all([
     supabaseAdmin.from('employees').select('id, name, email, avatar_url, department, is_active').eq('is_active', true),
     supabaseAdmin.from('learn_lessons').select('id, estimated_minutes').eq('is_published', true),
     supabaseAdmin.from('learn_progress').select('user_id, lesson_id, completed_at').not('completed_at', 'is', null),
+    getCustomerIds(),
   ])
+  const employees = (allEmployees ?? []).filter(e => !customers.has(e.id))
   const lessonMin = new Map((lessons ?? []).map(l => [l.id, l.estimated_minutes ?? 0]))
   const perUser = new Map<string, { xp: number; count: number }>()
   for (const p of progress ?? []) {

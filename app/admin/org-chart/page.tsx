@@ -2,18 +2,25 @@ export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminUser } from '@/lib/admin-auth'
+import { getCustomerIds } from '@/lib/staff'
 import OrgDirectory from '@/components/org-chart/OrgDirectory'
 import { type OrgEmployee } from '@/components/org-chart/OrgChart'
 
 /* The org chart is derived live from the employees table. We select('*') and map
    defensively so the page renders even before migration 023 adds the hierarchy
-   columns (it just shows a flat roster until manager_id is populated). */
+   columns (it just shows a flat roster until manager_id is populated).
+
+   Customers are excluded: they get an employees row too (see lib/staff.ts), and
+   without this they render as staff nodes with a mailto: card. */
 
 async function getEmployees(): Promise<OrgEmployee[]> {
-  const { data } = await supabaseAdmin.from('employees').select('*').order('name')
+  const [{ data }, customers] = await Promise.all([
+    supabaseAdmin.from('employees').select('*').order('name'),
+    getCustomerIds(),
+  ])
   return (data || [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((e: any) => e.is_active !== false)
+    .filter((e: any) => e.is_active !== false && !customers.has(e.id))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((e: any) => ({
       id: e.id,

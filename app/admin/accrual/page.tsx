@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getCustomerIds } from '@/lib/staff'
 import AccrualClient from './AccrualClient'
 
 export default async function AccrualPage() {
@@ -9,7 +10,10 @@ export default async function AccrualPage() {
     { data: log },
     { data: tiers },
     { data: config },
+    customers,
   ] = await Promise.all([
+    // Customers hold an employees row (see lib/staff.ts) and are dropped below —
+    // they were showing up here with editable PTO/sick balances.
     supabaseAdmin
       .from('employees')
       .select('*')
@@ -28,11 +32,12 @@ export default async function AccrualPage() {
       .select('*')
       .eq('id', 1)
       .limit(1),
+    getCustomerIds(),
   ])
 
   return (
     <AccrualClient
-      employees={employees || []}
+      employees={(employees || []).filter(e => !customers.has(e.id))}
       recentLog={log || []}
       tiers={tiers || []}
       config={config?.[0] ?? null}
