@@ -2,6 +2,48 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-16 — Performance Review: 22 department questions were unfillable for ~5 weeks
+
+**Data fix, no code change** — `node scripts/add-perf-review-department-field.mjs --commit`
+(dry-run by default, idempotent). Applied to `performance-review-form` and the inactive
+`perf-new` copy.
+
+`scripts/update-performance-review.mjs` (2026-06) gated 22 department-specific rating +
+explanation fields on a controlling field labeled `Department` — **which never existed on
+the form.** The form was hand-built in the builder, so there was no seed to add one to, and
+nothing in 314 commits ever created it. `isFieldVisible` reads `answers['Department']`,
+which was therefore `undefined` forever, so **all 22 questions were permanently hidden and
+nobody could fill them in.** The gate didn't gate; it erased.
+
+Why nobody caught it: **the print views looked correct**, because they fabricate the
+controlling answer — `app/print/forms/[id]/page.tsx` reconstructs the department list from
+the distinct `show_when_value`s when the controlling field is missing, and
+`BlankFormPrint.tsx:145` injects `{ [controllingLabel]: dept }` as a synthetic answer. The
+blank questionnaire printed fine while the live form showed nothing.
+
+It was a regression, and it's dated: the **2026-07-07 submission answered two of the
+now-hidden fields** (`Office: Accuracy and organization…` = "Superstar"). Before the gating,
+every department's questions showed to everyone and the reviewer filled in the relevant
+ones — which is also why that submission carries no `Department` key.
+
+**The fix** adds the missing required `select` labeled exactly `Department` at the end of
+*Employee Information* (sort_order 3, beside Employee Name / Review Date), shifting the rest
+down. Options are **not a free choice** — they're dictated by the form's own questions:
+`Office, Engineering, Sales, Marketing, Production, Management`, the distinct
+`show_when_value`s on the 22 fields. The script asserts coverage both ways (exits non-zero
+if a gated field awaits a value the select doesn't offer; warns if an option has no
+questions), which is precisely the guard whose absence caused this.
+
+Verified against the live rows through the real `visibleFields`: all 22 fields reachable,
+each by exactly one department, zero cross-department leakage — and confirmed on prod
+(picking a department grows the form 11 → 12 steps and reveals only that department's
+questions).
+
+Noted, not fixed: three other portal forms each use a **different** department list
+(Shipping/Receiving, Administration, Quality Control, IT & Facilities), and
+`employees.department` is unset for 9 of 12 people. The perf review has no questions for
+those departments — a content gap for Jacob, not something to invent.
+
 ## 2026-07-16 — IDP Pre/Post Test Report rebuilt from the live JotForm (18 → 253 fields)
 
 The portal's copy had drifted badly: 18 flat fields, no sections, while the live JotForm

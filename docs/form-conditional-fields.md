@@ -10,6 +10,14 @@ A field can be configured to show **only when another field currently equals a g
   `show_when_value` (the value that reveals it). `NULL` = always show.
 - **Why label, not id:** submission `data` is keyed by field label, so the condition references the
   controlling field by label — the same key the renderers and the server read.
+- **The controlling field must actually exist, and must offer the value.** `isFieldVisible` reads
+  `answers[show_when_field]`; if no field carries that label, the lookup is `undefined` forever and
+  the gated fields are **permanently hidden**. The gate doesn't gate — it erases, silently. Same if
+  the controlling field exists but its `options` don't include the `show_when_value`. The **builder
+  can't** create this (it only offers existing Dropdown/Single-Choice fields as controllers) — but a
+  **script can**, and one did: see "The 2026-07 Department outage" below. Any script that writes
+  `show_when_*` must assert both, as `scripts/add-perf-review-department-field.mjs` and
+  `scripts/update-idp-test-report.mjs` do.
 - **Builder:** select a field → Field Settings → **"Show only when…"** → pick a controlling field
   (any Dropdown / Single-Choice field) and the value.
 - **Where it's enforced** (all share `lib/forms.ts`):
@@ -54,3 +62,38 @@ script. **Order matters:**
 
 The script is **idempotent** — safe to re-run. Universal sections (general competencies,
 Safety/Initiative/Growth, Summary & Goals, Signatures) are left unconditional.
+
+### The 2026-07 Department outage (fixed 2026-07-16)
+
+Step 3 above gated 22 department-specific fields on a controlling field labeled `Department` —
+**which did not exist on the form.** Nothing writes `answers['Department']`, so from the moment that
+script ran until 2026-07-16, **all 22 department-specific questions were permanently hidden and
+could not be filled in by anyone.**
+
+It hid in plain sight for two reasons:
+
+- **The print views looked fine**, because they *fabricate* the controlling answer.
+  `app/print/forms/[id]/page.tsx` falls back to reconstructing the department list from the distinct
+  `show_when_value`s when the controlling field is missing, and `BlankFormPrint.tsx` then injects
+  `{ [controllingLabel]: dept }` as a synthetic answer. So the blank questionnaire printed correctly
+  while the live form showed nothing — "works in print, broken in the form" is the signature.
+- **It fails closed and silently.** No error, no empty state — the questions simply aren't there, and
+  `stripHiddenAnswers` drops them from any submission.
+
+Evidence it was a regression, not a form that never worked: the 2026-07-07 submission answered two of
+the fields (`Office: Accuracy and organization…` = "Superstar"). Before the gating, every
+department's questions showed to everyone and the reviewer filled in the relevant ones — which is
+also why that submission carries no `Department` key.
+
+**Fix:** `node scripts/add-perf-review-department-field.mjs` (dry-run) → `--commit`. Adds the missing
+required `select` labeled exactly `Department` at the end of the *Employee Information* section
+(sort_order 3, beside Employee Name / Review Date), applied to both `performance-review-form` and the
+inactive `perf-new` copy. Idempotent — skips a form that already has the field.
+
+**The option list is not a free choice.** It's dictated by the questions the form actually has:
+`Office, Engineering, Sales, Marketing, Production, Management` — the distinct `show_when_value`s on
+the 22 gated fields. Offering a department with no questions behind it (other portal forms use wider
+lists: Shipping/Receiving, Administration, Quality Control, IT) would strand the reviewer on an empty
+Department-Specific section. That the perf review has no questions for those departments is a
+separate **content** gap. The script asserts the coverage in both directions: it exits non-zero if any
+gated field awaits a value the select doesn't offer, and warns if an option has no questions.
