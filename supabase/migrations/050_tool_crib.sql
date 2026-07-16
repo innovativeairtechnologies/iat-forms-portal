@@ -472,6 +472,11 @@ ON CONFLICT (id) DO UPDATE SET file_size_limit = 10485760;
 --    or a bogus tool shows up on the floor list and in the cost rollup.
 --    (crib_events rows cascade away with the tool.)
 --      DELETE FROM crib_tools WHERE name LIKE 'ZZ verify%';
---      -- optional: reset the counter so the first real tool is IAT-0001
---      SELECT setval('crib_tag_seq', 1, false);
 --      SELECT count(*) FROM crib_tools;   -- expect 0
+--
+--    Optionally reset the counter so the first real tool is IAT-0001 — but ONLY
+--    while the table is genuinely empty. If ANY tool already exists, this hands
+--    out codes that are already taken: the next insert dies on the UNIQUE
+--    constraint ("Could not add that tool"), then limps forward one collision at
+--    a time. Gaps in the numbering are harmless; collisions are not.
+--      SELECT setval('crib_tag_seq', 1, false);   -- ONLY IF count(*) = 0

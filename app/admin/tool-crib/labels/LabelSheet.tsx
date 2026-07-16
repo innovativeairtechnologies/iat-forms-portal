@@ -128,7 +128,12 @@ export default function LabelSheet({ tools, origin }: { tools: LabelTool[]; orig
         >
           {chosen.map(t => (
             <div key={t.id} style={{ width: '2.625in', height: '1in', display: 'flex', alignItems: 'center', gap: '0.08in', padding: '0.08in 0.1in', overflow: 'hidden' }}>
-              {/* level M tolerates ~15% damage — a scuffed label still reads. */}
+              {/* Level M. Its ~15% recovery applies to DATA modules only — measured
+                  at real print size (0.85in @ 300dpi), the middle survives ~7.5%
+                  damage, but wrecking ANY of the three corner finder patterns kills
+                  the label at ~1.4%: a scanner needs them to locate the code, and no
+                  error-correction level covers them. Bumping to Q/H would not help.
+                  This is why the code is printed as text too — see below. */}
               <QRCodeSVG value={labelUrl(t.tag_code)} size={76} level="M" bgColor="#ffffff" fgColor="#000000" />
               <div style={{ minWidth: 0, flex: 1, lineHeight: 1.2 }}>
                 {/* The code is printed in text because the QR is useless once the

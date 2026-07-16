@@ -4,8 +4,13 @@ Warehouse tools are shared, they walk off, and nobody knows who took what. Tool
 Crib gives every tool a QR label and a permanent custody record: **who has it
 right now**, and **who had it before**.
 
-Built 2026-07-16. Migration `050_tool_crib.sql`. Nav is `hidden: true` until the
-crib is stocked — the routes are live by URL in the meantime.
+Built 2026-07-16. Migration `050_tool_crib.sql`. Live in the admin **Operations**
+nav (between Equipment and SRV Form) as of the same day.
+
+> ⚠️ **`050` must be run for any of this to work.** Until it is, `/admin/tool-crib`
+> 500s (no `crib_tools` table) and no scan resolves. Only full admins see the nav
+> item meanwhile — scoped roles need the `('production_manager','tool_crib')` row
+> that `050` seeds, so the nav filters it out for them until then.
 
 > **Not to be confused with "Tools & Apps"** (`/admin/tools`, `/tools/*`, the
 > `tools` perm, `lib/tools.ts`). That's the internal field-app launcher — duct
@@ -67,7 +72,7 @@ scanning it. The `tool_crib` perm gates only the admin registry.
 | `/tool-crib` | any staff | "My checked-out tools" + typed-code field |
 | `/tool-crib/<code>` | any staff | Path A target — one big Check Out / Check In button |
 | `/tool-crib/scan` | any staff | Path B continuous scanner |
-| `/admin/tool-crib` | `tool_crib` | Registry, $-on-floor / $-missing tiles |
+| `/admin/tool-crib` | `tool_crib` | Registry, $-on-floor / $-missing tiles. In the **Operations** nav group. |
 | `/admin/tool-crib/<id>` | `tool_crib` | Detail, history timeline, force return, transfer |
 | `/admin/tool-crib/labels` | `tool_crib` | Avery 5520 print sheet |
 
@@ -161,6 +166,34 @@ stock). Paper will not survive oil and abrasion.
 Print at **100% scale** — "fit to page" shifts every label. Calibrate against one
 real sheet before mass-printing: print onto plain paper and hold it over a label
 sheet against a window.
+
+### Damage tolerance — the corners are what matter
+
+Measured 2026-07-16 by rendering the exact QR the sheet draws, rasterizing it at
+real print size (0.85" @ 300dpi) and decoding it back with the same ZXing build
+the scanner uses:
+
+| Damage | Result |
+|---|---|
+| none | scans |
+| **corner** (finder pattern), 1.4% of the label | **FAILS** |
+| centre (data), up to ~7.5% | scans |
+| centre (data), 12.5% | fails |
+| bottom edge strip, 7.8% | **FAILS** (clips the bottom-left finder) |
+
+So "level M tolerates ~15% damage" is misleading — that budget is for **data
+modules only**. The three big corner squares are *finder patterns*: a scanner uses
+them to locate the code at all, and **no** error-correction level protects them.
+Bumping to Q or H would not change any row above.
+
+Practical consequences:
+
+- **Protect the corners, not the middle.** Place the label on a flat face, away
+  from edges, grips and anything that rubs. A gouged corner is a dead label.
+- **Laminate or use poly stock** — this is physical, not an encoding problem.
+- **The printed text code is the real fallback**, and this is the evidence for it:
+  when a corner goes, the QR is unrecoverable but the human can still read
+  `IAT-0042` and type it. `normalizeTagCode` even accepts bare `42`.
 
 ### `NEXT_PUBLIC_LABEL_ORIGIN` — what gets baked into every sticker
 
