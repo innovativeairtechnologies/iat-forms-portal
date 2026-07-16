@@ -62,10 +62,9 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/troubleshooting', label: 'Troubleshooting', badge: 'troubleshooting', hidden: true, perm: 'tickets' },
       { href: '/admin/forms', label: 'Forms', perm: 'forms' },
       { href: '/admin/equipment', label: 'Equipment', perm: 'equipment' },
-      // Tool Crib — hidden until the crib is actually stocked and labelled.
-      // Routes stay live by URL so it can be tested on a real phone against prod.
-      // Re-enable by removing `hidden: true`.
-      { href: '/admin/tool-crib', label: 'Tool Crib', hidden: true, perm: 'tool_crib' },
+      // Tool Crib — the warehouse tool check-out registry. NOT the `tools`
+      // launcher (that's the standalone Tools item; different feature, same word).
+      { href: '/admin/tool-crib', label: 'Tool Crib', perm: 'tool_crib' },
       { href: '/admin/srv', label: 'SRV Form', perm: 'srv' },
       // Gantt kept visible to demo despite leadership concerns; pause with `hidden: true`.
       { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
