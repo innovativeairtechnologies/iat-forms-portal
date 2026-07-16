@@ -86,13 +86,13 @@ export default function SupportPortal() {
           </div>
 
           {/* Status strip */}
-          <div className="mt-8 flex items-center gap-2.5 rounded-xl border border-hairline bg-surface px-4 py-3">
+          { /* <div className="mt-8 flex items-center gap-2.5 rounded-xl border border-hairline bg-surface px-4 py-3">
             <span className="inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-brand" />
             <span className="text-[12px] text-ink-muted">
               All systems operational&nbsp;·&nbsp;Average response time{' '}
               <strong className="font-semibold tabular-nums text-ink-secondary">4 hours</strong>
             </span>
-          </div>
+          </div> */}
 
           {/* Coming-soon note */}
           <p className="mt-6 text-[12px] leading-relaxed text-ink-faint">
