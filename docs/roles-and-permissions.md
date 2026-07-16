@@ -76,6 +76,38 @@ the role's sidebar and lets them reach its pages on their next navigation.
   `role_permissions`; there is no write policy, so only the service-role API can
   modify it. Keep the SELECT policy in place — dropping it reads as revocation.
 
+### Granting a role a new permission — editing the code list is NOT enough
+
+**`DEFAULT_ROLE_PERMS` does nothing in a deployed environment.** It reads like the
+source of truth and isn't: once `role_permissions` holds any rows, `getPermMatrix()`
+seeds every scoped role to `[]` and then fills from the DB, so `matrix[role]` is
+always a non-null array — which means `hasPermission()`'s
+`matrix?.[role] ?? DEFAULT_ROLE_PERMS[role]` **never reaches the code default**.
+Middleware's per-role read behaves identically. The code list is only the fallback
+for an *errored or empty* table.
+
+So a new grant needs **both**: the entry in `DEFAULT_ROLE_PERMS` *and* an
+`INSERT INTO role_permissions ... ON CONFLICT DO NOTHING` in a migration. Miss the
+migration and the grant fails silently — no error, no log; the nav item just stays
+hidden and the route 302s home, exactly as if you'd never made the change.
+
+This is not hypothetical. `tools` was in the code list from the day the perm was
+added, but migration `045` never seeded it — so `/admin/tools` was admin-only in
+practice for months while the code claimed five roles had it. Only Engineering
+ever got it, via a manual `/admin/permissions` grant on 2026-07-14. Migration
+`051` seeds the five rows and closes it.
+
+**Guardrail:** `node scripts/check-perm-seed.mjs` asserts `DEFAULT_ROLE_PERMS` and
+the migration seeds agree, and prints the exact `INSERT` to add when they don't.
+It's repo-only (no DB/network) — it deliberately does *not* compare against live,
+because the matrix is admin-editable by design and prod legitimately drifts from
+the seed. Run it after touching either list.
+
+> Note: `getPermMatrix()` must **not** be "fixed" by merging the code defaults into
+> the DB read. Merging would make revocation impossible — unticking any default
+> perm in `/admin/permissions` would be silently restored on the next read. The
+> `[]`-seeding is what makes the matrix genuinely editable.
+
 ## Two-layer enforcement
 
 Nav visibility alone is not access control. Two independent layers:
