@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Wrench, History, QrCode, Loader2, ArrowLeftRight, Undo2, AlertTriangle,
+  History, QrCode, Loader2, ArrowLeftRight, Undo2, AlertTriangle,
 } from 'lucide-react'
 import type { CribTool, CribEvent, CribToolStatus } from '@/lib/supabase'
-import { CRIB_STATUS, CRIB_EVENT_LABEL, formatCost } from '@/lib/tool-crib'
+import { CRIB_STATUS, CRIB_EVENT_LABEL, formatCost, toolThumbPath, photoSrc } from '@/lib/tool-crib'
 import { StatusPill, timeAgo, Avatar } from '@/components/admin/list'
 import { DetailTopBar, DetailShell, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
+import ToolPhotos from '@/components/admin/ToolPhotos'
+import { ToolThumb } from '@/components/admin/ToolThumb'
 import type { EmployeeOption } from './page'
 
 const LIFECYCLE: { value: Exclude<CribToolStatus, 'checked_out'>; label: string }[] = [
@@ -79,9 +81,30 @@ export default function ToolDetailClient({
   const [mode, setMode] = useState<null | 'force' | 'transfer'>(null)
   const [reason, setReason] = useState('')
   const [target, setTarget] = useState('')
+  const [photos, setPhotos] = useState<string[]>(tool.photo_urls ?? [])
 
   const s = CRIB_STATUS[tool.status]
   const out = tool.status === 'checked_out'
+
+  // Persist a photo add/remove immediately — no separate Save button. The list
+  // thumbnail and scan page pick it up on their next load.
+  const savePhotos = async (next: string[]) => {
+    const prev = photos
+    setPhotos(next) // optimistic; ToolPhotos is controlled off this, so a revert flows back
+    const res = await fetch(`/api/admin/tool-crib/${tool.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo_urls: next }),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save photos.')
+      setPhotos(prev) // roll back — otherwise a failed remove silently commits on the next save
+      return
+    }
+    setError('')
+    router.refresh()
+  }
 
   const post = async (url: string, body: unknown) => {
     setBusy(true); setError('')
@@ -132,9 +155,7 @@ export default function ToolDetailClient({
         <div className="space-y-5 min-w-0">
           <Card>
             <div className="p-5 flex items-start gap-4">
-              <div className="w-11 h-11 rounded-xl bg-surface-soft border border-hairline flex items-center justify-center flex-shrink-0 text-ink-faint">
-                <Wrench size={18} strokeWidth={1.8} />
-              </div>
+              <ToolThumb path={toolThumbPath(photos)} size={44} rounded="rounded-xl" />
               <div className="min-w-0 flex-1">
                 <h1 className="text-[18px] text-ink" style={{ fontWeight: 620 }}>{tool.name}</h1>
                 <p className="text-[12.5px] text-ink-muted mt-0.5 font-mono">{tool.tag_code}</p>
@@ -218,8 +239,24 @@ export default function ToolDetailClient({
           </Card>
         </div>
 
-        {/* ── Right: details ── */}
+        {/* ── Right: photos + details ── */}
         <div className="space-y-5">
+          <Card>
+            <CardHead title="Photos" />
+            <div className="p-4 space-y-3">
+              {/* Enlarged hero of the profile photo, when there is one. */}
+              {toolThumbPath(photos) && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={photoSrc(toolThumbPath(photos)!)}
+                  alt={tool.name}
+                  className="w-full aspect-[4/3] object-cover rounded-lg border border-hairline bg-surface-soft"
+                />
+              )}
+              <ToolPhotos paths={photos} onChange={savePhotos} />
+            </div>
+          </Card>
+
           <Card>
             <CardHead title="Details" />
             <div className="py-1.5 divide-y divide-hairline-soft">

@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, ScanLine, Check, AlertCircle } from 'lucide-react'
 import { CRIB_CATEGORIES } from '@/lib/tool-crib'
+import { resizeImage } from '@/lib/image-resize'
+import ToolPhotos from '@/components/admin/ToolPhotos'
 
 const EMPTY = {
   name: '',
@@ -33,14 +35,66 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
+type ScanState = 'idle' | 'scanning' | 'done' | 'error'
+
 export default function AddToolModal({ onClose }: { onClose: () => void }) {
   const router = useRouter()
   const [form, setForm] = useState(EMPTY)
+  const [photos, setPhotos] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const [scanState, setScanState] = useState<ScanState>('idle')
+  const [scanMsg, setScanMsg] = useState('')
+  const scanRef = useRef<HTMLInputElement | null>(null)
+
   const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
+
+  // Photograph the label → Claude reads it → prefill. Never blocks: it only ever
+  // fills fields the scan actually returned (scanned || prev), so a blank read
+  // can't wipe something already typed, and everything stays editable after.
+  const onScan = async (file: File | undefined) => {
+    if (!file) return
+    setScanState('scanning'); setScanMsg(''); setError('')
+    try {
+      const { dataUrl } = await resizeImage(file, { maxDim: 1600, quality: 0.8 })
+      const res = await fetch('/api/admin/tool-crib/scan-nameplate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setScanState('error')
+        setScanMsg(d.error || 'Couldn’t read that label. Enter the details manually.')
+        return
+      }
+      const filled = ['name', 'make', 'model', 'serial_number', 'category'].filter(k => d[k]).length
+      if (filled === 0) {
+        setScanState('error')
+        setScanMsg('Couldn’t make out the details — enter them manually.')
+        return
+      }
+      setForm(prev => ({
+        ...prev,
+        name: d.name || prev.name,
+        make: d.make || prev.make,
+        model: d.model || prev.model,
+        serial_number: d.serial_number || prev.serial_number,
+        category: d.category || prev.category,
+      }))
+      setScanState('done')
+      setScanMsg(`Filled in ${filled} ${filled === 1 ? 'field' : 'fields'} — double-check them below.`)
+    } catch (e) {
+      setScanState('error')
+      setScanMsg(e instanceof Error && e.message === 'decode failed'
+        ? 'That image type can’t be read here — try a JPG or PNG.'
+        : 'Label scan failed. Enter the details manually.')
+    } finally {
+      if (scanRef.current) scanRef.current.value = ''
+    }
+  }
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault()
@@ -55,6 +109,7 @@ export default function AddToolModal({ onClose }: { onClose: () => void }) {
         ...form,
         purchase_cost: form.purchase_cost ? Number(form.purchase_cost) : null,
         purchase_date: form.purchase_date || null,
+        photo_urls: photos,
       }),
     })
     const data = await res.json().catch(() => ({}))
@@ -74,7 +129,7 @@ export default function AddToolModal({ onClose }: { onClose: () => void }) {
         className="bg-surface border border-hairline rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between px-5 py-4 border-b border-hairline sticky top-0 bg-surface">
+        <div className="flex items-start justify-between px-5 py-4 border-b border-hairline sticky top-0 bg-surface z-10">
           <div>
             <h2 className="text-[15px] text-ink" style={{ fontWeight: 620 }}>Add a tool</h2>
             {/* The code is minted by the DB, not typed here — say so, or people
@@ -89,6 +144,41 @@ export default function AddToolModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <form onSubmit={submit} className="p-5 space-y-4">
+          {/* Scan-the-label shortcut. Photograph a nameplate → prefill. */}
+          <div>
+            <button
+              type="button"
+              onClick={() => scanRef.current?.click()}
+              disabled={scanState === 'scanning'}
+              /* Solid border-brand, NOT border-brand/60 — an opacity modifier on
+                 a semantic token compiles to nothing (§2.5 trap), which would drop
+                 the border-color to inherited currentColor. */
+              className="w-full flex items-center justify-center gap-2 h-11 text-[13px] font-semibold border border-dashed border-brand text-brand rounded-lg hover:bg-brand-soft transition-colors disabled:opacity-60"
+            >
+              {scanState === 'scanning'
+                ? <><Loader2 size={15} className="animate-spin" /> Reading the label…</>
+                : <><ScanLine size={15} /> Scan the tool’s label to fill this in</>}
+            </button>
+            {scanState === 'done' && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-brand">
+                <Check size={12} /> {scanMsg}
+              </p>
+            )}
+            {scanState === 'error' && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-amber-600 dark:text-amber-400">
+                <AlertCircle size={12} /> {scanMsg}
+              </p>
+            )}
+            <input
+              ref={scanRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={e => onScan(e.target.files?.[0])}
+            />
+          </div>
+
           <Field label="Name">
             <input autoFocus value={form.name} onChange={set('name')} placeholder="Milwaukee 1/2in hammer drill" className={inputCx} />
           </Field>
@@ -122,6 +212,10 @@ export default function AddToolModal({ onClose }: { onClose: () => void }) {
               <input value={form.purchase_date} onChange={set('purchase_date')} type="date" className={inputCx} />
             </Field>
           </div>
+
+          <Field label="Photos" hint="The first one becomes the thumbnail in the list.">
+            <ToolPhotos paths={photos} onChange={setPhotos} />
+          </Field>
 
           <Field label="Notes">
             <textarea value={form.notes} onChange={set('notes')} rows={2}

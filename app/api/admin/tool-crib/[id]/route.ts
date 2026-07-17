@@ -79,10 +79,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if ('photo_urls' in body) {
     const arr = body.photo_urls
-    if (!Array.isArray(arr) || arr.some(u => typeof u !== 'string')) {
+    if (!Array.isArray(arr)) {
       return NextResponse.json({ error: 'Bad photo list.' }, { status: 400 })
     }
-    patch.photo_urls = arr.slice(0, 6)
+    // Same shape gate as create + the read route: storage paths only.
+    const paths = arr.filter(
+      (u: unknown): u is string => typeof u === 'string' && /^\d{10,}-[a-z0-9]+\.(png|jpe?g|webp|gif)$/i.test(u)
+    ).slice(0, 4)
+    patch.photo_urls = paths.length ? paths : null
   }
 
   if (Object.keys(patch).length === 0) {

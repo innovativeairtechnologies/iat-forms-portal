@@ -4,11 +4,12 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Wrench, Search, Plus, ChevronRight, QrCode } from 'lucide-react'
 import type { CribToolStatus } from '@/lib/supabase'
-import { CRIB_STATUS, cribTotals, formatCost } from '@/lib/tool-crib'
+import { CRIB_STATUS, cribTotals, formatCost, toolThumbPath } from '@/lib/tool-crib'
 import {
   HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll,
   ListPageHeader, IdentityCell, tabCx, tabCountCx, timeAgo,
 } from '@/components/admin/list'
+import { ToolThumb } from '@/components/admin/ToolThumb'
 import type { CribToolRow } from './page'
 import AddToolModal from './AddToolModal'
 
@@ -160,7 +161,7 @@ export default function ToolCribClient({ tools }: { tools: CribToolRow[] }) {
                     className={`${rowCx(COLS, { i })} group ${retired ? 'opacity-60' : ''}`}
                   >
                     <IdentityCell
-                      icon={<Wrench size={13} />}
+                      leading={<ToolThumb path={toolThumbPath(t.photo_urls)} size={30} />}
                       title={t.name}
                       subtitle={[t.tag_code, t.make, t.home_location].filter(Boolean).join(' · ')}
                     />

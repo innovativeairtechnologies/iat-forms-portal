@@ -72,6 +72,18 @@ export function normalizeTagCode(raw: string | null | undefined): string | null 
   return `IAT-${m[1].padStart(4, '0')}`
 }
 
+/* The <img src> for a stored tool photo. Points at the staff-gated read route,
+   which 307-redirects to a short-lived signed URL (the crib-photos bucket is
+   private). photo_urls holds storage PATHS, not public URLs. */
+export function photoSrc(path: string): string {
+  return `/api/tool-crib/photo?path=${encodeURIComponent(path)}`
+}
+
+/** The representative photo for a tool — the first one, or null. */
+export function toolThumbPath(photoUrls: string[] | null | undefined): string | null {
+  return photoUrls && photoUrls.length > 0 ? photoUrls[0] : null
+}
+
 /* The origin baked into printed labels.
 
    Deliberately NOT NEXT_PUBLIC_APP_URL: that is 'http://localhost:3000' on a dev

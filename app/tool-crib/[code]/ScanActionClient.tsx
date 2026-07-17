@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Wrench, Loader2, Check, LogOut, LogIn } from 'lucide-react'
+import { Loader2, Check, LogOut, LogIn } from 'lucide-react'
 import type { CribTool } from '@/lib/supabase'
-import { CRIB_STATUS } from '@/lib/tool-crib'
+import { CRIB_STATUS, toolThumbPath } from '@/lib/tool-crib'
 import { StatusPill, timeAgo } from '@/components/admin/list'
+import { ToolThumb } from '@/components/admin/ToolThumb'
 
 /* One tool, one decision, one button.
 
@@ -74,9 +75,7 @@ export default function ScanActionClient({
     <div className="p-4 sm:p-6 max-w-md mx-auto">
       <div className="bg-surface border border-hairline rounded-xl p-5">
         <div className="flex items-start gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-surface-soft border border-hairline flex items-center justify-center flex-shrink-0 text-ink-faint">
-            <Wrench size={20} strokeWidth={1.8} />
-          </div>
+          <ToolThumb path={toolThumbPath(tool.photo_urls)} size={56} rounded="rounded-xl" />
           <div className="min-w-0 flex-1">
             <h1 className="text-[18px] text-ink leading-tight" style={{ fontWeight: 620 }}>{tool.name}</h1>
             <p className="text-[12.5px] text-ink-muted mt-0.5 font-mono">{tool.tag_code}</p>

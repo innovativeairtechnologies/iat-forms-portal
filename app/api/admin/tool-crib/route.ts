@@ -62,6 +62,17 @@ export async function POST(req: NextRequest) {
     purchase_cost = n
   }
 
+  // Photos uploaded (to the private bucket) before the row existed; store their
+  // storage paths. Bounded + shape-checked so a caller can't stuff arbitrary
+  // strings or a huge array into the column.
+  let photo_urls: string[] | null = null
+  if (Array.isArray(body?.photo_urls)) {
+    const paths = body.photo_urls
+      .filter((p: unknown): p is string => typeof p === 'string' && /^\d{10,}-[a-z0-9]+\.(png|jpe?g|webp|gif)$/i.test(p))
+      .slice(0, 4)
+    photo_urls = paths.length ? paths : null
+  }
+
   const { data, error } = await supabaseAdmin
     .from('crib_tools')
     .insert({
@@ -74,6 +85,7 @@ export async function POST(req: NextRequest) {
       purchase_cost,
       purchase_date: str(body?.purchase_date) || null,
       notes: str(body?.notes, 2000),
+      photo_urls,
       // status defaults to 'available'; tag_code defaults from the sequence.
     })
     .select()
