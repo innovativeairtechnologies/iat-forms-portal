@@ -7,7 +7,9 @@ renders exactly as before, so all existing forms are unaffected.
 A field can be configured to show **only when another field currently equals a given value**.
 
 - **Schema (migration 028):** `form_fields.show_when_field` (the controlling field's *label*) and
-  `show_when_value` (the value that reveals it). `NULL` = always show.
+  `show_when_value` (the value that reveals it — or several **pipe-separated** values,
+  `Electric|Natural Gas`, read as "show when the controlling field equals **any of** these").
+  `NULL` = always show.
 - **Why label, not id:** submission `data` is keyed by field label, so the condition references the
   controlling field by label — the same key the renderers and the server read.
 - **The controlling field must actually exist, and must offer the value.** `isFieldVisible` reads
@@ -18,8 +20,14 @@ A field can be configured to show **only when another field currently equals a g
   **script can**, and one did: see "The 2026-07 Department outage" below. Any script that writes
   `show_when_*` must assert both, as `scripts/add-perf-review-department-field.mjs` and
   `scripts/update-idp-test-report.mjs` do.
-- **Builder:** select a field → Field Settings → **"Show only when…"** → pick a controlling field
-  (any Dropdown / Single-Choice field) and the value.
+- **Builder:** two views, both writing the same columns (toggle in the toolbar):
+  - **Form view** (default, `components/admin/FormCanvas.tsx`) — select a field, open its inline
+    editor → **Conditional logic** → pick a controlling Dropdown/Single-Choice field, then tick
+    **any of** its values (multi-select chips → pipe-joined `show_when_value`). Conditional fields
+    wear a badge; controllers show a "drives N" count. Form view also flags the two traps below
+    inline as you edit — **duplicate labels** and **dangling/stale conditions** (`computeIssues`) —
+    which is the first time the builder itself warns about the failure a script can create.
+  - **List view** (classic) — the right-hand **"Show only when…"** panel (single value).
 - **Where it's enforced** (all share `lib/forms.ts`):
   - `components/StepFormModal.tsx` — steps derive from the *visible* fields; conditional fields
     appear/disappear as answers change, empty sections collapse, hidden answers are stripped on submit.

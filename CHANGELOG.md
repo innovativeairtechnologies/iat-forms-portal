@@ -2,6 +2,34 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-17 — Form builder: a WYSIWYG "Form view" for editing long forms
+
+Editing a 100–200-field form as one flat stack of identical rows was brutal, so the builder
+(`/admin/forms/*/edit`) gets a second view, toggled in the toolbar: **Form view** (new default)
+and **List** (the original flat editor, kept unchanged as a fallback). Both write the *identical*
+save payload — no schema change, no migration.
+
+**Form view** groups fields into collapsible **sections** (split on Section Header fields), with a
+left **outline** to jump around long forms and per-section counts. Each field renders as a WYSIWYG
+preview of its real control and is edited inline. Drag reorders within *and across* sections;
+sections move as a block. Forms over ~40 fields open collapsed so the overview comes first.
+
+Two real wins over the old right-hand panel:
+
+- **Conditional logic is visible and editable in place.** Every conditional field wears a badge
+  (`Heat Type = Electric`), controllers show a "drives N" badge, and the value picker is a chip
+  multi-select that finally exposes the **"any of"** capability `show_when_value` always supported
+  (pipe-separated `Electric|Natural Gas`) but the old single-`<select>` UI hid.
+- **Live warnings for the two label-keyed traps** the model is prone to (see
+  `docs/form-conditional-fields.md`): **duplicate field labels** (answers collapse into one and lose
+  data) and **dangling/stale `show_when_field`** — the condition that *erases* instead of gating, the
+  same failure mode that hid 22 Performance Review questions for ~5 weeks. Neither was caught before.
+
+New code is isolated to the builder: `components/admin/FormCanvas.tsx`,
+`components/admin/form-builder-shared.ts`, and the toggle in `components/admin/FormBuilder.tsx`
+(also retokened to the DESIGN.md semantic tokens). Verified by mounting the real builder against a
+multi-section form seeded with duplicate + dangling conditions before shipping.
+
 ## 2026-07-17 — Production Board: a no-login, per-department shop checklist
 
 **Needs migration `055_production_board.sql` run before deploy** (the board and
