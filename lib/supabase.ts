@@ -500,3 +500,78 @@ export type TroubleshootingIntake = {
   status: 'new' | 'reviewed' | 'closed'
   created_at: string
 }
+
+// ─── Production board (migration 055) ────────────────────────────────────────
+// The public, per-department shop checklist at /board/<token>. No login: the
+// token IS the credential, so nothing here should hold anything you wouldn't
+// pin to the break-room wall. See lib/production.ts for the rules that read it.
+
+export type TaskCadence = 'once' | 'daily' | 'weekly'
+export type TaskPriority = 'normal' | 'high'
+export type ProductionTaskStatus = 'open' | 'done' | 'blocked'
+
+export type ProductionDepartment = {
+  id: string
+  name: string
+  /** The unguessable half of /board/<token>. NEVER send this to a board client —
+   *  it's the capability, and one leaked token is one permanently public board. */
+  token: string
+  blurb: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/** Floor roster for the board's check-off picker. NOT portal accounts, and
+ *  deliberately not `employees` — the floor has no logins (see migration 055). */
+export type ProductionPerson = {
+  id: string
+  department_id: string
+  name: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+}
+
+export type ProductionTask = {
+  id: string
+  department_id: string
+  title: string
+  detail: string | null
+  /** NULL => a standing duty. Non-NULL => the job it belongs to (free text —
+   *  there is no deals→equipment→shop link in this schema to key off). */
+  project: string | null
+  cadence: TaskCadence
+  priority: TaskPriority
+  due_date: string | null
+  /** NULL/blank => unassigned, which the board surfaces on purpose. */
+  assignee: string | null
+  status: ProductionTaskStatus
+  blocked_note: string | null
+  /** Shop-LOCAL completion date (America/New_York). Recurring tasks reset by
+   *  comparing this to today — never read it as a timestamp. */
+  done_on: string | null
+  done_by: string | null
+  done_at: string | null
+  sort_order: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  archived_at: string | null
+}
+
+export type ProductionTaskAction = 'created' | 'done' | 'reopened' | 'blocked' | 'unblocked' | 'edited'
+
+/** Append-only check-off trail. actor_name is a snapshot typed on the floor and
+ *  is NOT verified — it answers "who says they did this", which is all an
+ *  honor-system board can offer. `source` marks which side it came from. */
+export type ProductionTaskEvent = {
+  id: string
+  task_id: string
+  action: ProductionTaskAction
+  actor_name: string | null
+  source: 'board' | 'admin'
+  note: string | null
+  created_at: string
+}

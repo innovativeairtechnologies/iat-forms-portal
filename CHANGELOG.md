@@ -2,6 +2,48 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-17 — Production Board: a no-login, per-department shop checklist
+
+**Needs migration `055_production_board.sql` run before deploy** (the board and
+`/admin/production` both 500 without the tables). Full write-up: `docs/production-board.md`.
+
+A checklist the floor opens by **scanning a QR code — no portal login**. Departments
+(Production / Fabrication / Electrical, seeded but editable) each get their own board at
+`/board/<token>`; the manager runs them from `/admin/production` behind the new
+`production_board` perm.
+
+**Public the same way `/support` is** — `middleware.ts`'s `matcher` is an allowlist and
+`/board` isn't on it. Nothing else makes it public, and nothing else protects it: **the URL
+token is the credential**, and the name recorded against a check-off is typed on the floor
+and unverified. That's the accepted trade for a floor with no accounts, and it sets the rule
+for content — **shop work only, nothing you wouldn't pin to the break-room wall.**
+
+The token is 43 chars / 244 bits, minted by the DB (`prod_board_token()`), never sent to the
+client, and rotatable from the QR modal (which kills every printed label for that board).
+The tables are RLS-on/no-policies — **service-role only, deliberately**: an `anon` read policy
+on `production_departments` would expose it over PostgREST, and one request with the
+publishable key would dump **every token at once**. Added `noindex` + `Referrer-Policy:
+no-referrer` on `/board/:path*` — this app has no `robots.txt` at all, and unguessable
+isn't unindexed.
+
+**Standing duties and job work share one table**; `project IS NULL` is the only difference.
+Free text on both `project` and `assignee` because there is **no deals → equipment → shop
+link in this schema** to FK to, and `employees` holds no floor staff (12 rows, 4 of them
+customers, 7 with a null department) — so the roster is its own table of names, not accounts.
+
+**Recurring tasks reset without a cron:** `done_on` stores the *shop-local* date
+(`America/New_York`) and a daily task counts as done only while that's today. Keying it on
+UTC would have reset the board at 8pm local, mid-second-shift. One implementation —
+`effectiveDone()` in `lib/production.ts` — 41 assertions cover it.
+
+`board-check` is rate-limited at 240/10min rather than the house 5–10 for public writes:
+the whole shop shares one NAT IP, so the house default would lock the floor out by 9am.
+`rateLimit` fails open anyway and is not the control here.
+
+Perm named `production_board`, **not** `production` — that's already a StaffRole (the base
+floor tier); same collision class as `tools` vs `tool_crib`. Registered in all five places,
+including the `role_permissions` INSERT in `055` that actually grants it.
+
 ## 2026-07-16 — Performance Review: 22 department questions were unfillable for ~5 weeks
 
 **Data fix, no code change** — `node scripts/add-perf-review-department-field.mjs --commit`

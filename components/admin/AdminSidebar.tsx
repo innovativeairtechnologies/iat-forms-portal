@@ -65,6 +65,9 @@ const NAV_PARENTS: NavParent[] = [
       // Tool Crib — the warehouse tool check-out registry. NOT the `tools`
       // launcher (that's the standalone Tools item; different feature, same word).
       { href: '/admin/tool-crib', label: 'Tool Crib', perm: 'tool_crib' },
+      // Production Board — manages the PUBLIC no-login shop boards the floor
+      // scans into at /board/<token> (migration 055).
+      { href: '/admin/production', label: 'Production Board', perm: 'production_board' },
       { href: '/admin/srv', label: 'SRV Form', perm: 'srv' },
       // Gantt kept visible to demo despite leadership concerns; pause with `hidden: true`.
       { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },

@@ -82,6 +82,36 @@ export async function requireToolCribAuth(): Promise<NextResponse | null> {
 }
 
 /**
+ * Manage guard for the production board admin API — departments, roster, tasks
+ * (migration 055). Matrix-backed on `production_board`, the same perm middleware
+ * gates /admin/production on, so the page and the API can never disagree about
+ * who manages the boards. Its own guard rather than a second caller of
+ * requireToolCribAuth, per requireDealsAuth's note above.
+ *
+ * This guards the MANAGER's side only. The floor's check-off endpoint
+ * (/api/board/[token]/check) is deliberately unauthenticated — the URL token is
+ * its capability — and must never call this.
+ */
+export async function requireProductionAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'production_board', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * US Rotors guard for the order queue API. Matrix-backed on `us_rotors` — the
  * same perm middleware gates /admin/us-rotors on — so the page and the API can
  * never disagree about who manages the queue. (Bare admin-only would drift the

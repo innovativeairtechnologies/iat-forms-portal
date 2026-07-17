@@ -84,6 +84,12 @@ export type Perm =
   | 'srv' // the SRV content editor (/admin/srv); admin-only by omission
   | 'tools' // /admin/tools — the internal field-tool/app launcher (duct traverse, calculators)
   | 'tool_crib' // /admin/tool-crib — the warehouse tool check-out registry. NOT 'tools' (above).
+  // /admin/production — manage the departments, rosters and tasks behind the
+  // PUBLIC shop board at /board/<token> (migration 055). Named production_BOARD,
+  // not 'production': `production` is already a StaffRole (the base floor tier),
+  // and a perm sharing that name would read as "the production role's perm" —
+  // the same collision 'tools' vs 'tool_crib' warns about below.
+  | 'production_board'
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -112,6 +118,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   srv: 'SRV editor',
   tools: 'Tools & Apps',
   tool_crib: 'Tool Crib',
+  production_board: 'Production Board',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -135,7 +142,7 @@ export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools'],
   marketing: ['dashboard', 'presentations', 'jerry', 'tools'],
   engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools'],
-  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib'],
+  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib', 'production_board'],
   production: [],
 }
 // NOTE: editing this list alone changes NOTHING in a deployed environment. Once
@@ -264,6 +271,10 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // production_manager hitting /admin/tool-crib would fall through to the
   // 'dashboard' default below and get a silent 302 to /admin.
   { prefix: '/admin/tool-crib', perm: 'tool_crib' },
+  // NOTE: this gates the MANAGER's page only. The board itself (/board/<token>)
+  // is deliberately outside middleware's matcher entirely — it's the public,
+  // no-login surface the floor scans into. Adding /board here would break it.
+  { prefix: '/admin/production', perm: 'production_board' },
 ]
 
 function matchesPrefix(pathname: string, prefix: string): boolean {

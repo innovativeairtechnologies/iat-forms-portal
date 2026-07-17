@@ -50,6 +50,23 @@ const nextConfig = {
           { key: 'Content-Security-Policy', value: "frame-ancestors *" },
         ],
       },
+      {
+        // The production board (migration 055) is public and unauthenticated —
+        // its URL token is the only thing standing between a crawler and the
+        // shop's task list. Unguessable is NOT unindexed: a token leaks through
+        // a Referer header, a pasted link, or browser telemetry, and there is no
+        // robots.txt anywhere in this app to fall back on.
+        //
+        // Belt-and-braces with the page's own `robots: { index: false }`
+        // metadata: this header also covers the check-off route's JSON responses
+        // and anything else non-HTML under /board.
+        source: '/board/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+          // Don't leak the token to any third party the board might link out to.
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+        ],
+      },
     ]
   },
 }
