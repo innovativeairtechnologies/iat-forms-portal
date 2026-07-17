@@ -48,7 +48,7 @@ export default async function ToolByCodePage({ params }: { params: Promise<{ cod
 function NotFound({ raw }: { raw: string }) {
   return (
     <div className="p-6 text-center">
-      <SearchX size={30} className="text-ink-faint/50 mx-auto mb-3 mt-10" />
+      <SearchX size={30} className="text-ink-faint mx-auto mb-3 mt-10" />
       <h1 className="text-[17px] text-ink" style={{ fontWeight: 620 }}>No tool with that code</h1>
       <p className="text-[13px] text-ink-muted mt-1.5">
         Nothing matches <span className="font-mono">{raw}</span>. If the label is

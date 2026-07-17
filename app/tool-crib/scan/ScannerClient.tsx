@@ -210,7 +210,7 @@ export default function ScannerClient() {
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
-            className="w-full h-11 pl-9 pr-3 text-[16px] bg-surface border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/15 font-mono"
+            className="w-full h-11 pl-9 pr-3 text-[16px] bg-surface border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none font-mono focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           />
         </div>
         <button type="submit"

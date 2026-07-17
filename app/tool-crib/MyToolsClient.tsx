@@ -55,7 +55,7 @@ export default function MyToolsClient({ mine, badCode }: { mine: CribTool[]; bad
           autoCapitalize="characters"
           autoCorrect="off"
           spellCheck={false}
-          className="flex-1 h-11 px-3 text-[16px] bg-surface border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/15 font-mono"
+          className="flex-1 h-11 px-3 text-[16px] bg-surface border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none font-mono focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         />
         <button type="submit"
           className="px-4 h-11 text-[14px] font-semibold text-ink-secondary border border-hairline rounded-lg hover:bg-surface-soft transition-colors">
@@ -71,7 +71,7 @@ export default function MyToolsClient({ mine, badCode }: { mine: CribTool[]; bad
 
         {mine.length === 0 ? (
           <div className="py-10 text-center bg-surface border border-hairline rounded-xl">
-            <Wrench size={24} className="text-ink-faint/40 mx-auto mb-2.5" />
+            <Wrench size={24} className="text-ink-faint mx-auto mb-2.5" />
             <p className="text-[13px] text-ink-muted">Nothing checked out.</p>
           </div>
         ) : (
@@ -92,7 +92,7 @@ export default function MyToolsClient({ mine, badCode }: { mine: CribTool[]; bad
                     {t.held_since && <> · since {timeAgo(t.held_since)}</>}
                   </p>
                 </div>
-                <ChevronRight size={15} className="text-ink-faint/50 flex-shrink-0" />
+                <ChevronRight size={15} className="text-ink-faint flex-shrink-0" />
               </Link>
             ))}
           </div>

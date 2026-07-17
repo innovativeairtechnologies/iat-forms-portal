@@ -121,7 +121,7 @@ export default function ToolCribClient({ tools }: { tools: CribToolRow[] }) {
               placeholder="Search name, code, holder…"
               /* 16px on mobile — anything smaller makes iOS Safari zoom the
                  viewport on focus (fixed portal-wide 2026-07-14). */
-              className="pl-8 pr-3 h-9 text-[16px] sm:text-[12.5px] w-full sm:w-72 bg-surface border border-hairline rounded-lg text-ink-secondary placeholder:text-ink-faint outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/15 transition-all"
+              className="pl-8 pr-3 h-9 text-[16px] sm:text-[12.5px] w-full sm:w-72 bg-surface border border-hairline rounded-lg text-ink-secondary placeholder:text-ink-faint outline-none transition-all focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             />
           </div>
           <span className="ml-auto text-[12px] text-ink-faint tabular-nums">
@@ -142,7 +142,7 @@ export default function ToolCribClient({ tools }: { tools: CribToolRow[] }) {
           <div className={BODY_BOX}>
             {filtered.length === 0 ? (
               <div className="py-16 text-center">
-                <Wrench size={28} className="text-ink-faint/40 mx-auto mb-3" />
+                <Wrench size={28} className="text-ink-faint mx-auto mb-3" />
                 <p className="text-[13px] text-ink-muted">
                   {tools.length === 0
                     ? 'No tools yet. Add one, print its label, stick it on.'
@@ -188,7 +188,7 @@ export default function ToolCribClient({ tools }: { tools: CribToolRow[] }) {
 
                     <ChevronRight
                       size={14}
-                      className="hidden sm:block text-ink-faint/50 group-hover:text-ink-muted transition-colors"
+                      className="hidden sm:block text-ink-faint group-hover:text-ink-muted transition-colors"
                     />
                   </Link>
                 )

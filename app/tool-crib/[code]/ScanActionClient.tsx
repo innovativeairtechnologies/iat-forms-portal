@@ -108,7 +108,7 @@ export default function ScanActionClient({
             value={note}
             onChange={e => setNote(e.target.value)}
             placeholder="Anything wrong with it? (optional)"
-            className="mt-4 w-full h-11 px-3 text-[16px] bg-canvas border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/15"
+            className="mt-4 w-full h-11 px-3 text-[16px] bg-canvas border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           />
         )}
 

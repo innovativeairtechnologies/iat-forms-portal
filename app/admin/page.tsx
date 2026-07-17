@@ -475,7 +475,10 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Top bar — search · icon view-switcher · primary action · bell · avatar */}
-      <div className="sticky top-0 z-10 flex items-center gap-2.5 px-5 h-14 border-b border-hairline bg-canvas/90 backdrop-blur">
+      {/* Solid background, deliberately. An opacity modifier on a semantic token
+          compiles to nothing, which left this sticky bar fully transparent with
+          content scrolling behind it. See DESIGN.md §2.5. */}
+      <div className="sticky top-0 z-10 flex items-center gap-2.5 px-5 h-14 border-b border-hairline bg-canvas">
         <div className="flex items-center gap-1.5 text-[13px]">
           <span className="text-ink-muted">Operations</span>
           <ChevronRight size={13} className="text-ink-faint" />

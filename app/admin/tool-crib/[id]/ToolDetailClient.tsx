@@ -176,7 +176,7 @@ export default function ToolDetailClient({
                     </p>
                     {mode === 'transfer' && (
                       <select value={target} onChange={e => setTarget(e.target.value)}
-                        className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-surface border border-hairline rounded-lg text-ink outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/15">
+                        className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-surface border border-hairline rounded-lg text-ink outline-none focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
                         <option value="">Hand it to…</option>
                         {employees.filter(e => e.id !== tool.held_by).map(e => (
                           <option key={e.id} value={e.id}>{e.name}</option>
@@ -185,7 +185,7 @@ export default function ToolDetailClient({
                     )}
                     <input value={reason} onChange={e => setReason(e.target.value)}
                       placeholder="Reason (required)"
-                      className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-surface border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/15" />
+                      className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-surface border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" />
                     <div className="flex justify-end gap-2">
                       <button onClick={() => { setMode(null); setError('') }}
                         className={`${btnCx} text-ink-muted hover:text-ink-secondary`}>Cancel</button>
@@ -252,7 +252,7 @@ export default function ToolDetailClient({
                       onClick={() => setStatus(l.value)}
                       className={`text-left px-3 py-2 text-[12.5px] rounded-lg border transition-colors ${
                         tool.status === l.value
-                          ? 'border-brand/40 bg-brand-soft text-brand'
+                          ? 'border-brand bg-brand-soft text-brand'
                           : 'border-hairline text-ink-secondary hover:bg-surface-soft'
                       }`}>
                       {l.label}

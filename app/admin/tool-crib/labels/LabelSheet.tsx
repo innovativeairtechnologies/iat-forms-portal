@@ -53,7 +53,9 @@ export default function LabelSheet({ tools, origin }: { tools: LabelTool[]; orig
       <style dangerouslySetInnerHTML={{ __html: SHEET_CSS }} />
 
       {/* ── Controls (never printed) ── */}
-      <div className="no-print sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-hairline bg-canvas/90 backdrop-blur">
+      {/* Solid background — an opacity modifier on a semantic token compiles to
+          nothing and left this bar transparent. See DESIGN.md §2.5. */}
+      <div className="no-print sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-hairline bg-canvas">
         <Link href="/admin/tool-crib" className="text-ink-faint hover:text-ink-secondary transition-colors -ml-1 p-1">
           <ChevronLeft size={18} />
         </Link>
@@ -93,7 +95,7 @@ export default function LabelSheet({ tools, origin }: { tools: LabelTool[]; orig
             return (
               <button key={t.id} onClick={() => toggle(t.id)}
                 className={`text-[12px] font-mono px-2.5 py-1.5 rounded-lg border transition-colors ${
-                  on ? 'border-brand/40 bg-brand-soft text-brand' : 'border-hairline text-ink-faint hover:bg-surface-soft'
+                  on ? 'border-brand bg-brand-soft text-brand' : 'border-hairline text-ink-faint hover:bg-surface-soft'
                 }`}>
                 {t.tag_code}
               </button>

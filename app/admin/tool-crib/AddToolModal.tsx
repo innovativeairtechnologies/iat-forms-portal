@@ -18,7 +18,10 @@ const EMPTY = {
 }
 
 const inputCx =
-  'w-full h-9 px-3 text-[16px] sm:text-[13px] bg-canvas border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/15 transition-all'
+  // Focus is an outline, per DESIGN.md §5. Not a ring: an opacity modifier on a
+  // semantic token compiles to nothing, so a ring kept its width and fell back to
+  // Tailwind's default colour — these rings rendered blue for months. See §2.5.
+  'w-full h-9 px-3 text-[16px] sm:text-[13px] bg-canvas border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none transition-all focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
