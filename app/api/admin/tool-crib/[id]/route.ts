@@ -15,7 +15,7 @@ const CATEGORIES = new Set<string>(CRIB_CATEGORIES)
 const LIFECYCLE = new Set(['available', 'maintenance', 'lost', 'retired'])
 
 const EDITABLE = [
-  'name', 'category', 'make', 'model', 'serial_number',
+  'name', 'short_label', 'category', 'make', 'model', 'serial_number',
   'home_location', 'purchase_date', 'notes',
 ] as const
 

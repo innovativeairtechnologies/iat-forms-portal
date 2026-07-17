@@ -82,9 +82,32 @@ export default function ToolDetailClient({
   const [reason, setReason] = useState('')
   const [target, setTarget] = useState('')
   const [photos, setPhotos] = useState<string[]>(tool.photo_urls ?? [])
+  const [shortLabel, setShortLabel] = useState(tool.short_label ?? '')
+  const [labelSaved, setLabelSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
 
   const s = CRIB_STATUS[tool.status]
   const out = tool.status === 'checked_out'
+
+  // Sticker descriptor. Saved on blur so there's no extra button; the printed
+  // label and the list pick it up on their next load.
+  const saveShortLabel = async () => {
+    const next = shortLabel.trim()
+    if (next === (tool.short_label ?? '')) return // unchanged
+    setLabelSaved('saving')
+    const res = await fetch(`/api/admin/tool-crib/${tool.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ short_label: next }),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Could not save the label.')
+      setLabelSaved('idle')
+      return
+    }
+    setLabelSaved('saved')
+    router.refresh()
+  }
 
   // Persist a photo add/remove immediately — no separate Save button. The list
   // thumbnail and scan page pick it up on their next load.
@@ -241,6 +264,25 @@ export default function ToolDetailClient({
 
         {/* ── Right: photos + details ── */}
         <div className="space-y-5">
+          <Card>
+            <CardHead title="Sticker label" />
+            <div className="p-4">
+              <input
+                value={shortLabel}
+                onChange={e => { setShortLabel(e.target.value); setLabelSaved('idle') }}
+                onBlur={saveShortLabel}
+                maxLength={40}
+                placeholder="e.g. Meter kit"
+                className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-canvas border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none transition-all focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              />
+              <p className="mt-1.5 text-[11px] text-ink-faint">
+                {labelSaved === 'saving' ? 'Saving…'
+                  : labelSaved === 'saved' ? 'Saved.'
+                  : '2–3 words for the printed sticker. Falls back to the name if blank.'}
+              </p>
+            </div>
+          </Card>
+
           <Card>
             <CardHead title="Photos" />
             <div className="p-4 space-y-3">

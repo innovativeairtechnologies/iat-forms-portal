@@ -9,6 +9,7 @@ import ToolPhotos from '@/components/admin/ToolPhotos'
 
 const EMPTY = {
   name: '',
+  short_label: '',
   category: '' as string,
   make: '',
   model: '',
@@ -181,6 +182,10 @@ export default function AddToolModal({ onClose }: { onClose: () => void }) {
 
           <Field label="Name">
             <input autoFocus value={form.name} onChange={set('name')} placeholder="Milwaukee 1/2in hammer drill" className={inputCx} />
+          </Field>
+
+          <Field label="Label descriptor" hint="2–3 words for the printed sticker, e.g. “Meter kit”. Falls back to the name if blank.">
+            <input value={form.short_label} onChange={set('short_label')} maxLength={40} placeholder="Meter kit" className={inputCx} />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">

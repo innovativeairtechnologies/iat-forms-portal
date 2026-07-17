@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
     .from('crib_tools')
     .insert({
       name,
+      short_label: str(body?.short_label, 40),
       category,
       make: str(body?.make),
       model: str(body?.model),

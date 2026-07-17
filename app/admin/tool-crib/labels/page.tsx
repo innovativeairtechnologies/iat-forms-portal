@@ -16,14 +16,14 @@ export default async function LabelsPage({
 
   let q = supabaseAdmin
     .from('crib_tools')
-    .select('id, tag_code, name, category, home_location')
+    .select('id, tag_code, name, short_label')
     .neq('status', 'retired')
     .order('tag_code')
 
   if (ids) q = q.in('id', ids.split(',').filter(Boolean))
 
   const { data } = await q
-  const tools = (data ?? []) as Pick<CribTool, 'id' | 'tag_code' | 'name' | 'category' | 'home_location'>[]
+  const tools = (data ?? []) as Pick<CribTool, 'id' | 'tag_code' | 'name' | 'short_label'>[]
 
   /* Hard gate. A label is glued to a drill and can never be reprinted — if the
      origin baked into the QR is wrong (or is a dev localhost), we've produced a

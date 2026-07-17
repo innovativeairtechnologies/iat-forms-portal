@@ -82,6 +82,7 @@ export type CribTool = {
   id: string
   tag_code: string          // 'IAT-0042' — minted by a DB sequence, printed on the label
   name: string
+  short_label: string | null // 2-3 word descriptor for the printed sticker (migration 057)
   category: string | null
   make: string | null
   model: string | null

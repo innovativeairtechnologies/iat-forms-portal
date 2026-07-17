@@ -4,13 +4,9 @@ Warehouse tools are shared, they walk off, and nobody knows who took what. Tool
 Crib gives every tool a QR label and a permanent custody record: **who has it
 right now**, and **who had it before**.
 
-Built 2026-07-16. Migration `050_tool_crib.sql`. Live in the admin **Operations**
-nav (between Equipment and SRV Form) as of the same day.
-
-> ⚠️ **`050` must be run for any of this to work.** Until it is, `/admin/tool-crib`
-> 500s (no `crib_tools` table) and no scan resolves. Only full admins see the nav
-> item meanwhile — scoped roles need the `('production_manager','tool_crib')` row
-> that `050` seeds, so the nav filters it out for them until then.
+Built 2026-07-16, migration `050_tool_crib.sql` (applied). Live in the admin
+**Operations** nav (between Equipment and SRV Form). Tool **photos** and
+**photograph-the-label auto-fill** added 2026-07-17.
 
 > **Not to be confused with "Tools & Apps"** (`/admin/tools`, `/tools/*`, the
 > `tools` perm, `lib/tools.ts`). That's the internal field-app launcher — duct
@@ -61,6 +57,53 @@ from the request body. A client cannot claim to be someone else.
 Any signed-in staff member can scan, including the base `production` role who
 hold no admin perms at all — the person grabbing the drill is the person
 scanning it. The `tool_crib` perm gates only the admin registry.
+
+---
+
+## Photos (added 2026-07-17)
+
+Each tool carries up to **4 photos**. The first is the thumbnail in the list
+(`IdentityCell`'s `leading` slot → `components/admin/ToolThumb.tsx`), an enlarged
+hero on the detail page, and the profile image on the phone scan page. No photo →
+a wrench-chip fallback.
+
+Stored as storage **paths** in the private `crib-photos` bucket (migration 050),
+in `crib_tools.photo_urls text[]`. Because the bucket is private, an `<img src>`
+can't hit it directly — it points at **`GET /api/tool-crib/photo?path=…`**, which
+gates the viewer (any authenticated non-customer, so the employee scan page works)
+and **307-redirects to a short-lived signed URL**. Same trick as the ticket
+attachment download route. The path is shape-validated
+(`^\d{10,}-[a-z0-9]+\.(png|jpe?g|webp|gif)$`) so it can't escape the bucket; no
+per-image DB lookup (the list renders many thumbnails — a query each would be
+waste, and every object in the bucket is a tool photo every staff viewer may see).
+
+Uploads: the browser resizes the photo (`lib/image-resize.ts`, ≤1600px) then
+uploads **direct to Storage** via a signed upload URL from
+`POST /api/admin/tool-crib/photo-url` — the bytes never transit the function
+(Vercel's ~4.5MB body cap).
+
+`components/admin/ToolPhotos.tsx` is the add/remove editor and is a **controlled**
+component — it renders straight off its `paths` prop and keeps no once-seeded copy.
+That's load-bearing: an earlier uncontrolled version drifted from the parent, so a
+save that failed (and reverted the parent) left the grid showing the un-saved
+state and the next save silently committed it. The detail page rolls back
+`photos` on a PATCH failure, and because the editor is controlled, the revert
+flows back into the grid.
+
+## Photograph-the-label auto-fill (added 2026-07-17)
+
+"Scan the tool's label" in the Add Tool modal photographs the nameplate and
+prefills name / make / model / serial + a category snapped onto the fixed list.
+`POST /api/admin/tool-crib/scan-nameplate` — admin-gated, cloned from the
+equipment nameplate scanner (`/api/ocr-label`): the client resizes the photo to a
+base64 data URL, Claude vision (`claude-haiku-4-5`) reads it, and we prompt-and-
+parse a flat JSON object (the house pattern — no tool-use).
+
+**Prefill-then-edit, never blocks.** It only fills fields the scan actually
+returned (`scanned || prev`), so a blank read can't wipe a typed value, and
+everything stays editable. A category the model returns that isn't on
+`CRIB_CATEGORIES` is dropped rather than shoved into the `<select>`. The extracted
+strings flow into the same create POST that validates everything else.
 
 ---
 
@@ -167,6 +210,23 @@ Print at **100% scale** — "fit to page" shifts every label. Calibrate against 
 real sheet before mass-printing: print onto plain paper and hold it over a label
 sheet against a window.
 
+**Layout (revised again 2026-07-17, per Jacob — migration `057`):** QR (72px /
+0.75") on the left; to its right, three stacked lines — the **item code**
+(`IAT-0008`, bold mono, the prominent hand-readable line), a **2–3 word
+descriptor** (`Meter kit`), and **"Innovative Air Technologies"** (small, uppercase).
+The label cell is `box-sizing: border-box` so its padding stays inside the
+2.625×1" track (otherwise the whole sheet creeps out of alignment).
+
+The descriptor comes from a new **`crib_tools.short_label`** column (migration
+`057`) — a hand-authored sticker name, distinct from `name` because `name` can be
+the full manufacturer string ("Fluke 87V-MAX Digital Multimeter") that's too long
+for a 1" label. Set it in the Add Tool form or on the tool's detail page ("Sticker
+label" card). When it's blank the label falls back to `name`, clamped to 2 lines.
+
+> The `IAT-0042` code is **back on the label** (it was briefly removed earlier the
+> same day), so the hand-readable fallback for a damaged QR is restored — see the
+> damage-tolerance section.
+
 ### Damage tolerance — the corners are what matter
 
 Measured 2026-07-16 by rendering the exact QR the sheet draws, rasterizing it at
@@ -191,9 +251,10 @@ Practical consequences:
 - **Protect the corners, not the middle.** Place the label on a flat face, away
   from edges, grips and anything that rubs. A gouged corner is a dead label.
 - **Laminate or use poly stock** — this is physical, not an encoding problem.
-- **The printed text code is the real fallback**, and this is the evidence for it:
-  when a corner goes, the QR is unrecoverable but the human can still read
-  `IAT-0042` and type it. `normalizeTagCode` even accepts bare `42`.
+- **The printed `IAT-0042` code is on the label** (removed briefly, then restored
+  2026-07-17 when the descriptor layout landed). When a corner goes and the QR is
+  unrecoverable, the code is still readable by hand — type it into the app
+  (`normalizeTagCode` even accepts a bare `42`).
 
 ### `NEXT_PUBLIC_LABEL_ORIGIN` — what gets baked into every sticker
 

@@ -6,7 +6,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Printer, ChevronLeft } from 'lucide-react'
 import { labelUrl, IAT_NAME } from '@/lib/tool-crib'
 
-type LabelTool = { id: string; tag_code: string; name: string; category: string | null; home_location: string | null }
+type LabelTool = { id: string; tag_code: string; name: string; short_label: string | null }
 
 /* Avery 5520 — weatherproof laser, 1" x 2-5/8", 30 per sheet (the 5160 grid in
    poly stock). Paper will not survive oil and abrasion in a tool crib.
@@ -128,33 +128,37 @@ export default function LabelSheet({ tools, origin }: { tools: LabelTool[]; orig
             justifyContent: 'center',
           }}
         >
-          {chosen.map(t => (
-            // box-sizing: border-box so the padding stays INSIDE the 2.625×1in
-            // track — otherwise each label is padding-wider than its grid cell
-            // and the whole sheet creeps out of alignment.
-            <div key={t.id} style={{ width: '2.625in', height: '1in', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.06in', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-                {/* Level M. Its ~15% recovery applies to DATA modules only —
-                    the corner finder patterns aren't covered at any level, so a
-                    gouged corner kills the label regardless. Kept modest so the
-                    company name fits under it within the 1in height. */}
-                <QRCodeSVG value={labelUrl(t.tag_code)} size={68} level="M" bgColor="#ffffff" fgColor="#000000" />
-                {/* Company name stretched to EXACTLY the QR's width. textLength +
-                    lengthAdjust="spacingAndGlyphs" is what makes it "fit just
-                    right" — the SVG scales the glyphs to the given width so it's
-                    never longer or shorter than the code above it. */}
-                <svg width={68} height={10} viewBox="0 0 68 10" style={{ display: 'block' }} aria-hidden="true">
-                  <text
-                    x="0" y="8"
-                    textLength="68" lengthAdjust="spacingAndGlyphs"
-                    fontFamily="Arial, Helvetica, sans-serif" fontSize="7" fontWeight={600} fill="#000"
-                  >
+          {chosen.map(t => {
+            // The 2-3 word sticker descriptor; fall back to the full name (the
+            // cell clamps it to 2 lines) when no short_label is set.
+            const descriptor = t.short_label?.trim() || t.name
+            return (
+              // box-sizing: border-box so the padding stays INSIDE the 2.625×1in
+              // track — otherwise each label is padding-wider than its grid cell
+              // and the whole sheet creeps out of alignment.
+              <div key={t.id} style={{ width: '2.625in', height: '1in', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: '0.09in', padding: '0.06in 0.08in', overflow: 'hidden' }}>
+                {/* Level M. Its ~15% recovery applies to DATA modules only — the
+                    corner finder patterns aren't covered at any level, so a gouged
+                    corner kills the label regardless. */}
+                <QRCodeSVG value={labelUrl(t.tag_code)} size={72} level="M" bgColor="#ffffff" fgColor="#000000" style={{ flexShrink: 0 }} />
+                <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px', lineHeight: 1.15 }}>
+                  {/* Item code — the prominent line, and the hand-readable fallback
+                      for a damaged QR someone reads aloud and types. */}
+                  <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '12px', fontWeight: 700, color: '#000', letterSpacing: '0.02em' }}>
+                    {t.tag_code}
+                  </div>
+                  {/* Short descriptor. Clamped to 2 lines so a long fallback name
+                      can't push the company line off the sticker. */}
+                  <div style={{ fontSize: '9px', color: '#111', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {descriptor}
+                  </div>
+                  <div style={{ fontSize: '6.5px', color: '#555', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                     {IAT_NAME}
-                  </text>
-                </svg>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
