@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer, ChevronLeft } from 'lucide-react'
-import { labelUrl } from '@/lib/tool-crib'
+import { labelUrl, IAT_NAME } from '@/lib/tool-crib'
 
 type LabelTool = { id: string; tag_code: string; name: string; category: string | null; home_location: string | null }
 
@@ -129,29 +129,29 @@ export default function LabelSheet({ tools, origin }: { tools: LabelTool[]; orig
           }}
         >
           {chosen.map(t => (
-            <div key={t.id} style={{ width: '2.625in', height: '1in', display: 'flex', alignItems: 'center', gap: '0.08in', padding: '0.08in 0.1in', overflow: 'hidden' }}>
-              {/* Level M. Its ~15% recovery applies to DATA modules only — measured
-                  at real print size (0.85in @ 300dpi), the middle survives ~7.5%
-                  damage, but wrecking ANY of the three corner finder patterns kills
-                  the label at ~1.4%: a scanner needs them to locate the code, and no
-                  error-correction level covers them. Bumping to Q/H would not help.
-                  This is why the code is printed as text too — see below. */}
-              <QRCodeSVG value={labelUrl(t.tag_code)} size={76} level="M" bgColor="#ffffff" fgColor="#000000" />
-              <div style={{ minWidth: 0, flex: 1, lineHeight: 1.2 }}>
-                {/* The code is printed in text because the QR is useless once the
-                    label is gouged or oiled over — this is the fallback someone
-                    reads aloud and types in. */}
-                <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '11px', fontWeight: 700, color: '#000', letterSpacing: '0.02em' }}>
-                  {t.tag_code}
-                </div>
-                <div style={{ fontSize: '8.5px', color: '#111', marginTop: '2px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                  {t.name}
-                </div>
-                {t.home_location && (
-                  <div style={{ fontSize: '7.5px', color: '#555', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {t.home_location}
-                  </div>
-                )}
+            // box-sizing: border-box so the padding stays INSIDE the 2.625×1in
+            // track — otherwise each label is padding-wider than its grid cell
+            // and the whole sheet creeps out of alignment.
+            <div key={t.id} style={{ width: '2.625in', height: '1in', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.06in', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                {/* Level M. Its ~15% recovery applies to DATA modules only —
+                    the corner finder patterns aren't covered at any level, so a
+                    gouged corner kills the label regardless. Kept modest so the
+                    company name fits under it within the 1in height. */}
+                <QRCodeSVG value={labelUrl(t.tag_code)} size={68} level="M" bgColor="#ffffff" fgColor="#000000" />
+                {/* Company name stretched to EXACTLY the QR's width. textLength +
+                    lengthAdjust="spacingAndGlyphs" is what makes it "fit just
+                    right" — the SVG scales the glyphs to the given width so it's
+                    never longer or shorter than the code above it. */}
+                <svg width={68} height={10} viewBox="0 0 68 10" style={{ display: 'block' }} aria-hidden="true">
+                  <text
+                    x="0" y="8"
+                    textLength="68" lengthAdjust="spacingAndGlyphs"
+                    fontFamily="Arial, Helvetica, sans-serif" fontSize="7" fontWeight={600} fill="#000"
+                  >
+                    {IAT_NAME}
+                  </text>
+                </svg>
               </div>
             </div>
           ))}

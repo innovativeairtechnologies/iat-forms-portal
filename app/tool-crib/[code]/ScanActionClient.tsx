@@ -8,6 +8,7 @@ import type { CribTool } from '@/lib/supabase'
 import { CRIB_STATUS, toolThumbPath } from '@/lib/tool-crib'
 import { StatusPill, timeAgo } from '@/components/admin/list'
 import { ToolThumb } from '@/components/admin/ToolThumb'
+import LostFoundNote from './LostFoundNote'
 
 /* One tool, one decision, one button.
 
@@ -148,6 +149,8 @@ export default function ScanActionClient({
           My tools
         </Link>
       </div>
+
+      <LostFoundNote />
     </div>
   )
 }

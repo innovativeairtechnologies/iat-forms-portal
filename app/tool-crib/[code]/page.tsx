@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { normalizeTagCode } from '@/lib/tool-crib'
 import type { CribTool } from '@/lib/supabase'
 import ScanActionClient from './ScanActionClient'
+import LostFoundNote from './LostFoundNote'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +59,7 @@ function NotFound({ raw }: { raw: string }) {
         className="inline-block mt-5 px-4 py-2.5 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors">
         Enter a code
       </Link>
+      <div className="max-w-md mx-auto"><LostFoundNote /></div>
     </div>
   )
 }

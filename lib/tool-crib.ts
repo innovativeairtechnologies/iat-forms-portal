@@ -8,6 +8,15 @@ import type { CribTool, CribToolStatus, CribEventAction } from './supabase'
    calculators) behind the `tools` perm. This is the warehouse tool check-out
    registry behind the `tool_crib` perm. They share a word and nothing else. */
 
+// ── Brand ────────────────────────────────────────────────────────────────────
+// Used on the printed label and the "if found, contact us" note on the scan
+// page. There's no repo-wide brand constant yet (the name is hardcoded in a
+// dozen places); scoped here for the two Tool Crib uses. Phone matches the
+// contact line in app/api/admin/srv-review.
+export const IAT_NAME = 'Innovative Air Technologies'
+export const IAT_PHONE_DISPLAY = '770-788-6744'
+export const IAT_PHONE_TEL = '+17707886744'
+
 // ── Status ───────────────────────────────────────────────────────────────────
 
 export const CRIB_STATUS: Record<CribToolStatus, { label: string; tone: Tone }> = {
