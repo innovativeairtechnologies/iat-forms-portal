@@ -17,6 +17,13 @@ export const IAT_NAME = 'Innovative Air Technologies'
 export const IAT_PHONE_DISPLAY = '770-788-6744'
 export const IAT_PHONE_TEL = '+17707886744'
 
+// The sticker descriptor runs vertically up the right edge of the QR, so its
+// length is bounded by the QR's height. 14 chars is the most that fits at a
+// readable size — enforced on the input, the server, and the label render so no
+// description can ever run past the code. Covers the usual 2-word tool names
+// ("Meter kit", "Impact driver", "Torque wrench").
+export const CRIB_SHORT_LABEL_MAX = 14
+
 // ── Status ───────────────────────────────────────────────────────────────────
 
 export const CRIB_STATUS: Record<CribToolStatus, { label: string; tone: Tone }> = {

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer, ChevronLeft } from 'lucide-react'
-import { labelUrl, IAT_NAME } from '@/lib/tool-crib'
+import { labelUrl, IAT_NAME, CRIB_SHORT_LABEL_MAX } from '@/lib/tool-crib'
 
 type LabelTool = { id: string; tag_code: string; name: string; short_label: string | null }
 
@@ -129,32 +129,52 @@ export default function LabelSheet({ tools, origin }: { tools: LabelTool[]; orig
           }}
         >
           {chosen.map(t => {
-            // The 2-3 word sticker descriptor; fall back to the full name (the
-            // cell clamps it to 2 lines) when no short_label is set.
-            const descriptor = t.short_label?.trim() || t.name
+            // Sticker descriptor. short_label is capped at CRIB_SHORT_LABEL_MAX
+            // on the way in; the slice bounds the fallback name too so the
+            // vertical text can never run past the QR.
+            const descriptor = (t.short_label?.trim() || t.name).slice(0, CRIB_SHORT_LABEL_MAX)
             return (
               // box-sizing: border-box so the padding stays INSIDE the 2.625×1in
               // track — otherwise each label is padding-wider than its grid cell
               // and the whole sheet creeps out of alignment.
-              <div key={t.id} style={{ width: '2.625in', height: '1in', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: '0.09in', padding: '0.06in 0.08in', overflow: 'hidden' }}>
-                {/* Level M. Its ~15% recovery applies to DATA modules only — the
-                    corner finder patterns aren't covered at any level, so a gouged
-                    corner kills the label regardless. */}
-                <QRCodeSVG value={labelUrl(t.tag_code)} size={72} level="M" bgColor="#ffffff" fgColor="#000000" style={{ flexShrink: 0 }} />
-                <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px', lineHeight: 1.15 }}>
-                  {/* Item code — the prominent line, and the hand-readable fallback
-                      for a damaged QR someone reads aloud and types. */}
-                  <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '12px', fontWeight: 700, color: '#000', letterSpacing: '0.02em' }}>
+              <div key={t.id} style={{ width: '2.625in', height: '1in', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.06in', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                  {/* Item code on top — centered over the QR, and the hand-readable
+                      fallback for a damaged QR someone reads aloud and types. */}
+                  <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: '10px', fontWeight: 700, color: '#000', letterSpacing: '0.02em', lineHeight: 1 }}>
                     {t.tag_code}
                   </div>
-                  {/* Short descriptor. Clamped to 2 lines so a long fallback name
-                      can't push the company line off the sticker. */}
-                  <div style={{ fontSize: '9px', color: '#111', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                    {descriptor}
+
+                  {/* QR, with the descriptor running top-to-bottom just off its
+                      right edge. The descriptor is absolutely positioned so it
+                      doesn't widen the block (keeps the code + company centred over
+                      the QR), and its height is pinned to the QR so it can't run
+                      past top or bottom. Level M — corner finder patterns aren't
+                      error-corrected at any level, so protect the corners. */}
+                  <div style={{ position: 'relative', width: '58px', height: '58px' }}>
+                    <QRCodeSVG value={labelUrl(t.tag_code)} size={58} level="M" bgColor="#ffffff" fgColor="#000000" />
+                    <div style={{
+                      position: 'absolute', left: '100%', top: 0, height: '58px', marginLeft: '4px',
+                      writingMode: 'vertical-rl', whiteSpace: 'nowrap', overflow: 'hidden',
+                      display: 'flex', alignItems: 'center',
+                      fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '7px', fontWeight: 600, color: '#111', lineHeight: 1,
+                    }}>
+                      {descriptor}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '6.5px', color: '#555', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                    {IAT_NAME}
-                  </div>
+
+                  {/* Company name stretched to EXACTLY the QR width (textLength +
+                      lengthAdjust) so it sits flush under the code and never
+                      overhangs. */}
+                  <svg width={58} height={8} viewBox="0 0 58 8" style={{ display: 'block' }} aria-hidden="true">
+                    <text
+                      x="0" y="6.5"
+                      textLength="58" lengthAdjust="spacingAndGlyphs"
+                      fontFamily="Arial, Helvetica, sans-serif" fontSize="6.5" fontWeight={600} fill="#000"
+                    >
+                      {IAT_NAME}
+                    </text>
+                  </svg>
                 </div>
               </div>
             )

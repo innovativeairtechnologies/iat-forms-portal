@@ -6,7 +6,7 @@ import {
   History, QrCode, Loader2, ArrowLeftRight, Undo2, AlertTriangle,
 } from 'lucide-react'
 import type { CribTool, CribEvent, CribToolStatus } from '@/lib/supabase'
-import { CRIB_STATUS, CRIB_EVENT_LABEL, formatCost, toolThumbPath, photoSrc } from '@/lib/tool-crib'
+import { CRIB_STATUS, CRIB_EVENT_LABEL, formatCost, toolThumbPath, photoSrc, CRIB_SHORT_LABEL_MAX } from '@/lib/tool-crib'
 import { StatusPill, timeAgo, Avatar } from '@/components/admin/list'
 import { DetailTopBar, DetailShell, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
 import ToolPhotos from '@/components/admin/ToolPhotos'
@@ -271,14 +271,14 @@ export default function ToolDetailClient({
                 value={shortLabel}
                 onChange={e => { setShortLabel(e.target.value); setLabelSaved('idle') }}
                 onBlur={saveShortLabel}
-                maxLength={40}
+                maxLength={CRIB_SHORT_LABEL_MAX}
                 placeholder="e.g. Meter kit"
                 className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-canvas border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none transition-all focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               />
               <p className="mt-1.5 text-[11px] text-ink-faint">
                 {labelSaved === 'saving' ? 'Saving…'
                   : labelSaved === 'saved' ? 'Saved.'
-                  : '2–3 words for the printed sticker. Falls back to the name if blank.'}
+                  : `Up to ${CRIB_SHORT_LABEL_MAX} chars — runs up the side of the QR. Falls back to the name if blank.`}
               </p>
             </div>
           </Card>

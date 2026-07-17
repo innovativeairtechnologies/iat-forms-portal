@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireToolCribAuth, requireCribActor } from '@/lib/api-auth'
-import { CRIB_CATEGORIES, cribErrorMessage } from '@/lib/tool-crib'
+import { CRIB_CATEGORIES, cribErrorMessage, CRIB_SHORT_LABEL_MAX } from '@/lib/tool-crib'
 
 /* Edit a tool's descriptive fields, or change its lifecycle status.
 
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // ── Plain field edit ──────────────────────────────────────────────────────
   const patch: Record<string, unknown> = {}
   for (const k of EDITABLE) {
-    if (k in body) patch[k] = str(body[k], k === 'notes' ? 2000 : 200)
+    if (k in body) patch[k] = str(body[k], k === 'notes' ? 2000 : k === 'short_label' ? CRIB_SHORT_LABEL_MAX : 200)
   }
   if ('category' in patch && patch.category && !CATEGORIES.has(patch.category as string)) {
     return NextResponse.json({ error: 'Unknown category.' }, { status: 400 })

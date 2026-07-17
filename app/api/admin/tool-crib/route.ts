@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireToolCribAuth, requireCribActor } from '@/lib/api-auth'
-import { CRIB_CATEGORIES } from '@/lib/tool-crib'
+import { CRIB_CATEGORIES, CRIB_SHORT_LABEL_MAX } from '@/lib/tool-crib'
 
 /* Tool Crib registry — create + list. Manage-gated (admin + production_manager);
    the employee scan surface never touches this route.
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     .from('crib_tools')
     .insert({
       name,
-      short_label: str(body?.short_label, 40),
+      short_label: str(body?.short_label, CRIB_SHORT_LABEL_MAX),
       category,
       make: str(body?.make),
       model: str(body?.model),

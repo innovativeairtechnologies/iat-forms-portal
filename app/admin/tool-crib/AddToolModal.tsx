@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Loader2, ScanLine, Check, AlertCircle } from 'lucide-react'
-import { CRIB_CATEGORIES } from '@/lib/tool-crib'
+import { CRIB_CATEGORIES, CRIB_SHORT_LABEL_MAX } from '@/lib/tool-crib'
 import { resizeImage } from '@/lib/image-resize'
 import ToolPhotos from '@/components/admin/ToolPhotos'
 
@@ -184,8 +184,8 @@ export default function AddToolModal({ onClose }: { onClose: () => void }) {
             <input autoFocus value={form.name} onChange={set('name')} placeholder="Milwaukee 1/2in hammer drill" className={inputCx} />
           </Field>
 
-          <Field label="Label descriptor" hint="2–3 words for the printed sticker, e.g. “Meter kit”. Falls back to the name if blank.">
-            <input value={form.short_label} onChange={set('short_label')} maxLength={40} placeholder="Meter kit" className={inputCx} />
+          <Field label="Label descriptor" hint={`Up to ${CRIB_SHORT_LABEL_MAX} chars — runs up the side of the QR on the sticker, e.g. “Meter kit”. Falls back to the name if blank.`}>
+            <input value={form.short_label} onChange={set('short_label')} maxLength={CRIB_SHORT_LABEL_MAX} placeholder="Meter kit" className={inputCx} />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">

@@ -210,18 +210,31 @@ Print at **100% scale** — "fit to page" shifts every label. Calibrate against 
 real sheet before mass-printing: print onto plain paper and hold it over a label
 sheet against a window.
 
-**Layout (revised again 2026-07-17, per Jacob — migration `057`):** QR (72px /
-0.75") on the left; to its right, three stacked lines — the **item code**
-(`IAT-0008`, bold mono, the prominent hand-readable line), a **2–3 word
-descriptor** (`Meter kit`), and **"Innovative Air Technologies"** (small, uppercase).
-The label cell is `box-sizing: border-box` so its padding stays inside the
-2.625×1" track (otherwise the whole sheet creeps out of alignment).
+**Layout (settled 2026-07-17, per Jacob — the QR is hugged on three sides):**
+the **item code** (`IAT-0008`, bold mono) centered on top; the **QR** (58px /
+~0.6") in the middle; the **descriptor** (`Meter kit`) running **top-to-bottom**
+just off the QR's right edge; and **"Innovative Air Technologies"** along the
+bottom, stretched to *exactly* the QR width via SVG `textLength` +
+`lengthAdjust` so it sits flush and never overhangs. The whole block is centered
+in the wide cell (the side whitespace is fine — nothing runs over an edge).
 
-The descriptor comes from a new **`crib_tools.short_label`** column (migration
-`057`) — a hand-authored sticker name, distinct from `name` because `name` can be
-the full manufacturer string ("Fluke 87V-MAX Digital Multimeter") that's too long
-for a 1" label. Set it in the Add Tool form or on the tool's detail page ("Sticker
-label" card). When it's blank the label falls back to `name`, clamped to 2 lines.
+Mechanics worth knowing:
+- The descriptor is **absolutely positioned** (`left: 100%` of the QR) so it
+  doesn't widen the block — that's what keeps the code and company centered over
+  the QR rather than over QR-plus-descriptor.
+- Its height is pinned to the QR and it's `overflow: hidden`, so it physically
+  can't run past the code. Belt: the input, the server, and the render all cap it
+  at `CRIB_SHORT_LABEL_MAX` (14 chars — the most that fits vertically at a
+  readable size). Change that one constant to retune all three.
+- The QR shrank from 72→58px to make vertical room for the code above and company
+  below within the 1" height. Still fine for a phone at close range.
+- `box-sizing: border-box` keeps the cell padding inside the 2.625×1" track.
+
+The descriptor comes from **`crib_tools.short_label`** (migration `057`) — a
+hand-authored sticker name, distinct from `name` because `name` can be the full
+manufacturer string ("Fluke 87V-MAX Digital Multimeter") too long for a 1" label.
+Set it in Add Tool or on the tool's detail page ("Sticker label" card). Blank
+falls back to `name`, sliced to `CRIB_SHORT_LABEL_MAX` so the fallback fits too.
 
 > The `IAT-0042` code is **back on the label** (it was briefly removed earlier the
 > same day), so the hand-readable fallback for a damaged QR is restored — see the
