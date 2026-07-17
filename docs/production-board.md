@@ -4,8 +4,11 @@ A per-department shop checklist the floor opens by **scanning a QR code — no l
 Built so the team can run the work while their manager is away, and keep using it after.
 
 - **Public board:** `/board/<token>` — one per department, one unguessable link each.
-- **Manager's side:** `/admin/production` — perm `production_board`.
-- **Migration:** `055_production_board.sql` (run by hand in the Supabase SQL editor).
+  `/board/<token>?project=<id>` focuses a single project (the optional per-project link).
+- **Manager's side:** `/admin/production` → a department → its **projects**; open a project to
+  manage its tasks, crew, and details. Perm `production_board`.
+- **Migrations:** `055_production_board.sql`, then `056_production_projects.sql` (both run by
+  hand in the Supabase SQL editor).
 
 ---
 
@@ -58,14 +61,37 @@ off: rotate and re-print, don't re-plumb.
 
 ## How the work is modelled
 
-One table, `production_tasks`, holds both kinds of work. **`project` is the only tell:**
+Since **migration 056** a department contains **projects**, and tasks hang off them:
 
-- `project IS NULL` → a **standing duty** ("Morning safety walk"). Renders under *Every day*.
-- `project` set → **job work** ("Weld frame" on *Unit 4412*). Grouped by that string.
+```
+Department (Production)
+├─ standing duties         production_tasks with project_id NULL — "Every day"
+└─ Project (Acme Unit A)   production_projects row
+   └─ tasks                production_tasks with project_id set, optional `phase`
+```
 
-`project` is free text on purpose. There is **no deals → equipment → shop link in this
-schema** to key off (`deals.job_name` is sales metadata; `equipment` is the post-ship
-installed base), so an FK here would be a lie.
+- **Standing duty** = `project_id IS NULL`. Department-wide, shows under *Every day* at the
+  top of the board. `isStanding()` keys off `project_id` (the old free-text `project` column
+  is **deprecated** — kept for pre-056 rows, never written by new code).
+- **Project task** = `project_id` set. Grouped into its project's section; within a project,
+  the optional `phase` text ("Day 1", "Framing") sub-groups tasks — blank = a flat list.
+
+**Two projects can share a task list yet track separately** — the headline ask. Each project
+is its own `production_projects` row with its own tasks, so checking off Acme never touches
+Beta. The **Duplicate** button (`POST /api/admin/production/projects {duplicate_id}`) copies a
+project and its task list — titles, details, phases, cadence, priority carry over; per-build
+facts reset (status→open, done_* cleared, due dates + assignees dropped), because a new build
+has its own dates and crew.
+
+Project fields: `name`, `type` (free text — unit model / customer / 'R&D'), `detail`, `status`
+(`active` | `complete` — complete hides it from the floor board), and `people` (a **text[]**
+of roster names shown as "who's on this build"). **`people` is display-only** — by product
+decision it does NOT gate the assignee picker, which stays the whole department roster.
+
+`type`, `assignee`, `phase` and the project↔people tags are all free text / snapshots, not
+FKs: there is **no deals → equipment → shop link in this schema** to key off (`deals.job_name`
+is sales metadata; `equipment` is the post-ship installed base), and the roster is editable —
+so an FK would either be a lie or would let a rename rewrite recorded history.
 
 Likewise `assignee` and `done_by` are **free text, not FKs to `employees`** — the floor
 has no accounts, and `employees` isn't staff-only anyway (every customer invite gets a
@@ -124,11 +150,12 @@ Note `rateLimit` **fails open by design**. It is not the security control here; 
 | Path | What |
 |---|---|
 | `supabase/migrations/055_production_board.sql` | 4 tables, token mint, perm grant, seed |
-| `lib/production.ts` | `effectiveDone`, grouping, progress, `cleanActorName`, `SHOP_TZ` |
-| `app/board/[token]/` | the public board (server page + client) |
+| `supabase/migrations/056_production_projects.sql` | `production_projects` + task `project_id`/`phase` |
+| `lib/production.ts` | `effectiveDone`, `groupByPhase`, `buildBoard`, progress, `cleanActorName`, `SHOP_TZ` |
+| `app/board/[token]/` | the public board (server page + client); `?project=` focuses one |
 | `app/api/board/[token]/check/` | the one unauthenticated write |
-| `app/admin/production/` | manager list + per-department detail |
-| `app/api/admin/production/{departments,tasks,people}/` | manager writes, `requireProductionAuth` |
+| `app/admin/production/` | dept list → dept detail (projects + standing) → project detail |
+| `app/api/admin/production/{departments,projects,tasks,people}/` | manager writes, `requireProductionAuth`; `projects` also does duplicate |
 
 ## Adding the perm (already done — for reference)
 
@@ -149,9 +176,10 @@ Plus the sidebar entry in `components/admin/AdminSidebar.tsx`.
 
 ## Known gaps / next
 
-- **Ordering** is `sort_order` from the API's append-at-end; there's no drag-to-reorder yet.
-- **No edit-in-place** for a task's text — remove and re-add. Add an edit modal if the
-  manager asks.
+- **Ordering** is `sort_order` from the API's append-at-end; there's no drag-to-reorder yet
+  (projects, phases, and tasks all sort by it).
+- **Duplicate resets dates + assignees** by design; if a build reuses the same crew, they're
+  re-picked on the copy. Revisit if that's more annoying than helpful.
 - Admin-side check-off records `done_by: 'Manager'` rather than the signed-in user's name.
 - No per-department timezone (see above).
 - Nothing notifies anyone. The board is pull, not push.

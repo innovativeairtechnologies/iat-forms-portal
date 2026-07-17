@@ -1,15 +1,19 @@
 /**
- * Seed the Production board with Jacob's real 6-day unit-build sequence
- * (2026-07-17) so the team sees a lifelike board, not lorem ipsum.
+ * Seed the Production board with a lifelike two-project demo (migration 056):
+ * two builds that share the same 6-day task list but track separately — exactly
+ * the "two use cases coming up for Production" scenario.
  *
- * The board groups by `project`, so each day is a project group ("Day 1" …
- * "Day 6") — that mirrors how the plan was written and how the floor reads it.
- * `due_date` carries the actual calendar day (workdays only, weekend skipped),
- * so tasks age into the Overdue pill honestly as the week goes on.
+ *   • Roster       — a few names so the pickers and crew tags have something.
+ *   • Standing     — a couple of every-day duties (project_id null).
+ *   • Acme Unit A  — the 6-day build, phased Day 1…Day 6, due dates on workdays.
+ *   • Beta Unit B  — the same task list, no dates yet (a fresh duplicate).
  *
- * Idempotent: skips any task whose (department, project, title) already exists,
- * so re-running never duplicates. Remove the demo with:
- *   node scripts/seed-production-board-demo.mjs --clear
+ * Idempotent: skips anything already present (projects by name, tasks by
+ * project+phase+title, people by name). Also clears the OLD 055 single-list demo
+ * (day labels that lived in the deprecated `project` text with no project_id) so
+ * it doesn't linger as phantom standing duties.
+ *
+ * Remove the whole demo:  node scripts/seed-production-board-demo.mjs --clear
  */
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
@@ -26,13 +30,10 @@ const env = Object.fromEntries(
       return [l.slice(0, i).trim(), l.slice(i + 1).trim()]
     })
 )
-
 const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 })
 
-// Day 1 = the shop-local date this is seeded; days advance over WORKDAYS only
-// (a 6-day build plan means six days on the floor, not a Saturday shift).
 const shopToday = () =>
   new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -49,7 +50,7 @@ function workdayOffset(startYmd, n) {
   return d.toISOString().slice(0, 10)
 }
 
-// Jacob's list, verbatim wording (capitalization only).
+// Jacob's real build sequence, verbatim (capitalization only).
 const PLAN = [
   ['Finish frame', 'Rotor', 'Outer react'],
   ['Finish outer react', 'Blockings', 'Cut inner skins'],
@@ -59,57 +60,142 @@ const PLAN = [
   ['Install control box', 'Complete vestibule', 'Paint'],
 ]
 
+const ROSTER = ['Nate Lynch', 'James Pope', 'Lee Childers', 'Mia Torres']
+const STANDING = [
+  { title: 'Morning safety walk', detail: 'Walk your bay before the first cut.', cadence: 'daily' },
+  { title: 'Sweep your bay at end of shift', cadence: 'daily' },
+]
+const PROJECTS = [
+  { name: 'Acme Unit A', type: 'IDP-4000, dual-wheel', people: ['Nate Lynch', 'James Pope'], dated: true },
+  { name: 'Beta Unit B', type: 'IDP-4000, dual-wheel', people: ['Lee Childers', 'Mia Torres'], dated: false },
+]
+
 const { data: dept, error: deptErr } = await sb
   .from('production_departments')
   .select('id, name, token')
   .eq('name', 'Production')
   .single()
 if (deptErr || !dept) {
-  console.error('Production department not found — has migration 055 been applied?', deptErr?.message)
+  console.error('Production department not found — has migration 055/056 been applied?', deptErr?.message)
   process.exit(1)
 }
 
 if (process.argv.includes('--clear')) {
-  const projects = PLAN.map((_, i) => `Day ${i + 1}`)
-  const { error } = await sb
-    .from('production_tasks')
-    .delete()
-    .eq('department_id', dept.id)
-    .in('project', projects)
-  if (error) { console.error('clear failed:', error.message); process.exit(1) }
-  console.log('Cleared the Day 1–6 demo tasks from the Production board.')
+  // Projects cascade their tasks away on delete (056 FK).
+  await sb.from('production_projects').delete().eq('department_id', dept.id).in('name', PROJECTS.map((p) => p.name))
+  await sb.from('production_tasks').delete().eq('department_id', dept.id).is('project_id', null).in('title', STANDING.map((s) => s.title))
+  console.log('Cleared the Production two-project demo (projects, their tasks, and the seeded standing duties).')
   process.exit(0)
 }
 
-const { data: existing } = await sb
+// ── Clean up the OLD 055 single-list demo, if it's still around ───────────────
+// Those rows had the day label in the deprecated `project` text and no
+// project_id, so post-056 they'd show as standing duties. Remove them.
+const OLD_DAYS = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6']
+const { count: oldCount } = await sb
   .from('production_tasks')
-  .select('project, title')
+  .delete({ count: 'exact' })
   .eq('department_id', dept.id)
-  .is('archived_at', null)
-const have = new Set((existing ?? []).map((t) => `${t.project}::${t.title}`))
+  .is('project_id', null)
+  .in('project', OLD_DAYS)
+if (oldCount) console.log(`Cleared ${oldCount} legacy 055 day-tasks.`)
 
-const start = shopToday()
-let inserted = 0, skipped = 0, sort = 0
-for (let day = 0; day < PLAN.length; day++) {
-  const project = `Day ${day + 1}`
-  const due = workdayOffset(start, day)
-  for (const title of PLAN[day]) {
-    sort += 10
-    if (have.has(`${project}::${title}`)) { skipped++; continue }
-    const { error } = await sb.from('production_tasks').insert({
-      department_id: dept.id,
-      title,
-      project,
-      cadence: 'once',
-      priority: 'normal',
-      due_date: due,
-      sort_order: sort,
-    })
-    if (error) { console.error(`insert failed (${project} / ${title}):`, error.message); process.exit(1) }
-    inserted++
+// ── Roster ───────────────────────────────────────────────────────────────────
+{
+  const { data: have } = await sb.from('production_people').select('name').eq('department_id', dept.id)
+  const known = new Set((have ?? []).map((p) => p.name))
+  let order = (have ?? []).length * 10
+  for (const name of ROSTER) {
+    if (known.has(name)) continue
+    order += 10
+    await sb.from('production_people').insert({ department_id: dept.id, name, sort_order: order })
   }
-  console.log(`  ${project}  due ${due}  — ${PLAN[day].join(', ')}`)
 }
 
-console.log(`\n${inserted} inserted, ${skipped} already present (idempotent skip).`)
-console.log(`Board: /board/${dept.token}`)
+// ── Standing duties ──────────────────────────────────────────────────────────
+{
+  const { data: have } = await sb
+    .from('production_tasks')
+    .select('title')
+    .eq('department_id', dept.id)
+    .is('project_id', null)
+    .is('archived_at', null)
+  const known = new Set((have ?? []).map((t) => t.title))
+  let order = 0
+  for (const s of STANDING) {
+    order += 10
+    if (known.has(s.title)) continue
+    await sb.from('production_tasks').insert({
+      department_id: dept.id,
+      title: s.title,
+      detail: s.detail ?? null,
+      cadence: s.cadence,
+      sort_order: order,
+    })
+  }
+}
+
+// ── Projects + their task lists ──────────────────────────────────────────────
+const start = shopToday()
+let projOrder = 0
+for (const spec of PROJECTS) {
+  projOrder += 10
+
+  let { data: project } = await sb
+    .from('production_projects')
+    .select('id')
+    .eq('department_id', dept.id)
+    .eq('name', spec.name)
+    .is('archived_at', null)
+    .maybeSingle()
+
+  if (!project) {
+    const { data: created, error } = await sb
+      .from('production_projects')
+      .insert({
+        department_id: dept.id,
+        name: spec.name,
+        type: spec.type,
+        people: spec.people,
+        sort_order: projOrder,
+      })
+      .select('id')
+      .single()
+    if (error) { console.error(`create ${spec.name} failed:`, error.message); process.exit(1) }
+    project = created
+  }
+
+  const { data: existing } = await sb
+    .from('production_tasks')
+    .select('phase, title')
+    .eq('project_id', project.id)
+    .is('archived_at', null)
+  const have = new Set((existing ?? []).map((t) => `${t.phase}::${t.title}`))
+
+  let sort = 0
+  let inserted = 0
+  for (let day = 0; day < PLAN.length; day++) {
+    const phase = `Day ${day + 1}`
+    const due = spec.dated ? workdayOffset(start, day) : null
+    for (const title of PLAN[day]) {
+      sort += 10
+      if (have.has(`${phase}::${title}`)) continue
+      const { error } = await sb.from('production_tasks').insert({
+        department_id: dept.id,
+        project_id: project.id,
+        phase,
+        title,
+        cadence: 'once',
+        due_date: due,
+        sort_order: sort,
+      })
+      if (error) { console.error(`insert ${spec.name}/${phase}/${title} failed:`, error.message); process.exit(1) }
+      inserted++
+    }
+  }
+  console.log(`  ${spec.name.padEnd(14)} ${spec.type}  — ${inserted} tasks inserted${spec.dated ? ' (dated)' : ''}`)
+  console.log(`     focused board: /board/${dept.token}?project=${project.id}`)
+}
+
+console.log(`\nDepartment board: /board/${dept.token}`)
+console.log('Done. Both projects share the 6-day list; check off Acme without touching Beta.')

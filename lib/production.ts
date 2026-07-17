@@ -7,7 +7,7 @@
 // would drift within a week.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ProductionTask, TaskCadence } from './supabase'
+import type { ProductionTask, ProductionProject, TaskCadence } from './supabase'
 
 /**
  * The shop's wall clock. Everything date-shaped here is a CALENDAR day in this
@@ -75,9 +75,10 @@ export function isUnassigned(task: ProductionTask): boolean {
   return !task.assignee || !task.assignee.trim()
 }
 
-/** Standing duty (no job attached) vs project work. `project` NULL is the tell. */
+/** Standing duty (department-wide, belongs to no project) vs project work.
+ *  Since 056 the tell is project_id, NOT the deprecated `project` text. */
 export function isStanding(task: ProductionTask): boolean {
-  return !task.project || !task.project.trim()
+  return !task.project_id
 }
 
 export const CADENCE_LABELS: Record<TaskCadence, string> = {
@@ -92,43 +93,98 @@ export function isOverdue(task: ProductionTask, today: string = shopDate()): boo
   return task.due_date < today
 }
 
-export type BoardGroup = {
-  /** The job name, or null for the standing-duties group. */
-  project: string | null
+const bySortThenTitle = (a: ProductionTask, b: ProductionTask) =>
+  a.sort_order - b.sort_order || a.title.localeCompare(b.title)
+
+/** A phase heading and its tasks. `phase` null = the un-phased tasks that lead a
+ *  project (or a whole flat list, when nothing carries a phase). */
+export type PhaseGroup = {
+  phase: string | null
   tasks: ProductionTask[]
 }
 
 /**
- * Group a department's tasks the way the board reads top-to-bottom: standing
- * duties first (the same every day — muscle memory lives at the top), then each
- * job. Within a group, sort_order then title, so the manager's ordering wins and
- * ties never shuffle between renders.
+ * Split a project's tasks into ordered phase groups. Un-phased tasks come first
+ * (a project with no phases is just one null group = a flat list); named phases
+ * follow in order of their earliest task's sort_order, so "Day 1" (sorts 10–30)
+ * precedes "Day 2" (40–60) without depending on the string. Tie-broken by the
+ * first appearance so two phases that share a sort never swap between renders.
  */
-export function groupForBoard(tasks: ProductionTask[]): BoardGroup[] {
-  const standing: ProductionTask[] = []
-  const byProject = new Map<string, ProductionTask[]>()
+export function groupByPhase(tasks: ProductionTask[]): PhaseGroup[] {
+  const order: string[] = [] // named phases, first-seen order
+  const minSort = new Map<string, number>()
+  const byPhase = new Map<string, ProductionTask[]>()
+  const unphased: ProductionTask[] = []
 
   for (const t of tasks) {
-    if (isStanding(t)) {
-      standing.push(t)
-    } else {
-      const key = t.project!.trim()
-      const list = byProject.get(key)
-      if (list) list.push(t)
-      else byProject.set(key, [t])
+    const phase = t.phase?.trim()
+    if (!phase) {
+      unphased.push(t)
+      continue
     }
+    let list = byPhase.get(phase)
+    if (!list) {
+      list = []
+      byPhase.set(phase, list)
+      order.push(phase)
+      minSort.set(phase, t.sort_order)
+    } else if (t.sort_order < minSort.get(phase)!) {
+      minSort.set(phase, t.sort_order)
+    }
+    list.push(t)
   }
 
-  const bySortThenTitle = (a: ProductionTask, b: ProductionTask) =>
-    a.sort_order - b.sort_order || a.title.localeCompare(b.title)
+  order.sort((a, b) => minSort.get(a)! - minSort.get(b)! || order.indexOf(a) - order.indexOf(b))
 
-  const groups: BoardGroup[] = []
-  if (standing.length) groups.push({ project: null, tasks: standing.sort(bySortThenTitle) })
-
-  for (const project of [...byProject.keys()].sort((a, b) => a.localeCompare(b))) {
-    groups.push({ project, tasks: byProject.get(project)!.sort(bySortThenTitle) })
-  }
+  const groups: PhaseGroup[] = []
+  if (unphased.length) groups.push({ phase: null, tasks: unphased.sort(bySortThenTitle) })
+  for (const phase of order) groups.push({ phase, tasks: byPhase.get(phase)!.sort(bySortThenTitle) })
   return groups
+}
+
+export type ProjectView = {
+  project: ProductionProject
+  phases: PhaseGroup[]
+  progress: ReturnType<typeof boardProgress>
+}
+
+export type BoardView = {
+  /** Department-wide standing duties (project_id null), a flat ordered list. */
+  standing: ProductionTask[]
+  /** One section per active project, standing sort-order first. */
+  projects: ProjectView[]
+}
+
+/**
+ * Assemble a department board the way it reads top-to-bottom: standing duties
+ * first (same every day — muscle memory lives at the top), then each active
+ * project as its own separately-tracked section. `projects` is already ordered
+ * by the manager's sort_order; only their live (non-archived) tasks are placed.
+ *
+ * The two surfaces (public board + admin) both build from this so their grouping
+ * and progress can never disagree.
+ */
+export function buildBoard(
+  tasks: ProductionTask[],
+  projects: ProductionProject[],
+  today: string = shopDate()
+): BoardView {
+  const standing = tasks.filter((t) => isStanding(t)).sort(bySortThenTitle)
+
+  const byProject = new Map<string, ProductionTask[]>()
+  for (const t of tasks) {
+    if (!t.project_id) continue
+    const list = byProject.get(t.project_id)
+    if (list) list.push(t)
+    else byProject.set(t.project_id, [t])
+  }
+
+  const views: ProjectView[] = projects.map((project) => {
+    const own = byProject.get(project.id) ?? []
+    return { project, phases: groupByPhase(own), progress: boardProgress(own, today) }
+  })
+
+  return { standing, projects: views }
 }
 
 /** Board headline: how much of today's work is actually finished. */

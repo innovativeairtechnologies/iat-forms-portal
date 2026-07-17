@@ -509,6 +509,7 @@ export type TroubleshootingIntake = {
 export type TaskCadence = 'once' | 'daily' | 'weekly'
 export type TaskPriority = 'normal' | 'high'
 export type ProductionTaskStatus = 'open' | 'done' | 'blocked'
+export type ProductionProjectStatus = 'active' | 'complete'
 
 export type ProductionDepartment = {
   id: string
@@ -534,13 +535,36 @@ export type ProductionPerson = {
   created_at: string
 }
 
+/** A build under a department (migration 056). Two projects can share a task
+ *  list yet track separately — that's the point. `people` is a display-only
+ *  snapshot of roster names ("who's on this build"); it does NOT gate the
+ *  assignee picker. `type` is free text. */
+export type ProductionProject = {
+  id: string
+  department_id: string
+  name: string
+  type: string | null
+  detail: string | null
+  people: string[]
+  status: ProductionProjectStatus
+  sort_order: number
+  created_at: string
+  updated_at: string
+  archived_at: string | null
+}
+
 export type ProductionTask = {
   id: string
   department_id: string
+  /** The project this task belongs to (migration 056). NULL => a department-wide
+   *  standing duty. `isStanding()` keys off THIS, not the deprecated `project`. */
+  project_id: string | null
+  /** Optional sub-heading inside a project ("Day 1", "Framing"). Blank = flat. */
+  phase: string | null
   title: string
   detail: string | null
-  /** NULL => a standing duty. Non-NULL => the job it belongs to (free text —
-   *  there is no deals→equipment→shop link in this schema to key off). */
+  /** @deprecated since 056 — superseded by project_id + phase. Kept for pre-056
+   *  rows; new code never reads or writes it. */
   project: string | null
   cadence: TaskCadence
   priority: TaskPriority

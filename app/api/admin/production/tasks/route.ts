@@ -49,23 +49,44 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
   if (!dept) return NextResponse.json({ error: 'That department no longer exists.' }, { status: 404 })
 
-  const { data: last } = await supabaseAdmin
+  // project_id null => a department-wide standing duty (056). When present, the
+  // project must belong to THIS department, or the task would surface on another
+  // department's board. Validated, never trusted from the body.
+  const projectId = String(body.project_id ?? '').trim() || null
+  if (projectId) {
+    const { data: proj } = await supabaseAdmin
+      .from('production_projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('department_id', departmentId)
+      .is('archived_at', null)
+      .maybeSingle()
+    if (!proj) {
+      return NextResponse.json({ error: 'That project no longer exists on this department.' }, { status: 404 })
+    }
+  }
+
+  // Order within the task's own bucket (this project, or the standing list) so a
+  // new task lands at the end of the list it actually appears in.
+  const scope = supabaseAdmin
     .from('production_tasks')
     .select('sort_order')
     .eq('department_id', departmentId)
     .order('sort_order', { ascending: false })
     .limit(1)
-    .maybeSingle()
+  const { data: last } = await (projectId
+    ? scope.eq('project_id', projectId)
+    : scope.is('project_id', null)
+  ).maybeSingle()
 
   const { data, error } = await supabaseAdmin
     .from('production_tasks')
     .insert({
       department_id: departmentId,
+      project_id: projectId,
+      phase: text(body.phase, MAX_TEXT),
       title,
       detail: text(body.detail, MAX_TEXT),
-      // Blank project => a standing duty. That NULL is the only thing
-      // distinguishing the two kinds of work.
-      project: text(body.project, MAX_TEXT),
       cadence: oneOf(body.cadence, CADENCES) ?? 'once',
       priority: oneOf(body.priority, PRIORITIES) ?? 'normal',
       due_date: cleanDate(body.due_date),
@@ -115,7 +136,7 @@ export async function PATCH(req: NextRequest) {
     patch.title = t
   }
   if ('detail' in body) patch.detail = text(body.detail, MAX_TEXT)
-  if ('project' in body) patch.project = text(body.project, MAX_TEXT)
+  if ('phase' in body) patch.phase = text(body.phase, MAX_TEXT)
   if ('assignee' in body) patch.assignee = text(body.assignee, MAX_TEXT)
   if ('blocked_note' in body) patch.blocked_note = text(body.blocked_note, MAX_TEXT)
   if ('due_date' in body) patch.due_date = cleanDate(body.due_date)

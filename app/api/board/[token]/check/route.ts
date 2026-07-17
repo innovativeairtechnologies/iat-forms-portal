@@ -77,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // This is the check that stops one board's link writing to another's work.
     const { data: task } = await supabaseAdmin
       .from('production_tasks')
-      .select('id, status, cadence')
+      .select('id, status, cadence, project_id')
       .eq('id', taskId)
       .eq('department_id', dept.id)
       .is('archived_at', null)
@@ -85,6 +85,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     if (!task) {
       return NextResponse.json({ error: 'That task is no longer on this board.' }, { status: 404 })
+    }
+
+    // A project task is only checkable while its project is live on the board
+    // (active, not archived). Standing duties (project_id null) skip this. Guards
+    // a stale board or ?project link from ticking off a completed build's work.
+    if (task.project_id) {
+      const { data: proj } = await supabaseAdmin
+        .from('production_projects')
+        .select('id')
+        .eq('id', task.project_id)
+        .eq('status', 'active')
+        .is('archived_at', null)
+        .maybeSingle()
+      if (!proj) {
+        return NextResponse.json({ error: 'That task is no longer on this board.' }, { status: 404 })
+      }
     }
 
     // Blocked work is not checkable from the floor — a manager clears the block

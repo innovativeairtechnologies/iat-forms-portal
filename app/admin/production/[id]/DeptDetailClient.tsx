@@ -5,9 +5,17 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ChevronRight, Plus, Trash2, X, UserRound, ExternalLink, Ban, RotateCcw, Check,
+  Copy, FolderKanban, Loader2,
 } from 'lucide-react'
-import type { ProductionDepartment, ProductionPerson, ProductionTask } from '@/lib/supabase'
-import { effectiveDone, groupForBoard, isUnassigned, isOverdue, CADENCE_LABELS } from '@/lib/production'
+import type {
+  ProductionDepartment,
+  ProductionPerson,
+  ProductionProject,
+  ProductionTask,
+} from '@/lib/supabase'
+import {
+  effectiveDone, buildBoard, isUnassigned, isOverdue, CADENCE_LABELS, type ProjectView,
+} from '@/lib/production'
 
 const btnCx =
   'flex items-center gap-2 px-3 py-2 text-[12.5px] font-semibold rounded-lg transition-colors disabled:opacity-60'
@@ -16,16 +24,19 @@ const inputCx =
 
 type Props = {
   department: ProductionDepartment
+  projects: ProductionProject[]
   tasks: ProductionTask[]
   people: ProductionPerson[]
   today: string
 }
 
-export default function DeptDetailClient({ department, tasks, people, today }: Props) {
+export default function DeptDetailClient({ department, projects, tasks, people, today }: Props) {
   const router = useRouter()
-  const [adding, setAdding] = useState(false)
+  const [addingProject, setAddingProject] = useState(false)
+  const [addingStanding, setAddingStanding] = useState(false)
   const [error, setError] = useState('')
-  const groups = useMemo(() => groupForBoard(tasks), [tasks])
+
+  const board = useMemo(() => buildBoard(tasks, projects, today), [tasks, projects, today])
 
   const patchTask = async (id: string, patch: Record<string, unknown>) => {
     setError('')
@@ -36,8 +47,7 @@ export default function DeptDetailClient({ department, tasks, people, today }: P
     })
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
-      setError(d.error || 'Could not save that.')
-      return
+      return setError(d.error || 'Could not save that.')
     }
     router.refresh()
   }
@@ -47,8 +57,7 @@ export default function DeptDetailClient({ department, tasks, people, today }: P
     const res = await fetch(`/api/admin/production/tasks?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
-      setError(d.error || 'Could not remove that task.')
-      return
+      return setError(d.error || 'Could not remove that task.')
     }
     router.refresh()
   }
@@ -83,12 +92,17 @@ export default function DeptDetailClient({ department, tasks, people, today }: P
               {department.name}
             </h1>
             <p className="mt-1 text-[13px] text-ink-muted">
-              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} on the board
+              {projects.length} {projects.length === 1 ? 'project' : 'projects'}
+              {board.standing.length > 0 &&
+                ` · ${board.standing.length} standing ${board.standing.length === 1 ? 'duty' : 'duties'}`}
             </p>
           </div>
-          <button onClick={() => setAdding(true)} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink px-4 py-2.5 text-[13px]`}>
+          <button
+            onClick={() => setAddingProject(true)}
+            className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink px-4 py-2.5 text-[13px]`}
+          >
             <Plus size={15} />
-            Add task
+            New project
           </button>
         </div>
 
@@ -98,46 +112,175 @@ export default function DeptDetailClient({ department, tasks, people, today }: P
           </div>
         )}
 
-        {groups.length === 0 ? (
-          <div className="rounded-xl border border-hairline bg-surface py-16 text-center">
-            <p className="text-[13px] text-ink-muted">Nothing on this board yet.</p>
-            <p className="mt-1 text-[12px] text-ink-faint">
-              Add a standing duty (leave Job blank) or work for a specific job.
-            </p>
+        {/* ── Projects ─────────────────────────────────────────────────────── */}
+        <section className="mb-10">
+          <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+            Projects
+          </h2>
+          {board.projects.length === 0 ? (
+            <div className="rounded-xl border border-hairline bg-surface py-14 text-center">
+              <FolderKanban size={26} className="mx-auto mb-3 text-ink-faint" />
+              <p className="text-[13px] text-ink-muted">No projects yet.</p>
+              <p className="mt-1 text-[12px] text-ink-faint">
+                Add a build, or duplicate one — most builds share a task list.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {board.projects.map((view) => (
+                <ProjectCard
+                  key={view.project.id}
+                  department={department}
+                  view={view}
+                  onError={setError}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── Standing duties ──────────────────────────────────────────────── */}
+        <section className="mb-10">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+              Every day · standing duties
+            </h2>
+            <button
+              onClick={() => setAddingStanding(true)}
+              className="flex items-center gap-1 text-[12px] font-semibold text-brand transition-opacity hover:opacity-80"
+            >
+              <Plus size={13} />
+              Add
+            </button>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {groups.map((g) => (
-              <section key={g.project ?? '__standing'}>
-                <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-                  {g.project ?? 'Every day · standing duties'}
-                </h2>
-                <div className="overflow-hidden rounded-xl border border-hairline bg-surface">
-                  {g.tasks.map((t, i) => (
-                    <TaskRow
-                      key={t.id}
-                      task={t}
-                      today={today}
-                      first={i === 0}
-                      onPatch={patchTask}
-                      onArchive={archiveTask}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
+          {board.standing.length === 0 ? (
+            <div className="rounded-xl border border-hairline bg-surface px-4 py-5 text-[12.5px] text-ink-faint">
+              None. Standing duties show on the board every day, above the projects — a safety
+              walk, a clean-up, a machine check.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-hairline bg-surface">
+              {board.standing.map((t, i) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  today={today}
+                  first={i === 0}
+                  onPatch={patchTask}
+                  onArchive={archiveTask}
+                />
+              ))}
+            </div>
+          )}
+        </section>
 
         <Roster department={department} people={people} />
       </div>
 
-      {adding && (
-        <AddTaskModal department={department} people={people} onClose={() => setAdding(false)} />
+      {addingProject && (
+        <NewProjectModal department={department} onClose={() => setAddingProject(false)} />
+      )}
+      {addingStanding && (
+        <AddStandingModal department={department} people={people} onClose={() => setAddingStanding(false)} />
       )}
     </div>
   )
 }
+
+// ─── Project card ────────────────────────────────────────────────────────────
+
+function ProjectCard({
+  department,
+  view,
+  onError,
+}: {
+  department: ProductionDepartment
+  view: ProjectView
+  onError: (m: string) => void
+}) {
+  const router = useRouter()
+  const { project, progress } = view
+  const [busy, setBusy] = useState<null | 'duplicate' | 'archive'>(null)
+
+  const href = `/admin/production/${department.id}/project/${project.id}`
+
+  const duplicate = async () => {
+    setBusy('duplicate')
+    onError('')
+    const res = await fetch('/api/admin/production/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duplicate_id: project.id }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setBusy(null)
+    if (!res.ok) return onError(data.error || 'Could not duplicate that project.')
+    // Land on the copy so the manager can rename + re-date from a running start.
+    if (data.id) router.push(`/admin/production/${department.id}/project/${data.id}`)
+    router.refresh()
+  }
+
+  const archive = async () => {
+    if (!confirm(`Remove "${project.name}" and its tasks from the board? Its check-off history is kept.`)) return
+    setBusy('archive')
+    onError('')
+    const res = await fetch(`/api/admin/production/projects?id=${encodeURIComponent(project.id)}`, {
+      method: 'DELETE',
+    })
+    setBusy(null)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      return onError(d.error || 'Could not remove that project.')
+    }
+    router.refresh()
+  }
+
+  return (
+    <div className="flex flex-col rounded-xl border border-hairline bg-surface p-4">
+      <Link
+        href={href}
+        className="group flex items-start justify-between gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
+        <div className="min-w-0">
+          <span className="flex items-center gap-1 text-[15px] text-ink transition-colors group-hover:text-brand" style={{ fontWeight: 620 }}>
+            <span className="truncate">{project.name}</span>
+            <ChevronRight size={14} className="flex-shrink-0 text-ink-faint transition-transform group-hover:translate-x-0.5" />
+          </span>
+          {project.type && <p className="mt-0.5 truncate text-[12px] text-ink-muted">{project.type}</p>}
+        </div>
+        <span className="flex-shrink-0 text-[12px] tabular-nums text-ink-muted">
+          {progress.done}/{progress.total}
+        </span>
+      </Link>
+
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-strong">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${progress.pct}%` }} />
+      </div>
+
+      {project.people.length > 0 && (
+        <p className="mt-2.5 truncate text-[11.5px] text-ink-faint">On this build: {project.people.join(', ')}</p>
+      )}
+
+      <div className="mt-3 flex items-center gap-1.5 border-t border-hairline-soft pt-3">
+        <button onClick={duplicate} disabled={!!busy} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
+          {busy === 'duplicate' ? <Loader2 size={13} className="animate-spin" /> : <Copy size={13} />}
+          Duplicate
+        </button>
+        <button
+          onClick={archive}
+          disabled={!!busy}
+          className={`${btnCx} ml-auto text-ink-muted hover:text-rose-600`}
+          title="Remove from board"
+          aria-label={`Remove ${project.name}`}
+        >
+          {busy === 'archive' ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Standing-duty row (department-level tasks) ──────────────────────────────
 
 function TaskRow({
   task,
@@ -185,18 +328,12 @@ function TaskRow({
 
       <div className="flex flex-shrink-0 items-center gap-1">
         {blocked ? (
-          <IconBtn
-            label="Unblock"
-            onClick={() => onPatch(task.id, { status: 'open', blocked_note: '' })}
-          >
+          <IconBtn label="Unblock" onClick={() => onPatch(task.id, { status: 'open', blocked_note: '' })}>
             <RotateCcw size={14} />
           </IconBtn>
         ) : (
           <>
-            <IconBtn
-              label={done ? 'Mark not done' : 'Mark done'}
-              onClick={() => onPatch(task.id, { status: done ? 'open' : 'done' })}
-            >
+            <IconBtn label={done ? 'Mark not done' : 'Mark done'} onClick={() => onPatch(task.id, { status: done ? 'open' : 'done' })}>
               <Check size={14} className={done ? 'text-brand' : ''} />
             </IconBtn>
             <IconBtn label="Block" onClick={() => onPatch(task.id, { status: 'blocked' })}>
@@ -204,7 +341,7 @@ function TaskRow({
             </IconBtn>
           </>
         )}
-        <IconBtn label="Remove from board" onClick={() => onArchive(task.id)}>
+        <IconBtn label="Remove" onClick={() => onArchive(task.id)}>
           <Trash2 size={14} />
         </IconBtn>
       </div>
@@ -212,15 +349,7 @@ function TaskRow({
   )
 }
 
-function IconBtn({
-  label,
-  onClick,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  children: React.ReactNode
-}) {
+function IconBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -232,6 +361,8 @@ function IconBtn({
     </button>
   )
 }
+
+// ─── Roster (unchanged from 055) ─────────────────────────────────────────────
 
 function Roster({ department, people }: { department: ProductionDepartment; people: ProductionPerson[] }) {
   const router = useRouter()
@@ -264,14 +395,15 @@ function Roster({ department, people }: { department: ProductionDepartment; peop
   }
 
   return (
-    <section className="mt-10">
+    <section>
       <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-        Who&apos;s on this crew
+        Department roster
       </h2>
       <div className="rounded-xl border border-hairline bg-surface p-4">
         <p className="text-[12.5px] leading-relaxed text-ink-muted">
-          Names here become the tap-to-pick list when someone checks a task off. They aren&apos;t
-          portal logins — just names, so nobody has to type theirs on a cold morning.
+          Names here become the tap-to-pick list when someone checks a task off, and the pool you
+          tag onto a project&apos;s crew. They aren&apos;t portal logins — just names, so nobody
+          types theirs on a cold morning.
         </p>
 
         {people.length > 0 && (
@@ -296,12 +428,7 @@ function Roster({ department, people }: { department: ProductionDepartment; peop
         )}
 
         <form onSubmit={add} className="mt-3 flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Add a name…"
-            className={`${inputCx} sm:max-w-xs`}
-          />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a name…" className={`${inputCx} sm:max-w-xs`} />
           <button type="submit" disabled={busy || !name.trim()} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
             <Plus size={14} />
             Add
@@ -313,17 +440,59 @@ function Roster({ department, people }: { department: ProductionDepartment; peop
   )
 }
 
-const EMPTY = {
-  title: '',
-  detail: '',
-  project: '',
-  assignee: '',
-  cadence: 'once',
-  priority: 'normal',
-  due_date: '',
+// ─── Modals ──────────────────────────────────────────────────────────────────
+
+function NewProjectModal({ department, onClose }: { department: ProductionDepartment; onClose: () => void }) {
+  const router = useRouter()
+  const [name, setName] = useState('')
+  const [type, setType] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return setError('Give the project a name.')
+    setSaving(true)
+    setError('')
+    const res = await fetch('/api/admin/production/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ department_id: department.id, name, type }),
+    })
+    const data = await res.json().catch(() => ({}))
+    setSaving(false)
+    if (!res.ok) return setError(data.error || 'Could not add that project.')
+    onClose()
+    if (data.id) router.push(`/admin/production/${department.id}/project/${data.id}`)
+    router.refresh()
+  }
+
+  return (
+    <ModalShell title={`New project — ${department.name}`} subtitle="You'll add its tasks next." onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4 p-5">
+        <Field label="Project name">
+          <input value={name} onChange={(e) => setName(e.target.value)} className={inputCx} placeholder="Acme Unit A" autoFocus />
+        </Field>
+        <Field label="Type" hint="Optional — unit model, customer, 'R&D', anything.">
+          <input value={type} onChange={(e) => setType(e.target.value)} className={inputCx} placeholder="IDP-4000, dual-wheel" />
+        </Field>
+        {error && <p className="text-[12.5px] text-rose-500">{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onClose} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
+            Cancel
+          </button>
+          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+            {saving ? 'Creating…' : 'Create project'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  )
 }
 
-function AddTaskModal({
+const EMPTY_STANDING = { title: '', detail: '', assignee: '', cadence: 'daily', priority: 'normal', due_date: '' }
+
+function AddStandingModal({
   department,
   people,
   onClose,
@@ -333,17 +502,17 @@ function AddTaskModal({
   onClose: () => void
 }) {
   const router = useRouter()
-  const [form, setForm] = useState(EMPTY)
+  const [form, setForm] = useState(EMPTY_STANDING)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  const set = (k: keyof typeof EMPTY, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const set = (k: keyof typeof EMPTY_STANDING, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim()) return setError('Give the task a title.')
     setSaving(true)
     setError('')
+    // No project_id => a department-wide standing duty.
     const res = await fetch('/api/admin/production/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -357,6 +526,61 @@ function AddTaskModal({
   }
 
   return (
+    <ModalShell
+      title="Add a standing duty"
+      subtitle="Shows on the board every day, above the projects."
+      onClose={onClose}
+    >
+      <form onSubmit={submit} className="space-y-4 p-5">
+        <Field label="Task">
+          <input value={form.title} onChange={(e) => set('title', e.target.value)} className={inputCx} placeholder="Morning safety walk" autoFocus />
+        </Field>
+        <Field label="Detail" hint="Optional.">
+          <input value={form.detail} onChange={(e) => set('detail', e.target.value)} className={inputCx} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Assigned to" hint="Blank = unassigned.">
+            <select value={form.assignee} onChange={(e) => set('assignee', e.target.value)} className={inputCx}>
+              <option value="">Unassigned</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Repeats">
+            <select value={form.cadence} onChange={(e) => set('cadence', e.target.value)} className={inputCx}>
+              <option value="daily">Every day</option>
+              <option value="weekly">Every week</option>
+              <option value="once">One-off</option>
+            </select>
+          </Field>
+        </div>
+        {error && <p className="text-[12.5px] text-rose-500">{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onClose} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
+            Cancel
+          </button>
+          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+            {saving ? 'Adding…' : 'Add duty'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  )
+}
+
+function ModalShell({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string
+  subtitle?: string
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl border border-hairline bg-surface"
@@ -364,72 +588,14 @@ function AddTaskModal({
       >
         <div className="sticky top-0 flex items-start justify-between border-b border-hairline bg-surface px-5 py-4">
           <div>
-            <h2 className="text-[15px] text-ink" style={{ fontWeight: 620 }}>
-              Add a task — {department.name}
-            </h2>
-            <p className="mt-0.5 text-[12px] text-ink-muted">Leave Job blank for a standing duty.</p>
+            <h2 className="text-[15px] text-ink" style={{ fontWeight: 620 }}>{title}</h2>
+            {subtitle && <p className="mt-0.5 text-[12px] text-ink-muted">{subtitle}</p>}
           </div>
           <button onClick={onClose} aria-label="Close" className="p-1 text-ink-faint transition-colors hover:text-ink-secondary">
             <X size={16} />
           </button>
         </div>
-
-        <form onSubmit={submit} className="space-y-4 p-5">
-          <Field label="Task">
-            <input value={form.title} onChange={(e) => set('title', e.target.value)} className={inputCx} placeholder="Weld the base frame" autoFocus />
-          </Field>
-
-          <Field label="Detail" hint="Optional — anything the team needs to know.">
-            <input value={form.detail} onChange={(e) => set('detail', e.target.value)} className={inputCx} />
-          </Field>
-
-          <Field label="Job" hint="Blank = a standing duty that shows every day.">
-            <input value={form.project} onChange={(e) => set('project', e.target.value)} className={inputCx} placeholder="Unit 4412" />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Assigned to" hint="Blank = unassigned.">
-              <select value={form.assignee} onChange={(e) => set('assignee', e.target.value)} className={inputCx}>
-                <option value="">Unassigned</option>
-                {people.map((p) => (
-                  <option key={p.id} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Repeats">
-              <select value={form.cadence} onChange={(e) => set('cadence', e.target.value)} className={inputCx}>
-                <option value="once">One-off</option>
-                <option value="daily">Every day</option>
-                <option value="weekly">Every week</option>
-              </select>
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Priority">
-              <select value={form.priority} onChange={(e) => set('priority', e.target.value)} className={inputCx}>
-                <option value="normal">Normal</option>
-                <option value="high">Priority</option>
-              </select>
-            </Field>
-            <Field label="Due">
-              <input type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} className={inputCx} />
-            </Field>
-          </div>
-
-          {error && <p className="text-[12.5px] text-rose-500">{error}</p>}
-
-          <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
-              Cancel
-            </button>
-            <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
-              {saving ? 'Adding…' : 'Add task'}
-            </button>
-          </div>
-        </form>
+        {children}
       </div>
     </div>
   )

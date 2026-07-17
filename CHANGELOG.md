@@ -2,6 +2,41 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-17 — Production Board: first-class projects under each department
+
+**Needs migration `056_production_projects.sql` run before deploy** (the board and
+`/admin/production` query `production_projects` and 500 without it). Extends the board shipped
+earlier today. Full write-up: `docs/production-board.md`.
+
+A department now **contains projects**. Until now "project" was a free-text label on a task,
+grouped at render time; now it's a real `production_projects` row with a name, free-text
+`type`, `detail`, a `status` (active/complete), and a display-only `people` list ("who's on
+this build"). Tasks gain `project_id` (NULL = a department-wide **standing duty**, the new
+tell for `isStanding` — the old `project` text is deprecated) and an optional `phase` ("Day 1",
+"Framing") that sub-groups a project's tasks.
+
+The point: **two builds can share a task list yet track separately.** One department QR shows
+standing duties first, then each active project as its own section with its own progress;
+`/board/<token>?project=<id>` focuses one. The headline feature is a **Duplicate** button —
+copies a project and its task list (titles/details/phases/cadence/priority carry over;
+status, done-state, due dates and assignees reset for a fresh build), since most builds start
+from a near-identical checklist.
+
+Connected people are **display-only by product decision** — they tag who's on a build but do
+NOT narrow the assignee picker, which stays the whole department roster.
+
+`production_projects` is RLS-on / no-policies (service-role only) like every board table — an
+anon read policy would expose project rows and, joined, the department tokens. The public
+check-off route now also refuses a task whose project is complete/archived, so a stale board
+link can't tick off a finished build's work. Cross-department writes are still re-proved
+against the token's department.
+
+Demo re-seeded (`scripts/seed-production-board-demo.mjs`) into the two-project scenario:
+**Acme Unit A** (dated) and **Beta Unit B** (a fresh duplicate) under Production, both running
+the 6-day build phased Day 1–6, plus two standing duties and a starter roster. 21 logic
+assertions cover the new project/phase grouping; `groupByPhase`/`buildBoard` are the shared
+source both surfaces read.
+
 ## 2026-07-17 — Form builder: a WYSIWYG "Form view" for editing long forms
 
 Editing a 100–200-field form as one flat stack of identical rows was brutal, so the builder

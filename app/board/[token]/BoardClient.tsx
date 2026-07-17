@@ -2,29 +2,34 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Loader2, AlertTriangle, UserRound, X, ClipboardList } from 'lucide-react'
+import { Check, Loader2, AlertTriangle, UserRound, X, ClipboardList, ChevronLeft } from 'lucide-react'
 import Logo from '@/components/Logo'
-import type { ProductionDepartment, ProductionPerson, ProductionTask } from '@/lib/supabase'
+import type {
+  ProductionDepartment,
+  ProductionPerson,
+  ProductionProject,
+  ProductionTask,
+} from '@/lib/supabase'
 import {
   effectiveDone,
-  groupForBoard,
+  buildBoard,
   boardProgress,
   isUnassigned,
   isOverdue,
   CADENCE_LABELS,
   MAX_ACTOR_NAME,
+  type ProjectView,
 } from '@/lib/production'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The shop-floor board. Designed to be used standing up, on a phone, with
-// gloves: one screen, big rows, no nav, no login, no menus. Follows DESIGN.md
-// (warm canvas, hairline cards, no resting shadows, green ONLY on the check
-// action and focus rings, tone pills for status).
+// gloves: big rows, no nav, no login, no menus. Follows DESIGN.md (warm canvas,
+// hairline cards, no resting shadows, green ONLY on the check action + focus
+// rings, tone pills for status).
 //
-// Note the absence of `dark:` variants — the semantic tokens re-theme
-// themselves. Note also the absence of `/opacity` on any token: those compile
-// to NOTHING (the tokens are bare `var(--x)` with no alpha channel), which is
-// why focus here uses `outline`, per DESIGN.md §5.
+// Since 056 a department holds PROJECTS: standing duties first, then each active
+// project as its own separately-tracked section (with optional phase headings
+// inside). No `dark:` variants and no `/opacity` on tokens — see DESIGN.md §2.5.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Remembering the name means one tap to check off, not two screens. Scoped per
@@ -34,21 +39,28 @@ const nameKey = (deptId: string) => `iat-board-who:${deptId}`
 type Props = {
   token: string
   department: Omit<ProductionDepartment, 'token'>
+  projects: ProductionProject[]
   tasks: ProductionTask[]
   people: ProductionPerson[]
+  focusProjectId: string | null
   today: string
 }
 
-export default function BoardClient({ token, department, tasks, people, today }: Props) {
+export default function BoardClient({
+  token,
+  department,
+  projects,
+  tasks,
+  people,
+  focusProjectId,
+  today,
+}: Props) {
   const router = useRouter()
   const [who, setWho] = useState<string | null>(null)
   const [asking, setAsking] = useState<ProductionTask | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // localStorage is read in an effect, not in useState's initialiser: touching
-  // it during render breaks SSR (no window on the server) and would hydrate
-  // mismatched markup.
   useEffect(() => {
     try {
       setWho(localStorage.getItem(nameKey(department.id)))
@@ -69,8 +81,23 @@ export default function BoardClient({ token, department, tasks, people, today }:
     [department.id]
   )
 
-  const groups = useMemo(() => groupForBoard(tasks), [tasks])
-  const progress = useMemo(() => boardProgress(tasks, today), [tasks, today])
+  const board = useMemo(() => buildBoard(tasks, projects, today), [tasks, projects, today])
+
+  // Focused single-project view: keep only that project, drop standing duties.
+  const focusView = focusProjectId
+    ? board.projects.find((p) => p.project.id === focusProjectId) ?? null
+    : null
+  const shownProjects = focusView ? [focusView] : board.projects
+  const showStanding = !focusView && board.standing.length > 0
+
+  // Headline progress: the focused project, or the whole board.
+  const headline = useMemo(
+    () =>
+      focusView
+        ? focusView.progress
+        : boardProgress(tasks, today),
+    [focusView, tasks, today]
+  )
 
   const send = async (task: ProductionTask, actorName: string) => {
     const done = effectiveDone(task, today)
@@ -80,12 +107,7 @@ export default function BoardClient({ token, department, tasks, people, today }:
       const res = await fetch(`/api/board/${encodeURIComponent(token)}/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskId: task.id,
-          action: done ? 'reopen' : 'done',
-          actorName,
-        }),
-        // A wedged request must never leave a row spinning forever on a wall tablet.
+        body: JSON.stringify({ taskId: task.id, action: done ? 'reopen' : 'done', actorName }),
         signal: AbortSignal.timeout(15000),
       })
       const data = await res.json().catch(() => ({}))
@@ -93,8 +115,6 @@ export default function BoardClient({ token, department, tasks, people, today }:
         setError(data.error || 'Could not save that. Try again.')
         return
       }
-      // Re-render from the server rather than patching local state: the board is
-      // shared, so someone else has probably changed it since this page loaded.
       router.refresh()
     } catch {
       setError('No connection. Check the shop Wi-Fi and try again.')
@@ -106,15 +126,16 @@ export default function BoardClient({ token, department, tasks, people, today }:
   const onToggle = (task: ProductionTask) => {
     if (busyId) return
     if (!who) {
-      setAsking(task) // first tap on this device — find out who this is
+      setAsking(task)
       return
     }
     void send(task, who)
   }
 
+  const nothing = !showStanding && shownProjects.every((p) => p.phases.length === 0)
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      {/* Header — brand mark + which board this is. No nav: there's nowhere else to go. */}
       <header className="sticky top-0 z-30 border-b border-hairline bg-canvas">
         <div className="mx-auto flex h-14 max-w-[720px] items-center gap-2.5 px-4">
           <Logo size={24} className="flex-shrink-0" />
@@ -137,57 +158,39 @@ export default function BoardClient({ token, department, tasks, people, today }:
 
       <main className="mx-auto max-w-[720px] px-4 py-6 sm:py-8">
         <div className="animate-fade-up">
-          {/* Where the day stands. One number, not a wall of KPIs. */}
+          {focusView && (
+            <a
+              href={`/board/${encodeURIComponent(token)}`}
+              className="mb-4 inline-flex items-center gap-1 text-[12.5px] text-ink-muted transition-colors hover:text-ink-secondary"
+            >
+              <ChevronLeft size={14} />
+              All of {department.name}
+            </a>
+          )}
+
           <div className="mb-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-              Today&apos;s checklist
+              {focusView ? 'Project checklist' : "Today's checklist"}
             </p>
             <h1
               className="mt-2 text-[26px] leading-tight tracking-tight text-ink sm:text-[30px]"
               style={{ fontWeight: 620 }}
             >
-              {department.name}
+              {focusView ? focusView.project.name : department.name}
             </h1>
-            {department.blurb && (
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">{department.blurb}</p>
+            {focusView ? (
+              focusView.project.type && (
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">
+                  {focusView.project.type}
+                </p>
+              )
+            ) : (
+              department.blurb && (
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">{department.blurb}</p>
+              )
             )}
 
-            <div className="mt-5 rounded-xl border border-hairline bg-surface p-4">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[13px] text-ink-secondary">
-                  <strong className="tabular-nums text-ink" style={{ fontWeight: 620 }}>
-                    {progress.done}
-                  </strong>
-                  <span className="text-ink-muted"> of </span>
-                  <strong className="tabular-nums text-ink" style={{ fontWeight: 620 }}>
-                    {progress.total}
-                  </strong>
-                  <span className="text-ink-muted"> done</span>
-                </span>
-                <span className="text-[13px] tabular-nums text-ink-muted">{progress.pct}%</span>
-              </div>
-              {/* Progress track. The one place green is decorative-ish — it's the
-                  status of the work itself, which DESIGN.md counts as meaning. */}
-              <div
-                className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-strong"
-                role="progressbar"
-                aria-valuenow={progress.pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`${progress.done} of ${progress.total} tasks done`}
-              >
-                <div
-                  className="h-full rounded-full bg-brand transition-[width] duration-200 ease-out"
-                  style={{ width: `${progress.pct}%` }}
-                />
-              </div>
-              {(progress.unassigned > 0 || progress.blocked > 0) && (
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-muted">
-                  {progress.unassigned > 0 && <span>{progress.unassigned} unassigned</span>}
-                  {progress.blocked > 0 && <span>{progress.blocked} blocked</span>}
-                </div>
-              )}
-            </div>
+            <ProgressCard progress={headline} />
           </div>
 
           {error && (
@@ -197,21 +200,21 @@ export default function BoardClient({ token, department, tasks, people, today }:
             </div>
           )}
 
-          {groups.length === 0 ? (
+          {nothing ? (
             <div className="rounded-xl border border-hairline bg-surface py-16 text-center">
               <ClipboardList size={26} className="mx-auto mb-3 text-ink-faint" />
               <p className="text-[13px] text-ink-muted">Nothing on this board yet.</p>
               <p className="mt-1 text-[12px] text-ink-faint">Your manager adds the work here.</p>
             </div>
           ) : (
-            <div className="space-y-7">
-              {groups.map((group) => (
-                <section key={group.project ?? '__standing'}>
+            <div className="space-y-8">
+              {showStanding && (
+                <section>
                   <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-                    {group.project ?? 'Every day'}
+                    Every day
                   </h2>
                   <div className="overflow-hidden rounded-xl border border-hairline bg-surface">
-                    {group.tasks.map((task, i) => (
+                    {board.standing.map((task, i) => (
                       <TaskRow
                         key={task.id}
                         task={task}
@@ -224,6 +227,16 @@ export default function BoardClient({ token, department, tasks, people, today }:
                     ))}
                   </div>
                 </section>
+              )}
+
+              {shownProjects.map((view) => (
+                <ProjectSection
+                  key={view.project.id}
+                  view={view}
+                  today={today}
+                  busyId={busyId}
+                  onToggle={onToggle}
+                />
               ))}
             </div>
           )}
@@ -251,6 +264,117 @@ export default function BoardClient({ token, department, tasks, people, today }:
   )
 }
 
+// ─── Overall / project progress card ─────────────────────────────────────────
+
+function ProgressCard({ progress }: { progress: ReturnType<typeof boardProgress> }) {
+  return (
+    <div className="mt-5 rounded-xl border border-hairline bg-surface p-4">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[13px] text-ink-secondary">
+          <strong className="tabular-nums text-ink" style={{ fontWeight: 620 }}>
+            {progress.done}
+          </strong>
+          <span className="text-ink-muted"> of </span>
+          <strong className="tabular-nums text-ink" style={{ fontWeight: 620 }}>
+            {progress.total}
+          </strong>
+          <span className="text-ink-muted"> done</span>
+        </span>
+        <span className="text-[13px] tabular-nums text-ink-muted">{progress.pct}%</span>
+      </div>
+      <div
+        className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-strong"
+        role="progressbar"
+        aria-valuenow={progress.pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${progress.done} of ${progress.total} tasks done`}
+      >
+        <div
+          className="h-full rounded-full bg-brand transition-[width] duration-200 ease-out"
+          style={{ width: `${progress.pct}%` }}
+        />
+      </div>
+      {(progress.unassigned > 0 || progress.blocked > 0) && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-muted">
+          {progress.unassigned > 0 && <span>{progress.unassigned} unassigned</span>}
+          {progress.blocked > 0 && <span>{progress.blocked} blocked</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── One project's section ───────────────────────────────────────────────────
+
+function ProjectSection({
+  view,
+  today,
+  busyId,
+  onToggle,
+}: {
+  view: ProjectView
+  today: string
+  busyId: string | null
+  onToggle: (t: ProductionTask) => void
+}) {
+  const { project, phases, progress } = view
+
+  return (
+    <section>
+      <div className="mb-2 px-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-[15px] text-ink" style={{ fontWeight: 620 }}>
+            {project.name}
+          </h2>
+          <span className="flex-shrink-0 text-[12px] tabular-nums text-ink-muted">
+            {progress.done}/{progress.total}
+          </span>
+        </div>
+        {project.type && <p className="mt-0.5 text-[12px] text-ink-muted">{project.type}</p>}
+        {project.people.length > 0 && (
+          <p className="mt-0.5 text-[11.5px] text-ink-faint">On this build: {project.people.join(', ')}</p>
+        )}
+      </div>
+
+      {phases.length === 0 ? (
+        <div className="rounded-xl border border-hairline bg-surface px-4 py-5 text-center text-[12.5px] text-ink-faint">
+          No tasks on this project yet.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-hairline bg-surface">
+          {phases.map((group, gi) => (
+            <div key={group.phase ?? '__none'}>
+              {group.phase && (
+                <div
+                  className={[
+                    'bg-surface-soft px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted',
+                    gi === 0 ? '' : 'border-t border-hairline',
+                  ].join(' ')}
+                >
+                  {group.phase}
+                </div>
+              )}
+              {group.tasks.map((task, i) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  today={today}
+                  // a phase header already draws the top divider; else divide rows
+                  first={i === 0 && (!!group.phase || gi === 0)}
+                  busy={busyId === task.id}
+                  disabled={!!busyId && busyId !== task.id}
+                  onToggle={() => onToggle(task)}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ─── One line of work ────────────────────────────────────────────────────────
 
 function TaskRow({
@@ -272,8 +396,6 @@ function TaskRow({
   const blocked = task.status === 'blocked'
   const overdue = isOverdue(task, today)
 
-  // Blocked work isn't checkable — that's the point of blocking it. Rendered as
-  // a plain row rather than a dead button so it doesn't read as "tap me".
   const Wrapper = blocked ? 'div' : 'button'
 
   return (
@@ -295,7 +417,6 @@ function TaskRow({
         disabled ? 'opacity-60' : '',
       ].join(' ')}
     >
-      {/* The checkbox. 24px box inside a 44px-tall row — a real glove target. */}
       <span
         className={[
           'mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-colors',
@@ -326,7 +447,6 @@ function TaskRow({
           <span className="mt-0.5 block text-[12.5px] leading-relaxed text-ink-muted">{task.detail}</span>
         )}
 
-        {/* Meta strip — only what changes a decision. */}
         <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px]">
           {done ? (
             <span className="text-ink-faint">
@@ -397,9 +517,7 @@ function WhoModal({
             <h2 className="text-[15px] text-ink" style={{ fontWeight: 620 }}>
               Who&apos;s checking this off?
             </h2>
-            <p className="mt-0.5 text-[12px] text-ink-muted">
-              We&apos;ll remember you on this device.
-            </p>
+            <p className="mt-0.5 text-[12px] text-ink-muted">We&apos;ll remember you on this device.</p>
           </div>
           <button
             onClick={onClose}
@@ -442,7 +560,6 @@ function WhoModal({
               maxLength={MAX_ACTOR_NAME}
               placeholder={people.length ? 'Someone else…' : 'Type your name'}
               aria-label="Your name"
-              // 16px on mobile or iOS Safari zooms the viewport on focus.
               className="h-11 min-w-0 flex-1 rounded-lg border border-hairline bg-canvas px-3 text-[16px] text-ink placeholder:text-ink-faint outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-brand"
             />
             <button
