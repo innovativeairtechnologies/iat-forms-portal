@@ -2,6 +2,20 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-20 — Company Home: single-screen bento dashboard
+
+Redesigned Company Home from a scrolling stack of cards into a **single-screen bento dashboard** —
+on desktop it pins to the viewport and never scrolls the page; the two content-heavy tiles (news,
+open positions) scroll inside themselves so nothing is lost. A gradient header band carries the
+greeting, the "did you know" fun-fact chip, and an Email-IT shortcut; below it a 3×2 grid of tiles,
+each with a soft-wash tone accent (news = sky, calendar = violet, positions = emerald, birthdays =
+amber, people = brand, values = rose, suggestions = violet). New Employee + Employee Spotlight are
+merged into one "Our People" tile; small touches — a time-of-day greeting emoji, a next-holiday
+countdown, a one-time fade-up entrance (reduced-motion aware). Both shells pin the grid to the
+viewport per-shell (the employee shell subtracts its 56px top bar), since the shells themselves are
+built to body-scroll. Below `lg` it relaxes into a normal stacked, scrollable column. Full write-up:
+`docs/company-home.md`.
+
 ## 2026-07-20 — Company Home: shared intranet landing inside the portal
 
 The SharePoint intranet homepage is rebuilt inside the portal (Quiet Precision design) — company

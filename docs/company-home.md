@@ -1,10 +1,25 @@
 # Company Home
 
 The shared company intranet home — the first screen **every internal user** sees after login,
-rebuilt from the SharePoint intranet into the Quiet Precision design system (`DESIGN.md`).
-It renders **inside the portal shell** (the sidebar is present, "Company Home" is the active tab),
-so from the landing you navigate straight to Dashboard/Tickets/etc. External customers are
-unaffected (they still land on `/customer`).
+rebuilt from the SharePoint intranet. It renders **inside the portal shell** (the sidebar is
+present, "Company Home" is the active tab), as a **single-screen bento dashboard** that fills the
+viewport without scrolling the page. External customers are unaffected (they still land on `/customer`).
+
+## Layout — single-screen bento
+
+`app/home/HomeContent.tsx` is a fixed grid: a gradient header row (greeting + fun-fact chip +
+Email-IT) over a 3×2 grid of tiles (News · Calendar · Open Positions / Birthdays · Our People ·
+Core Values · Suggestions). Each tile is `min-h-0 overflow-hidden`; its body is `overflow-y-auto`,
+so a long list scrolls **inside the tile** while the page stays put. Color comes from soft-wash
+tone chips per tile (§2.4 tones) — lively but within the system.
+
+**Viewport pinning (the important bit):** both portal shells are built to *body-scroll*
+(`min-h-screen` root + a sticky sidebar), so `flex-1` does **not** cap the grid to the viewport.
+Instead each shell page passes an explicit lg-only height via `HomeContent`'s `heightClass` prop:
+`/admin/home` → `lg:h-[calc(100dvh-12px)]` (no top bar above the content); `/employee/home` →
+`lg:h-[calc(100dvh-68px)]` (subtracts the 56px `PortalTopBar` + a 12px safety gutter for dvh
+rounding). Below `lg` no height is set and the page scrolls normally. If you add a persistent bar
+to a shell, update that offset.
 
 ## What changed for routing
 

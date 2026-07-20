@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react'
 import { Check, Send } from 'lucide-react'
 import { submitSuggestion } from './actions'
 
-/* "Submit a Suggestion" form. Secondary-styled submit so the hero's Launch stays
-   the single green primary of the view (DESIGN.md). */
+/* Compact "Suggestion Box" for the bento tile. Secondary-styled submit — the
+   dashboard has no single green primary, so a neutral button keeps it calm. */
 
 export function SuggestionBox() {
   const [body, setBody] = useState('')
@@ -17,57 +17,44 @@ export function SuggestionBox() {
     setError('')
     startTransition(async () => {
       const res = await submitSuggestion(body)
-      if (res.ok) {
-        setDone(true)
-        setBody('')
-      } else {
-        setError(res.error || 'Something went wrong.')
-      }
+      if (res.ok) { setDone(true); setBody('') }
+      else setError(res.error || 'Something went wrong.')
     })
   }
 
   if (done) {
     return (
-      <div className="px-5 pb-5">
-        <div className="flex items-start gap-2.5 rounded-lg border border-hairline-soft bg-surface-soft px-3.5 py-3">
-          <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-ink">
-            <Check size={13} />
-          </span>
-          <div>
-            <p className="text-[13px] font-semibold text-ink">Thanks — your suggestion was sent.</p>
-            <button
-              onClick={() => setDone(false)}
-              className="mt-1 text-[12.5px] font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline"
-            >
-              Submit another
-            </button>
-          </div>
-        </div>
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-3.5 py-4 text-center">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-soft text-brand-ink">
+          <Check size={16} />
+        </span>
+        <p className="text-[12.5px] font-semibold text-ink">Thanks — sent to leadership.</p>
+        <button
+          onClick={() => setDone(false)}
+          className="text-[12px] font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+        >
+          Submit another
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="px-5 pb-5">
+    <div className="flex h-full flex-col gap-2 px-3.5 py-3">
       <textarea
         value={body}
         onChange={(e) => { setBody(e.target.value); setError('') }}
-        rows={3}
-        placeholder="Share an idea to improve how things run…"
-        className="w-full resize-y rounded-lg border border-hairline bg-surface px-3 py-2.5 text-[13px] leading-relaxed text-ink placeholder:text-ink-faint transition-colors hover:border-hairline-strong focus:border-brand focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        placeholder="Have an idea to improve how things run at IAT?"
+        className="min-h-0 w-full flex-1 resize-none rounded-lg border border-hairline bg-surface px-3 py-2 text-[12px] leading-relaxed text-ink placeholder:text-ink-faint transition-colors hover:border-hairline-strong focus:border-brand focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       />
-      {error && <p className="mt-1.5 text-[12px] text-rose-500">{error}</p>}
-      <div className="mt-2.5 flex items-center justify-between gap-3">
-        <p className="text-[11.5px] text-ink-muted">Shared with leadership.</p>
-        <button
-          onClick={submit}
-          disabled={pending || !body.trim()}
-          className="inline-flex h-9 items-center gap-2 rounded-lg border border-hairline-strong bg-surface px-3.5 text-[12.5px] font-medium text-ink-secondary transition-colors hover:bg-surface-soft hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-        >
-          <Send size={14} />
-          {pending ? 'Sending…' : 'Submit'}
-        </button>
-      </div>
+      {error && <p className="text-[11px] text-rose-500">{error}</p>}
+      <button
+        onClick={submit}
+        disabled={pending || !body.trim()}
+        className="inline-flex h-8 flex-shrink-0 items-center justify-center gap-1.5 rounded-lg border border-hairline-strong bg-surface text-[12px] font-medium text-ink-secondary transition-colors hover:bg-surface-soft hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
+        <Send size={13} /> {pending ? 'Sending…' : 'Submit'}
+      </button>
     </div>
   )
 }

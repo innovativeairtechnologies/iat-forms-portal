@@ -12,5 +12,6 @@ import { HomePage } from '@/app/home/HomePage'
 export default async function AdminHome() {
   const admin = await getAdminSurfaceUser()
   if (!admin) redirect('/login')
-  return <HomePage name={admin.displayName} />
+  // Admin content column has no top bar above the page → fill the full viewport.
+  return <HomePage name={admin.displayName} heightClass="lg:h-[calc(100dvh-12px)]" />
 }

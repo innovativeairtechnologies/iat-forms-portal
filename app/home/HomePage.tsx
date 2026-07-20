@@ -7,7 +7,7 @@ import { HomeContent } from './HomeContent'
    into whichever portal shell wraps the calling page. `name` comes from the
    shell's already-resolved user, so this does no auth of its own. */
 
-export async function HomePage({ name }: { name: string }) {
+export async function HomePage({ name, heightClass }: { name: string; heightClass?: string }) {
   const data = await getHomeData()
 
   const now = new Date()
@@ -20,5 +20,5 @@ export async function HomePage({ name }: { name: string }) {
   const funIdx = ((doy % FUN_FACTS.length) + FUN_FACTS.length) % FUN_FACTS.length
   const firstName = (name || '').trim().split(' ')[0] || ''
 
-  return <HomeContent greeting={greeting} dateET={dateET} firstName={firstName} funIdx={funIdx} data={data} />
+  return <HomeContent greeting={greeting} dateET={dateET} firstName={firstName} funIdx={funIdx} data={data} heightClass={heightClass} />
 }
