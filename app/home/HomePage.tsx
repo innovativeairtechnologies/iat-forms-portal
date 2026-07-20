@@ -1,5 +1,5 @@
 import { getHomeData } from '@/lib/home-data'
-import { FUN_FACTS } from '@/lib/home-content'
+import { FUN_FACTS, coreValueOfWeek } from '@/lib/home-content'
 import { HomeContent } from './HomeContent'
 
 /* Shared body for both shell homes (/admin/home and /employee/home). Computes the
@@ -19,6 +19,13 @@ export async function HomePage({ name, heightClass }: { name: string; heightClas
   )
   const funIdx = ((doy % FUN_FACTS.length) + FUN_FACTS.length) % FUN_FACTS.length
   const firstName = (name || '').trim().split(' ')[0] || ''
+  const cv = coreValueOfWeek(now)
 
-  return <HomeContent greeting={greeting} dateET={dateET} firstName={firstName} funIdx={funIdx} data={data} heightClass={heightClass} />
+  return (
+    <HomeContent
+      greeting={greeting} dateET={dateET} firstName={firstName} funIdx={funIdx}
+      data={data} heightClass={heightClass}
+      coreValue={cv.value} coreValueIndex={cv.index} coreValueTotal={cv.total}
+    />
+  )
 }

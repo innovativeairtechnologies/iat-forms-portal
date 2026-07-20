@@ -57,7 +57,8 @@ looks complete on day one and the moment HR authors a row, that row takes over.
 | New Employee | `employee_spotlights` (`kind='welcome'`) → else newest `employees.hire_date` | Auto-derives the newest hire if no curated welcome row. |
 | Employee Spotlight | `employee_spotlights` (`kind='spotlight'`, active) | Curated; falls back to the default sample until a row exists. |
 | Company Suggestions | writes `company_suggestions` | Server action `app/home/actions.ts`; private inbox (admins read via service role). |
-| Fun Fact / Core Values / IT Support | code (`lib/home-content.ts`) | Brand copy, not DB data. |
+| Core Value of the Week | code (`CORE_VALUES` in `lib/home-content.ts`) | Shows ONE value, auto-rotating weekly via `coreValueOfWeek()` — advances each Monday (ET), holds all week, cycles all 9. Manual "pin for the week" override = planned follow-up. |
+| Fun Fact / IT Support | code (`lib/home-content.ts`) | Brand copy, not DB data. |
 
 ### Editing content
 

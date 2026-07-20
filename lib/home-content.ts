@@ -150,14 +150,38 @@ export const FUN_FACTS: string[] = [
   'The Eiffel Tower can grow more than 15 cm taller in summer as the metal expands.',
 ]
 
-// IAT's core values. Only one is confirmed from the current intranet; add the
-// rest here and the card renders them automatically (title + one line each).
+// IAT's core values (from dehumidifiers.com/core-values). The home shows ONE per
+// week, rotating — see coreValueOfWeek() below. Edit the list here; keep the order
+// stable so the weekly rotation is predictable.
+export const CORE_VALUES_INTRO = 'We believe in something bigger, something greater than ourselves.'
+
 export const CORE_VALUES: CoreValue[] = [
-  {
-    title: 'Solve Problems',
-    body: 'We exist to solve our customers’ problems and enrich the lives of others. We’re a customer-service company — we just happen to build dehumidifiers.',
-  },
+  { title: 'Innovative Thinking', body: 'We are committed to building a company full of 3-dimensional thinkers.' },
+  { title: 'Clean is King', body: 'A clean workspace is an efficient workspace.' },
+  { title: 'Solve Problems', body: 'We exist to solve our customers’ problems and enrich the lives of others. We are a customer-service company — we just happen to build dehumidifiers.' },
+  { title: 'Quality Matters', body: 'If our equipment doesn’t perform, then we’re not solving problems — we’re creating them.' },
+  { title: 'Integrity is Key', body: 'We believe that character matters, all the time.' },
+  { title: 'Golden Rule Mentality', body: 'Treat others — including the company and the customer — the way you’d want to be treated.' },
+  { title: 'Colossians 3:23', body: 'We work hard, and we play hard, for the Lord.' },
+  { title: 'Have Fun', body: 'A career doesn’t have to be work.' },
+  { title: 'This Company is a Team', body: 'We win together, we lose together. We work together as a team to accomplish remarkable things that we could not do alone.' },
 ]
+
+/**
+ * The core value to feature this week. Deterministic weekly rotation: the index
+ * advances every Monday (Eastern) and is the same for everyone all week, so one
+ * value stays up for the week. When the manual "pin one for the week" control is
+ * built, it will override this. Pure (no server deps) — safe to call anywhere.
+ */
+export function coreValueOfWeek(now: Date): { value: CoreValue; index: number; total: number } {
+  const total = CORE_VALUES.length
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
+  const g = (t: string) => parseInt(p.find((x) => x.type === t)!.value, 10)
+  const days = Math.floor(Date.UTC(g('year'), g('month') - 1, g('day')) / 86400000)
+  const week = Math.floor((days + 3) / 7) // 1970-01-01 was a Thursday; +3 starts weeks on Monday
+  const index = ((week % total) + total) % total
+  return { value: CORE_VALUES[index], index, total }
+}
 
 // Employee referral program shown on the Open Positions card.
 export const REFERRAL = {

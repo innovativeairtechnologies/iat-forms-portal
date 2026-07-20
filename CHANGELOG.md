@@ -2,6 +2,14 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-20 — Company Home: real core values, one featured per week
+
+The Core Values tile now carries all nine of IAT's actual core values (from
+dehumidifiers.com/core-values) and features **one per week** — "Core Value of the Week."
+It auto-rotates each Monday (Eastern), holds steady all week, and cycles through all nine
+(`coreValueOfWeek()` in `lib/home-content.ts`). A manual "pin one for the week" override
+(admin picks it, it stays) is a planned follow-up.
+
 ## 2026-07-20 — Company Home: single-screen bento dashboard
 
 Redesigned Company Home from a scrolling stack of cards into a **single-screen bento dashboard** —

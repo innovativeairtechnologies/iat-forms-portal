@@ -3,7 +3,7 @@ import {
   Newspaper, CalendarDays, Briefcase, Cake, Users, Compass, Lightbulb,
   PartyPopper, Gift, Mail,
 } from 'lucide-react'
-import { FUN_FACTS, CORE_VALUES, REFERRAL, IT_SUPPORT } from '@/lib/home-content'
+import { FUN_FACTS, CORE_VALUES_INTRO, REFERRAL, IT_SUPPORT, type CoreValue } from '@/lib/home-content'
 import type { HomeData } from '@/lib/home-data'
 import { StatusPill, type Tone } from '@/components/admin/list'
 import { PersonAvatar } from './home-ui'
@@ -92,6 +92,7 @@ function Overline({ children }: { children: ReactNode }) {
 
 export function HomeContent({
   greeting, dateET, firstName, funIdx, data, heightClass = 'lg:h-[calc(100dvh-12px)]',
+  coreValue, coreValueIndex, coreValueTotal,
 }: {
   greeting: string; dateET: string; firstName: string; funIdx: number; data: HomeData
   /** lg-only fixed height that pins the bento to the viewport. Differs by shell
@@ -99,6 +100,8 @@ export function HomeContent({
    *  shell doesn't — the calling page passes the right one. Below lg the grid
    *  flows naturally and the page scrolls. */
   heightClass?: string
+  /** The single core value featured this week (weekly rotation). */
+  coreValue: CoreValue; coreValueIndex: number; coreValueTotal: number
 }) {
   const emoji = greeting.includes('morning') ? '☀️' : greeting.includes('afternoon') ? '🌤️' : '🌙'
 
@@ -276,15 +279,17 @@ export function HomeContent({
         </div>
       </Tile>
 
-      {/* Core Values */}
-      <Tile tone="rose" icon={<Compass size={15} />} title={CORE_VALUES.length > 1 ? 'Core Values' : 'Our Core Value'} span="lg:col-span-3" delay={240}>
-        <div className="space-y-2.5 px-3.5 py-3">
-          {CORE_VALUES.map((v, i) => (
-            <div key={i} className="border-l-2 border-rose-300 pl-2.5 dark:border-rose-500/40">
-              <p className="text-[12.5px] font-semibold text-ink">{v.title}</p>
-              <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-secondary">{v.body}</p>
-            </div>
-          ))}
+      {/* Core Value of the Week — one value, rotates weekly */}
+      <Tile tone="rose" icon={<Compass size={15} />} title="Core Value of the Week" span="lg:col-span-3" delay={240}>
+        <div className="px-3.5 py-3">
+          <p className="text-[11px] italic leading-relaxed text-ink-muted">“{CORE_VALUES_INTRO}”</p>
+          <div className="mt-2.5 border-l-2 border-rose-300 pl-3 dark:border-rose-500/40">
+            <p className="text-[14px] font-semibold text-ink">{coreValue.title}</p>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-ink-secondary">{coreValue.body}</p>
+          </div>
+          <p className="mt-3 text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+            Rotates weekly · {coreValueIndex + 1} of {coreValueTotal}
+          </p>
         </div>
       </Tile>
 
