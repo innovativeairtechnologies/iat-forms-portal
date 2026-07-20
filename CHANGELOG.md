@@ -2,6 +2,26 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-20 — Projected Sales: live sync from the Dryware reporting API
+
+New `/admin/projected-sales` page mirrors the "projected sales by project" feed from the external
+**Dryware** system (`dryware.dehumidifiers.com`) — the portal's first live *outbound* API
+integration. Sales opens the page and clicks **Sync now**; the server GETs the feed (HTTP Basic auth
+via the `DRYWARE_AUTH_HEADER` env var — server-only, never in code), de-duplicates it, and mirrors it
+into a new `projected_sales` table (migration `059`). The page reads from that table, so data loads
+instantly, persists between syncs, and survives Dryware being down; a one-row `projected_sales_sync`
+log drives the "last synced" line. The swap is **atomic** (a Postgres function replaces the whole
+table in one transaction) and **fail-safe** (a failed fetch never wipes the last good snapshot). Every
+sync is audit-logged. Gated on the existing **`deals`** permission — Sales + admin, no new permission
+to seed.
+
+The Dryware endpoint currently returns every project row **twice** (a JOIN fan-out on their side;
+flagged to their dev); we collapse byte-identical rows on ingest, so the page shows each project once
+and surfaces both counts ("95 projects · from 190 source rows") rather than hiding it. Verified
+end-to-end against the live endpoint before ship (190→95 rows, ~$18.9M quoted / ~$5.7M weighted, ~1s
+round-trip). Full write-up: `docs/projected-sales.md`. Deferred: a scheduled ~6am auto-sync (via
+Supabase pg_cron) — manual "Sync now" only for v1.
+
 ## 2026-07-20 — Company Home: real core values, one featured per week
 
 The Core Values tile now carries all nine of IAT's actual core values (from

@@ -54,6 +54,35 @@ export async function requireDealsAuth(): Promise<NextResponse | null> {
 }
 
 /**
+ * Read/sync guard for the Projected Sales page + its Dryware sync route
+ * (/admin/projected-sales, migration 059). Deliberately keyed on the SAME
+ * `deals` permission as the pipeline: projected sales is the same sales-pipeline
+ * trust boundary and audience (Sales + admin), so reusing `deals` grants exactly
+ * that access with no new permission to seed (avoids the check-perm-seed gate).
+ * Its own named guard rather than a second caller of requireDealsAuth (per that
+ * function's note), so it can be split onto a dedicated `projected_sales` perm
+ * later by changing one line here plus the ADMIN_PATH_PERMS entry.
+ */
+export async function requireProjectedSalesAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'deals', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * Manage guard for the Tool Crib admin routes (registry writes, force check-in,
  * custody transfer, labels). Matrix-backed like requireDealsAuth — that one's
  * doc comment says to add a similarly-scoped, similarly-named guard rather than

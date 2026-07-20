@@ -277,6 +277,10 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/equipment', perm: 'equipment' },
   { prefix: '/admin/customers', perm: 'customers' },
   { prefix: '/admin/deals', perm: 'deals' },
+  // Projected-sales mirror (059) — read-only Dryware snapshot. Shares the `deals`
+  // perm (Sales + admin) so it needs no new permission key or role_permissions
+  // seed. Distinct prefix from /admin/deals, so longest-match keeps them separate.
+  { prefix: '/admin/projected-sales', perm: 'deals' },
   { prefix: '/admin/gantt', perm: 'gantt' },
   { prefix: '/admin/org-chart', perm: 'org_chart' },
   { prefix: '/admin/forms', perm: 'forms' },

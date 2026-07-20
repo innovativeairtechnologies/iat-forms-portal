@@ -78,6 +78,9 @@ const NAV_PARENTS: NavParent[] = [
     icon: DollarSign,
     children: [
       { href: '/admin/deals', label: 'Deals', perm: 'deals' },
+      // Projected Sales — read-only mirror of the Dryware reporting API (059).
+      // Shares the `deals` perm (Sales + admin); different feature, same audience.
+      { href: '/admin/projected-sales', label: 'Projected Sales', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
       { href: '/admin/presentations', label: 'Presentations', perm: 'presentations' },
     ],
