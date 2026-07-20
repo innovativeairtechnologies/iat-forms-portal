@@ -39,7 +39,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Resources',
     items: [
       { href: '/employee/resources',       label: 'Employee Forms', icon: FileText, exact: true },
-      { href: '/employee/resources/tools', label: 'Tools & Apps',   icon: Wrench   },
+      { href: '/employee/resources/tools', label: 'Internal Apps',  icon: Wrench   },
     ],
   },
   // US Rotors — hidden for now (not needed currently). Routes/pages kept for future use;

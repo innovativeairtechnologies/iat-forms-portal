@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-20 — Internal Apps: Gas Burner Selection Guide + "Tools" renamed
+
+Added the **Gas Burner Selection Guide** (`public/tools/burner-selection-guide.html`) to the
+internal-app launcher. It sizes the AH-MA gas burner length, plenum height, profile-plate gap, and
+gas pressure-tap differential from the desiccant wheel and reactivation duty on a job's flow diagram
+(with an optional drag-and-drop OCR auto-fill from the flow diagram), and exports a submittal-ready
+PDF. Registered as one entry in `lib/tools.ts` (the single source of truth), so it appears in both
+`/admin/tools` and the employee launcher (`/employee/resources/tools`); it carries the "New" badge,
+which moved off the older Duct Traverse entry.
+
+Renamed the launcher from **"Tools & Apps"** to **"Internal Apps"** everywhere it's user-facing —
+admin sidebar, employee sidebar, both page headers, the ⌘K command palette, and the permissions-matrix
+label — so it's no longer confused with **Tool Crib** (the warehouse tool check-out registry), which
+sat one word away in the permissions matrix. The route (`/admin/tools`, `/tools/*`) and the `tools`
+permission are unchanged, so no middleware or seed changes were needed.
+
 ## 2026-07-20 — Projected Sales: live sync from the Dryware reporting API
 
 New `/admin/projected-sales` page mirrors the "projected sales by project" feed from the external

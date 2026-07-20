@@ -8,10 +8,11 @@ Built 2026-07-16, migration `050_tool_crib.sql` (applied). Live in the admin
 **Operations** nav (between Equipment and SRV Form). Tool **photos** and
 **photograph-the-label auto-fill** added 2026-07-17.
 
-> **Not to be confused with "Tools & Apps"** (`/admin/tools`, `/tools/*`, the
-> `tools` perm, `lib/tools.ts`). That's the internal field-app launcher — duct
-> traverse, calculators. Different feature, same word. Tool Crib is `tool_crib`
-> and `crib_*`.
+> **Not to be confused with "Internal Apps"** (`/admin/tools`, `/tools/*`, the
+> `tools` perm, `lib/tools.ts`). That's the internal-app launcher — burner
+> selection guide, duct traverse, calculators. It was renamed from "Tools & Apps"
+> to **Internal Apps** on 2026-07-20 specifically to end this same-word confusion;
+> the route and `tools` perm are unchanged. Tool Crib is `tool_crib` and `crib_*`.
 
 ---
 

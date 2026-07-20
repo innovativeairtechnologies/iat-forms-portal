@@ -2,10 +2,12 @@ import { ChevronRight, ExternalLink } from 'lucide-react'
 import { ListPageHeader } from '@/components/admin/list'
 import { TOOL_APPS } from '@/lib/tools'
 
-/* Admin-side launcher for the internal field tools (duct traverse, calculators,
-   card generator). Same catalog as the employee list (lib/tools.ts) — surfaced in
-   /admin so admin-surface roles (and the engineering team) can reach the tools from
-   where they work. Gated by the `tools` perm in middleware + the sidebar. */
+/* Admin-side launcher for the internal apps (burner guide, duct traverse,
+   calculators, card generator) — labeled "Internal Apps" in the nav to keep it
+   distinct from the Tool Crib check-out registry. Same catalog as the employee
+   list (lib/tools.ts) — surfaced in /admin so admin-surface roles (and the
+   engineering team) can reach the apps from where they work. Gated by the
+   `tools` perm in middleware + the sidebar. */
 
 export const dynamic = 'force-dynamic'
 
@@ -14,8 +16,8 @@ export default function AdminToolsPage() {
     <div className="flex-1 overflow-auto">
       <ListPageHeader
         overline="Workshop"
-        title="Tools & Apps"
-        count={`${TOOL_APPS.length} internal field tools — each opens in a new tab`}
+        title="Internal Apps"
+        count={`${TOOL_APPS.length} internal apps — each opens in a new tab`}
       />
 
       <div className="p-4 sm:p-8">

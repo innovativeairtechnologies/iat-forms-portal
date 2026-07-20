@@ -1,10 +1,12 @@
 import type { LucideIcon } from 'lucide-react'
-import { Wind, Image as ImageIcon, Zap, Calculator } from 'lucide-react'
+import { Wind, Image as ImageIcon, Zap, Calculator, Flame } from 'lucide-react'
 
-/* Single source of truth for the internal Tools & Apps launcher, shared by the
-   employee list (/employee/resources/tools) and the admin list (/admin/tools).
-   Each tool is a self-contained HTML app in public/tools/<slug>.html, gated to
-   signed-in staff by middleware (/tools/*), and opens in a new tab. */
+/* Single source of truth for the internal-apps launcher ("Internal Apps" in the
+   nav — renamed from "Tools" so it isn't confused with the Tool Crib check-out
+   registry), shared by the employee list (/employee/resources/tools) and the
+   admin list (/admin/tools). Each app is a self-contained HTML page in
+   public/tools/<slug>.html, gated to signed-in staff by middleware (/tools/*),
+   and opens in a new tab. */
 
 export type ToolApp = {
   title: string
@@ -17,12 +19,19 @@ export type ToolApp = {
 
 export const TOOL_APPS: ToolApp[] = [
   {
+    title: 'Gas Burner Selection Guide',
+    desc: 'Size the AH-MA gas burner length, plenum height, profile-plate gap, and gas pressure-tap differential from the desiccant wheel and reactivation duty on your flow diagram — packaged as a submittal-ready PDF.',
+    href: '/tools/burner-selection-guide.html',
+    icon: Flame,
+    external: true,
+    tag: 'New',
+  },
+  {
     title: 'Duct Traverse Report',
     desc: 'Run a Pitot traverse across a square or round duct, average the point velocities, and get airflow (CFM) — with a branded PDF you can email.',
     href: '/tools/duct-traverse-report.html',
     icon: Wind,
     external: true,
-    tag: 'New',
   },
   {
     title: 'Order Status Card Generator',

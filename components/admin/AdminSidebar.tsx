@@ -48,7 +48,10 @@ type Counts = {
 // ─── Nav structure — parents with expandable children ─────────────────────────
 
 const DASHBOARD = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard' as Perm }
-const TOOLS = { href: '/admin/tools', label: 'Tools', icon: Wrench, perm: 'tools' as Perm }
+// "Internal Apps" — the self-contained HTML app launcher (lib/tools.ts). Renamed
+// from "Tools" so the team doesn't confuse it with the Tool Crib check-out
+// registry in Operations. Route/perm stay `tools` to avoid perm-path drift.
+const TOOLS = { href: '/admin/tools', label: 'Internal Apps', icon: Wrench, perm: 'tools' as Perm }
 
 const NAV_PARENTS: NavParent[] = [
   {
@@ -280,7 +283,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
           >
             {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
             <TOOLS.icon size={15} className={cn('flex-shrink-0', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
-            Tools
+            {TOOLS.label}
           </Link>
         )
       })()}

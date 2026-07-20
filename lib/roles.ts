@@ -124,7 +124,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   customer_jerry: 'Customer Jerry (preview)',
   permissions: 'Permissions',
   srv: 'SRV editor',
-  tools: 'Tools & Apps',
+  tools: 'Internal Apps',
   tool_crib: 'Tool Crib',
   production_board: 'Production Board',
   home_content: 'Company Home',

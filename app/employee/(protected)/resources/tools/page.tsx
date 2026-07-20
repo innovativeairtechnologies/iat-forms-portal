@@ -11,8 +11,8 @@ export default function ResourcesToolsPage() {
       {/* Header (same structure as /admin/forms) */}
       <div className="px-8 pt-8 pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Resources</p>
-        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Tools &amp; Apps</h1>
-        <p className="text-[13px] text-gray-400 mt-0.5">Internal field tools — more coming soon.</p>
+        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Internal Apps</h1>
+        <p className="text-[13px] text-gray-400 mt-0.5">Self-contained field apps — more coming soon.</p>
       </div>
 
       <div className="p-8">
