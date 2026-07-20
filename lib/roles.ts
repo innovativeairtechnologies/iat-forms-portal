@@ -90,6 +90,14 @@ export type Perm =
   // and a perm sharing that name would read as "the production role's perm" —
   // the same collision 'tools' vs 'tool_crib' warns about below.
   | 'production_board'
+  // /admin/home-content — edit the company home (/home) editorial content:
+  // announcements, company_events, job_openings, employee_spotlights. Admin-only
+  // by omission from the scoped-role defaults below (so no migration/seed is
+  // needed); left off the non-delegatable list so an admin can still hand it to
+  // HR/marketing from /admin/permissions later.
+  // NB: keep the literal default-perms identifier out of this comment — the
+  // check-perm-seed prebuild gate regexes for the first occurrence of it.
+  | 'home_content'
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -119,6 +127,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   tools: 'Tools & Apps',
   tool_crib: 'Tool Crib',
   production_board: 'Production Board',
+  home_content: 'Company Home',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -230,6 +239,19 @@ export function homeForRole(role: Role | null, matrix?: PermMatrix | null): stri
   return '/employee/profile'
 }
 
+/**
+ * Where a user LANDS after login. Distinct from homeForRole (which is each role's
+ * *workspace*): every internal role — full admin, the scoped roles, AND base
+ * production — now lands first on the shared company home at /home. External
+ * customers keep their own portal. The company home's "Launch IAT Portal" button
+ * uses homeForRole to send each person on into their actual workspace.
+ *
+ * A deep link (?redirect=) still wins over this at the call sites that honor it.
+ */
+export function landingForRole(role: Role | null): string {
+  return role === 'customer' ? '/customer' : '/home'
+}
+
 // ─── Page-level access (used by middleware) ──────────────────────────────────
 
 // Paths under /admin that are always allowed for any admin-surface role.
@@ -275,6 +297,7 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // is deliberately outside middleware's matcher entirely — it's the public,
   // no-login surface the floor scans into. Adding /board here would break it.
   { prefix: '/admin/production', perm: 'production_board' },
+  { prefix: '/admin/home-content', perm: 'home_content' },
 ]
 
 function matchesPrefix(pathname: string, prefix: string): boolean {

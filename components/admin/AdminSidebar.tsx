@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
-  Users, Bot, DollarSign, Sun, Moon, Wrench,
+  Users, Bot, DollarSign, Sun, Moon, Wrench, Home,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -119,6 +119,7 @@ const NAV_PARENTS: NavParent[] = [
     label: 'System',
     icon: ShieldCheck,
     children: [
+      { href: '/admin/home-content', label: 'Company Home', perm: 'home_content' },
       { href: '/admin/audit', label: 'Audit Log', perm: 'audit' },
       { href: '/admin/permissions', label: 'Permissions', perm: 'permissions' },
     ],
@@ -225,6 +226,22 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-2 overflow-y-auto">
+      {/* Company Home — the shared intranet landing. Ungated: every admin-surface
+          role reaches this shell and lands on /home first, so all can return to it. */}
+      <Link
+        href="/home"
+        onClick={onClose}
+        className={cn(
+          'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
+          pathname === '/home'
+            ? 'bg-sidebar-strong text-sidebar-ink'
+            : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
+        )}
+      >
+        <Home size={15} className="flex-shrink-0 text-sidebar-ink-muted" />
+        Company Home
+      </Link>
+
       {hasPerm(DASHBOARD.perm) && (
         <Link
           href={DASHBOARD.href}

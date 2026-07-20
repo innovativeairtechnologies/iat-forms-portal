@@ -3,13 +3,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logLoginEvent, type LoginMethod } from '@/lib/login-events'
-import { normalizeRole, isAdminSurfaceRole, homeForRole } from '@/lib/roles'
+import { normalizeRole, isAdminSurfaceRole, landingForRole } from '@/lib/roles'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const type = requestUrl.searchParams.get('type')        // 'invite' | 'recovery' | etc.
-  const next = requestUrl.searchParams.get('next') ?? '/employee/profile'
+  const next = requestUrl.searchParams.get('next') ?? '/home'
 
   let userId: string | null = null
   let userEmail: string | null = null
@@ -75,9 +75,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Admin-surface roles (admin + scoped) have no /employee welcome flow — send
-    // them straight to their permitted home.
+    // them to the shared company home (their landing).
     if (isAdminSurfaceRole(role)) {
-      return NextResponse.redirect(new URL(homeForRole(role), requestUrl.origin))
+      return NextResponse.redirect(new URL(landingForRole(role), requestUrl.origin))
     }
   }
 

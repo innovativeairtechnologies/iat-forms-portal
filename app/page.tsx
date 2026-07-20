@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { normalizeRole, homeForRole } from '@/lib/roles'
+import { normalizeRole, landingForRole } from '@/lib/roles'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +19,8 @@ export default async function RootRouter() {
     .eq('id', user.id)
     .single()
 
-  // Single source of truth: admins/scoped roles → their /admin home, customers
-  // → /customer, base production → /employee. Avoids the /employee detour bounce.
-  redirect(homeForRole(normalizeRole(profile?.role)))
+  // Every internal role lands on the shared company home (/home); customers go to
+  // their own portal. From /home, "Launch IAT Portal" sends each person on into
+  // their actual workspace (homeForRole). Middleware re-gates whichever we pick.
+  redirect(landingForRole(normalizeRole(profile?.role)))
 }

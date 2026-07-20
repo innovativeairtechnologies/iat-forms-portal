@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Logo from '@/components/Logo'
 import { motion } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { normalizeRole, isAdminSurfaceRole, homeForRole } from '@/lib/roles'
+import { normalizeRole, isAdminSurfaceRole, landingForRole } from '@/lib/roles'
 import { safeRedirect } from '@/lib/redirect'
 
 export default function LoginPage() {
@@ -63,8 +63,8 @@ function LoginForm() {
     }).catch(() => {})
 
     // Admin-surface roles (full admin + scoped: sales/hr/marketing/engineering/
-    // production_manager) land on their permitted home section — unless they were
-    // sent here from a deep link, in which case honor it.
+    // production_manager) land on the shared company home (/home) — unless they
+    // were sent here from a deep link, in which case honor it.
     //
     // This branch used to ignore ?redirect= entirely, which silently broke every
     // deep link for admins and scoped roles: a production_manager scanning a Tool
@@ -72,7 +72,7 @@ function LoginForm() {
     // scan. Middleware re-gates whatever we push to, so honoring it can't widen
     // access — an unpermitted target just bounces to their home.
     if (isAdminSurfaceRole(role)) {
-      router.push(safeRedirect(searchParams.get('redirect'), homeForRole(role)))
+      router.push(safeRedirect(searchParams.get('redirect'), landingForRole(role)))
       router.refresh()
       return
     }
@@ -91,14 +91,15 @@ function LoginForm() {
       return
     }
 
-    // Employee — check if first-time setup is needed
+    // Employee (base production) — check if first-time setup is needed, then land
+    // on the shared company home (/home) unless a deep link says otherwise.
     const setupComplete = data.user.user_metadata?.setup_complete
     if (!setupComplete) {
       router.push('/employee/welcome')
     } else {
       // Was pushed unvalidated — /login?redirect=https://evil.com navigated
       // off-site, since router.push follows absolute URLs. See lib/redirect.ts.
-      router.push(safeRedirect(searchParams.get('redirect'), '/employee/profile'))
+      router.push(safeRedirect(searchParams.get('redirect'), landingForRole(role)))
     }
     router.refresh()
   }

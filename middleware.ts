@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { normalizeRole, homeForRole, isAdminSurfaceRole, canAccessAdminPath, type PermMatrix, type Perm } from '@/lib/roles'
+import { normalizeRole, homeForRole, landingForRole, isAdminSurfaceRole, canAccessAdminPath, type PermMatrix, type Perm } from '@/lib/roles'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -58,9 +58,18 @@ export async function middleware(request: NextRequest) {
     return redirectTo(loginUrl)
   }
 
-  // ── /login: if already logged in, skip to the right portal ───────────────
+  // ── /login: if already logged in, skip to your landing (the company home) ──
   if (pathname === '/login') {
-    if (user) return redirectTo(new URL(homeForRole(role), request.url))
+    if (user) return redirectTo(new URL(landingForRole(role), request.url))
+    return supabaseResponse
+  }
+
+  // ── /home: the shared internal company home. Any signed-in staff member
+  // (admin, scoped roles, base production) may see it; external customers have
+  // their own portal, so bounce them there. Anon → login.
+  if (pathname === '/home') {
+    if (!user) return toLogin()
+    if (role === 'customer') return redirectTo(new URL('/customer', request.url))
     return supabaseResponse
   }
 
@@ -174,5 +183,6 @@ export const config = {
     '/tool-crib/:path*',
     '/t/:path*',
     '/login',
+    '/home',
   ],
 }

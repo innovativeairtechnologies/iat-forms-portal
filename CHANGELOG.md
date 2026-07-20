@@ -2,6 +2,41 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-20 — Company Home: shared intranet landing at /home
+
+The SharePoint intranet homepage is rebuilt inside the portal as `/home` (Quiet Precision
+design) — company news, a calendar, birthdays & anniversaries, newest hire, who's out, open
+roles, and a suggestion box. **Every internal role now lands here first after login**
+(`landingForRole`, replacing the old direct-to-workspace redirect); customers are unaffected and
+still land on `/customer`. Each home card's "Launch IAT Portal" button sends the person on into
+their actual workspace via the existing `homeForRole`.
+
+Content is "CMS with defaults": cards read live from `announcements`, `company_events`,
+`job_openings`, `employee_spotlights`, and `employees.birthday` (migration
+`058_company_home.sql`), falling back to typed defaults in `lib/home-content.ts` whenever a
+table is empty — `/home` is never blank. People-derived cards (anniversaries, newest hire,
+who's-out) read existing `employees`/`time_off_requests` data, nothing new. Authors manage
+content at `/admin/home-content` (System → Company Home, new `home_content` perm, grantable to
+scoped roles from `/admin/permissions`). Full write-up: `docs/company-home.md`.
+
+Both the DB migration and its RLS follow-up patch were verified live before this deploy — see
+the entry below.
+
+## 2026-07-20 — Supabase CLI set up; closed customer-read gap on company-home content
+
+The Supabase CLI is now installed (`iat-forms-portal` devDependency), linked to the live
+`iat-forms` project, and its migration history repaired to match the 58 migrations already
+applied by hand — future migrations can go through `supabase db push` instead of the manual SQL
+editor. See `docs/company-home.md` for CLI usage notes.
+
+While verifying migration state against the live DB, confirmed `058_company_home.sql` had in
+fact already run (contrary to stale notes saying otherwise) but its known RLS security patch
+had not: `announcements`, `company_events`, `job_openings`, and `employee_spotlights` still
+granted `authenticated` SELECT, letting a logged-in *customer* session read internal-only
+content directly via PostgREST. Ran the documented `DROP POLICY` statements to close it — RLS
+stays enabled, app reads are unaffected (they go through the service-role client). Full
+write-up: `docs/company-home.md`.
+
 ## 2026-07-17 — Production Board: first-class projects under each department
 
 **Needs migration `056_production_projects.sql` run before deploy** (the board and

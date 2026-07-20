@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Calendar, Network, LayoutGrid, LayoutDashboard, FileText, Wrench,
   LogOut, Menu, X, ChevronRight,
-  Wind, Package,
+  Wind, Package, Building2,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import { useState } from 'react'
@@ -28,6 +28,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Menu',
     items: [
+      { href: '/home',               label: 'Company Home', icon: Building2, exact: true },
       { href: '/employee/profile',   label: 'Home',     icon: LayoutGrid, exact: true },
       { href: '/employee/board',     label: 'My Board',   icon: LayoutDashboard },
       { href: '/employee/requests',  label: 'Time Off',   icon: Calendar },
