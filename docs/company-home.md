@@ -1,29 +1,30 @@
-# Company Home (`/home`)
+# Company Home
 
 The shared company intranet home — the first screen **every internal user** sees after login,
 rebuilt from the SharePoint intranet into the Quiet Precision design system (`DESIGN.md`).
-External customers are unaffected (they still land on `/customer`).
-
-> **Status:** built 2026-07-17, **not yet deployed.** Requires migration
-> `058_company_home.sql` run in the Supabase SQL editor before/with the deploy.
+It renders **inside the portal shell** (the sidebar is present, "Company Home" is the active tab),
+so from the landing you navigate straight to Dashboard/Tickets/etc. External customers are
+unaffected (they still land on `/customer`).
 
 ## What changed for routing
 
-Login now lands internal users on `/home` instead of jumping straight to their role workspace.
-A new `landingForRole(role)` in `lib/roles.ts` is the seam:
+Company Home lives **inside each portal shell**, so it's a per-shell route rather than a single
+standalone page:
 
-- **Internal roles** (admin, the 5 scoped roles, base production) → `/home`.
-- **Customers** → `/customer` (unchanged).
+- Admin-surface roles → **`/admin/home`** (wrapped by `app/admin/layout.tsx` → admin sidebar).
+- Base employees → **`/employee/home`** (wrapped by `app/employee/(protected)/layout.tsx` → employee sidebar).
+- Both pages render the one shared `app/home/HomeContent.tsx` (via `app/home/HomePage.tsx`).
 
-Repointed at the four landing sites — `app/page.tsx`, `app/login/page.tsx`,
-`app/auth/callback/route.ts`, and the logged-in `/login` bounce in `middleware.ts`. Deep links
-(`?redirect=`) and the employee/customer `welcome` onboarding flows are preserved. `middleware.ts`
-gains `/home` in its matcher plus a branch: any signed-in staff member may see it; customers are
-bounced to `/customer`; anon → `/login`.
+`landingForRole(role)` in `lib/roles.ts` is the seam: customer → `/customer`; admin-surface →
+`/admin/home`; everyone else → `/employee/home`. Repointed at the four landing sites — `app/page.tsx`,
+`app/login/page.tsx`, `app/auth/callback/route.ts`, and the logged-in `/login` bounce in
+`middleware.ts`. Deep links (`?redirect=`) and the `welcome` onboarding flows are preserved.
+`/admin/home` is added to `OPEN_ADMIN_PREFIXES` so the middleware opens it to every admin-surface
+role (not just full admin). The old **`/home`** URL is kept as a convenience redirect
+(`app/home/page.tsx`) that forwards to the caller's shell home.
 
-`homeForRole(role)` is unchanged and still each role's **workspace** — the home's
-**"Launch IAT Portal →"** button (and the header "Launch Portal" link) use it to drop each person
-into `/admin` or `/employee/profile` as before.
+`homeForRole(role)` is unchanged — it's still each role's workspace root (`/admin`,
+`/employee/profile`), reached from the sidebar's other tabs.
 
 ## Data model — "CMS with sensible defaults"
 
@@ -63,10 +64,13 @@ hand it to a scoped role from `/admin/permissions` (which writes a `role_permiss
 
 ## Files
 
-- Home page: `app/home/page.tsx` (data-fetch) → `app/home/HomeView.tsx` (presentation)
-- Client bits: `HomeTopBar.tsx`, `FunFact.tsx`, `SuggestionBox.tsx`; primitives in `home-ui.tsx`
-- Suggestion action: `app/home/actions.ts`
-- Admin editor: `app/admin/home-content/page.tsx` + `HomeContentManager.tsx` + `actions.ts`; nav in `components/admin/AdminSidebar.tsx` (System group)
+- Per-shell pages: `app/admin/home/page.tsx` and `app/employee/(protected)/home/page.tsx` — thin;
+  each resolves the user's name and renders `app/home/HomePage.tsx`
+- Shared body: `app/home/HomePage.tsx` (loads data + greeting) → `app/home/HomeContent.tsx` (presentation, no top bar / no Launch — the shell supplies chrome)
+- Client bits: `FunFact.tsx`, `SuggestionBox.tsx`; primitives in `home-ui.tsx`; suggestion action `app/home/actions.ts`
+- Redirect shim: `app/home/page.tsx` (`/home` → shell home)
+- Sidebar links: `components/admin/AdminSidebar.tsx` (Company Home, top of rail) + `app/employee/(protected)/EmployeeShell.tsx` (Menu)
+- Admin content editor: `app/admin/home-content/page.tsx` + `HomeContentManager.tsx` + `actions.ts` (System → Company Home)
 - Data: `lib/home-data.ts` · Content/defaults: `lib/home-content.ts` · Migration: `supabase/migrations/058_company_home.sql`
 
 ## Deploy checklist

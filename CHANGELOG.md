@@ -2,14 +2,15 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
-## 2026-07-20 — Company Home: shared intranet landing at /home
+## 2026-07-20 — Company Home: shared intranet landing inside the portal
 
-The SharePoint intranet homepage is rebuilt inside the portal as `/home` (Quiet Precision
-design) — company news, a calendar, birthdays & anniversaries, newest hire, who's out, open
-roles, and a suggestion box. **Every internal role now lands here first after login**
-(`landingForRole`, replacing the old direct-to-workspace redirect); customers are unaffected and
-still land on `/customer`. Each home card's "Launch IAT Portal" button sends the person on into
-their actual workspace via the existing `homeForRole`.
+The SharePoint intranet homepage is rebuilt inside the portal (Quiet Precision design) — company
+news, a calendar, birthdays & anniversaries, newest hire, who's out, open roles, and a suggestion
+box. **Every internal role now lands here first after login** (`landingForRole`, replacing the old
+direct-to-workspace redirect); customers are unaffected and still land on `/customer`. It renders
+**inside the portal shell** — the sidebar is present with "Company Home" the active tab — so it's a
+per-shell route (`/admin/home` for admin-surface roles, `/employee/home` for base employees), and
+the rest of the workspace (Dashboard, Tickets, …) is one sidebar click away.
 
 Content is "CMS with defaults": cards read live from `announcements`, `company_events`,
 `job_openings`, `employee_spotlights`, and `employees.birthday` (migration

@@ -226,21 +226,26 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
 
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-2 overflow-y-auto">
-      {/* Company Home — the shared intranet landing. Ungated: every admin-surface
-          role reaches this shell and lands on /home first, so all can return to it. */}
-      <Link
-        href="/home"
-        onClick={onClose}
-        className={cn(
-          'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
-          pathname === '/home'
-            ? 'bg-sidebar-strong text-sidebar-ink'
-            : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
-        )}
-      >
-        <Home size={15} className="flex-shrink-0 text-sidebar-ink-muted" />
-        Company Home
-      </Link>
+      {/* Company Home — the shared intranet landing, rendered in this admin shell.
+          Ungated: every admin-surface role lands on /admin/home first (it's in
+          OPEN_ADMIN_PREFIXES), so all of them can return to it. */}
+      {(() => {
+        const active = pathname === '/admin/home'
+        return (
+          <Link
+            href="/admin/home"
+            onClick={onClose}
+            className={cn(
+              'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
+              active ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
+            )}
+          >
+            {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
+            <Home size={15} className={cn('flex-shrink-0', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
+            Company Home
+          </Link>
+        )
+      })()}
 
       {hasPerm(DASHBOARD.perm) && (
         <Link

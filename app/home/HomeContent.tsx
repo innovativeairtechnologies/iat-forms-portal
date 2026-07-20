@@ -1,20 +1,19 @@
-import Link from 'next/link'
 import {
   Newspaper, CalendarDays, Briefcase, Cake, UserPlus, Star, LifeBuoy,
-  Compass, Lightbulb, PartyPopper, Gift, Mail, ArrowRight,
+  Compass, Lightbulb, PartyPopper, Gift, Mail,
 } from 'lucide-react'
 import { FUN_FACTS, CORE_VALUES, REFERRAL, IT_SUPPORT } from '@/lib/home-content'
 import type { HomeData } from '@/lib/home-data'
 import { StatusPill, type Tone } from '@/components/admin/list'
-import { HomeTopBar } from './HomeTopBar'
 import { FunFact } from './FunFact'
 import { SuggestionBox } from './SuggestionBox'
 import { HomeCard, CardHead, Overline, DateTile, PersonAvatar } from './home-ui'
 
-/* Presentational body of the company home (/home). Data-free: page.tsx fetches
-   and passes everything in, which also lets a lightweight preview render it. */
+/* Company-home content — rendered INSIDE the portal shell (admin or employee
+   sidebar), as the scrollable content area. No top bar / no "Launch" button:
+   navigation is the sidebar's job now. Data-free presentation; the per-shell page
+   fetches and passes everything in. */
 
-// ── date helpers (Eastern; IAT is US-based) ──────────────────────────────────
 function isoTile(iso: string) {
   const day = new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/New_York', day: 'numeric' })
   const mon = new Date(iso).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short' }).toUpperCase()
@@ -37,11 +36,9 @@ const CATEGORY_TONE: Record<string, Tone> = { news: 'slate', safety: 'amber', ev
 const KIND_TONE: Record<string, Tone> = { holiday: 'violet', training: 'sky', visit: 'amber', closure: 'rose', event: 'slate' }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-export function HomeView({
-  displayName, launchHref, greeting, dateET, firstName, funIdx, data,
+export function HomeContent({
+  greeting, dateET, firstName, funIdx, data,
 }: {
-  displayName: string
-  launchHref: string
   greeting: string
   dateET: string
   firstName: string
@@ -49,34 +46,22 @@ export function HomeView({
   data: HomeData
 }) {
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <HomeTopBar name={displayName} launchHref={launchHref} />
-
-      <main className="mx-auto max-w-[1180px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
+    <div className="flex-1 overflow-y-auto bg-canvas">
+      <div className="mx-auto max-w-[1180px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
         {/* ── Hero greeting band ─────────────────────────────────────────── */}
         <section className="relative overflow-hidden rounded-2xl border border-hairline bg-surface px-6 py-7 sm:px-8">
           <div
             className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full opacity-[0.14] blur-3xl"
             style={{ background: 'radial-gradient(circle, var(--brand), transparent 70%)' }}
           />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <Overline>{dateET}</Overline>
-              <h1 className="mt-1.5 text-[26px] font-semibold leading-tight tracking-[-0.025em] text-ink sm:text-[28px]">
-                {greeting}{firstName ? `, ${firstName}` : ''}
-              </h1>
-              <p className="mt-1.5 max-w-xl text-[13.5px] leading-relaxed text-ink-secondary">
-                Welcome to the Innovative Air Technologies company home — news, people, and everything happening across IAT.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <Link
-                href={launchHref}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand px-4 text-[13px] font-medium text-white transition-colors hover:bg-brand-hover active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-              >
-                Launch IAT Portal <ArrowRight size={15} />
-              </Link>
-            </div>
+          <div className="relative min-w-0">
+            <Overline>{dateET}</Overline>
+            <h1 className="mt-1.5 text-[26px] font-semibold leading-tight tracking-[-0.025em] text-ink sm:text-[28px]">
+              {greeting}{firstName ? `, ${firstName}` : ''}
+            </h1>
+            <p className="mt-1.5 max-w-xl text-[13.5px] leading-relaxed text-ink-secondary">
+              Welcome to the Innovative Air Technologies company home — news, people, and everything happening across IAT.
+            </p>
           </div>
         </section>
 
@@ -296,7 +281,7 @@ export function HomeView({
         <footer className="mt-6 border-t border-hairline pt-6 text-center text-[12px] text-ink-muted">
           Innovative Air Technologies · Company Intranet
         </footer>
-      </main>
+      </div>
     </div>
   )
 }

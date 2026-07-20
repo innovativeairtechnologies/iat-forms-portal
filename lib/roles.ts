@@ -241,21 +241,25 @@ export function homeForRole(role: Role | null, matrix?: PermMatrix | null): stri
 
 /**
  * Where a user LANDS after login. Distinct from homeForRole (which is each role's
- * *workspace*): every internal role — full admin, the scoped roles, AND base
- * production — now lands first on the shared company home at /home. External
- * customers keep their own portal. The company home's "Launch IAT Portal" button
- * uses homeForRole to send each person on into their actual workspace.
+ * *workspace*): every internal role lands first on the shared Company Home, which
+ * now renders INSIDE the portal shell — so it's a per-shell route: admin-surface
+ * roles get it in the admin shell (`/admin/home`), base production in the employee
+ * shell (`/employee/home`). External customers keep their own portal. From the
+ * sidebar, the "Dashboard"/other tabs take each person into their actual workspace.
  *
  * A deep link (?redirect=) still wins over this at the call sites that honor it.
  */
 export function landingForRole(role: Role | null): string {
-  return role === 'customer' ? '/customer' : '/home'
+  if (role === 'customer') return '/customer'
+  return isAdminSurfaceRole(role) ? '/admin/home' : '/employee/home'
 }
 
 // ─── Page-level access (used by middleware) ──────────────────────────────────
 
 // Paths under /admin that are always allowed for any admin-surface role.
-const OPEN_ADMIN_PREFIXES = ['/admin/profile']
+// /admin/home is the Company Home rendered in the admin shell — every internal
+// role lands there, so it must not fall through to the admin-only 'dashboard' gate.
+const OPEN_ADMIN_PREFIXES = ['/admin/profile', '/admin/home']
 
 // Longest matching prefix wins. The bare '/admin' catch-all maps to 'dashboard'
 // (admin-only), so ANY /admin/* route not explicitly listed here is fail-closed
