@@ -14,6 +14,13 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
  *  sees 2026-02-31 (which the shape regex alone would let through as a 500). */
 const NULLABLE_DATE_FIELDS = ['expected_close', 'next_step_due'] as const
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Nullable uuid FK columns (migration 062). Shape-checked here; the routes
+ *  verify the row actually EXISTS before writing (a dangling uuid would
+ *  surface as a raw FK-violation 500 otherwise). */
+const NULLABLE_UUID_FIELDS = ['company_id', 'primary_contact_id'] as const
+
 const CHECKLIST_KEYS = new Set<string>(CHECKLIST_STEPS.map((s) => s.key))
 
 /**
@@ -100,6 +107,12 @@ export function sanitizeDealField(field: string, raw: unknown): { value?: unknow
       return { value: clean }
     }
     default: {
+      // nullable uuid FKs (062)
+      if ((NULLABLE_UUID_FIELDS as readonly string[]).includes(field)) {
+        if (raw === null || raw === '') return { value: null }
+        if (typeof raw !== 'string' || !UUID_RE.test(raw)) return { error: `${field} must be a uuid or null` }
+        return { value: raw }
+      }
       // nullable dates (061) — full calendar validation, not just shape
       if ((NULLABLE_DATE_FIELDS as readonly string[]).includes(field)) {
         if (raw === null || raw === '') return { value: null }

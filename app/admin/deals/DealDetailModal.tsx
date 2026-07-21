@@ -3,17 +3,18 @@
 import { useEffect, useState } from 'react'
 import {
   X, ChevronLeft, ChevronRight, ChevronDown, Pencil, Trash2, CornerDownLeft,
-  User, Users, Cpu, Briefcase, CalendarDays, CalendarRange, Contact,
+  User, Users, Cpu, Briefcase, CalendarDays, CalendarRange, Contact as ContactIcon,
   Phone, Mail, CalendarClock, FileText, Check, ClipboardList, StickyNote,
-  Star, CalendarPlus, Factory, ArrowRight, Flag,
+  Star, CalendarPlus, Factory, ArrowRight, Flag, Building2, Plus,
 } from 'lucide-react'
-import type { Deal, DealActivity, DealActivityKind, DealFollowUp, DealStageHistory } from '@/lib/supabase'
+import type { Deal, DealActivity, DealActivityKind, DealFollowUp, DealStageHistory, Company, Contact } from '@/lib/supabase'
 import {
   computeWeighted, CHECKLIST_STEPS, checklistProgress, PROJECT_TYPES, followUpDateFrom,
   STAGES, stageInfo, stageAgeDays, CLOSED_REASONS, type DealStage,
 } from '@/lib/deals'
 import { formatCurrency, formatDateOnly } from '@/lib/utils'
 import { StatusPill, timeAgo } from '@/components/admin/list'
+import CompanyCombobox from './CompanyCombobox'
 import { inp, lbl } from './form'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -117,9 +118,10 @@ const ACTIVITY_ICONS: Record<DealActivityKind, React.ReactNode> = {
 }
 
 export default function DealDetailModal({
-  deal, index, total, prevId, nextId, followUps,
+  deal, index, total, prevId, nextId, followUps, companies, contacts,
   onOpen, onClose, onPatchLocal, onPersist, onStatus, onStage, onDelete,
   onToggleFocus, onScheduleFollowUp, onToggleFollowUpDone, onRemoveFollowUp,
+  onAddContact, onCreateCompany,
 }: {
   deal: Deal
   index: number
@@ -127,6 +129,8 @@ export default function DealDetailModal({
   prevId: string | null
   nextId: string | null
   followUps: DealFollowUp[]
+  companies: Company[]
+  contacts: Contact[]
   onOpen: (id: string) => void
   onClose: () => void
   onPatchLocal: (id: string, patch: Partial<Deal>) => void
@@ -138,6 +142,8 @@ export default function DealDetailModal({
   onScheduleFollowUp: (dealId: string, dueDate: string, note: string) => void
   onToggleFollowUpDone: (id: string) => void
   onRemoveFollowUp: (id: string) => void
+  onAddContact: (companyId: string, fields: { name: string; email?: string }) => Promise<Contact | null>
+  onCreateCompany: (name: string) => Promise<Company | null>
 }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditForm>(() => toForm(deal))
@@ -158,6 +164,50 @@ export default function DealDetailModal({
   const [closeNote, setCloseNote] = useState('')
   const [processOpen, setProcessOpen] = useState(false)
 
+  // Company link (migration 062): the combobox text tracks the linked
+  // company's name (or the free-text customer while unlinked).
+  const linkedCompany = deal.company_id ? companies.find((c) => c.id === deal.company_id) ?? null : null
+  const [companyText, setCompanyText] = useState(linkedCompany?.name ?? deal.customer)
+  const [showAddContact, setShowAddContact] = useState(false)
+  const [newContactName, setNewContactName] = useState('')
+  const [newContactEmail, setNewContactEmail] = useState('')
+
+  const linkCompany = (companyId: string) => {
+    const c = companies.find((x) => x.id === companyId)
+    if (!c || deal.company_id === companyId) return
+    setCompanyText(c.name)
+    onPatchLocal(deal.id, { company_id: c.id, customer: c.name, primary_contact_id: null })
+    onPersist(deal.id, { company_id: c.id })
+  }
+
+  const createAndLink = async () => {
+    const name = companyText.trim()
+    if (!name) return
+    const c = await onCreateCompany(name)
+    if (!c) return
+    setCompanyText(c.name)
+    onPatchLocal(deal.id, { company_id: c.id, customer: c.name, primary_contact_id: null })
+    onPersist(deal.id, { company_id: c.id })
+  }
+
+  const setPrimaryContact = (contactId: string | null) => {
+    onPatchLocal(deal.id, { primary_contact_id: contactId })
+    onPersist(deal.id, { primary_contact_id: contactId })
+  }
+
+  const submitNewContact = async () => {
+    if (!deal.company_id || !newContactName.trim()) return
+    const contact = await onAddContact(deal.company_id, {
+      name: newContactName.trim(),
+      email: newContactEmail.trim() || undefined,
+    })
+    if (!contact) return
+    setPrimaryContact(contact.id)
+    setShowAddContact(false)
+    setNewContactName('')
+    setNewContactEmail('')
+  }
+
   // Schedule-follow-up composer (default 2 weeks out, matching the automation)
   const [showSchedule, setShowSchedule] = useState(false)
   const [fuDate, setFuDate] = useState('')
@@ -177,8 +227,17 @@ export default function DealDetailModal({
     setClosePicked(null)
     setCloseNote('')
     setProcessOpen(false)
+    setShowAddContact(false)
+    setNewContactName('')
+    setNewContactEmail('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id])
+
+  // Track the linked company's display name (rename/merge/link elsewhere).
+  useEffect(() => {
+    setCompanyText(linkedCompany?.name ?? deal.customer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal.id, deal.company_id, linkedCompany?.name])
 
   // Load this deal's activity log (100 most recent) + stage transitions.
   useEffect(() => {
@@ -482,6 +541,95 @@ export default function DealDetailModal({
                 )}
               </div>
 
+              {/* ── Company & contact (migration 062) ── */}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted mb-2">Company &amp; Contact</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <CompanyCombobox
+                      companies={companies}
+                      text={companyText}
+                      companyId={deal.company_id}
+                      placeholder="Link a company…"
+                      onChange={(companyId, text) => {
+                        setCompanyText(text)
+                        if (companyId) linkCompany(companyId)
+                      }}
+                    />
+                    {!deal.company_id && companyText.trim() && (
+                      <button
+                        onClick={createAndLink}
+                        className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-ink-secondary hover:text-ink transition-colors"
+                      >
+                        <Building2 size={11} /> Create &amp; link &ldquo;{companyText.trim()}&rdquo;
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    {deal.company_id ? (
+                      showAddContact ? (
+                        <div className="flex gap-1.5">
+                          <input
+                            autoFocus
+                            className={inp}
+                            placeholder="Contact name"
+                            value={newContactName}
+                            onChange={(e) => setNewContactName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitNewContact() } }}
+                          />
+                          <input
+                            className={`${inp} hidden sm:block`}
+                            placeholder="Email (optional)"
+                            value={newContactEmail}
+                            onChange={(e) => setNewContactEmail(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitNewContact() } }}
+                          />
+                          <button
+                            onClick={submitNewContact}
+                            disabled={!newContactName.trim()}
+                            title="Add contact"
+                            className="h-9 w-9 flex-shrink-0 rounded-lg flex items-center justify-center text-white disabled:opacity-40 transition-colors"
+                            style={{ backgroundColor: 'var(--brand)' }}
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            className={inp}
+                            value={deal.primary_contact_id ?? ''}
+                            onChange={(e) => setPrimaryContact(e.target.value || null)}
+                          >
+                            <option value="">— No contact —</option>
+                            {contacts.filter((k) => k.company_id === deal.company_id).map((k) => (
+                              <option key={k.id} value={k.id}>{k.name}{k.title ? ` (${k.title})` : ''}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => setShowAddContact(true)}
+                            title="Add a new contact"
+                            className="h-9 w-9 flex-shrink-0 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink-secondary border border-hairline hover:bg-surface-soft transition-colors"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      <p className="h-9 flex items-center px-3 rounded-lg border border-dashed border-hairline text-[11.5px] text-ink-faint">
+                        Link a company to pick a contact
+                      </p>
+                    )}
+                    {(() => {
+                      const k = deal.primary_contact_id ? contacts.find((x) => x.id === deal.primary_contact_id) : null
+                      return k && (k.email || k.phone) ? (
+                        <p className="mt-1 text-[10.5px] text-ink-faint tabular-nums truncate">{[k.email, k.phone].filter(Boolean).join(' · ')}</p>
+                      ) : null
+                    })()}
+                  </div>
+                </div>
+              </div>
+
               {/* ── Process checklist (demoted to an accordion — stages carry the
                      pipeline now; the 5 steps remain as an optional worklist) ── */}
               <div className="rounded-xl border border-hairline overflow-hidden">
@@ -663,7 +811,7 @@ export default function DealDetailModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2">
                   <Field icon={<User size={13} />} label="Assigned To" value={deal.assigned_to} />
                   <Field icon={<Users size={13} />} label="Rep" value={deal.rep} />
-                  <Field icon={<Contact size={13} />} label="Rep Contact" value={deal.rep_contact} />
+                  <Field icon={<ContactIcon size={13} />} label="Rep Contact" value={deal.rep_contact} />
                   <Field icon={<Cpu size={13} />} label="Unit Model" value={deal.unit_model} mono />
                   <Field icon={<Briefcase size={13} />} label="Job Name" value={deal.job_name} />
                   <Field icon={<CalendarDays size={13} />} label="Date Quoted" value={deal.date_quoted ? formatDateOnly(deal.date_quoted) : null} />

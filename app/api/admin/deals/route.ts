@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { sanitizeDealField } from './validate'
 import { AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
+import { normalizeCompany } from '@/lib/crm-normalize'
 
 const OPTIONAL_FIELDS = [
   'assigned_to', 'date_quoted', 'status', 'unit_model', 'job_name',
@@ -41,6 +42,45 @@ export async function POST(req: NextRequest) {
   } else if (insert.status === 'Lost') {
     insert.stage = 'lost'
   } // else: DB default 'lead'
+
+  // ── Company link (migration 062): every NEW deal lands linked ────────────
+  // Explicit company_id wins; otherwise exact-normalized match against
+  // existing companies; otherwise auto-create a prospect. Typos create
+  // near-duplicates occasionally — the Companies tab's duplicate detection is
+  // the standing cleanup for that. A trailing parenthetical on the typed name
+  // ("QCorp (20+ compacts)") moves into an empty job_name, matching the
+  // backfill's convention.
+  let companyCreated: Record<string, unknown> | null = null
+  const explicitCompany = sanitizeDealField('company_id', body.company_id)
+  if (typeof body.company_id === 'string' && !explicitCompany.error && explicitCompany.value) {
+    const { data: company } = await supabaseAdmin
+      .from('companies').select('id, name').eq('id', explicitCompany.value).maybeSingle()
+    if (!company) return NextResponse.json({ error: 'Company not found — it may have been deleted.' }, { status: 400 })
+    insert.company_id = company.id
+    insert.customer = company.name
+  } else {
+    const { base, hint, normalized } = normalizeCompany(insert.customer as string)
+    const { data: match } = await supabaseAdmin
+      .from('companies').select('id, name').eq('normalized_name', normalized).maybeSingle()
+    if (match) {
+      insert.company_id = match.id
+      insert.customer = match.name
+    } else {
+      const { data: created } = await supabaseAdmin
+        .from('companies').insert({ name: base, normalized_name: normalized }).select('*').maybeSingle()
+      if (created) {
+        companyCreated = created
+        insert.company_id = created.id
+        insert.customer = created.name
+      } // creation failure (e.g. race) → deal still lands, just unlinked
+    }
+    if (hint && !insert.job_name) insert.job_name = hint
+  }
+  if (typeof body.primary_contact_id === 'string' && insert.company_id) {
+    const { data: contact } = await supabaseAdmin
+      .from('contacts').select('id, company_id').eq('id', body.primary_contact_id).maybeSingle()
+    if (contact && contact.company_id === insert.company_id) insert.primary_contact_id = contact.id
+  }
 
   const { data, error } = await supabaseAdmin.from('deals').insert(insert).select('*').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -83,5 +123,7 @@ export async function POST(req: NextRequest) {
     followUp = fu ?? null
   } catch { /* pre-048 or insert failed — deal still created */ }
 
-  return NextResponse.json({ ok: true, deal: data, followUp })
+  // companyCreated rides along so the client can add it to its companies
+  // state without a refetch (matched/explicit companies are already there).
+  return NextResponse.json({ ok: true, deal: data, followUp, companyCreated })
 }

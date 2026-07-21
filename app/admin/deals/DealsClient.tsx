@@ -2,17 +2,18 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
-import type { Deal, DealFollowUp } from '@/lib/supabase'
+import type { Deal, DealFollowUp, Company, Contact } from '@/lib/supabase'
 import { computeSummary, PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
 import { ListPageHeader, tabCx } from '@/components/admin/list'
 import SalesDashboard from './SalesDashboard'
 import BoardView from './BoardView'
 import PipelineView from './PipelineView'
-import CRMView from './CRMView'
+import CompaniesView, { type CompanyOps } from './CompaniesView'
 import FocusedView from './FocusedView'
 import CalendarView from './CalendarView'
 import DealDetailModal from './DealDetailModal'
+import CompanyCombobox from './CompanyCombobox'
 import { inp, lbl } from './form'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -24,31 +25,36 @@ import { inp, lbl } from './form'
    one source of truth.
    ──────────────────────────────────────────────────────────────────────────── */
 
-type Tab = 'dashboard' | 'board' | 'pipeline' | 'crm' | 'focused' | 'calendar'
+type Tab = 'dashboard' | 'board' | 'pipeline' | 'companies' | 'focused' | 'calendar'
 
 const TABS: { value: Tab; label: string; blurb: string }[] = [
   { value: 'dashboard', label: 'Dashboard', blurb: 'metrics overview' },
   { value: 'board', label: 'Board', blurb: 'kanban stages' },
   { value: 'pipeline', label: 'Table', blurb: 'financial forecast' },
-  { value: 'crm', label: 'CRM', blurb: 'relationships' },
+  { value: 'companies', label: 'Companies', blurb: 'accounts & contacts' },
   { value: 'focused', label: 'Focused', blurb: 'hand-picked' },
   { value: 'calendar', label: 'Calendar', blurb: 'follow-ups' },
 ]
 
 const EMPTY_FORM = {
-  customer: '', group_name: 'MAIN', assigned_to: '', total_cost: '', confidence: '50',
+  customer: '', company_id: '', primary_contact_id: '', group_name: 'MAIN', assigned_to: '',
+  total_cost: '', confidence: '50',
   unit_model: '', job_name: '', projected: '', rep: '', rep_contact: '', date_quoted: '', notes: '',
   project_type: '',
 }
 
 export default function DealsClient({
-  initialDeals, initialFollowUps = [],
+  initialDeals, initialFollowUps = [], initialCompanies = [], initialContacts = [],
 }: {
   initialDeals: Deal[]
   initialFollowUps?: DealFollowUp[]
+  initialCompanies?: Company[]
+  initialContacts?: Contact[]
 }) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals)
   const [followUps, setFollowUps] = useState<DealFollowUp[]>(initialFollowUps)
+  const [companies, setCompanies] = useState<Company[]>(initialCompanies)
+  const [contacts, setContacts] = useState<Contact[]>(initialContacts)
   const [tab, setTab] = useState<Tab>('dashboard')
   const [err, setErr] = useState<string | null>(null)
 
@@ -188,6 +194,84 @@ export default function DealsClient({
     }
   }
 
+  // ── Company/contact graph (migration 062) ────────────────────────────────
+  // CompaniesView talks to the API itself; these ops keep the lifted state —
+  // which every other tab reads — in sync. Bulk deal mutations go through
+  // mutateDeals so the last-known-server-good map can never resurrect a
+  // stale link on a failed unrelated edit.
+  const mutateDeals = (fn: (d: Deal) => Deal) => {
+    setDeals((prev) => prev.map(fn))
+    for (const [id, d] of serverDeals.current) serverDeals.current.set(id, fn(d))
+  }
+
+  const sortCompanies = (list: Company[]) => [...list].sort((a, b) => a.name.localeCompare(b.name))
+
+  const companyOps: CompanyOps = {
+    onGraph: (cs, ks, ds) => {
+      setCompanies(sortCompanies(cs))
+      setContacts(ks)
+      serverDeals.current = new Map(ds.map((d) => [d.id, d]))
+      setDeals(ds)
+    },
+    onCompanyUpsert: (c) =>
+      setCompanies((prev) => sortCompanies(prev.some((x) => x.id === c.id) ? prev.map((x) => (x.id === c.id ? c : x)) : [...prev, c])),
+    onCompanyRenamed: (id, name) =>
+      mutateDeals((d) => (d.company_id === id ? { ...d, customer: name } : d)),
+    onCompanyRemoved: (id) => {
+      setCompanies((prev) => prev.filter((c) => c.id !== id))
+      setContacts((prev) => prev.filter((k) => k.company_id !== id))
+      mutateDeals((d) => (d.company_id === id ? { ...d, company_id: null, primary_contact_id: null } : d))
+    },
+    onMerged: (sourceId, targetId, targetName) => {
+      setCompanies((prev) => prev.filter((c) => c.id !== sourceId))
+      setContacts((prev) => prev.map((k) => (k.company_id === sourceId ? { ...k, company_id: targetId } : k)))
+      mutateDeals((d) => (d.company_id === sourceId ? { ...d, company_id: targetId, customer: targetName } : d))
+    },
+    onContactUpsert: (k) =>
+      setContacts((prev) => (prev.some((x) => x.id === k.id) ? prev.map((x) => (x.id === k.id ? k : x)) : [...prev, k])),
+    onContactRemoved: (id) => {
+      setContacts((prev) => prev.filter((k) => k.id !== id))
+      mutateDeals((d) => (d.primary_contact_id === id ? { ...d, primary_contact_id: null } : d))
+    },
+  }
+
+  // Shared by the deal modal's quick-add — POSTs a contact, syncs state,
+  // returns the row (or null on failure, with the error surfaced).
+  const addContact = async (companyId: string, fields: { name: string; email?: string; phone?: string }): Promise<Contact | null> => {
+    try {
+      const res = await fetch('/api/admin/deals/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: companyId, ...fields }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { setErr(j.error || 'Could not add that contact.'); return null }
+      companyOps.onContactUpsert(j.contact as Contact)
+      return j.contact as Contact
+    } catch {
+      setErr('Network error — the contact was not saved.')
+      return null
+    }
+  }
+
+  // Create-and-link a company typed into the deal modal's combobox.
+  const createCompany = async (name: string): Promise<Company | null> => {
+    try {
+      const res = await fetch('/api/admin/deals/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) { setErr(j.error || 'Could not create that company.'); return null }
+      companyOps.onCompanyUpsert(j.company as Company)
+      return j.company as Company
+    } catch {
+      setErr('Network error — the company was not created.')
+      return null
+    }
+  }
+
   // ── Follow-up handlers (optimistic; temp ids until the POST resolves) ──
   const addFollowUp = async (dealId: string, dueDate: string, note: string) => {
     const tmp = `temp-${++tmpId.current}`
@@ -279,6 +363,9 @@ export default function DealsClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          // '' would fail uuid validation — omit instead ('create/match by name')
+          company_id: form.company_id || undefined,
+          primary_contact_id: form.primary_contact_id || undefined,
           assigned_to: form.assigned_to || null,
           unit_model: form.unit_model || null,
           job_name: form.job_name || null,
@@ -302,6 +389,8 @@ export default function DealsClient({
       if (!res.ok) { setCreateError(json.error || 'Could not create that deal.'); return }
       serverDeals.current.set(json.deal.id, json.deal)
       setDeals((prev) => [json.deal, ...prev])
+      // The server may have auto-created a company for a free-typed name.
+      if (json.companyCreated) companyOps.onCompanyUpsert(json.companyCreated as Company)
       // The auto 2-week reminder the API created alongside the deal (if the
       // follow-ups table exists) — surface it on the calendar immediately.
       if (json.followUp) setFollowUps((prev) => [...prev, json.followUp as DealFollowUp])
@@ -373,8 +462,8 @@ export default function DealsClient({
         <div className={tab === 'pipeline' ? '' : 'hidden'}>
           <PipelineView deals={deals} onStatusChange={setStatus} onView={openDetail} onToggleFocus={toggleFocus} />
         </div>
-        <div className={tab === 'crm' ? '' : 'hidden'}>
-          <CRMView deals={deals} onView={openDetail} />
+        <div className={tab === 'companies' ? '' : 'hidden'}>
+          <CompaniesView deals={deals} companies={companies} contacts={contacts} ops={companyOps} onView={openDetail} />
         </div>
         <div className={tab === 'focused' ? '' : 'hidden'}>
           <FocusedView deals={deals} onPatchLocal={patchLocal} onPersist={persist} onDelete={removeDeal} onView={openDetail} onToggleFocus={toggleFocus} />
@@ -399,6 +488,10 @@ export default function DealsClient({
           prevId={detailIndex > 0 ? detailIds[detailIndex - 1] : null}
           nextId={detailIndex >= 0 && detailIndex < detailIds.length - 1 ? detailIds[detailIndex + 1] : null}
           followUps={detailFollowUps}
+          companies={companies}
+          contacts={contacts}
+          onAddContact={addContact}
+          onCreateCompany={createCompany}
           onOpen={(id) => setDetail((cur) => (cur ? { ...cur, id } : cur))}
           onClose={() => setDetail(null)}
           onPatchLocal={patchLocal}
@@ -439,8 +532,26 @@ export default function DealsClient({
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={lbl}>Customer</label>
-                <input className={inp} value={form.customer} onChange={(e) => set('customer', e.target.value)} placeholder="Company or client name" autoFocus />
+                <CompanyCombobox
+                  companies={companies}
+                  text={form.customer}
+                  companyId={form.company_id || null}
+                  autoFocus
+                  onChange={(companyId, text) =>
+                    setForm((f) => ({ ...f, customer: text, company_id: companyId ?? '', primary_contact_id: '' }))}
+                />
               </div>
+              {form.company_id && contacts.some((k) => k.company_id === form.company_id) && (
+                <div className="col-span-2">
+                  <label className={lbl}>Contact</label>
+                  <select className={inp} value={form.primary_contact_id} onChange={(e) => set('primary_contact_id', e.target.value)}>
+                    <option value="">— No contact —</option>
+                    {contacts.filter((k) => k.company_id === form.company_id).map((k) => (
+                      <option key={k.id} value={k.id}>{k.name}{k.title ? ` (${k.title})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className={lbl}>Group</label>
                 <input className={inp} value={form.group_name} onChange={(e) => set('group_name', e.target.value)} placeholder="MIKE / JACOB / DAVE…" />

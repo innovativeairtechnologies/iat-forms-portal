@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
 import { parseSalesForecastXlsx, type ImportResult } from '@/lib/deals-import'
 import { statusForStage, type DealStage } from '@/lib/deals'
+import { normalizeCompany } from '@/lib/crm-normalize'
 
 /** Stage for a freshly-imported row (no portal enrichment): a closed status
  *  wins, a dated quote means Quoted, else Lead — mirroring migration 061's
@@ -53,10 +54,22 @@ type Preview = {
 }
 
 /** Identity used to carry checklists/activity across a replace-import: the
- *  same deal re-exported keeps its customer + job + group. Lossy on true
+ *  same deal re-exported keeps its company + job + group. The customer part
+ *  goes through crm-normalize because the 062 backfill CANONICALIZES portal
+ *  names ("Trane CO" → "Trane") while the monday export still carries the raw
+ *  spelling — raw comparison would miss every renamed deal. Lossy on true
  *  duplicates (first match wins) — acceptable for best-effort carry-over. */
 const dealKey = (d: { customer: string; job_name: string | null; group_name: string }) =>
-  `${d.customer.trim().toLowerCase()}|${(d.job_name ?? '').trim().toLowerCase()}|${d.group_name.trim().toUpperCase()}`
+  `${normalizeCompany(d.customer).normalized}|${(d.job_name ?? '').trim().toLowerCase()}|${d.group_name.trim().toUpperCase()}`
+
+/** Alternate identity for an imported row whose trailing parenthetical became
+ *  the portal row's job_name during the backfill: monday "AAS (PFenning)" with
+ *  an empty job matches portal "AAS" + job "PFenning". */
+const dealKeyHint = (d: { customer: string; job_name: string | null; group_name: string }): string | null => {
+  const { hint, normalized } = normalizeCompany(d.customer)
+  if (!hint || (d.job_name ?? '').trim()) return null
+  return `${normalized}|${hint.toLowerCase()}|${d.group_name.trim().toUpperCase()}`
+}
 
 /** Count portal enrichment (checklist progress, activity + follow-up rows,
  *  focused stars, project types). Every probe tolerates a pre-migration
@@ -169,11 +182,12 @@ export async function POST(req: NextRequest) {
     projectType: Map<string, string>
     stage61: Map<string, Stage61>
     stageHistory: Map<string, unknown[]>
+    company62: Map<string, { company_id: string | null; primary_contact_id: string | null }>
   }
   const pd = preview.portalData
   let snapshot: Snapshot | null = null
   if (mode === 'replace' && (pd.checklists > 0 || pd.activities > 0 || pd.followUps > 0 || pd.focused > 0 || pd.projectTypes > 0 || pd.stages > 0 || pd.stageHistory > 0)) {
-    snapshot = { checklists: new Map(), activities: new Map(), followUps: new Map(), focus: new Map(), projectType: new Map(), stage61: new Map(), stageHistory: new Map() }
+    snapshot = { checklists: new Map(), activities: new Map(), followUps: new Map(), focus: new Map(), projectType: new Map(), stage61: new Map(), stageHistory: new Map(), company62: new Map() }
     // Base identity + checklist (works on any post-043 database).
     const { data: oldDeals } = await supabaseAdmin.from('deals').select('id, customer, job_name, group_name, checklist')
     const byId = new Map((oldDeals ?? []).map((d) => [d.id as string, d]))
@@ -194,13 +208,13 @@ export async function POST(req: NextRequest) {
       if (e.focused === true && !snapshot.focus.has(key)) snapshot.focus.set(key, true)
       if (e.project_type && !snapshot.projectType.has(key)) snapshot.projectType.set(key, e.project_type)
     }
-    // 061 stage enrichment — snapshotted for EVERY deal (restoring
-    // stage_changed_at even when the stage itself is re-derivable keeps
-    // deal-rot ages honest across a re-import).
+    // 061 stage + 062 company enrichment — snapshotted for EVERY deal
+    // (restoring stage_changed_at even when the stage itself is re-derivable
+    // keeps deal-rot ages honest across a re-import).
     const { data: enrich61 } = await supabaseAdmin
       .from('deals')
-      .select('id, stage, stage_changed_at, expected_close, closed_reason, next_step, next_step_due')
-    for (const e of (enrich61 ?? []) as ({ id: string } & Stage61)[]) {
+      .select('id, stage, stage_changed_at, expected_close, closed_reason, next_step, next_step_due, company_id, primary_contact_id')
+    for (const e of (enrich61 ?? []) as ({ id: string; company_id: string | null; primary_contact_id: string | null } & Stage61)[]) {
       const owner = byId.get(e.id)
       if (!owner) continue
       const key = dealKey(owner)
@@ -209,6 +223,9 @@ export async function POST(req: NextRequest) {
           stage: e.stage, stage_changed_at: e.stage_changed_at, expected_close: e.expected_close,
           closed_reason: e.closed_reason, next_step: e.next_step, next_step_due: e.next_step_due,
         })
+      }
+      if (e.company_id && !snapshot.company62.has(key)) {
+        snapshot.company62.set(key, { company_id: e.company_id, primary_contact_id: e.primary_contact_id })
       }
     }
     const { data: oldHistory } = await supabaseAdmin
@@ -278,17 +295,36 @@ export async function POST(req: NextRequest) {
     insertedRows.push(...(rows ?? []))
   }
 
+  // Companies lookup — used by the carry-over (rewriting customer to the
+  // canonical name) and the auto-link pass below. Empty pre-062.
+  const { data: companyRows } = await supabaseAdmin.from('companies').select('id, name, normalized_name')
+  const companyNameById = new Map((companyRows ?? []).map((c) => [c.id as string, c.name as string]))
+  const companyByNorm = new Map((companyRows ?? []).map((c) => [c.normalized_name as string, { id: c.id as string, name: c.name as string }]))
+
   // ── Carry-over ──────────────────────────────────────────────────────────
-  const carried = { checklists: 0, activities: 0, followUps: 0, focused: 0, projectTypes: 0, stages: 0, stageHistory: 0 }
+  const carried = { checklists: 0, activities: 0, followUps: 0, focused: 0, projectTypes: 0, stages: 0, stageHistory: 0, companies: 0 }
   const carriedHistIds = new Set<string>()
   if (snapshot) {
     try {
+      const snap = snapshot // narrowed for the closure below
       const consumed = new Set<string>()
       const activityRows: Record<string, unknown>[] = []
       const followUpRows: Record<string, unknown>[] = []
       const historyRows: Record<string, unknown>[] = []
+      // A row's snapshot key is usually its own; the hint variant covers deals
+      // whose "(parenthetical)" became the portal job_name during the backfill.
+      const keyFor = (row: { customer: string; job_name: string | null; group_name: string }): string => {
+        const primary = dealKey(row)
+        const hasData = (k: string) =>
+          snap.checklists.has(k) || snap.activities.has(k) || snap.followUps.has(k) ||
+          snap.focus.has(k) || snap.projectType.has(k) || snap.stage61.has(k) ||
+          snap.stageHistory.has(k) || snap.company62.has(k)
+        if (hasData(primary)) return primary
+        const alt = dealKeyHint(row)
+        return alt && hasData(alt) ? alt : primary
+      }
       for (const row of insertedRows) {
-        const key = dealKey(row)
+        const key = keyFor(row)
         if (consumed.has(key)) continue // duplicate board rows: first match wins
         const checklist = snapshot.checklists.get(key)
         const acts = snapshot.activities.get(key)
@@ -297,7 +333,8 @@ export async function POST(req: NextRequest) {
         const projectType = snapshot.projectType.get(key)
         const s61 = snapshot.stage61.get(key)
         const hist = snapshot.stageHistory.get(key)
-        if (!checklist && !acts && !fus && !wasFocused && !projectType && !s61 && !hist) continue
+        const c62 = snapshot.company62.get(key)
+        if (!checklist && !acts && !fus && !wasFocused && !projectType && !s61 && !hist && !c62) continue
         consumed.add(key)
         // Fold every deal-row column that carries over into one update.
         const dealUpdate: Record<string, unknown> = {}
@@ -322,6 +359,14 @@ export async function POST(req: NextRequest) {
           if (s61.next_step) dealUpdate.next_step = s61.next_step
           if (s61.next_step_due) dealUpdate.next_step_due = s61.next_step_due
         }
+        if (c62?.company_id) {
+          dealUpdate.company_id = c62.company_id
+          // Restore the canonical display name over monday's raw spelling —
+          // the derived-cache rule (see the deals PATCH route).
+          const cname = companyNameById.get(c62.company_id)
+          if (cname) dealUpdate.customer = cname
+          if (c62.primary_contact_id) dealUpdate.primary_contact_id = c62.primary_contact_id
+        }
         if (Object.keys(dealUpdate).length > 0) {
           const { error } = await supabaseAdmin.from('deals').update(dealUpdate).eq('id', row.id)
           if (!error) {
@@ -331,6 +376,7 @@ export async function POST(req: NextRequest) {
             if (s61 && (dealUpdate.stage !== undefined || dealUpdate.stage_changed_at !== undefined
               || dealUpdate.expected_close !== undefined || dealUpdate.closed_reason !== undefined
               || dealUpdate.next_step !== undefined || dealUpdate.next_step_due !== undefined)) carried.stages++
+            if (c62?.company_id) carried.companies++
           }
         }
         if (acts) {
@@ -373,6 +419,34 @@ export async function POST(req: NextRequest) {
     }
   } catch { /* pre-061 or insert failed */ }
 
+  // ── Auto-link (migration 062) ────────────────────────────────────────────
+  // Rows still unlinked after the carry-over get an exact-normalized match
+  // against existing companies (never fuzzy, never creates — the Companies
+  // tab's "Review & link" panel is the human-gated path for the rest).
+  let autoLinked = 0
+  let unlinkedCount = 0
+  try {
+    const { data: fresh } = await supabaseAdmin
+      .from('deals').select('id, customer, job_name').is('company_id', null)
+    const byPayload = new Map<string, { patch: Record<string, unknown>; ids: string[] }>()
+    for (const d of (fresh ?? []) as { id: string; customer: string; job_name: string | null }[]) {
+      const { hint, normalized } = normalizeCompany(d.customer)
+      const company = companyByNorm.get(normalized)
+      if (!company) { unlinkedCount++; continue }
+      const patch: Record<string, unknown> = { company_id: company.id, customer: company.name }
+      if (hint && !d.job_name) patch.job_name = hint
+      const key = JSON.stringify(patch)
+      const g = byPayload.get(key) ?? { patch, ids: [] }
+      g.ids.push(d.id)
+      byPayload.set(key, g)
+    }
+    for (const { patch, ids } of byPayload.values()) {
+      const { error } = await supabaseAdmin.from('deals').update(patch).in('id', ids)
+      if (!error) autoLinked += ids.length
+      else unlinkedCount += ids.length
+    }
+  } catch { /* pre-062 — nothing to link against */ }
+
   const surfaceUser = await getAdminSurfaceUser()
   await logAudit({
     actor: { id: surfaceUser?.user.id, name: surfaceUser?.displayName },
@@ -390,6 +464,8 @@ export async function POST(req: NextRequest) {
       groups: parsed.groups,
       warnings: parsed.warnings.length,
       carried,
+      autoLinked,
+      unlinkedCount,
     },
   })
 
@@ -400,7 +476,7 @@ export async function POST(req: NextRequest) {
     .select('*')
     .order('created_at', { ascending: false })
   const { data: followUps } = await supabaseAdmin.from('deal_follow_ups').select('*').order('due_date')
-  if (selErr) return NextResponse.json({ ok: true, inserted, carried, preview, deals: null, followUps: followUps ?? [] })
+  if (selErr) return NextResponse.json({ ok: true, inserted, carried, autoLinked, unlinkedCount, preview, deals: null, followUps: followUps ?? [] })
 
-  return NextResponse.json({ ok: true, inserted, carried, preview, deals, followUps: followUps ?? [] })
+  return NextResponse.json({ ok: true, inserted, carried, autoLinked, unlinkedCount, preview, deals, followUps: followUps ?? [] })
 }

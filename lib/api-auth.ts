@@ -83,6 +83,34 @@ export async function requireProjectedSalesAuth(): Promise<NextResponse | null> 
 }
 
 /**
+ * Guard for the CRM companies/contacts API (migration 062) — the relational
+ * account model behind the deals pipeline. Deliberately keyed on the SAME
+ * `deals` permission (same trust boundary and audience: sales reps maintain
+ * their own accounts exactly as they maintain their own deals), so there's no
+ * new permission to seed. Its own named guard rather than a second caller of
+ * requireDealsAuth (per that function's note), so companies could be split
+ * onto a dedicated perm later by changing one line here.
+ */
+export async function requireCrmAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'deals', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * Manage guard for the Tool Crib admin routes (registry writes, force check-in,
  * custody transfer, labels). Matrix-backed like requireDealsAuth — that one's
  * doc comment says to add a similarly-scoped, similarly-named guard rather than

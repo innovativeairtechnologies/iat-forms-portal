@@ -2,6 +2,33 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — CRM Phase 2: companies & contacts, human-gated backfill, monday cutover tooling
+
+The relational account model (migration `062_crm_companies.sql`): new **`companies`** (unique
+normalized name as the dupe guard, kind, optional link to the support-portal customers row) and
+**`contacts`** tables, with `deals.company_id`/`primary_contact_id` FKs. `deals.customer` survives
+as a derived display cache — linking rewrites it to the company name, renames cascade — so every
+existing view and analytic is untouched.
+
+The old CRM tab is now **Companies**: account roster with deal/contact rollups, a per-company
+drawer (fields, contacts, linked deals, merge, delete), and the **"Review & link"** panel — a
+two-phase backfill that clusters the 441 free-text customer strings (177 clusters via the new
+conservative normalizer in `lib/crm-normalize.ts`; branch offices like "H&H Nashville" are
+*suggested*, never auto-merged) for human review before anything is written. Commit links deals,
+moves parenthetical hints into empty job names, seeds contacts from rep_contact, and is idempotent +
+audit-logged. The same panel is the standing tool for future unlinked deals.
+
+New Deal's customer field is now a company combobox and the server exact-matches or auto-creates a
+prospect, so **every new deal lands linked**. The deal modal gained a Company & Contact section
+(link/change company, primary contact picker, quick-add contact). The xlsx importer's carry-over
+identity now normalizes company names (canonical renames would otherwise break every re-import),
+carries the new FKs, and auto-links remaining rows by exact match only. All routes ship under the
+existing `deals` permission via a new `requireCrmAuth` guard — no new permission seed.
+
+**Cutover to retire monday.com** (runbook in `docs/deals.md`): final export → replace-import →
+Review & link → hand-link portal customers. The review pass needs a human — nothing merges without
+approval.
+
 ## 2026-07-21 — CRM Phase 1: real pipeline stages + drag-and-drop Board
 
 First phase of the CRM master plan (portal replaces monday.com as the sales source of truth).

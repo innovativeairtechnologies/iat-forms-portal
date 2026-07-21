@@ -433,6 +433,45 @@ export type Deal = {
   /** Next-step discipline: what's the next move, and by when. */
   next_step: string | null
   next_step_due: string | null
+  /** The deal's account (migration 062). `customer` (text) survives as a
+   *  derived display cache — the API rewrites it whenever this is set or the
+   *  company is renamed, so pre-062 views keep working unchanged. */
+  company_id: string | null
+  primary_contact_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+// An account in the sales CRM (companies, migration 062) — prospects,
+// customers, and rep firms. normalized_name (lib/crm-normalize.ts) is UNIQUE
+// and is the dupe guard; customer_id optionally links to the support-portal
+// customers row once the account becomes a real customer.
+export type Company = {
+  id: string
+  name: string
+  normalized_name: string
+  kind: 'prospect' | 'customer' | 'rep_firm' | 'other'
+  customer_id: string | null
+  domain: string | null
+  website: string | null
+  phone: string | null
+  location: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// A person at a company (contacts, migration 062). is_primary is
+// informational — no exclusivity is enforced.
+export type Contact = {
+  id: string
+  company_id: string
+  name: string
+  title: string | null
+  email: string | null
+  phone: string | null
+  is_primary: boolean
+  notes: string | null
   created_at: string
   updated_at: string
 }

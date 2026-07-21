@@ -11,6 +11,7 @@ const EDITABLE_FIELDS = [
   'checklist', // follow-up steps map (migration 047)
   'focused', 'project_type', // migration 048
   'stage', 'expected_close', 'closed_reason', 'next_step', 'next_step_due', // migration 061
+  'company_id', 'primary_contact_id', // migration 062
   // stage_changed_at is deliberately NOT here — it's server-derived below.
 ] as const
 
@@ -43,6 +44,37 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+  }
+
+  // ── Company link (migration 062) ─────────────────────────────────────────
+  // `customer` (text) is a derived display cache once a company is linked:
+  // setting company_id rewrites it to the company's name. Unlinking (null)
+  // leaves the text as-is. Both FKs are existence-checked so a stale id is a
+  // clean 400 rather than a raw FK-violation 500.
+  if (patch.company_id) {
+    const { data: company } = await supabaseAdmin
+      .from('companies').select('id, name').eq('id', patch.company_id).maybeSingle()
+    if (!company) return NextResponse.json({ error: 'Company not found — it may have been deleted.' }, { status: 400 })
+    patch.customer = company.name
+  }
+  // Changing (or clearing) the company invalidates the old primary contact
+  // unless the same patch explicitly sets a new one.
+  if (patch.company_id !== undefined && patch.primary_contact_id === undefined) {
+    patch.primary_contact_id = null
+  }
+  if (patch.primary_contact_id) {
+    const { data: contact } = await supabaseAdmin
+      .from('contacts').select('id, company_id').eq('id', patch.primary_contact_id).maybeSingle()
+    if (!contact) return NextResponse.json({ error: 'Contact not found — it may have been deleted.' }, { status: 400 })
+    // The contact must belong to the deal's (new or current) company.
+    let effectiveCompany = patch.company_id as string | undefined
+    if (effectiveCompany === undefined) {
+      const { data: cur } = await supabaseAdmin.from('deals').select('company_id').eq('id', id).maybeSingle()
+      effectiveCompany = (cur?.company_id as string | null) ?? undefined
+    }
+    if (contact.company_id !== effectiveCompany) {
+      return NextResponse.json({ error: 'That contact belongs to a different company.' }, { status: 400 })
+    }
   }
 
   // ── Stage/status sync ────────────────────────────────────────────────────

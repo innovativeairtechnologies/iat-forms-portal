@@ -93,6 +93,71 @@ activity/follow-ups. Any deal that doesn't inherit history gets a fresh seed
 row. **Four-places rule** still applies: a new `deals` column must be added to
 the `Deal` type, `validate.ts`, the importer's carry-over, and the PATCH route.
 
+## Companies & contacts (2026-07-21, migration `062_crm_companies.sql`)
+
+CRM Phase 2: the relational account model. New `companies` (name, UNIQUE
+`normalized_name`, kind prospect/customer/rep_firm/other, optional
+`customer_id` link to the support-portal customers row, domain/website/phone/
+location/notes) and `contacts` (company_id CASCADE, name/title/email/phone,
+informational `is_primary`). `deals` gained `company_id` + `primary_contact_id`
+(both ON DELETE SET NULL — removing a company never destroys deals).
+
+**The derived-cache rule.** `deals.customer` (text) survives as a display
+cache: setting `company_id` rewrites it to the company's name (PATCH + POST +
+importer + backfill all enforce this), and renaming a company cascades to its
+deals. Every pre-062 view and analytic keeps reading `customer` unchanged.
+Changing/clearing a deal's company resets its primary contact unless the same
+patch sets a new one.
+
+**Normalization** (`lib/crm-normalize.ts`, pure): lowercase, `&`→and,
+punctuation stripped, leading "The" and trailing legal suffixes (Inc/LLC/…)
+dropped; a trailing parenthetical ("H&H (MBI Battery)") splits into base name +
+hint. `normalized_name` is the dupe guard — creating "Trane CO" when "Trane"
+exists returns the existing row. **Clustering is conservative**: only exact
+normalized equality auto-groups; typos (edit distance ≤2) and subset names
+("H&H" vs "H&H Nashville" — branch offices!) surface as *suggestions* a human
+accepts or rejects, never auto-merged.
+
+**Review & link** (Companies tab): the two-phase backfill. Dry run clusters
+every unlinked deal (441 raw strings → 177 clusters on the live board) with
+per-cluster deal counts and $; the panel lets you rename, exclude, or combine
+suggested duplicates, then commit writes companies, links deals, moves
+parenthetical hints into empty `job_name`s, seeds contacts from `rep_contact`
+(deduped per company), and sets `primary_contact_id` where it matched.
+Idempotent and audit-logged (`company.backfill`). This same panel is the
+standing tool for linking future unlinked deals (legacy imports, raw API).
+
+**The Companies tab** (replaces CRM): roster sorted by weighted pipeline with
+deal/contact rollups and a portal-customer link marker; a drawer per company
+(blur-save fields, contact list with add/delete/primary star, linked-deals
+list, **Merge into…**, delete). Merges re-point deals + contacts then delete
+the source (`company.merge` audit); a rename that collides with an existing
+company 409s with a "use Merge" hint.
+
+**New Deal + modal.** The New Deal customer field is a combobox
+(`CompanyCombobox.tsx`) — pick an existing company or free-type; the server
+exact-matches or auto-creates a prospect so **every new deal lands linked**.
+The deal modal gained a Company & Contact section: change/link company,
+create-and-link a typed name, pick a primary contact, quick-add a contact.
+
+**Importer post-062.** The carry-over identity key now NORMALIZES the customer
+part (the backfill canonicalizes names, monday keeps raw spellings — raw
+comparison would miss every renamed deal), with a hint-variant key for deals
+whose parenthetical became the portal job_name. Replace-imports carry
+`company_id`/`primary_contact_id` and restore canonical names; a final pass
+auto-links remaining rows by exact normalized match ONLY (never fuzzy, never
+creates) and reports `autoLinked` + `unlinkedCount`.
+
+**API** (all under `/api/admin/deals/`, guard `requireCrmAuth` — same `deals`
+perm, no new seed): `companies` GET/POST, `companies/[id]` PATCH/DELETE,
+`companies/[id]/merge` POST, `companies/backfill` POST (two-phase),
+`contacts` POST, `contacts/[id]` PATCH/DELETE.
+
+**Cutover runbook** (needs Jacob): final monday export → replace-import →
+Companies tab → Review & link → eyeball clusters/combine true dupes → commit →
+hand-link real portal customers in the drawer (`customer_id`) → monday
+retired; the importer stays as a labeled recovery tool.
+
 ## The six views
 
 All views read the same in-memory dataset (single `useState` in
@@ -107,7 +172,7 @@ pattern.
 | **Dashboard** | How does the whole book look? | Default tab; see "The Dashboard" below. |
 | **Board** | Where does every deal stand? | Kanban by `stage` (2026-07-21) — drag between columns to move a deal; Won/Lost drops prompt for a reason. See "Pipeline stages & the Board" above. |
 | **Table** (né Pipeline) | What's the financial forecast? | All deals, default sort `total_cost` desc. Leading **★ star** toggles a deal into Focused. **Rep filter pills** (All / MAIN / JACOB / MIKE / DAVE): "All" shows prominent per-rep bands (initials + count + $ totals); a specific rep filters to just them. Inline Won/Lost/Active status select. Row click opens the detail modal. |
-| **CRM** | Who are we selling to? | Default sort `date_quoted` desc, **nulls always last**. Notes truncate at ~70 chars with click-to-expand. Deals with notes + still active get a small emerald "recent activity" flag. |
+| **Companies** (replaces CRM) | Who are we selling to? | Account roster + drawer + the Review & link backfill panel — see "Companies & contacts" above. |
 | **Focused** | What am I working right now? | **Hand-picked** — deals where `focused = true` (starred in Pipeline or the modal). No longer derived. `confidence` / `projected` / `notes` inline-editable (optimistic → PATCH on blur); ★ unstars; row delete lives here too. |
 | **Calendar** | What follow-ups are due? | Month grid of `deal_follow_ups` (date-fns, matching `app/admin/schedule/SchedulingCalendar.tsx`). Overdue = rose, due-today = brand green, scheduled = sky, done = muted. Click a day → detail list with mark-done / open-deal / delete. |
 
