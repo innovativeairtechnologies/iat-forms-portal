@@ -120,6 +120,56 @@ export function checklistProgress(deal: Deal): { done: number; total: number } {
   }
 }
 
+/* ── Pipeline stages (migration 061) ─────────────────────────────────────────
+   The named stages behind the Board view. KEYS are the contract — they're the
+   deals.stage CHECK constraint's values and what deal_stage_history stores —
+   so relabel freely, but never reuse or rename a key. `status` (Won/Lost/null)
+   stays alongside as a derived compatibility column: the PATCH route keeps the
+   two in sync, and every pre-061 analytic keeps reading status untouched. */
+export const STAGES = [
+  { key: 'lead',      label: 'Lead',      tone: 'slate'   },
+  { key: 'quoted',    label: 'Quoted',    tone: 'sky'     },
+  { key: 'follow_up', label: 'Follow-Up', tone: 'amber'   },
+  { key: 'verbal',    label: 'Verbal',    tone: 'violet'  },
+  { key: 'won',       label: 'Won',       tone: 'emerald' },
+  { key: 'lost',      label: 'Lost',      tone: 'rose'    },
+] as const
+
+export type DealStage = (typeof STAGES)[number]['key']
+
+export const STAGE_KEYS: readonly DealStage[] = STAGES.map((s) => s.key)
+export const OPEN_STAGES: readonly DealStage[] = ['lead', 'quoted', 'follow_up', 'verbal']
+
+export function stageInfo(key: string | null | undefined) {
+  return STAGES.find((s) => s.key === key) ?? STAGES[0]
+}
+
+/** The status column value a stage implies. */
+export function statusForStage(stage: DealStage): 'Won' | 'Lost' | null {
+  return stage === 'won' ? 'Won' : stage === 'lost' ? 'Lost' : null
+}
+
+/** Whole days a deal has sat in its current stage (date-only math — DST-safe). */
+export function stageAgeDays(deal: Pick<Deal, 'stage_changed_at'>, now: Date): number {
+  const then = new Date(deal.stage_changed_at)
+  const a = Date.UTC(then.getFullYear(), then.getMonth(), then.getDate())
+  const b = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.max(0, Math.round((b - a) / 864e5))
+}
+
+/** Win/loss reasons offered when a deal is dragged to Won/Lost. Free-text
+ *  column (deals.closed_reason) — these are the curated quick-picks. */
+export const CLOSED_REASONS = [
+  'Price',
+  'Timing / project delayed',
+  'Went with competitor',
+  'No budget',
+  'Went dark',
+  'Spec win',
+  'Relationship',
+  'Other',
+] as const
+
 /* ────────────────────────────────────────────────────────────────────────────
    Sales-dashboard derivations. All pure & deterministic given (deals, now) so
    the dashboard can render them on the server pass and hydrate identically.

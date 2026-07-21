@@ -3,10 +3,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { Deal, DealFollowUp } from '@/lib/supabase'
-import { computeSummary, PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom } from '@/lib/deals'
+import { computeSummary, PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
 import { ListPageHeader, tabCx } from '@/components/admin/list'
 import SalesDashboard from './SalesDashboard'
+import BoardView from './BoardView'
 import PipelineView from './PipelineView'
 import CRMView from './CRMView'
 import FocusedView from './FocusedView'
@@ -23,11 +24,12 @@ import { inp, lbl } from './form'
    one source of truth.
    ──────────────────────────────────────────────────────────────────────────── */
 
-type Tab = 'dashboard' | 'pipeline' | 'crm' | 'focused' | 'calendar'
+type Tab = 'dashboard' | 'board' | 'pipeline' | 'crm' | 'focused' | 'calendar'
 
 const TABS: { value: Tab; label: string; blurb: string }[] = [
   { value: 'dashboard', label: 'Dashboard', blurb: 'metrics overview' },
-  { value: 'pipeline', label: 'Pipeline', blurb: 'financial forecast' },
+  { value: 'board', label: 'Board', blurb: 'kanban stages' },
+  { value: 'pipeline', label: 'Table', blurb: 'financial forecast' },
   { value: 'crm', label: 'CRM', blurb: 'relationships' },
   { value: 'focused', label: 'Focused', blurb: 'hand-picked' },
   { value: 'calendar', label: 'Calendar', blurb: 'follow-ups' },
@@ -91,31 +93,76 @@ export default function DealsClient({
   const revertToServer = (id: string) =>
     setDeals((prev) => prev.map((d) => (d.id === id ? serverDeals.current.get(id) ?? d : d)))
 
+  // In-flight PATCH count per deal. The API returns the FULL updated row
+  // (server-derived fields included: synced status, stage_changed_at) — but
+  // folding it into visible state while a NEWER edit's persist is still in
+  // flight would clobber that edit's optimistic value, so the fold only
+  // happens when this counter hits zero.
+  const pendingPersists = useRef<Map<string, number>>(new Map())
+
   const persist = async (id: string, patch: Record<string, unknown>) => {
+    const pending = pendingPersists.current
+    pending.set(id, (pending.get(id) ?? 0) + 1)
+    // Decrements this persist's slot; true when it was the last one in flight.
+    const settle = () => {
+      const n = (pending.get(id) ?? 1) - 1
+      if (n <= 0) pending.delete(id)
+      else pending.set(id, n)
+      return n <= 0
+    }
     try {
       const res = await fetch(`/api/admin/deals/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       })
+      const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
+        settle()
         revertToServer(id)
         setErr(j.error || 'Could not save that change.')
         return
       }
-      const prior = serverDeals.current.get(id)
-      if (prior) serverDeals.current.set(id, { ...prior, ...(patch as Partial<Deal>) })
+      const serverRow = j.deal as Deal | undefined
+      if (serverRow && serverRow.id === id) {
+        serverDeals.current.set(id, serverRow)
+        if (settle()) patchLocal(id, serverRow)
+      } else {
+        // Response without the row (older API shape) — fold the patch instead.
+        const prior = serverDeals.current.get(id)
+        if (prior) serverDeals.current.set(id, { ...prior, ...(patch as Partial<Deal>) })
+        settle()
+      }
       setErr(null)
     } catch {
+      settle()
       revertToServer(id)
       setErr('Network error — that change was not saved.')
     }
   }
 
   const setStatus = (id: string, status: 'Won' | 'Lost' | null) => {
-    patchLocal(id, { status })
+    // Optimistically mirror the server's stage sync for closes; reopening
+    // (status null) leaves stage to the server, which restores the last open
+    // stage from history and hands the row back via the persist fold.
+    const patch: Partial<Deal> = { status }
+    if (status === 'Won') patch.stage = 'won'
+    if (status === 'Lost') patch.stage = 'lost'
+    patchLocal(id, patch)
     persist(id, { status })
+  }
+
+  // Stage move (Board drag, modal stepper) — same optimistic machinery.
+  const setStage = (id: string, stage: DealStage, closedReason?: string) => {
+    const cur = deals.find((d) => d.id === id)
+    if (cur && cur.stage === stage && !closedReason) return
+    patchLocal(id, {
+      stage,
+      status: statusForStage(stage),
+      stage_changed_at: new Date().toISOString(),
+      ...(closedReason ? { closed_reason: closedReason } : {}),
+    })
+    persist(id, { stage, ...(closedReason ? { closed_reason: closedReason } : {}) })
   }
 
   // ★ Focused toggle — same optimistic machinery as any inline edit.
@@ -320,6 +367,9 @@ export default function DealsClient({
         <div className={tab === 'dashboard' ? '' : 'hidden'}>
           <SalesDashboard deals={deals} onImported={applyImported} />
         </div>
+        <div className={tab === 'board' ? '' : 'hidden'}>
+          <BoardView deals={deals} onStage={setStage} onView={openDetail} onToggleFocus={toggleFocus} />
+        </div>
         <div className={tab === 'pipeline' ? '' : 'hidden'}>
           <PipelineView deals={deals} onStatusChange={setStatus} onView={openDetail} onToggleFocus={toggleFocus} />
         </div>
@@ -354,6 +404,7 @@ export default function DealsClient({
           onPatchLocal={patchLocal}
           onPersist={persist}
           onStatus={setStatus}
+          onStage={setStage}
           onDelete={removeDeal}
           onToggleFocus={toggleFocus}
           onScheduleFollowUp={addFollowUp}

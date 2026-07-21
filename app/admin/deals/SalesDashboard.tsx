@@ -245,7 +245,7 @@ type ImportPreview = {
   totalWeighted: number
   warnings: string[]
   existingCount: number
-  portalData?: { checklists: number; activities: number; followUps: number; focused: number; projectTypes: number }
+  portalData?: { checklists: number; activities: number; followUps: number; focused: number; projectTypes: number; stages?: number; stageHistory?: number }
 }
 
 type ImportStage = 'pick' | 'checking' | 'preview' | 'importing'
@@ -407,10 +407,11 @@ function ImportModal({ onClose, onImported }: { onClose: () => void; onImported:
             )}
 
             {/* Mode */}
-            {mode === 'replace' && preview.portalData && (preview.portalData.checklists > 0 || preview.portalData.activities > 0 || preview.portalData.followUps > 0 || preview.portalData.focused > 0 || preview.portalData.projectTypes > 0) && (
+            {mode === 'replace' && preview.portalData && (preview.portalData.checklists > 0 || preview.portalData.activities > 0 || preview.portalData.followUps > 0 || preview.portalData.focused > 0 || preview.portalData.projectTypes > 0 || (preview.portalData.stages ?? 0) > 0) && (
               <p className="text-[12px] text-ink-muted leading-snug rounded-lg border border-hairline bg-surface-soft px-3 py-2">
                 {[
                   preview.portalData.checklists > 0 && `${preview.portalData.checklists} deal${preview.portalData.checklists === 1 ? '' : 's'} with checklist progress`,
+                  (preview.portalData.stages ?? 0) > 0 && `${preview.portalData.stages} with pipeline-stage data`,
                   preview.portalData.activities > 0 && `${preview.portalData.activities} activity entr${preview.portalData.activities === 1 ? 'y' : 'ies'}`,
                   preview.portalData.followUps > 0 && `${preview.portalData.followUps} follow-up${preview.portalData.followUps === 1 ? '' : 's'}`,
                   preview.portalData.focused > 0 && `${preview.portalData.focused} ★ focused`,

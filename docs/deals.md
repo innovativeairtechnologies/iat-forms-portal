@@ -5,10 +5,13 @@ import shipped 2026-07-10 — the table now holds the sales team's actual
 monday.com board (440 deals, ~$91M raw / ~$24M weighted at import)._
 
 `/admin/deals` rebuilds the core of the Monday.com "Sales Forecasting" board
-natively in the portal: one flat `deals` table viewed through four tabs
-(Dashboard · Pipeline · CRM · Focused). It runs alongside Monday for now —
-Sales re-exports the board and re-imports it here whenever they want the
-portal refreshed; a direct Monday integration is a someday-maybe follow-up.
+natively in the portal: one `deals` table viewed through six tabs
+(Dashboard · **Board** · Table · CRM · Focused · Calendar). It runs alongside
+Monday for now — Sales re-exports the board and re-imports it here whenever
+they want the portal refreshed — but the goal (agreed 2026-07-21) is **full
+replacement**: the portal becomes the source of truth and the importer is
+demoted to a recovery tool after the final cutover. See the CRM master plan
+(Phase 1 of 6 shipped 2026-07-21: stages + kanban, below).
 
 ## The data model
 
@@ -28,7 +31,69 @@ and `hasRecentActivity` live there too, as pure functions consumed via `useMemo`
 as well. (The old derived `isFocused` predicate was removed with migration 048 —
 Focused is now a hand-picked flag, see below.)
 
-## The five views
+## Pipeline stages & the Board (2026-07-21, migration `061_deal_stages.sql`)
+
+CRM Phase 1: deals graduated from "Won/Lost/null + a checklist" to **named
+pipeline stages** — `lead → quoted → follow_up → verbal → won / lost` — driving
+a drag-and-drop **Board** tab (kanban, `@hello-pangea/dnd`, already bundled).
+
+**Data model.** `deals` gained `stage` (CHECK-constrained text; keys are the
+contract, labels/tones live in `lib/deals.ts STAGES`), `stage_changed_at`
+(powers days-in-stage), `expected_close` (a REAL date superseding the free-text
+`projected`, which is kept read-only as "Projected (legacy text)"),
+`closed_reason` (win/loss reason; quick-picks in `CLOSED_REASONS`), and
+`next_step` / `next_step_due` (discipline fields, never a hard gate). New
+`deal_stage_history` table logs every transition (`from_stage`, `to_stage`,
+`actor`, `note`, `changed_at`) for funnel conversion and days-in-stage
+analytics; the migration seeded one row per deal.
+
+**Stage/status invariant.** `status` (`Won`/`Lost`/null) survives as a derived
+compatibility shadow — every pre-061 analytic still reads it. The PATCH route
+keeps the two in sync in BOTH directions: setting `stage` sets `status`;
+setting only `status` derives a stage, and reopening (`status: null`) restores
+the deal's **last open stage from history**. Real transitions stamp
+`stage_changed_at` and append a history row (`stage_changed_at` itself is
+never writable through the API).
+
+**Backfill.** Status + checklist mapped into stages (Won→won, Lost→lost,
+award→verbal, follow1/2→follow_up, quote-or-dated→quoted, else lead); on the
+live board that produced 407 quoted / 32 lead / 2 won. Guarded by
+"history table is empty" so re-running the migration never clobbers hand-set
+stages. `expected_close` was backfilled from `projected` by
+`scripts/backfill-expected-close.mts` (158 of 162 parseable; the rest left
+NULL on purpose).
+
+**The Board tab** (`app/admin/deals/BoardView.tsx`): six columns with weighted-$
+headers, cards sorted biggest-first and capped at 40 per column ("Show all"
+expands — 400+ deals would drown the DOM), search + rep-group pills mirroring
+the Table toolbar, and **Lost collapsed to a narrow drop rail** by default.
+Dropping a card onto Won/Lost parks the move behind a **closed-reason prompt**
+(the stage doesn't change until confirmed; reasons feed future win/loss
+reporting). A failed drag snaps the card back via the optimistic machinery.
+
+**The modal** got a stage stepper (chips for the four open stages + Won/Lost
+with an inline reason picker + Reopen), the old 5-step checklist demoted to a
+collapsed "Process Checklist" accordion (still real data, no longer implies
+stage), stage transitions merged into the activity feed, and edit-mode fields
+for Expected Close / Next Step / Next Step Due.
+
+**Optimistic-machinery upgrade** (`DealsClient.persist`): the PATCH API now
+returns the **full updated row**, and the client folds it into both the
+last-known-good map and visible state — gated by a per-deal in-flight counter
+so a slow response can never clobber a newer optimistic edit. This is what
+lets server-derived fields (synced status, `stage_changed_at`, and later
+phases' derived columns) flow back without a refetch.
+
+**Importer.** Fresh rows derive a stage (Won/Lost/quoted/lead); replace-mode
+carry-over now also restores `stage` (portal stage wins unless the export says
+Won/Lost), `stage_changed_at` (so re-imports don't reset deal-rot ages),
+`expected_close`, `closed_reason`, `next_step`, `next_step_due`, and
+re-parents `deal_stage_history` rows — same customer+job+group identity as
+activity/follow-ups. Any deal that doesn't inherit history gets a fresh seed
+row. **Four-places rule** still applies: a new `deals` column must be added to
+the `Deal` type, `validate.ts`, the importer's carry-over, and the PATCH route.
+
+## The six views
 
 All views read the same in-memory dataset (single `useState` in
 `app/admin/deals/DealsClient.tsx`, hydrated by the server page). Follow-up
@@ -40,7 +105,8 @@ pattern.
 | View | Question it answers | Notes |
 |------|--------------------|-------|
 | **Dashboard** | How does the whole book look? | Default tab; see "The Dashboard" below. |
-| **Pipeline** | What's the financial forecast? | All deals, default sort `total_cost` desc. Leading **★ star** toggles a deal into Focused. **Rep filter pills** (All / MAIN / JACOB / MIKE / DAVE): "All" shows prominent per-rep bands (initials + count + $ totals); a specific rep filters to just them. Inline Won/Lost/Active status select. Row click opens the detail modal. |
+| **Board** | Where does every deal stand? | Kanban by `stage` (2026-07-21) — drag between columns to move a deal; Won/Lost drops prompt for a reason. See "Pipeline stages & the Board" above. |
+| **Table** (né Pipeline) | What's the financial forecast? | All deals, default sort `total_cost` desc. Leading **★ star** toggles a deal into Focused. **Rep filter pills** (All / MAIN / JACOB / MIKE / DAVE): "All" shows prominent per-rep bands (initials + count + $ totals); a specific rep filters to just them. Inline Won/Lost/Active status select. Row click opens the detail modal. |
 | **CRM** | Who are we selling to? | Default sort `date_quoted` desc, **nulls always last**. Notes truncate at ~70 chars with click-to-expand. Deals with notes + still active get a small emerald "recent activity" flag. |
 | **Focused** | What am I working right now? | **Hand-picked** — deals where `focused = true` (starred in Pipeline or the modal). No longer derived. `confidence` / `projected` / `notes` inline-editable (optimistic → PATCH on blur); ★ unstars; row delete lives here too. |
 | **Calendar** | What follow-ups are due? | Month grid of `deal_follow_ups` (date-fns, matching `app/admin/schedule/SchedulingCalendar.tsx`). Overdue = rose, due-today = brand green, scheduled = sky, done = muted. Click a day → detail list with mark-done / open-deal / delete. |

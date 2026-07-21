@@ -420,8 +420,33 @@ export type Deal = {
   focused?: boolean
   /** Industry / vertical — values in lib/deals PROJECT_TYPES (migration 048). */
   project_type?: string | null
+  /** Pipeline stage (migration 061) — keys in lib/deals STAGES. The PATCH
+   *  route keeps `status` in sync (won/lost ⇒ Won/Lost, open ⇒ null). */
+  stage: 'lead' | 'quoted' | 'follow_up' | 'verbal' | 'won' | 'lost'
+  /** When `stage` last changed — powers deal-rot / days-in-stage. Server-set;
+   *  never writable through the API. */
+  stage_changed_at: string
+  /** Real close date, superseding the free-text `projected` (migration 061). */
+  expected_close: string | null
+  /** Win/loss reason captured when the deal moved to won/lost. */
+  closed_reason: string | null
+  /** Next-step discipline: what's the next move, and by when. */
+  next_step: string | null
+  next_step_due: string | null
   created_at: string
   updated_at: string
+}
+
+// One stage transition on a deal (deal_stage_history, migration 061).
+// from_stage NULL = the seed row written when stages were backfilled.
+export type DealStageHistory = {
+  id: string
+  deal_id: string
+  from_stage: string | null
+  to_stage: string
+  actor: string | null
+  note: string | null
+  changed_at: string
 }
 
 // A dated reminder on a deal (deal_follow_ups, migration 048). auto_generated

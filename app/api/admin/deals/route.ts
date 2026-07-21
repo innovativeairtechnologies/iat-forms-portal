@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireDealsAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { sanitizeDealField } from './validate'
-import { AUTO_FOLLOW_UP_DAYS, followUpDateFrom } from '@/lib/deals'
+import { AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
 
 const OPTIONAL_FIELDS = [
   'assigned_to', 'date_quoted', 'status', 'unit_model', 'job_name',
   'total_cost', 'confidence', 'projected', 'rep', 'rep_contact', 'notes', 'group_name',
   'project_type', // focused is intentionally NOT settable at create — a new deal
                   // starts un-focused; the ★ curates the Focused list afterward.
+  'stage', 'expected_close', 'next_step', 'next_step_due', // migration 061
 ] as const
 
 // Create a new deal. Sales and admin both reach this (requireDealsAuth) —
@@ -30,8 +32,30 @@ export async function POST(req: NextRequest) {
     insert[f] = check.value
   }
 
+  // Stage/status invariant (migration 061): stage is authoritative. An explicit
+  // stage sets its status shadow; a legacy status-only create gets a stage.
+  if (insert.stage !== undefined) {
+    insert.status = statusForStage(insert.stage as DealStage)
+  } else if (insert.status === 'Won') {
+    insert.stage = 'won'
+  } else if (insert.status === 'Lost') {
+    insert.stage = 'lost'
+  } // else: DB default 'lead'
+
   const { data, error } = await supabaseAdmin.from('deals').insert(insert).select('*').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Seed the deal's first stage-history row so funnel math has a floor.
+  // Best-effort: a failure must never fail deal creation.
+  try {
+    const surfaceUser = await getAdminSurfaceUser()
+    await supabaseAdmin.from('deal_stage_history').insert({
+      deal_id: data.id,
+      from_stage: null,
+      to_stage: data.stage ?? 'lead',
+      actor: surfaceUser?.displayName ?? null,
+    })
+  } catch { /* history is additive — deal still created */ }
 
   // Monday-parity automation: a fresh deal gets a follow-up reminder 2 weeks
   // out (from creation, not the quote date). Single-deal path only — the bulk

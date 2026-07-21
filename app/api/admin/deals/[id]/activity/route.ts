@@ -45,7 +45,21 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     if (isMissingTable(error.message)) return NextResponse.json({ activities: [], unavailable: true })
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json({ activities: data ?? [] })
+
+  // Stage transitions (migration 061) ride along so the modal can merge them
+  // into one feed. Best-effort — a pre-061 database just gets an empty list.
+  let history: unknown[] = []
+  try {
+    const { data: hist } = await supabaseAdmin
+      .from('deal_stage_history')
+      .select('*')
+      .eq('deal_id', id)
+      .order('changed_at', { ascending: false })
+      .limit(100)
+    history = hist ?? []
+  } catch { /* pre-061 */ }
+
+  return NextResponse.json({ activities: data ?? [], history })
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

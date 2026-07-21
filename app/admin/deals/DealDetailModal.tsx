@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import {
-  X, ChevronLeft, ChevronRight, Pencil, Trash2, CornerDownLeft,
+  X, ChevronLeft, ChevronRight, ChevronDown, Pencil, Trash2, CornerDownLeft,
   User, Users, Cpu, Briefcase, CalendarDays, CalendarRange, Contact,
   Phone, Mail, CalendarClock, FileText, Check, ClipboardList, StickyNote,
-  Star, CalendarPlus, Factory,
+  Star, CalendarPlus, Factory, ArrowRight, Flag,
 } from 'lucide-react'
-import type { Deal, DealActivity, DealActivityKind, DealFollowUp } from '@/lib/supabase'
-import { computeWeighted, CHECKLIST_STEPS, checklistProgress, PROJECT_TYPES, followUpDateFrom } from '@/lib/deals'
+import type { Deal, DealActivity, DealActivityKind, DealFollowUp, DealStageHistory } from '@/lib/supabase'
+import {
+  computeWeighted, CHECKLIST_STEPS, checklistProgress, PROJECT_TYPES, followUpDateFrom,
+  STAGES, stageInfo, stageAgeDays, CLOSED_REASONS, type DealStage,
+} from '@/lib/deals'
 import { formatCurrency, formatDateOnly } from '@/lib/utils'
-import { StatusPill, DEAL_STATUS, timeAgo } from '@/components/admin/list'
+import { StatusPill, timeAgo } from '@/components/admin/list'
 import { inp, lbl } from './form'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -34,6 +37,7 @@ type EditForm = {
   customer: string; group_name: string; assigned_to: string; total_cost: string
   confidence: string; unit_model: string; job_name: string; date_quoted: string
   projected: string; rep: string; rep_contact: string; notes: string; project_type: string
+  expected_close: string; next_step: string; next_step_due: string
 }
 
 const toForm = (d: Deal): EditForm => ({
@@ -50,6 +54,9 @@ const toForm = (d: Deal): EditForm => ({
   rep_contact: d.rep_contact ?? '',
   notes: d.notes ?? '',
   project_type: d.project_type ?? '',
+  expected_close: d.expected_close ?? '',
+  next_step: d.next_step ?? '',
+  next_step_due: d.next_step_due ?? '',
 })
 
 /** Diff the edit buffer against the live deal → minimal PATCH payload. */
@@ -71,6 +78,9 @@ function buildPatch(d: Deal, f: EditForm): Record<string, unknown> {
   if (txt(f.rep_contact) !== d.rep_contact) patch.rep_contact = txt(f.rep_contact)
   if ((f.notes.trim() === '' ? null : f.notes) !== d.notes) patch.notes = f.notes.trim() === '' ? null : f.notes
   if ((f.project_type || null) !== (d.project_type ?? null)) patch.project_type = f.project_type || null
+  if ((f.expected_close || null) !== d.expected_close) patch.expected_close = f.expected_close || null
+  if (txt(f.next_step) !== d.next_step) patch.next_step = txt(f.next_step)
+  if ((f.next_step_due || null) !== d.next_step_due) patch.next_step_due = f.next_step_due || null
   return patch
 }
 
@@ -108,7 +118,7 @@ const ACTIVITY_ICONS: Record<DealActivityKind, React.ReactNode> = {
 
 export default function DealDetailModal({
   deal, index, total, prevId, nextId, followUps,
-  onOpen, onClose, onPatchLocal, onPersist, onStatus, onDelete,
+  onOpen, onClose, onPatchLocal, onPersist, onStatus, onStage, onDelete,
   onToggleFocus, onScheduleFollowUp, onToggleFollowUpDone, onRemoveFollowUp,
 }: {
   deal: Deal
@@ -122,6 +132,7 @@ export default function DealDetailModal({
   onPatchLocal: (id: string, patch: Partial<Deal>) => void
   onPersist: (id: string, patch: Record<string, unknown>) => void
   onStatus: (id: string, status: 'Won' | 'Lost' | null) => void
+  onStage: (id: string, stage: DealStage, closedReason?: string) => void
   onDelete: (id: string) => void
   onToggleFocus: (id: string, next: boolean) => void
   onScheduleFollowUp: (dealId: string, dueDate: string, note: string) => void
@@ -134,10 +145,18 @@ export default function DealDetailModal({
 
   // Activity log + quick-action composer
   const [activities, setActivities] = useState<DealActivity[] | null>(null) // null = loading
+  const [stageHistory, setStageHistory] = useState<DealStageHistory[]>([])
   const [activityUnavailable, setActivityUnavailable] = useState(false)
   const [composer, setComposer] = useState<DealActivityKind | null>(null)
   const [composerText, setComposerText] = useState('')
   const [logging, setLogging] = useState(false)
+
+  // Stage controls: closing = the Won/Lost reason picker is open; the process
+  // checklist lives in a collapsed accordion now that stages carry the pipeline.
+  const [closing, setClosing] = useState<'won' | 'lost' | null>(null)
+  const [closePicked, setClosePicked] = useState<string | null>(null)
+  const [closeNote, setCloseNote] = useState('')
+  const [processOpen, setProcessOpen] = useState(false)
 
   // Schedule-follow-up composer (default 2 weeks out, matching the automation)
   const [showSchedule, setShowSchedule] = useState(false)
@@ -154,19 +173,25 @@ export default function DealDetailModal({
     setShowSchedule(false)
     setFuNote('')
     setFuDate(followUpDateFrom(new Date(), 14))
+    setClosing(null)
+    setClosePicked(null)
+    setCloseNote('')
+    setProcessOpen(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id])
 
-  // Load this deal's activity log (100 most recent).
+  // Load this deal's activity log (100 most recent) + stage transitions.
   useEffect(() => {
     let alive = true
     setActivities(null)
+    setStageHistory([])
     setActivityUnavailable(false)
     fetch(`/api/admin/deals/${deal.id}/activity`)
       .then((r) => r.json())
       .then((j) => {
         if (!alive) return
         setActivities(Array.isArray(j.activities) ? j.activities : [])
+        setStageHistory(Array.isArray(j.history) ? j.history : [])
         setActivityUnavailable(!!j.unavailable)
       })
       .catch(() => { if (alive) setActivities([]) })
@@ -245,10 +270,16 @@ export default function DealDetailModal({
     setFuDate(followUpDateFrom(new Date(), 14))
   }
 
-  const statusInfo = DEAL_STATUS[deal.status ?? 'active']
+  const stInfo = stageInfo(deal.stage)
   const weighted = computeWeighted(deal)
   const progress = checklistProgress(deal)
   const focused = deal.focused === true
+
+  // One feed: logged activity + stage transitions, newest first.
+  const feedItems: ({ key: string; when: string } & ({ kind: 'activity'; a: DealActivity } | { kind: 'stage'; h: DealStageHistory }))[] = [
+    ...(activities ?? []).map((a) => ({ key: `a-${a.id}`, when: a.created_at, kind: 'activity' as const, a })),
+    ...stageHistory.map((h) => ({ key: `h-${h.id}`, when: h.changed_at, kind: 'stage' as const, h })),
+  ].sort((x, y) => y.when.localeCompare(x.when))
   // Open follow-ups first (soonest due), completed ones after.
   const sortedFollowUps = [...followUps].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1
@@ -276,7 +307,7 @@ export default function DealDetailModal({
                   <Star size={16} className={focused ? 'fill-amber-400 text-amber-400' : 'text-ink-faint hover:text-amber-400 transition-colors'} />
                 </button>
                 <h2 className="text-[17px] font-semibold text-ink tracking-[-0.01em] truncate">{deal.customer}</h2>
-                <StatusPill tone={statusInfo.tone}>{statusInfo.label}</StatusPill>
+                <StatusPill tone={stInfo.tone}>{stInfo.label}</StatusPill>
                 <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">{deal.group_name}</span>
                 {deal.project_type && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">
@@ -326,25 +357,85 @@ export default function DealDetailModal({
 
           {!editing ? (
             <>
-              {/* ── Status + deal progress ── */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted mr-1">Status</span>
-                <Seg active={deal.status === null} tone="sky" onClick={() => onStatus(deal.id, null)}>Active</Seg>
-                <Seg active={deal.status === 'Won'} tone="emerald" onClick={() => onStatus(deal.id, 'Won')}>Won</Seg>
-                <Seg active={deal.status === 'Lost'} tone="rose" onClick={() => onStatus(deal.id, 'Lost')}>Lost</Seg>
-              </div>
-
+              {/* ── Stage stepper ── */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Deal Progress</span>
-                  <span className="text-[11px] text-ink-muted tabular-nums">{progress.done}/{progress.total} completed</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Stage</span>
+                  <span className="text-[11px] text-ink-faint tabular-nums">{stageAgeDays(deal, new Date())}d in {stInfo.label}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-surface-strong overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-200"
-                    style={{ width: `${(progress.done / progress.total) * 100}%`, backgroundColor: 'var(--brand)' }}
-                  />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {STAGES.filter((s) => s.key !== 'won' && s.key !== 'lost').map((s) => (
+                    <StageChip
+                      key={s.key}
+                      tone={s.tone}
+                      active={deal.stage === s.key}
+                      onClick={() => { setClosing(null); onStage(deal.id, s.key) }}
+                    >
+                      {s.label}
+                    </StageChip>
+                  ))}
+                  <span className="h-5 border-l border-hairline mx-0.5" />
+                  <StageChip tone="emerald" active={deal.stage === 'won'} onClick={() => { if (deal.stage !== 'won') { setClosing(closing === 'won' ? null : 'won'); setClosePicked(null); setCloseNote('') } }}>
+                    Won
+                  </StageChip>
+                  <StageChip tone="rose" active={deal.stage === 'lost'} onClick={() => { if (deal.stage !== 'lost') { setClosing(closing === 'lost' ? null : 'lost'); setClosePicked(null); setCloseNote('') } }}>
+                    Lost
+                  </StageChip>
+                  {(deal.stage === 'won' || deal.stage === 'lost') && (
+                    <button
+                      onClick={() => onStatus(deal.id, null)}
+                      className="h-7 px-2.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider border border-hairline text-ink-faint hover:text-ink-secondary hover:bg-surface-soft transition-colors"
+                    >
+                      Reopen
+                    </button>
+                  )}
                 </div>
+                {deal.closed_reason && (deal.stage === 'won' || deal.stage === 'lost') && (
+                  <p className="mt-1.5 text-[11.5px] text-ink-muted">
+                    <Flag size={11} className="inline mr-1 -mt-0.5" />{deal.closed_reason}
+                  </p>
+                )}
+                {closing && (
+                  <div className="mt-2 rounded-xl border border-hairline bg-surface-soft p-3 space-y-2">
+                    <p className="text-[11.5px] text-ink-muted">
+                      {closing === 'won' ? 'What sealed it? (optional)' : 'Why was it lost? A reason keeps the loss reporting honest.'}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {CLOSED_REASONS.map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => setClosePicked(closePicked === r ? null : r)}
+                          className={`h-7 px-2.5 rounded-lg text-[11.5px] font-medium border transition-colors ${
+                            closePicked === r ? 'border-brand bg-brand-soft text-ink' : 'border-hairline text-ink-secondary hover:bg-surface'
+                          }`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={closeNote}
+                        onChange={(e) => setCloseNote(e.target.value)}
+                        placeholder="Add detail… (optional)"
+                        className={inp}
+                      />
+                      <button
+                        onClick={() => {
+                          const reason = closeNote.trim()
+                            ? (closePicked && closePicked !== 'Other' ? `${closePicked} — ${closeNote.trim()}` : closeNote.trim())
+                            : closePicked ?? undefined
+                          onStage(deal.id, closing, reason)
+                          setClosing(null)
+                        }}
+                        className={`h-9 px-3.5 flex-shrink-0 rounded-lg text-[12.5px] font-medium text-white transition-colors ${closing === 'lost' ? 'bg-rose-600 hover:bg-rose-500' : ''}`}
+                        style={closing === 'won' ? { backgroundColor: 'var(--brand)' } : undefined}
+                      >
+                        Mark {closing === 'won' ? 'Won' : 'Lost'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ── Quick actions ── */}
@@ -391,34 +482,51 @@ export default function DealDetailModal({
                 )}
               </div>
 
-              {/* ── Follow-up checklist ── */}
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted mb-2">Follow-up Checklist</p>
-                <div className="rounded-xl border border-hairline overflow-hidden">
-                  {CHECKLIST_STEPS.map((s) => {
-                    const done = (deal.checklist ?? {})[s.key] === true
-                    return (
-                      <button
-                        key={s.key}
-                        onClick={() => toggleStep(s.key, s.label)}
-                        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left border-t border-hairline-soft first:border-t-0 hover:bg-surface-soft transition-colors"
+              {/* ── Process checklist (demoted to an accordion — stages carry the
+                     pipeline now; the 5 steps remain as an optional worklist) ── */}
+              <div className="rounded-xl border border-hairline overflow-hidden">
+                <button
+                  onClick={() => setProcessOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-left hover:bg-surface-soft transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <ClipboardList size={13} className="text-ink-faint" />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Process Checklist</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[11px] text-ink-muted tabular-nums">{progress.done}/{progress.total}</span>
+                    <span className="w-16 h-1.5 rounded-full bg-surface-strong overflow-hidden">
+                      <span
+                        className="block h-full rounded-full transition-all duration-200"
+                        style={{ width: `${(progress.done / progress.total) * 100}%`, backgroundColor: 'var(--brand)' }}
+                      />
+                    </span>
+                    <ChevronDown size={13} className={`text-ink-faint transition-transform duration-150 ${processOpen ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+                {processOpen && CHECKLIST_STEPS.map((s) => {
+                  const done = (deal.checklist ?? {})[s.key] === true
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => toggleStep(s.key, s.label)}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left border-t border-hairline-soft hover:bg-surface-soft transition-colors"
+                    >
+                      <span
+                        className="w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors"
+                        style={done
+                          ? { backgroundColor: 'var(--brand)', borderColor: 'var(--brand)', color: '#fff' }
+                          : { borderColor: 'var(--hairline-strong)' }}
                       >
-                        <span
-                          className="w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors"
-                          style={done
-                            ? { backgroundColor: 'var(--brand)', borderColor: 'var(--brand)', color: '#fff' }
-                            : { borderColor: 'var(--hairline-strong)' }}
-                        >
-                          {done && <Check size={11} strokeWidth={3} />}
-                        </span>
-                        <span className="text-ink-faint flex-shrink-0">{STEP_ICONS[s.key]}</span>
-                        <span className={`text-[12.5px] leading-snug ${done ? 'text-ink-muted line-through decoration-hairline-strong' : 'text-ink-secondary'}`}>
-                          {s.label}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                        {done && <Check size={11} strokeWidth={3} />}
+                      </span>
+                      <span className="text-ink-faint flex-shrink-0">{STEP_ICONS[s.key]}</span>
+                      <span className={`text-[12.5px] leading-snug ${done ? 'text-ink-muted line-through decoration-hairline-strong' : 'text-ink-secondary'}`}>
+                        {s.label}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
 
               {/* ── Follow-ups ── */}
@@ -512,21 +620,37 @@ export default function DealDetailModal({
                     </p>
                   ) : activities === null ? (
                     <p className="px-3.5 py-4 text-[12px] text-ink-faint text-center">Loading…</p>
-                  ) : activities.length === 0 ? (
+                  ) : feedItems.length === 0 ? (
                     <p className="px-3.5 py-4 text-[12px] text-ink-faint text-center">
                       No activity yet. Use the quick actions above to log your first interaction.
                     </p>
                   ) : (
-                    activities.map((a) => (
-                      <div key={a.id} className="flex items-start gap-2.5 px-3.5 py-2 border-t border-hairline-soft first:border-t-0">
+                    feedItems.map((item) => (
+                      <div key={item.key} className="flex items-start gap-2.5 px-3.5 py-2 border-t border-hairline-soft first:border-t-0">
                         <span className="mt-0.5 w-6 h-6 rounded-md bg-surface-strong flex items-center justify-center text-ink-muted flex-shrink-0">
-                          {ACTIVITY_ICONS[a.kind] ?? ACTIVITY_ICONS.note}
+                          {item.kind === 'activity' ? (ACTIVITY_ICONS[item.a.kind] ?? ACTIVITY_ICONS.note) : <ArrowRight size={12} />}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[12.5px] text-ink-secondary leading-snug break-words">{a.summary}</p>
-                          <p className="text-[10.5px] text-ink-faint tabular-nums">
-                            {a.actor ? `${a.actor} · ` : ''}{timeAgo(a.created_at)} ago
-                          </p>
+                          {item.kind === 'activity' ? (
+                            <>
+                              <p className="text-[12.5px] text-ink-secondary leading-snug break-words">{item.a.summary}</p>
+                              <p className="text-[10.5px] text-ink-faint tabular-nums">
+                                {item.a.actor ? `${item.a.actor} · ` : ''}{timeAgo(item.a.created_at)} ago
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-[12.5px] text-ink-secondary leading-snug break-words">
+                                {item.h.from_stage === null
+                                  ? `Entered pipeline at ${stageInfo(item.h.to_stage).label}`
+                                  : `Moved to ${stageInfo(item.h.to_stage).label} (from ${stageInfo(item.h.from_stage).label})`}
+                                {item.h.note ? ` — ${item.h.note}` : ''}
+                              </p>
+                              <p className="text-[10.5px] text-ink-faint tabular-nums">
+                                {item.h.actor && !item.h.actor.startsWith('migration') ? `${item.h.actor} · ` : ''}{timeAgo(item.h.changed_at)} ago
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))
@@ -543,7 +667,8 @@ export default function DealDetailModal({
                   <Field icon={<Cpu size={13} />} label="Unit Model" value={deal.unit_model} mono />
                   <Field icon={<Briefcase size={13} />} label="Job Name" value={deal.job_name} />
                   <Field icon={<CalendarDays size={13} />} label="Date Quoted" value={deal.date_quoted ? formatDateOnly(deal.date_quoted) : null} />
-                  <Field icon={<CalendarRange size={13} />} label="Projected Close" value={deal.projected} />
+                  <Field icon={<CalendarRange size={13} />} label="Expected Close" value={deal.expected_close ? formatDateOnly(deal.expected_close) : deal.projected} />
+                  <Field icon={<Flag size={13} />} label="Next Step" value={deal.next_step ? `${deal.next_step}${deal.next_step_due ? ` · by ${formatDateOnly(deal.next_step_due)}` : ''}` : null} />
                   <Field icon={<Factory size={13} />} label="Project Type" value={deal.project_type ?? null} />
                   <Field icon={<Users size={13} />} label="Group" value={deal.group_name} />
                 </div>
@@ -626,8 +751,20 @@ export default function DealDetailModal({
                 <input className={inp} type="date" value={form.date_quoted} onChange={(e) => set('date_quoted', e.target.value)} />
               </div>
               <div>
-                <label className={lbl}>Projected</label>
+                <label className={lbl}>Projected (legacy text)</label>
                 <input className={inp} value={form.projected} onChange={(e) => set('projected', e.target.value)} placeholder="Q4 2026" />
+              </div>
+              <div>
+                <label className={lbl}>Expected Close</label>
+                <input className={inp} type="date" value={form.expected_close} onChange={(e) => set('expected_close', e.target.value)} />
+              </div>
+              <div>
+                <label className={lbl}>Next Step</label>
+                <input className={inp} value={form.next_step} onChange={(e) => set('next_step', e.target.value)} placeholder="What's the next move?" />
+              </div>
+              <div>
+                <label className={lbl}>Next Step Due</label>
+                <input className={inp} type="date" value={form.next_step_due} onChange={(e) => set('next_step_due', e.target.value)} />
               </div>
               <div>
                 <label className={lbl}>Rep</label>
@@ -712,11 +849,14 @@ function MoneyTile({ label, value, accent }: { label: string; value: string; acc
   )
 }
 
-function Seg({ active, tone, onClick, children }: {
-  active: boolean; tone: 'sky' | 'emerald' | 'rose'; onClick: () => void; children: React.ReactNode
+function StageChip({ active, tone, onClick, children }: {
+  active: boolean; tone: (typeof STAGES)[number]['tone']; onClick: () => void; children: React.ReactNode
 }) {
   const activeCls = {
+    slate: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700',
     sky: 'bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400 border-sky-200 dark:border-sky-500/30',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/30',
+    violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400 border-violet-200 dark:border-violet-500/30',
     emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30',
     rose: 'bg-rose-50 text-rose-500 dark:bg-rose-500/10 dark:text-rose-400 border-rose-200 dark:border-rose-500/30',
   }[tone]

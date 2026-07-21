@@ -2,6 +2,31 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — CRM Phase 1: real pipeline stages + drag-and-drop Board
+
+First phase of the CRM master plan (portal replaces monday.com as the sales source of truth).
+Deals now carry **named pipeline stages** — `lead → quoted → follow_up → verbal → won/lost`
+(migration `061_deal_stages.sql`, applied via Supabase CLI) — with a **`deal_stage_history`**
+table logging every transition for future funnel/conversion analytics. Existing 441 deals were
+backfilled from status + checklist (407 quoted / 32 lead / 2 won) and each seeded one history row.
+`status` (Won/Lost/null) survives as a synced compatibility shadow so every existing analytic is
+untouched; reopening a closed deal restores its last open stage from history.
+
+New **Board tab** on `/admin/deals`: a Quiet-Precision kanban (`@hello-pangea/dnd`, already in the
+bundle — no new deps) with weighted-$ column headers, biggest-deals-first cards capped at 40 per
+column, search + rep pills, Lost collapsed to a drop rail, and a **closed-reason prompt** on
+Won/Lost drops (reasons stored in the new `closed_reason` column for win/loss reporting). The deal
+modal gained a stage stepper + inline reason picker, the 5-step checklist demoted to a collapsed
+"Process Checklist" accordion, stage history merged into the activity feed, and new fields:
+**`expected_close`** (real date — backfilled from the free-text `projected` for 158 of 162 deals by
+`scripts/backfill-expected-close.mts`), **`next_step`** and **`next_step_due`**.
+
+Under the hood: the deals PATCH API now returns the full updated row and `DealsClient.persist()`
+folds it into the optimistic state behind a per-deal in-flight counter — fixing a latent drift where
+server-derived fields never reached the client. The xlsx importer derives stages on fresh rows and
+its replace-mode carry-over now preserves stage, stage age, the new columns, and re-parents stage
+history. Write-up: `docs/deals.md` ("Pipeline stages & the Board").
+
 ## 2026-07-21 — Sales dashboard: a dedicated command center for the Sales role
 
 Sales profiles now land on a purpose-built dashboard at `/admin` instead of the generic

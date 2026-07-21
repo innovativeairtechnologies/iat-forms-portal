@@ -4,11 +4,15 @@
 // trust boundary. Returns clean 400 messages instead of letting bad values
 // surface as raw Postgres constraint errors (500s).
 
-import { CHECKLIST_STEPS } from '@/lib/deals'
+import { CHECKLIST_STEPS, STAGE_KEYS, isRealDate } from '@/lib/deals'
 
 const TEXT_FIELDS = ['assigned_to', 'unit_model', 'job_name', 'projected', 'rep', 'rep_contact', 'notes'] as const
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/** Nullable date columns (migration 061) — real-date checked so Postgres never
+ *  sees 2026-02-31 (which the shape regex alone would let through as a 500). */
+const NULLABLE_DATE_FIELDS = ['expected_close', 'next_step_due'] as const
 
 const CHECKLIST_KEYS = new Set<string>(CHECKLIST_STEPS.map((s) => s.key))
 
@@ -60,6 +64,26 @@ export function sanitizeDealField(field: string, raw: unknown): { value?: unknow
       if (v.length > 100) return { error: 'project_type is too long' }
       return { value: v }
     }
+    case 'stage': {
+      if (typeof raw !== 'string' || !(STAGE_KEYS as readonly string[]).includes(raw)) {
+        return { error: `stage must be one of ${STAGE_KEYS.join(', ')}` }
+      }
+      return { value: raw }
+    }
+    case 'closed_reason': {
+      if (raw === null || raw === '') return { value: null }
+      if (typeof raw !== 'string') return { error: 'closed_reason must be a string or null' }
+      const v = raw.trim()
+      if (v.length > 300) return { error: 'closed_reason is too long (300 chars max)' }
+      return { value: v }
+    }
+    case 'next_step': {
+      if (raw === null || raw === '') return { value: null }
+      if (typeof raw !== 'string') return { error: 'next_step must be a string or null' }
+      const v = raw.trim()
+      if (v.length > 500) return { error: 'next_step is too long (500 chars max)' }
+      return { value: v }
+    }
     case 'checklist': {
       // Full-replace semantics: the modal sends the complete map on each
       // toggle. Only known step keys, only booleans — jsonb would happily
@@ -76,6 +100,12 @@ export function sanitizeDealField(field: string, raw: unknown): { value?: unknow
       return { value: clean }
     }
     default: {
+      // nullable dates (061) — full calendar validation, not just shape
+      if ((NULLABLE_DATE_FIELDS as readonly string[]).includes(field)) {
+        if (raw === null || raw === '') return { value: null }
+        if (typeof raw !== 'string' || !isRealDate(raw)) return { error: `${field} must be a real YYYY-MM-DD date or null` }
+        return { value: raw }
+      }
       // free-text nullables
       if ((TEXT_FIELDS as readonly string[]).includes(field)) {
         if (raw === null || raw === '') return { value: null }
