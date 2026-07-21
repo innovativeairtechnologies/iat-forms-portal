@@ -313,3 +313,69 @@ function fmtShort(n: number): string {
   if (n >= 1_000) return `$${Math.round(n / 1_000)}K`
   return `$${Math.round(n)}`
 }
+
+/* ── Industry / vertical mix ──────────────────────────────────────────────────
+   Open pipeline sliced by deals.project_type (the "Industry / vertical" column,
+   values in PROJECT_TYPES). Deals with no project_type land in "Unspecified" so
+   the mix always sums to the full open pipeline. */
+export type IndustryStat = { name: string; raw: number; weighted: number; count: number }
+
+export function industryStats(deals: Deal[]): IndustryStat[] {
+  const map = new Map<string, IndustryStat>()
+  for (const d of deals) {
+    if (d.status !== null) continue // open pipeline only
+    const name = d.project_type?.trim() || 'Unspecified'
+    let s = map.get(name)
+    if (!s) { s = { name, raw: 0, weighted: 0, count: 0 }; map.set(name, s) }
+    s.raw += d.total_cost
+    s.weighted += computeWeighted(d)
+    s.count++
+  }
+  return [...map.values()].sort((a, b) => b.raw - a.raw)
+}
+
+/* ── Forecast projections ─────────────────────────────────────────────────────
+   Three honest reads off the board — no quota required:
+   • runRate  — won *this calendar year* annualized by the fraction of the year
+                elapsed. null until there's a dated win this year, so it never
+                shows a fabricated number.
+   • bestCase — won-to-date + every open deal at full value (all of it closes).
+   • commit   — won-to-date + confidence-weighted open pipeline.
+   A real sales quota, when Sales provides one, slots in beside these later. */
+export type SalesProjections = {
+  wonToDate: number
+  wonYtd: number
+  runRate: number | null
+  bestCase: number
+  commitCase: number
+}
+
+export function salesProjections(deals: Deal[], now: Date): SalesProjections {
+  const year = now.getFullYear()
+  let wonToDate = 0
+  let wonYtd = 0
+  let hasDatedWinThisYear = false
+  let openRaw = 0
+  let openWeighted = 0
+  for (const d of deals) {
+    if (d.status === 'Won') {
+      wonToDate += d.total_cost
+      const dt = d.date_quoted // the only date the board carries per deal
+      if (dt && Number(dt.slice(0, 4)) === year) { wonYtd += d.total_cost; hasDatedWinThisYear = true }
+    } else if (d.status === null) {
+      openRaw += d.total_cost
+      openWeighted += computeWeighted(d)
+    }
+  }
+  // Day-of-year / 365 — floored at 1 day so early January can't divide by ~0.
+  const startOfYear = new Date(year, 0, 1)
+  const elapsedDays = Math.max(1, Math.floor((now.getTime() - startOfYear.getTime()) / 864e5) + 1)
+  const fraction = Math.min(1, elapsedDays / 365)
+  return {
+    wonToDate,
+    wonYtd,
+    runRate: hasDatedWinThisYear ? wonYtd / fraction : null,
+    bestCase: wonToDate + openRaw,
+    commitCase: wonToDate + openWeighted,
+  }
+}

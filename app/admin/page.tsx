@@ -8,7 +8,9 @@ import { TopBarSearch, TopBarBell } from './TopBarActions'
 import DashboardPresetPicker from './DashboardPresetPicker'
 import ExecutiveBriefing from './ExecutiveBriefing'
 import DepartmentDashboard from '@/components/admin/DepartmentDashboard'
+import SalesDashboardView from '@/components/dashboards/SalesDashboardView'
 import type { StaffRole } from '@/lib/roles'
+import type { Deal } from '@/lib/supabase'
 import { PRESETS, DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 import {
   ChevronRight, Plus,
@@ -417,6 +419,15 @@ export default async function AdminDashboard() {
   // dashboard — a real page scoped to their permissions, not a stripped-down
   // preview of the executive view below.
   const surfaceUser = await getAdminSurfaceUser()
+  // Sales is the first department separated out from the generic scoped
+  // dashboard: they get the dedicated Sales command center (live deal metrics),
+  // not the stripped-down DepartmentDashboard. Admin + Engineering + the other
+  // scoped roles keep their current dashboards until each gets its own.
+  if (surfaceUser && surfaceUser.role === 'sales') {
+    const { data: deals } = await supabaseAdmin
+      .from('deals').select('*').order('created_at', { ascending: false })
+    return <SalesDashboardView deals={(deals ?? []) as Deal[]} displayName={surfaceUser.displayName} />
+  }
   if (surfaceUser && surfaceUser.role !== 'admin') {
     // isAdminSurfaceRole (inside getAdminSurfaceUser) already ruled out
     // 'production' and 'customer', so this is one of the 5 scoped roles.
