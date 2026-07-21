@@ -18,6 +18,9 @@ and an editable **`SAFETY.since`** date in `lib/home-content.ts` that drives the
 "days incident-free" counter. The whole design lives in one file — `app/home/HomeContent.tsx`.
 Write-up: `docs/company-home.md`.
 
+*Follow-up (same day):* the footer fun-fact chip now **wraps** to show the whole fact instead of
+truncating with an ellipsis (`FunFact.tsx`), and was retoned to the zinc/emerald footer.
+
 ## 2026-07-20 — Internal Apps: Gas Burner Selection Guide + "Tools" renamed
 
 Added the **Gas Burner Selection Guide** (`public/tools/burner-selection-guide.html`) to the
