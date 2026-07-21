@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — Company Home redesign: the "Lobby"
+
+Rebuilt `/home` from the single-screen bento into a warm, scrolling **lobby** that matches the
+shipped dashboard chrome (`/admin`, `/employee/profile`) instead of standing apart from it: a
+`zinc-50` canvas with a soft ambient emerald glow, an **emerald→teal gradient greeting hero** with
+quick-link buttons, a **company at-a-glance KPI row** (Teammates · Days incident-free · Open roles ·
+Next holiday), and equal-height white `rounded-xl` cards for News (featured lead + list), This Week
+(holiday + events + who's-out), Our People, Milestones, Open Positions (+ referral), the weekly Core
+Value, and the Suggestion box. One emerald accent, used warmly; full light/dark.
+
+No data or routing changes — every card is still live from Supabase with the same "CMS with sensible
+defaults" fallbacks. Two small data additions: a live active-staff **`headcount`** (Teammates KPI)
+and an editable **`SAFETY.since`** date in `lib/home-content.ts` that drives the auto-incrementing
+"days incident-free" counter. The whole design lives in one file — `app/home/HomeContent.tsx`.
+Write-up: `docs/company-home.md`.
+
 ## 2026-07-20 — Internal Apps: Gas Burner Selection Guide + "Tools" renamed
 
 Added the **Gas Burner Selection Guide** (`public/tools/burner-selection-guide.html`) to the

@@ -206,6 +206,8 @@ export type HomeData = {
   newHire: Person
   peopleEvents: PersonEvent[]
   whosOut: WhosOut[]
+  /** Active staff headcount (excludes customers) — shown on the home KPI row. */
+  headcount: number
 }
 
 export async function getHomeData(now = new Date()): Promise<HomeData> {
@@ -263,5 +265,6 @@ export async function getHomeData(now = new Date()): Promise<HomeData> {
   return {
     news, events, nextHoliday: nextFederalHoliday(now), openings,
     spotlight, newHire, peopleEvents: finalPeople, whosOut,
+    headcount: employees.length,
   }
 }

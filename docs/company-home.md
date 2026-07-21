@@ -5,21 +5,28 @@ rebuilt from the SharePoint intranet. It renders **inside the portal shell** (th
 present, "Company Home" is the active tab), as a **single-screen bento dashboard** that fills the
 viewport without scrolling the page. External customers are unaffected (they still land on `/customer`).
 
-## Layout — single-screen bento
+## Layout — the "Lobby" (redesigned 2026-07-21)
 
-`app/home/HomeContent.tsx` is a fixed grid: a gradient header row (greeting + fun-fact chip +
-Email-IT) over a 3×2 grid of tiles (News · Calendar · Open Positions / Birthdays · Our People ·
-Core Values · Suggestions). Each tile is `min-h-0 overflow-hidden`; its body is `overflow-y-auto`,
-so a long list scrolls **inside the tile** while the page stays put. Color comes from soft-wash
-tone chips per tile (§2.4 tones) — lively but within the system.
+`app/home/HomeContent.tsx` is a warm, **scrolling** dashboard built to match the shipped portal
+chrome (`/admin`, `/employee/profile`) rather than stand apart from it — a `zinc-50` canvas
+(`dark:bg-[#0a0a0b]`) with a soft ambient emerald/sky glow behind the top, white `rounded-xl`
+cards with `shadow-sm`, and one emerald accent used warmly. Top to bottom:
 
-**Viewport pinning (the important bit):** both portal shells are built to *body-scroll*
-(`min-h-screen` root + a sticky sidebar), so `flex-1` does **not** cap the grid to the viewport.
-Instead each shell page passes an explicit lg-only height via `HomeContent`'s `heightClass` prop:
-`/admin/home` → `lg:h-[calc(100dvh-12px)]` (no top bar above the content); `/employee/home` →
-`lg:h-[calc(100dvh-68px)]` (subtracts the 56px `PortalTopBar` + a 12px safety gutter for dvh
-rounding). Below `lg` no height is set and the page scrolls normally. If you add a persistent bar
-to a shell, update that offset.
+1. **Greeting hero** — an emerald→teal gradient card (`bg-gradient-to-br from-emerald-600 to-teal-700`,
+   mirroring the `/admin` rail greeting) with a date eyebrow, the greeting, a live subtitle, and
+   quick-link buttons (Time off · Forms · Directory · Tools · Learn).
+2. **Company at a glance** — a 4-up KPI row (Teammates · Days incident-free · Open roles · Next
+   holiday) in the dashboard KPI-card style.
+3. **Content cards**, all equal-height per row (grid `items-stretch` + `h-full` cards, footer
+   blocks pinned with `mt-auto`): News (featured lead + list) · This Week (holiday + events +
+   who's-out) · Our People (new hire + spotlight) · Milestones · Open Positions (+ referral) · Core
+   Value of the Week · Suggestion box. A footer row carries the fun-fact chip + Email IT.
+
+The old single-screen bento (fixed viewport height via the `heightClass` prop, tiles scrolling
+internally) is **retired** — the page scrolls as a whole. `HomeContent`'s root is
+`flex-1 min-h-0 overflow-y-auto` (the same pattern the `/admin` dashboard uses), so it scrolls
+inside either shell; the `heightClass` prop is still accepted for caller compatibility but ignored.
+The sidebar, top bar, and Jerry orb are supplied by the portal shell, not this file.
 
 ## What changed for routing
 
@@ -70,6 +77,9 @@ looks complete on day one and the moment HR authors a row, that row takes over.
 - **Fun facts, core values, the IT contact, referral bonus**: edit the arrays/constants in
   `lib/home-content.ts`. **TODO:** `IT_SUPPORT.email` currently routes to the portal admin —
   point it at the real IT inbox.
+- **The KPI row**: "Teammates" is the live active-staff `headcount` (`lib/home-data.ts`); the
+  "days incident-free" counter auto-increments from `SAFETY.since` in `lib/home-content.ts` — edit
+  that date whenever the streak resets.
 
 ### The `home_content` permission
 

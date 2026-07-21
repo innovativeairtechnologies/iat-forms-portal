@@ -189,6 +189,12 @@ export const REFERRAL = {
   lead: 'Refer a friend',
 }
 
+// Shop-floor safety streak shown on the home KPI row. The counter auto-increments
+// each day from `since`; just edit this date whenever the streak resets.
+export const SAFETY = {
+  since: '2025-12-19', // day after the last recordable incident
+}
+
 // IT support contact. TODO: point `email` at the real IT inbox — it currently
 // routes to the portal admin so the button never bounces in the meantime.
 export const IT_SUPPORT = {
