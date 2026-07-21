@@ -1,7 +1,15 @@
-# Projected Sales — Dryware reporting mirror
+# Performance — Dryware reporting mirror
 
 _Shipped 2026-07-20 (migration `059_projected_sales.sql`). The portal's first
-live outbound API integration._
+live outbound API integration. Nav label renamed **Projected Sales → Performance**
+2026-07-21 (route `/admin/projected-sales` unchanged)._
+
+> **2026-07-21:** the sync now also **materializes the CRM `deals` table** — after
+> `replace_projected_sales`, the route calls `materializeDealsFromProjectedSales()`
+> (`lib/dryware-deals.ts`), so one "Sync now" refreshes both this mirror and the CRM
+> Board / dashboard. DryWare is the source of truth for the pipeline. See
+> `docs/deals.md` (top). Best-effort: a materialization failure never fails the
+> projected_sales sync itself.
 
 `/admin/projected-sales` mirrors the "projected sales by project" report from
 **Dryware** (`dryware.dehumidifiers.com`), a first-party IAT system. Sales opens
