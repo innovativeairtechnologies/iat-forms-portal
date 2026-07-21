@@ -80,10 +80,12 @@ const NAV_PARENTS: NavParent[] = [
     label: 'Sales',
     icon: DollarSign,
     children: [
-      { href: '/admin/deals', label: 'Deals', perm: 'deals' },
-      // Projected Sales — read-only mirror of the Dryware reporting API (059).
-      // Shares the `deals` perm (Sales + admin); different feature, same audience.
-      { href: '/admin/projected-sales', label: 'Projected Sales', perm: 'deals' },
+      // CRM — the working pipeline (Board / Focused / Calendar) over deals
+      // materialized from the DryWare feed (migration 063).
+      { href: '/admin/deals', label: 'CRM', perm: 'deals' },
+      // Performance — the DryWare "projected sales" mirror + sync (059). Shares
+      // the `deals` perm (Sales + admin); the sync also refreshes the CRM deals.
+      { href: '/admin/projected-sales', label: 'Performance', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
       { href: '/admin/presentations', label: 'Presentations', perm: 'presentations' },
     ],

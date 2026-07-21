@@ -95,9 +95,12 @@ export default function ProjectedSalesClient({
     return { count, totalQuote, weighted, avgConf }
   }, [filtered])
 
+  const [dealNote, setDealNote] = useState<string | null>(null)
+
   async function doSync() {
     setSyncing(true)
     setError(null)
+    setDealNote(null)
     try {
       const res = await fetch('/api/admin/projected-sales/sync', { method: 'POST' })
       const json = await res.json()
@@ -105,6 +108,17 @@ export default function ProjectedSalesClient({
       setProjects((json.projects ?? []) as ProjectedSale[])
       setSync((json.sync ?? null) as SyncMeta)
       setExpandedId(null)
+      // The sync also refreshed the CRM Board — tell the user so they know the
+      // two surfaces are in step.
+      const ds = json.dealStats as { inserted: number; updated: number; pruned: number } | null
+      if (ds) {
+        const bits = [
+          ds.inserted && `${ds.inserted} new`,
+          ds.updated && `${ds.updated} updated`,
+          ds.pruned && `${ds.pruned} closed out`,
+        ].filter(Boolean)
+        setDealNote(`CRM Board refreshed — ${bits.length ? bits.join(', ') : 'no changes'}.`)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sync failed.')
     } finally {
@@ -130,7 +144,7 @@ export default function ProjectedSalesClient({
     <div>
       <ListPageHeader
         overline="Sales"
-        title="Projected Sales"
+        title="Performance"
         count={
           sync?.last_synced_at
             ? `${projects.length} projects · ${fmtUsd(sumAll(projects))} quoted`
@@ -170,6 +184,11 @@ export default function ProjectedSalesClient({
             {sync.duration_ms != null ? ` · ${(sync.duration_ms / 1000).toFixed(1)}s` : ''}
             {deduped && ` · ${sync.unique_count} of ${sync.source_count} source rows (duplicates removed)`}
           </p>
+        )}
+        {dealNote && (
+          <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-[12.5px] text-emerald-700 dark:text-emerald-300">
+            {dealNote}
+          </div>
         )}
 
         {projects.length === 0 ? (

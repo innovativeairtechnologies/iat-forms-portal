@@ -1,4 +1,32 @@
-# Deals — Sales Pipeline ("Forecast Pulse")
+# CRM & Performance — Sales Pipeline
+
+> **2026-07-21 — pivot: DryWare is the source of truth.** The `deals` table is no
+> longer a monday.com spreadsheet mirror; it's now **materialized from the DryWare
+> "projected sales" feed** on every sync (`lib/dryware-deals.ts`, migration 063).
+> The 441 stale spreadsheet deals were backed up + deleted and replaced by ~335
+> DryWare-sourced deals. The nav renamed **Deals → CRM** and **Projected Sales →
+> Performance**; the CRM view is now just **Board / Focused / Calendar** (the
+> Dashboard, Table, and Companies tabs were removed — the `/admin` dashboard is the
+> real metrics surface, and it too reads the now-DryWare-fed `deals`). Everything
+> below about stages / the board / the modal still holds; the company/contacts
+> layer (Phase 2) is dormant (tables + API remain, UI removed). See
+> "DryWare materialization" just below.
+>
+> **DryWare materialization.** `dryware_key = lower(project_customer)|lower(project_name)`
+> is the stable identity (projected_sales is wipe-reloaded, so its id isn't). On
+> each sync (`/api/admin/projected-sales/sync`, after `replace_projected_sales`):
+> DryWare-owned facts are overwritten (customer=project_customer, $=quote_total,
+> confidence 0–100, expected_close, salesperson→assigned_to+group_name, unit models,
+> contact, date_quoted=date_created); portal workflow is preserved (stage,
+> stage_changed_at, focused, notes, checklist, next_step, closed_reason); projects
+> that fell off the feed are pruned (guarded: only when the sync returned a
+> non-empty set); manual deals (dryware_key NULL, via New Deal) are never touched.
+> Idempotent — re-running only updates. New deals default to stage `quoted`. The
+> materializer runs in the sync route AND `scripts/materialize-dryware-deals.mts`.
+> **Note:** a rep's edits to DryWare-owned fields (confidence, $) are overwritten on
+> the next sync by design; stage/★/follow-ups/notes are theirs to keep.
+
+## Legacy history ("Forecast Pulse")
 
 _Shipped 2026-07-07 (migration `043_deals.sql`). Dashboard + real-board Excel
 import shipped 2026-07-10 — the table now holds the sales team's actual

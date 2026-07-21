@@ -43,7 +43,8 @@ const STATIC: Item[] = [
   { id: 'nav-tickets', label: 'Tickets',          group: 'Go to', icon: Ticket,          href: '/admin/tickets', perm: 'tickets' },
   { id: 'nav-equip',   label: 'Equipment',        group: 'Go to', icon: Boxes,           href: '/admin/equipment', keywords: 'assets warranty', perm: 'equipment' },
   { id: 'nav-srv',     label: 'SRV Form',         group: 'Go to', icon: FileCheck2,      href: '/admin/srv', keywords: 'start-up readiness verification checklist edit content', perm: 'srv' },
-  { id: 'nav-deals',   label: 'Deals',            group: 'Go to', icon: DollarSign,      href: '/admin/deals', keywords: 'pipeline crm forecast sales opportunities', perm: 'deals' },
+  { id: 'nav-deals',   label: 'CRM',              group: 'Go to', icon: DollarSign,      href: '/admin/deals', keywords: 'pipeline crm forecast sales opportunities deals board', perm: 'deals' },
+  { id: 'nav-perf',    label: 'Performance',      group: 'Go to', icon: DollarSign,      href: '/admin/projected-sales', keywords: 'projected sales dryware forecast pipeline performance', perm: 'deals' },
   // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
   // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series', perm: 'us_rotors' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },

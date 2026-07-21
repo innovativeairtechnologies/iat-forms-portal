@@ -438,6 +438,11 @@ export type Deal = {
    *  company is renamed, so pre-062 views keep working unchanged. */
   company_id: string | null
   primary_contact_id: string | null
+  /** Stable DryWare-project identity (migration 063). Non-null = this deal is
+   *  materialized from the DryWare feed and re-synced (facts overwritten,
+   *  portal workflow preserved); null = a manually-created deal the sync never
+   *  touches. See lib/dryware-deals.ts. */
+  dryware_key: string | null
   created_at: string
   updated_at: string
 }

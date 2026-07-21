@@ -2,6 +2,25 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — Sales pivot: DryWare is the source of truth; Deals→CRM, Projected Sales→Performance
+
+The sales pipeline stops being a monday.com spreadsheet mirror and becomes a **materialized view
+of the DryWare "projected sales" feed** (migration `063_deal_dryware_key.sql`). On every DryWare
+sync the `deals` table is refreshed from the feed (`lib/dryware-deals.ts`): DryWare owns the facts
+(customer, $, confidence, close date, salesperson, unit models), the portal preserves the workflow
+overlay (stage, ★ focus, follow-ups, notes) across syncs keyed by a stable
+`project_customer|project_name` key, and projects that drop off the feed are pruned. So one "Sync
+now" click on Performance refreshes the CRM Board, Focused, Calendar, **and** the `/admin` dashboard
+at once. The 441 stale spreadsheet deals were backed up and deleted; the current feed materialized
+to ~335 deals ($55.6M / $12M weighted across 5 reps).
+
+Nav + structure: **Deals → CRM**, **Projected Sales → Performance**. The CRM view is now just
+**Board / Focused / Calendar** — the in-CRM Dashboard tab (redundant with the `/admin` command
+center, which now shows the DryWare-fed numbers), the Table tab, and the Companies tab were removed.
+New Deal reverts to a plain customer field for the occasional off-DryWare deal (dryware_key NULL,
+never touched by sync). The Phase-2 companies/contacts layer is dormant (tables + API kept, UI
+removed). Write-up: `docs/deals.md` (top).
+
 ## 2026-07-21 — CRM Phase 2: companies & contacts, human-gated backfill, monday cutover tooling
 
 The relational account model (migration `062_crm_companies.sql`): new **`companies`** (unique
