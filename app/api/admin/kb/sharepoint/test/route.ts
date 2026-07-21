@@ -32,6 +32,10 @@ export async function GET() {
       connected: true,
       site: lib.siteName,
       library: lib.libraryName,
+      // The immutable ids — pin these in env (SHAREPOINT_SITE_ID / SHAREPOINT_DRIVE_ID)
+      // and a future SharePoint URL/site rename needs no change on our side at all.
+      siteId: lib.siteId,
+      driveId: lib.driveId,
       fileCount: files.length,
       sample: files.slice(0, 20),
     })

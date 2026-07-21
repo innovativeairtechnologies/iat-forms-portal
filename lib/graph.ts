@@ -39,13 +39,15 @@ export class GraphError extends Error {
   }
 }
 
-/** True only when every required env var is present. Callers no-op cleanly otherwise. */
+/** True only when auth is set AND we can locate the library — either by its
+ *  human URL (SHAREPOINT_SITE_URL) or, more robustly, by its immutable id
+ *  (SHAREPOINT_SITE_ID). Callers no-op cleanly otherwise. */
 export function graphConfigured(): boolean {
   return !!(
     process.env.MS_GRAPH_TENANT_ID &&
     process.env.MS_GRAPH_CLIENT_ID &&
     process.env.MS_GRAPH_CLIENT_SECRET &&
-    process.env.SHAREPOINT_SITE_URL
+    (process.env.SHAREPOINT_SITE_URL || process.env.SHAREPOINT_SITE_ID)
   )
 }
 
@@ -89,20 +91,38 @@ let libraryCache: { siteId: string; driveId: string; siteName: string; libraryNa
 
 export async function resolveLibrary(): Promise<{ siteId: string; driveId: string; siteName: string; libraryName: string }> {
   if (libraryCache) return libraryCache
-  const siteUrl = process.env.SHAREPOINT_SITE_URL!
-  const u = new URL(siteUrl)
-  const hostname = u.hostname
-  const sitePath = u.pathname.replace(/^\/+|\/+$/g, '') // e.g. "sites/IATDocumentation"
 
-  const site = await graphGet<{ id: string; displayName?: string; name?: string }>(
-    `/sites/${hostname}:/${sitePath}`,
-  )
+  // ── locate the SITE ──────────────────────────────────────────────────────────
+  // Prefer the immutable site id if it's pinned in env — SharePoint site ids don't
+  // change when a site is renamed or its URL changes, so pinning the id makes us
+  // completely immune to a URL change (no env edit needed on a rename). Otherwise
+  // resolve the id from the human-friendly URL.
+  let siteId: string
+  let siteName: string
+  const pinnedSiteId = process.env.SHAREPOINT_SITE_ID?.trim()
+  if (pinnedSiteId) {
+    const site = await graphGet<{ id: string; displayName?: string; name?: string }>(`/sites/${pinnedSiteId}`)
+    siteId = site.id
+    siteName = site.displayName || site.name || pinnedSiteId
+  } else {
+    const u = new URL(process.env.SHAREPOINT_SITE_URL!)
+    const sitePath = u.pathname.replace(/^\/+|\/+$/g, '') // e.g. "sites/IATDocumentation"
+    const site = await graphGet<{ id: string; displayName?: string; name?: string }>(`/sites/${u.hostname}:/${sitePath}`)
+    siteId = site.id
+    siteName = site.displayName || site.name || sitePath
+  }
 
+  // ── locate the DRIVE (document library) ──────────────────────────────────────
+  const pinnedDriveId = process.env.SHAREPOINT_DRIVE_ID?.trim()
   const wantLibrary = process.env.SHAREPOINT_LIBRARY_NAME?.trim()
   let driveId: string
   let libraryName: string
-  if (wantLibrary) {
-    const drives = await graphGet<{ value: { id: string; name?: string; driveType?: string }[] }>(`/sites/${site.id}/drives`)
+  if (pinnedDriveId) {
+    const drive = await graphGet<{ id: string; name?: string }>(`/drives/${pinnedDriveId}`)
+    driveId = drive.id
+    libraryName = drive.name || 'Documents'
+  } else if (wantLibrary) {
+    const drives = await graphGet<{ value: { id: string; name?: string; driveType?: string }[] }>(`/sites/${siteId}/drives`)
     const match = drives.value.find((d) => (d.name || '').toLowerCase() === wantLibrary.toLowerCase())
     if (!match) {
       throw new GraphError(`Document library "${wantLibrary}" not found on that site. Available: ${drives.value.map((d) => d.name).join(', ') || '(none)'}`)
@@ -110,12 +130,12 @@ export async function resolveLibrary(): Promise<{ siteId: string; driveId: strin
     driveId = match.id
     libraryName = match.name || wantLibrary
   } else {
-    const drive = await graphGet<{ id: string; name?: string }>(`/sites/${site.id}/drive`)
+    const drive = await graphGet<{ id: string; name?: string }>(`/sites/${siteId}/drive`)
     driveId = drive.id
     libraryName = drive.name || 'Documents'
   }
 
-  libraryCache = { siteId: site.id, driveId, siteName: site.displayName || site.name || sitePath, libraryName }
+  libraryCache = { siteId, driveId, siteName, libraryName }
   return libraryCache
 }
 
