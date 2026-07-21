@@ -2,6 +2,26 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — Sales dashboard: a dedicated command center for the Sales role
+
+Sales profiles now land on a purpose-built dashboard at `/admin` instead of the generic
+`DepartmentDashboard` — the **first department separated out** (admin, engineering and the other
+scoped roles keep their current dashboards until each gets its own). It's a **one-screen command
+center** (no page scroll on desktop; relaxes into a scrollable stack below `lg`): six KPIs across
+the top, then a 4×3 grid — rep leaderboard, deals-by-status and pipeline-by-industry donuts,
+a pipeline-by-confidence funnel, **largest open deals**, a quoting-activity trend, forecast
+projections (run rate / best / commit), recently won, and derived needs-attention.
+
+Everything is live from the `deals` table via `lib/deals.ts` (new `industryStats` +
+`salesProjections` helpers). The three things the board can't feed yet — a sales goal/quota line
+and lead/meeting activity — show an honest *"not tracked yet"* state rather than invented numbers.
+New shared, **server-safe** chart primitives in `components/dashboards/sales-charts.tsx`
+(`SalesDashboardView` composes them; hand-rolled SVG/CSS, no chart library). The dashboards adopt a
+measured amount of color — colored KPI chips + multi-hue category donuts — drawn only from the
+sanctioned Tone palette, a scoped and documented departure from DESIGN.md's one-accent rule (§2.4
+carve-out). Write-up: `docs/dashboards.md`. Commit `08328b8`; prod alias `iatportal.vercel.app`
+verified.
+
 ## 2026-07-21 — Company Home redesign: the "Lobby"
 
 Rebuilt `/home` from the single-screen bento into a warm, scrolling **lobby** that matches the
