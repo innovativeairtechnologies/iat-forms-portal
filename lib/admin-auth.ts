@@ -85,6 +85,33 @@ export async function getTicketsActor() {
   return actor
 }
 
+/** Scoped write gate for the submissions server actions (mark-read / status).
+ *  Same pattern as getTicketsActor — Engineering holds `submissions` and works the
+ *  inbox, so gate on the same perm as the page rather than admin-only. */
+export async function getSubmissionsActor() {
+  const actor = await getAdminSurfaceUser()
+  if (!actor || !actor.can('submissions')) return null
+  return actor
+}
+
+/** Scoped write gate for the Gantt server actions. Sales / Engineering / Production-
+ *  manager hold `gantt` and read /admin/gantt; gate writes on the same perm, not
+ *  admin-only, so the page can't offer a form that always 403s. */
+export async function getGanttActor() {
+  const actor = await getAdminSurfaceUser()
+  if (!actor || !actor.can('gantt')) return null
+  return actor
+}
+
+/** Scoped write gate for time-off review + delete. HR holds BOTH `pto` and `sick`
+ *  and runs the queues, so either perm authorizes. Returns the actor (the routes
+ *  need reviewed_by + audit attribution), not just a boolean. */
+export async function getTimeOffActor() {
+  const actor = await getAdminSurfaceUser()
+  if (!actor || !(actor.can('pto') || actor.can('sick'))) return null
+  return actor
+}
+
 export async function isAdminAuthenticated(): Promise<boolean> {
   return (await getAdminUser()) !== null
 }

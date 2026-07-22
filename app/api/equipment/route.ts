@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminAuth } from '@/lib/api-auth'
+import { requireEquipmentAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 const FIELDS = [
@@ -10,7 +10,7 @@ const FIELDS = [
 ] as const
 
 export async function GET() {
-  const err = await requireAdminAuth(); if (err) return err
+  const err = await requireEquipmentAuth(); if (err) return err
   const { data, error } = await supabaseAdmin
     .from('equipment')
     .select('*')
@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const err = await requireAdminAuth(); if (err) return err
+  const err = await requireEquipmentAuth(); if (err) return err
 
   const body = await req.json().catch(() => ({}))
   const serial = (body.serial_number || '').trim()

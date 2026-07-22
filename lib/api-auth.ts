@@ -283,3 +283,47 @@ export async function requireSuperAdmin(): Promise<{ userId: string } | NextResp
   }
   return { userId: user.id }
 }
+
+/**
+ * Scoped write guard for the submissions inbox API (PATCH / DELETE / status).
+ * Matrix-backed on `submissions` — the same perm middleware gates /admin/submissions
+ * on — so Engineering (which holds it and works the inbox) can act, not just view.
+ * Its own named guard, per requireDealsAuth's note.
+ */
+export async function requireSubmissionsAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles').select('role').eq('id', user.id).single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'submissions', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+/**
+ * Scoped write guard for the equipment registry API (create / PATCH / DELETE /
+ * milestones). Matrix-backed on `equipment` — the same perm gating /admin/equipment
+ * — so Sales / Engineering / Production-manager (which hold it) can maintain the
+ * registry they already read. Its own named guard, per requireDealsAuth's note.
+ */
+export async function requireEquipmentAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles').select('role').eq('id', user.id).single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'equipment', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}

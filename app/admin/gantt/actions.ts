@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getGanttActor } from '@/lib/admin-auth'
 import { logAudit } from '@/lib/audit'
 import {
   AUCKLAND_TASKS, BLANK_TASKS, withIds, nid, normalizeChart,
@@ -10,11 +10,11 @@ import {
 } from '@/lib/gantt'
 
 /* Gantt mutations. Run with the service-role key (bypasses RLS), so each guards
-   the caller with getAdminUser() rather than trusting only the /admin layout —
+   the caller with getGanttActor() rather than trusting only the /admin layout —
    same model as the presentations / org-chart actions. */
 
-async function requireAdmin() {
-  const admin = await getAdminUser()
+async function requireGanttActor() {
+  const admin = await getGanttActor()
   if (!admin) throw new Error('Forbidden')
   return admin
 }
@@ -76,7 +76,7 @@ function sanitizeAssumptions(assumptions: unknown): GanttAssumption[] {
 }
 
 export async function createChart(kind: 'blank' | 'auckland'): Promise<{ id: string }> {
-  const admin = await requireAdmin()
+  const admin = await requireGanttActor()
   const isAuck = kind === 'auckland'
   const name = isAuck ? 'Auckland custom unit' : 'New project'
   const { data, error } = await supabaseAdmin
@@ -114,7 +114,7 @@ type ChartPatch = Partial<
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 export async function updateChart(id: string, patch: ChartPatch): Promise<void> {
-  await requireAdmin()
+  await requireGanttActor()
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.name !== undefined) update.name = String(patch.name).slice(0, 140) || 'Untitled project'
   if (patch.customer !== undefined) update.customer = patch.customer ? String(patch.customer).slice(0, 140) : null
@@ -142,7 +142,7 @@ export async function updateChart(id: string, patch: ChartPatch): Promise<void> 
  *  of the debounced autosave, which would otherwise log a baseline event on every
  *  keystroke). */
 export async function saveBaseline(id: string, baseline: GanttBaseline | null): Promise<void> {
-  const admin = await requireAdmin()
+  const admin = await requireGanttActor()
   const { error } = await supabaseAdmin
     .from('gantt_charts')
     .update({ baseline, updated_at: new Date().toISOString() })
@@ -159,7 +159,7 @@ export async function saveBaseline(id: string, baseline: GanttBaseline | null): 
 }
 
 export async function duplicateChart(id: string): Promise<{ id: string }> {
-  const admin = await requireAdmin()
+  const admin = await requireGanttActor()
   const { data: src } = await supabaseAdmin.from('gantt_charts').select('*').eq('id', id).single()
   if (!src) throw new Error('Chart not found.')
   // Normalize first so a legacy contingency (chart-level failure/reset_weeks never
@@ -200,7 +200,7 @@ export async function duplicateChart(id: string): Promise<{ id: string }> {
 }
 
 export async function deleteChart(id: string): Promise<void> {
-  const admin = await requireAdmin()
+  const admin = await requireGanttActor()
   const { error } = await supabaseAdmin.from('gantt_charts').delete().eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath('/admin/gantt')

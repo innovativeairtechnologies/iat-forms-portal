@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminAuth } from '@/lib/api-auth'
+import { requireEquipmentAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { logAudit } from '@/lib/audit'
 
 const FIELDS = [
@@ -13,7 +13,7 @@ const FIELDS = [
 
 export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const err = await requireAdminAuth();if (err) return err
+  const err = await requireEquipmentAuth();if (err) return err
   const { data, error } = await supabaseAdmin.from('equipment').select('*').eq('id', params.id).single()
   if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(data)
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const err = await requireAdminAuth();if (err) return err
+  const err = await requireEquipmentAuth();if (err) return err
 
   const body = await req.json().catch(() => ({}))
   const update: Record<string, unknown> = {}
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 // Permanently delete an equipment unit (build/ship milestones cascade via FK).
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const err = await requireAdminAuth();if (err) return err
+  const err = await requireEquipmentAuth();if (err) return err
 
   const { data: unit } = await supabaseAdmin
     .from('equipment')
@@ -62,7 +62,7 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
   const { error } = await supabaseAdmin.from('equipment').delete().eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const admin = await getAdminUser()
+  const admin = await getAdminSurfaceUser()
   await logAudit({
     actor: { id: admin?.user.id, name: admin?.displayName },
     action: 'equipment.delete',

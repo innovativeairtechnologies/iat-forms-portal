@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getTimeOffActor } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
 
@@ -7,7 +7,7 @@ import { logAudit } from '@/lib/audit'
 // request record only; it does NOT reverse any balance change from an approval.
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const admin = await getAdminUser()
+  const admin = await getTimeOffActor()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: reqRow } = await supabaseAdmin

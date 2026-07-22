@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdminAuth } from '@/lib/api-auth'
+import { requireEquipmentAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { DEFAULT_MILESTONE_STAGES, isMilestoneSequenceValid } from '@/lib/customer'
 
@@ -8,7 +8,7 @@ const VALID = ['pending', 'in_progress', 'complete']
 // Seed the default build/ship timeline for a unit (no-op if it already has one),
 // then return the current milestones.
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const err = await requireAdminAuth(); if (err) return err
+  const err = await requireEquipmentAuth(); if (err) return err
   const { id } = await ctx.params
 
   const { count } = await supabaseAdmin
@@ -37,7 +37,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
 // Advance / edit a single milestone. Marking complete auto-stamps occurred_at
 // unless an explicit date is provided.
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const err = await requireAdminAuth(); if (err) return err
+  const err = await requireEquipmentAuth(); if (err) return err
   const { id } = await ctx.params
   const { milestoneId, status, occurred_at, note } = await req.json()
   if (!milestoneId) return NextResponse.json({ error: 'milestoneId is required' }, { status: 400 })

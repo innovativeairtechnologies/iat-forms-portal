@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { requireAdminAuth } from '@/lib/api-auth'
-import { getAdminUser } from '@/lib/admin-auth'
+import { requireSubmissionsAuth } from '@/lib/api-auth'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { logAudit } from '@/lib/audit'
 
 function submitterName(data: Record<string, unknown> | null | undefined): string {
@@ -10,7 +10,7 @@ function submitterName(data: Record<string, unknown> | null | undefined): string
 
 export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const err = await requireAdminAuth();if (err) return err
+  const err = await requireSubmissionsAuth();if (err) return err
   const { data, error } = await supabaseAdmin
     .from('submissions')
     .select('*')
@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const err = await requireAdminAuth();if (err) return err
+  const err = await requireSubmissionsAuth();if (err) return err
   const body = await req.json()
 
   // Whitelist only the fields admins are allowed to update
@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
   // Audit status transitions only (mark-as-read toggles are noise).
   if (allowed.status !== undefined && prior && allowed.status !== prior.status) {
-    const admin = await getAdminUser()
+    const admin = await getAdminSurfaceUser()
     const who = submitterName(prior.data)
     await logAudit({
       actor: { id: admin?.user.id, name: admin?.displayName },
@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const err = await requireAdminAuth();if (err) return err
+  const err = await requireSubmissionsAuth();if (err) return err
 
   const { data: sub } = await supabaseAdmin
     .from('submissions')
@@ -83,7 +83,7 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
   const { error } = await supabaseAdmin.from('submissions').delete().eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const admin = await getAdminUser()
+  const admin = await getAdminSurfaceUser()
   await logAudit({
     actor: { id: admin?.user.id, name: admin?.displayName },
     action: 'submission.delete',

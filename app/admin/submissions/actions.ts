@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getSubmissionsActor } from '@/lib/admin-auth'
 import { logAudit } from '@/lib/audit'
 
 export async function markSubmissionRead(
@@ -10,7 +10,7 @@ export async function markSubmissionRead(
   opts?: { audit?: boolean },
 ): Promise<void> {
   // Service-role write — guard the caller explicitly (matches updateSubmissionStatus).
-  const admin = await getAdminUser()
+  const admin = await getSubmissionsActor()
   if (!admin) throw new Error('Forbidden')
 
   // Only snapshot/log when this is a *deliberate* mark-read (the table's "Mark as
@@ -49,7 +49,7 @@ export async function updateSubmissionStatus(
 ): Promise<void> {
   // These actions run with the service-role key (bypasses RLS), so guard the
   // caller explicitly rather than relying only on middleware gating the path.
-  const admin = await getAdminUser()
+  const admin = await getSubmissionsActor()
   if (!admin) throw new Error('Forbidden')
 
   // Snapshot prior status for the audit trail before overwriting.

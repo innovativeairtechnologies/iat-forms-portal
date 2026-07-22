@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getTimeOffActor } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendRequestDecisionToEmployee } from '@/lib/resend-pto'
 import { logAudit } from '@/lib/audit'
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const admin = await getAdminUser()
+  const admin = await getTimeOffActor()
   if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -2,6 +2,23 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Roles: scoped write access for the coherent set
+
+Scoped roles were view-only on most surfaces — a role could open a page but every action 403'd. This
+widens WRITE access to match page access, one matrix-backed named guard per surface (like Deals /
+Tickets), so it stays revocable from `/admin/permissions` and widening one surface can't silently
+widen another:
+- **Engineering** can now work the submissions inbox (mark-read, status) — `requireSubmissionsAuth` /
+  `getSubmissionsActor`.
+- **Sales / Engineering / Production-manager** can maintain the equipment registry (create, edit,
+  delete, milestones) — `requireEquipmentAuth`.
+- **Sales / Engineering / Production-manager** can edit Gantt timelines — `getGanttActor`.
+- **HR** can approve / deny / delete time-off requests — `getTimeOffActor`.
+
+Field whitelists at each write site are unchanged (widening the gate doesn't widen the columns), and
+sensitive writes stay admin-only (role assignment, the permissions matrix, ticket deletes, form
+approval). Audit attribution now uses the surface user, so scoped-role actions log who made them.
+
 ## 2026-07-22 — Tickets: "Draft response with Jerry"
 
 On a ticket, admins get a **Draft response with Jerry** button that generates a customer-facing first
