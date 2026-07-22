@@ -2,6 +2,25 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Hardening: centralized email senders, US Rotors order-API guard
+
+**Email senders centralized** (`lib/email-from.ts`). Every Resend sender now reads from a single
+`EMAIL_FROM` map that defaults to the shared `onboarding@resend.dev` sandbox and flips to the real
+`dehumidifiers.com` addresses purely by env var — no code deploy — once the domain is verified. Set
+`RESEND_FROM_SUPPORT` (support/ticket/troubleshooting mail), `RESEND_FROM_PORTAL` (portal/system
+mail; the legacy `RESEND_FROM` is still honored as its fallback), and `RESEND_FROM_FORMS` (form
+notifications) in Vercel when the domain is live. Ticket notifications also gained an optional
+`SUPPORT_NOTIFICATION_EMAIL` (comma-separated) CC list so the support desk / PM can be added without
+a code change. Behavior is unchanged until those vars are set.
+
+**US Rotors order API hardened.** `POST /api/us-rotors/orders` previously gated only on "is someone
+logged in," so any authenticated principal — including an external customer calling the API directly
+— could insert an order even though the feature's nav is hidden and the GET/PATCH handlers already
+role-gate. The POST now uses the same `requireUsRotorsActor()` guard (rejects anonymous and
+`customer` roles); the employee order form is unaffected.
+
+Docs: README company name corrected to Innovative Air Technologies.
+
 ## 2026-07-21 — Sales pivot: DryWare is the source of truth; Deals→CRM, Projected Sales→Performance
 
 The sales pipeline stops being a monday.com spreadsheet mirror and becomes a **materialized view

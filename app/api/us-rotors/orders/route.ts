@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { createSupabaseServer } from '@/lib/supabase-server'
 import { requireUsRotorsActor } from '@/lib/api-auth'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -8,9 +7,11 @@ export async function POST(req: NextRequest) {
   const limited = await rateLimit(req, { name: 'us_rotors_orders', max: 20, windowSeconds: 600 })
   if (limited) return limited
 
-  const supabase = await createSupabaseServer()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Create-authorization must match read/update: reject anon (401) and external
+  // customers (403), same as GET/PATCH. Writes go through supabaseAdmin (RLS
+  // bypassed), so this guard is the only gate on who can submit an order.
+  const actor = await requireUsRotorsActor()
+  if (actor instanceof NextResponse) return actor
 
   try {
     const body = await req.json()
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
         config:        body.config || 'A',
         notes:         body.notes || null,
         status:        'pending',
-        submitted_by:  user.id,
+        submitted_by:  actor.userId,
       })
 
     if (error) {

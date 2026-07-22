@@ -1,6 +1,6 @@
 # IAT Forms Portal
 
-Internal forms portal for Industrial Air Technology. A Typeform-inspired experience replacing Jotform.
+Internal forms portal for Innovative Air Technologies. A Typeform-inspired experience replacing Jotform.
 
 ## Tech Stack
 
