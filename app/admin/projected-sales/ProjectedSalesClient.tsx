@@ -376,7 +376,7 @@ export default function ProjectedSalesClient({
 
                           {/* Confidence meter */}
                           <div className="flex items-center gap-2.5">
-                            <span className="flex-1 h-1.5 min-w-[44px] rounded-full bg-surface-strong overflow-hidden">
+                            <span className="w-14 h-1 rounded-full bg-surface-strong overflow-hidden">
                               <span className={cn('block h-full rounded-full', TONE[band].solid)} style={{ width: `${Math.max(2, conf)}%` }} />
                             </span>
                             <span className="text-[12px] tabular-nums text-ink-secondary w-8 text-right">{conf}%</span>
@@ -394,7 +394,7 @@ export default function ProjectedSalesClient({
                           {/* Weighted + magnitude bar */}
                           <div className="justify-self-end text-right w-full min-w-0">
                             <div className="tabular-nums text-[12.5px] text-ink-secondary">{fmtUsd(p.weighted_total)}</div>
-                            <div className="h-1 mt-1 rounded-full bg-surface-strong overflow-hidden">
+                            <div className="h-1 w-14 ml-auto mt-1 rounded-full bg-surface-strong overflow-hidden">
                               <div className="h-full rounded-full bg-brand" style={{ width: `${wPct}%` }} />
                             </div>
                           </div>

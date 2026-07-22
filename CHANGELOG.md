@@ -16,9 +16,9 @@ list views:
   and right edge, so it reads as one aligned unit instead of scattered rows.
 - **Life, with meaning** — colored salesperson avatars, project-type tone pills, a
   confidence meter (emerald ≥70 / amber ≥45 / grey below), close-date urgency (amber
-  within 30 days, rose if overdue), and a weighted-magnitude bar. Plus search, a
-  rep-filter dropdown, and click-to-sort columns (Project / Confidence / Est. close /
-  Quote / Weighted).
+  within 30 days, rose if overdue), and a weighted-magnitude bar. Both meters are kept
+  short (`w-14`, `h-1`) so they don't crowd the row. Plus search, a rep-filter dropdown,
+  and click-to-sort columns (Project / Confidence / Est. close / Quote / Weighted).
 - **Fixed** two column-alignment bugs so the header labels sit exactly over their data:
   (1) the table's `overflow-x:auto` wrapper silently forced a vertical scrollbar that pulled
   columns ~15px off the right gutter — pinned with `overflow-y:hidden`; (2) the row
