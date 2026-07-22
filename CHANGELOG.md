@@ -2,6 +2,27 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Performance list: pagination + a livelier, unified sheet
+
+The Performance list (`/admin/projected-sales`, ~340 projects) ran on forever with no
+pagination and read as a flat wall of grey text. Rebuilt it as the **template** for our
+list views:
+
+- **Pagination** — a page-size selector (10 / 25 / 50 / 100), windowed page numbers, and
+  a "Showing X–Y of Z" line. Client-side over the already-loaded snapshot (no API change).
+- **One unified sheet** — the stat row, toolbar, and list now share a single white
+  surface (`bg-surface`), separated by hairlines, with rows living directly on it — no
+  more header-band → canvas-gap → white-card layering. The top bar stays the one distinct
+  header band.
+- **Life, with meaning** — colored salesperson avatars, project-type tone pills, a
+  confidence meter (emerald ≥70 / amber ≥45 / grey below), close-date urgency (amber
+  within 30 days, rose if overdue), and a weighted-magnitude bar. Plus search, a
+  rep-filter dropdown, and click-to-sort columns (Project / Confidence / Est. close /
+  Quote / Weighted).
+
+Read-only page, so no selection checkboxes (they'd do nothing). This is the pattern we'll
+roll out to the other admin lists next. See `docs/list-views.md`.
+
 ## 2026-07-22 — Fix: weekly accrual no longer touches customer accounts
 
 The weekly PTO/sick accrual cron (`runWeeklyAccrual`) fetched all active `employees` and — because every
