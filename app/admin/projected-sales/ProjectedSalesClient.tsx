@@ -336,7 +336,10 @@ export default function ProjectedSalesClient({
                       <Fragment key={p.id}>
                         <button
                           onClick={() => setExpandedId(expanded ? null : p.id)}
-                          className={cn('grid', COLS, 'items-center gap-3 px-5 min-h-[56px] py-2 text-left border-b border-hairline-soft hover:bg-surface-soft transition-colors group')}
+                          // w-full is required: a <button> shrink-wraps to its content instead
+                          // of filling the row, so without it the grid resolves narrower than
+                          // the header and every column drifts left (worse on wider screens).
+                          className={cn('grid w-full', COLS, 'items-center gap-3 px-5 min-h-[56px] py-2 text-left border-b border-hairline-soft hover:bg-surface-soft transition-colors group')}
                         >
                           {/* Project */}
                           <div className="flex items-center gap-2.5 min-w-0">

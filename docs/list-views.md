@@ -43,6 +43,11 @@ hit:
   `overflow-y` to `auto`, which reserves a ~15px vertical scrollbar and pulls the columns
   off the right gutter. `overflow-y:hidden` fixes it (the table's height is natural; the
   page is the scroller).
+- **Rows are `<button>`s → add `w-full`.** A `<button>` with `display:grid` shrink-wraps to
+  its content instead of filling the row, so its grid resolves narrower than the header
+  `<div>` and every column drifts left (up to ~470px, and worse on wider screens). `w-full`
+  makes it fill and align. (Divs stretch by default, which is why a div-based mockup won't
+  reproduce this — test with the real element.)
 - **The card does NOT use `overflow-hidden`** — that would clip the rep-filter dropdown.
   Rounded corners are fine because the top (header) and bottom (pagination) bands have no
   background fill, so the card's rounded `bg-surface` shows through.

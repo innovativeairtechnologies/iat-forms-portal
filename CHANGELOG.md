@@ -19,9 +19,11 @@ list views:
   within 30 days, rose if overdue), and a weighted-magnitude bar. Plus search, a
   rep-filter dropdown, and click-to-sort columns (Project / Confidence / Est. close /
   Quote / Weighted).
-- **Fixed** a subtle alignment bug: the table's `overflow-x:auto` wrapper silently forced a
-  vertical scrollbar that pulled the columns ~15px off the right gutter. Pinned with
-  `overflow-y:hidden` so the table lines up with the header and footer.
+- **Fixed** two column-alignment bugs so the header labels sit exactly over their data:
+  (1) the table's `overflow-x:auto` wrapper silently forced a vertical scrollbar that pulled
+  columns ~15px off the right gutter — pinned with `overflow-y:hidden`; (2) the row
+  `<button>`s shrink-wrapped to their content instead of filling the row (columns drifted up
+  to ~470px left, worse on wide screens) — fixed with `w-full`.
 
 Read-only page, so no selection checkboxes (they'd do nothing). This is the pattern we'll
 roll out to the other admin lists next. See `docs/list-views.md`.
