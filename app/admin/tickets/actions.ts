@@ -23,9 +23,18 @@ export async function updateTicket(
     .eq('id', ticketId)
     .single()
 
+  // Whitelist the fields this action may set — never forward the whole client
+  // object, or a tickets-scoped caller could set customer_email, ids, brand, etc.
+  const patch: Record<string, unknown> = {
+    status: data.status,
+    priority: data.priority,
+    owner_id: data.owner_id,
+  }
+  if ('resolved_reason' in data) patch.resolved_reason = data.resolved_reason ?? null
+
   const { error } = await supabaseAdmin
     .from('tickets')
-    .update(data)
+    .update(patch)
     .eq('id', ticketId)
   if (!error && prior) {
     revalidatePath('/admin/tickets')

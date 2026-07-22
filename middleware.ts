@@ -159,10 +159,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── /tools/* (internal static HTML tools — staff only) ─────────────────────
-  // public/tools/*.html are self-contained internal calculators/generators.
-  // Gate them behind any authenticated session (employee OR admin); anon → login.
+  // public/tools/*.html are self-contained internal calculators/generators
+  // (e.g. the confidential US Rotors pricing calculator). Staff only: anon → login,
+  // customers → /customer (mirrors the /tool-crib block above).
   if (pathname.startsWith('/tools')) {
     if (!user) return toLogin()
+    if (role === 'customer') return redirectTo(new URL('/customer', request.url))
     return supabaseResponse
   }
 

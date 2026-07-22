@@ -2,6 +2,27 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Hardening pass 2: access-control fixes, shared AI client, plainer Gantt copy, backups
+
+**Security fixes.** `/tools/*` now bounces customers to `/customer` (a customer session could open the
+internal US Rotors pricing calculator). `updateTicket` writes an explicit field whitelist
+(status/priority/owner_id/resolved_reason) instead of forwarding the whole client object. The employee
+detail page redirects customer ids to `/admin/customers`, and the role-change API refuses customer
+targets — together they close a path that coerced a customer into a staff role and could lock them out
+of their portal. `GET /api/employees` (an unused route) now requires a non-customer role — it had handed
+the staff name/email/phone roster to any signed-in session. `scripts/check-perm-seed.mjs` hardened to
+catch schema-qualified INSERTs, block-comment INSERTs, and DELETE/TRUNCATE/UPDATE.
+
+**Shared Anthropic client.** All 10 server-side AI call sites now import one `lib/anthropic.ts` instead
+of each constructing an identical client (behavior unchanged; model/tokens/system stay per-call).
+
+**Gantt wording.** Plainer P80 copy on the print sheet, confidence panel, and editor — quote the
+"80% confident by" date, never the middle plan date, and confirm with the project lead before committing
+to a customer. Advisory only (the feature is already admin-only).
+
+**Backups.** New `scripts/backup-db.mjs` (off-Supabase logical dump to a gitignored `backups/`) plus
+`docs/backup-restore.md` covering the restore test and enabling Supabase managed backups + PITR.
+
 ## 2026-07-22 — Hardening: centralized email senders, US Rotors order-API guard
 
 **Email senders centralized** (`lib/email-from.ts`). Every Resend sender now reads from a single

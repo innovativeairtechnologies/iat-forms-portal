@@ -51,16 +51,20 @@ if (Object.keys(code).length === 0) fail('Parsed DEFAULT_ROLE_PERMS but found no
 const seed = {}
 for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
   const sql = readFileSync(join(MIGRATIONS, file), 'utf8')
-  const bare = sql.replace(/--[^\n]*/g, '') // strip comments (the docs discuss these rows)
+  // Strip block + line comments so example/commented-out rows in the docs don't
+  // get parsed as real seeds.
+  const bare = sql.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '')
 
-  if (/DELETE\s+FROM\s+role_permissions/i.test(bare)) {
+  // Additive-only assumption: any destructive DML (schema-qualified or not) would
+  // make the result wrong — bail loudly.
+  if (/(?:DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|UPDATE)\s+(?:public\.)?role_permissions/i.test(bare)) {
     fail(
-      `${file} DELETEs from role_permissions.\n` +
+      `${file} DELETEs/TRUNCATEs/UPDATEs role_permissions.\n` +
       `This checker assumes seeds are additive-only, so its result would be wrong.\n` +
-      `Teach it about deletions before relying on it again.`
+      `Teach it about destructive DML before relying on it again.`
     )
   }
-  for (const ins of bare.matchAll(/INSERT\s+INTO\s+role_permissions[^;]*?VALUES([\s\S]*?);/gi)) {
+  for (const ins of bare.matchAll(/INSERT\s+INTO\s+(?:public\.)?role_permissions[^;]*?VALUES([\s\S]*?);/gi)) {
     for (const [, role, perm] of ins[1].matchAll(/\(\s*'(\w+)'\s*,\s*'(\w+)'\s*\)/g)) {
       ;(seed[role] ??= new Set()).add(perm)
     }

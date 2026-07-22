@@ -21,6 +21,13 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     supabaseAdmin.from('employees').select('name, email').eq('id', params.id).single(),
   ])
 
+  // Refuse to re-role a customer account: the check above only validates the
+  // *incoming* role, so without this a customer id could be promoted into staff
+  // (or a customer locked out of their portal by being flipped to a staff role).
+  if (normalizeRole(prior?.role) === 'customer') {
+    return NextResponse.json({ error: 'Cannot change the role of a customer account' }, { status: 400 })
+  }
+
   // Update profiles table (source of truth for auth)
   const { error: profileErr } = await supabaseAdmin
     .from('profiles')
