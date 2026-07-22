@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { ADMIN_SECTIONS, hasPermission, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
+import { ADMIN_SECTIONS, hasPermission, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole, type Perm } from '@/lib/roles'
 import { getPermMatrix } from '@/lib/permissions'
 import { Card, CardHead } from '@/components/admin/detail-ui'
 import {
   ArrowRight, Ticket, Boxes, Building2, Clock, Inbox,
-  Calendar, Users, FileText, Presentation, CalendarRange, ChevronRight, DollarSign,
+  Calendar, Users, FileText, Presentation, CalendarRange, ChevronRight, DollarSign, CalendarClock,
 } from 'lucide-react'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -14,126 +14,172 @@ import {
    production_manager) — the executive dashboard in app/admin/page.tsx stays
    admin-only; this is the department-scoped landing page each role now gets
    instead of being redirected straight to their first permitted section.
-   Real counts from the same tables the exec dashboard reads, filtered to what
-   that role can actually see (`hasPermission`), not a stripped-down mock.
+
+   Cards are gated by PERMISSION, not hardcoded per role: a card shows only when
+   the role holds its perm (getPermMatrix, the same source nav + middleware use),
+   so granting/revoking a perm in /admin/permissions reshapes the dashboard with
+   no code change. Real counts from the same tables the exec dashboard reads.
    ──────────────────────────────────────────────────────────────────────────── */
 
 type StatCardDef = { label: string; value: number; icon: React.ReactNode; color: string; href?: string }
 type RecentRow = { id: string; primary: string; secondary: string; href: string; tone?: 'amber' | 'emerald' | 'rose' | 'zinc' }
+type RecentList = { title: string; rows: RecentRow[]; emptyLabel: string; viewAllHref?: string }
+
+const HEAD = { count: 'exact' as const, head: true }
+
+// Declarative stat-card catalog. Each entry is gated by a perm and builds one or
+// more cards. Order here = display order. Add a card = add an entry (+ its perm).
+const STAT_WIDGETS: { perm: Perm; build: () => Promise<StatCardDef[]> }[] = [
+  {
+    perm: 'tickets',
+    build: async () => {
+      const [{ count: open }, { count: prog }] = await Promise.all([
+        supabaseAdmin.from('tickets').select('*', HEAD).eq('status', 'open'),
+        supabaseAdmin.from('tickets').select('*', HEAD).eq('status', 'in_progress'),
+      ])
+      return [
+        { label: 'Open Tickets', value: open ?? 0, icon: <Ticket size={15} />, color: '#f43f5e', href: '/admin/tickets' },
+        { label: 'In Progress', value: prog ?? 0, icon: <Clock size={15} />, color: '#f59e0b', href: '/admin/tickets' },
+      ]
+    },
+  },
+  {
+    perm: 'submissions',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('submissions').select('*', HEAD).eq('is_read', false)
+      return [{ label: 'Unread Submissions', value: count ?? 0, icon: <Inbox size={15} />, color: '#f59e0b', href: '/admin/submissions?is_read=false' }]
+    },
+  },
+  {
+    perm: 'deals',
+    build: async () => {
+      // Deal follow-ups due today or overdue and still open — the in-app rep nudge.
+      const today = new Date().toISOString().slice(0, 10)
+      const { count } = await supabaseAdmin.from('deal_follow_ups').select('*', HEAD).eq('done', false).lte('due_date', today)
+      return [{ label: 'Follow-ups Due', value: count ?? 0, icon: <CalendarClock size={15} />, color: '#f59e0b', href: '/admin/deals' }]
+    },
+  },
+  {
+    perm: 'customers',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('customers').select('*', HEAD)
+      return [{ label: 'Customers', value: count ?? 0, icon: <Building2 size={15} />, color: '#3b82f6', href: '/admin/customers' }]
+    },
+  },
+  {
+    perm: 'equipment',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('equipment').select('*', HEAD)
+      return [{ label: 'Equipment Units', value: count ?? 0, icon: <Boxes size={15} />, color: '#10b981', href: '/admin/equipment' }]
+    },
+  },
+  {
+    perm: 'pto',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('time_off_requests').select('*', HEAD).eq('type', 'pto').eq('status', 'pending')
+      return [{ label: 'PTO Pending', value: count ?? 0, icon: <Calendar size={15} />, color: '#f59e0b', href: '/admin/requests/pto' }]
+    },
+  },
+  {
+    perm: 'sick',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('time_off_requests').select('*', HEAD).eq('type', 'sick').eq('status', 'pending')
+      return [{ label: 'Sick Pending', value: count ?? 0, icon: <Clock size={15} />, color: '#f59e0b', href: '/admin/requests/sick' }]
+    },
+  },
+  {
+    perm: 'employees',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('employees').select('*', HEAD).eq('is_active', true)
+      return [{ label: 'Active Employees', value: count ?? 0, icon: <Users size={15} />, color: '#3b82f6', href: '/admin/employees' }]
+    },
+  },
+  {
+    perm: 'forms',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('forms').select('*', HEAD).eq('is_active', true)
+      return [{ label: 'Active Forms', value: count ?? 0, icon: <FileText size={15} />, color: '#10b981', href: '/admin/forms' }]
+    },
+  },
+  {
+    perm: 'presentations',
+    build: async () => {
+      const { count } = await supabaseAdmin.from('presentations').select('*', HEAD)
+      return [{ label: 'Presentations', value: count ?? 0, icon: <Presentation size={15} />, color: '#8b5cf6', href: '/admin/presentations' }]
+    },
+  },
+]
+
+// Recent-activity list. The role gets the FIRST one (by this priority) it can see.
+const RECENT_BUILDERS: { perm: Perm; build: () => Promise<RecentList> }[] = [
+  {
+    perm: 'tickets',
+    build: async () => {
+      const { data } = await supabaseAdmin.from('tickets').select('id,ticket_number,customer_name,status,created_at').order('created_at', { ascending: false }).limit(6)
+      return {
+        title: 'Recent Tickets', viewAllHref: '/admin/tickets', emptyLabel: 'No tickets yet',
+        rows: (data ?? []).map((t) => ({
+          id: t.id, primary: t.customer_name || 'Unknown', secondary: `${t.ticket_number} · ${String(t.status).replace('_', ' ')}`,
+          href: `/admin/tickets/${t.id}`, tone: t.status === 'open' ? 'rose' : t.status === 'in_progress' ? 'amber' : 'emerald',
+        })),
+      }
+    },
+  },
+  {
+    perm: 'submissions',
+    build: async () => {
+      const { data } = await supabaseAdmin.from('submissions').select('id,form_title,submitted_at,is_read').order('submitted_at', { ascending: false }).limit(6)
+      return {
+        title: 'Recent Submissions', viewAllHref: '/admin/submissions', emptyLabel: 'No submissions yet',
+        rows: (data ?? []).map((s) => ({
+          id: s.id, primary: s.form_title || 'Form submission', secondary: s.is_read ? 'Read' : 'Unread',
+          href: `/admin/submissions/${s.id}`, tone: s.is_read ? 'zinc' : 'emerald',
+        })),
+      }
+    },
+  },
+  {
+    perm: 'pto',
+    build: async () => {
+      const { data } = await supabaseAdmin.from('time_off_requests').select('id,type,status,start_date,end_date,created_at,employee:employees(name)').order('created_at', { ascending: false }).limit(6)
+      return {
+        title: 'Recent Time Off Requests', viewAllHref: '/admin/requests/pto', emptyLabel: 'No requests yet',
+        rows: (data ?? []).map((r) => {
+          const employee = Array.isArray(r.employee) ? r.employee[0] : r.employee
+          return {
+            id: r.id, primary: employee?.name || 'Unknown', secondary: `${r.type === 'pto' ? 'PTO' : 'Sick'} · ${r.status}`,
+            href: `/admin/requests/${r.type}`, tone: r.status === 'pending' ? 'amber' : r.status === 'approved' ? 'emerald' : 'rose',
+          }
+        }),
+      }
+    },
+  },
+  {
+    perm: 'presentations',
+    build: async () => {
+      const { data } = await supabaseAdmin.from('presentations').select('id,title,status,updated_at').neq('status', 'archived').order('updated_at', { ascending: false }).limit(6)
+      return {
+        title: 'Recent Presentations', viewAllHref: '/admin/presentations', emptyLabel: 'No presentations yet',
+        rows: (data ?? []).map((p) => ({
+          id: p.id, primary: p.title || 'Untitled deck', secondary: p.status === 'saved' ? 'Saved' : 'In progress',
+          href: `/admin/presentations/${p.id}`, tone: p.status === 'saved' ? 'emerald' : 'amber',
+        })),
+      }
+    },
+  },
+]
 
 async function getRoleData(role: Exclude<StaffRole, 'admin' | 'production'>) {
-  const stats: StatCardDef[] = []
-  const recent: { title: string; rows: RecentRow[]; emptyLabel: string; viewAllHref?: string } = { title: '', rows: [], emptyLabel: '' }
-  const head = { count: 'exact' as const, head: true }
+  const matrix = await getPermMatrix()
+  const can = (perm: Perm) => hasPermission(role, perm, matrix)
 
-  if (role === 'sales') {
-    const [{ count: openTickets }, { count: inProgress }, { count: customers }, { count: equipment }, { data: recentTickets }] = await Promise.all([
-      supabaseAdmin.from('tickets').select('*', head).eq('status', 'open'),
-      supabaseAdmin.from('tickets').select('*', head).eq('status', 'in_progress'),
-      supabaseAdmin.from('customers').select('*', head),
-      supabaseAdmin.from('equipment').select('*', head),
-      supabaseAdmin.from('tickets').select('id,ticket_number,customer_name,status,created_at').order('created_at', { ascending: false }).limit(6),
-    ])
-    stats.push(
-      { label: 'Open Tickets', value: openTickets ?? 0, icon: <Ticket size={15} />, color: '#f43f5e', href: '/admin/tickets' },
-      { label: 'In Progress', value: inProgress ?? 0, icon: <Clock size={15} />, color: '#f59e0b', href: '/admin/tickets' },
-      { label: 'Customers', value: customers ?? 0, icon: <Building2 size={15} />, color: '#3b82f6', href: '/admin/customers' },
-      { label: 'Equipment Units', value: equipment ?? 0, icon: <Boxes size={15} />, color: '#10b981', href: '/admin/equipment' },
-    )
-    recent.title = 'Recent Tickets'
-    recent.viewAllHref = '/admin/tickets'
-    recent.emptyLabel = 'No tickets yet'
-    recent.rows = (recentTickets ?? []).map((t) => ({
-      id: t.id, primary: t.customer_name || 'Unknown', secondary: `${t.ticket_number} · ${String(t.status).replace('_', ' ')}`,
-      href: `/admin/tickets/${t.id}`, tone: t.status === 'open' ? 'rose' : t.status === 'in_progress' ? 'amber' : 'emerald',
-    }))
-  }
+  // Stats: every catalog widget whose perm the role holds (catalog order), capped.
+  const groups = await Promise.all(STAT_WIDGETS.filter((w) => can(w.perm)).map((w) => w.build()))
+  const stats = groups.flat().slice(0, 8)
 
-  if (role === 'hr') {
-    const [{ count: ptoPending }, { count: sickPending }, { count: employees }, { count: activeForms }, { data: recentRequests }] = await Promise.all([
-      supabaseAdmin.from('time_off_requests').select('*', head).eq('type', 'pto').eq('status', 'pending'),
-      supabaseAdmin.from('time_off_requests').select('*', head).eq('type', 'sick').eq('status', 'pending'),
-      supabaseAdmin.from('employees').select('*', head).eq('is_active', true),
-      supabaseAdmin.from('forms').select('*', head).eq('is_active', true),
-      supabaseAdmin.from('time_off_requests').select('id,type,status,start_date,end_date,created_at,employee:employees(name)')
-        .order('created_at', { ascending: false }).limit(6),
-    ])
-    stats.push(
-      { label: 'PTO Pending', value: ptoPending ?? 0, icon: <Calendar size={15} />, color: '#f59e0b', href: '/admin/requests/pto' },
-      { label: 'Sick Pending', value: sickPending ?? 0, icon: <Clock size={15} />, color: '#f59e0b', href: '/admin/requests/sick' },
-      { label: 'Active Employees', value: employees ?? 0, icon: <Users size={15} />, color: '#3b82f6', href: '/admin/employees' },
-      { label: 'Active Forms', value: activeForms ?? 0, icon: <FileText size={15} />, color: '#10b981', href: '/admin/forms' },
-    )
-    recent.title = 'Recent Time Off Requests'
-    recent.viewAllHref = '/admin/requests/pto'
-    recent.emptyLabel = 'No requests yet'
-    recent.rows = (recentRequests ?? []).map((r) => {
-      const employee = Array.isArray(r.employee) ? r.employee[0] : r.employee
-      return {
-        id: r.id, primary: employee?.name || 'Unknown', secondary: `${r.type === 'pto' ? 'PTO' : 'Sick'} · ${r.status}`,
-        href: `/admin/requests/${r.type}`, tone: r.status === 'pending' ? 'amber' : r.status === 'approved' ? 'emerald' : 'rose',
-      }
-    })
-  }
-
-  if (role === 'marketing') {
-    const [{ count: total }, { data: recentDecks }] = await Promise.all([
-      supabaseAdmin.from('presentations').select('*', head),
-      supabaseAdmin.from('presentations').select('id,title,status,updated_at').neq('status', 'archived').order('updated_at', { ascending: false }).limit(6),
-    ])
-    stats.push(
-      { label: 'Presentations', value: total ?? 0, icon: <Presentation size={15} />, color: '#8b5cf6', href: '/admin/presentations' },
-    )
-    recent.title = 'Recent Presentations'
-    recent.viewAllHref = '/admin/presentations'
-    recent.emptyLabel = 'No presentations yet'
-    recent.rows = (recentDecks ?? []).map((p) => ({
-      id: p.id, primary: p.title || 'Untitled deck', secondary: p.status === 'saved' ? 'Saved' : 'In progress',
-      href: `/admin/presentations/${p.id}`, tone: p.status === 'saved' ? 'emerald' : 'amber',
-    }))
-  }
-
-  if (role === 'engineering') {
-    const [{ count: unread }, { count: openTickets }, { count: equipment }, { data: recentSubs }] = await Promise.all([
-      supabaseAdmin.from('submissions').select('*', head).eq('is_read', false),
-      supabaseAdmin.from('tickets').select('*', head).eq('status', 'open'),
-      supabaseAdmin.from('equipment').select('*', head),
-      supabaseAdmin.from('submissions').select('id,form_title,submitted_at,is_read').order('submitted_at', { ascending: false }).limit(6),
-    ])
-    stats.push(
-      { label: 'Unread Submissions', value: unread ?? 0, icon: <Inbox size={15} />, color: '#f59e0b', href: '/admin/submissions?is_read=false' },
-      { label: 'Open Tickets', value: openTickets ?? 0, icon: <Ticket size={15} />, color: '#f43f5e', href: '/admin/tickets' },
-      { label: 'Equipment Units', value: equipment ?? 0, icon: <Boxes size={15} />, color: '#10b981', href: '/admin/equipment' },
-    )
-    recent.title = 'Recent Submissions'
-    recent.viewAllHref = '/admin/submissions'
-    recent.emptyLabel = 'No submissions yet'
-    recent.rows = (recentSubs ?? []).map((s) => ({
-      id: s.id, primary: s.form_title || 'Form submission', secondary: s.is_read ? 'Read' : 'Unread',
-      href: `/admin/submissions/${s.id}`, tone: s.is_read ? 'zinc' : 'emerald',
-    }))
-  }
-
-  if (role === 'production_manager') {
-    const [{ count: openTickets }, { count: inProgress }, { count: equipment }, { data: recentTickets }] = await Promise.all([
-      supabaseAdmin.from('tickets').select('*', head).eq('status', 'open'),
-      supabaseAdmin.from('tickets').select('*', head).eq('status', 'in_progress'),
-      supabaseAdmin.from('equipment').select('*', head),
-      supabaseAdmin.from('tickets').select('id,ticket_number,customer_name,status,created_at').order('created_at', { ascending: false }).limit(6),
-    ])
-    stats.push(
-      { label: 'Open Tickets', value: openTickets ?? 0, icon: <Ticket size={15} />, color: '#f43f5e', href: '/admin/tickets' },
-      { label: 'In Progress', value: inProgress ?? 0, icon: <Clock size={15} />, color: '#f59e0b', href: '/admin/tickets' },
-      { label: 'Equipment Units', value: equipment ?? 0, icon: <Boxes size={15} />, color: '#10b981', href: '/admin/equipment' },
-    )
-    recent.title = 'Recent Tickets'
-    recent.viewAllHref = '/admin/tickets'
-    recent.emptyLabel = 'No tickets yet'
-    recent.rows = (recentTickets ?? []).map((t) => ({
-      id: t.id, primary: t.customer_name || 'Unknown', secondary: `${t.ticket_number} · ${String(t.status).replace('_', ' ')}`,
-      href: `/admin/tickets/${t.id}`, tone: t.status === 'open' ? 'rose' : t.status === 'in_progress' ? 'amber' : 'emerald',
-    }))
-  }
+  // Recent: the first list (by priority) the role can see.
+  const builder = RECENT_BUILDERS.find((b) => can(b.perm))
+  const recent: RecentList = builder ? await builder.build() : { title: '', rows: [], emptyLabel: '' }
 
   return { stats, recent }
 }

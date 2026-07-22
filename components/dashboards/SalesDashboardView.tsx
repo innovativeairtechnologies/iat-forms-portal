@@ -29,7 +29,7 @@ import {
    tracked yet" state. Pure/deterministic given (deals, now).
    ──────────────────────────────────────────────────────────────────────────── */
 
-export default function SalesDashboardView({ deals, displayName }: { deals: Deal[]; displayName: string }) {
+export default function SalesDashboardView({ deals, displayName, followUpsDue = 0 }: { deals: Deal[]; displayName: string; followUpsDue?: number }) {
   const now = new Date()
 
   const summary = computeSummary(deals)
@@ -115,6 +115,11 @@ export default function SalesDashboardView({ deals, displayName }: { deals: Deal
             </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {followUpsDue > 0 && (
+              <Link href="/admin/deals" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors">
+                <CalendarClock size={14} /> {followUpsDue} follow-up{followUpsDue === 1 ? '' : 's'} due
+              </Link>
+            )}
             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live
             </span>

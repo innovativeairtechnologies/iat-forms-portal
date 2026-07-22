@@ -424,9 +424,12 @@ export default async function AdminDashboard() {
   // not the stripped-down DepartmentDashboard. Admin + Engineering + the other
   // scoped roles keep their current dashboards until each gets its own.
   if (surfaceUser && surfaceUser.role === 'sales') {
-    const { data: deals } = await supabaseAdmin
-      .from('deals').select('*').order('created_at', { ascending: false })
-    return <SalesDashboardView deals={(deals ?? []) as Deal[]} displayName={surfaceUser.displayName} />
+    const today = new Date().toISOString().slice(0, 10)
+    const [{ data: deals }, { count: followUpsDue }] = await Promise.all([
+      supabaseAdmin.from('deals').select('*').order('created_at', { ascending: false }),
+      supabaseAdmin.from('deal_follow_ups').select('*', { count: 'exact', head: true }).eq('done', false).lte('due_date', today),
+    ])
+    return <SalesDashboardView deals={(deals ?? []) as Deal[]} displayName={surfaceUser.displayName} followUpsDue={followUpsDue ?? 0} />
   }
   if (surfaceUser && surfaceUser.role !== 'admin') {
     // isAdminSurfaceRole (inside getAdminSurfaceUser) already ruled out

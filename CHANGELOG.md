@@ -2,6 +2,15 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Dashboards: cards gated by permission; sales follow-ups nudge
+
+The scoped-role dashboard (`DepartmentDashboard`) now picks its stat cards from a declarative catalog
+gated by permission — a role sees a card only if it holds that perm, so granting/revoking in
+`/admin/permissions` reshapes the dashboard with no code change (the recent-activity list follows the
+same rule). The Sales command center gains a **"N follow-ups due"** header badge (deal follow-ups due
+today or overdue, linking to the deals calendar) — the in-app half of the rep-reminder feature, which
+needs no email/domain.
+
 ## 2026-07-22 — Roles: scoped write access for the coherent set
 
 Scoped roles were view-only on most surfaces — a role could open a page but every action 403'd. This
