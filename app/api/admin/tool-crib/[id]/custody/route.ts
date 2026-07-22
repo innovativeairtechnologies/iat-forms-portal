@@ -26,10 +26,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const action = body?.action
   const reason = typeof body?.reason === 'string' ? body.reason.trim() : ''
 
-  if (action !== 'force_check_in' && action !== 'transfer') {
+  if (action !== 'force_check_in' && action !== 'transfer' && action !== 'assign') {
     return NextResponse.json({ error: 'Unknown action.' }, { status: 400 })
   }
-  if (!reason) {
+  // force_check_in and transfer are overrides of someone else's custody, so a
+  // reason is mandatory. assign is an issuance (nobody's custody is overridden),
+  // so a reason is optional.
+  if ((action === 'force_check_in' || action === 'transfer') && !reason) {
     return NextResponse.json({ error: 'A reason is required.' }, { status: 400 })
   }
 
@@ -45,15 +48,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       p_reason: reason.slice(0, 500),
     }))
   } else {
+    // transfer + assign both hand a tool to a chosen person, so both validate the
+    // recipient the same way: a real, active, non-customer employee (held_by FKs
+    // to employees, and customers hold an employees row too — see lib/staff.ts —
+    // so the FK alone would happily accept one). isCustomer fails closed; this is
+    // an authorization decision, not a display filter.
     const to = typeof body?.to === 'string' ? body.to : ''
     if (!to) return NextResponse.json({ error: 'Pick who it’s going to.' }, { status: 400 })
 
-    // The recipient must be a real, active employee — held_by FKs to employees,
-    // and handing a tool to a deactivated account creates custody that nobody
-    // can clear by scanning. Customers are refused too: they hold an employees
-    // row (see lib/staff.ts), so the FK alone would happily accept one.
-    // isCustomer() fails closed on purpose — this is an authorization decision,
-    // not a display filter.
     const [{ data: recipient }, recipientIsCustomer] = await Promise.all([
       supabaseAdmin.from('employees').select('id, is_active').eq('id', to).single(),
       isCustomer(to),
@@ -62,11 +64,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'That person can’t hold tools.' }, { status: 400 })
     }
 
-    ;({ error: rpcErr } = await supabaseAdmin.rpc('crib_transfer', {
+    const fn = action === 'assign' ? 'crib_assign' : 'crib_transfer'
+    ;({ error: rpcErr } = await supabaseAdmin.rpc(fn, {
       p_tag: tool.tag_code,
       p_actor: actor.actorId,
       p_to: to,
-      p_reason: reason.slice(0, 500),
+      p_reason: reason ? reason.slice(0, 500) : null,
     }))
   }
 

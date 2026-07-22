@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  History, QrCode, Loader2, ArrowLeftRight, Undo2, AlertTriangle,
+  History, QrCode, Loader2, ArrowLeftRight, Undo2, AlertTriangle, UserPlus,
 } from 'lucide-react'
 import type { CribTool, CribEvent, CribToolStatus } from '@/lib/supabase'
 import { CRIB_STATUS, CRIB_EVENT_LABEL, formatCost, toolThumbPath, photoSrc, CRIB_SHORT_LABEL_MAX } from '@/lib/tool-crib'
@@ -37,6 +37,7 @@ function EventRow({ e }: { e: CribEvent }) {
     : e.action === 'check_in'     ? `${who} brought it back`
     : e.action === 'force_check_in' ? `${who} force-returned it${e.subject_name ? ` from ${e.subject_name}` : ''}`
     : e.action === 'transfer'     ? `${who} handed it to ${e.subject_name ?? 'someone'}`
+    : e.action === 'assign'       ? `${who} assigned it to ${e.subject_name ?? 'someone'}`
     : e.action === 'status_change' ? `${who} marked it ${e.to_status?.replace('_', ' ')}`
     : e.action === 'created'      ? `${who} added it to the crib`
     : who
@@ -78,7 +79,7 @@ export default function ToolDetailClient({
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [mode, setMode] = useState<null | 'force' | 'transfer'>(null)
+  const [mode, setMode] = useState<null | 'force' | 'transfer' | 'assign'>(null)
   const [reason, setReason] = useState('')
   const [target, setTarget] = useState('')
   const [photos, setPhotos] = useState<string[]>(tool.photo_urls ?? [])
@@ -196,19 +197,30 @@ export default function ToolDetailClient({
               </div>
             </div>
 
-            {/* Manager actions. Only meaningful while it's out — a tool sitting
-                on the shelf has no custody to force or transfer. */}
-            {out && (
+            {/* Manager actions. When it's out: force-return or transfer. When
+                it's on the shelf (available): assign it to someone — for people
+                who take tools without scanning them out. */}
+            {(out || tool.status === 'available') && (
               <div className="px-5 pb-5 pt-1 border-t border-hairline-soft">
                 <div className="flex items-center gap-2 pt-4 flex-wrap">
-                  <button onClick={() => { setMode(mode === 'force' ? null : 'force'); setError('') }}
-                    className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
-                    <Undo2 size={13} />Force return
-                  </button>
-                  <button onClick={() => { setMode(mode === 'transfer' ? null : 'transfer'); setError('') }}
-                    className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
-                    <ArrowLeftRight size={13} />Transfer
-                  </button>
+                  {out && (
+                    <>
+                      <button onClick={() => { setMode(mode === 'force' ? null : 'force'); setError('') }}
+                        className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
+                        <Undo2 size={13} />Force return
+                      </button>
+                      <button onClick={() => { setMode(mode === 'transfer' ? null : 'transfer'); setError('') }}
+                        className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
+                        <ArrowLeftRight size={13} />Transfer
+                      </button>
+                    </>
+                  )}
+                  {tool.status === 'available' && (
+                    <button onClick={() => { setMode(mode === 'assign' ? null : 'assign'); setError('') }}
+                      className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
+                      <UserPlus size={13} />Assign to…
+                    </button>
+                  )}
                 </div>
 
                 {mode && (
@@ -216,34 +228,38 @@ export default function ToolDetailClient({
                     <p className="text-[12px] text-ink-muted">
                       {mode === 'force'
                         ? 'Returns it without the holder scanning it in. Logged against your name.'
-                        : 'Moves custody to someone else without a trip to the crib. Logged against your name.'}
+                        : mode === 'transfer'
+                          ? 'Moves custody to someone else without a trip to the crib. Logged against your name.'
+                          : 'Checks it out to someone on their behalf — for when they take tools without scanning. Logged against your name.'}
                     </p>
-                    {mode === 'transfer' && (
+                    {(mode === 'transfer' || mode === 'assign') && (
                       <select value={target} onChange={e => setTarget(e.target.value)}
                         className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-surface border border-hairline rounded-lg text-ink outline-none focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                        <option value="">Hand it to…</option>
+                        <option value="">{mode === 'assign' ? 'Assign it to…' : 'Hand it to…'}</option>
                         {employees.filter(e => e.id !== tool.held_by).map(e => (
                           <option key={e.id} value={e.id}>{e.name}</option>
                         ))}
                       </select>
                     )}
                     <input value={reason} onChange={e => setReason(e.target.value)}
-                      placeholder="Reason (required)"
+                      placeholder={mode === 'assign' ? 'Reason (optional)' : 'Reason (required)'}
                       className="w-full h-9 px-3 text-[16px] sm:text-[13px] bg-surface border border-hairline rounded-lg text-ink placeholder:text-ink-faint outline-none focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" />
                     <div className="flex justify-end gap-2">
                       <button onClick={() => { setMode(null); setError('') }}
                         className={`${btnCx} text-ink-muted hover:text-ink-secondary`}>Cancel</button>
                       <button
-                        disabled={busy || !reason.trim() || (mode === 'transfer' && !target)}
+                        disabled={busy || (mode !== 'assign' && !reason.trim()) || ((mode === 'transfer' || mode === 'assign') && !target)}
                         onClick={() => post(
                           `/api/admin/tool-crib/${tool.id}/custody`,
                           mode === 'force'
                             ? { action: 'force_check_in', reason }
-                            : { action: 'transfer', to: target, reason }
+                            : mode === 'transfer'
+                              ? { action: 'transfer', to: target, reason }
+                              : { action: 'assign', to: target, reason }
                         )}
                         className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
                         {busy && <Loader2 size={13} className="animate-spin" />}
-                        {mode === 'force' ? 'Force return' : 'Transfer'}
+                        {mode === 'force' ? 'Force return' : mode === 'transfer' ? 'Transfer' : 'Assign'}
                       </button>
                     </div>
                   </div>

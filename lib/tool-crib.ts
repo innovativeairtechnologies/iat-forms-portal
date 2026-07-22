@@ -42,6 +42,7 @@ export const CRIB_EVENT_LABEL: Record<CribEventAction, string> = {
   transfer:       'Custody transferred',
   status_change:  'Status changed',
   note:           'Note',
+  assign:         'Assigned',
 }
 
 /* A fixed list, not freeform text. Freeform drifts into "Drills" / "drill" /
@@ -158,6 +159,7 @@ const CRIB_ERRORS: Record<string, string> = {
   RECIPIENT_REQUIRED:        'Pick who it’s going to.',
   ALREADY_HELD_BY_RECIPIENT: 'They already have it.',
   BAD_STATUS:                'That status isn’t valid.',
+  TOOL_NOT_ASSIGNABLE:       'That tool can’t be assigned — it’s in maintenance, lost, or retired.',
 }
 
 export function cribErrorMessage(err: unknown): { message: string; known: boolean } {

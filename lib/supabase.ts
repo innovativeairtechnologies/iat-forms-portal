@@ -105,7 +105,7 @@ export type CribTool = {
 
 export type CribEventAction =
   | 'created' | 'check_out' | 'check_in' | 'force_check_in'
-  | 'transfer' | 'status_change' | 'note'
+  | 'transfer' | 'status_change' | 'note' | 'assign'
 
 // Append-only custody history. actor_name/subject_name are snapshots taken at
 // write time so the trail survives an employee account being deleted — the FKs

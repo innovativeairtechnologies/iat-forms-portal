@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Wrench, Search, Plus, ChevronRight, QrCode } from 'lucide-react'
+import { Wrench, Search, Plus, ChevronRight, QrCode, UserPlus } from 'lucide-react'
 import type { CribToolStatus } from '@/lib/supabase'
 import { CRIB_STATUS, cribTotals, formatCost, toolThumbPath } from '@/lib/tool-crib'
 import {
@@ -10,8 +10,9 @@ import {
   ListPageHeader, IdentityCell, tabCx, tabCountCx, timeAgo,
 } from '@/components/admin/list'
 import { ToolThumb } from '@/components/admin/ToolThumb'
-import type { CribToolRow } from './page'
+import type { CribToolRow, EmployeeOption } from './page'
 import AddToolModal from './AddToolModal'
+import AssignToolsModal from './AssignToolsModal'
 
 type Filter = 'all' | CribToolStatus
 
@@ -42,12 +43,14 @@ function Tile({ label, value, hint }: { label: string; value: string; hint: stri
   )
 }
 
-export default function ToolCribClient({ tools }: { tools: CribToolRow[] }) {
+export default function ToolCribClient({ tools, employees }: { tools: CribToolRow[]; employees: EmployeeOption[] }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [adding, setAdding] = useState(false)
+  const [assigning, setAssigning] = useState(false)
 
   const totals = useMemo(() => cribTotals(tools), [tools])
+  const availableCount = useMemo(() => tools.filter(t => t.status === 'available').length, [tools])
 
   const q = search.trim().toLowerCase()
   const filtered = tools.filter(t => {
@@ -70,6 +73,12 @@ export default function ToolCribClient({ tools }: { tools: CribToolRow[] }) {
         count={`${tools.length} ${tools.length === 1 ? 'tool' : 'tools'} tracked`}
         actions={
           <>
+            <button
+              onClick={() => setAssigning(true)}
+              className="flex items-center gap-2 bg-surface border border-hairline hover:bg-surface-soft text-ink-secondary text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
+            >
+              <UserPlus size={15} />Assign tools
+            </button>
             <Link
               href="/admin/tool-crib/labels"
               className="flex items-center gap-2 bg-surface border border-hairline hover:bg-surface-soft text-ink-secondary text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
@@ -200,6 +209,13 @@ export default function ToolCribClient({ tools }: { tools: CribToolRow[] }) {
       </div>
 
       {adding && <AddToolModal onClose={() => setAdding(false)} />}
+      {assigning && (
+        <AssignToolsModal
+          employees={employees}
+          availableCount={availableCount}
+          onClose={() => setAssigning(false)}
+        />
+      )}
     </div>
   )
 }
