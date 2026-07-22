@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { HomePage } from '@/app/home/HomePage'
 
 /* Company Home for admin-surface roles — the shared intranet landing rendered
@@ -12,6 +13,19 @@ import { HomePage } from '@/app/home/HomePage'
 export default async function AdminHome() {
   const admin = await getAdminSurfaceUser()
   if (!admin) redirect('/login')
-  // Admin content column has no top bar above the page → fill the full viewport.
-  return <HomePage name={admin.displayName} heightClass="lg:h-[calc(100dvh-12px)]" />
+
+  // Bell counts for the home top bar (submissions awaiting review + open tickets).
+  const [{ count: unread }, { count: openTickets }] = await Promise.all([
+    supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
+    supabaseAdmin.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+  ])
+
+  return (
+    <HomePage
+      name={admin.displayName}
+      profileHref="/admin/profile"
+      unreadCount={unread ?? 0}
+      ticketCount={openTickets ?? 0}
+    />
+  )
 }

@@ -16,7 +16,7 @@ export default async function EmployeeHome() {
   const { data: emp } = await supabaseAdmin
     .from('employees').select('name').eq('id', user.id).single()
 
-  // Employee shell shows a 56px (h-14) PortalTopBar above the page — subtract it
-  // so the bento pins to the viewport without scrolling.
-  return <HomePage name={(emp?.name || user.email || '').trim()} heightClass="lg:h-[calc(100dvh-68px)]" />
+  // The home renders its own top bar; the employee shell suppresses its
+  // PortalTopBar on this route so there's just one (see EmployeeShell).
+  return <HomePage name={(emp?.name || user.email || '').trim()} profileHref="/employee/profile/edit" />
 }

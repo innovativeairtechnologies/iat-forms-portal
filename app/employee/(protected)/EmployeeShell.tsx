@@ -231,10 +231,14 @@ export default function EmployeeShell({ employee, children }: { employee: Employ
       {/* ── Main content ── */}
       {/* pt-14 clears the fixed mobile top bar (a spacer div in this flex-row can't) */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden pt-14 md:pt-0">
-        <PortalTopBar crumbs={crumbsFor(pathname)}>
-          <PortalSearch items={SEARCH_ITEMS} placeholder="Search the portal…" />
-          <ThemeToggle />
-        </PortalTopBar>
+        {/* Company Home renders its own top bar; suppress the shell's here so
+            there's just one bar on that route. */}
+        {pathname !== '/employee/home' && (
+          <PortalTopBar crumbs={crumbsFor(pathname)}>
+            <PortalSearch items={SEARCH_ITEMS} placeholder="Search the portal…" />
+            <ThemeToggle />
+          </PortalTopBar>
+        )}
         {children}
       </div>
     </div>

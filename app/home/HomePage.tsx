@@ -7,7 +7,16 @@ import { HomeContent } from './HomeContent'
    into whichever portal shell wraps the calling page. `name` comes from the
    shell's already-resolved user, so this does no auth of its own. */
 
-export async function HomePage({ name, heightClass }: { name: string; heightClass?: string }) {
+export async function HomePage({
+  name, profileHref, unreadCount = 0, ticketCount = 0,
+}: {
+  name: string
+  /** Where the top-bar profile avatar links (per shell). */
+  profileHref: string
+  /** Notification-bell counts (admin surface; 0 elsewhere for now). */
+  unreadCount?: number
+  ticketCount?: number
+}) {
   const data = await getHomeData()
 
   const now = new Date()
@@ -24,7 +33,8 @@ export async function HomePage({ name, heightClass }: { name: string; heightClas
   return (
     <HomeContent
       greeting={greeting} dateET={dateET} firstName={firstName} funIdx={funIdx}
-      data={data} heightClass={heightClass}
+      data={data} name={name} profileHref={profileHref}
+      unreadCount={unreadCount} ticketCount={ticketCount}
       coreValue={cv.value} coreValueIndex={cv.index} coreValueTotal={cv.total}
     />
   )

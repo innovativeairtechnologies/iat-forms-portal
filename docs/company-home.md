@@ -5,28 +5,32 @@ rebuilt from the SharePoint intranet. It renders **inside the portal shell** (th
 present, "Company Home" is the active tab), as a **single-screen bento dashboard** that fills the
 viewport without scrolling the page. External customers are unaffected (they still land on `/customer`).
 
-## Layout — the "Lobby" (redesigned 2026-07-21)
+## Layout — compact "Lobby" dashboard (2026-07-21)
 
-`app/home/HomeContent.tsx` is a warm, **scrolling** dashboard built to match the shipped portal
-chrome (`/admin`, `/employee/profile`) rather than stand apart from it — a `zinc-50` canvas
-(`dark:bg-[#0a0a0b]`) with a soft ambient emerald/sky glow behind the top, white `rounded-xl`
-cards with `shadow-sm`, and one emerald accent used warmly. Top to bottom:
+`app/home/HomeContent.tsx` is a warm, **compact** dashboard tuned to fit close to one screen on
+desktop (minimal scroll), matching the shipped portal chrome (`/admin`, `/employee/profile`): a
+`zinc-50` canvas (`dark:bg-[#0a0a0b]`) with a soft ambient emerald glow, white `rounded-xl` cards
+with `shadow-sm`, one emerald accent. Top to bottom:
 
-1. **Greeting hero** — an emerald→teal gradient card (`bg-gradient-to-br from-emerald-600 to-teal-700`,
-   mirroring the `/admin` rail greeting) with a date eyebrow, the greeting, a live subtitle, and
-   quick-link buttons (Time off · Forms · Directory · Tools · Learn).
-2. **Company at a glance** — a 4-up KPI row (Teammates · Days incident-free · Open roles · Next
-   holiday) in the dashboard KPI-card style.
-3. **Content cards**, all equal-height per row (grid `items-stretch` + `h-full` cards, footer
-   blocks pinned with `mt-auto`): News (featured lead + list) · This Week (holiday + events +
-   who's-out) · Our People (new hire + spotlight) · Milestones · Open Positions (+ referral) · Core
-   Value of the Week · Suggestion box. A footer row carries the fun-fact chip + Email IT.
+1. **Home top bar** (`app/home/HomeTopBar.tsx`, desktop `md+`) — the home's own sticky bar:
+   "Company Home" on the left; then **Have an idea** (opens a modal wired to the suggestion action),
+   **Email IT**, a dark-mode toggle, the notifications **bell** (`TopBarBell` — real counts on the
+   admin surface, "all clear" elsewhere until per-employee notifications are wired), and the
+   **profile** avatar (links per shell). `/admin/home` had no bar before; the employee shell now
+   **suppresses its own `PortalTopBar` on `/employee/home`** so there's exactly one bar.
+2. **Greeting hero** — the emerald→teal gradient card with floating white **IAT-logo "particles"**
+   on the right (`/iat-logo-transparent.png`, inverted to white, low opacity, gentle drift;
+   `prefers-reduced-motion` off), the date eyebrow, greeting, live subtitle, quick-link buttons, and
+   the wrapping fun-fact line (moved here from the old footer).
+3. **Company at a glance** — a 4-up KPI row (Teammates · Days incident-free · Open roles · Next holiday).
+4. **Content** — equal-height cards (`items-stretch` + `h-full`): News (lead + 2) spanning 2 of a
+   3-col row beside This Week; then Our People · Milestones · Open Positions (3-col); then a slim
+   full-width **Core Value** strip.
 
-The old single-screen bento (fixed viewport height via the `heightClass` prop, tiles scrolling
-internally) is **retired** — the page scrolls as a whole. `HomeContent`'s root is
-`flex-1 min-h-0 overflow-y-auto` (the same pattern the `/admin` dashboard uses), so it scrolls
-inside either shell; the `heightClass` prop is still accepted for caller compatibility but ignored.
-The sidebar, top bar, and Jerry orb are supplied by the portal shell, not this file.
+The **Suggestion box and Email IT moved out of a footer into the top bar** (the footer is gone).
+`HomeContent`'s root is a flex column — the top bar (`flex-shrink-0`) over a
+`flex-1 min-h-0 overflow-y-auto` scroll area (the same scroll pattern `/admin` uses); the
+`heightClass` prop is removed. The sidebar + Jerry orb still come from the portal shell.
 
 ## What changed for routing
 
@@ -92,8 +96,9 @@ hand it to a scoped role from `/admin/permissions` (which writes a `role_permiss
 
 - Per-shell pages: `app/admin/home/page.tsx` and `app/employee/(protected)/home/page.tsx` — thin;
   each resolves the user's name and renders `app/home/HomePage.tsx`
-- Shared body: `app/home/HomePage.tsx` (loads data + greeting) → `app/home/HomeContent.tsx` (presentation, no top bar / no Launch — the shell supplies chrome)
-- Client bits: `FunFact.tsx`, `SuggestionBox.tsx`; primitives in `home-ui.tsx`; suggestion action `app/home/actions.ts`
+- Shared body: `app/home/HomePage.tsx` (loads data + greeting) → `app/home/HomeContent.tsx` (presentation + the home top bar)
+- Top bar: `app/home/HomeTopBar.tsx` (Have-an-idea modal, Email IT, theme toggle, bell, profile) — reuses `TopBarBell`
+- Client bits: `FunFact.tsx` (the hero fun-fact); primitives in `home-ui.tsx`; suggestion action `app/home/actions.ts` (also drives the top-bar idea modal). `SuggestionBox.tsx` is now unused.
 - Redirect shim: `app/home/page.tsx` (`/home` → shell home)
 - Sidebar links: `components/admin/AdminSidebar.tsx` (Company Home, top of rail) + `app/employee/(protected)/EmployeeShell.tsx` (Menu)
 - Admin content editor: `app/admin/home-content/page.tsx` + `HomeContentManager.tsx` + `actions.ts` (System → Company Home)
