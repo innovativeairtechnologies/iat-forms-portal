@@ -2,6 +2,15 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Fix: weekly accrual no longer touches customer accounts
+
+The weekly PTO/sick accrual cron (`runWeeklyAccrual`) fetched all active `employees` and — because every
+customer invite creates an employees row (migration 001 trigger) — was writing phantom PTO/sick balances
+and `accrual_log` rows to the 4 customer accounts every week. It now excludes customers via
+`getCustomerIds()` (the same helper the Accounts page and `/api/employees` use). Stops the ongoing
+pollution; the existing phantom rows are harmless (customers never see time-off) and can be cleaned up
+separately if wanted.
+
 ## 2026-07-22 — Shared operations top bar on every admin page
 
 The dashboard's top bar (breadcrumb · search · layout view-switcher · notifications

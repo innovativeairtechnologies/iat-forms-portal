@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase-admin'
 import type { AccrualTier, AccrualConfig } from './supabase'
+import { getCustomerIds } from './staff'
 
 export interface AccrualEmployeeResult {
   employee_id: string
@@ -45,6 +46,7 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
     { data: employees, error: empError },
     { data: tiers,     error: tierError },
     { data: configs,   error: cfgError  },
+    customerIds,
   ] = await Promise.all([
     supabaseAdmin
       .from('employees')
@@ -60,6 +62,7 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
       .select('*')
       .eq('id', 1)
       .limit(1),
+    getCustomerIds(),
   ])
 
   if (empError)  throw new Error(`Failed to fetch employees: ${empError.message}`)
@@ -69,7 +72,11 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
   const config = configs?.[0] as AccrualConfig | undefined
   if (!config) throw new Error('accrual_config row missing — run migration 007.')
 
-  if (!employees?.length) {
+  // Exclude customers: every customer invite creates an employees row (migration 001
+  // trigger), so without this filter the weekly accrual writes phantom PTO/sick +
+  // accrual_log rows to customer accounts. Fail-closed (money-adjacent).
+  const staff = (employees ?? []).filter((e) => !customerIds.has(e.id))
+  if (!staff.length) {
     return { processed: 0, skipped: 0, employees: [], ran_at: new Date().toISOString() }
   }
 
@@ -87,7 +94,7 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
   }[] = []
   let skipped = 0
 
-  for (const emp of employees) {
+  for (const emp of staff) {
     const rawPtoRate  = getPtoRate(emp.hire_date, (tiers ?? []) as AccrualTier[])
     const ptoBalance  = Number(emp.pto_balance)
     const sickBalance = Number(emp.sick_balance)
