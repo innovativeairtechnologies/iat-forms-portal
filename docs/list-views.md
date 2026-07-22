@@ -1,61 +1,79 @@
-# List views — the "unified sheet" pattern
+# List views — the "one card" pattern
 
 The house pattern for dense admin list pages. First built on **Performance**
 (`app/admin/projected-sales/ProjectedSalesClient.tsx`); being rolled out to the other
 `/admin` lists. Older lists still use the card-based kit in
-`components/admin/list.tsx` (`ListPageHeader` + `HEADER_BOX`/`BODY_BOX` cards) — that's
-the thing this pattern replaces.
+`components/admin/list.tsx` (`ListPageHeader` + `HEADER_BOX`/`BODY_BOX`) — that's what this
+replaces.
 
 ## The idea
 
-Everything below the shared top bar lives on **one surface** — no stacked
-background bands. The top bar (`AdminTopBar`, warm `bg-canvas`) stays the single distinct
-header; the page itself is one white `bg-surface` sheet that scrolls under it. Sections
-are separated by **hairlines**, not by changing background colors, and the list rows sit
-**directly on the sheet** (no card border boxing them in).
+The page is the warm canvas (`bg-canvas`). The **whole list module** — header, stat strip,
+filters, table, and pagination — lives inside **one card** (`rounded-xl border-hairline
+bg-surface`) that sits on it, the way a clean SaaS list (e.g. the Intouch reference) does
+it. The shared `AdminTopBar` above stays the page's one chrome band.
 
 ```
-AdminTopBar            ← warm canvas, the one header band (from the admin layout)
-┌─ bg-surface sheet (flex-1 overflow-y-auto) ─────────────┐
-│  header band  (overline · title · count · primary btn)  │
-│  ── hairline ──                                          │
-│  stat strip   (hairline-separated cells, not cards)      │
-│  ── hairline ──                                          │
-│  toolbar      (search · filter dropdown · …)             │
-│  ── hairline ──                                          │
-│  column headers (bg-surface-soft, click-to-sort)         │
-│  rows         (hairline-soft dividers, hover surface-soft)│
-│  pagination   (Showing X–Y of Z · per-page · pager)      │
-└──────────────────────────────────────────────────────────┘
+AdminTopBar                        ← warm canvas, from the admin layout
+┌ bg-canvas page (flex-1 overflow-y-auto, padded) ┐
+│  ┌ card: rounded-xl border-hairline bg-surface ┐ │
+│  │ header   overline · title · count | primary │ │
+│  │ ── hairline ──                               │ │
+│  │ stat strip   (hairline-separated cells)      │ │
+│  │ ── hairline ──                               │ │
+│  │ filters   search · rep dropdown              │ │
+│  │ ── hairline ──                               │ │
+│  │ column headers (bg-surface-soft, sortable)   │ │
+│  │ rows      (hairline-soft dividers)           │ │
+│  │ ── hairline ──                               │ │
+│  │ pagination   Showing X–Y of Z · size · pager │ │
+│  └──────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────┘
 ```
+
+## Alignment — the thing that makes it read as one unit
+
+**Every band uses the same horizontal padding (`px-5`)** so the header title, stat labels,
+search field, first column, and "Showing…" all start on one left edge, and the primary
+button, last column, and pager all end on one right edge. Two gotchas, both real bugs we
+hit:
+
+- **Phantom scrollbar.** The table's horizontal-scroll wrapper must be
+  `overflow-x-auto overflow-y-hidden`. `overflow-x:auto` alone silently promotes
+  `overflow-y` to `auto`, which reserves a ~15px vertical scrollbar and pulls the columns
+  off the right gutter. `overflow-y:hidden` fixes it (the table's height is natural; the
+  page is the scroller).
+- **The card does NOT use `overflow-hidden`** — that would clip the rep-filter dropdown.
+  Rounded corners are fine because the top (header) and bottom (pagination) bands have no
+  background fill, so the card's rounded `bg-surface` shows through.
+
+Verify alignment by measuring, not by eye: every left-aligned band's
+`getBoundingClientRect().left` should be equal, and every right-aligned control's `.right`
+should be equal.
 
 ## Rules
 
-- **Root** is the scroll container: `flex-1 min-h-0 overflow-y-auto bg-surface`. The list
-  header + rows share a horizontal-scroll wrapper (`overflow-x-auto` + `min-w-[…]`) so wide
-  tables scroll sideways without squeezing.
-- **Semantic tokens only** — `bg-surface` / `bg-surface-soft` / `bg-surface-strong`,
-  `border-hairline(-soft)`, `text-ink(-secondary|-muted|-faint)`, `bg-brand`. No `zinc-*`,
-  no hex. **Never** an opacity modifier on a token (`bg-brand/70` compiles to nothing — use
-  a solid token or a standard-palette color like `bg-emerald-500/80`).
-- **Life, with meaning** — color only where it encodes something:
-  - colored **avatars** for people (stable hue per name via `toneFor`),
-  - **tone pills** for category/type,
-  - a **meter** for a 0–100 value (confidence),
-  - **urgency** tinting for dates (amber soon / rose overdue),
-  - a **magnitude bar** for a headline number.
-  All tones come from the six-tone `TONE` map (mirrors `list.tsx` `TONE_CLS`).
-- **Pagination** — client-side when the page already loads the full set (Performance loads
-  a synced snapshot). Page-size options `[10, 25, 50, 100]`; reset to page 1 when the
-  filter/search/sort/page-size changes; windowed pager (`‹ 1 … 4 5 6 … 20 ›`).
-- **Honesty** — no decorative controls. Selection checkboxes / row-action kebabs only on
-  pages that actually have bulk actions or row actions. Performance is read-only, so it has
-  neither.
+- **Root** is the scroll container: `flex-1 min-h-0 overflow-y-auto bg-canvas`, padded
+  (`p-4 sm:p-6`), holding the one card. The table wraps in `overflow-x-auto overflow-y-hidden`
+  + `min-w-[…]` so wide tables scroll sideways without squeezing.
+- **Semantic tokens only** — `bg-surface(-soft|-strong)`, `border-hairline(-soft)`,
+  `text-ink(-secondary|-muted|-faint)`, `bg-brand`. No `zinc-*`, no hex. **Never** an
+  opacity modifier on a token (`bg-brand/70` compiles to nothing — use a solid token, or a
+  standard-palette color like `bg-emerald-500/80`).
+- **Life, with meaning** — color only where it encodes something: colored **avatars**
+  (stable hue per name via `toneFor`), **tone pills** for category, a **meter** for a 0–100
+  value, **urgency** tinting for dates, a **magnitude bar** for a headline number. Tones
+  come from the six-tone `TONE` map (mirrors `list.tsx` TONE_CLS).
+- **Pagination** — client-side when the page already loads the full set. Default **10**;
+  options `[10, 25, 50, 100]`; reset to page 1 on filter/search/sort/size change; windowed
+  pager (`‹ 1 … 4 5 6 … 20 ›`).
+- **Honesty** — no decorative controls. Selection checkboxes / row kebabs only on pages with
+  real bulk/row actions. Performance is read-only, so it has neither.
 - **Weights** — titles `font-semibold` (≤650, per DESIGN.md), never `font-bold`.
 
 ## Rollout
 
-The Performance page is the reference. When promoting to other lists, extract the shared
-bits (`Stat`, `Pager`, the `TONE` map + `toneFor`, the sheet shell) into
-`components/admin/list.tsx` so every list changes from one place — but only after the
-pattern is settled on Performance.
+Performance is the reference. When promoting to other lists, extract the shared bits
+(`Stat`, `Pager`, `RepFilter`, the `TONE` map + `toneFor`, the card shell) into
+`components/admin/list.tsx` so every list changes from one place — after the pattern is
+settled on Performance.

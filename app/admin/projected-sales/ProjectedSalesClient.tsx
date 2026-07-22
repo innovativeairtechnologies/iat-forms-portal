@@ -89,7 +89,7 @@ const confBand = (c: number): Tone => (c >= 70 ? 'emerald' : c >= 45 ? 'amber' :
 const initialsOf = (name: string) => name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?'
 
 // Project | Salesperson | Type | Confidence | Est. close | Quote | Weighted
-const COLS = 'grid-cols-[minmax(210px,1.7fr)_168px_148px_152px_128px_120px_128px]'
+const COLS = 'grid-cols-[minmax(200px,1.7fr)_168px_148px_152px_128px_120px_128px]'
 const PER_PAGE_OPTIONS = [10, 25, 50, 100]
 type SortKey = 'project' | 'confidence' | 'close' | 'quote' | 'weighted'
 const NUMERIC_KEYS: SortKey[] = ['confidence', 'quote', 'weighted']
@@ -114,7 +114,7 @@ export default function ProjectedSalesClient({
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('quote')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  const [perPage, setPerPage] = useState(25)
+  const [perPage, setPerPage] = useState(10)
   const [page, setPage] = useState(1)
 
   const reps = useMemo(
@@ -229,233 +229,232 @@ export default function ProjectedSalesClient({
   }
 
   return (
-    // One unified white sheet — everything below the top bar lives on it and
-    // scrolls together. bg-surface (light: white / dark: the raised surface).
-    <div className="flex-1 min-h-0 overflow-y-auto bg-surface">
+    // Warm canvas page; the whole list module lives in one card that pops on it.
+    <div className="flex-1 min-h-0 overflow-y-auto bg-canvas">
+      <div className="p-4 sm:p-6">
+        <div className="rounded-xl border border-hairline bg-surface">
 
-      {/* Header band */}
-      <div className="flex items-start gap-4 px-4 sm:px-8 pt-7 pb-5">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted mb-1">Sales</p>
-          <h1 className="text-[26px] font-semibold text-ink tracking-tight">Performance</h1>
-          <p className="text-[13px] text-ink-muted mt-1">
-            {sync?.last_synced_at
-              ? <><span className="tabular-nums">{projects.length}</span> projects · <span className="tabular-nums">{fmtUsd(sumAll(projects))}</span> quoted</>
-              : 'Not synced yet'}
-          </p>
-        </div>
-        <div className="flex-1" />
-        {syncButton}
-      </div>
-
-      {projects.length === 0 ? (
-        <div className="px-4 sm:px-8 pb-8">
-          <EmptyState onSync={doSync} syncing={syncing} />
-        </div>
-      ) : (
-        <>
-          {/* Stat strip — hairline-separated, not cards */}
-          <div className="flex flex-wrap border-y border-hairline">
-            <Stat tone="sky"     label="Projects"          value={stats.count.toLocaleString()} />
-            <Stat tone="emerald" label="Total quoted"      value={fmtUsd(stats.totalQuote)} />
-            <Stat tone="violet"  label="Weighted pipeline" value={fmtUsd(stats.weighted)} sub="quote × confidence" />
-            <Stat tone="amber"   label="Avg. confidence"   value={`${stats.avgConf}%`} />
-          </div>
-
-          {/* Toolbar */}
-          <div className="flex items-center gap-2 px-4 sm:px-8 py-3 border-b border-hairline flex-wrap">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search projects, customers…"
-                aria-label="Search projects"
-                className="w-[240px] h-9 pl-9 pr-3 text-[13px] rounded-lg bg-canvas border border-hairline text-ink-secondary placeholder:text-ink-faint outline-none focus:border-brand transition-colors"
-              />
-            </div>
-            <RepFilter reps={reps} value={filterUser} onChange={setFilterUser} />
-            <div className="flex-1" />
-            {(query || filterUser !== '__all') && (
-              <span className="text-[12px] text-ink-muted tabular-nums">{view.length} match{view.length === 1 ? '' : 'es'}</span>
-            )}
-          </div>
-
-          {/* Freshness + de-dup transparency, or a failure banner */}
-          <div className="px-4 sm:px-8 pt-4 space-y-3">
-            {(error || sync?.status === 'error') && (
-              <div className="flex items-start gap-2 rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
-                <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
-                <span>
-                  Last sync failed: {error || sync?.error}
-                  {sync?.last_synced_at && ` — showing the last good data from ${timeAgo(sync.last_synced_at)} ago.`}
-                </span>
-              </div>
-            )}
-            {dealNote && (
-              <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-[12.5px] text-emerald-700 dark:text-emerald-300">
-                {dealNote}
-              </div>
-            )}
-            {sync?.last_synced_at && (
-              <p className="text-[12px] text-ink-faint">
-                Synced {timeAgo(sync.last_synced_at)} ago
-                {sync.synced_by ? ` by ${sync.synced_by}` : ''}
-                {sync.duration_ms != null ? ` · ${(sync.duration_ms / 1000).toFixed(1)}s` : ''}
-                {deduped && ` · ${sync.unique_count} of ${sync.source_count} source rows (duplicates removed)`}
+          {/* ── Card header ── */}
+          <div className="flex items-center gap-4 px-5 py-4 border-b border-hairline flex-wrap">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted mb-1">Sales</p>
+              <h1 className="text-[20px] font-semibold text-ink tracking-tight">Performance</h1>
+              <p className="text-[12.5px] text-ink-muted mt-1">
+                {sync?.last_synced_at
+                  ? <>
+                      <span className="tabular-nums">{projects.length}</span> projects ·{' '}
+                      <span className="tabular-nums">{fmtUsd(sumAll(projects))}</span> quoted ·{' '}
+                      synced {timeAgo(sync.last_synced_at)} ago{sync.synced_by ? ` by ${sync.synced_by}` : ''}
+                      {deduped && ` · ${sync.unique_count} of ${sync.source_count} rows`}
+                    </>
+                  : 'Not synced yet'}
               </p>
-            )}
+            </div>
+            <div className="flex-1" />
+            {syncButton}
           </div>
 
-          {/* List — rows sit directly on the sheet */}
-          <div className="mt-3 overflow-x-auto">
-            <div className="min-w-[980px]">
-              {/* Column header row */}
-              <div className={cn('grid', COLS, 'items-center gap-3 px-4 sm:px-8 h-10 bg-surface-soft border-y border-hairline')}>
-                <SortHead label="Project" k="project" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Salesperson</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Type</span>
-                <SortHead label="Confidence" k="confidence" />
-                <SortHead label="Est. close" k="close" />
-                <div className="justify-self-end"><SortHead label="Quote" k="quote" align="right" /></div>
-                <div className="justify-self-end"><SortHead label="Weighted" k="weighted" align="right" /></div>
+          {projects.length === 0 ? (
+            <EmptyState onSync={doSync} syncing={syncing} />
+          ) : (
+            <>
+              {/* ── Stat strip ── */}
+              <div className="flex flex-wrap border-b border-hairline">
+                <Stat tone="sky"     label="Projects"          value={stats.count.toLocaleString()} />
+                <Stat tone="emerald" label="Total quoted"      value={fmtUsd(stats.totalQuote)} />
+                <Stat tone="violet"  label="Weighted pipeline" value={fmtUsd(stats.weighted)} sub="quote × confidence" />
+                <Stat tone="amber"   label="Avg. confidence"   value={`${stats.avgConf}%`} />
               </div>
 
-              {/* Rows */}
-              {pageRows.map((p) => {
-                const expanded = expandedId === p.id
-                const units = p.units ?? []
-                const conf = num(p.confidence_level)
-                const band = confBand(conf)
-                const repTone = TONE[toneFor(p.user_name || '—', AVATAR_TONES)]
-                const typeTone = p.project_types ? TONE[toneFor(p.project_types, TYPE_TONES)] : null
-                const dtc = daysToClose(p.estimated_closing_date)
-                const dateCls = dtc == null ? 'text-ink-muted'
-                  : dtc < 0 ? 'text-rose-500 dark:text-rose-400'
-                  : dtc <= 30 ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-ink-muted'
-                const wPct = Math.max(3, Math.round((num(p.weighted_total) / maxWeighted) * 100))
-                return (
-                  <Fragment key={p.id}>
-                    <button
-                      onClick={() => setExpandedId(expanded ? null : p.id)}
-                      className={cn('grid', COLS, 'items-center gap-3 px-4 sm:px-8 min-h-[56px] py-2 text-left border-b border-hairline-soft hover:bg-surface-soft transition-colors group')}
-                    >
-                      {/* Project */}
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <ChevronRight size={14} className={cn('flex-shrink-0 text-ink-faint transition-transform', expanded && 'rotate-90')} />
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{p.project_name || '—'}</p>
-                          <p className="text-[11.5px] text-ink-muted truncate">
-                            {[p.project_customer, p.unit_count > 1 ? `${p.unit_count} units` : null].filter(Boolean).join(' · ') || '—'}
-                          </p>
-                        </div>
-                      </div>
+              {/* ── Filters ── */}
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-hairline flex-wrap">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search projects, customers…"
+                    aria-label="Search projects"
+                    className="w-[240px] h-9 pl-9 pr-3 text-[13px] rounded-lg bg-surface-soft border border-hairline text-ink-secondary placeholder:text-ink-faint outline-none focus:border-brand transition-colors"
+                  />
+                </div>
+                <RepFilter reps={reps} value={filterUser} onChange={setFilterUser} />
+                <div className="flex-1" />
+                {(query || filterUser !== '__all') && (
+                  <span className="text-[12px] text-ink-muted tabular-nums">{view.length} match{view.length === 1 ? '' : 'es'}</span>
+                )}
+              </div>
 
-                      {/* Salesperson */}
-                      <div className="flex items-center gap-2 min-w-0">
-                        {p.user_name ? (
-                          <>
-                            <span className={cn('w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0', repTone.bg, repTone.fg)}>
-                              {initialsOf(p.user_name)}
-                            </span>
-                            <span className="text-[12.5px] text-ink-secondary truncate">{p.user_name}</span>
-                          </>
-                        ) : <span className="text-[12.5px] text-ink-faint">—</span>}
-                      </div>
-
-                      {/* Type */}
-                      <div className="min-w-0">
-                        {typeTone ? (
-                          <span className={cn('inline-flex items-center gap-1.5 max-w-full text-[10.5px] font-semibold px-2 py-[3px] rounded-md', typeTone.bg, typeTone.fg)}>
-                            <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', typeTone.solid)} />
-                            <span className="truncate">{p.project_types}</span>
-                          </span>
-                        ) : <span className="text-[12px] text-ink-faint">—</span>}
-                      </div>
-
-                      {/* Confidence meter */}
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex-1 h-1.5 min-w-[44px] rounded-full bg-surface-strong overflow-hidden">
-                          <span className={cn('block h-full rounded-full', TONE[band].solid)} style={{ width: `${Math.max(2, conf)}%` }} />
-                        </span>
-                        <span className="text-[12px] tabular-nums text-ink-secondary w-8 text-right">{conf}%</span>
-                      </div>
-
-                      {/* Est. close */}
-                      <div className={cn('text-[12.5px] truncate flex items-center gap-1.5', dateCls)}>
-                        {dtc != null && (dtc < 0 || dtc <= 30) && <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', dtc < 0 ? 'bg-rose-500' : 'bg-amber-500')} />}
-                        {fmtDate(p.estimated_closing_date)}
-                      </div>
-
-                      {/* Quote */}
-                      <div className="justify-self-end text-right tabular-nums text-[13px] font-semibold text-ink">{fmtUsd(p.quote_total)}</div>
-
-                      {/* Weighted + magnitude bar */}
-                      <div className="justify-self-end text-right w-full min-w-0">
-                        <div className="tabular-nums text-[12.5px] text-ink-secondary">{fmtUsd(p.weighted_total)}</div>
-                        <div className="h-1 mt-1 rounded-full bg-surface-strong overflow-hidden">
-                          <div className="h-full rounded-full bg-brand" style={{ width: `${wPct}%` }} />
-                        </div>
-                      </div>
-                    </button>
-
-                    {expanded && (
-                      <div className="px-4 sm:px-8 py-4 bg-surface-soft border-b border-hairline">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 mb-3">
-                          <Meta label="Company" value={p.company} />
-                          <Meta label="Created" value={fmtDate(p.date_created)} />
-                          <Meta label="Contact" value={p.contact} />
-                          <Meta label="Est. close" value={fmtDate(p.estimated_closing_date)} />
-                        </div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">Units ({units.length})</p>
-                        <div className="space-y-1">
-                          {units.map((u, idx) => (
-                            <div key={idx} className="flex items-center justify-between gap-3 text-[12.5px] border-b border-hairline-soft last:border-0 py-1">
-                              <span className="text-ink-secondary truncate">
-                                {u.unitName || '—'}
-                                {u.modelNumber ? <span className="text-ink-faint"> · {u.modelNumber}</span> : null}
-                              </span>
-                              <span className="tabular-nums text-ink flex-shrink-0">{fmtUsd(u.quoteTotal)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </Fragment>
-                )
-              })}
-
-              {pageRows.length === 0 && (
-                <div className="px-4 sm:px-8 py-14 text-center border-b border-hairline-soft">
-                  <p className="text-[13px] text-ink-muted">No projects match your search.</p>
+              {/* ── Alerts (only when present) ── */}
+              {(error || sync?.status === 'error' || dealNote) && (
+                <div className="px-5 py-3 border-b border-hairline space-y-2">
+                  {(error || sync?.status === 'error') && (
+                    <div className="flex items-start gap-2 rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
+                      <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
+                      <span>
+                        Last sync failed: {error || sync?.error}
+                        {sync?.last_synced_at && ` — showing the last good data from ${timeAgo(sync.last_synced_at)} ago.`}
+                      </span>
+                    </div>
+                  )}
+                  {dealNote && (
+                    <div className="rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-[12.5px] text-emerald-700 dark:text-emerald-300">
+                      {dealNote}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Pagination footer */}
-          <div className="flex items-center gap-4 px-4 sm:px-8 py-4 flex-wrap">
-            <span className="text-[12.5px] text-ink-muted">
-              Showing <b className="font-semibold text-ink-secondary tabular-nums">{view.length === 0 ? '0' : `${start + 1}–${Math.min(start + perPage, view.length)}`}</b>
-              {' '}of <b className="font-semibold text-ink-secondary tabular-nums">{view.length}</b> projects
-            </span>
-            <div className="flex-1" />
-            <label className="flex items-center gap-2 text-[12.5px] text-ink-muted">
-              Show
-              <select
-                value={perPage}
-                onChange={(e) => setPerPage(Number(e.target.value))}
-                className="h-9 px-2 rounded-lg bg-canvas border border-hairline text-[13px] text-ink-secondary outline-none focus:border-brand cursor-pointer"
-              >
-                {PER_PAGE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-              per page
-            </label>
-            <Pager page={current} totalPages={totalPages} onGo={setPage} />
-          </div>
-        </>
-      )}
+              {/* ── Table (overflow-y-hidden kills the phantom scrollbar that
+                     would pull columns off the right gutter) ── */}
+              <div className="overflow-x-auto overflow-y-hidden">
+                <div className="min-w-[980px]">
+                  <div className={cn('grid', COLS, 'items-center gap-3 px-5 h-10 bg-surface-soft border-b border-hairline')}>
+                    <SortHead label="Project" k="project" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Salesperson</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Type</span>
+                    <SortHead label="Confidence" k="confidence" />
+                    <SortHead label="Est. close" k="close" />
+                    <div className="justify-self-end"><SortHead label="Quote" k="quote" align="right" /></div>
+                    <div className="justify-self-end"><SortHead label="Weighted" k="weighted" align="right" /></div>
+                  </div>
+
+                  {pageRows.map((p) => {
+                    const expanded = expandedId === p.id
+                    const units = p.units ?? []
+                    const conf = num(p.confidence_level)
+                    const band = confBand(conf)
+                    const repTone = TONE[toneFor(p.user_name || '—', AVATAR_TONES)]
+                    const typeTone = p.project_types ? TONE[toneFor(p.project_types, TYPE_TONES)] : null
+                    const dtc = daysToClose(p.estimated_closing_date)
+                    const dateCls = dtc == null ? 'text-ink-muted'
+                      : dtc < 0 ? 'text-rose-500 dark:text-rose-400'
+                      : dtc <= 30 ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-ink-muted'
+                    const wPct = Math.max(3, Math.round((num(p.weighted_total) / maxWeighted) * 100))
+                    return (
+                      <Fragment key={p.id}>
+                        <button
+                          onClick={() => setExpandedId(expanded ? null : p.id)}
+                          className={cn('grid', COLS, 'items-center gap-3 px-5 min-h-[56px] py-2 text-left border-b border-hairline-soft hover:bg-surface-soft transition-colors group')}
+                        >
+                          {/* Project */}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <ChevronRight size={14} className={cn('flex-shrink-0 text-ink-faint transition-transform', expanded && 'rotate-90')} />
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{p.project_name || '—'}</p>
+                              <p className="text-[11.5px] text-ink-muted truncate">
+                                {[p.project_customer, p.unit_count > 1 ? `${p.unit_count} units` : null].filter(Boolean).join(' · ') || '—'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Salesperson */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            {p.user_name ? (
+                              <>
+                                <span className={cn('w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0', repTone.bg, repTone.fg)}>
+                                  {initialsOf(p.user_name)}
+                                </span>
+                                <span className="text-[12.5px] text-ink-secondary truncate">{p.user_name}</span>
+                              </>
+                            ) : <span className="text-[12.5px] text-ink-faint">—</span>}
+                          </div>
+
+                          {/* Type */}
+                          <div className="min-w-0">
+                            {typeTone ? (
+                              <span className={cn('inline-flex items-center gap-1.5 max-w-full text-[10.5px] font-semibold px-2 py-[3px] rounded-md', typeTone.bg, typeTone.fg)}>
+                                <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', typeTone.solid)} />
+                                <span className="truncate">{p.project_types}</span>
+                              </span>
+                            ) : <span className="text-[12px] text-ink-faint">—</span>}
+                          </div>
+
+                          {/* Confidence meter */}
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex-1 h-1.5 min-w-[44px] rounded-full bg-surface-strong overflow-hidden">
+                              <span className={cn('block h-full rounded-full', TONE[band].solid)} style={{ width: `${Math.max(2, conf)}%` }} />
+                            </span>
+                            <span className="text-[12px] tabular-nums text-ink-secondary w-8 text-right">{conf}%</span>
+                          </div>
+
+                          {/* Est. close */}
+                          <div className={cn('text-[12.5px] truncate flex items-center gap-1.5', dateCls)}>
+                            {dtc != null && (dtc < 0 || dtc <= 30) && <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', dtc < 0 ? 'bg-rose-500' : 'bg-amber-500')} />}
+                            {fmtDate(p.estimated_closing_date)}
+                          </div>
+
+                          {/* Quote */}
+                          <div className="justify-self-end text-right tabular-nums text-[13px] font-semibold text-ink">{fmtUsd(p.quote_total)}</div>
+
+                          {/* Weighted + magnitude bar */}
+                          <div className="justify-self-end text-right w-full min-w-0">
+                            <div className="tabular-nums text-[12.5px] text-ink-secondary">{fmtUsd(p.weighted_total)}</div>
+                            <div className="h-1 mt-1 rounded-full bg-surface-strong overflow-hidden">
+                              <div className="h-full rounded-full bg-brand" style={{ width: `${wPct}%` }} />
+                            </div>
+                          </div>
+                        </button>
+
+                        {expanded && (
+                          <div className="px-5 py-4 bg-surface-soft border-b border-hairline">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 mb-3">
+                              <Meta label="Company" value={p.company} />
+                              <Meta label="Created" value={fmtDate(p.date_created)} />
+                              <Meta label="Contact" value={p.contact} />
+                              <Meta label="Est. close" value={fmtDate(p.estimated_closing_date)} />
+                            </div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">Units ({units.length})</p>
+                            <div className="space-y-1">
+                              {units.map((u, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-3 text-[12.5px] border-b border-hairline-soft last:border-0 py-1">
+                                  <span className="text-ink-secondary truncate">
+                                    {u.unitName || '—'}
+                                    {u.modelNumber ? <span className="text-ink-faint"> · {u.modelNumber}</span> : null}
+                                  </span>
+                                  <span className="tabular-nums text-ink flex-shrink-0">{fmtUsd(u.quoteTotal)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+
+                  {pageRows.length === 0 && (
+                    <div className="px-5 py-14 text-center border-b border-hairline-soft">
+                      <p className="text-[13px] text-ink-muted">No projects match your search.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Pagination ── */}
+              <div className="flex items-center gap-4 px-5 py-3.5 border-t border-hairline flex-wrap">
+                <span className="text-[12.5px] text-ink-muted">
+                  Showing <b className="font-semibold text-ink-secondary tabular-nums">{view.length === 0 ? '0' : `${start + 1}–${Math.min(start + perPage, view.length)}`}</b>
+                  {' '}of <b className="font-semibold text-ink-secondary tabular-nums">{view.length}</b> projects
+                </span>
+                <div className="flex-1" />
+                <label className="flex items-center gap-2 text-[12.5px] text-ink-muted">
+                  Show
+                  <select
+                    value={perPage}
+                    onChange={(e) => setPerPage(Number(e.target.value))}
+                    className="h-9 px-2 rounded-lg bg-surface-soft border border-hairline text-[13px] text-ink-secondary outline-none focus:border-brand cursor-pointer"
+                  >
+                    {PER_PAGE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  per page
+                </label>
+                <Pager page={current} totalPages={totalPages} onGo={setPage} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -469,13 +468,13 @@ function sumAll(projects: ProjectedSale[]) {
 
 function Stat({ tone, label, value, sub }: { tone: Tone; label: string; value: string; sub?: string }) {
   return (
-    <div className="flex-1 min-w-[150px] px-5 py-3.5 border-l border-hairline first:border-l-0">
-      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
-        <span className={cn('w-1.5 h-1.5 rounded-full', TONE[tone].solid)} />
+    <div className="flex-1 min-w-[150px] px-5 py-3 border-l border-hairline first:border-l-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-2">
+        <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', TONE[tone].solid)} />
         {label}
       </p>
-      <p className="mt-1.5 text-[22px] font-semibold text-ink tabular-nums tracking-tight">{value}</p>
-      {sub && <p className="text-[11px] text-ink-faint mt-0.5">{sub}</p>}
+      <p className="mt-1.5 text-[20px] font-semibold text-ink tabular-nums tracking-tight">{value}</p>
+      {sub && <p className="text-[10.5px] text-ink-faint mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -508,7 +507,7 @@ function RepFilter({ reps, value, onChange }: { reps: string[]; value: string; o
         className={cn(
           'inline-flex items-center gap-2 h-9 px-3 rounded-lg border text-[13px] font-medium transition-colors',
           value === '__all'
-            ? 'bg-canvas border-hairline text-ink-secondary hover:border-hairline-strong'
+            ? 'bg-surface-soft border-hairline text-ink-secondary hover:border-hairline-strong'
             : 'bg-brand-soft border-transparent text-brand-ink',
         )}
       >
@@ -572,7 +571,7 @@ function Pager({ page, totalPages, onGo }: { page: number; totalPages: number; o
 
 function EmptyState({ onSync, syncing }: { onSync: () => void; syncing: boolean }) {
   return (
-    <div className="rounded-xl border border-dashed border-hairline-strong bg-surface-soft px-6 py-16 flex flex-col items-center text-center">
+    <div className="px-6 py-16 flex flex-col items-center text-center">
       <span className="w-11 h-11 rounded-xl bg-surface-strong flex items-center justify-center text-ink-muted mb-3">
         <TrendingUp size={20} />
       </span>
