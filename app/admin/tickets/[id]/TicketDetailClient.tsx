@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -71,6 +71,10 @@ function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name)
@@ -270,6 +274,13 @@ export default function TicketDetailClient({
   // to the customer.
   const [replyToCustomer, setReplyToCustomer] = useState(false)
 
+  // "Draft response": Jerry writes a customer-facing first reply, loaded into the
+  // note editor for the human to edit + send. Admins only (only they send to customers).
+  const [drafting, setDrafting] = useState(false)
+  const [draftSeed, setDraftSeed] = useState('')
+  const [draftNonce, setDraftNonce] = useState(0)
+  const [draftError, setDraftError] = useState<string | null>(null)
+
   // Pre-addressed reply to the customer, tagged with the ticket number in the
   // subject so a future inbound mailbox/webhook can thread responses straight
   // back onto this ticket (Kacy's "email TKT-… and have replies auto-file").
@@ -333,6 +344,33 @@ export default function TicketDetailClient({
       setSaveError('Failed to save note')
     } finally {
       setSavingNote(false)
+    }
+  }
+
+  // Ask Jerry for a customer-facing first reply, then seed the note editor with it.
+  const draftResponse = async () => {
+    setDrafting(true)
+    setDraftError(null)
+    try {
+      const res = await fetch(`/api/admin/tickets/${ticket.id}/assistant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'draft' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.reply) { setDraftError(data.error || 'Could not draft a reply'); return }
+      // Plain-text reply → simple HTML paragraphs for the editor.
+      const html = String(data.reply)
+        .split(/\n{2,}/)
+        .map((para) => `<p>${para.split(/\n/).map(escapeHtml).join('<br>')}</p>`)
+        .join('')
+      setDraftSeed(html)
+      setDraftNonce((n) => n + 1)
+      setReplyToCustomer(true) // a drafted reply is customer-facing by intent; the human can uncheck
+    } catch {
+      setDraftError('Could not draft a reply')
+    } finally {
+      setDrafting(false)
     }
   }
 
@@ -736,7 +774,22 @@ export default function TicketDetailClient({
                     Notes you add here are internal — only an admin can reply to the customer.
                   </p>
                 )}
-                <RichTextEditor onSubmit={addNote} disabled={savingNote} onUpload={uploadAttachment} />
+                {canReplyToCustomer && (
+                  <div className="mb-2.5 flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={draftResponse}
+                      disabled={drafting}
+                      title="Let Jerry draft a first reply to the customer from this ticket + the docs — you review, edit, and send."
+                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-200 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 text-[12px] font-medium hover:bg-emerald-100 dark:hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+                    >
+                      {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                      {drafting ? 'Drafting…' : 'Draft response with Jerry'}
+                    </button>
+                    {draftError && <span className="text-[12px] text-rose-500">{draftError}</span>}
+                  </div>
+                )}
+                <RichTextEditor onSubmit={addNote} disabled={savingNote} onUpload={uploadAttachment} seed={draftSeed} seedNonce={draftNonce} />
               </div>
             </Card>
 

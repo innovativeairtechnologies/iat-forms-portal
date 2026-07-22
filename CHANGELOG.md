@@ -2,6 +2,14 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Tickets: "Draft response with Jerry"
+
+On a ticket, admins get a **Draft response with Jerry** button that generates a customer-facing first
+reply — grounded in the ticket's equipment + the KB (the same RAG engine as the ticket assistant, but a
+customer-tone prompt with no internal citations) — and loads it into the note editor. The human reviews,
+edits, and sends it via the existing "Reply to customer" flow (sanitization + visibility rules
+unchanged). Nothing sends automatically.
+
 ## 2026-07-22 — Org chart: Free layout (drag-anywhere whiteboard mode)
 
 The admin org chart gets a **Free layout** toggle: drag any card to an arbitrary spot on the canvas

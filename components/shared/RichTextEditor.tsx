@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TiptapLink from '@tiptap/extension-link'
@@ -19,6 +19,10 @@ interface Props {
   // Uploads one file and resolves with its stored metadata. When provided, the
   // editor accepts drag-and-drop + a paperclip picker (emails and files).
   onUpload?: (file: File) => Promise<TicketNoteAttachment>
+  // Inject content into the editor (e.g. an AI-drafted reply). `seed` is the HTML;
+  // bump `seedNonce` each time it should be (re)loaded so the same text can reload.
+  seed?: string
+  seedNonce?: number
 }
 
 function formatBytes(n: number): string {
@@ -55,7 +59,7 @@ function ToolbarBtn({
   )
 }
 
-export default function RichTextEditor({ onSubmit, disabled, onUpload }: Props) {
+export default function RichTextEditor({ onSubmit, disabled, onUpload, seed, seedNonce }: Props) {
   const [hasContent, setHasContent] = useState(false)
   const [attachments, setAttachments] = useState<TicketNoteAttachment[]>([])
   const [uploading, setUploading] = useState(0)
@@ -79,6 +83,16 @@ export default function RichTextEditor({ onSubmit, disabled, onUpload }: Props) 
       },
     },
   })
+
+  // Load a seeded draft (e.g. an AI-generated reply) when seedNonce changes.
+  useEffect(() => {
+    if (editor && seedNonce && seed) {
+      editor.commands.setContent(seed)
+      setHasContent(!editor.isEmpty)
+      editor.commands.focus('end')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedNonce])
 
   const handleFiles = async (files: FileList | File[]) => {
     if (!onUpload) return
