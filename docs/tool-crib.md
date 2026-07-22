@@ -165,6 +165,32 @@ NULL`, and `/admin/reset` hard-deletes accounts. Without the snapshots, deleting
 an account would erase the record of who took what, which is the one question
 this feature exists to answer.
 
+### Assigning tools (admin, migration `064`)
+
+Not everyone scans. When someone just *takes* tools and keeps them, the crib
+shows those tools "available" when they aren't — so an admin needs to assign them
+to that person. **Assign is the missing sibling of transfer:** transfer moves an
+*already-checked-out* tool between people; assign issues an **available** tool to
+someone on their behalf (and can reassign a checked-out one).
+
+Two SQL functions (migration `064`, same SECURITY INVOKER + revoke/grant posture
+as the rest):
+- `crib_assign(tag, actor, to, reason?)` — one tool. Locked read + single
+  transaction, refuses maintenance/lost/retired, logs an `'assign'` event with
+  actor = the admin and subject = the assignee. Reason optional (it's an
+  issuance, not an override of someone's custody).
+- `crib_assign_all(actor, to, reason?, include_held)` — assigns every available
+  tool to one person in a single transaction; `include_held` (opt-in) also sweeps
+  up tools currently checked out to *others*. Its `WHERE` pre-filters exactly the
+  rows `crib_assign` accepts, so no loop iteration can raise and abort the batch.
+
+UI: a **"Assign tools"** button on the registry (bulk, with the count preview and
+the include-held toggle → `POST /api/admin/tool-crib/assign-bulk`), and a per-tool
+**"Assign to…"** on the detail page shown **only when the tool is available**
+(checked-out tools use Transfer). Both are `tool_crib`-gated (admin +
+production_manager); the recipient is validated active + non-customer server-side;
+the actor comes from the session, never the body.
+
 ### Double-scan concurrency
 
 Two people scan the same drill at the same instant. The guard is a conditional
