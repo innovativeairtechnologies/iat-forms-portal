@@ -61,18 +61,33 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 // Floating white IAT logos in the hero background — different sizes, low opacity,
 // so they read as "just there" rather than placed. Gentle drift (reduced-motion off).
+// Five distinct drift paths (2-D travel + a little rotation) so the logos each
+// move differently — scattered across the whole hero, small and low-opacity.
+// Bump the px values in the keyframes if you want them to travel even more.
 const PARTICLE_CSS = `
-@keyframes iatDrift{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
-.iat-particle{animation:iatDrift 11s ease-in-out infinite;will-change:transform}
-@media (prefers-reduced-motion:reduce){.iat-particle{animation:none}}
+@keyframes iatFloat1{0%,100%{transform:translate(0,0) rotate(0deg)}33%{transform:translate(14px,-22px) rotate(7deg)}66%{transform:translate(-10px,-12px) rotate(-5deg)}}
+@keyframes iatFloat2{0%,100%{transform:translate(0,0) rotate(0deg)}25%{transform:translate(-16px,-14px) rotate(-9deg)}60%{transform:translate(12px,-26px) rotate(6deg)}}
+@keyframes iatFloat3{0%,100%{transform:translate(0,0) rotate(0deg)}40%{transform:translate(20px,-10px) rotate(10deg)}75%{transform:translate(-9px,-20px) rotate(-7deg)}}
+@keyframes iatFloat4{0%,100%{transform:translate(0,0) rotate(0deg)}30%{transform:translate(-13px,-24px) rotate(5deg)}70%{transform:translate(17px,-9px) rotate(-10deg)}}
+@keyframes iatFloat5{0%,100%{transform:translate(0,0) rotate(0deg)}50%{transform:translate(9px,-28px) rotate(9deg)}}
+.iat-particle{animation-timing-function:ease-in-out;animation-iteration-count:infinite;will-change:transform}
+@media (prefers-reduced-motion:reduce){.iat-particle{animation:none!important}}
 `
 const PARTICLES = [
-  { right: '1%', top: '-9%', w: 150, o: 0.09, d: '11s', dl: '0s' },
-  { right: '19%', top: '34%', w: 92, o: 0.06, d: '13s', dl: '1.4s' },
-  { right: '7%', top: '60%', w: 66, o: 0.05, d: '10s', dl: '0.7s' },
-  { right: '31%', top: '4%', w: 46, o: 0.05, d: '12s', dl: '2.1s' },
-  { right: '3%', top: '84%', w: 104, o: 0.07, d: '14s', dl: '0.4s' },
-  { right: '43%', top: '66%', w: 34, o: 0.045, d: '9s', dl: '1.1s' },
+  { left: '6%',  top: '14%', w: 22, o: 0.08, a: 1, d: '12s', dl: '0s' },
+  { left: '17%', top: '60%', w: 18, o: 0.06, a: 3, d: '15s', dl: '1.2s' },
+  { left: '29%', top: '26%', w: 24, o: 0.07, a: 2, d: '13s', dl: '0.5s' },
+  { left: '41%', top: '72%', w: 16, o: 0.05, a: 4, d: '16s', dl: '2s' },
+  { left: '53%', top: '18%', w: 20, o: 0.07, a: 5, d: '11s', dl: '0.8s' },
+  { left: '65%', top: '54%', w: 26, o: 0.08, a: 1, d: '14s', dl: '1.6s' },
+  { left: '77%', top: '30%', w: 18, o: 0.06, a: 3, d: '12s', dl: '0.3s' },
+  { left: '88%', top: '66%', w: 22, o: 0.07, a: 2, d: '15s', dl: '1s' },
+  { left: '11%', top: '84%', w: 16, o: 0.05, a: 5, d: '13s', dl: '2.4s' },
+  { left: '47%', top: '44%', w: 20, o: 0.06, a: 4, d: '17s', dl: '0.6s' },
+  { left: '72%', top: '10%', w: 18, o: 0.06, a: 1, d: '12s', dl: '1.9s' },
+  { left: '24%', top: '46%', w: 22, o: 0.07, a: 2, d: '14s', dl: '1.1s' },
+  { left: '84%', top: '44%', w: 16, o: 0.05, a: 3, d: '16s', dl: '0.4s' },
+  { left: '60%', top: '82%', w: 20, o: 0.06, a: 4, d: '13s', dl: '2.1s' },
 ]
 
 // ── shared card chrome (mirrors the /admin + /employee dashboards) ───────────
@@ -176,8 +191,9 @@ export function HomeContent({
                   alt=""
                   className="iat-particle absolute select-none"
                   style={{
-                    right: p.right, top: p.top, width: p.w, height: 'auto', opacity: p.o,
-                    filter: 'brightness(0) invert(1)', animationDuration: p.d, animationDelay: p.dl,
+                    left: p.left, top: p.top, width: p.w, height: 'auto', opacity: p.o,
+                    filter: 'brightness(0) invert(1)',
+                    animationName: `iatFloat${p.a}`, animationDuration: p.d, animationDelay: p.dl,
                   }}
                 />
               ))}
