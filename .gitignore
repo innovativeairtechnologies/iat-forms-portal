@@ -56,3 +56,6 @@ next-env.d.ts
 
 # one-off SRV content backup (contains full checklist content)
 scripts/.srv-config-backup.json
+
+# database dumps from scripts/backup-db.mjs — live customer data, never commit
+/backups/
