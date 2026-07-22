@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 /* AI Executive Briefing — shared logic behind app/api/admin/briefing (the
@@ -7,8 +7,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
    day's briefing paragraph, reused everywhere it's shown — not one call per
    admin per surface. See app/api/admin/briefing/route.ts for the dashboard
    endpoint that wraps generateBriefing() with its own HTTP-level caching. */
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const SYSTEM_PROMPT = `You are the operations chief of staff for IAT (Innovative Air Technologies). You write a short executive briefing for the business owner, read from live portal metrics.
 

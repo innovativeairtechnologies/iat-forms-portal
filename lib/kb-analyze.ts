@@ -1,4 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk'
+import type Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { buildChunks, pagesFromTranscript, titleFromFilename } from '@/lib/kb-chunking.mjs'
 import { COMPETITOR_NAMES } from '@/lib/competitors.mjs'
 
@@ -15,8 +16,6 @@ import { COMPETITOR_NAMES } from '@/lib/competitors.mjs'
 // caller decides where the transcript + findings go (straight to the review card,
 // or into the SharePoint review queue).
 // ─────────────────────────────────────────────────────────────────────────────
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const TRANSCRIBE_SYSTEM = `You transcribe a document into clean, complete plain text so it can be searched later. Output rules:
 - Transcribe ALL text: headings, body, tables (as readable rows), labels, part numbers, model/serial numbers, settings, and values. Preserve reading order.

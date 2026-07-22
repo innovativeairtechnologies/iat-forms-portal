@@ -1,12 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd } from '@/lib/equipment'
 import { milestoneProgress } from '@/lib/customer'
 import { retrieveChunks, formatExcerptsForPrompt, dedupeSources, citationLabel, type KbSource } from '@/lib/kb-rag'
 import { scrubCompetitors } from '@/lib/competitors.mjs'
 import type { Equipment, EquipmentMilestone } from '@/lib/supabase'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export type ChatMsg = { role: 'user' | 'assistant'; content: string }
 

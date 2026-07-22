@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { retrieveChunks, formatExcerptsForPrompt, dedupeSources, citationLabel } from '@/lib/kb-rag'
 import { scrubCompetitors } from '@/lib/competitors.mjs'
 import { sanitizeAttachments, buildUserContent, type IncomingAttachment } from '@/lib/assistant-attachments'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; attachments?: IncomingAttachment[] }
 

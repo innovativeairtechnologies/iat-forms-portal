@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd } from '@/lib/equipment'
@@ -8,8 +8,6 @@ import { retrieveChunks, formatExcerptsForPrompt, dedupeSources, citationLabel }
 import { scrubCompetitors } from '@/lib/competitors.mjs'
 import { sanitizeAttachments, buildUserContent, type IncomingAttachment } from '@/lib/assistant-attachments'
 import type { Equipment, EquipmentMilestone, Ticket } from '@/lib/supabase'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; attachments?: IncomingAttachment[] }
 

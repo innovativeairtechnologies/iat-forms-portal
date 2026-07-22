@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { requireToolCribAuth } from '@/lib/api-auth'
 import { CRIB_CATEGORIES } from '@/lib/tool-crib'
 
@@ -11,8 +11,6 @@ import { CRIB_CATEGORIES } from '@/lib/tool-crib'
 
    Admin-gated (this feeds the admin registry), so no anonymous rate limit — the
    client-side resize + the size cap here are the only backstops needed. */
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 type AllowedMedia = (typeof ALLOWED)[number]

@@ -1,6 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+import { anthropic } from '@/lib/anthropic'
 
 // Builds the prompt for the Troubleshooting Checklist AI tips, grounded in the
 // desiccant "Five Fundamentals" so the advice is on-brand and safe. Reads the

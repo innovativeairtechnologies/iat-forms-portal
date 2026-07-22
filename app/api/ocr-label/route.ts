@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { rateLimit } from '@/lib/rate-limit'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // Reads an equipment nameplate photo and pulls out serial / model / voltage so
 // the customer (often a contractor or 3rd-party tech) doesn't have to transcribe

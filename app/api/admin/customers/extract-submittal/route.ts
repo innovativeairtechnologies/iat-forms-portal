@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import type Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { requireAdminAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const SUBMITTALS_BUCKET = 'admin-submittals'
 
