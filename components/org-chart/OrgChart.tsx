@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Network, Search, Eraser, Pencil, Eye, EyeOff, ZoomIn, ZoomOut, Maximize2,
   X, Users, Mail, Phone, Calendar, Building2, CornerDownRight, Plus,
-  GripVertical, Check, ChevronDown, UserCog,
+  GripVertical, Check, ChevronDown, UserCog, Move, RotateCcw,
 } from 'lucide-react'
-import { setManager, setVisibility, setInterests } from '@/app/admin/org-chart/actions'
+import { setManager, setVisibility, setInterests, saveOrgPosition, resetOrgLayout } from '@/app/admin/org-chart/actions'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -24,6 +24,8 @@ export type OrgEmployee = {
   interests: string[]
   org_visible: boolean
   org_sort: number | null
+  org_x: number | null
+  org_y: number | null
 }
 
 type XY = { x: number; y: number }
@@ -160,6 +162,7 @@ export default function OrgChart({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [eraser, setEraser] = useState(false)
+  const [freeLayout, setFreeLayout] = useState(false)
   const [showHidden, setShowHidden] = useState(false)
   const [query, setQuery] = useState('')
   const [deptFilter, setDeptFilter] = useState<string | null>(null)
@@ -171,8 +174,9 @@ export default function OrgChart({
 
   const stageRef = useRef<HTMLDivElement>(null)
   const employeesRef = useRef(employees); employeesRef.current = employees
+  const transformRef = useRef(transform); transformRef.current = transform
   const panRef = useRef({ active: false, sx: 0, sy: 0, tx0: 0, ty0: 0 })
-  const dragRef = useRef<{ active: boolean; id: string; sx: number; sy: number; overId: string | null } | null>(null)
+  const dragRef = useRef<{ active: boolean; id: string; sx: number; sy: number; overId: string | null; mode: 'reassign' | 'move' } | null>(null)
   const movedRef = useRef(0)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -188,7 +192,19 @@ export default function OrgChart({
     () => (showHidden ? employees : employees.filter((e) => e.org_visible)),
     [employees, showHidden],
   )
-  const layout = useMemo(() => computeLayout(layoutEmps), [layoutEmps])
+  const treeLayout = useMemo(() => computeLayout(layoutEmps), [layoutEmps])
+  // In Free layout mode, hand-placed (org_x, org_y) override the computed position;
+  // un-placed nodes keep their tidy-tree spot. Tree mode ignores the stored coords.
+  const layout = useMemo(() => {
+    if (!freeLayout) return treeLayout
+    const pos = new Map(treeLayout.pos)
+    layoutEmps.forEach((e) => {
+      if (typeof e.org_x === 'number' && typeof e.org_y === 'number') pos.set(e.id, { x: e.org_x, y: e.org_y })
+    })
+    let width = 0, height = 0
+    pos.forEach((p) => { width = Math.max(width, p.x + NODE_W); height = Math.max(height, p.y + NODE_H) })
+    return { pos, conns: treeLayout.conns, width, height, roots: treeLayout.roots }
+  }, [freeLayout, treeLayout, layoutEmps])
   const layoutRef = useRef(layout); layoutRef.current = layout
 
   // Pills reflect only the departments actually on the chart (the shown set), not
@@ -253,6 +269,31 @@ export default function OrgChart({
     }
   }, [showToast])
 
+  // Free layout: drop a node at a new (x, y) on the shared canvas — optimistic + saved.
+  const moveNode = useCallback(async (id: string, x: number, y: number) => {
+    const prior = employeesRef.current.find((e) => e.id === id)
+    const px = prior?.org_x ?? null, py = prior?.org_y ?? null
+    setEmployees((prev) => prev.map((e) => (e.id === id ? { ...e, org_x: x, org_y: y } : e)))
+    try {
+      await saveOrgPosition(id, x, y)
+    } catch (err) {
+      setEmployees((prev) => prev.map((e) => (e.id === id ? { ...e, org_x: px, org_y: py } : e)))
+      showToast(err instanceof Error ? err.message : 'Could not save position')
+    }
+  }, [showToast])
+
+  // Free layout: clear all hand-placed positions → back to the computed tidy-tree.
+  const resetLayout = useCallback(async () => {
+    const snapshot = employeesRef.current.map((e) => ({ id: e.id, x: e.org_x, y: e.org_y }))
+    setEmployees((prev) => prev.map((e) => ({ ...e, org_x: null, org_y: null })))
+    try {
+      await resetOrgLayout()
+    } catch (err) {
+      setEmployees((prev) => prev.map((e) => { const s = snapshot.find((z) => z.id === e.id); return s ? { ...e, org_x: s.x, org_y: s.y } : e }))
+      showToast(err instanceof Error ? err.message : 'Could not reset layout')
+    }
+  }, [showToast])
+
   // ── Pan / drag (window-level so it tracks outside the stage) ──
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -267,28 +308,42 @@ export default function OrgChart({
         const dy = e.clientY - d.sy
         movedRef.current = Math.max(movedRef.current, Math.abs(dx) + Math.abs(dy))
         let overId: string | null = null
-        const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
-        const nodeEl = el?.closest('[data-node-id]') as HTMLElement | null
-        if (nodeEl) {
-          const tid = nodeEl.getAttribute('data-node-id')
-          if (tid && tid !== d.id) overId = tid
+        // Free-layout drags just move the node; only reassign drags hunt for a drop target.
+        if (d.mode === 'reassign') {
+          const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+          const nodeEl = el?.closest('[data-node-id]') as HTMLElement | null
+          if (nodeEl) {
+            const tid = nodeEl.getAttribute('data-node-id')
+            if (tid && tid !== d.id) overId = tid
+          }
+          d.overId = overId
         }
-        d.overId = overId
         setGhost({ id: d.id, dx, dy, overId })
       }
     }
     const onUp = (e: PointerEvent) => {
       if (dragRef.current?.active) {
         const d = dragRef.current
-        let target = d.overId
-        // Recompute the drop target at release (the ghost is pointer-events:none,
-        // so elementFromPoint now sees the card underneath) — belt and suspenders.
-        if (movedRef.current > 4) {
-          const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
-          const tid = (el?.closest('[data-node-id]') as HTMLElement | null)?.getAttribute('data-node-id')
-          if (tid && tid !== d.id) target = tid
+        if (d.mode === 'move') {
+          // Free layout: commit the node's new canvas position (unscaled coords).
+          if (movedRef.current > 4) {
+            const cur = layoutRef.current.pos.get(d.id)
+            if (cur) {
+              const s = transformRef.current.s
+              moveNode(d.id, cur.x + (e.clientX - d.sx) / s, cur.y + (e.clientY - d.sy) / s)
+            }
+          }
+        } else {
+          let target = d.overId
+          // Recompute the drop target at release (the ghost is pointer-events:none,
+          // so elementFromPoint now sees the card underneath) — belt and suspenders.
+          if (movedRef.current > 4) {
+            const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+            const tid = (el?.closest('[data-node-id]') as HTMLElement | null)?.getAttribute('data-node-id')
+            if (tid && tid !== d.id) target = tid
+          }
+          if (movedRef.current > 4 && target) reassign(d.id, target)
         }
-        if (movedRef.current > 4 && target) reassign(d.id, target)
         dragRef.current = null
         setGhost(null)
       }
@@ -301,7 +356,7 @@ export default function OrgChart({
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
-  }, [reassign])
+  }, [reassign, moveNode])
 
   // ── Wheel zoom (non-passive so we can preventDefault) ──
   useEffect(() => {
@@ -371,10 +426,17 @@ export default function OrgChart({
 
   // ── Node interactions ──
   const onNodePointerDown = (e: React.PointerEvent, id: string) => {
+    if (freeLayout) {
+      e.stopPropagation()
+      dragRef.current = { active: true, id, sx: e.clientX, sy: e.clientY, overId: null, mode: 'move' }
+      movedRef.current = 0
+      setGrabbing(true)
+      return
+    }
     if (eraser && editMode) { e.stopPropagation(); return }
     if (editMode) {
       e.stopPropagation()
-      dragRef.current = { active: true, id, sx: e.clientX, sy: e.clientY, overId: null }
+      dragRef.current = { active: true, id, sx: e.clientX, sy: e.clientY, overId: null, mode: 'reassign' }
       movedRef.current = 0
       setGrabbing(true)
     }
@@ -421,8 +483,10 @@ export default function OrgChart({
         <div className="flex items-center gap-1.5">
           {canEdit && (
             <>
-              <Toggle on={editMode} onClick={() => { setEditMode((v) => { if (v) setEraser(false); return !v }) }} icon={<Pencil size={14} />} label="Edit" tone="emerald" />
+              <Toggle on={editMode} onClick={() => { setFreeLayout(false); setEditMode((v) => { if (v) setEraser(false); return !v }) }} icon={<Pencil size={14} />} label="Edit" tone="emerald" />
               <Toggle on={eraser} disabled={!editMode} onClick={() => setEraser((v) => !v)} icon={<Eraser size={14} />} label="Erase" tone="rose" />
+              <Toggle on={freeLayout} onClick={() => setFreeLayout((v) => { const nv = !v; if (nv) { setEditMode(false); setEraser(false) } return nv })} icon={<Move size={14} />} label="Free layout" tone="emerald" />
+              {freeLayout && <IconBtn onClick={resetLayout} title="Reset to automatic layout"><RotateCcw size={15} /></IconBtn>}
               <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
             </>
           )}
@@ -549,7 +613,7 @@ export default function OrgChart({
                     borderColor: sel ? '#10b981' : isOver ? '#34d399' : undefined,
                     borderStyle: hidden ? 'dashed' : 'solid',
                     boxShadow: sel ? '0 0 0 2px #10b981' : isOver ? '0 0 0 2px #34d399' : undefined,
-                    cursor: editMode && !eraser ? 'grab' : 'pointer',
+                    cursor: freeLayout || (editMode && !eraser) ? 'grab' : 'pointer',
                     paddingLeft: 16,
                     pointerEvents: isGhost ? 'none' : undefined,
                   }}
@@ -615,6 +679,7 @@ export default function OrgChart({
         {/* mode hint */}
         <div className="absolute left-4 bottom-4 text-[11px] text-zinc-400 dark:text-zinc-600 pointer-events-none">
           {eraser && editMode ? 'Eraser on — click anyone to hide them.'
+            : freeLayout ? 'Free layout — drag anyone anywhere; positions save automatically. Reset restores the auto layout.'
             : editMode ? 'Edit on — drag a card onto another to reassign, or click to open.'
             : 'Drag to pan · scroll to zoom · click a card for details.'}
         </div>

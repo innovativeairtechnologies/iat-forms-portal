@@ -36,6 +36,8 @@ async function getEmployees(): Promise<OrgEmployee[]> {
       interests: Array.isArray(e.interests) ? e.interests : [],
       org_visible: e.org_visible !== false,
       org_sort: typeof e.org_sort === 'number' ? e.org_sort : null,
+      org_x: typeof e.org_x === 'number' ? e.org_x : null,
+      org_y: typeof e.org_y === 'number' ? e.org_y : null,
     }))
 }
 

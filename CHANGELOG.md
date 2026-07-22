@@ -2,6 +2,21 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Org chart: Free layout (drag-anywhere whiteboard mode)
+
+The admin org chart gets a **Free layout** toggle: drag any card to an arbitrary spot on the canvas
+and the position saves (per-node, on drop) to the shared chart, with connectors following. Un-placed
+nodes keep their computed tidy-tree position, so turning it on changes nothing until you actually move
+someone; **Reset** clears all hand-placement back to the automatic layout. Auto (manager-reassign)
+mode is unchanged, and Free layout is admin-only (the employee `/directory` never sees it). Backed by
+two nullable columns (`employees.org_x` / `org_y`, migration `065_org_layout.sql`) written through an
+admin-gated server action.
+
+Migrations: applied the previously-inert **SharePoint schema (060)** early (additive + inert — nothing
+turns on until Entra/env are set) and reconciled the drifted migration tracker, so **059–065 now read
+as applied**. Also documented that the Layer-2 backup dump (`scripts/backup-db.mjs`) needs Docker
+Desktop or a native `pg_dump` (`docs/backup-restore.md`).
+
 ## 2026-07-22 — Hardening pass 2: access-control fixes, shared AI client, plainer Gantt copy, backups
 
 **Security fixes.** `/tools/*` now bounces customers to `/customer` (a customer session could open the

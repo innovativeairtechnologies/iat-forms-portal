@@ -8,9 +8,13 @@
  * PITR (see docs/backup-restore.md) — a portable copy you control.
  *
  * Usage:  node scripts/backup-db.mjs
- * Needs:  the Supabase CLI linked (npx supabase link) and the DB password
- *         available (set SUPABASE_DB_PASSWORD, or run once interactively and
- *         let the CLI prompt for it).
+ * Needs:  the Supabase CLI linked (npx supabase link), the DB password available
+ *         (set SUPABASE_DB_PASSWORD, or run once interactively), AND Docker
+ *         Desktop running — `supabase db dump` runs pg_dump in a container to
+ *         match the server's Postgres version. No Docker? Run a native pg_dump
+ *         against the pooler connection string instead (see docs/backup-restore.md).
+ *         Note: Layer 1 (Supabase managed backups + PITR) is the primary — this
+ *         dump is belt-and-suspenders.
  *
  * Restore + restore-test steps: docs/backup-restore.md
  */

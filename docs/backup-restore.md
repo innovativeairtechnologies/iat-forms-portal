@@ -29,8 +29,12 @@ Writes `backups/<timestamp>/schema.sql` + `data.sql` via the linked Supabase CLI
 folder is **gitignored** — dumps contain live customer data and this repo is public, so **never
 commit them**. Move them somewhere safe (encrypted drive / the company backup location).
 
-Prereqs: the Supabase CLI is linked (`npx supabase link`), and the DB password is available (set
-`SUPABASE_DB_PASSWORD`, or run once interactively and let the CLI prompt).
+Prereqs: the Supabase CLI is linked (`npx supabase link`), the DB password is available (set
+`SUPABASE_DB_PASSWORD`, or run once interactively), **and Docker Desktop is running** — `supabase db
+dump` runs `pg_dump` inside a container to match the server's Postgres version. If you don't run
+Docker, install the Postgres client tools and run `pg_dump` directly against the project's pooler
+connection string instead (same output). Either way, **Layer 1 (managed backups) is the primary** —
+this dump is redundancy.
 
 ### Restore test (do this at least once, and after any big schema change)
 

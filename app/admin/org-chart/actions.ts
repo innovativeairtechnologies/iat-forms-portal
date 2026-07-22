@@ -104,3 +104,39 @@ export async function setInterests(employeeId: string, interests: string[]): Pro
 
   revalidatePath('/admin/org-chart')
 }
+
+/** Free-layout: persist one node's hand-placed position on the shared org canvas.
+ *  Global (one canonical chart), so admin-gated — not a per-user write. */
+export async function saveOrgPosition(employeeId: string, x: number, y: number): Promise<void> {
+  await requireAdmin()
+
+  const { error } = await supabaseAdmin
+    .from('employees')
+    .update({ org_x: x, org_y: y })
+    .eq('id', employeeId)
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/admin/org-chart')
+}
+
+/** Free-layout: clear every hand-placed position → the chart falls back to the
+ *  computed tidy-tree layout. */
+export async function resetOrgLayout(): Promise<void> {
+  const admin = await requireAdmin()
+
+  const { error } = await supabaseAdmin
+    .from('employees')
+    .update({ org_x: null, org_y: null })
+    .not('id', 'is', null) // all rows (Supabase requires a filter on update)
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/admin/org-chart')
+
+  await logAudit({
+    actor: { id: admin.user.id, name: admin.displayName },
+    action: 'org.layout_reset',
+    entityType: 'employee',
+    entityId: 'all',
+    summary: 'Reset the org chart to the automatic layout',
+  })
+}
