@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Sentry: server-side error monitoring (inert until a DSN is set)
+
+The app had **no** error monitoring — 200+ `console.error` calls that only landed in Vercel logs,
+nothing aggregated or alerting. Wired `@sentry/nextjs` for **server + edge** errors (API routes,
+server components, server actions) via `instrumentation.ts`, plus the app's first `global-error.tsx`
+boundary. It **ships dark — inert until you set `SENTRY_DSN`**:
+1. Create a free project at sentry.io (Next.js platform) → copy the **DSN**.
+2. Set `SENTRY_DSN` in Vercel → Settings → Environment Variables (Production + Preview) → redeploy.
+
+Browser-error capture is a deliberate opt-in (the Sentry SDK adds ~80 kB to the client bundle), so the
+client bundle is unchanged — add an `instrumentation-client.ts` + `NEXT_PUBLIC_SENTRY_DSN` when you
+want it (see the note in `global-error.tsx`). For readable (un-minified) stack traces, wrap
+`next.config.js` in `withSentryConfig` with a `SENTRY_AUTH_TOKEN` later. (`npm audit fix` also cleared
+3 newly-disclosed transitive advisories; the 2 remaining highs are Next.js's `sharp`/libvips dep, which
+Dependabot will bump when Next patches it — not a force-downgrade.)
+
 ## 2026-07-22 — Security: retire the legacy ticketing app + close the anon-insert bypass
 
 The standalone `iat-ticketing.vercel.app` app (a static page that inserted tickets directly with the
