@@ -45,7 +45,7 @@ export default function GanttListClient({ charts }: { charts: GanttChart[] }) {
         count={
           <span className="inline-flex items-center gap-1 flex-wrap">
             {charts.length} project {charts.length === 1 ? 'timeline' : 'timelines'} · realistic ship-date forecasts for customer builds
-            <InfoTip text={<>Each timeline shows a customer build as a <b>range</b> of ship dates, not one date — long-lead parts and testing rarely land exactly on plan. Open one and hover any <b>?</b> to see what a control does. The date to quote a customer is <b>“80% confident by.”</b></>} />
+            <InfoTip text={<>Each timeline shows a customer build as a <b>range</b> of ship dates, not one date — long-lead parts and testing rarely land exactly on plan. Open one and hover any <b>?</b> to see what a control does. The date to quote a customer is the <b>“80% confident by”</b> date — confirm it with the project lead before committing.</>} />
           </span>
         }
         actions={

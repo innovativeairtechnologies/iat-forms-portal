@@ -146,8 +146,10 @@ export default function PrintSheet({ chart, R, H, mc, variance }: Props) {
 
       {/* footer */}
       <div className="mt-5 pt-2 border-t border-zinc-300 text-[10.5px] text-zinc-500">
-        Forecast, not a commitment — dates shown are ranges; P80 = 8-in-10 confidence based on {mc.iterations.toLocaleString()} simulations
-        of the stated duration ranges and risk rules. IAT internal.
+        Forecast, not a promise — every date is a range. Quote the “80% confident by” date (we ship on or before
+        it about 8 times in 10), never the middle plan date, and confirm it with the project lead before committing
+        to a customer. From {mc.iterations.toLocaleString()} simulations of the stated duration ranges and risk
+        rules. IAT internal.
       </div>
     </div>
   )

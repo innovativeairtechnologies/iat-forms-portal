@@ -306,7 +306,7 @@ export default function GanttEditorClient({ initial }: { initial: GanttChart }) 
             value={dt(mc.ship.p80)}
             sub={`P50 ${dt(mc.ship.p50)} · P90 ${dt(mc.ship.p90)}`}
             tone="emerald"
-            tip="This is the date to quote a customer — you ship on or before it 8 times out of 10. The plan date is only a middle guess (around 50/50, sometimes worse); this one has real cushion built in."
+            tip="This is the date to quote a customer — you ship on or before it about 8 times out of 10. The plan date is only a middle guess (around 50/50), so never quote that one. Confirm the quote date with the project lead before committing to a customer."
           />
           <Stat
             label="Vs baseline"

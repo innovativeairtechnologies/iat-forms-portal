@@ -22,7 +22,7 @@ export default function ConfidencePanel({ chart, mc }: { chart: GanttChart; mc: 
         <div>
           <h3 className="text-[14px] font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
             Confidence
-            <InfoTip text={<>The computer plays out this project thousands of times — only ever using the week ranges you entered — and counts how often each finish date comes up. The “P” is just <b>how often you’d make it</b>: P80 = the safe date to quote (8 in 10), P50 = a coin-flip (never quote it), P90 = extra-cautious (9 in 10). Taller bars = more likely finish weeks.</>} />
+            <InfoTip text={<>The computer plays out this project thousands of times — only ever using the week ranges you entered — and counts how often each finish date comes up. Read each date as <b>how often you’d make it</b>: the <b>“80% confident by”</b> date is the safe one to quote (you make it 8 times in 10), the middle date is a coin-flip (never quote it), and the “90%” date is extra-cautious. Taller bars = more likely finish weeks.</>} />
           </h3>
           <p className="text-[12px] text-zinc-400 dark:text-zinc-500">
             {mc.iterations.toLocaleString()} simulations of your duration ranges and risk rules.
@@ -69,7 +69,7 @@ export default function ConfidencePanel({ chart, mc }: { chart: GanttChart; mc: 
       )}
 
       <div className="px-4 py-2 border-t border-zinc-100 dark:border-zinc-800/60 text-[11.5px] text-zinc-400 dark:text-zinc-500">
-        P80 = 8-in-10 odds of shipping on or before that date. Commit externally to P80, not the plan date.
+        The “80% confident by” date means 8-in-10 odds of shipping on or before it — quote that date, not the middle plan date, and confirm with the project lead before committing to a customer.
         {chart.tasks.some((t) => t.status === 'done') && ' Completed tasks are pinned to their actual dates — the window narrows as work finishes.'}
       </div>
     </div>
