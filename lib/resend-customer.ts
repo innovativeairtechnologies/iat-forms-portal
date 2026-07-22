@@ -1,7 +1,8 @@
 import { Resend } from 'resend'
+import { EMAIL_FROM } from './email-from'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = 'IAT Portal <onboarding@resend.dev>'
+const FROM = EMAIL_FROM.PORTAL
 
 // All portal "Contact Us" / support-facing messages route here for now; the
 // chosen department (or automated context) is carried in the subject/body so

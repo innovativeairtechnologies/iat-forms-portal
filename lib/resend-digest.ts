@@ -1,10 +1,11 @@
 import { Resend } from 'resend'
 import type { DigestTicket } from '@/lib/admin-digest'
+import { EMAIL_FROM } from '@/lib/email-from'
 
 // Internal admin email (daily digest + on-demand test-send). Kept separate
 // from resend-customer.ts, which is scoped to customer-facing emails.
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = 'IAT Portal <onboarding@resend.dev>'
+const FROM = EMAIL_FROM.PORTAL
 
 // Same derivation pattern as lib/resend-tickets.ts / resend-pto.ts: this cron
 // route has no incoming request to read an origin from, so we fall back to

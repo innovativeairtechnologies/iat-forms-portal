@@ -194,6 +194,16 @@ export async function POST(req: NextRequest) {
     const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
     if (fallback && !adminEmails.includes(fallback)) adminEmails.push(fallback)
 
+    // Support-desk recipients (e.g. the PM). Comma-separated so more people can
+    // be added later without a code change; deduped against the admin list.
+    const supportRecipients = (process.env.SUPPORT_NOTIFICATION_EMAIL || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+    for (const r of supportRecipients) {
+      if (!adminEmails.includes(r)) adminEmails.push(r)
+    }
+
     await Promise.all([
       sendTicketConfirmationToCustomer(fullTicket).catch(console.error),
       adminEmails.length

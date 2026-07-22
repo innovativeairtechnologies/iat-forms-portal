@@ -1,8 +1,9 @@
 import { Resend } from 'resend'
 import type { TroubleshootingIntake } from './supabase'
+import { EMAIL_FROM } from './email-from'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = 'IAT Support <onboarding@resend.dev>'
+const FROM = EMAIL_FROM.SUPPORT
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL
   || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
 

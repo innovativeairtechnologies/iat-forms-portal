@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminUser } from '@/lib/admin-auth'
 import { resend } from '@/lib/resend'
+import { EMAIL_FROM } from '@/lib/email-from'
 import { logAudit } from '@/lib/audit'
 import { SRV_FORM_TITLE } from '@/lib/srv'
 import { getSrvReview, type SrvReview } from '@/lib/srv-form'
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
     if (to) {
       try {
         await resend.emails.send({
-          from: 'IAT Forms <onboarding@resend.dev>',
+          from: EMAIL_FROM.FORMS,
           to,
           subject:
             decision === 'approve'

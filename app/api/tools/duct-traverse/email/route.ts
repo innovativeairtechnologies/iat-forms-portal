@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { normalizeRole, isStaffRole } from '@/lib/roles'
+import { EMAIL_FROM } from '@/lib/email-from'
 
 /* Emails a Duct Traverse Report PDF to a recipient the tech types in.
 
@@ -15,11 +16,11 @@ import { normalizeRole, isStaffRole } from '@/lib/roles'
 export const runtime = 'nodejs'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-// Uses the shared sandbox sender by default. Set RESEND_FROM (e.g.
-// "IAT Reports <reports@yourdomain.com>") once a domain is verified at
+// Uses the shared sandbox sender by default. Set RESEND_FROM_PORTAL (or the
+// legacy RESEND_FROM) once the dehumidifiers.com domain is verified at
 // resend.com/domains — then reports can be emailed to outside addresses with
 // no code change. Until then, Resend test mode only delivers to the account owner.
-const FROM = process.env.RESEND_FROM || 'IAT Portal <onboarding@resend.dev>'
+const FROM = EMAIL_FROM.PORTAL
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const MAX_PDF_B64 = 8_000_000 // ~6MB decoded — a traverse PDF is a few dozen KB
