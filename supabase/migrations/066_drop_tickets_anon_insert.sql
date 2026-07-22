@@ -1,0 +1,17 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 066_drop_tickets_anon_insert.sql — close the anon direct-insert bypass on tickets.
+--
+-- The `tickets_public_insert` policy (migration 008) let the anon key INSERT ticket
+-- rows directly via Supabase REST, skipping the API rate limiter. It existed ONLY
+-- for the legacy standalone ticketing app (iat-ticketing.vercel.app), now retired
+-- (redirected to iatportal.vercel.app/support). The portal creates tickets
+-- server-side via /api/tickets (service role, which bypasses RLS), so no legitimate
+-- client relies on anon insert anymore. Dropping it closes security gap §8.1.
+--
+-- (submissions still allows anon INSERT for the public form-fill path — §8.1 wants
+-- that verified separately before dropping, so it is intentionally left in place.)
+--
+-- Reversible: re-create with
+--   CREATE POLICY tickets_public_insert ON tickets FOR INSERT TO anon, authenticated WITH CHECK (true);
+-- ─────────────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS tickets_public_insert ON public.tickets;

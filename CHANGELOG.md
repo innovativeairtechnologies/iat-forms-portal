@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Security: retire the legacy ticketing app + close the anon-insert bypass
+
+The standalone `iat-ticketing.vercel.app` app (a static page that inserted tickets directly with the
+anon key, bypassing the API rate limiter) is retired — it now 307-redirects to
+`iatportal.vercel.app/support`, which replaced it. With no client left that needs it, migration `066`
+drops the `tickets_public_insert` RLS policy, so the anon key can no longer insert ticket rows directly
+(portal tickets go through `/api/tickets` server-side, which bypasses RLS). Closes security gap §8.1 /
+§8.7 for tickets. (`submissions` still allows anon insert for the public form — flagged for separate
+verification before dropping.)
+
 ## 2026-07-22 — Dashboards: cards gated by permission; sales follow-ups nudge
 
 The scoped-role dashboard (`DepartmentDashboard`) now picks its stat cards from a declarative catalog
