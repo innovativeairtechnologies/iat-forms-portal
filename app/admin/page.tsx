@@ -4,8 +4,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
-import { TopBarSearch, TopBarBell } from './TopBarActions'
-import DashboardPresetPicker from './DashboardPresetPicker'
 import ExecutiveBriefing from './ExecutiveBriefing'
 import DepartmentDashboard from '@/components/admin/DepartmentDashboard'
 import SalesDashboardView from '@/components/dashboards/SalesDashboardView'
@@ -13,7 +11,7 @@ import type { StaffRole } from '@/lib/roles'
 import type { Deal } from '@/lib/supabase'
 import { PRESETS, DASH_PRESET_COOKIE, type Preset } from './dashboard-presets'
 import {
-  ChevronRight, Plus,
+  Plus,
   Inbox, FileText, ClipboardList, Ticket, CheckCircle2, Clock,
   AlertCircle, ShieldCheck, Sparkles, Users, ArrowRight,
 } from 'lucide-react'
@@ -488,28 +486,9 @@ export default async function AdminDashboard() {
         <div className="absolute top-16 -left-32 w-[380px] h-[380px] rounded-full bg-gradient-to-tr from-sky-400/15 via-teal-400/8 to-transparent blur-3xl dark:from-sky-500/14 dark:via-teal-500/7" />
       </div>
 
-      {/* Top bar — search · icon view-switcher · primary action · bell · avatar */}
-      {/* Solid background, deliberately. An opacity modifier on a semantic token
-          compiles to nothing, which left this sticky bar fully transparent with
-          content scrolling behind it. See DESIGN.md §2.5. */}
-      <div className="sticky top-0 z-10 flex items-center gap-2.5 px-5 h-14 border-b border-hairline bg-canvas">
-        <div className="flex items-center gap-1.5 text-[13px]">
-          <span className="text-ink-muted">Operations</span>
-          <ChevronRight size={13} className="text-ink-faint" />
-          <span className="font-semibold text-ink">Overview</span>
-        </div>
-        <div className="flex-1" />
-        <TopBarSearch />
-        <DashboardPresetPicker current={preset} />
-        <TopBarBell unreadCount={d.kpi.unread} ticketCount={d.kpi.openTickets} />
-        <Link
-          href="/admin/profile"
-          title={surfaceUser?.displayName || 'Profile'}
-          className="w-8 h-8 rounded-full bg-ink flex items-center justify-center flex-shrink-0 hover:opacity-85 transition-opacity"
-        >
-          <span className="text-[12px] font-semibold text-canvas">{(surfaceUser?.displayName || 'A').charAt(0).toUpperCase()}</span>
-        </Link>
-      </div>
+      {/* The operations top bar (breadcrumb · search · view-switcher · bell ·
+          avatar) now lives in app/admin/layout.tsx as the shared AdminTopBar, so
+          every /admin page carries it. The view-switcher shows only here. */}
 
       <div className="p-5 space-y-6">
 

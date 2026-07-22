@@ -2,6 +2,25 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-22 — Shared operations top bar on every admin page
+
+The dashboard's top bar (breadcrumb · search · layout view-switcher · notifications
+bell · profile avatar) was hand-rolled inline on `/admin` only — every other admin
+page had a plainer title header with none of it. Lifted it into a shared
+**`AdminTopBar`** (`app/admin/AdminTopBar.tsx`) rendered once from the admin layout,
+so **every `/admin/*` page** now carries the same chrome.
+
+- Breadcrumbs resolve from the route (Operations / Sales / People / Jerry / System).
+- The dashboard layout **view-switcher** ("Balanced / Tickets / Submissions") is now
+  contextual — it renders on the dashboard only; on every other page that slot is
+  free for future per-page actions.
+- Desktop chrome (md+); on mobile the sidebar's hamburger bar still stands in, so
+  there's never two stacked bars.
+- No data, API, or permission changes. First step toward one consistent shell across
+  the portal — the employee and Learn surfaces still use their own bar for now.
+
+See `docs/admin-topbar.md`.
+
 ## 2026-07-22 — Sentry: server-side error monitoring (inert until a DSN is set)
 
 The app had **no** error monitoring — 200+ `console.error` calls that only landed in Vercel logs,

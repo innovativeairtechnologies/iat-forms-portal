@@ -1,13 +1,16 @@
 ﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
+import AdminTopBar from './AdminTopBar'
 import RefreshOnNavigate from '@/components/admin/RefreshOnNavigate'
 import CommandPalette from '@/components/admin/CommandPalette'
 import { ViewAsProvider, ViewAsBanner } from '@/components/admin/ViewAs'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFormDraftCount } from '@/lib/drafts'
 import { getPermMatrix } from '@/lib/permissions'
+import { DASH_PRESET_COOKIE, PRESETS, type Preset } from './dashboard-presets'
 
 export const metadata: Metadata = {
   title: 'IAT Operations',
@@ -40,6 +43,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const permMatrix = await getPermMatrix()
 
+  const presetRaw = (await cookies()).get(DASH_PRESET_COOKIE)?.value
+  const preset: Preset = (PRESETS as readonly string[]).includes(presetRaw ?? '') ? (presetRaw as Preset) : 'balanced'
+
   return (
     <ViewAsProvider realRole={admin.role} permMatrix={permMatrix}>
       <div className="min-h-screen flex bg-canvas">
@@ -58,6 +64,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {/* pt-14 clears the fixed mobile top bar (the sidebar's old h-14 spacer sat in
             this flex-row, so it never actually pushed content down) */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden pt-14 md:pt-0">
+          <AdminTopBar
+            displayName={admin.displayName}
+            unreadCount={unreadCount ?? 0}
+            ticketCount={openTickets ?? 0}
+            preset={preset}
+          />
           <ViewAsBanner />
           {children}
         </div>
