@@ -2,6 +2,29 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — One-card list pattern rolled out to every admin list
+
+Extended the one-card list pattern (shipped on Performance) to all remaining `/admin` list
+pages, via a new shared kit `components/admin/list-card.tsx` — `ListCardPage`, `ListCard`,
+`CardHead`, `StatStrip`/`Stat`, `Toolbar`, `CardTable`, `Row`, `SortHeader`,
+`Pagination`/`usePagedList`, `FilterDropdown`, `ListSearch`, `ToneAvatar`, `TagPill`,
+`Meter`. The three alignment gotchas (`w-full` rows, `overflow-y:hidden` table wrapper, and
+NOT `overflow-hidden` on the card) are **baked into the components** so they can't be missed.
+
+Converted — client-side pagination (default 10), colored avatars, tone pills, semantic
+tokens, existing behavior preserved: **Submissions, Tickets, Employees, Customers, Equipment,
+Tool Crib, Production, Gantt, PTO/Sick requests, Accrual, Audit, Presentations, US Rotors
+Orders**. The **CRM (Deals)** view is a kanban board, not a table, so it got the header/shell
+only — the Board / Focused / Calendar views are untouched. Submissions and the Audit "Emails"
+tab keep their existing **server-side** pagination (they page/filter server-side; client
+slicing would desync the counts).
+
+Known follow-ups (non-blocking): on rows that carry inline controls (Tickets/Submissions
+selection checkbox + kebab), the control nests inside the row `<Link>` — works in every
+browser, but a future `Row` "stretched-link" variant would make it valid HTML. Lists that
+previously hid their column header on mobile now show it (labels only; no functional change).
+See `docs/list-views.md`.
+
 ## 2026-07-22 — Performance list: pagination + a livelier, one-card redesign
 
 The Performance list (`/admin/projected-sales`, ~340 projects) ran on forever with no

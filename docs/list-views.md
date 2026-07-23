@@ -76,9 +76,28 @@ should be equal.
   real bulk/row actions. Performance is read-only, so it has neither.
 - **Weights** — titles `font-semibold` (≤650, per DESIGN.md), never `font-bold`.
 
-## Rollout
+## The shared kit (`components/admin/list-card.tsx`)
 
-Performance is the reference. When promoting to other lists, extract the shared bits
-(`Stat`, `Pager`, `RepFilter`, the `TONE` map + `toneFor`, the card shell) into
-`components/admin/list.tsx` so every list changes from one place — after the pattern is
-settled on Performance.
+The pattern is now a kit — build new/converted lists from it, don't hand-roll:
+`ListCardPage` (canvas root) · `ListCard` · `CardHead` · `StatStrip`/`Stat` · `Toolbar` ·
+`CardTable` (bakes in `overflow-x-auto overflow-y-hidden` + min-width) · `Row` (bakes in
+`w-full`) · `SortHeader` · `EmptyRow` · `Pagination` + `usePagedList` (default 10) ·
+`PerPageSelect` · `Pager` · `FilterDropdown` · `ListSearch` · `ToneAvatar` · `TagPill` ·
+`Meter` · `CARD_TONE`/`toneFor`/`confBand`. The three gotchas above are encapsulated in
+`CardTable`/`Row`/`ListCard`, so you can't reintroduce them by composing the kit.
+(`components/admin/list.tsx` still holds the older `ListPageHeader`/`HEADER_BOX` primitives +
+`StatusPill` + the status→tone maps; reuse `StatusPill` and those maps.)
+
+## Rollout status — DONE (2026-07-23)
+
+Performance was the reference; the kit was then applied to every remaining `/admin` list:
+Submissions, Tickets, Employees, Customers, Equipment, Tool Crib, Production, Gantt,
+PTO/Sick requests, Accrual, Audit, Presentations, US Rotors Orders. **CRM (Deals)** is a
+kanban and only took the header/shell. Notes:
+- **Server-paginated pages stay server-paginated** — Submissions and the Audit "Emails" tab
+  page/filter/count on the server; don't swap them to client `usePagedList` (it would only
+  slice the current window and desync the counts). Match the footer look with `<Link>` pagers.
+- **Rows with inline controls + navigation:** today those pages nest a checkbox/kebab inside
+  the row `<Link>` with `preventDefault`/`stopPropagation` guards — it works everywhere but is
+  HTML-invalid (interactive-in-interactive). A future `Row` "stretched-link" variant (a `<div>`
+  row + an absolute `<Link>` overlay + `relative z-10` on the controls) would make it clean.
