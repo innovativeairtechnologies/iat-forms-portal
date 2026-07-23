@@ -97,7 +97,9 @@ export default function AdminTopBar({ displayName, unreadCount, ticketCount, pre
   // operations bar there — otherwise the page shows two stacked top bars.
   if (pathname === '/admin/home') return null
   const trail = crumbs ?? crumbsFor(pathname)
-  const withPresets = showPresets ?? pathname === '/admin'
+  // Layout presets retired: the admin dashboard is now the customizable card
+  // grid (add/remove/reorder/resize), so the old view-switcher no longer applies.
+  const withPresets = showPresets ?? false
   const initial = (displayName || 'A').charAt(0).toUpperCase()
 
   return (

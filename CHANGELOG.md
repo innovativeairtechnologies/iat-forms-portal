@@ -2,6 +2,20 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — Admin dashboard is customizable too (executive widgets → cards)
+
+The admin **executive dashboard is now the same per-user customizable card grid** as the department
+dashboards: admin gets the **"Edit dashboard"** button (add / remove / reorder / resize) while keeping
+its full richness. The ~9 executive widgets — **AI Briefing, 14-day Activity, Forms Performance, Top
+Forms, Top Submitters, Form Status, Needs Attention, Live Activity, Admin Activity** — are ported into
+the card registry as admin-only cards reading one shared `getExecData()` batch; the admin default
+layout reproduces the old executive arrangement, and the KPI strip shows the executive metrics. **Every
+admin-surface role now lands on the same customizable grid** (Sales keeps its dedicated command center;
+View-as previews any role). The old cookie-backed layout presets + the top-bar view-switcher are
+**retired** (superseded by the card editor). New: `lib/exec-dashboard-data.ts` +
+`components/dashboards/exec-cards.tsx`; `app/admin/page.tsx` drops ~850 lines of inline dashboard and
+becomes a small role router.
+
 ## 2026-07-23 — View-as now previews each role's actual dashboard
 
 "View as [role]" previously re-skinned only the sidebar — the `/admin` page still rendered your own

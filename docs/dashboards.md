@@ -104,6 +104,14 @@ The department dashboards (`DepartmentDashboard`) are per-user customizable. The
 To add a card to the catalog: add one `CardDef` to `CARD_REGISTRY` (+ its perm). It then appears in
 every permitted user's "Add card" picker automatically.
 
+**Admin is on the same grid.** The executive dashboard was folded into this system too: the exec
+widgets live in `components/dashboards/exec-cards.tsx` as **admin-only** cards (`available: role ===
+'admin'`) that read one shared `lib/exec-dashboard-data.ts` batch threaded through `CardCtx.execData`;
+`defaultLayout` has an `admin` branch reproducing the old executive arrangement, and `metrics` shows
+the exec KPIs for admin. So `app/admin/page.tsx` is now just a role router (admin + scoped →
+`DepartmentDashboard`; sales → `SalesDashboardView`), and the old layout presets / view-switcher are
+retired.
+
 ## View-as preview
 
 "View as [role]" (admin-only, `components/admin/ViewAs.tsx`) writes a short-lived `va_role` cookie and

@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { hasPermission, ROLE_LABELS, ROLE_DESCRIPTIONS, type Perm } from '@/lib/roles'
 import { getPermMatrix } from '@/lib/permissions'
 import { getLayout } from '@/lib/dashboard-layouts'
+import { getExecData } from '@/lib/exec-dashboard-data'
 import DashboardGrid from '@/components/dashboards/DashboardGrid'
 import {
   CARD_REGISTRY, computeQuickLinks, defaultLayout,
@@ -27,9 +28,13 @@ export default async function DepartmentDashboard({ role, displayName, userId, p
   const matrix = await getPermMatrix()
   const can = (p: Perm) => hasPermission(role, p, matrix)
   const quickLinks = computeQuickLinks(role, matrix)
-  const { count: headcount } = await supabaseAdmin.from('employees').select('*', { count: 'exact', head: true }).eq('is_active', true)
+  // Admin's cards read one shared exec-data batch; scoped roles don't need it.
+  const [{ count: headcount }, execData] = await Promise.all([
+    supabaseAdmin.from('employees').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    role === 'admin' ? getExecData() : Promise.resolve(undefined),
+  ])
 
-  const ctx: CardCtx = { role, can, headcount: headcount ?? 0, quickLinks }
+  const ctx: CardCtx = { role, can, headcount: headcount ?? 0, quickLinks, execData }
 
   // Render every card the role can access up front (data loaded server-side), so
   // the client editor can add/remove any of them without a round-trip.

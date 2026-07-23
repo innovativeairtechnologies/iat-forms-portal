@@ -9,8 +9,14 @@ import {
 import {
   ArrowRight, Ticket, Boxes, Building2, Clock, Inbox, Sparkles,
   Calendar, Users, FileText, Presentation, CalendarRange, DollarSign, CalendarClock,
-  MessageSquare, LayoutGrid, Compass,
+  MessageSquare, LayoutGrid, Compass, ClipboardList, CheckCircle2,
 } from 'lucide-react'
+import ExecutiveBriefing from '@/app/admin/ExecutiveBriefing'
+import type { ExecData } from '@/lib/exec-dashboard-data'
+import {
+  FormsPerformanceCard, TopFormsCard, TopSubmittersCard, ActivityCard,
+  FormStatusCard, NeedsAttentionCard, LiveActivityCard, AdminActivityCard,
+} from '@/components/dashboards/exec-cards'
 
 /* ────────────────────────────────────────────────────────────────────────────
    Department-dashboard CARD REGISTRY — the catalog behind both the default
@@ -24,11 +30,13 @@ import {
    primitives + semantic tokens — same warm bento as the exec + Sales dashboards.
    ──────────────────────────────────────────────────────────────────────────── */
 
-export type DeptRole = Exclude<StaffRole, 'admin' | 'production'>
+// Includes 'admin' (the exec dashboard is now the same customizable card grid);
+// excludes 'production' (base tier has no ops dashboard) — sales has its own view.
+export type DeptRole = Exclude<StaffRole, 'production'>
 export type Span = 1 | 2 | 3
 export type QuickLink = { href: string; label: string; perm: string }
 export type LayoutItem = { id: string; span: Span }
-export type CardCtx = { role: DeptRole; can: (p: Perm) => boolean; headcount: number; quickLinks: QuickLink[] }
+export type CardCtx = { role: DeptRole; can: (p: Perm) => boolean; headcount: number; quickLinks: QuickLink[]; execData?: ExecData }
 
 export type CardDef = {
   id: string
@@ -285,6 +293,19 @@ function SnapshotCard({ role, headcount, toolCount }: { role: DeptRole; headcoun
 
 // ─── The registry ─────────────────────────────────────────────────────────────
 async function loadStats(ctx: CardCtx): Promise<StatDef[]> {
+  // Admin gets the executive KPI set (from the shared exec batch), not the
+  // perm-gated department tiles.
+  if (ctx.role === 'admin' && ctx.execData) {
+    const e = ctx.execData
+    return [
+      { label: 'Total Submissions', value: e.kpi.totalSubs, tone: 'sky', icon: <ClipboardList size={16} />, href: '/admin/submissions' },
+      { label: 'Active Forms', value: e.kpi.activeForms, tone: 'violet', icon: <FileText size={16} />, href: '/admin/forms' },
+      { label: 'Unread', value: e.kpi.unread, tone: 'amber', icon: <Inbox size={16} />, href: '/admin/submissions?is_read=false' },
+      { label: 'Open Tickets', value: e.kpi.openTickets, tone: 'rose', icon: <Ticket size={16} />, href: '/admin/tickets' },
+      { label: 'Resolved · 7d', value: e.kpi.resolved7d, tone: 'emerald', icon: <CheckCircle2 size={16} />, href: '/admin/tickets' },
+      { label: 'In Progress', value: e.donut.inProgress, tone: 'slate', icon: <Clock size={16} />, href: '/admin/tickets' },
+    ]
+  }
   const groups = await Promise.all(STAT_WIDGETS.filter((w) => ctx.can(w.perm)).map((w) => w.build()))
   const stats = groups.flat()
   stats.push({ label: 'Team Members', value: ctx.headcount, tone: 'sky', icon: <Users size={16} />, href: ctx.can('employees') ? '/admin/employees' : undefined })
@@ -308,6 +329,13 @@ const recentCard = (key: 'tickets' | 'submissions' | 'timeoff' | 'presentations'
   sizes: [1, 2, 3],
   available: (ctx) => ctx.can(perm),
   Component: async () => <RecentCard recent={await RECENT_LOADERS[key]()} />,
+})
+
+// Admin-only card that reads the shared exec data batch (ctx.execData).
+const execCard = (id: string, title: string, defaultSpan: Span, sizes: Span[], render: (e: ExecData) => React.ReactNode): CardDef => ({
+  id, title, defaultSpan, sizes,
+  available: (ctx) => ctx.role === 'admin',
+  Component: async (ctx) => (ctx.execData ? render(ctx.execData) : null),
 })
 
 export const CARD_REGISTRY: CardDef[] = [
@@ -335,12 +363,34 @@ export const CARD_REGISTRY: CardDef[] = [
     available: () => true,
     Component: async (ctx) => <SnapshotCard role={ctx.role} headcount={ctx.headcount} toolCount={ctx.quickLinks.length} />,
   },
+  // ── Admin executive cards (admin-only; read the shared exec data batch) ──
+  { id: 'ai_briefing', title: 'Executive Briefing', defaultSpan: 3, sizes: [2, 3], available: (ctx) => ctx.role === 'admin', Component: async () => <ExecutiveBriefing /> },
+  execCard('exec_forms_performance', 'Forms Performance', 2, [1, 2, 3], (e) => <FormsPerformanceCard d={e} />),
+  execCard('exec_top_forms', 'Top Forms by Volume', 1, [1, 2], (e) => <TopFormsCard d={e} />),
+  execCard('exec_top_submitters', 'Top Submitters', 1, [1, 2], (e) => <TopSubmittersCard d={e} />),
+  execCard('exec_activity', 'Activity · 14 days', 2, [1, 2, 3], (e) => <ActivityCard d={e} />),
+  execCard('exec_form_status', 'Form Status', 1, [1, 2], (e) => <FormStatusCard d={e} />),
+  execCard('exec_needs_attention', 'Needs Attention', 1, [1, 2], (e) => <NeedsAttentionCard d={e} />),
+  execCard('exec_live_activity', 'Live Activity', 1, [1, 2], (e) => <LiveActivityCard d={e} />),
+  execCard('exec_admin_activity', 'Admin Activity', 1, [1, 2], (e) => <AdminActivityCard d={e} />),
 ]
 
 export const CARD_BY_ID: Record<string, CardDef> = Object.fromEntries(CARD_REGISTRY.map((c) => [c.id, c]))
 
 /** The code default layout for a role — reproduces the shipped arrangement. */
 export function defaultLayout(ctx: CardCtx): LayoutItem[] {
+  // Admin default reproduces the old executive dashboard arrangement.
+  if (ctx.role === 'admin') {
+    return ([
+      { id: 'ai_briefing', span: 3 },
+      { id: 'metrics', span: 3 },
+      { id: 'exec_forms_performance', span: 2 }, { id: 'tickets_donut', span: 1 },
+      { id: 'exec_top_forms', span: 1 }, { id: 'exec_top_submitters', span: 1 }, { id: 'exec_needs_attention', span: 1 },
+      { id: 'exec_activity', span: 2 }, { id: 'recent_submissions', span: 1 },
+      { id: 'recent_tickets', span: 2 }, { id: 'exec_form_status', span: 1 },
+      { id: 'exec_live_activity', span: 1 }, { id: 'exec_admin_activity', span: 1 }, { id: 'quick_links', span: 1 },
+    ] as LayoutItem[]).filter((it) => CARD_BY_ID[it.id]?.available(ctx))
+  }
   const items: LayoutItem[] = [{ id: 'metrics', span: 3 }]
   const topRecent = ['tickets', 'submissions', 'timeoff', 'presentations']
     .map((k) => `recent_${k}`)
