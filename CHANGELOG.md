@@ -2,6 +2,15 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — SUPER IMPORTANT SOFTWARE™: real limb-articulated clapping
+
+Upgraded the dancing hippo from whole-image squash-and-stretch to a **2D puppet rig**: the
+two arms are cut into separate layers with shoulder pivots (edge-dilated masks so they tile
+back with no seam or ghost), the body behind them is patched with purple, and the **Church
+Clap** move now swings the arms in so the paws actually meet in front of the chest — a real
+clap, with a sparkle burst at the point of impact. The other moves (Bounce/Twist/Wiggle) got
+gentle arm swings from the same rig. Rebuilt bundle; no portal-code change (static asset only).
+
 ## 2026-07-23 — Internal Apps: "SUPER IMPORTANT SOFTWARE™" (dancing hippo, for laughs)
 
 Added a (tongue-in-cheek) internal app to the **Internal Apps** launcher for a VBS project:
