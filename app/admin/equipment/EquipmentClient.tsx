@@ -1,13 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Boxes, Search, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Sparkles } from 'lucide-react'
+import { Boxes, Plus, X, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 import type { Equipment } from '@/lib/supabase'
 import { warrantyState, isExpiringSoon, daysUntilWarrantyEnd, pmState } from '@/lib/equipment'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll, ListPageHeader, IdentityCell, tabCx, tabCountCx } from '@/components/admin/list'
+import { StatusPill } from '@/components/admin/list'
+import {
+  ListCardPage, ListCard, CardHead, Toolbar, CardTable, Row, EmptyRow,
+  Pagination, usePagedList, ListSearch, ToneAvatar,
+} from '@/components/admin/list-card'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 
@@ -16,8 +20,19 @@ type Filter = 'all' | 'in' | 'expiring' | 'out' | 'pm_due' | 'unknown'
 
 const EMPTY = { serial_number: '', model_number: '', voltage: '', customer_company: '', customer_name: '', customer_email: '', ship_date: '' }
 
-// Mobile keeps serial-identity + warranty; select/state/chevron return at sm+.
-const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[34px_2fr_150px_132px_28px]'
+const FILTERS: [Filter, string][] = [
+  ['all', 'All'],
+  ['in', 'In warranty'],
+  ['expiring', 'Expiring soon'],
+  ['out', 'Out of warranty'],
+  ['pm_due', 'PM due'],
+  ['unknown', 'No date'],
+]
+
+// Select · Serial · Customer · Warranty · State · chevron. Mobile keeps just the
+// serial identity (which folds customer into its subtitle) + warranty; the rest
+// return at sm+ and the table scrolls sideways if it can't fit.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[34px_minmax(200px,2fr)_minmax(160px,1.4fr)_160px_140px_28px]'
 
 function WarrantyPill({ eq }: { eq: Equipment }) {
   const s = warrantyState(eq)
@@ -49,6 +64,21 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
     : f === 'pm_due' ? pmState(e, e.last_service_at) === 'due'
     : warrantyState(e) === f
 
+  // Per-filter counts for the tab pills (one pass, matches matchesTab semantics).
+  const counts = useMemo(() => {
+    const c: Record<Filter, number> = { all: 0, in: 0, expiring: 0, out: 0, pm_due: 0, unknown: 0 }
+    for (const e of equipment) {
+      c.all++
+      if (isExpiringSoon(e)) c.expiring++
+      if (pmState(e, e.last_service_at) === 'due') c.pm_due++
+      const w = warrantyState(e)
+      if (w === 'in') c.in++
+      else if (w === 'out') c.out++
+      else c.unknown++
+    }
+    return c
+  }, [equipment])
+
   const q = search.toLowerCase()
   const filtered = equipment.filter(e => {
     const matchesSearch = !q ||
@@ -64,6 +94,10 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
   // Clear the selection when the visible set changes so a bulk delete can never
   // touch rows outside the current filter/search.
   useEffect(() => { sel.clear() }, [filter, search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Client-side pagination over the filtered set (reset to page 1 on filter/search).
+  const paged = usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${filter}|${search}` })
+  const pageRows = filtered.slice(paged.start, paged.end)
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault()
@@ -83,106 +117,139 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-      {/* Header */}
-      <ListPageHeader
-        overline="Operations"
-        title="Equipment"
-        count={`${equipment.length} ${equipment.length === 1 ? 'unit' : 'units'} in the installed base`}
-        actions={
-          <>
-            <button onClick={() => setShowWizard(true)}
-              className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
-              <Sparkles size={15} />New from Submittal
-            </button>
-            <button onClick={() => { setForm(EMPTY); setError(''); setShowModal(true) }}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm">
-              <Plus size={15} />Add Unit
-            </button>
-          </>
-        }
-      >
-        {/* Filter tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {([['all', 'All'], ['in', 'In warranty'], ['expiring', 'Expiring soon'], ['out', 'Out of warranty'], ['pm_due', 'PM due'], ['unknown', 'No date']] as [Filter, string][]).map(([f, label]) => {
-            const count = equipment.filter(e => matchesTab(e, f)).length
-            const active = filter === f
-            return (
-              <button key={f} onClick={() => setFilter(f)} className={tabCx(active)}>
-                {label}
-                <span className={tabCountCx(active)}>{count}</span>
+    <ListCardPage>
+      <ListCard>
+        <CardHead
+          overline="Operations"
+          title="Equipment"
+          count={`${equipment.length} ${equipment.length === 1 ? 'unit' : 'units'} in the installed base`}
+          actions={
+            <>
+              <button type="button" onClick={() => setShowWizard(true)}
+                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-surface-soft border border-hairline hover:border-hairline-strong text-ink-secondary text-[13px] font-medium transition-colors">
+                <Sparkles size={15} />New from Submittal
               </button>
-            )
-          })}
-        </div>
-      </ListPageHeader>
+              <button type="button" onClick={() => { setForm(EMPTY); setError(''); setShowModal(true) }}
+                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-medium transition-colors">
+                <Plus size={15} />Add Unit
+              </button>
+            </>
+          }
+        />
 
-      <div className="p-4 sm:p-8">
-        {/* Search */}
-        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-              className="pl-8 pr-3 h-9 text-[12.5px] w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all" />
+        {/* Filter tabs (with counts) + search */}
+        <Toolbar>
+          <div className="flex items-center gap-1 flex-wrap">
+            {FILTERS.map(([f, label]) => {
+              const active = filter === f
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[13px] font-medium transition-colors',
+                    active ? 'bg-brand-soft text-brand-ink' : 'text-ink-secondary hover:bg-surface-soft',
+                  )}
+                >
+                  {label}
+                  <span className={cn(
+                    'text-[11px] tabular-nums px-1.5 py-0.5 rounded-full',
+                    active ? 'bg-surface text-brand-ink' : 'bg-surface-strong text-ink-muted',
+                  )}>{counts[f]}</span>
+                </button>
+              )
+            })}
           </div>
-          <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {filtered.length} {filtered.length === 1 ? 'unit' : 'units'}
-          </span>
-        </div>
+          <div className="flex-1" />
+          <ListSearch value={search} onChange={setSearch} placeholder="Search…" width={220} />
+        </Toolbar>
 
-        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
-        <TableScroll minWidth={680}>
-        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-          <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
-          <Th>Serial</Th>
-          <Th>Warranty</Th>
-          <Th>State</Th>
-          <Th />
-        </div>
-
-        {/* Body */}
-        <div className={BODY_BOX}>
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <Boxes size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">{equipment.length === 0 ? 'No units yet. They’ll appear here as tickets come in, or add one manually.' : 'No units match.'}</p>
-            </div>
+        {/* Table */}
+        <CardTable
+          cols={COLS}
+          minWidth={900}
+          head={
+            <>
+              <SelectBox className="hidden sm:flex" checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
+              <span>Serial</span>
+              <span className="hidden sm:block">Customer</span>
+              <span>Warranty</span>
+              <span className="hidden sm:block">State</span>
+              <span className="hidden sm:block" />
+            </>
+          }
+        >
+          {pageRows.length === 0 ? (
+            <EmptyRow>
+              <Boxes size={28} className="text-ink-faint mx-auto mb-3" />
+              <p>{equipment.length === 0 ? 'No units yet. They’ll appear here as tickets come in, or add one manually.' : 'No units match.'}</p>
+            </EmptyRow>
           ) : (
-            filtered.map((eq, i) => (
-              <Link key={eq.id} href={`/admin/equipment/${eq.id}`}
-                className={`${rowCx(COLS, { i, selected: sel.has(eq.id) })} group ${eq.status === 'decommissioned' ? 'opacity-60' : ''}`}>
-                {/* Select */}
-                <SelectBox className="hidden sm:flex" checked={sel.has(eq.id)} onChange={() => sel.toggle(eq.id)} />
-                {/* Identity — serial over model · customer */}
-                {(() => {
-                  const company = eq.customer_company || eq.customer_name || ''
-                  const model = eq.model_number || ''
-                  return (
-                    <IdentityCell
-                      icon={<Boxes size={13} />}
-                      title={eq.serial_number}
-                      subtitle={model && company ? `${model} · ${company}` : model || company || undefined}
-                    />
-                  )
-                })()}
-                {/* Warranty */}
-                <div><WarrantyPill eq={eq} /></div>
-                {/* State */}
-                <div className="hidden sm:block">
-                  {eq.status === 'decommissioned'
-                    ? <StatusPill tone="slate">Decommissioned</StatusPill>
-                    : <StatusPill tone="emerald">Active</StatusPill>}
-                </div>
-                {/* Chevron */}
-                <div className="hidden sm:flex justify-center">
-                  <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
-                </div>
-              </Link>
-            ))
+            pageRows.map((eq) => {
+              const company = eq.customer_company || eq.customer_name || ''
+              const model = eq.model_number || ''
+              // Decommissioned units read dimmed (the State pill also says so).
+              const dim = eq.status === 'decommissioned' ? 'opacity-60' : ''
+              return (
+                <Row key={eq.id} cols={COLS} href={`/admin/equipment/${eq.id}`} selected={sel.has(eq.id)}>
+                  {/* Select — stops the click from following the row link */}
+                  <SelectBox className="hidden sm:flex" checked={sel.has(eq.id)} onChange={() => sel.toggle(eq.id)} />
+
+                  {/* Serial identity — serial over model (· customer on mobile) */}
+                  <div className={cn('flex items-center gap-2.5 min-w-0', dim)}>
+                    <span className="w-7 h-7 rounded-lg bg-surface-strong flex items-center justify-center flex-shrink-0 text-ink-muted">
+                      <Boxes size={13} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{eq.serial_number}</p>
+                      <p className="text-[11.5px] text-ink-muted truncate">
+                        <span className="sm:hidden">{[model, company].filter(Boolean).join(' · ') || '—'}</span>
+                        <span className="hidden sm:inline">{model || '—'}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Customer */}
+                  <div className={cn('hidden sm:flex items-center gap-2 min-w-0', dim)}>
+                    {company ? (
+                      <>
+                        <ToneAvatar name={company} size={26} />
+                        <span className="text-[12.5px] text-ink-secondary truncate">{company}</span>
+                      </>
+                    ) : <span className="text-[12.5px] text-ink-faint">—</span>}
+                  </div>
+
+                  {/* Warranty */}
+                  <div className={dim}><WarrantyPill eq={eq} /></div>
+
+                  {/* State */}
+                  <div className={cn('hidden sm:block', dim)}>
+                    {eq.status === 'decommissioned'
+                      ? <StatusPill tone="slate">Decommissioned</StatusPill>
+                      : <StatusPill tone="emerald">Active</StatusPill>}
+                  </div>
+
+                  {/* Chevron */}
+                  <div className={cn('hidden sm:flex justify-center', dim)}>
+                    <ChevronRight size={14} className="text-ink-faint group-hover:text-brand-ink transition-colors" />
+                  </div>
+                </Row>
+              )
+            })
           )}
-        </div>
-        </TableScroll>
-      </div>
+        </CardTable>
+
+        <Pagination
+          page={paged.page}
+          perPage={paged.perPage}
+          total={filtered.length}
+          totalPages={paged.totalPages}
+          onPage={paged.setPage}
+          onPerPage={paged.setPerPage}
+          unit="units"
+        />
+      </ListCard>
 
       <BulkBar count={sel.count} onClear={sel.clear}>
         <BulkDeleteButton entity="equipment" ids={sel.ids} onDone={sel.clear} />
@@ -196,11 +263,11 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
             onClick={() => setShowModal(false)}>
             <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
               transition={{ duration: 0.2 }}
-              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+              className="bg-surface rounded-2xl shadow-xl dark:shadow-none dark:ring-1 dark:ring-white/10 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white">Add Unit</h2>
-                <button onClick={() => setShowModal(false)} className="text-gray-300 hover:text-gray-500 transition-colors"><X size={18} /></button>
+                <h2 className="text-[16px] font-semibold text-ink">Add Unit</h2>
+                <button type="button" onClick={() => setShowModal(false)} className="text-ink-faint hover:text-ink-secondary transition-colors"><X size={18} /></button>
               </div>
               <form onSubmit={submit} className="space-y-4">
                 {[
@@ -212,21 +279,21 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
                   { key: 'customer_email', label: 'Contact Email', required: false, placeholder: 'name@company.com' },
                 ].map(({ key, label, required, placeholder }) => (
                   <div key={key}>
-                    <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">{label}</label>
+                    <label className="text-[11px] font-semibold text-ink-muted uppercase tracking-widest block mb-1.5">{label}</label>
                     <input value={(form as Record<string, string>)[key]} required={required} placeholder={placeholder}
                       onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                      className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all placeholder:text-gray-300" />
+                      className="w-full text-[14px] text-ink-secondary bg-surface-soft border border-hairline rounded-xl px-4 py-2.5 outline-none focus:border-brand transition-colors placeholder:text-ink-faint" />
                   </div>
                 ))}
                 <div>
-                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest block mb-1.5">Ship Date <span className="normal-case text-gray-300">(sets warranty)</span></label>
+                  <label className="text-[11px] font-semibold text-ink-muted uppercase tracking-widest block mb-1.5">Ship Date <span className="normal-case text-ink-faint">(sets warranty)</span></label>
                   <input type="date" value={form.ship_date}
                     onChange={e => setForm(f => ({ ...f, ship_date: e.target.value }))}
-                    className="w-full text-[14px] text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all" />
+                    className="w-full text-[14px] text-ink-secondary bg-surface-soft border border-hairline rounded-xl px-4 py-2.5 outline-none focus:border-brand transition-colors" />
                 </div>
-                {error && <p className="text-[13px] text-red-500">{error}</p>}
+                {error && <p className="text-[13px] text-rose-500 dark:text-rose-400">{error}</p>}
                 <button type="submit" disabled={creating || !form.serial_number.trim()}
-                  className="w-full bg-[#089447] hover:bg-[#077a3c] text-white text-[14px] font-semibold py-3 rounded-xl transition-all disabled:opacity-40 shadow-sm">
+                  className="w-full bg-brand hover:bg-brand-hover text-white text-[14px] font-semibold py-3 rounded-xl transition-colors disabled:opacity-40">
                   {creating ? 'Adding…' : 'Add Unit'}
                 </button>
               </form>
@@ -238,6 +305,6 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
       {showWizard && (
         <NewCustomerWizard onClose={() => setShowWizard(false)} onCreated={() => router.refresh()} />
       )}
-    </div>
+    </ListCardPage>
   )
 }

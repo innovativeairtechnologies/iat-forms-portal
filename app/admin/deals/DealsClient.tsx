@@ -5,7 +5,8 @@ import { Plus, X } from 'lucide-react'
 import type { Deal, DealFollowUp } from '@/lib/supabase'
 import { computeSummary, PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
 import { formatCurrency } from '@/lib/utils'
-import { ListPageHeader, tabCx } from '@/components/admin/list'
+import { tabCx } from '@/components/admin/list'
+import { ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar } from '@/components/admin/list-card'
 import BoardView from './BoardView'
 import FocusedView from './FocusedView'
 import CalendarView from './CalendarView'
@@ -309,37 +310,58 @@ export default function DealsClient({
   const detailFollowUps = detailDeal ? followUps.filter((f) => f.deal_id === detailDeal.id) : []
 
   return (
-    <div className="flex-1 overflow-auto bg-canvas">
-      {/* Header */}
-      <ListPageHeader
-        overline="Sales"
-        title="CRM"
-        count={`${formatCurrency(summary.totalCost)} total · ${formatCurrency(summary.totalWeighted)} weighted · ${deals.length} ${deals.length === 1 ? 'project' : 'projects'}`}
-        actions={
-          <button
-            onClick={openNew}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm"
-          >
-            <Plus size={15} />
-            New Deal
-          </button>
-        }
-      >
-        {/* View tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {TABS.map(({ value, label, blurb }) => {
-            const active = tab === value
-            return (
-              <button key={value} onClick={() => setTab(value)} className={tabCx(active)}>
-                {label}
-                <span className="text-[11px] font-normal text-zinc-300 dark:text-zinc-600 hidden sm:inline">{blurb}</span>
-              </button>
-            )
-          })}
-        </div>
-      </ListPageHeader>
+    <ListCardPage>
+      {/* Header module — one card on the warm canvas (docs/list-views.md). The
+          CRM body is a kanban Board / editable Focused table / Calendar, not a
+          flat table, so the views render on the canvas BELOW the card rather
+          than being forced into it (and no pager is imposed on the board). */}
+      <ListCard>
+        <CardHead
+          overline="Sales"
+          title="CRM"
+          count={`${deals.length} ${deals.length === 1 ? 'project' : 'projects'}`}
+          actions={
+            <button
+              onClick={openNew}
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-semibold transition-colors"
+            >
+              <Plus size={15} />
+              New Deal
+            </button>
+          }
+        />
 
-      <div className="p-4 sm:p-8">
+        {/* Pipeline summary — dataset-wide (all deals), from computeSummary. */}
+        <StatStrip>
+          <Stat tone="sky" label="Pipeline" value={formatCurrency(summary.totalCost)} />
+          <Stat tone="emerald" label="Weighted" value={formatCurrency(summary.totalWeighted)} sub="cost × confidence" />
+          <Stat tone="violet" label="Open deals" value={summary.openCount.toLocaleString()} />
+          <Stat
+            tone="amber"
+            label="Win rate"
+            value={summary.winRate == null ? '—' : `${Math.round(summary.winRate)}%`}
+            sub={`${summary.wonCount} won · ${summary.lostCount} lost`}
+          />
+        </StatStrip>
+
+        {/* View tabs — the CRM's primary control (each view carries its own
+            search / filters / sort internally, so they stay mounted below). */}
+        <Toolbar>
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            {TABS.map(({ value, label, blurb }) => {
+              const active = tab === value
+              return (
+                <button key={value} onClick={() => setTab(value)} className={tabCx(active)}>
+                  {label}
+                  <span className="text-[11px] font-normal text-ink-faint hidden sm:inline">{blurb}</span>
+                </button>
+              )
+            })}
+          </div>
+        </Toolbar>
+      </ListCard>
+
+      <div className="mt-4 sm:mt-6">
 
         {err && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
@@ -490,6 +512,6 @@ export default function DealsClient({
           </form>
         </div>
       )}
-    </div>
+    </ListCardPage>
   )
 }

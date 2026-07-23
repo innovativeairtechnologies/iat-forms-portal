@@ -1,12 +1,16 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, X, Search, Shield, User, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
+import { UserPlus, X, Search, Shield, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
-import Link from 'next/link'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, Th, TableScroll, ListPageHeader, IdentityCell, tabCx, tabCountCx } from '@/components/admin/list'
+import { cn } from '@/lib/utils'
+import { StatusPill, tabCx, tabCountCx } from '@/components/admin/list'
+import {
+  ListCardPage, ListCard, CardHead, Toolbar, CardTable, Row, EmptyRow,
+  Pagination, usePagedList, ToneAvatar,
+} from '@/components/admin/list-card'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
@@ -78,6 +82,12 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
   // touch rows outside the current tab/search.
   useEffect(() => { sel.clear() }, [tab, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Client-side pagination over the filtered set (default 10). Resets to page 1
+  // whenever the tab/search changes or the page size changes.
+  const { page, setPage, perPage, setPerPage, totalPages, start, end } =
+    usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${tab}|${search}` })
+  const pageRows = filtered.slice(start, end)
+
   const openModal = () => {
     setForm({ ...EMPTY_FORM, temp_password: generatePassword() })
     setFormError('')
@@ -114,126 +124,139 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
 
   return (
     <>
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-
-      {/* Header */}
-      <ListPageHeader
-        overline="People"
-        title="Employees"
-        count={`${employees.length} ${employees.length === 1 ? 'employee' : 'employees'}`}
-        actions={
-          <button
-            onClick={openModal}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm"
-          >
-            <UserPlus size={15} />
-            Add Employee
-          </button>
-        }
-      >
-        {/* Status tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {TABS.map(({ value, label }) => {
-            const active = tab === value
-            return (
-              <button key={value} onClick={() => setTab(value)} className={tabCx(active)}>
-                {label}
-                <span className={tabCountCx(active)}>{tabCount(value)}</span>
-              </button>
-            )
-          })}
-        </div>
-      </ListPageHeader>
-
-      <div className="p-4 sm:p-8">
-
-        {/* Toolbar row */}
-        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search…"
-              className="pl-8 pr-8 h-9 text-[12.5px] w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
-            />
-            {search && (
+      <ListCardPage>
+        <ListCard>
+          <CardHead
+            overline="People"
+            title="Employees"
+            count={`${employees.length} ${employees.length === 1 ? 'employee' : 'employees'}`}
+            actions={
               <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400 transition-colors"
+                onClick={openModal}
+                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-medium transition-colors"
               >
-                <X size={11} />
+                <UserPlus size={15} />
+                Add Employee
               </button>
-            )}
+            }
+          />
+
+          {/* ── Status tabs ── */}
+          <div className="flex items-center gap-1 px-1 border-b border-hairline overflow-x-auto scrollbar-hide">
+            {TABS.map(({ value, label }) => {
+              const active = tab === value
+              return (
+                <button key={value} onClick={() => setTab(value)} className={tabCx(active)}>
+                  {label}
+                  <span className={tabCountCx(active)}>{tabCount(value)}</span>
+                </button>
+              )
+            })}
           </div>
 
-          <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
-          </span>
-        </div>
-
-        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
-        <TableScroll minWidth={720}>
-        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-          <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
-          <Th>Employee</Th>
-          <Th>Role / Dept</Th>
-          <Th>Status</Th>
-          <Th align="right">PTO</Th>
-          <Th align="right">Sick</Th>
-          <Th />
-        </div>
-
-        {/* Body */}
-        <div className={BODY_BOX}>
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <User size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">No employees found.</p>
+          {/* ── Filters ── */}
+          <Toolbar>
+            <div className="relative w-56">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search…"
+                aria-label="Search employees"
+                className="w-full h-9 pl-9 pr-8 text-[13px] rounded-lg bg-surface-soft border border-hairline text-ink-secondary placeholder:text-ink-faint outline-none focus:border-brand transition-colors"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-secondary transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
-          ) : (
-            filtered.map((emp, i) => (
-              <Link key={emp.id} href={`/admin/employees/${emp.id}`}
-                className={`${rowCx(COLS, { i, selected: sel.has(emp.id) })} group ${emp.is_active === false ? 'opacity-60' : ''}`}>
-                {/* Select */}
-                <SelectBox className="hidden sm:flex" checked={sel.has(emp.id)} onChange={() => sel.toggle(emp.id)} />
-                {/* Identity — name over job title / email */}
-                <IdentityCell
-                  leading={<Avatar name={emp.name} />}
-                  title={emp.name || '—'}
-                  subtitle={emp.job_title || emp.email}
-                />
-                {/* Role / Dept */}
-                <div className="hidden sm:block min-w-0 truncate text-zinc-600 dark:text-zinc-300">
-                  {emp.role === 'admin' ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-violet-600 dark:text-violet-400">
-                      <Shield size={11} />Admin
-                    </span>
-                  ) : (
-                    emp.role ? ROLE_LABELS[emp.role] : '—'
-                  )}
-                  {emp.department ? <span className="text-zinc-400 dark:text-zinc-500"> · {emp.department}</span> : ''}
-                </div>
-                {/* Status */}
-                <div>
-                  {emp.is_active === false
-                    ? <StatusPill tone="slate">Inactive</StatusPill>
-                    : <StatusPill tone="emerald">Active</StatusPill>}
-                </div>
-                {/* PTO */}
-                <div className="hidden sm:block text-right font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.pto_balance}</div>
-                {/* Sick */}
-                <div className="hidden sm:block text-right font-medium text-zinc-700 dark:text-zinc-200 tabular-nums">{emp.sick_balance}</div>
-                {/* Chevron */}
-                <div className="hidden sm:flex justify-center">
-                  <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
-                </div>
-              </Link>
-            ))
-          )}
-        </div>
-        </TableScroll>
-      </div>{/* p-8 */}
+            <div className="flex-1" />
+            <span className="text-[12px] text-ink-muted tabular-nums">
+              {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
+            </span>
+          </Toolbar>
+
+          {/* ── Table ── */}
+          <CardTable
+            minWidth={760}
+            cols={COLS}
+            head={
+              <>
+                <SelectBox className="hidden sm:flex" checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
+                <span>Employee</span>
+                <span className="hidden sm:block">Role / Dept</span>
+                <span>Status</span>
+                <span className="hidden sm:block text-right">PTO</span>
+                <span className="hidden sm:block text-right">Sick</span>
+                <span className="hidden sm:block" aria-hidden />
+              </>
+            }
+          >
+            {pageRows.length === 0 ? (
+              <EmptyRow>No employees found.</EmptyRow>
+            ) : (
+              pageRows.map((emp) => {
+                const dim = emp.is_active === false ? 'opacity-60' : ''
+                return (
+                  <Row key={emp.id} cols={COLS} href={`/admin/employees/${emp.id}`} selected={sel.has(emp.id)}>
+                    {/* Select */}
+                    <SelectBox className={cn('hidden sm:flex', dim)} checked={sel.has(emp.id)} onChange={() => sel.toggle(emp.id)} />
+                    {/* Identity — name over job title / email */}
+                    <div className={cn('flex items-center gap-2.5 min-w-0', dim)}>
+                      <ToneAvatar name={emp.name || '—'} />
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{emp.name || '—'}</p>
+                        <p className="text-[11.5px] text-ink-muted truncate">{emp.job_title || emp.email}</p>
+                      </div>
+                    </div>
+                    {/* Role / Dept */}
+                    <div className={cn('hidden sm:block min-w-0 truncate text-[12.5px] text-ink-secondary', dim)}>
+                      {emp.role === 'admin' ? (
+                        <span className="inline-flex items-center gap-1 font-medium text-violet-600 dark:text-violet-400">
+                          <Shield size={11} />Admin
+                        </span>
+                      ) : (
+                        emp.role ? ROLE_LABELS[emp.role] : '—'
+                      )}
+                      {emp.department ? <span className="text-ink-muted"> · {emp.department}</span> : ''}
+                    </div>
+                    {/* Status */}
+                    <div className={dim}>
+                      {emp.is_active === false
+                        ? <StatusPill tone="slate">Inactive</StatusPill>
+                        : <StatusPill tone="emerald">Active</StatusPill>}
+                    </div>
+                    {/* PTO */}
+                    <div className={cn('hidden sm:block text-right tabular-nums font-medium text-ink-secondary', dim)}>{emp.pto_balance}</div>
+                    {/* Sick */}
+                    <div className={cn('hidden sm:block text-right tabular-nums font-medium text-ink-secondary', dim)}>{emp.sick_balance}</div>
+                    {/* Chevron */}
+                    <div className={cn('hidden sm:flex justify-center', dim)}>
+                      <ChevronRight size={14} className="text-ink-faint group-hover:text-brand-ink transition-colors" />
+                    </div>
+                  </Row>
+                )
+              })
+            )}
+          </CardTable>
+
+          {/* ── Pagination ── */}
+          <Pagination
+            page={page}
+            perPage={perPage}
+            total={filtered.length}
+            totalPages={totalPages}
+            onPage={setPage}
+            onPerPage={setPerPage}
+            unit="employees"
+          />
+        </ListCard>
+      </ListCardPage>
 
       <BulkBar count={sel.count} onClear={sel.clear}>
         <BulkDeleteButton entity="employees" ids={sel.ids} onDone={sel.clear} />
@@ -372,7 +395,6 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
           </motion.div>
         )}
       </AnimatePresence>
-    </div>{/* flex-1 */}
     </>
   )
 }

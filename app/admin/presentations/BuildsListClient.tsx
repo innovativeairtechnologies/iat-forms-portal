@@ -1,15 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Plus, Play, Pencil, MoreHorizontal, Copy, Archive, ArrowUpFromLine, Presentation as PresentationIcon, Loader2,
+  Plus, Play, Pencil, MoreHorizontal, Copy, Archive, ArrowUpFromLine,
+  Presentation as PresentationIcon, Loader2, Layers,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { StatusPill, timeAgo } from '@/components/admin/list'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, StatusPill, timeAgo, Th, TableScroll,
-  ListPageHeader, IdentityCell, tabCx, tabCountCx,
-} from '@/components/admin/list'
+  ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar,
+  CardTable, Row, EmptyRow, Pagination, usePagedList, ListSearch, FilterDropdown,
+} from '@/components/admin/list-card'
 import {
   type DeckSummary, type PresentationStatus, STATUS_META, formatRuntime,
 } from '@/lib/presentations'
@@ -17,14 +21,23 @@ import { createPresentation, duplicatePresentation, setPresentationStatus } from
 
 type Tab = 'all' | PresentationStatus
 
-// Mobile keeps deck-identity + status; the Present button and kebab return at
-// sm+ (the deck title already links into the editor).
-const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[1fr_100px_128px_40px]'
+// Deck · Status on mobile (rows read as a plain feed); the Present button and
+// kebab return at sm+, where the min-width kicks in and the table can scroll.
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_116px_128px_44px]'
+
+// Status filter options — same labels as the old tabs, minus the synthetic "All".
+const STATUS_OPTIONS = (Object.keys(STATUS_META) as PresentationStatus[])
+  .map((k) => ({ value: k, label: STATUS_META[k].label }))
+
+// The one open row menu — portaled to <body> with fixed coords so the table's
+// overflow-y-hidden (baked into CardTable) can't clip it near the last rows.
+type MenuState = { deck: DeckSummary; top: number; left: number }
 
 export default function BuildsListClient({ decks }: { decks: DeckSummary[] }) {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('all')
-  const [menuFor, setMenuFor] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [menu, setMenu] = useState<MenuState | null>(null)
   const [creating, setCreating] = useState(false)
 
   const counts = {
@@ -33,128 +46,210 @@ export default function BuildsListClient({ decks }: { decks: DeckSummary[] }) {
     saved: decks.filter((d) => d.status === 'saved').length,
     archived: decks.filter((d) => d.status === 'archived').length,
   }
-  const shown = decks.filter((d) => tab === 'all' || d.status === tab)
+
+  // tab + title search → the working view (server order — updated_at desc — kept).
+  const q = query.trim().toLowerCase()
+  const view = useMemo(
+    () => decks.filter((d) => (tab === 'all' || d.status === tab) && (!q || d.title.toLowerCase().includes(q))),
+    [decks, tab, q],
+  )
+
+  const paged = usePagedList(view.length, { initialPerPage: 10, resetKey: `${tab}|${q}` })
+  const pageRows = view.slice(paged.start, paged.end)
+
+  // Close the portaled row menu on scroll / resize / Escape (the backdrop below
+  // handles outside clicks).
+  useEffect(() => {
+    if (!menu) return
+    const close = () => setMenu(null)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [menu])
 
   const newDeck = async () => {
     setCreating(true)
     try { const { id } = await createPresentation(); router.push(`/admin/presentations/${id}`) }
     finally { setCreating(false) }
   }
-  const duplicate = async (id: string) => { setMenuFor(null); const { id: nid } = await duplicatePresentation(id); router.push(`/admin/presentations/${nid}`) }
-  const archive = async (id: string, to: PresentationStatus) => { setMenuFor(null); await setPresentationStatus(id, to); router.refresh() }
-
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'all', label: 'All' }, { key: 'in_progress', label: 'In progress' },
-    { key: 'saved', label: 'Saved' }, { key: 'archived', label: 'Archived' },
-  ]
+  const duplicate = async (id: string) => { setMenu(null); const { id: nid } = await duplicatePresentation(id); router.push(`/admin/presentations/${nid}`) }
+  const archive = async (id: string, to: PresentationStatus) => { setMenu(null); await setPresentationStatus(id, to); router.refresh() }
 
   return (
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-      {/* Page header */}
-      <ListPageHeader
-        overline="Content"
-        title="Presentations"
-        count={`${decks.length} ${decks.length === 1 ? 'deck' : 'decks'}`}
-        actions={
-          <button
-            onClick={newDeck}
-            disabled={creating}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-60"
-          >
-            {creating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-            New presentation
-          </button>
-        }
-      >
-        {/* Status tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {TABS.map((t) => {
-            const active = tab === t.key
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)} className={tabCx(active)}>
-                {t.label}
-                <span className={tabCountCx(active)}>{counts[t.key]}</span>
-              </button>
-            )
-          })}
-        </div>
-      </ListPageHeader>
+    <ListCardPage>
+      <ListCard>
+        <CardHead
+          overline="Content"
+          title="Presentations"
+          count={`${decks.length} ${decks.length === 1 ? 'deck' : 'decks'}`}
+          actions={
+            <button
+              onClick={newDeck}
+              disabled={creating}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-medium disabled:opacity-60 transition-colors"
+            >
+              {creating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+              New presentation
+            </button>
+          }
+        />
 
-      <div className="p-4 sm:p-8">
-        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
-        <TableScroll minWidth={620}>
-        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-          <Th>Deck</Th>
-          <Th>Status</Th>
-          <Th />
-          <Th />
-        </div>
+        {/* Status breakdown (what the old tab counts showed, at a glance) */}
+        <StatStrip>
+          <Stat tone="sky"     label="Total decks" value={counts.all} />
+          <Stat tone="amber"   label="In progress" value={counts.in_progress} />
+          <Stat tone="emerald" label="Saved"       value={counts.saved} />
+          <Stat tone="slate"   label="Archived"    value={counts.archived} />
+        </StatStrip>
 
-        {/* Body */}
-        <div className={BODY_BOX}>
-          {shown.length === 0 ? (
-            <div className="py-16 text-center">
-              <PresentationIcon size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">
-                No presentations{tab !== 'all' ? ` that are ${TABS.find((t) => t.key === tab)?.label.toLowerCase()}` : ' yet'}.
-              </p>
-            </div>
+        {/* Filters */}
+        <Toolbar>
+          <ListSearch value={query} onChange={setQuery} placeholder="Search presentations…" />
+          <FilterDropdown
+            icon={Layers}
+            allLabel="All statuses"
+            value={tab === 'all' ? '__all' : tab}
+            options={STATUS_OPTIONS}
+            onChange={(v) => setTab(v === '__all' ? 'all' : (v as PresentationStatus))}
+          />
+          <div className="flex-1" />
+          {(q || tab !== 'all') && (
+            <span className="text-[12px] text-ink-muted tabular-nums">{view.length} match{view.length === 1 ? '' : 'es'}</span>
+          )}
+        </Toolbar>
+
+        {/* Table */}
+        <CardTable
+          cols={COLS}
+          minWidth={640}
+          head={
+            <>
+              <span>Deck</span>
+              <span>Status</span>
+              <span className="hidden sm:block" />
+              <span className="hidden sm:block" />
+            </>
+          }
+        >
+          {pageRows.length === 0 ? (
+            <EmptyRow>
+              <PresentationIcon size={26} className="mx-auto mb-3 text-ink-faint" />
+              No presentations{tab !== 'all' ? ` that are ${STATUS_META[tab].label.toLowerCase()}` : q ? ' match your search' : ' yet'}.
+            </EmptyRow>
           ) : (
-            shown.map((d, i) => {
+            pageRows.map((d) => {
               const meta = STATUS_META[d.status]
               const isArchived = d.status === 'archived'
+              const dim = isArchived ? 'opacity-60' : ''
               return (
-                <div key={d.id} className={`${rowCx(COLS, { i })} group ${isArchived ? 'opacity-60' : ''}`}>
-                  {/* Identity — deck title over block/runtime summary */}
-                  <Link href={`/admin/presentations/${d.id}`} className="min-w-0">
-                    <IdentityCell
-                      icon={<PresentationIcon size={13} />}
-                      title={d.title}
-                      subtitle={`${d.block_count} ${d.block_count === 1 ? 'block' : 'blocks'} · ${formatRuntime(d.runtime_seconds)} · edited ${timeAgo(d.updated_at)}`}
-                    />
+                <Row key={d.id} cols={COLS}>
+                  {/* Identity — the deck title links into the editor */}
+                  <Link href={`/admin/presentations/${d.id}`} className={cn('flex items-center gap-2.5 min-w-0', dim)}>
+                    <span className="w-7 h-7 rounded-lg bg-surface-strong flex items-center justify-center flex-shrink-0 text-ink-muted">
+                      <PresentationIcon size={13} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{d.title}</span>
+                      <span className="block text-[11.5px] text-ink-muted truncate">
+                        {d.block_count} {d.block_count === 1 ? 'block' : 'blocks'} · {formatRuntime(d.runtime_seconds)} · edited {timeAgo(d.updated_at)}
+                      </span>
+                    </span>
                   </Link>
+
                   {/* Status */}
-                  <div>
+                  <div className={dim}>
                     <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
                   </div>
+
                   {/* Present / Resume / Restore */}
-                  <div className="hidden sm:block">
+                  <div className={cn('hidden sm:block', dim)}>
                     {isArchived ? (
-                      <button onClick={() => archive(d.id, 'saved')} className="text-[12px] inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                      <button
+                        onClick={() => archive(d.id, 'saved')}
+                        className="text-[12px] inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-hairline text-ink-secondary hover:bg-surface-soft transition-colors"
+                      >
                         <ArrowUpFromLine size={13} /> Restore
                       </button>
                     ) : (
-                      <Link href={`/admin/presentations/${d.id}${d.status === 'in_progress' ? '' : '/present'}`}
-                        className="text-[12px] inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                      <Link
+                        href={`/admin/presentations/${d.id}${d.status === 'in_progress' ? '' : '/present'}`}
+                        className="text-[12px] inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-hairline text-ink-secondary hover:bg-surface-soft transition-colors"
+                      >
                         {d.status === 'in_progress' ? <><Pencil size={13} /> Resume</> : <><Play size={13} /> Present</>}
                       </Link>
                     )}
                   </div>
-                  {/* Kebab */}
-                  <div className="hidden sm:flex justify-center relative">
-                    <button onClick={() => setMenuFor(menuFor === d.id ? null : d.id)} className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"><MoreHorizontal size={16} /></button>
-                    {menuFor === d.id && (
-                      <>
-                        <button className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuFor(null)} aria-label="Close menu" />
-                        <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-lg py-1 text-[13px]">
-                          <Link href={`/admin/presentations/${d.id}`} className="flex items-center gap-2 px-3 py-1.5 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"><Pencil size={13} /> Edit</Link>
-                          <button onClick={() => duplicate(d.id)} className="w-full flex items-center gap-2 px-3 py-1.5 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"><Copy size={13} /> Duplicate</button>
-                          {isArchived ? (
-                            <button onClick={() => archive(d.id, 'saved')} className="w-full flex items-center gap-2 px-3 py-1.5 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"><ArrowUpFromLine size={13} /> Restore</button>
-                          ) : (
-                            <button onClick={() => archive(d.id, 'archived')} className="w-full flex items-center gap-2 px-3 py-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"><Archive size={13} /> Archive</button>
-                          )}
-                        </div>
-                      </>
-                    )}
+
+                  {/* Kebab (opens the portaled menu below) */}
+                  <div className={cn('hidden sm:flex justify-center', dim)}>
+                    <button
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect()
+                        setMenu((m) => (m?.deck.id === d.id ? null : { deck: d, top: r.bottom + 4, left: r.right }))
+                      }}
+                      className={cn(
+                        'p-1.5 rounded-md text-ink-muted hover:text-ink-secondary hover:bg-surface-soft transition-colors',
+                        menu?.deck.id === d.id && 'bg-surface-soft text-ink-secondary',
+                      )}
+                      aria-label="Deck actions"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
                   </div>
-                </div>
+                </Row>
               )
             })
           )}
-        </div>
-        </TableScroll>
-      </div>
-    </div>
+        </CardTable>
+
+        <Pagination
+          page={paged.page}
+          perPage={paged.perPage}
+          total={view.length}
+          totalPages={paged.totalPages}
+          onPage={paged.setPage}
+          onPerPage={paged.setPerPage}
+          unit="decks"
+        />
+      </ListCard>
+
+      {/* Row-action menu — portaled + fixed so the table's overflow-y-hidden can't clip it. */}
+      {menu && createPortal(
+        <>
+          <button className="fixed inset-0 z-40 cursor-default" onClick={() => setMenu(null)} aria-label="Close menu" />
+          <div
+            style={{ position: 'fixed', top: menu.top, left: menu.left, transform: 'translateX(-100%)' }}
+            className="z-50 w-40 rounded-lg border border-hairline bg-surface shadow-xl dark:shadow-none dark:ring-1 dark:ring-white/10 py-1 text-[13px]"
+          >
+            <Link
+              href={`/admin/presentations/${menu.deck.id}`}
+              onClick={() => setMenu(null)}
+              className="flex items-center gap-2 px-3 py-1.5 text-ink-secondary hover:bg-surface-soft"
+            >
+              <Pencil size={13} /> Edit
+            </Link>
+            <button onClick={() => duplicate(menu.deck.id)} className="w-full flex items-center gap-2 px-3 py-1.5 text-ink-secondary hover:bg-surface-soft">
+              <Copy size={13} /> Duplicate
+            </button>
+            {menu.deck.status === 'archived' ? (
+              <button onClick={() => archive(menu.deck.id, 'saved')} className="w-full flex items-center gap-2 px-3 py-1.5 text-ink-secondary hover:bg-surface-soft">
+                <ArrowUpFromLine size={13} /> Restore
+              </button>
+            ) : (
+              <button onClick={() => archive(menu.deck.id, 'archived')} className="w-full flex items-center gap-2 px-3 py-1.5 text-ink-secondary hover:bg-surface-soft">
+                <Archive size={13} /> Archive
+              </button>
+            )}
+          </div>
+        </>,
+        document.body,
+      )}
+    </ListCardPage>
   )
 }

@@ -4,10 +4,9 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Inbox, MoreHorizontal, CheckCheck, Clock, CheckCircle2, ExternalLink } from 'lucide-react'
 import { markSubmissionRead, updateSubmissionStatus } from './actions'
-import {
-  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, SUBMISSION_STATUS, TableScroll, IdentityCell,
-} from '@/components/admin/list'
-import { BulkDeleteButton } from '@/components/admin/bulk-select'
+import { StatusPill, timeAgo, SUBMISSION_STATUS } from '@/components/admin/list'
+import { CardTable, Row, ToneAvatar, EmptyRow } from '@/components/admin/list-card'
+import { BulkBar, BulkActionButton, BulkDeleteButton } from '@/components/admin/bulk-select'
 
 export type SubmissionRow = {
   id: string
@@ -18,8 +17,9 @@ export type SubmissionRow = {
   data: Record<string, unknown>
 }
 
-// Mobile keeps the audit-log trio (identity / status / age) so the row fits the
-// viewport with no sideways scroll; the checkbox + kebab columns appear at sm+.
+// Mobile keeps the identity / status / age trio so the row fits the viewport with
+// no sideways scroll; the checkbox + kebab columns appear at sm+ (CardTable bakes
+// in the min-width + overflow-x scroll for the wider desktop grid).
 const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[34px_2fr_140px_90px_40px]'
 
 export default function SubmissionsTable({ submissions, emptyHint }: { submissions: SubmissionRow[]; emptyHint?: string }) {
@@ -72,74 +72,79 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
 
   return (
     <>
-    <TableScroll minWidth={620}>
-      {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
-      <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-        <div className="flex items-center justify-center">
-          <input type="checkbox" checked={allSelected} onChange={toggleAll}
-            className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
-        </div>
-        <Th>Submitter</Th>
-        <Th>Status</Th>
-        <Th>Created</Th>
-        <Th />
-      </div>
-
-      {/* Body */}
-      <div className={BODY_BOX}>
+      <CardTable
+        cols={COLS}
+        minWidth={620}
+        head={
+          <>
+            <div className="hidden sm:flex items-center justify-center">
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all"
+                className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
+            </div>
+            <span>Submitter</span>
+            <span>Status</span>
+            <span>Created</span>
+            <span className="hidden sm:block" />
+          </>
+        }
+      >
         {submissions.length === 0 ? (
-          <div className="py-16 text-center">
-            <Inbox size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-            <p className="text-[13px] text-zinc-400 dark:text-zinc-500">{emptyHint || 'No submissions found'}</p>
-            <p className="text-[11px] text-zinc-300 dark:text-zinc-600 mt-1">Try adjusting your filters</p>
-          </div>
+          <EmptyRow>
+            <Inbox size={28} className="text-ink-faint mx-auto mb-3" />
+            <p className="text-[13px] text-ink-muted">{emptyHint || 'No submissions found'}</p>
+            <p className="text-[11px] text-ink-faint mt-1">Try adjusting your filters</p>
+          </EmptyRow>
         ) : (
-          submissions.map((sub, i) => {
+          submissions.map((sub) => {
             const name = String(sub.data?.['Employee Name'] || sub.data?.['Full Name'] || sub.data?.['Name'] || 'Anonymous')
             const st = SUBMISSION_STATUS[sub.status || 'open'] ?? SUBMISSION_STATUS.open
             const isSel = selected.has(sub.id)
 
             return (
-              <div
-                key={sub.id}
-                onClick={() => router.push(`/admin/submissions/${sub.id}`)}
-                className={`${rowCx(COLS, { i, selected: isSel })} cursor-pointer group`}
-              >
-                {/* Checkbox */}
-                <div className="hidden sm:flex items-center justify-center" onClick={e => e.stopPropagation()}>
-                  <input type="checkbox" checked={isSel} onChange={() => toggle(sub.id)}
-                    className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
+              <Row key={sub.id} cols={COLS} href={`/admin/submissions/${sub.id}`} selected={isSel}>
+                {/* Checkbox — presentational input; the cell drives the toggle so a
+                    click toggles selection (over the whole hit area) and never
+                    follows the row link. */}
+                <div
+                  className="hidden sm:flex items-center justify-center"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(sub.id) }}
+                >
+                  <input type="checkbox" checked={isSel} readOnly tabIndex={-1} aria-label="Select submission"
+                    className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer pointer-events-none" />
                 </div>
 
-                {/* Identity — submitter over form; leading unread dot + avatar */}
-                <IdentityCell
-                  leading={
-                    <span className="flex items-center gap-2 flex-shrink-0">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${sub.is_read ? 'bg-transparent' : 'bg-emerald-500'}`}
-                        title={sub.is_read ? undefined : 'Unread'}
-                      />
-                      <Avatar name={name} />
-                    </span>
-                  }
-                  title={name}
-                  subtitle={sub.form_title || undefined}
-                />
+                {/* Identity — submitter over form; leading unread dot + colored avatar */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex items-center gap-2 flex-shrink-0">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${sub.is_read ? 'bg-transparent' : 'bg-emerald-500'}`}
+                      title={sub.is_read ? undefined : 'Unread'}
+                    />
+                    <ToneAvatar name={name} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{name}</p>
+                    {sub.form_title && <p className="text-[11.5px] text-ink-muted truncate">{sub.form_title}</p>}
+                  </div>
+                </div>
 
                 {/* Status */}
                 <div><StatusPill tone={st.tone}>{st.label}</StatusPill></div>
 
                 {/* Created */}
-                <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(sub.submitted_at)}</div>
+                <div className="text-[12.5px] text-ink-muted tabular-nums">{timeAgo(sub.submitted_at)}</div>
 
                 {/* Kebab */}
-                <div className="hidden sm:flex justify-center relative" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => setMenuFor(menuFor === sub.id ? null : sub.id)}
-                    className="p-1.5 rounded-md text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                <div
+                  className="hidden sm:flex justify-center relative"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+                >
+                  <button onClick={() => setMenuFor(menuFor === sub.id ? null : sub.id)} aria-label="Row actions"
+                    className="p-1.5 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-surface-strong transition-colors">
                     <MoreHorizontal size={15} />
                   </button>
                   {menuFor === sub.id && (
-                    <div ref={menuRef} className="absolute right-8 top-1/2 -translate-y-1/2 z-30 w-44 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1">
+                    <div ref={menuRef} className="absolute right-8 top-1/2 -translate-y-1/2 z-30 w-44 rounded-lg border border-hairline bg-surface shadow-xl dark:shadow-none dark:ring-1 dark:ring-white/10 py-1">
                       <MenuItem icon={<ExternalLink size={13} />} label="Open" onClick={() => { setMenuFor(null); router.push(`/admin/submissions/${sub.id}`) }} />
                       {!sub.is_read && <MenuItem icon={<CheckCheck size={13} />} label="Mark as read" onClick={() => runOne(sub.id, (id) => markSubmissionRead(id, { audit: true }))} />}
                       {sub.status !== 'in_progress' && <MenuItem icon={<Clock size={13} />} label="Mark In Progress" onClick={() => runOne(sub.id, (id) => updateSubmissionStatus(id, 'in_progress'))} />}
@@ -147,27 +152,19 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
                     </div>
                   )}
                 </div>
-              </div>
+              </Row>
             )
           })
         )}
-      </div>
-    </TableScroll>
+      </CardTable>
 
       {/* Floating bulk-action bar */}
-      {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 rounded-full bg-zinc-900 border border-zinc-700 shadow-2xl pl-4 pr-2 py-1.5">
-          <span className="text-[12px] font-semibold text-white mr-2 whitespace-nowrap">Selected: {selected.size}</span>
-          <BulkButton icon={<CheckCheck size={13} />} label="Mark read" disabled={pending} onClick={() => runBulk(markSubmissionRead)} />
-          <BulkButton icon={<Clock size={13} />} label="In Progress" disabled={pending} onClick={() => runBulk((id) => updateSubmissionStatus(id, 'in_progress'))} />
-          <BulkButton icon={<CheckCircle2 size={13} />} label="Resolve" disabled={pending} onClick={() => runBulk((id) => updateSubmissionStatus(id, 'resolved'))} />
-          <BulkDeleteButton entity="submissions" ids={Array.from(selected)} onDone={() => setSelected(new Set())} />
-          <button onClick={() => setSelected(new Set())} disabled={pending}
-            className="ml-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-zinc-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50">
-            Clear
-          </button>
-        </div>
-      )}
+      <BulkBar count={selected.size} onClear={() => setSelected(new Set())}>
+        <BulkActionButton icon={<CheckCheck size={13} />} label="Mark read" disabled={pending} onClick={() => runBulk(markSubmissionRead)} />
+        <BulkActionButton icon={<Clock size={13} />} label="In Progress" disabled={pending} onClick={() => runBulk((id) => updateSubmissionStatus(id, 'in_progress'))} />
+        <BulkActionButton icon={<CheckCircle2 size={13} />} label="Resolve" disabled={pending} onClick={() => runBulk((id) => updateSubmissionStatus(id, 'resolved'))} />
+        <BulkDeleteButton entity="submissions" ids={Array.from(selected)} onDone={() => setSelected(new Set())} />
+      </BulkBar>
     </>
   )
 }
@@ -175,18 +172,8 @@ export default function SubmissionsTable({ submissions, emptyHint }: { submissio
 function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors text-left">
-      <span className="text-zinc-400 dark:text-zinc-500">{icon}</span>
-      {label}
-    </button>
-  )
-}
-
-function BulkButton({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-zinc-200 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap disabled:opacity-50">
-      {icon}
+      className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-ink-secondary hover:bg-surface-soft hover:text-ink transition-colors text-left">
+      <span className="text-ink-faint">{icon}</span>
       {label}
     </button>
   )

@@ -5,10 +5,11 @@ import Link from 'next/link'
 import { Wrench, Search, Plus, ChevronRight, QrCode, UserPlus } from 'lucide-react'
 import type { CribToolStatus } from '@/lib/supabase'
 import { CRIB_STATUS, cribTotals, formatCost, toolThumbPath } from '@/lib/tool-crib'
+import { StatusPill, IdentityCell, tabCx, tabCountCx, timeAgo } from '@/components/admin/list'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll,
-  ListPageHeader, IdentityCell, tabCx, tabCountCx, timeAgo,
-} from '@/components/admin/list'
+  ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar,
+  CardTable, Row, EmptyRow, Pagination, usePagedList, ToneAvatar,
+} from '@/components/admin/list-card'
 import { ToolThumb } from '@/components/admin/ToolThumb'
 import type { CribToolRow, EmployeeOption } from './page'
 import AddToolModal from './AddToolModal'
@@ -17,8 +18,10 @@ import AssignToolsModal from './AssignToolsModal'
 type Filter = 'all' | CribToolStatus
 
 /* Mobile keeps identity · status · holder (3 visible cells = 3 mobile tracks).
-   Category, cost and age return at sm+. See docs/mobile.md — the two tiers stay
-   in sync only while the visible-cell count matches the mobile track count. */
+   Category, cost and the chevron return at sm+. See docs/mobile.md — the two
+   tiers stay in sync only while the visible-cell count matches the mobile track
+   count. The one-card table wrapper only applies the min-width floor from sm up,
+   so the phone layout keeps its reduced column set instead of scrolling. */
 const COLS =
   'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[minmax(0,2fr)_150px_130px_150px_90px_28px]'
 
@@ -31,29 +34,21 @@ const TABS: [Filter, string][] = [
   ['retired', 'Retired'],
 ]
 
-/* The two numbers leadership asks for. Deliberately only two — a row of six
-   KPIs would be decoration, and DESIGN.md says color carries meaning or nothing. */
-function Tile({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="flex-1 min-w-[160px] bg-surface border border-hairline rounded-xl px-4 py-3">
-      <p className="text-[11px] uppercase tracking-wide text-ink-faint">{label}</p>
-      <p className="text-[22px] text-ink mt-1 tabular-nums" style={{ fontWeight: 620 }}>{value}</p>
-      <p className="text-[11px] text-ink-muted mt-0.5">{hint}</p>
-    </div>
-  )
-}
-
 export default function ToolCribClient({ tools, employees }: { tools: CribToolRow[]; employees: EmployeeOption[] }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [adding, setAdding] = useState(false)
   const [assigning, setAssigning] = useState(false)
 
+  // Dataset-wide rollups (unaffected by tab/search) — the two numbers leadership
+  // asks for. Deliberately only two: a row of six KPIs would be decoration, and
+  // DESIGN.md says color carries meaning or nothing. The dot colors mirror the
+  // status pills they summarize (checked-out = sky, lost = rose).
   const totals = useMemo(() => cribTotals(tools), [tools])
   const availableCount = useMemo(() => tools.filter(t => t.status === 'available').length, [tools])
 
   const q = search.trim().toLowerCase()
-  const filtered = tools.filter(t => {
+  const filtered = useMemo(() => tools.filter(t => {
     const hit = !q ||
       t.tag_code.toLowerCase().includes(q) ||
       t.name.toLowerCase().includes(q) ||
@@ -63,38 +58,62 @@ export default function ToolCribClient({ tools, employees }: { tools: CribToolRo
       (t.home_location ?? '').toLowerCase().includes(q) ||
       (t.holder_name ?? '').toLowerCase().includes(q)
     return hit && (filter === 'all' || t.status === filter)
-  })
+  }), [tools, q, filter])
+
+  // Client-side pagination over the filtered set (server already loads all rows).
+  const { page, setPage, perPage, setPerPage, totalPages, start, end } =
+    usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${filter}|${q}` })
+  const pageRows = filtered.slice(start, end)
 
   return (
-    <div className="flex-1 overflow-auto bg-canvas">
-      <ListPageHeader
-        overline="Operations"
-        title="Tool Crib"
-        count={`${tools.length} ${tools.length === 1 ? 'tool' : 'tools'} tracked`}
-        actions={
-          <>
-            <button
-              onClick={() => setAssigning(true)}
-              className="flex items-center gap-2 bg-surface border border-hairline hover:bg-surface-soft text-ink-secondary text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
-            >
-              <UserPlus size={15} />Assign tools
-            </button>
-            <Link
-              href="/admin/tool-crib/labels"
-              className="flex items-center gap-2 bg-surface border border-hairline hover:bg-surface-soft text-ink-secondary text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
-            >
-              <QrCode size={15} />Print labels
-            </Link>
-            <button
-              onClick={() => setAdding(true)}
-              className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-brand-ink text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
-            >
-              <Plus size={15} />Add tool
-            </button>
-          </>
-        }
-      >
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+    <ListCardPage>
+      <ListCard>
+        <CardHead
+          overline="Operations"
+          title="Tool Crib"
+          count={`${tools.length} ${tools.length === 1 ? 'tool' : 'tools'} tracked`}
+          actions={
+            <>
+              <button
+                onClick={() => setAssigning(true)}
+                className="flex items-center gap-2 bg-surface border border-hairline hover:bg-surface-soft text-ink-secondary text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
+              >
+                <UserPlus size={15} />Assign tools
+              </button>
+              <Link
+                href="/admin/tool-crib/labels"
+                className="flex items-center gap-2 bg-surface border border-hairline hover:bg-surface-soft text-ink-secondary text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
+              >
+                <QrCode size={15} />Print labels
+              </Link>
+              <button
+                onClick={() => setAdding(true)}
+                className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-brand-ink text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
+              >
+                <Plus size={15} />Add tool
+              </button>
+            </>
+          }
+        />
+
+        <StatStrip>
+          <Stat
+            tone="sky"
+            label="Out on the floor"
+            value={formatCost(totals.onFloor)}
+            sub={`${totals.checkedOut} ${totals.checkedOut === 1 ? 'tool' : 'tools'} checked out`}
+          />
+          <Stat
+            tone="rose"
+            label="Gone missing"
+            value={formatCost(totals.lost)}
+            sub="Tools marked lost"
+          />
+        </StatStrip>
+
+        {/* Status filter tabs — the underline meets the band's bottom hairline,
+            and each tab carries its live per-status count. */}
+        <div className="flex items-center gap-1 px-5 border-b border-hairline overflow-x-auto scrollbar-hide">
           {TABS.map(([f, label]) => {
             const count = f === 'all' ? tools.length : tools.filter(t => t.status === f).length
             const active = filter === f
@@ -106,23 +125,8 @@ export default function ToolCribClient({ tools, employees }: { tools: CribToolRo
             )
           })}
         </div>
-      </ListPageHeader>
 
-      <div className="p-4 sm:p-8">
-        <div className="flex gap-3 mb-5 flex-wrap">
-          <Tile
-            label="Out on the floor"
-            value={formatCost(totals.onFloor)}
-            hint={`${totals.checkedOut} ${totals.checkedOut === 1 ? 'tool' : 'tools'} checked out`}
-          />
-          <Tile
-            label="Gone missing"
-            value={formatCost(totals.lost)}
-            hint="Tools marked lost"
-          />
-        </div>
-
-        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+        <Toolbar>
           <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
             <input
@@ -131,44 +135,47 @@ export default function ToolCribClient({ tools, employees }: { tools: CribToolRo
               placeholder="Search name, code, holder…"
               /* 16px on mobile — anything smaller makes iOS Safari zoom the
                  viewport on focus (fixed portal-wide 2026-07-14). */
-              className="pl-8 pr-3 h-9 text-[16px] sm:text-[12.5px] w-full sm:w-72 bg-surface border border-hairline rounded-lg text-ink-secondary placeholder:text-ink-faint outline-none transition-all focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              className="pl-8 pr-3 h-9 text-[16px] sm:text-[12.5px] w-full sm:w-72 bg-surface-soft border border-hairline rounded-lg text-ink-secondary placeholder:text-ink-faint outline-none transition-all focus-visible:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             />
           </div>
-          <span className="ml-auto text-[12px] text-ink-faint tabular-nums">
+          <div className="flex-1" />
+          <span className="text-[12px] text-ink-faint tabular-nums">
             {filtered.length} {filtered.length === 1 ? 'tool' : 'tools'}
           </span>
-        </div>
+        </Toolbar>
 
-        <TableScroll minWidth={780}>
-          <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-            <Th>Tool</Th>
-            <Th>Category</Th>
-            <Th>Status</Th>
-            <Th>Holder</Th>
-            <Th align="right">Cost</Th>
-            <Th />
-          </div>
-
-          <div className={BODY_BOX}>
-            {filtered.length === 0 ? (
-              <div className="py-16 text-center">
-                <Wrench size={28} className="text-ink-faint mx-auto mb-3" />
-                <p className="text-[13px] text-ink-muted">
-                  {tools.length === 0
-                    ? 'No tools yet. Add one, print its label, stick it on.'
-                    : 'No tools match.'}
-                </p>
-              </div>
-            ) : (
-              filtered.map((t, i) => {
-                const s = CRIB_STATUS[t.status]
-                const retired = t.status === 'retired'
-                return (
-                  <Link
-                    key={t.id}
-                    href={`/admin/tool-crib/${t.id}`}
-                    className={`${rowCx(COLS, { i })} group ${retired ? 'opacity-60' : ''}`}
-                  >
+        <CardTable
+          minWidth={780}
+          cols={COLS}
+          head={
+            <>
+              <span>Tool</span>
+              <span className="hidden sm:block">Category</span>
+              <span>Status</span>
+              <span>Holder</span>
+              <div className="hidden sm:block text-right">Cost</div>
+              <span className="hidden sm:block" />
+            </>
+          }
+        >
+          {pageRows.length === 0 ? (
+            <EmptyRow>
+              <Wrench size={28} className="text-ink-faint mx-auto mb-3" />
+              <p>
+                {tools.length === 0
+                  ? 'No tools yet. Add one, print its label, stick it on.'
+                  : 'No tools match.'}
+              </p>
+            </EmptyRow>
+          ) : (
+            pageRows.map((t) => {
+              const s = CRIB_STATUS[t.status]
+              // Retired tools read as dimmed. Row has no className slot, so the
+              // dimming lives on a thin wrapper (opacity cascades to the row).
+              const retired = t.status === 'retired'
+              return (
+                <div key={t.id} className={retired ? 'opacity-60' : undefined}>
+                  <Row cols={COLS} href={`/admin/tool-crib/${t.id}`}>
                     <IdentityCell
                       leading={<ToolThumb path={toolThumbPath(t.photo_urls)} size={30} />}
                       title={t.name}
@@ -181,14 +188,28 @@ export default function ToolCribClient({ tools, employees }: { tools: CribToolRo
 
                     <div><StatusPill tone={s.tone}>{s.label}</StatusPill></div>
 
-                    {/* Holder. On a phone this is the third and last cell — it's
-                        the answer to the question the feature exists for. */}
-                    <div className="text-[12.5px] text-ink-secondary truncate">
-                      {t.status === 'checked_out'
-                        ? (t.holder_name ?? <span className="text-ink-faint italic">Unknown holder</span>)
-                        : <span className="text-ink-faint">—</span>}
-                      {t.status === 'checked_out' && t.held_since && (
-                        <span className="hidden sm:inline text-ink-faint"> · {timeAgo(t.held_since)}</span>
+                    {/* Holder — the answer to the question the feature exists for.
+                        The avatar joins at sm+ (mobile keeps the original text-only
+                        cell so the 3-track phone layout stays tight). */}
+                    <div className="flex items-center gap-2 min-w-0 text-[12.5px]">
+                      {t.status === 'checked_out' ? (
+                        <>
+                          {t.holder_name && (
+                            <span className="hidden sm:block flex-shrink-0">
+                              <ToneAvatar name={t.holder_name} size={24} />
+                            </span>
+                          )}
+                          <span className="truncate">
+                            {t.holder_name
+                              ? <span className="text-ink-secondary">{t.holder_name}</span>
+                              : <span className="text-ink-faint italic">Unknown holder</span>}
+                            {t.held_since && (
+                              <span className="hidden sm:inline text-ink-faint"> · {timeAgo(t.held_since)}</span>
+                            )}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-ink-faint">—</span>
                       )}
                     </div>
 
@@ -200,13 +221,25 @@ export default function ToolCribClient({ tools, employees }: { tools: CribToolRo
                       size={14}
                       className="hidden sm:block text-ink-faint group-hover:text-ink-muted transition-colors"
                     />
-                  </Link>
-                )
-              })
-            )}
-          </div>
-        </TableScroll>
-      </div>
+                  </Row>
+                </div>
+              )
+            })
+          )}
+        </CardTable>
+
+        {filtered.length > 0 && (
+          <Pagination
+            page={page}
+            perPage={perPage}
+            total={filtered.length}
+            totalPages={totalPages}
+            onPage={setPage}
+            onPerPage={setPerPage}
+            unit="tools"
+          />
+        )}
+      </ListCard>
 
       {adding && <AddToolModal onClose={() => setAdding(false)} />}
       {assigning && (
@@ -216,6 +249,6 @@ export default function ToolCribClient({ tools, employees }: { tools: CribToolRo
           onClose={() => setAssigning(false)}
         />
       )}
-    </div>
+    </ListCardPage>
   )
 }

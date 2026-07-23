@@ -1,19 +1,22 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Play, CheckCircle2, AlertCircle, Calendar, Clock, TrendingUp, AlertTriangle, X, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 import type { Employee, AccrualLog, AccrualTier, AccrualConfig } from '@/lib/supabase'
 import type { AccrualRunResult } from '@/lib/accrual'
+import { StatusPill } from '@/components/admin/list'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, Avatar, Th, TableScroll, ListPageHeader, IdentityCell,
-} from '@/components/admin/list'
+  ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar, CardTable, Row,
+  SortHeader, EmptyRow, Pagination, usePagedList, ListSearch, ToneAvatar,
+} from '@/components/admin/list-card'
 
-// Mobile keeps identity + the two balances (header stays visible so the bare
-// numbers keep their labels); the per-week rate columns return at sm+.
-const EMP_COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[2fr_120px_130px_120px_130px]'
+// Employee | PTO Balance | PTO Rate/wk | Sick Balance | Sick Rate/wk
+const COLS = 'grid-cols-[minmax(200px,2fr)_130px_150px_130px_150px]'
+type SortKey = 'name' | 'pto_balance' | 'pto_rate' | 'sick_balance' | 'sick_rate'
+const NUMERIC_KEYS: SortKey[] = ['pto_balance', 'pto_rate', 'sick_balance', 'sick_rate']
 
 // Tenure derived from hire_date (the accrual tier is a tenure band), with the
 // job title appended when both are known — falls back to whichever exists.
@@ -60,6 +63,11 @@ export default function AccrualClient({
   const [result, setResult] = useState<AccrualRunResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // List view controls
+  const [query, setQuery] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
   const eligible = employees.filter(e => e.pto_accrual_rate > 0 || e.sick_accrual_rate > 0)
 
   const runAccrual = async () => {
@@ -77,279 +85,350 @@ export default function AccrualClient({
 
   const nextRun = nextMonday()
 
+  // search + sort → the working view (before pagination)
+  const view = useMemo(() => {
+    let r = employees
+    const q = query.trim().toLowerCase()
+    if (q) {
+      r = r.filter(e =>
+        [e.name, e.email, e.job_title, e.department].filter(Boolean).join(' ').toLowerCase().includes(q),
+      )
+    }
+    const dir = sortDir === 'asc' ? 1 : -1
+    const val = (e: Employee): number | string =>
+      sortKey === 'name' ? (e.name || e.email || '').toLowerCase()
+      : sortKey === 'pto_balance' ? e.pto_balance
+      : sortKey === 'pto_rate' ? e.pto_accrual_rate
+      : sortKey === 'sick_balance' ? e.sick_balance
+      : e.sick_accrual_rate
+    return [...r].sort((a, b) => {
+      const av = val(a), bv = val(b)
+      return av < bv ? -1 * dir : av > bv ? dir : 0
+    })
+  }, [employees, query, sortKey, sortDir])
+
+  const stats = useMemo(() => {
+    const count = view.length
+    const accruing = view.filter(e => e.pto_accrual_rate > 0 || e.sick_accrual_rate > 0).length
+    const ptoTotal = view.reduce((a, e) => a + (e.pto_balance || 0), 0)
+    const sickTotal = view.reduce((a, e) => a + (e.sick_balance || 0), 0)
+    return { count, accruing, ptoTotal, sickTotal }
+  }, [view])
+
+  const paged = usePagedList(view.length, { initialPerPage: 10, resetKey: `${query}|${sortKey}|${sortDir}` })
+  const pageRows = view.slice(paged.start, paged.end)
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(k); setSortDir(NUMERIC_KEYS.includes(k) ? 'desc' : 'asc') }
+  }
+
   return (
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
+    <>
+      <ListCardPage>
+        <div className="space-y-6">
 
-      {/* Header */}
-      <ListPageHeader
-        overline="Time Off"
-        title="Accrual"
-        count="Weekly PTO & sick time accrual — runs every Monday at 8 AM"
-      />
-
-      <div className="p-4 sm:p-8 space-y-6">
-
-        {/* Run card */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">Run Accrual</h2>
-              <p className="text-[13px] text-gray-400 max-w-sm leading-relaxed">
+          {/* ── Run accrual (page header + primary action) ── */}
+          <ListCard>
+            <CardHead
+              overline="Time Off"
+              title="Accrual"
+              count="Weekly PTO & sick time accrual — runs every Monday at 8 AM"
+              actions={
+                <button
+                  onClick={() => setConfirming(true)}
+                  disabled={running || isPending}
+                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-medium disabled:opacity-60 transition-colors flex-shrink-0"
+                >
+                  <Play size={14} />
+                  {running ? 'Running…' : 'Run Now'}
+                </button>
+              }
+            />
+            <div className="px-5 py-4">
+              <p className="text-[13px] text-ink-muted max-w-xl leading-relaxed">
                 Adds each employee&apos;s accrual rate to their current balance and records the change in the log. Balances stop accruing once they hit their cap.
               </p>
               <div className="flex items-center gap-2 mt-3">
-                <Calendar size={13} className="text-gray-300" />
-                <span className="text-[12px] text-gray-400">
+                <Calendar size={13} className="text-ink-faint" />
+                <span className="text-[12px] text-ink-muted">
                   Next scheduled: {nextRun.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
               </div>
+
+              {/* Result */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="mt-5 flex items-start gap-2.5 rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-3"
+                  >
+                    <AlertCircle size={15} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-[13px] text-rose-600 dark:text-rose-400">{error}</p>
+                  </motion.div>
+                )}
+
+                {result && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                    className="mt-5 space-y-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 size={16} className="text-brand" />
+                      <p className="text-[13px] font-semibold text-ink-secondary">
+                        Accrual complete — {result.processed} employee{result.processed !== 1 ? 's' : ''} updated
+                        {result.skipped > 0 && <span className="text-ink-muted font-normal"> · {result.skipped} skipped (at cap or zero rate)</span>}
+                      </p>
+                    </div>
+
+                    {result.employees.length > 0 && (
+                      <div className="rounded-xl border border-hairline overflow-hidden">
+                        <table className="w-full text-[12px]">
+                          <thead>
+                            <tr className="border-b border-hairline bg-surface-soft">
+                              <th className="text-left px-4 py-2.5 font-semibold text-ink-muted">Employee</th>
+                              <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">PTO Added</th>
+                              <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">New PTO Balance</th>
+                              <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">Sick Added</th>
+                              <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">New Sick Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-hairline-soft">
+                            {result.employees.map(e => (
+                              <tr key={e.employee_id} className="hover:bg-surface-soft transition-colors">
+                                <td className="px-4 py-2.5 font-medium text-ink-secondary">{e.name}</td>
+                                <td className="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">+{e.pto_delta} hrs</td>
+                                <td className="px-4 py-2.5 text-right text-ink-secondary tabular-nums">{e.new_pto_balance} hrs</td>
+                                <td className="px-4 py-2.5 text-right text-amber-600 dark:text-amber-400 font-semibold tabular-nums">+{e.sick_delta} hrs</td>
+                                <td className="px-4 py-2.5 text-right text-ink-secondary tabular-nums">{e.new_sick_balance} hrs</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <button
-              onClick={() => setConfirming(true)}
-              disabled={running || isPending}
-              className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] disabled:opacity-50 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm flex-shrink-0"
-            >
-              <Play size={14} />
-              {running ? 'Running…' : 'Run Now'}
-            </button>
-          </div>
+          </ListCard>
 
-          {/* Result */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="mt-5 flex items-start gap-2.5 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-xl px-4 py-3"
-              >
-                <AlertCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-                <p className="text-[13px] text-red-600 dark:text-red-400">{error}</p>
-              </motion.div>
-            )}
+          {/* ── Accrual policy ── */}
+          {(tiers.length > 0 || config) && (
+            <ListCard>
+              <CardHead
+                title={<span className="inline-flex items-center gap-2"><Shield size={16} className="text-ink-muted" />Accrual Policy</span>}
+                actions={<span className="text-[11px] text-ink-muted">Source: HR rate sheet</span>}
+              />
+              <div className="p-5 space-y-5">
 
-            {result && (
-              <motion.div
-                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                className="mt-5 space-y-4"
-              >
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={16} className="text-[#089447]" />
-                  <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-200">
-                    Accrual complete — {result.processed} employee{result.processed !== 1 ? 's' : ''} updated
-                    {result.skipped > 0 && <span className="text-gray-400 font-normal"> · {result.skipped} skipped (at cap or zero rate)</span>}
-                  </p>
-                </div>
-
-                {result.employees.length > 0 && (
-                  <div className="rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-                    <table className="w-full text-[12px]">
-                      <thead>
-                        <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
-                          <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Employee</th>
-                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">PTO Added</th>
-                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">New PTO Balance</th>
-                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Sick Added</th>
-                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">New Sick Balance</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
-                        {result.employees.map(e => (
-                          <tr key={e.employee_id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors">
-                            <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-200">{e.name}</td>
-                            <td className="px-4 py-2.5 text-right text-[#089447] font-semibold">+{e.pto_delta} hrs</td>
-                            <td className="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300">{e.new_pto_balance} hrs</td>
-                            <td className="px-4 py-2.5 text-right text-amber-600 font-semibold">+{e.sick_delta} hrs</td>
-                            <td className="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300">{e.new_sick_balance} hrs</td>
+                {/* PTO tiers */}
+                {tiers.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide mb-2">PTO — Tenure Bands</p>
+                    <div className="rounded-xl border border-hairline overflow-hidden">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="border-b border-hairline bg-surface-soft">
+                            <th className="text-left px-4 py-2.5 font-semibold text-ink-muted">Tenure</th>
+                            <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">Rate / wk</th>
+                            <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">≈ Hrs / yr</th>
+                            <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">≈ Days / yr</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-hairline-soft">
+                          {tiers.map(tier => {
+                            const hrsPerYr = Number(tier.pto_weekly_rate) * 52
+                            const daysPerYr = (hrsPerYr / 8).toFixed(1)
+                            return (
+                              <tr key={tier.id}>
+                                <td className="px-4 py-2.5 font-medium text-ink-secondary">{tier.label}</td>
+                                <td className="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">{Number(tier.pto_weekly_rate).toFixed(2)} hrs</td>
+                                <td className="px-4 py-2.5 text-right text-ink-muted tabular-nums">{Math.round(hrsPerYr)} hrs</td>
+                                <td className="px-4 py-2.5 text-right text-ink-muted tabular-nums">{daysPerYr} days</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {/* Policy card */}
-        {(tiers.length > 0 || config) && (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
-              <Shield size={15} className="text-gray-400" />
-              <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Accrual Policy</h2>
-              <span className="ml-auto text-[11px] text-gray-400">Source: HR rate sheet</span>
-            </div>
-            <div className="p-6 space-y-5">
-
-              {/* PTO tiers */}
-              {tiers.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">PTO — Tenure Bands</p>
-                  <div className="rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-                    <table className="w-full text-[12px]">
-                      <thead>
-                        <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
-                          <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tenure</th>
-                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Rate / wk</th>
-                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">≈ Hrs / yr</th>
-                          <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">≈ Days / yr</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
-                        {tiers.map(tier => {
-                          const hrsPerYr = Number(tier.pto_weekly_rate) * 52
-                          const daysPerYr = (hrsPerYr / 8).toFixed(1)
-                          return (
-                            <tr key={tier.id}>
-                              <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300">{tier.label}</td>
-                              <td className="px-4 py-2.5 text-right text-[#089447] font-semibold">{Number(tier.pto_weekly_rate).toFixed(2)} hrs</td>
-                              <td className="px-4 py-2.5 text-right text-gray-500 dark:text-gray-400 tabular-nums">{Math.round(hrsPerYr)} hrs</td>
-                              <td className="px-4 py-2.5 text-right text-gray-500 dark:text-gray-400 tabular-nums">{daysPerYr} days</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Sick + caps row */}
-              {config && (
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex-1 min-w-[160px] rounded-xl border border-gray-100 dark:border-zinc-800 px-4 py-3">
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Sick Time Rate</p>
-                    <p className="text-[15px] font-bold text-amber-600">
-                      {Number(config.sick_weekly_rate).toFixed(2)} hrs<span className="text-[12px] font-normal text-gray-400"> / wk</span>
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Flat rate — all tenures</p>
-                  </div>
-                  <div className="flex-1 min-w-[160px] rounded-xl border border-gray-100 dark:border-zinc-800 px-4 py-3">
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">PTO Cap</p>
-                    <p className="text-[15px] font-bold text-[#089447]">
-                      {Number(config.pto_cap_hours)} hrs
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Accrual stops at cap</p>
-                  </div>
-                  <div className="flex-1 min-w-[160px] rounded-xl border border-gray-100 dark:border-zinc-800 px-4 py-3">
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Sick Cap</p>
-                    <p className="text-[15px] font-bold text-amber-600">
-                      {Number(config.sick_cap_hours)} hrs
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Accrual stops at cap</p>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>
-        )}
-
-        {/* Employee rates list */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={15} className="text-gray-400" />
-            <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Employee Accrual Rates</h2>
-            <span className="ml-auto text-[11px] text-gray-400">Rates update automatically on anniversary</span>
-          </div>
-
-          <TableScroll minWidth={760}>
-            <div className={`grid ${EMP_COLS} ${HEADER_BOX}`}>
-              <Th>Employee</Th>
-              <Th align="right">PTO<span className="hidden sm:inline">&nbsp;Balance</span></Th>
-              <Th align="right" className="hidden sm:flex">PTO Rate / wk</Th>
-              <Th align="right">Sick<span className="hidden sm:inline">&nbsp;Balance</span></Th>
-              <Th align="right" className="hidden sm:flex">Sick Rate / wk</Th>
-            </div>
-
-            <div className={BODY_BOX}>
-              {employees.length === 0 ? (
-                <div className="py-16 text-center">
-                  <TrendingUp size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-                  <p className="text-[13px] text-zinc-400 dark:text-zinc-500">No employees yet.</p>
-                </div>
-              ) : (
-                employees.map((emp, i) => (
-                  <Link key={emp.id} href={`/admin/employees/${emp.id}`} className={`${rowCx(EMP_COLS, { i })} group`}>
-                    {/* Identity — name over tenure / title */}
-                    <IdentityCell
-                      leading={<Avatar name={emp.name || emp.email} />}
-                      title={emp.name || emp.email}
-                      subtitle={tenureText(emp)}
-                    />
-                    {/* PTO balance */}
-                    <div className="text-right font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{emp.pto_balance} hrs</div>
-                    {/* PTO rate */}
-                    <div className={`hidden sm:block text-right font-semibold tabular-nums ${emp.pto_accrual_rate > 0 ? 'text-[#089447]' : 'text-zinc-300 dark:text-zinc-600'}`}>
-                      {emp.pto_accrual_rate > 0 ? `+${emp.pto_accrual_rate} hrs` : '—'}
+                {/* Sick + caps row */}
+                {config && (
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex-1 min-w-[160px] rounded-xl border border-hairline px-4 py-3">
+                      <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide mb-1">Sick Time Rate</p>
+                      <p className="text-[15px] font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+                        {Number(config.sick_weekly_rate).toFixed(2)} hrs<span className="text-[12px] font-normal text-ink-muted"> / wk</span>
+                      </p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">Flat rate — all tenures</p>
                     </div>
-                    {/* Sick balance */}
-                    <div className="text-right font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{emp.sick_balance} hrs</div>
-                    {/* Sick rate */}
-                    <div className={`hidden sm:block text-right font-semibold tabular-nums ${emp.sick_accrual_rate > 0 ? 'text-amber-600' : 'text-zinc-300 dark:text-zinc-600'}`}>
-                      {emp.sick_accrual_rate > 0 ? `+${emp.sick_accrual_rate} hrs` : '—'}
+                    <div className="flex-1 min-w-[160px] rounded-xl border border-hairline px-4 py-3">
+                      <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide mb-1">PTO Cap</p>
+                      <p className="text-[15px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        {Number(config.pto_cap_hours)} hrs
+                      </p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">Accrual stops at cap</p>
                     </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </TableScroll>
-        </div>
+                    <div className="flex-1 min-w-[160px] rounded-xl border border-hairline px-4 py-3">
+                      <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide mb-1">Sick Cap</p>
+                      <p className="text-[15px] font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+                        {Number(config.sick_cap_hours)} hrs
+                      </p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">Accrual stops at cap</p>
+                    </div>
+                  </div>
+                )}
 
-        {/* Recent accrual log */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
-            <Clock size={15} className="text-gray-400" />
-            <h2 className="text-[14px] font-semibold text-gray-800 dark:text-white">Recent Accrual Log</h2>
-          </div>
-          {recentLog.length === 0 ? (
-            <p className="text-[13px] text-gray-400 p-6">No accrual history yet. Run the first accrual above.</p>
-          ) : (
-            <table className="w-full text-[12px]">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50">
-                  <th className="text-left px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Date</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Employee</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Type</th>
-                  <th className="text-right px-4 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Delta</th>
-                  <th className="text-left px-6 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Reason</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
-                {recentLog.map(entry => (
-                  <tr key={entry.id} className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors">
-                    <td className="px-6 py-2.5 text-gray-400 whitespace-nowrap">{formatDate(entry.created_at)}</td>
-                    <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300">{entry.employees?.name || entry.employees?.email || entry.employee_id.slice(0, 8)}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${entry.type === 'pto' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'}`}>
-                        {entry.type === 'pto' ? 'PTO' : 'Sick'}
-                      </span>
-                    </td>
-                    <td className={`px-4 py-2.5 text-right font-semibold tabular-nums ${entry.hours_delta >= 0 ? 'text-[#089447]' : 'text-red-500'}`}>
-                      {entry.hours_delta >= 0 ? '+' : ''}{entry.hours_delta} hrs
-                    </td>
-                    <td className="px-6 py-2.5">
-                      <span className={`text-[11px] font-medium ${
-                        entry.reason === 'scheduled'         ? 'text-gray-400' :
-                        entry.reason === 'manual_adjustment' ? 'text-violet-600 dark:text-violet-400' :
-                        entry.reason === 'request_approved'  ? 'text-red-500' : 'text-gray-400'
-                      }`}>
-                        {entry.reason === 'scheduled'         ? 'Scheduled' :
-                         entry.reason === 'manual_adjustment' ? 'Manual Adjustment' :
-                         entry.reason === 'request_approved'  ? 'Request Approved' :
-                         entry.reason === 'request_denied'    ? 'Request Denied' : entry.reason}
-                      </span>
-                      {entry.note && <p className="text-[11px] text-gray-300 dark:text-gray-600">{entry.note}</p>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              </div>
+            </ListCard>
           )}
+
+          {/* ── Employee accrual rates (the one-card list) ── */}
+          <ListCard>
+            <CardHead
+              title={<span className="inline-flex items-center gap-2"><TrendingUp size={16} className="text-ink-muted" />Employee Accrual Rates</span>}
+              count={<><span className="tabular-nums">{employees.length}</span> employee{employees.length === 1 ? '' : 's'} · rates update automatically on anniversary</>}
+            />
+
+            {employees.length > 0 && (
+              <StatStrip>
+                <Stat tone="sky"     label="Employees"         value={stats.count.toLocaleString()} />
+                <Stat tone="emerald" label="Accruing"          value={stats.accruing.toLocaleString()} sub="active rate" />
+                <Stat tone="violet"  label="PTO on the books"  value={`${Math.round(stats.ptoTotal).toLocaleString()} hrs`} />
+                <Stat tone="amber"   label="Sick on the books" value={`${Math.round(stats.sickTotal).toLocaleString()} hrs`} />
+              </StatStrip>
+            )}
+
+            {employees.length > 0 && (
+              <Toolbar>
+                <ListSearch value={query} onChange={setQuery} placeholder="Search employees…" />
+                <div className="flex-1" />
+                {query && <span className="text-[12px] text-ink-muted tabular-nums">{view.length} match{view.length === 1 ? '' : 'es'}</span>}
+              </Toolbar>
+            )}
+
+            <CardTable
+              cols={COLS}
+              minWidth={820}
+              head={
+                <>
+                  <SortHeader label="Employee" active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} />
+                  <div className="justify-self-end"><SortHeader label="PTO Balance" active={sortKey === 'pto_balance'} dir={sortDir} onClick={() => toggleSort('pto_balance')} align="right" /></div>
+                  <div className="justify-self-end"><SortHeader label="PTO Rate / wk" active={sortKey === 'pto_rate'} dir={sortDir} onClick={() => toggleSort('pto_rate')} align="right" /></div>
+                  <div className="justify-self-end"><SortHeader label="Sick Balance" active={sortKey === 'sick_balance'} dir={sortDir} onClick={() => toggleSort('sick_balance')} align="right" /></div>
+                  <div className="justify-self-end"><SortHeader label="Sick Rate / wk" active={sortKey === 'sick_rate'} dir={sortDir} onClick={() => toggleSort('sick_rate')} align="right" /></div>
+                </>
+              }
+            >
+              {employees.length === 0 ? (
+                <EmptyRow>
+                  <span className="inline-flex flex-col items-center gap-3 py-6">
+                    <TrendingUp size={28} className="text-ink-faint" />
+                    No employees yet.
+                  </span>
+                </EmptyRow>
+              ) : pageRows.length === 0 ? (
+                <EmptyRow>No employees match your search.</EmptyRow>
+              ) : (
+                pageRows.map(emp => {
+                  const name = emp.name || emp.email
+                  const tenure = tenureText(emp)
+                  return (
+                    <Row key={emp.id} cols={COLS} href={`/admin/employees/${emp.id}`}>
+                      {/* Identity — name over tenure / title */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <ToneAvatar name={name} />
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{name}</p>
+                          {tenure && <p className="text-[11.5px] text-ink-muted truncate">{tenure}</p>}
+                        </div>
+                      </div>
+                      {/* PTO balance */}
+                      <div className="justify-self-end text-right tabular-nums text-[13px] font-medium text-ink-secondary">{emp.pto_balance} hrs</div>
+                      {/* PTO rate */}
+                      <div className={cn('justify-self-end text-right tabular-nums text-[13px] font-semibold', emp.pto_accrual_rate > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-faint')}>
+                        {emp.pto_accrual_rate > 0 ? `+${emp.pto_accrual_rate} hrs` : '—'}
+                      </div>
+                      {/* Sick balance */}
+                      <div className="justify-self-end text-right tabular-nums text-[13px] font-medium text-ink-secondary">{emp.sick_balance} hrs</div>
+                      {/* Sick rate */}
+                      <div className={cn('justify-self-end text-right tabular-nums text-[13px] font-semibold', emp.sick_accrual_rate > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-ink-faint')}>
+                        {emp.sick_accrual_rate > 0 ? `+${emp.sick_accrual_rate} hrs` : '—'}
+                      </div>
+                    </Row>
+                  )
+                })
+              )}
+            </CardTable>
+
+            {employees.length > 0 && (
+              <Pagination
+                page={paged.page}
+                perPage={paged.perPage}
+                total={view.length}
+                totalPages={paged.totalPages}
+                onPage={paged.setPage}
+                onPerPage={paged.setPerPage}
+                unit="employees"
+              />
+            )}
+          </ListCard>
+
+          {/* ── Recent accrual log ── */}
+          <ListCard>
+            <CardHead title={<span className="inline-flex items-center gap-2"><Clock size={16} className="text-ink-muted" />Recent Accrual Log</span>} />
+            {recentLog.length === 0 ? (
+              <p className="text-[13px] text-ink-muted px-5 py-6">No accrual history yet. Run the first accrual above.</p>
+            ) : (
+              <div className="overflow-x-auto overflow-y-hidden">
+                <table className="w-full text-[12px] min-w-[640px]">
+                  <thead>
+                    <tr className="border-b border-hairline bg-surface-soft">
+                      <th className="text-left px-5 py-2.5 font-semibold text-ink-muted">Date</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-ink-muted">Employee</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-ink-muted">Type</th>
+                      <th className="text-right px-4 py-2.5 font-semibold text-ink-muted">Delta</th>
+                      <th className="text-left px-5 py-2.5 font-semibold text-ink-muted">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline-soft">
+                    {recentLog.map(entry => (
+                      <tr key={entry.id} className="hover:bg-surface-soft transition-colors">
+                        <td className="px-5 py-2.5 text-ink-muted whitespace-nowrap">{formatDate(entry.created_at)}</td>
+                        <td className="px-4 py-2.5 font-medium text-ink-secondary">{entry.employees?.name || entry.employees?.email || entry.employee_id.slice(0, 8)}</td>
+                        <td className="px-4 py-2.5">
+                          <StatusPill tone={entry.type === 'pto' ? 'sky' : 'amber'}>{entry.type === 'pto' ? 'PTO' : 'Sick'}</StatusPill>
+                        </td>
+                        <td className={cn('px-4 py-2.5 text-right font-semibold tabular-nums', entry.hours_delta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400')}>
+                          {entry.hours_delta >= 0 ? '+' : ''}{entry.hours_delta} hrs
+                        </td>
+                        <td className="px-5 py-2.5">
+                          <span className={cn('text-[11px] font-medium',
+                            entry.reason === 'manual_adjustment' ? 'text-violet-600 dark:text-violet-400' :
+                            entry.reason === 'request_approved'  ? 'text-rose-500 dark:text-rose-400' : 'text-ink-muted',
+                          )}>
+                            {entry.reason === 'scheduled'         ? 'Scheduled' :
+                             entry.reason === 'manual_adjustment' ? 'Manual Adjustment' :
+                             entry.reason === 'request_approved'  ? 'Request Approved' :
+                             entry.reason === 'request_denied'    ? 'Request Denied' : entry.reason}
+                          </span>
+                          {entry.note && <p className="text-[11px] text-ink-faint">{entry.note}</p>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </ListCard>
+
         </div>
+      </ListCardPage>
 
-      </div>
-
-      {/* Confirmation modal */}
+      {/* ── Confirmation modal ── */}
       <AnimatePresence>
         {confirming && (
           <motion.div
@@ -359,38 +438,38 @@ export default function AccrualClient({
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-700 shadow-xl w-full max-w-md p-6"
+              className="bg-surface rounded-2xl border border-hairline-strong shadow-xl w-full max-w-md p-6"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                     <AlertTriangle size={16} className="text-amber-500" />
                   </div>
-                  <h2 className="text-[16px] font-bold text-gray-900 dark:text-white">Run Accrual?</h2>
+                  <h2 className="text-[16px] font-semibold text-ink">Run Accrual?</h2>
                 </div>
-                <button onClick={() => setConfirming(false)} className="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1">
+                <button onClick={() => setConfirming(false)} className="text-ink-faint hover:text-ink-secondary transition-colors p-1">
                   <X size={16} />
                 </button>
               </div>
 
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
-                This will permanently add hours to <strong className="text-gray-800 dark:text-gray-200">{eligible.length} employee{eligible.length !== 1 ? 's' : ''}</strong> and write new entries to the accrual log. This cannot be undone automatically.
+              <p className="text-[13px] text-ink-muted mb-4 leading-relaxed">
+                This will permanently add hours to <strong className="text-ink-secondary font-semibold">{eligible.length} employee{eligible.length !== 1 ? 's' : ''}</strong> and write new entries to the accrual log. This cannot be undone automatically.
               </p>
 
               {eligible.length > 0 && (
-                <div className="rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden mb-5">
-                  <div className="bg-gray-50 dark:bg-zinc-800/50 px-4 py-2 border-b border-gray-100 dark:border-zinc-800">
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Will be updated</p>
+                <div className="rounded-xl border border-hairline overflow-hidden mb-5">
+                  <div className="bg-surface-soft px-4 py-2 border-b border-hairline">
+                    <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">Will be updated</p>
                   </div>
-                  <ul className="divide-y divide-gray-50 dark:divide-zinc-800 max-h-48 overflow-y-auto">
+                  <ul className="divide-y divide-hairline-soft max-h-48 overflow-y-auto">
                     {eligible.map(e => (
                       <li key={e.id} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
-                        <span className="font-medium text-gray-700 dark:text-gray-300">{e.name || e.email}</span>
-                        <span className="text-gray-400 tabular-nums">
-                          {e.pto_accrual_rate > 0 && <span className="text-[#089447]">+{e.pto_accrual_rate} PTO</span>}
-                          {e.pto_accrual_rate > 0 && e.sick_accrual_rate > 0 && <span className="mx-1 text-gray-200 dark:text-gray-700">·</span>}
-                          {e.sick_accrual_rate > 0 && <span className="text-amber-600">+{e.sick_accrual_rate} sick</span>}
+                        <span className="font-medium text-ink-secondary">{e.name || e.email}</span>
+                        <span className="text-ink-muted tabular-nums">
+                          {e.pto_accrual_rate > 0 && <span className="text-emerald-600 dark:text-emerald-400">+{e.pto_accrual_rate} PTO</span>}
+                          {e.pto_accrual_rate > 0 && e.sick_accrual_rate > 0 && <span className="mx-1 text-ink-faint">·</span>}
+                          {e.sick_accrual_rate > 0 && <span className="text-amber-600 dark:text-amber-400">+{e.sick_accrual_rate} sick</span>}
                         </span>
                       </li>
                     ))}
@@ -401,13 +480,13 @@ export default function AccrualClient({
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setConfirming(false)}
-                  className="px-4 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white bg-gray-100 dark:bg-zinc-800 hover:bg-gray-150 dark:hover:bg-zinc-700 rounded-xl transition-all"
+                  className="px-4 py-2 text-[13px] font-semibold text-ink-secondary hover:text-ink bg-surface-soft hover:bg-surface-strong rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={runAccrual}
-                  className="flex items-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-all shadow-sm"
+                  className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white text-[13px] font-semibold px-4 py-2 rounded-lg transition-colors"
                 >
                   <Play size={13} />
                   Confirm &amp; Run
@@ -417,7 +496,6 @@ export default function AccrualClient({
           </motion.div>
         )}
       </AnimatePresence>
-
-    </div>
+    </>
   )
 }

@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Building2, Search, Plus, ChevronRight, Boxes } from 'lucide-react'
+import { Building2, Plus, ChevronRight, Boxes } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Customer } from '@/lib/supabase'
-import { HEADER_BOX, BODY_BOX, rowCx, StatusPill, Th, TableScroll, ListPageHeader, IdentityCell, tabCx, tabCountCx } from '@/components/admin/list'
+import { StatusPill, tabCx, tabCountCx } from '@/components/admin/list'
+import {
+  ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar,
+  CardTable, Row, EmptyRow, Pagination, usePagedList, ListSearch, ToneAvatar,
+} from '@/components/admin/list-card'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import NewCustomerWizard from '@/components/admin/NewCustomerWizard'
 import CustomerRequestsQueue, { type CustomerPortalRequestRow } from './CustomerRequestsQueue'
@@ -47,31 +51,43 @@ export default function CustomersClient({
     return matchesSearch && matchesTab(c, filter)
   })
 
-  const allSelected = filtered.length > 0 && filtered.every(c => sel.has(c.id))
+  // Dataset-wide summary (independent of the active tab/search).
+  const activeCount = customers.filter((c) => c.status === 'active').length
+  const inactiveCount = customers.filter((c) => c.status === 'inactive').length
+  const totalUnits = customers.reduce((sum, c) => sum + c.unit_count, 0)
+
+  const allSelected = filtered.length > 0 && filtered.every((c) => sel.has(c.id))
+
+  // Client-side pagination over the filtered set (default 10 · resets on filter/search).
+  const pg = usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${filter}|${search}` })
+  const pageRows = filtered.slice(pg.start, pg.end)
+
+  const isList = filter !== 'requests' && filter !== 'warranty'
 
   // Clear the selection when the visible set changes (filter/search/tab) so a
   // bulk delete can never touch rows outside the current view.
   useEffect(() => { sel.clear() }, [filter, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
-      {/* Header */}
-      <ListPageHeader
-        overline="Operations"
-        title="Customers"
-        count={`${customers.length} ${customers.length === 1 ? 'account' : 'accounts'} with portal access`}
-        actions={
-          <button
-            onClick={() => setShowWizard(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm"
-          >
-            <Plus size={15} />
-            New Customer
-          </button>
-        }
-      >
+    <ListCardPage>
+      <ListCard>
+        <CardHead
+          overline="Operations"
+          title="Customers"
+          count={`${customers.length} ${customers.length === 1 ? 'account' : 'accounts'} with portal access`}
+          actions={
+            <button
+              onClick={() => setShowWizard(true)}
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-medium transition-colors"
+            >
+              <Plus size={15} />
+              New Customer
+            </button>
+          }
+        />
+
         {/* Filter tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1 px-5 border-b border-hairline overflow-x-auto scrollbar-hide">
           {(
             [
               ['all', 'All'],
@@ -92,102 +108,119 @@ export default function CustomersClient({
             )
           })}
         </div>
-      </ListPageHeader>
 
-      <div className="p-4 sm:p-8">
-
-        {filter === 'requests' ? (
-          <CustomerRequestsQueue requests={requests} />
-        ) : filter === 'warranty' ? (
-          <WarrantyRequestsQueue requests={warrantyRequests} />
-        ) : (
+        {isList && (
           <>
-        {/* Search */}
-        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search…"
-              className="pl-8 pr-3 h-9 text-[12.5px] w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all"
-            />
-          </div>
-          <span className="ml-auto text-[12px] text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {filtered.length} {filtered.length === 1 ? 'account' : 'accounts'}
-          </span>
-        </div>
+            {/* Summary strip */}
+            <StatStrip>
+              <Stat tone="sky"     label="Accounts" value={customers.length.toLocaleString()} />
+              <Stat tone="emerald" label="Active"   value={activeCount.toLocaleString()} />
+              <Stat tone="slate"   label="Inactive" value={inactiveCount.toLocaleString()} />
+              <Stat tone="violet"  label="Units"    value={totalUnits.toLocaleString()} sub="under portal access" />
+            </StatStrip>
 
-        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
-        <TableScroll minWidth={760}>
-        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-          <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(c => c.id), !allSelected)} />
-          <Th>Company</Th>
-          <Th>Location</Th>
-          <Th>Units</Th>
-          <Th>Status</Th>
-          <Th />
-        </div>
+            {/* Search */}
+            <Toolbar>
+              <ListSearch value={search} onChange={setSearch} placeholder="Search…" width={256} />
+              <div className="flex-1" />
+              <span className="text-[12px] text-ink-muted tabular-nums">
+                {filtered.length} {filtered.length === 1 ? 'account' : 'accounts'}
+              </span>
+            </Toolbar>
 
-        {/* Body */}
-        <div className={BODY_BOX}>
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <Building2 size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">
-                {customers.length === 0
-                  ? 'No customers yet. Create one from a Submittal to give them portal access.'
-                  : 'No customers match.'}
-              </p>
-            </div>
-          ) : (
-            filtered.map((c, i) => (
-              <Link
-                key={c.id}
-                href={`/admin/customers/${c.id}`}
-                className={`${rowCx(COLS, { i, selected: sel.has(c.id) })} group ${c.status === 'inactive' ? 'opacity-60' : ''}`}
-              >
-                {/* Select */}
-                <SelectBox className="hidden sm:flex" checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} />
-                {/* Identity — company over contact */}
-                <IdentityCell
-                  icon={<Building2 size={13} />}
-                  title={c.company_name}
-                  subtitle={
+            {/* Table — Company · Location · Units · Status */}
+            <CardTable
+              cols={COLS}
+              minWidth={760}
+              head={
+                <>
+                  <SelectBox
+                    className="hidden sm:flex"
+                    checked={allSelected}
+                    onChange={() => sel.setAll(filtered.map((c) => c.id), !allSelected)}
+                  />
+                  <span>Company</span>
+                  <span className="hidden sm:block">Location</span>
+                  <span className="hidden sm:block">Units</span>
+                  <span>Status</span>
+                  <span className="hidden sm:block" />
+                </>
+              }
+            >
+              {filtered.length === 0 ? (
+                <EmptyRow>
+                  <Building2 size={28} className="text-ink-faint block mx-auto mb-3" />
+                  {customers.length === 0
+                    ? 'No customers yet. Create one from a Submittal to give them portal access.'
+                    : 'No customers match.'}
+                </EmptyRow>
+              ) : (
+                pageRows.map((c) => {
+                  const dim = c.status === 'inactive'
+                  const subtitle =
                     c.primary_contact_name && c.contact_email
                       ? `${c.primary_contact_name} · ${c.contact_email}`
-                      : c.primary_contact_name || c.contact_email || undefined
-                  }
-                />
-                {/* Location */}
-                <div className="hidden sm:block min-w-0 text-zinc-500 dark:text-zinc-400 truncate">{c.location || '—'}</div>
-                {/* Units */}
-                <div className="hidden sm:flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 tabular-nums">
-                  <Boxes size={13} className="text-zinc-300 dark:text-zinc-600" />
-                  {c.unit_count}
-                </div>
-                {/* Status */}
-                <div>
-                  {c.status === 'inactive' ? (
-                    <StatusPill tone="slate">Inactive</StatusPill>
-                  ) : (
-                    <StatusPill tone="emerald">Active</StatusPill>
-                  )}
-                </div>
-                {/* Chevron */}
-                <div className="hidden sm:flex justify-center">
-                  <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 transition-colors" />
-                </div>
-              </Link>
-            ))
-          )}
-        </div>
-        </TableScroll>
-        </>
-        )}
-      </div>
+                      : c.primary_contact_name || c.contact_email || '—'
+                  return (
+                    <Row key={c.id} cols={COLS} href={`/admin/customers/${c.id}`} selected={sel.has(c.id)}>
+                      {/* Select */}
+                      <SelectBox className="hidden sm:flex" checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} />
+                      {/* Identity — company over contact */}
+                      <div className={cn('flex items-center gap-2.5 min-w-0', dim && 'opacity-60')}>
+                        <ToneAvatar name={c.company_name} />
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{c.company_name}</p>
+                          <p className="text-[11.5px] text-ink-muted truncate">{subtitle}</p>
+                        </div>
+                      </div>
+                      {/* Location */}
+                      <div className={cn('hidden sm:block min-w-0 text-[13px] text-ink-secondary truncate', dim && 'opacity-60')}>{c.location || '—'}</div>
+                      {/* Units */}
+                      <div className={cn('hidden sm:flex items-center gap-1.5 text-[13px] text-ink-secondary tabular-nums', dim && 'opacity-60')}>
+                        <Boxes size={13} className="text-ink-faint" />
+                        {c.unit_count}
+                      </div>
+                      {/* Status */}
+                      <div className={cn(dim && 'opacity-60')}>
+                        {dim ? <StatusPill tone="slate">Inactive</StatusPill> : <StatusPill tone="emerald">Active</StatusPill>}
+                      </div>
+                      {/* Chevron */}
+                      <div className={cn('hidden sm:flex justify-center', dim && 'opacity-60')}>
+                        <ChevronRight size={14} className="text-ink-faint group-hover:text-brand transition-colors" />
+                      </div>
+                    </Row>
+                  )
+                })
+              )}
+            </CardTable>
 
-      {filter !== 'requests' && filter !== 'warranty' && (
+            <Pagination
+              page={pg.page}
+              perPage={pg.perPage}
+              total={filtered.length}
+              totalPages={pg.totalPages}
+              onPage={pg.setPage}
+              onPerPage={pg.setPerPage}
+              unit="accounts"
+            />
+          </>
+        )}
+      </ListCard>
+
+      {/* Requests / Warranty tabs swap to their own queues (each renders its own
+          white cards, so they live on the canvas below the header card). */}
+      {filter === 'requests' && (
+        <div className="mt-4">
+          <CustomerRequestsQueue requests={requests} />
+        </div>
+      )}
+      {filter === 'warranty' && (
+        <div className="mt-4">
+          <WarrantyRequestsQueue requests={warrantyRequests} />
+        </div>
+      )}
+
+      {isList && (
         <BulkBar count={sel.count} onClear={sel.clear}>
           <BulkDeleteButton entity="customers" ids={sel.ids} onDone={sel.clear} />
         </BulkBar>
@@ -195,6 +228,6 @@ export default function CustomersClient({
 
       {/* New customer wizard */}
       {showWizard && <NewCustomerWizard onClose={() => setShowWizard(false)} onCreated={() => router.refresh()} />}
-    </div>
+    </ListCardPage>
   )
 }

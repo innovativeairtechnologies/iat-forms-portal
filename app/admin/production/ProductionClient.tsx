@@ -1,13 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Plus, QrCode, Copy, Check, RefreshCw, ChevronRight, X, Factory, ExternalLink,
 } from 'lucide-react'
-import { ListPageHeader } from '@/components/admin/list'
+import { StatusPill } from '@/components/admin/list'
+import {
+  ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar,
+  CardTable, Row, EmptyRow, Meter, Pagination, usePagedList, ListSearch,
+} from '@/components/admin/list-card'
 import { boardProgress } from '@/lib/production'
 import type { DeptRow } from './page'
 
@@ -22,6 +26,9 @@ const inputCx =
 const boardUrl = (token: string) =>
   typeof window === 'undefined' ? `/board/${token}` : `${window.location.origin}/board/${token}`
 
+// Department · Status · Progress today · Board-link actions
+const COLS = 'grid-cols-[minmax(220px,2.4fr)_100px_minmax(160px,1.2fr)_220px]'
+
 export default function ProductionClient({
   departments,
   today,
@@ -31,25 +38,65 @@ export default function ProductionClient({
 }) {
   const [adding, setAdding] = useState(false)
   const [qrFor, setQrFor] = useState<DeptRow | null>(null)
+  const [query, setQuery] = useState('')
 
   const live = departments.filter((d) => d.is_active).length
 
-  return (
-    <div className="flex-1 overflow-auto bg-canvas">
-      <ListPageHeader
-        overline="Operations"
-        title="Production Board"
-        count={`${live} ${live === 1 ? 'board' : 'boards'} live`}
-        actions={
-          <button onClick={() => setAdding(true)} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink px-4 py-2.5 text-[13px]`}>
-            <Plus size={15} />
-            Add department
-          </button>
-        }
-      />
+  // Search over name + blurb → the working view (before pagination).
+  const view = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return departments
+    return departments.filter((d) =>
+      [d.name, d.blurb].filter(Boolean).join(' ').toLowerCase().includes(q),
+    )
+  }, [departments, query])
 
-      <div className="p-4 sm:p-8">
-        <p className="mb-5 max-w-2xl text-[13px] leading-relaxed text-ink-muted">
+  // Today's shop work, aggregated across the boards in view.
+  const stats = useMemo(() => {
+    let done = 0, total = 0, unassigned = 0, liveInView = 0
+    for (const d of view) {
+      const p = boardProgress(d.tasks, today)
+      done += p.done
+      total += p.total
+      unassigned += p.unassigned
+      if (d.is_active) liveInView++
+    }
+    return {
+      boards: view.length,
+      live: liveInView,
+      done,
+      total,
+      unassigned,
+      pct: total ? Math.round((done / total) * 100) : 0,
+    }
+  }, [view, today])
+
+  const { page, setPage, perPage, setPerPage, totalPages, start, end } =
+    usePagedList(view.length, { initialPerPage: 10, resetKey: query })
+  const pageRows = view.slice(start, end)
+
+  const addButton = (
+    <button
+      onClick={() => setAdding(true)}
+      className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink px-4 py-2.5 text-[13px]`}
+    >
+      <Plus size={15} />
+      Add department
+    </button>
+  )
+
+  return (
+    <ListCardPage>
+      <ListCard>
+        <CardHead
+          overline="Operations"
+          title="Production Board"
+          count={`${live} ${live === 1 ? 'board' : 'boards'} live`}
+          actions={addButton}
+        />
+
+        {/* Guidance — private links, honor-system, keep it to shop work. */}
+        <p className="border-b border-hairline px-5 py-3 text-[12.5px] leading-relaxed text-ink-muted">
           Each department gets its own board at a private link. Print the QR, stick it on the
           wall, and the team scans it to see their work — <strong className="font-semibold text-ink-secondary">no login</strong>.
           Anyone with the link can read the board and check items off, so keep boards to shop
@@ -57,81 +104,129 @@ export default function ProductionClient({
         </p>
 
         {departments.length === 0 ? (
-          <div className="rounded-xl border border-hairline bg-surface py-16 text-center">
-            <Factory size={26} className="mx-auto mb-3 text-ink-faint" />
-            <p className="text-[13px] text-ink-muted">No departments yet.</p>
+          <div className="flex flex-col items-center px-6 py-16 text-center">
+            <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-surface-strong text-ink-muted">
+              <Factory size={20} />
+            </span>
+            <p className="text-[15px] font-semibold text-ink">No departments yet</p>
+            <p className="mb-4 mt-1 max-w-sm text-[13px] text-ink-muted">
+              Add a department to spin up its board and print a QR for the shop floor.
+            </p>
+            {addButton}
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {departments.map((d) => {
-              const p = boardProgress(d.tasks, today)
-              return (
-                <div
-                  key={d.id}
-                  className="flex flex-col rounded-xl border border-hairline bg-surface p-4"
-                >
-                  <div className="flex items-start justify-between gap-2">
+          <>
+            <StatStrip>
+              <Stat tone="sky"     label="Boards"      value={stats.boards.toLocaleString()} sub={`${stats.live} live`} />
+              <Stat tone="violet"  label="Tasks today" value={stats.total.toLocaleString()} />
+              <Stat tone="emerald" label="Done today"  value={`${stats.pct}%`} sub={`${stats.done} of ${stats.total}`} />
+              <Stat tone="amber"   label="Unassigned"  value={stats.unassigned.toLocaleString()} />
+            </StatStrip>
+
+            <Toolbar>
+              <ListSearch value={query} onChange={setQuery} placeholder="Search boards…" />
+              <div className="flex-1" />
+              {query && (
+                <span className="text-[12px] text-ink-muted tabular-nums">
+                  {view.length} match{view.length === 1 ? '' : 'es'}
+                </span>
+              )}
+            </Toolbar>
+
+            <CardTable
+              cols={COLS}
+              minWidth={800}
+              head={
+                <>
+                  <span>Department</span>
+                  <span>Status</span>
+                  <span>Progress</span>
+                  <span className="justify-self-end">Board link</span>
+                </>
+              }
+            >
+              {pageRows.map((d) => {
+                const p = boardProgress(d.tasks, today)
+                return (
+                  <Row key={d.id} cols={COLS}>
+                    {/* Department */}
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-surface-strong text-ink-muted">
+                        <Factory size={14} />
+                      </span>
+                      <div className="min-w-0">
+                        <Link
+                          href={`/admin/production/${d.id}`}
+                          className="group/name flex min-w-0 items-center gap-1 rounded text-[13px] font-medium text-ink transition-colors hover:text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                        >
+                          <span className="truncate">{d.name}</span>
+                          <ChevronRight size={13} className="flex-shrink-0 text-ink-faint transition-transform group-hover/name:translate-x-0.5" />
+                        </Link>
+                        <p className="truncate text-[11.5px] text-ink-muted">
+                          {d.tasks.length} {d.tasks.length === 1 ? 'task' : 'tasks'}
+                          {p.unassigned > 0 && ` · ${p.unassigned} unassigned`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Status */}
                     <div className="min-w-0">
-                      <Link
-                        href={`/admin/production/${d.id}`}
-                        className="group flex items-center gap-1 text-[15px] text-ink transition-colors hover:text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                        style={{ fontWeight: 620 }}
-                      >
-                        <span className="truncate">{d.name}</span>
-                        <ChevronRight size={14} className="flex-shrink-0 text-ink-faint transition-transform group-hover:translate-x-0.5" />
-                      </Link>
-                      <p className="mt-0.5 truncate text-[12px] text-ink-muted">
-                        {d.tasks.length} {d.tasks.length === 1 ? 'task' : 'tasks'}
-                        {p.unassigned > 0 && ` · ${p.unassigned} unassigned`}
+                      <StatusPill tone={d.is_active ? 'emerald' : 'slate'}>
+                        {d.is_active ? 'Live' : 'Off'}
+                      </StatusPill>
+                    </div>
+
+                    {/* Progress today */}
+                    <div className="min-w-0">
+                      <Meter value={p.pct} />
+                      <p className="mt-1 text-[11px] text-ink-muted tabular-nums">
+                        {p.done} of {p.total} done today
                       </p>
                     </div>
-                    {!d.is_active && (
-                      <span className="flex-shrink-0 rounded-full bg-surface-strong px-2 py-0.5 text-[11px] font-medium text-ink-muted">
-                        Off
-                      </span>
-                    )}
-                  </div>
 
-                  <div className="mt-3 flex items-baseline justify-between text-[12px]">
-                    <span className="text-ink-muted">
-                      <span className="tabular-nums text-ink-secondary">{p.done}</span> of{' '}
-                      <span className="tabular-nums text-ink-secondary">{p.total}</span> done today
-                    </span>
-                    <span className="tabular-nums text-ink-faint">{p.pct}%</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-strong">
-                    <div className="h-full rounded-full bg-brand" style={{ width: `${p.pct}%` }} />
-                  </div>
+                    {/* Board-link actions */}
+                    <div className="flex items-center gap-1.5 justify-self-end">
+                      <button
+                        onClick={() => setQrFor(d)}
+                        className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}
+                      >
+                        <QrCode size={14} />
+                        QR
+                      </button>
+                      <CopyLink token={d.token} />
+                      <a
+                        href={`/board/${d.token}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`${btnCx} text-ink-muted hover:text-ink-secondary`}
+                        title="Open the board as the floor sees it"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </Row>
+                )
+              })}
 
-                  <div className="mt-4 flex items-center gap-1.5 border-t border-hairline-soft pt-3">
-                    <button
-                      onClick={() => setQrFor(d)}
-                      className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}
-                    >
-                      <QrCode size={14} />
-                      QR
-                    </button>
-                    <CopyLink token={d.token} />
-                    <a
-                      href={`/board/${d.token}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`${btnCx} ml-auto text-ink-muted hover:text-ink-secondary`}
-                      title="Open the board as the floor sees it"
-                    >
-                      <ExternalLink size={14} />
-                    </a>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+              {pageRows.length === 0 && <EmptyRow>No boards match your search.</EmptyRow>}
+            </CardTable>
+
+            <Pagination
+              page={page}
+              perPage={perPage}
+              total={view.length}
+              totalPages={totalPages}
+              onPage={setPage}
+              onPerPage={setPerPage}
+              unit="boards"
+            />
+          </>
         )}
-      </div>
+      </ListCard>
 
       {adding && <AddDeptModal onClose={() => setAdding(false)} />}
       {qrFor && <QrModal dept={qrFor} onClose={() => setQrFor(null)} />}
-    </div>
+    </ListCardPage>
   )
 }
 

@@ -3,15 +3,17 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Ticket, Search, X, ChevronUp, ChevronDown, ChevronsUpDown,
-  MoreHorizontal, Clock, CheckCircle2, ExternalLink, ShieldCheck, ShieldAlert,
+  Ticket, Search, X, MoreHorizontal, Clock, CheckCircle2, ExternalLink, ShieldCheck, ShieldAlert,
 } from 'lucide-react'
 import type { Ticket as TicketType } from '@/lib/supabase'
 import { updateTicket } from './actions'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, StatusPill, Avatar, timeAgo, Th, TICKET_STATUS, PRIORITY, TableScroll,
-  ListPageHeader, IdentityCell, tabCx, tabCountCx,
+  StatusPill, Avatar, timeAgo, TICKET_STATUS, PRIORITY, tabCx, tabCountCx,
 } from '@/components/admin/list'
+import {
+  ListCardPage, ListCard, CardHead, Toolbar, CardTable, Row, SortHeader,
+  Pagination, usePagedList, ToneAvatar,
+} from '@/components/admin/list-card'
 import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
 type TicketRow = TicketType & { owner?: { id: string; name: string } | null }
@@ -31,6 +33,7 @@ const FILTERS: { value: Filter; label: string }[] = [
 
 // Mobile keeps the audit-log trio (identity / status / age); assignee, priority,
 // checkbox and kebab appear at sm+ so the row never scrolls sideways on a phone.
+// Header cells mirror this same visibility so columns line up at every breakpoint.
 const COLS = 'grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[34px_2fr_1fr_120px_150px_76px_40px]'
 
 function matchesSearch(ticket: TicketRow, q: string): boolean {
@@ -87,6 +90,11 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
     return sortDir === 'asc' ? cmp : -cmp
   })
 
+  // Client-side pagination over the filtered + sorted view (default 10 per page).
+  const { page, setPage, perPage, setPerPage, totalPages, start, end } =
+    usePagedList(sorted.length, { initialPerPage: 10, resetKey: `${filter}|${search}|${sortKey}|${sortDir}` })
+  const pageRows = sorted.slice(start, end)
+
   const toggle = (id: string) =>
     setSelected(prev => {
       const next = new Set(prev)
@@ -95,6 +103,8 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
       return next
     })
 
+  // Select-all acts on the whole filtered set (not just the current page), matching
+  // the pre-pagination behavior where every filtered row was on screen at once.
   const allSelected = sorted.length > 0 && sorted.every(t => selected.has(t.id))
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(sorted.map(t => t.id)))
 
@@ -111,26 +121,17 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
     })
   }
 
-  function SortIcon({ col }: { col: string }) {
-    if (sortKey !== col) return <ChevronsUpDown size={10} className="text-zinc-300 dark:text-zinc-600" />
-    return sortDir === 'asc'
-      ? <ChevronUp   size={10} className="text-emerald-500" />
-      : <ChevronDown size={10} className="text-emerald-500" />
-  }
-
-  const sortable = 'hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors'
-
   return (
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
+    <ListCardPage>
+      <ListCard>
+        <CardHead
+          overline="Support"
+          title="Tickets"
+          count={`${sorted.length} ${sorted.length === 1 ? 'ticket' : 'tickets'}`}
+        />
 
-      {/* Page header */}
-      <ListPageHeader
-        overline="Support"
-        title="Tickets"
-        count={`${sorted.length} ${sorted.length === 1 ? 'ticket' : 'tickets'}`}
-      >
-        {/* Status tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+        {/* Status tabs — the primary filter, with per-status counts */}
+        <div className="flex items-center gap-1 px-3 border-b border-hairline overflow-x-auto scrollbar-hide">
           {FILTERS.map(({ value, label }) => {
             const count = value === 'all' ? tickets.length : tickets.filter(t => t.status === value).length
             const active = filter === value
@@ -142,118 +143,132 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
             )
           })}
         </div>
-      </ListPageHeader>
 
-      <div className="p-4 sm:p-8">
-
-
-        {/* Toolbar */}
-        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+        {/* Search */}
+        <Toolbar>
           <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
-            <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
-              className="pl-8 pr-8 h-9 text-[12.5px] w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              aria-label="Search tickets"
+              className="w-[240px] h-9 pl-9 pr-8 text-[13px] rounded-lg bg-surface-soft border border-hairline text-ink-secondary placeholder:text-ink-faint outline-none focus:border-brand transition-colors"
+            />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400 transition-colors">
-                <X size={11} />
+              <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-secondary transition-colors">
+                <X size={12} />
               </button>
             )}
           </div>
-        </div>
+        </Toolbar>
 
-        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
-        <TableScroll minWidth={920}>
-        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-          <div className="flex items-center justify-center">
-            <input type="checkbox" checked={allSelected} onChange={toggleAll}
-              className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
-          </div>
-          <Th><button onClick={() => toggleSort('customer_name')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Customer <SortIcon col="customer_name" /></button></Th>
-          <Th>Assignee</Th>
-          <Th><button onClick={() => toggleSort('priority')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Priority <SortIcon col="priority" /></button></Th>
-          <Th><button onClick={() => toggleSort('status')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Status <SortIcon col="status" /></button></Th>
-          <Th><button onClick={() => toggleSort('created_at')} className={`flex items-center gap-1 uppercase tracking-wider ${sortable}`}>Created <SortIcon col="created_at" /></button></Th>
-          <Th />
-        </div>
-
-        {/* Body */}
-        <div className={BODY_BOX}>
+        {/* Table — CardTable bakes in the overflow-x-auto/overflow-y-hidden fix */}
+        <CardTable
+          cols={COLS}
+          minWidth={920}
+          head={
+            <>
+              <div className="hidden sm:flex items-center justify-center">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all tickets"
+                  className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
+              </div>
+              <SortHeader label="Customer" active={sortKey === 'customer_name'} dir={sortDir} onClick={() => toggleSort('customer_name')} />
+              <span className="hidden sm:block">Assignee</span>
+              <div className="hidden sm:block"><SortHeader label="Priority" active={sortKey === 'priority'} dir={sortDir} onClick={() => toggleSort('priority')} /></div>
+              <SortHeader label="Status" active={sortKey === 'status'} dir={sortDir} onClick={() => toggleSort('status')} />
+              <SortHeader label="Created" active={sortKey === 'created_at'} dir={sortDir} onClick={() => toggleSort('created_at')} />
+              <span className="hidden sm:block" />
+            </>
+          }
+        >
           {sorted.length === 0 ? (
-            <div className="py-16 text-center">
-              <Ticket size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">
+            <div className="px-5 py-16 text-center border-b border-hairline-soft">
+              <Ticket size={28} className="text-ink-faint mx-auto mb-3" />
+              <p className="text-[13px] text-ink-muted">
                 {search ? `No tickets match "${search}"` : `No ${filter !== 'all' ? FILTERS.find(f => f.value === filter)?.label.toLowerCase() : ''} tickets.`}
               </p>
             </div>
           ) : (
-            sorted.map((ticket, i) => {
+            pageRows.map((ticket) => {
               const st = TICKET_STATUS[ticket.status] ?? TICKET_STATUS.open
               const prio = PRIORITY[ticket.priority ?? 'med'] ?? PRIORITY.med
               const isSel = selected.has(ticket.id)
+              const w = warrantyBySerial[ticket.serial_number]
               return (
-                <div key={ticket.id} onClick={() => router.push(`/admin/tickets/${ticket.id}`)}
-                  className={`${rowCx(COLS, { i, selected: isSel })} cursor-pointer group`}>
-                  {/* Checkbox */}
-                  <div className="hidden sm:flex items-center justify-center" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" checked={isSel} onChange={() => toggle(ticket.id)}
+                <Row key={ticket.id} cols={COLS} href={`/admin/tickets/${ticket.id}`} selected={isSel}>
+                  {/* Checkbox — guard blocks the row link so selecting never navigates */}
+                  <div
+                    className="hidden sm:flex items-center justify-center"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(ticket.id) }}
+                  >
+                    <input type="checkbox" checked={isSel} readOnly aria-label={`Select ticket ${ticket.ticket_number}`}
                       className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
                   </div>
                   {/* Identity — customer over ticket # · model */}
-                  <IdentityCell
-                    leading={<Avatar name={ticket.customer_name} />}
-                    title={ticket.customer_name}
-                    subtitle={`${ticket.ticket_number} · ${ticket.model_number}`}
-                  />
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <ToneAvatar name={ticket.customer_name} />
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{ticket.customer_name}</p>
+                      <p className="text-[11.5px] text-ink-muted truncate">{ticket.ticket_number} · {ticket.model_number}</p>
+                    </div>
+                  </div>
                   {/* Assignee */}
                   <div className="hidden sm:flex items-center gap-2 min-w-0">
                     {ticket.owner ? (
                       <>
                         <Avatar name={ticket.owner.name} size={20} />
-                        <span className="text-[12px] text-zinc-600 dark:text-zinc-300 truncate">{ticket.owner.name}</span>
+                        <span className="text-[12px] text-ink-secondary truncate">{ticket.owner.name}</span>
                       </>
                     ) : (
-                      <span className="text-[12px] text-zinc-300 dark:text-zinc-600">Unassigned</span>
+                      <span className="text-[12px] text-ink-faint">Unassigned</span>
                     )}
                   </div>
                   {/* Priority */}
-                  <div className="hidden sm:flex items-center gap-1.5 text-[12px] text-zinc-600 dark:text-zinc-300">
+                  <div className="hidden sm:flex items-center gap-1.5 text-[12px] text-ink-secondary">
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${prio.dot}`} />
                     {prio.label}
                   </div>
                   {/* Status + warranty signal */}
                   <div className="flex items-center gap-1.5">
                     <StatusPill tone={st.tone}>{st.label}</StatusPill>
-                    {(() => {
-                      const w = warrantyBySerial[ticket.serial_number]
-                      if (w === 'in')       return <StatusPill tone="emerald" icon={<ShieldCheck size={9} />}>In</StatusPill>
-                      if (w === 'expiring') return <StatusPill tone="amber" icon={<ShieldAlert size={9} />}>Exp</StatusPill>
-                      if (w === 'out')      return <StatusPill tone="rose" icon={<ShieldAlert size={9} />}>Out</StatusPill>
-                      return null
-                    })()}
+                    {w === 'in'       && <StatusPill tone="emerald" icon={<ShieldCheck size={9} />}>In</StatusPill>}
+                    {w === 'expiring' && <StatusPill tone="amber"   icon={<ShieldAlert size={9} />}>Exp</StatusPill>}
+                    {w === 'out'      && <StatusPill tone="rose"    icon={<ShieldAlert size={9} />}>Out</StatusPill>}
                   </div>
                   {/* Created */}
-                  <div className="text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(ticket.created_at)}</div>
-                  {/* Kebab */}
-                  <div className="hidden sm:flex justify-center relative" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => setMenuFor(menuFor === ticket.id ? null : ticket.id)}
-                      className="p-1.5 rounded-md text-zinc-300 dark:text-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                  <div className="text-[12px] text-ink-muted tabular-nums">{timeAgo(ticket.created_at)}</div>
+                  {/* Kebab — guard blocks the row link for the whole menu subtree */}
+                  <div className="hidden sm:flex justify-center relative" onClick={(e) => { e.preventDefault(); e.stopPropagation() }}>
+                    <button onClick={() => setMenuFor(menuFor === ticket.id ? null : ticket.id)} aria-label="Ticket actions"
+                      className="p-1.5 rounded-md text-ink-faint hover:text-ink-secondary hover:bg-surface-strong transition-colors">
                       <MoreHorizontal size={15} />
                     </button>
                     {menuFor === ticket.id && (
-                      <div ref={menuRef} className="absolute right-8 top-1/2 -translate-y-1/2 z-30 w-44 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1">
+                      <div ref={menuRef} className="absolute right-8 top-1/2 -translate-y-1/2 z-30 w-44 rounded-lg border border-hairline bg-surface shadow-xl dark:shadow-none dark:ring-1 dark:ring-white/10 py-1">
                         <MenuItem icon={<ExternalLink size={13} />} label="Open" onClick={() => { setMenuFor(null); router.push(`/admin/tickets/${ticket.id}`) }} />
                         {ticket.status !== 'in_progress' && <MenuItem icon={<Clock size={13} />} label="Mark In Progress" onClick={() => setStatusFor([ticket.id], 'in_progress')} />}
                         {ticket.status !== 'resolved' && <MenuItem icon={<CheckCircle2 size={13} />} label="Resolve" onClick={() => setStatusFor([ticket.id], 'resolved')} />}
                       </div>
                     )}
                   </div>
-                </div>
+                </Row>
               )
             })
           )}
-        </div>
-        </TableScroll>
-      </div>
+        </CardTable>
+
+        <Pagination
+          page={page}
+          perPage={perPage}
+          total={sorted.length}
+          totalPages={totalPages}
+          onPage={setPage}
+          onPerPage={setPerPage}
+          unit="tickets"
+        />
+      </ListCard>
 
       {/* Floating bulk-action bar */}
       {selected.size > 0 && (
@@ -274,15 +289,15 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
           </button>
         </div>
       )}
-    </div>
+    </ListCardPage>
   )
 }
 
 function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors text-left">
-      <span className="text-zinc-400 dark:text-zinc-500">{icon}</span>
+      className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-ink-secondary hover:bg-surface-soft hover:text-ink transition-colors text-left">
+      <span className="text-ink-muted">{icon}</span>
       {label}
     </button>
   )

@@ -4,10 +4,11 @@ import { useState } from 'react'
 import type { USRotorsOrder } from '@/lib/supabase'
 import { Package, Search, X, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { timeAgo, tabCx, tabCountCx, type Tone } from '@/components/admin/list'
 import {
-  HEADER_BOX, BODY_BOX, rowCx, Th, TableScroll, timeAgo,
-  ListPageHeader, IdentityCell, tabCx, tabCountCx,
-} from '@/components/admin/list'
+  ListCardPage, ListCard, CardHead, Toolbar, CardTable, Row, EmptyRow,
+  Pagination, usePagedList, ToneAvatar, CARD_TONE,
+} from '@/components/admin/list-card'
 
 const STATUSES = ['all', 'pending', 'processing', 'shipped', 'complete'] as const
 type StatusFilter = (typeof STATUSES)[number]
@@ -19,11 +20,12 @@ const STATUS_LABELS: Record<USRotorsOrder['status'], string> = {
   complete:   'Complete',
 }
 
-const STATUS_COLORS: Record<USRotorsOrder['status'], string> = {
-  pending:    'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
-  processing: 'bg-sky-100   dark:bg-sky-950/40   text-sky-700   dark:text-sky-400',
-  shipped:    'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400',
-  complete:   'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
+// Status → soft-wash Tone (matches the prior color hues: amber/sky/violet/emerald).
+const STATUS_TONE: Record<USRotorsOrder['status'], Tone> = {
+  pending:    'amber',
+  processing: 'sky',
+  shipped:    'violet',
+  complete:   'emerald',
 }
 
 // Mobile keeps identity + status; config/voltage/age return at sm+.
@@ -57,6 +59,11 @@ export default function USRotorsOrdersClient({ orders }: Props) {
     )
   })
 
+  // Client-side pagination over the filtered set (reset to page 1 on filter/search).
+  const { page, setPage, perPage, setPerPage, totalPages, start, end } =
+    usePagedList(visible.length, { initialPerPage: 10, resetKey: `${filter}|${search}` })
+  const pageRows = visible.slice(start, end)
+
   const updateStatus = async (id: string, status: USRotorsOrder['status']) => {
     setUpdating(id)
     try {
@@ -72,107 +79,137 @@ export default function USRotorsOrdersClient({ orders }: Props) {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-[#0a0a0b]">
+    <ListCardPage>
+      <ListCard>
 
-      {/* Page header */}
-      <ListPageHeader
-        overline="US Rotors"
-        title="Orders"
-        count={`${orders.length} C-Series ${orders.length === 1 ? 'order' : 'orders'} from the employee portal`}
-      >
-        {/* Status tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {STATUSES.map(s => {
-            const active = filter === s
-            return (
-              <button key={s} onClick={() => setFilter(s)} className={tabCx(active)}>
-                {s === 'all' ? 'All' : STATUS_LABELS[s as USRotorsOrder['status']]}
-                <span className={tabCountCx(active)}>{counts[s]}</span>
-              </button>
-            )
-          })}
-        </div>
-      </ListPageHeader>
+        <CardHead
+          overline="US Rotors"
+          title="Orders"
+          count={`${orders.length} C-Series ${orders.length === 1 ? 'order' : 'orders'} from the employee portal`}
+        />
 
-      <div className="p-4 sm:p-8">
-
-        {/* Toolbar */}
-        <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
-            <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
-              className="pl-8 pr-8 h-9 text-[12.5px] w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all" />
+        {/* Status tabs (filter) + search */}
+        <Toolbar>
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            {STATUSES.map(s => {
+              const active = filter === s
+              return (
+                <button key={s} type="button" onClick={() => setFilter(s)} className={tabCx(active)}>
+                  {s === 'all' ? 'All' : STATUS_LABELS[s as USRotorsOrder['status']]}
+                  <span className={tabCountCx(active)}>{counts[s]}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex-1" />
+          <div className="relative" style={{ width: 224 }}>
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search orders…"
+              aria-label="Search orders"
+              className="w-full h-9 pl-9 pr-8 text-[13px] rounded-lg bg-surface-soft border border-hairline text-ink-secondary placeholder:text-ink-faint outline-none focus:border-brand transition-colors"
+            />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 dark:text-zinc-600 dark:hover:text-zinc-400 transition-colors">
-                <X size={11} />
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-secondary transition-colors"
+              >
+                <X size={12} />
               </button>
             )}
           </div>
-        </div>
+        </Toolbar>
 
-        {/* Floating header — hidden on mobile, where the rows read as a plain feed */}
-        <TableScroll minWidth={680}>
-        <div className={`hidden sm:grid ${COLS} ${HEADER_BOX}`}>
-          <Th>Company</Th>
-          <Th>Config</Th>
-          <Th>Voltage</Th>
-          <Th>Age</Th>
-          <Th>Status</Th>
-        </div>
-
-        {/* Body */}
-        <div className={BODY_BOX}>
+        {/* Table — Company · Config · Voltage · Age · Status */}
+        <CardTable
+          cols={COLS}
+          minWidth={680}
+          head={
+            <>
+              <span>Company</span>
+              <span className="hidden sm:block">Config</span>
+              <span className="hidden sm:block">Voltage</span>
+              <span className="hidden sm:block">Age</span>
+              <span>Status</span>
+            </>
+          }
+        >
           {visible.length === 0 ? (
-            <div className="py-16 text-center">
-              <Package size={28} className="text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
-              <p className="text-[13px] text-zinc-400 dark:text-zinc-500">
-                {search
-                  ? `No orders match "${search}"`
-                  : 'No orders yet. Orders submitted from the employee portal will appear here.'}
-              </p>
-            </div>
+            <EmptyRow>
+              <div className="flex flex-col items-center">
+                <Package size={28} className="text-ink-faint mb-3" />
+                <p className="text-[13px] text-ink-muted">
+                  {search
+                    ? `No orders match "${search}"`
+                    : 'No orders yet. Orders submitted from the employee portal will appear here.'}
+                </p>
+              </div>
+            </EmptyRow>
           ) : (
-            visible.map((o, i) => (
-              <div key={o.id} className={rowCx(COLS, { i })}>
+            pageRows.map(o => (
+              <Row key={o.id} cols={COLS}>
                 {/* Identity — company over ref · model ×qty */}
-                <IdentityCell
-                  icon={<Package size={13} />}
-                  title={o.company}
-                  subtitle={`${o.order_ref} · ${o.model} ×${o.quantity}`}
-                />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <ToneAvatar name={o.company} />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium text-ink truncate">{o.company}</p>
+                    <p className="text-[11.5px] text-ink-muted truncate">{`${o.order_ref} · ${o.model} ×${o.quantity}`}</p>
+                  </div>
+                </div>
+
                 {/* Config */}
-                <div className="hidden sm:block text-zinc-500 dark:text-zinc-400 truncate">{o.config}</div>
+                <div className="hidden sm:block text-[12.5px] text-ink-secondary truncate">{o.config}</div>
+
                 {/* Voltage */}
-                <div className="hidden sm:block font-mono text-zinc-500 dark:text-zinc-400 truncate">{o.motor_voltage}</div>
+                <div className="hidden sm:block text-[12.5px] font-mono text-ink-secondary truncate">{o.motor_voltage}</div>
+
                 {/* Age */}
-                <div className="hidden sm:block text-zinc-400 dark:text-zinc-500 tabular-nums">{timeAgo(o.created_at)}</div>
-                {/* Status — inline change dropdown */}
-                <div className="relative">
+                <div className="hidden sm:block text-[12.5px] text-ink-muted tabular-nums">{timeAgo(o.created_at)}</div>
+
+                {/* Status — inline change dropdown (native select overlays the pill) */}
+                <div className="relative min-w-0">
                   <div className={cn(
-                    'flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold cursor-pointer select-none',
-                    STATUS_COLORS[o.status],
-                    updating === o.id ? 'opacity-50' : '',
+                    'inline-flex items-center gap-1 max-w-full px-2 py-[3px] rounded-md text-[10px] font-semibold uppercase tracking-wider select-none cursor-pointer',
+                    CARD_TONE[STATUS_TONE[o.status]].bg,
+                    CARD_TONE[STATUS_TONE[o.status]].fg,
+                    updating === o.id && 'opacity-50',
                   )}>
-                    <span className="flex-1">{STATUS_LABELS[o.status]}</span>
+                    <span className="truncate">{STATUS_LABELS[o.status]}</span>
+                    <ChevronDown size={11} className="flex-shrink-0" />
                     <select
                       value={o.status}
                       disabled={updating === o.id}
                       onChange={e => updateStatus(o.id, e.target.value as USRotorsOrder['status'])}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                      aria-label="Change order status"
+                      className="absolute inset-0 w-full opacity-0 cursor-pointer"
                     >
                       {(['pending', 'processing', 'shipped', 'complete'] as const).map(s => (
                         <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                       ))}
                     </select>
-                    <ChevronDown size={11} />
                   </div>
                 </div>
-              </div>
+              </Row>
             ))
           )}
-        </div>
-        </TableScroll>
-      </div>
-    </div>
+        </CardTable>
+
+        <Pagination
+          page={page}
+          perPage={perPage}
+          total={visible.length}
+          totalPages={totalPages}
+          onPage={setPage}
+          onPerPage={setPerPage}
+          unit="orders"
+        />
+
+      </ListCard>
+    </ListCardPage>
   )
 }
