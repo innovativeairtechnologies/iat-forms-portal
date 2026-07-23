@@ -45,16 +45,16 @@ export default function ExecutiveBriefing() {
   useEffect(() => { load() }, [load])
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-sm dark:shadow-none">
+    <div className="relative overflow-hidden rounded-xl border border-hairline bg-surface">
       <div className="relative px-5 py-4">
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <span className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Sparkles size={15} />
             </span>
             <div>
-              <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 leading-none">Executive Briefing</h3>
-              <p className="text-[10px] text-emerald-700/70 dark:text-emerald-400/70 mt-1 font-medium uppercase tracking-wider">
+              <h3 className="text-[13px] font-semibold text-ink leading-none">Executive Briefing</h3>
+              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium uppercase tracking-wider">
                 AI-generated · live data
               </p>
             </div>
@@ -63,7 +63,7 @@ export default function ExecutiveBriefing() {
             onClick={() => load(true)}
             disabled={refreshing || state.status === 'loading'}
             title="Regenerate briefing"
-            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white/60 dark:hover:bg-zinc-800/60 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11px] font-medium text-ink-muted hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-surface-soft transition-colors disabled:opacity-50"
           >
             <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
             <span className="hidden sm:inline">Regenerate</span>
@@ -72,20 +72,20 @@ export default function ExecutiveBriefing() {
 
         {state.status === 'loading' ? (
           <div className="space-y-2 py-0.5" aria-label="Generating briefing">
-            <div className="h-3 rounded bg-zinc-200/80 dark:bg-zinc-700/50 animate-pulse w-[92%]" />
-            <div className="h-3 rounded bg-zinc-200/80 dark:bg-zinc-700/50 animate-pulse w-[78%]" />
-            <div className="h-3 rounded bg-zinc-200/80 dark:bg-zinc-700/50 animate-pulse w-[60%]" />
+            <div className="h-3 rounded bg-surface-strong animate-pulse w-[92%]" />
+            <div className="h-3 rounded bg-surface-strong animate-pulse w-[78%]" />
+            <div className="h-3 rounded bg-surface-strong animate-pulse w-[60%]" />
           </div>
         ) : state.status === 'error' ? (
-          <div className="flex items-center gap-2 text-[13px] text-zinc-500 dark:text-zinc-400 py-1">
+          <div className="flex items-center gap-2 text-[13px] text-ink-secondary py-1">
             <AlertCircle size={15} className="text-amber-500 flex-shrink-0" />
             <span>{state.message}</span>
             <button onClick={() => load(true)} className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">Retry</button>
           </div>
         ) : (
           <>
-            <p className="text-[14px] leading-relaxed text-zinc-700 dark:text-zinc-200">{state.briefing}</p>
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-600 mt-2.5">Briefed {timeAgo(state.generatedAt)}</p>
+            <p className="text-[14px] leading-relaxed text-ink-secondary">{state.briefing}</p>
+            <p className="text-[10px] text-ink-faint mt-2.5">Briefed {timeAgo(state.generatedAt)}</p>
           </>
         )}
       </div>

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { Deal } from '@/lib/supabase'
 import { formatCompactCurrency as fmtC } from '@/lib/utils'
 import type { MonthBucket, ConfidenceBand, GroupStat } from '@/lib/deals'
@@ -63,12 +64,15 @@ export function Card({ className = '', children }: { className?: string; childre
   return <div className={`rounded-xl border border-hairline bg-surface flex flex-col min-h-0 ${className}`}>{children}</div>
 }
 
-export function CardHead({ title, hint, icon, iconTone }: { title: string; hint?: string; icon?: React.ReactNode; iconTone?: Tone }) {
+export function CardHead({ title, hint, icon, iconTone, action, href }: { title: string; hint?: string; icon?: React.ReactNode; iconTone?: Tone; action?: string; href?: string }) {
   return (
     <div className="flex items-center gap-2 px-4 h-9 border-b border-hairline-soft min-w-0 flex-shrink-0">
       {icon && <span className={`flex-shrink-0 ${iconTone ? TONE_TEXT[iconTone] : 'text-ink-faint'}`}>{icon}</span>}
       <h3 className="text-[12px] font-semibold text-ink tracking-[-0.006em] truncate">{title}</h3>
       {hint && <span className="text-[10px] text-ink-muted hidden 2xl:inline truncate">· {hint}</span>}
+      {action && href && (
+        <Link href={href} className="ml-auto flex-shrink-0 text-[11px] font-medium text-ink-muted hover:text-ink transition-colors">{action}</Link>
+      )}
     </div>
   )
 }

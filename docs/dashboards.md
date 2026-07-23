@@ -1,6 +1,7 @@
 # Department Dashboards
 
-Status: **Sales shipped 2026-07-21.** The rest of the departments are the rollout ahead.
+Status: **Sales shipped 2026-07-21; admin executive dashboard re-skinned onto the shared warm
+bento 2026-07-23.** The rest of the departments are the rollout ahead.
 
 ## The idea
 
@@ -61,6 +62,11 @@ Notes:
 `use client`, no hooks): `Kpi`, `Card`/`CardHead`/`CardBody`, `Donut`/`DonutLegend`,
 `ConfidenceFunnel`, `QuoteActivityChart`, `RepRow`, `OpenDealRow`, `RecentWonRow`,
 `ProjectionTile`, `NotTracked`. All hand-rolled SVG/CSS — the repo has no chart library.
+
+These primitives are now **shared beyond Sales**: the **admin executive dashboard**
+(`app/admin/page.tsx`) was re-skinned onto them 2026-07-23 (warm `bg-canvas`, hairline cards,
+Tone-chip KPIs, token colors). `CardHead` gained an optional `action`/`href` link for the admin
+dashboard's "View all" affordances — the Sales dashboard passes neither and renders unchanged.
 
 > The `/admin/deals` command center (`SalesDashboard.tsx`) still carries its own copies of the
 > older chart primitives. Deduping it onto this shared module is a tracked follow-up.

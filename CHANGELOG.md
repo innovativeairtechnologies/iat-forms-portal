@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — Admin dashboard: ported to the "Quiet Precision" warm bento
+
+Brought the **admin executive dashboard** (`/admin` for full admins) onto the same token-correct,
+warm bento design language as the shipped Sales command center. It previously ran on raw
+`zinc-*`/hex colors, `font-bold`, and resting `shadow-sm` cards; it now uses the semantic token
+system throughout — warm `bg-canvas`, hairline-bordered `bg-surface` cards with **no resting
+shadow**, `text-ink`/`-secondary`/`-muted`/`-faint`, and the shared presentational primitives in
+`components/dashboards/sales-charts.tsx` (`Card`/`CardHead`/`CardBody`/`Kpi`/`Donut`/`DonutLegend`).
+KPIs are now clean colored **Tone-chips** (sky/violet/amber/rose/emerald/slate) that still link
+through to their pages; the greeting card adopts the shipped **PortalHero** emerald-glow warmth;
+the 14-day activity line chart and tickets donut were re-tinted to token colors. The
+`ExecutiveBriefing` card got the same token pass. Extended the shared `CardHead` with an optional
+"View all" action link (backward-compatible — the Sales dashboard renders unchanged). No data or
+behavior change: `getData()`, the three cookie-backed layout presets + top-bar view-switcher, and
+the sales/scoped-role dashboard branches are all untouched. Audit L-tier item #26.
+
 ## 2026-07-23 — SUPER IMPORTANT SOFTWARE™: reverted to the original (whole-image) dance
 
 The limb-articulated clapping rig still read as choppy on the shoulders (no way around it with
