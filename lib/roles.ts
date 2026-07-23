@@ -11,7 +11,10 @@
 //     land in /admin but only see & reach the sections their permission set
 //     allows. Enforced in the sidebar (nav visibility) AND the middleware
 //     (page-level access — a hidden tab can't be reached by typing its URL).
-//   • `production` — the base staff tier (formerly `employee`); uses /employee.
+//   • `production` — the base staff tier (formerly `employee`). As of the portal
+//     consolidation it ALSO lands in /admin like everyone else (holding no perms,
+//     so only the open /admin/home + /admin/profile). Its self-service pages
+//     (My Board, directory, time off) remain under /employee until they're ported.
 //   • `customer`  — external customer portal at /customer.
 //
 // Permissions are defined in code here for v1. Moving the matrix into a DB table
@@ -193,9 +196,20 @@ export function isStaffRole(role: Role | null): role is StaffRole {
   return !!role && (STAFF_ROLES as readonly string[]).includes(role)
 }
 
-/** Roles that get the /admin surface (full admin + the 5 scoped roles). */
+/**
+ * Roles that get the /admin surface. As of the portal consolidation this is
+ * EVERY staff role — full admin, the 5 scoped roles, AND base `production`
+ * (which now lands in /admin like everyone else). Customers are excluded.
+ *
+ * Per-section access under /admin is still gated by the permission matrix, so
+ * `production`, holding no perms, only reaches the open prefixes (/admin/home,
+ * /admin/profile) — every other /admin/* path fail-closes it to a 302. The
+ * base-vs-scoped distinction that still matters for the /employee shell + the
+ * set-password welcome flow is expressed as an explicit `role === 'production'`
+ * check at those call sites, NOT here.
+ */
 export function isAdminSurfaceRole(role: Role | null): boolean {
-  return isStaffRole(role) && role !== 'production'
+  return isStaffRole(role)
 }
 
 // Ordered list of admin sections → canonical landing href. Order defines a
@@ -242,10 +256,10 @@ export function homeForRole(role: Role | null, matrix?: PermMatrix | null): stri
 /**
  * Where a user LANDS after login. Distinct from homeForRole (which is each role's
  * *workspace*): every internal role lands first on the shared Company Home, which
- * now renders INSIDE the portal shell — so it's a per-shell route: admin-surface
- * roles get it in the admin shell (`/admin/home`), base production in the employee
- * shell (`/employee/home`). External customers keep their own portal. From the
- * sidebar, the "Dashboard"/other tabs take each person into their actual workspace.
+ * renders INSIDE the admin shell (`/admin/home`) — and since `production` is now an
+ * admin-surface role, base staff land there too. External customers keep their own
+ * portal. From the sidebar, the "Dashboard"/other tabs take each person into their
+ * actual workspace. (`/employee/home` remains only as a fallback for a null role.)
  *
  * A deep link (?redirect=) still wins over this at the call sites that honor it.
  */

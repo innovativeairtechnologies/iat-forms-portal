@@ -16,14 +16,21 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 | `marketing` | `/admin` (department dashboard) | Presentations, Jerry |
 | `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Jerry |
 | `production_manager` | `/admin` (department dashboard) | Tickets, Equipment, Gantt, Scheduling, Jerry |
-| `production` | `/employee` | Employee self-service only (personal dashboard, time off, org chart, resources) |
+| `production` | `/admin` (Company Home) | The always-open `/admin/home` + `/admin/profile`; self-service pages still under `/employee` (My Board, time off, org chart, resources) |
 | `customer` | `/customer` | External customer portal |
 
 `production` is the base employee tier — it's the old `employee` role, renamed.
 `normalizeRole()` maps any legacy `employee` value to `production` at read time.
 
-Roles that land in `/admin` (everything except `production` and `customer`) are
-"admin-surface" roles.
+Roles that land in `/admin` (everything except `customer`) are "admin-surface"
+roles. **As of the portal consolidation (2026-07-23, Phase 1), `production` is an
+admin-surface role too** — it lands in `/admin/home` like every other internal
+role, holding no permissions, so per-section gating fail-closes it to the two
+always-open prefixes (`/admin/home`, `/admin/profile`). Its self-service pages
+haven't been ported off `/employee` yet, so those `/employee/*` routes stay alive
+and reachable by `production` (middleware bounces only the 5 scoped roles + admin
+out of `/employee`). New `production` invites still run the `/employee/welcome`
+set-password flow, then land in `/admin`.
 
 ## Where it's defined
 

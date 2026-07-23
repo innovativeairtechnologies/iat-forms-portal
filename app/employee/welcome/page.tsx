@@ -87,7 +87,10 @@ export default function WelcomePage() {
 
     if (profileErr) { setError(profileErr.message); setSaving(false); return }
 
-    router.push('/employee/profile')
+    // Post-setup, land in /admin like every other internal role (/home routes
+    // production to /admin/home via landingForRole). The old /employee/profile
+    // target still works, but /admin is now the consolidated employee portal.
+    router.push('/home')
     router.refresh()
   }
 

@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Logo from '@/components/Logo'
 import { motion } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { normalizeRole, isAdminSurfaceRole, landingForRole } from '@/lib/roles'
+import { normalizeRole, landingForRole } from '@/lib/roles'
 import { safeRedirect } from '@/lib/redirect'
 
 export default function LoginPage() {
@@ -54,28 +54,13 @@ function LoginForm() {
     // Fire-and-forget with keepalive so it survives the imminent navigation and
     // never delays the redirect; a logging failure is intentionally ignored.
     const portal =
-      isAdminSurfaceRole(role) ? 'admin' : role === 'customer' ? 'customer' : 'employee'
+      role === 'customer' ? 'customer' : role === 'production' ? 'employee' : 'admin'
     void fetch('/api/auth/login-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ portal, method: 'password' }),
       keepalive: true,
     }).catch(() => {})
-
-    // Admin-surface roles (full admin + scoped: sales/hr/marketing/engineering/
-    // production_manager) land on the shared company home (/home) — unless they
-    // were sent here from a deep link, in which case honor it.
-    //
-    // This branch used to ignore ?redirect= entirely, which silently broke every
-    // deep link for admins and scoped roles: a production_manager scanning a Tool
-    // Crib label while logged out would sign in and land on /admin, losing the
-    // scan. Middleware re-gates whatever we push to, so honoring it can't widen
-    // access — an unpermitted target just bounces to their home.
-    if (isAdminSurfaceRole(role)) {
-      router.push(safeRedirect(searchParams.get('redirect'), landingForRole(role)))
-      router.refresh()
-      return
-    }
 
     // Customer — first-time setup sets the password via /customer/welcome
     if (role === 'customer') {
@@ -91,16 +76,22 @@ function LoginForm() {
       return
     }
 
-    // Employee (base production) — check if first-time setup is needed, then land
-    // on the shared company home (/home) unless a deep link says otherwise.
+    // Base production first-time setup still sets its password via the employee
+    // welcome page (customers use /customer/welcome). After setup it lands in
+    // /admin like every other internal role (landingForRole → /admin/home).
     const setupComplete = data.user.user_metadata?.setup_complete
-    if (!setupComplete) {
+    if (role === 'production' && !setupComplete) {
       router.push('/employee/welcome')
-    } else {
-      // Was pushed unvalidated — /login?redirect=https://evil.com navigated
-      // off-site, since router.push follows absolute URLs. See lib/redirect.ts.
-      router.push(safeRedirect(searchParams.get('redirect'), landingForRole(role)))
+      router.refresh()
+      return
     }
+
+    // Everyone else internal — full admin, the 5 scoped roles, AND set-up
+    // production — lands via landingForRole, honoring a deep link (?redirect=).
+    // Middleware re-gates whatever we push to, so honoring it can't widen access:
+    // an unpermitted target just bounces to that role's home. (safeRedirect blocks
+    // off-site absolute URLs — /login?redirect=https://evil.com — see lib/redirect.ts.)
+    router.push(safeRedirect(searchParams.get('redirect'), landingForRole(role)))
     router.refresh()
   }
 

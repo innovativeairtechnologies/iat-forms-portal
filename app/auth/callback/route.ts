@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       email: userEmail,
       name: profile?.display_name ?? userEmail ?? null,
       role: profile?.role ?? null,
-      portal: role === 'customer' ? 'customer' : isAdminSurfaceRole(role) ? 'admin' : 'employee',
+      portal: role === 'customer' ? 'customer' : role === 'production' ? 'employee' : 'admin',
       method,
       headers: request.headers,
     })
@@ -74,14 +74,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL(dest, requestUrl.origin))
     }
 
-    // Admin-surface roles (admin + scoped) have no /employee welcome flow — send
-    // them to the shared company home (their landing).
+    // Base production invite / signup still routes through the set-password
+    // welcome page, even though production now lands in /admin afterward.
+    if (role === 'production' && (type === 'invite' || type === 'signup')) {
+      return NextResponse.redirect(new URL('/employee/welcome', requestUrl.origin))
+    }
+
+    // Admin-surface roles — full admin, the 5 scoped roles, AND set-up production
+    // (isAdminSurfaceRole now includes it) — land in their /admin home. A
+    // production invite is caught just above, so this only fires post-setup.
     if (isAdminSurfaceRole(role)) {
       return NextResponse.redirect(new URL(landingForRole(role), requestUrl.origin))
     }
   }
 
-  // Base production/employee invite & signup flows → employee welcome / onboarding
+  // Fallback for a null / unknown role: invite & signup → employee welcome.
   if (type === 'invite' || type === 'signup') {
     return NextResponse.redirect(new URL('/employee/welcome', requestUrl.origin))
   }

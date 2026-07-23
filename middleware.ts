@@ -131,9 +131,13 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith('/employee/welcome')
   ) {
     if (!user) return toLogin()
-    // Admin-surface roles have their own /admin shell; send them there.
-    // Base `production` (and any unknown/null role) stays in the employee shell.
-    if (isAdminSurfaceRole(role)) return redirectTo(new URL('/admin', request.url))
+    // Full admin + the 5 scoped roles have their own /admin shell and never used
+    // these pages; send them there. Base `production` now ALSO lands in /admin,
+    // but its self-service pages (My Board, directory, time off) haven't been
+    // ported off /employee yet — so it is deliberately NOT bounced and keeps
+    // reaching them. (`isAdminSurfaceRole` includes production since the portal
+    // consolidation, hence the explicit exclusion here.)
+    if (isAdminSurfaceRole(role) && role !== 'production') return redirectTo(new URL('/admin', request.url))
     if (role === 'customer') return redirectTo(new URL('/customer', request.url))
     return supabaseResponse
   }
