@@ -288,12 +288,12 @@ window.HIPPO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoEAAAPZCAIAAA
     armL: [[150,290],[118,300],[78,320],[42,352],[16,398],[0,448],[-6,494],[6,540],[46,566],[92,552],[112,510],[132,450],[148,384],[159,336],[158,298]],
     armR: [[440,300],[488,322],[542,380],[592,442],[628,488],[642,526],[612,562],[556,558],[534,510],[500,448],[466,378],[447,334],[445,306]],
     pivL: [151,296], pivR: [441,304],
-    patchL: [[151,286],[172,304],[160,354],[142,348]],
-    patchR: [[441,294],[420,304],[432,354],[452,348]],
-    sampleAt: [180,350], meet: [288,498], grow: 5,
+    // soft rounded-shoulder fills [cx,cy,rx,ry,rot] — smooth the armless torso
+    shoulders: [[168,338,32,58,0.12], [436,344,32,58,-0.12]],
+    sampleAt: [180,330], meet: [292,506], grow: 5, feather: 1.0,
   };
-  // Clap angles (radians): arms stay raised near the chest and open/close.
-  const CLAP = { apartL: -0.90, togetherL: -1.14, apartR: 1.06, togetherR: 1.32 };
+  // Clap angles (radians): arms open at the chest, then swing in to clasp.
+  const CLAP = { apartL: -0.62, togetherL: -1.00, apartR: 0.76, togetherR: 1.16 };
 
   function buildRig(sprite) {
     const sw = sprite.width, sh = sprite.height;
@@ -308,20 +308,26 @@ window.HIPPO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoEAAAPZCAIAAA
       x.fillStyle = "#fff"; x.strokeStyle = "#fff"; x.lineJoin = "round"; x.lineCap = "round";
       x.lineWidth = RIG_GEO.grow * k * 2; pathPoly(x, poly); x.fill(); x.stroke(); return c;
     };
+    const feather = (src, px) => { const c = mk(), x = c.getContext("2d"); x.filter = `blur(${px}px)`; x.drawImage(src, 0, 0); x.filter = "none"; return c; };
     const aL = S2(RIG_GEO.armL), aR = S2(RIG_GEO.armR);
     const mL = mask(aL), mR = mask(aR);
     const extract = (m) => { const c = mk(), x = c.getContext("2d"); x.drawImage(sprite, 0, 0); x.globalCompositeOperation = "destination-in"; x.drawImage(m, 0, 0); return c; };
-    const La = extract(mL), Ra = extract(mR);
-    // body = sprite − arms, with purple shoulder patches filled behind
-    const body = mk(), bx = body.getContext("2d");
+    // arms with softened cut edges (no "cut paper" look)
+    const La = feather(extract(mL), RIG_GEO.feather * k), Ra = feather(extract(mR), RIG_GEO.feather * k);
+    // body = sprite − arms; behind the crisp body sits a soft rounded-shoulder
+    // fill so the armless torso reads as smooth shoulders (no notch/stub) when
+    // the arms lift.
+    const bodyHard = mk(), bx = bodyHard.getContext("2d");
     bx.drawImage(sprite, 0, 0);
     bx.globalCompositeOperation = "destination-out"; bx.drawImage(mL, 0, 0); bx.drawImage(mR, 0, 0);
-    bx.globalCompositeOperation = "source-over";
     const scx = sprite.getContext("2d", { willReadFrequently: true });
     const pp = scx.getImageData(Math.round(RIG_GEO.sampleAt[0] * kx), Math.round(RIG_GEO.sampleAt[1] * ky), 1, 1).data;
-    bx.fillStyle = `rgb(${pp[0]},${pp[1]},${pp[2]})`;
-    pathPoly(bx, S2(RIG_GEO.patchL)); bx.fill();
-    pathPoly(bx, S2(RIG_GEO.patchR)); bx.fill();
+    const fill = mk(), fx = fill.getContext("2d");
+    fx.fillStyle = `rgb(${pp[0]},${pp[1]},${pp[2]})`;
+    for (const e of RIG_GEO.shoulders) { fx.beginPath(); fx.ellipse(e[0] * kx, e[1] * ky, e[2] * kx, e[3] * ky, e[4], 0, TAU); fx.fill(); }
+    const body = mk(), bcx = body.getContext("2d");
+    bcx.drawImage(feather(fill, 3 * k), 0, 0);
+    bcx.drawImage(bodyHard, 0, 0);
     return {
       body, La, Ra, sw, sh,
       pivL: [RIG_GEO.pivL[0] * kx, RIG_GEO.pivL[1] * ky],

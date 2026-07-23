@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — SUPER IMPORTANT SOFTWARE™: cleaner clap (no more "ripped-off arms")
+
+Per feedback that the first clap looked choppy — like the arms were torn off with cut
+shoulder blades. Fixed the rig's seams: the arm cut-edges are now **feathered** (no
+"cut-paper" hard edges), a soft **rounded-shoulder fill** sits behind the body so the armless
+torso reads as smooth rounded shoulders instead of a hard notch/stub, and the clap angles were
+retuned so the paws **clasp together** in front instead of crossing past each other like stiff
+paddles. Verified frame-by-frame (rest reassembles to the original; clap and mid-swing are
+clean). Rebuilt bundle; static asset only.
+
 ## 2026-07-23 — SUPER IMPORTANT SOFTWARE™: real limb-articulated clapping
 
 Upgraded the dancing hippo from whole-image squash-and-stretch to a **2D puppet rig**: the
