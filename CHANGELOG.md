@@ -40,25 +40,6 @@ can access and hands them to the client `DashboardGrid`; editing only rearranges
 re-fetches until reload. New dependency: `@dnd-kit`. The admin executive + Sales dashboards are
 unchanged. Preview per role via View-as.
 
-## 2026-07-23 — Portal consolidation (Phase 1): base staff land in /admin, phasing out /employee
-
-First step of collapsing three portals (`/admin` + `/employee` + `/customer`) toward two (one
-employee portal, one customer portal). The base `production` tier — everyone from President down to
-Production Associate who used to live in the `/employee` shell — is now an **admin-surface role**:
-it signs in and lands on `/admin/home` (the shared Company Home) like every other internal role,
-under one roof. `isAdminSurfaceRole()` now returns true for `production`; per-section `/admin`
-access is unchanged (still gated by the `role_permissions` matrix), so a permless production user
-reaches only the always-open `/admin/home` + `/admin/profile` and every other `/admin/*` path
-fail-closes to a 302 — **no new permissions were granted, no migration needed**. The strict
-`getAdminUser()` write gate and the scoped `.can(perm)` write-actors are untouched, so no write
-access shifts. The `/employee/*` routes stay alive and reachable by `production` (its self-service
-pages — My Board, directory, time off — aren't ported yet, so middleware deliberately no longer
-bounces production out of them); only the 5 scoped roles + admin are bounced to `/admin`. The
-first-time set-password **welcome flow** still runs for new `production` invites, then lands them in
-`/admin`. Login + auth-callback redirects and the employee welcome page were updated to match.
-Next: triage/port the remaining `/employee` self-service pages, then Phase 2 (customer portal onto
-its own deployment + database). No customer-facing change.
-
 ## 2026-07-23 — Department dashboards: each scoped role gets its own warm bento
 
 Rebuilt the scoped-role landing page (`DepartmentDashboard`, served to **hr / marketing /
