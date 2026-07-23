@@ -2,6 +2,13 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — Fix: Company Home no longer shows two top bars
+
+The shared `AdminTopBar` (added to every `/admin` page) was stacking on top of the Company
+Home page's own `HomeTopBar`. `AdminTopBar` now returns null on `/admin/home`, so that page
+shows just its own bar — mirroring how the employee shell suppresses its bar on
+`/employee/home`.
+
 ## 2026-07-23 — One-card list pattern rolled out to every admin list
 
 Extended the one-card list pattern (shipped on Performance) to all remaining `/admin` list

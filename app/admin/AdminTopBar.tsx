@@ -93,6 +93,9 @@ interface Props {
 
 export default function AdminTopBar({ displayName, unreadCount, ticketCount, preset, crumbs, showPresets }: Props) {
   const pathname = usePathname()
+  // Company Home (/admin/home) renders its own HomeTopBar, so suppress the
+  // operations bar there — otherwise the page shows two stacked top bars.
+  if (pathname === '/admin/home') return null
   const trail = crumbs ?? crumbsFor(pathname)
   const withPresets = showPresets ?? pathname === '/admin'
   const initial = (displayName || 'A').charAt(0).toUpperCase()
