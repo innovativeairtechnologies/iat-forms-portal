@@ -1,7 +1,9 @@
 # Department Dashboards
 
-Status: **Sales shipped 2026-07-21; admin executive dashboard re-skinned onto the shared warm
-bento 2026-07-23.** The rest of the departments are the rollout ahead.
+Status: **Sales shipped 2026-07-21; admin executive dashboard + the scoped-role department
+dashboards re-skinned onto the shared warm bento 2026-07-23.** Every admin-surface role now lands
+on a warm-bento dashboard. Next: an optional per-user "build your own dashboard" (add / remove /
+reorder cards) that sits on the same declarative card catalog.
 
 ## The idea
 
@@ -13,8 +15,11 @@ that page showed one of two things:
   the generic `DepartmentDashboard` (`components/admin/DepartmentDashboard.tsx`): a handful of
   count tiles + a recent-rows list + quick links, filtered to that role's permissions.
 
-We are now **separating each department's dashboard into its own purpose-built view**. Sales is
-the first one done; the others still fall through to `DepartmentDashboard` until each is built.
+We are now **separating each department's dashboard into its own purpose-built view**. Sales has a
+fully bespoke command center (`SalesDashboardView`); the other scoped roles (hr / marketing /
+engineering / production_manager) share `DepartmentDashboard`, which is now itself a warm-bento,
+permission-gated, catalog-driven dashboard (not a bespoke file per role) — richer than a bespoke
+view would be to maintain, and the natural base for per-user customization later.
 
 The switch is a plain role branch at the top of `app/admin/page.tsx`:
 

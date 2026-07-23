@@ -2,6 +2,21 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — Department dashboards: each scoped role gets its own warm bento
+
+Rebuilt the scoped-role landing page (`DepartmentDashboard`, served to **hr / marketing /
+engineering / production_manager** on `/admin`) onto the same warm "Quiet Precision" bento as the
+exec + Sales dashboards: warm `bg-canvas`, hairline cards (no resting shadow), semantic tokens,
+colored **Tone-chip KPIs**, an emerald-glow greeting hero, and the shared `sales-charts.tsx`
+primitives. Cards stay **permission-gated from a declarative catalog** (grant/revoke in
+`/admin/permissions` reshapes the page, no code change), now with: real-count KPIs + a universal
+"Team" tile, a recent-activity list, a **Tickets-by-status donut** for roles that can see tickets,
+an enriched quick-links grid (now including Jerry + Internal Apps), and an always-on **"Your
+workspace"** snapshot so thin departments (marketing/engineering) still read as a complete page.
+Dropped the page's own breadcrumb bar (the shared AdminTopBar already carries it). Admins can
+preview each department via View-as. This declarative card catalog is also the substrate a future
+"build your own dashboard" would sit on. Follow-on to the #26 dashboard bento port.
+
 ## 2026-07-23 — Admin dashboard: ported to the "Quiet Precision" warm bento
 
 Brought the **admin executive dashboard** (`/admin` for full admins) onto the same token-correct,
