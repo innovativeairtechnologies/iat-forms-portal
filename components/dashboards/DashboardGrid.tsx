@@ -23,8 +23,8 @@ import { saveDashboardLayout, resetDashboardLayout } from '@/app/admin/dashboard
 const SPAN_CLASS: Record<Span, string> = { 1: 'lg:col-span-1', 2: 'lg:col-span-2', 3: 'lg:col-span-3' }
 const SIZE_LABEL: Record<Span, string> = { 1: 'S', 2: 'M', 3: 'L' }
 
-export default function DashboardGrid({ cards, initialLayout, defaultLayout }: {
-  cards: RenderedCard[]; initialLayout: LayoutItem[]; defaultLayout: LayoutItem[]
+export default function DashboardGrid({ cards, initialLayout, defaultLayout, readOnly = false }: {
+  cards: RenderedCard[]; initialLayout: LayoutItem[]; defaultLayout: LayoutItem[]; readOnly?: boolean
 }) {
   const byId = new Map(cards.map((c) => [c.id, c]))
   const [layout, setLayout] = useState<LayoutItem[]>(initialLayout)
@@ -77,7 +77,8 @@ export default function DashboardGrid({ cards, initialLayout, defaultLayout }: {
 
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
+      {/* Toolbar (hidden in read-only preview) */}
+      {!readOnly && (
       <div className="flex items-center justify-end gap-2 min-h-8">
         {error && <span className="mr-auto text-[12px] text-rose-600 dark:text-rose-400">{error}</span>}
         {!editing ? (
@@ -119,6 +120,7 @@ export default function DashboardGrid({ cards, initialLayout, defaultLayout }: {
           </>
         )}
       </div>
+      )}
 
       {/* Grid */}
       {visible.length === 0 ? (

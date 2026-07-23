@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — View-as now previews each role's actual dashboard
+
+"View as [role]" previously re-skinned only the sidebar — the `/admin` page still rendered your own
+(admin) dashboard, so a preview didn't show what that role actually sees. It now swaps the whole page:
+selecting a role writes a short-lived `va_role` cookie and refreshes, and `/admin` renders **that
+role's dashboard, read-only** (scoped roles → their department dashboard at its default layout; Sales →
+the Sales command center; base production → a short note). Access is unchanged — middleware + guards
+still use your **real** session role, so a preview can never grant reach or lock you out, and "Exit
+preview" clears it. The admin's own executive dashboard is unchanged for now (its editor is next).
+
 ## 2026-07-23 — Portal consolidation (Phase 1): base staff land in /admin, phasing out /employee
 
 First step of collapsing three portals (`/admin` + `/employee` + `/customer`) toward two (one

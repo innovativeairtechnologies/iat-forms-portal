@@ -8,7 +8,8 @@
 // resets to the real role.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { Eye, X, ChevronDown } from 'lucide-react'
 import { ROLE_LABELS, STAFF_ROLES, hasPermission, homeForRole, type Role, type StaffRole, type Perm, type PermMatrix } from '@/lib/roles'
@@ -33,9 +34,21 @@ const Ctx = createContext<ViewAsCtx | null>(null)
 // `permMatrix` is the DB-backed role→perm matrix, fetched server-side in the
 // admin layout and passed down so nav visibility (and "View as" previews)
 // reflect live permission toggles rather than the static code defaults.
-export function ViewAsProvider({ realRole, permMatrix, children }: { realRole: Role; permMatrix?: PermMatrix; children: ReactNode }) {
-  const [viewAs, setViewAs] = useState<StaffRole | null>(null)
+export function ViewAsProvider({ realRole, permMatrix, initialViewAs = null, children }: { realRole: Role; permMatrix?: PermMatrix; initialViewAs?: StaffRole | null; children: ReactNode }) {
+  const router = useRouter()
   const canPreview = realRole === 'admin'
+  const [viewAs, setViewAsState] = useState<StaffRole | null>(canPreview ? initialViewAs : null)
+  // Setting the preview also writes a `va_role` cookie and refreshes, so the
+  // server-rendered PAGE (not just the client sidebar) re-renders as that role.
+  // Access is unaffected — middleware + guards still use the real session role,
+  // so this can never lock the admin out; a preview only changes what renders.
+  const setViewAs = useCallback((r: StaffRole | null) => {
+    setViewAsState(r)
+    document.cookie = r
+      ? `va_role=${r}; path=/; max-age=86400; samesite=lax`
+      : 'va_role=; path=/; max-age=0; samesite=lax'
+    router.refresh()
+  }, [router])
   const effectiveRole: Role = canPreview && viewAs ? viewAs : realRole
   const hasPerm = (perm: Perm) => hasPermission(effectiveRole, perm, permMatrix)
   const home = homeForRole(effectiveRole, permMatrix)

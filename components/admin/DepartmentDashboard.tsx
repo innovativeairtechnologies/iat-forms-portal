@@ -23,7 +23,7 @@ import {
    code change. A user with no saved row sees exactly the default arrangement.
    ──────────────────────────────────────────────────────────────────────────── */
 
-export default async function DepartmentDashboard({ role, displayName, userId }: { role: DeptRole; displayName: string; userId: string }) {
+export default async function DepartmentDashboard({ role, displayName, userId, preview = false }: { role: DeptRole; displayName: string; userId: string; preview?: boolean }) {
   const matrix = await getPermMatrix()
   const can = (p: Perm) => hasPermission(role, p, matrix)
   const quickLinks = computeQuickLinks(role, matrix)
@@ -42,7 +42,7 @@ export default async function DepartmentDashboard({ role, displayName, userId }:
   // longer see) or the code default. Fall back to default if the saved set emptied.
   const dflt = defaultLayout(ctx)
   const accessibleIds = new Set(rendered.map((r) => r.id))
-  const saved = await getLayout(userId)
+  const saved = preview ? null : await getLayout(userId)
   const resolved: LayoutItem[] = (saved ?? dflt).filter((it) => accessibleIds.has(it.id))
   const layout = resolved.length > 0 ? resolved : dflt
 
@@ -75,8 +75,8 @@ export default async function DepartmentDashboard({ role, displayName, userId }:
           </div>
         </section>
 
-        {/* The customizable card grid (view + edit modes). */}
-        <DashboardGrid cards={rendered} initialLayout={layout} defaultLayout={dflt} />
+        {/* The customizable card grid (view + edit modes; read-only in preview). */}
+        <DashboardGrid cards={rendered} initialLayout={layout} defaultLayout={dflt} readOnly={preview} />
 
         <p className="text-[11px] text-ink-faint text-center pt-1 pb-4">
           Live data from your Supabase instance · arrange your cards with “Edit dashboard”

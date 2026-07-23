@@ -104,6 +104,14 @@ The department dashboards (`DepartmentDashboard`) are per-user customizable. The
 To add a card to the catalog: add one `CardDef` to `CARD_REGISTRY` (+ its perm). It then appears in
 every permitted user's "Add card" picker automatically.
 
+## View-as preview
+
+"View as [role]" (admin-only, `components/admin/ViewAs.tsx`) writes a short-lived `va_role` cookie and
+refreshes; `app/admin/page.tsx` reads it and, **for a real admin only**, renders that role's dashboard
+read-only (scoped → `DepartmentDashboard` with `preview` = default layout + no editor; sales →
+`SalesDashboardView`; production → a note). Middleware + guards still use the real session role, so the
+preview only changes what renders — it can't grant access or lock the admin out.
+
 ## Not this
 
 An earlier iteration scaffolded a separate universal `/dashboard` route (its own layout +

@@ -10,6 +10,7 @@ import { ViewAsProvider, ViewAsBanner } from '@/components/admin/ViewAs'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFormDraftCount } from '@/lib/drafts'
 import { getPermMatrix } from '@/lib/permissions'
+import { STAFF_ROLES, type StaffRole } from '@/lib/roles'
 import { DASH_PRESET_COOKIE, PRESETS, type Preset } from './dashboard-presets'
 
 export const metadata: Metadata = {
@@ -43,11 +44,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const permMatrix = await getPermMatrix()
 
-  const presetRaw = (await cookies()).get(DASH_PRESET_COOKIE)?.value
+  const cookieStore = await cookies()
+  const presetRaw = cookieStore.get(DASH_PRESET_COOKIE)?.value
   const preset: Preset = (PRESETS as readonly string[]).includes(presetRaw ?? '') ? (presetRaw as Preset) : 'balanced'
 
+  // Seed the "View as" preview from the va_role cookie (admins only) so the
+  // client provider agrees with the server-rendered page after a refresh.
+  const vaRaw = cookieStore.get('va_role')?.value
+  const viewAsInit: StaffRole | null =
+    admin.role === 'admin' && vaRaw && vaRaw !== 'admin' && (STAFF_ROLES as readonly string[]).includes(vaRaw)
+      ? (vaRaw as StaffRole)
+      : null
+
   return (
-    <ViewAsProvider realRole={admin.role} permMatrix={permMatrix}>
+    <ViewAsProvider realRole={admin.role} permMatrix={permMatrix} initialViewAs={viewAsInit}>
       <div className="min-h-screen flex bg-canvas">
         <RefreshOnNavigate />
         <CommandPalette />
