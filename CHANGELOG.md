@@ -2,6 +2,15 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — SUPER IMPORTANT SOFTWARE™: reverted to the original (whole-image) dance
+
+The limb-articulated clapping rig still read as choppy on the shoulders (no way around it with
+a single flat source image — there's no pixel data for "behind the arm"). Reverted the tool to
+the original build (commit 8571c7d): whole-image squash-and-stretch dance (Church Clap / Happy
+Bounce / Hip Twist / Wiggle) with popping musical notes — no arm-cutting, so no shoulder
+artifacts. Transparent-GIF and MP4 exports unchanged. The two rig versions below are kept in
+history (and in git) in case we revisit it. Static asset only.
+
 ## 2026-07-23 — SUPER IMPORTANT SOFTWARE™: cleaner clap (no more "ripped-off arms")
 
 Per feedback that the first clap looked choppy — like the arms were torn off with cut

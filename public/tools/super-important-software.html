@@ -180,7 +180,6 @@ window.HIPPO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoEAAAPZCAIAAA
     notes: true,
     playing: true,
     sprite: null,   // trimmed transparent hippo canvas
-    rig: null,      // puppet rig {body, La, Ra, pivots…}
     sw: 0, sh: 0,   // sprite size
   };
 
@@ -280,123 +279,34 @@ window.HIPPO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoEAAAPZCAIAAA
   const TAU = Math.PI * 2;
   const frac = (x) => x - Math.floor(x);
 
-  // ---- Puppet rig: cut the two arms into layers with shoulder pivots ----
-  // Geometry is authored against a reference sprite (below) and scaled to the
-  // actual trimmed sprite, so it survives small changes in the cutout trim.
-  const REF_W = 635, REF_H = 970;
-  const RIG_GEO = {
-    armL: [[150,290],[118,300],[78,320],[42,352],[16,398],[0,448],[-6,494],[6,540],[46,566],[92,552],[112,510],[132,450],[148,384],[159,336],[158,298]],
-    armR: [[440,300],[488,322],[542,380],[592,442],[628,488],[642,526],[612,562],[556,558],[534,510],[500,448],[466,378],[447,334],[445,306]],
-    pivL: [151,296], pivR: [441,304],
-    // soft rounded-shoulder fills [cx,cy,rx,ry,rot] — smooth the armless torso
-    shoulders: [[168,338,32,58,0.12], [436,344,32,58,-0.12]],
-    sampleAt: [180,330], meet: [292,506], grow: 5, feather: 1.0,
-  };
-  // Clap angles (radians): arms open at the chest, then swing in to clasp.
-  const CLAP = { apartL: -0.62, togetherL: -1.00, apartR: 0.76, togetherR: 1.16 };
-
-  function buildRig(sprite) {
-    const sw = sprite.width, sh = sprite.height;
-    const kx = sw / REF_W, ky = sh / REF_H, k = (kx + ky) / 2;
-    const S2 = (p) => p.map(([x, y]) => [x * kx, y * ky]);
-    const mk = () => { const c = document.createElement("canvas"); c.width = sw; c.height = sh; return c; };
-    const pathPoly = (ctx, p) => { ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]); ctx.closePath(); };
-    // dilated mask (fill + stroke) — SAME mask extracts the arm and erases it
-    // from the body, so they tile with no gap and no ghost rim.
-    const mask = (poly) => {
-      const c = mk(), x = c.getContext("2d");
-      x.fillStyle = "#fff"; x.strokeStyle = "#fff"; x.lineJoin = "round"; x.lineCap = "round";
-      x.lineWidth = RIG_GEO.grow * k * 2; pathPoly(x, poly); x.fill(); x.stroke(); return c;
-    };
-    const feather = (src, px) => { const c = mk(), x = c.getContext("2d"); x.filter = `blur(${px}px)`; x.drawImage(src, 0, 0); x.filter = "none"; return c; };
-    const aL = S2(RIG_GEO.armL), aR = S2(RIG_GEO.armR);
-    const mL = mask(aL), mR = mask(aR);
-    const extract = (m) => { const c = mk(), x = c.getContext("2d"); x.drawImage(sprite, 0, 0); x.globalCompositeOperation = "destination-in"; x.drawImage(m, 0, 0); return c; };
-    // arms with softened cut edges (no "cut paper" look)
-    const La = feather(extract(mL), RIG_GEO.feather * k), Ra = feather(extract(mR), RIG_GEO.feather * k);
-    // body = sprite − arms; behind the crisp body sits a soft rounded-shoulder
-    // fill so the armless torso reads as smooth shoulders (no notch/stub) when
-    // the arms lift.
-    const bodyHard = mk(), bx = bodyHard.getContext("2d");
-    bx.drawImage(sprite, 0, 0);
-    bx.globalCompositeOperation = "destination-out"; bx.drawImage(mL, 0, 0); bx.drawImage(mR, 0, 0);
-    const scx = sprite.getContext("2d", { willReadFrequently: true });
-    const pp = scx.getImageData(Math.round(RIG_GEO.sampleAt[0] * kx), Math.round(RIG_GEO.sampleAt[1] * ky), 1, 1).data;
-    const fill = mk(), fx = fill.getContext("2d");
-    fx.fillStyle = `rgb(${pp[0]},${pp[1]},${pp[2]})`;
-    for (const e of RIG_GEO.shoulders) { fx.beginPath(); fx.ellipse(e[0] * kx, e[1] * ky, e[2] * kx, e[3] * ky, e[4], 0, TAU); fx.fill(); }
-    const body = mk(), bcx = body.getContext("2d");
-    bcx.drawImage(feather(fill, 3 * k), 0, 0);
-    bcx.drawImage(bodyHard, 0, 0);
-    return {
-      body, La, Ra, sw, sh,
-      pivL: [RIG_GEO.pivL[0] * kx, RIG_GEO.pivL[1] * ky],
-      pivR: [RIG_GEO.pivR[0] * kx, RIG_GEO.pivR[1] * ky],
-      meet: [RIG_GEO.meet[0] * kx, RIG_GEO.meet[1] * ky],
-    };
-  }
-
-  function drawArm(ctx, layer, piv, ang, ox, oy) {
-    ctx.save();
-    ctx.translate(ox + piv[0], oy + piv[1]);
-    ctx.rotate(ang);
-    ctx.translate(-(ox + piv[0]), -(oy + piv[1]));
-    ctx.drawImage(layer, ox, oy);
-    ctx.restore();
-  }
-  function drawPuppet(ctx, armLang, armRang, ox, oy) {
-    const r = S.rig;
-    ctx.drawImage(r.body, ox, oy);
-    drawArm(ctx, r.La, r.pivL, armLang, ox, oy);
-    drawArm(ctx, r.Ra, r.pivR, armRang, ox, oy);
-  }
-  function drawClapBurst(ctx, clapC, ox, oy) {
-    const t = Math.pow(clapC, 3); if (t < 0.06) return;
-    const r = S.rig, cx = ox + r.meet[0], cy = oy + r.meet[1], R = r.sh * 0.07 * (0.6 + t);
-    ctx.save();
-    ctx.globalAlpha = t; ctx.strokeStyle = "#fff2b0";
-    ctx.lineWidth = Math.max(2, r.sh * 0.006); ctx.lineCap = "round";
-    for (let i = 0; i < 8; i++) {
-      const a = i / 8 * TAU + 0.2, r0 = R * 0.5, r1 = R * (1 + 0.35 * (i % 2));
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
-      ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  // Returns {x, y, rot, sx, sy, clap, clapC, armLang, armRang} in sprite-relative units.
+  // Returns {x, y, rot, sx, sy, clap} in sprite-relative units.
   function pose(beat, style, E) {
     const bounce = Math.abs(Math.sin(Math.PI * beat));  // 1 at half-beat, 0 on beat
     const land = Math.pow(1 - bounce, 3);               // spikes on the beat
-    let x = 0, y = 0, rot = 0, sx = 1, sy = 1, clap = 0, clapC = 0;
-    let armLang = 0, armRang = 0;                        // 0 = arms at rest (down)
+    let x = 0, y = 0, rot = 0, sx = 1, sy = 1, clap = 0;
 
     if (style === "churchClap") {
-      // The ARMS do the work — a real clap on every beat. Body just grooves.
-      y = -0.05 * bounce;
-      x = 0.03 * Math.sin(Math.PI * beat);
-      rot = 0.02 * Math.sin(Math.PI * beat);
-      sy = 1 - 0.04 * land; sx = 1 + 0.035 * land;
-      clapC = Math.pow(0.5 + 0.5 * Math.cos(TAU * frac(beat)), 2.2); // 1 on beat, 0 between
-      armLang = CLAP.apartL + (CLAP.togetherL - CLAP.apartL) * clapC;
-      armRang = CLAP.apartR + (CLAP.togetherR - CLAP.apartR) * clapC;
-      clap = clapC;                                     // FX intensity
+      const sway = Math.sin(Math.PI * beat);            // 2-beat side step
+      x = 0.10 * sway;
+      y = -0.16 * bounce;
+      rot = 0.10 * sway + 0.03 * Math.sin(TAU * beat);
+      sy = 1 - 0.13 * land + 0.05 * bounce;
+      sx = 1 + 0.11 * land - 0.04 * bounce;
+      // claps on beats 2 & 4 (every other beat)
+      const bi = Math.floor(beat);
+      if (bi % 2 === 1) clap = Math.exp(-frac(beat) * 9);
+      sx -= 0.07 * clap; y -= 0.05 * clap;
     } else if (style === "bounce") {
       y = -0.20 * bounce;
       sy = 1 - 0.15 * land + 0.07 * bounce;
       sx = 1 + 0.13 * land - 0.05 * bounce;
       rot = 0.04 * Math.sin(TAU * beat);
-      armLang = -0.18 * bounce; armRang = 0.18 * bounce; // arms lift on the hop
       if (frac(beat) < 0.5) clap = Math.exp(-frac(beat) * 9);
     } else if (style === "twist") {
       rot = 0.22 * Math.sin(Math.PI * beat);            // hips swing
       x = 0.05 * Math.sin(Math.PI * beat);
       y = -0.07 * bounce;
       sy = 1 - 0.05 * land; sx = 1 + 0.05 * land;
-      const sw2 = Math.sin(Math.PI * beat);
-      armLang = -0.28 - 0.22 * sw2; armRang = 0.28 - 0.22 * sw2; // arms swing side to side
       const bi = Math.floor(beat);
       if (bi % 2 === 1) clap = Math.exp(-frac(beat) * 9);
     } else if (style === "wiggle") {
@@ -405,14 +315,13 @@ window.HIPPO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoEAAAPZCAIAAA
       rot = 0.08 * fast;
       y = -0.06 * Math.abs(fast);
       sx = 1 + 0.04 * fast; sy = 1 - 0.04 * fast;
-      armLang = -0.30 + 0.16 * fast; armRang = 0.30 + 0.16 * fast; // little hand wave
       if (frac(beat) < 0.25) clap = Math.exp(-frac(beat) * 12);
     }
 
     // scale amplitudes by energy (keep neutral 1.0 baseline for scales)
     x *= E; y *= E; rot *= E;
     sx = 1 + (sx - 1) * E; sy = 1 + (sy - 1) * E;
-    return { x, y, rot, sx, sy, clap, clapC, armLang, armRang };
+    return { x, y, rot, sx, sy, clap };
   }
 
   // beats after which the routine repeats seamlessly (for GIF looping)
@@ -466,17 +375,12 @@ window.HIPPO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoEAAAPZCAIAAA
       ctx.restore();
     }
 
-    // hippo — rigged puppet (body + articulated arms) if the rig built, else flat
+    // hippo
     ctx.save();
     ctx.translate(footX + p.x * b.sw, footY + yPix);
     ctx.rotate(p.rot);
     ctx.scale(p.sx, p.sy);
-    if (S.rig) {
-      drawPuppet(ctx, p.armLang, p.armRang, -b.sw / 2, -b.sh);
-      if (opts.notes) drawClapBurst(ctx, p.clapC, -b.sw / 2, -b.sh);
-    } else {
-      ctx.drawImage(S.sprite, -b.sw / 2, -b.sh);
-    }
+    ctx.drawImage(S.sprite, -b.sw / 2, -b.sh);
     ctx.restore();
 
     // musical notes popping on accent beats
@@ -708,7 +612,6 @@ window.HIPPO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoEAAAPZCAIAAA
   img.onload = () => {
     S.sprite = removeWhiteBackground(img);
     S.sw = S.sprite.width; S.sh = S.sprite.height;
-    try { S.rig = buildRig(S.sprite); } catch (e) { S.rig = null; console.warn("rig build failed", e); }
     bind();
     requestAnimationFrame(loop);
     // debug hooks (harmless; used for headless verification)
