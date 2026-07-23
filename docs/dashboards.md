@@ -2,8 +2,8 @@
 
 Status: **Sales shipped 2026-07-21; admin executive dashboard + the scoped-role department
 dashboards re-skinned onto the shared warm bento 2026-07-23.** Every admin-surface role now lands
-on a warm-bento dashboard. Next: an optional per-user "build your own dashboard" (add / remove /
-reorder cards) that sits on the same declarative card catalog.
+on a warm-bento dashboard, and the department dashboards are **per-user customizable** (build your
+own — add / remove / reorder / resize cards).
 
 ## The idea
 
@@ -82,6 +82,27 @@ The dashboards use a **measured amount of color** — colored KPI icon chips and
 donuts — which is a deliberate departure from DESIGN.md's "one accent / no colored KPI tiles"
 rule. Every swatch is a sanctioned **Tone** (slate / emerald / amber / sky / rose / violet), so it
 reads as one system, not arbitrary rainbow. See DESIGN.md §2.4 for the carve-out.
+
+## Build your own (per-user department layouts)
+
+The department dashboards (`DepartmentDashboard`) are per-user customizable. The pieces:
+
+- **`components/dashboards/dept-cards.tsx`** — the card **registry**. Each card is
+  `{ id, title, perm?, defaultSpan, sizes, available(ctx), Component(ctx) }` — a self-contained,
+  permission-gated async renderer. `defaultLayout(ctx)` reproduces the shipped default arrangement.
+- **`components/dashboards/DashboardGrid.tsx`** (`'use client'`) — view + edit shell. The server
+  renders **every card the role can access** and passes the nodes down; edit mode adds drag-reorder
+  (`@dnd-kit`), an S/M/L size toggle (→ `lg:col-span-1/2/3`), remove, and an add-card picker. Editing
+  only rearranges — **data never re-fetches until reload**.
+- **`lib/dashboard-layouts.ts`** + **`app/admin/dashboard-layout-actions.ts`** — get/save/reset a
+  user's layout in `dashboard_layouts` (migration 067). The save action re-validates every card id
+  against the registry **and the user's live perms**, and clamps spans to each card's allowed sizes.
+- **`DepartmentDashboard`** resolves the layout: the user's saved row (minus any cards they can no
+  longer see) or the code default; empty saved set falls back to default. No saved row ⇒ the exact
+  default, so nothing changes until a user customizes.
+
+To add a card to the catalog: add one `CardDef` to `CARD_REGISTRY` (+ its perm). It then appears in
+every permitted user's "Add card" picker automatically.
 
 ## Not this
 

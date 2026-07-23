@@ -2,6 +2,44 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — Build your own dashboard: per-user card add / remove / reorder / resize
+
+Department dashboards (hr / marketing / engineering / production_manager) are now **customizable per
+user**. An **"Edit dashboard"** button turns the grid into an editor: **drag cards to reorder**
+(dnd-kit), toggle each card's **size** (S / M / L → 1–3 columns, auto-reflowing), **remove** cards,
+and **"Add card"** from a picker of every card your role can see. **Save** persists your arrangement;
+**Reset** restores the department default. Layouts are stored per user (migration **067**,
+`dashboard_layouts`, RLS own-row) and validated server-side against the card registry **and your live
+permissions** — a saved layout can never surface a card you lack permission for, and spans are clamped
+to each card's allowed sizes. A user with no saved layout sees the exact department default, so there
+is **no visible change until you customize**.
+
+Built on a new declarative **card registry** (`components/dashboards/dept-cards.tsx`): each card is a
+self-contained, permission-gated async renderer (Key Metrics, Recent Tickets / Submissions / Time-off /
+Presentations, Tickets-by-status, Quick Links, Your Workspace). The server renders every card the role
+can access and hands them to the client `DashboardGrid`; editing only rearranges — data never
+re-fetches until reload. New dependency: `@dnd-kit`. The admin executive + Sales dashboards are
+unchanged. Preview per role via View-as.
+
+## 2026-07-23 — Portal consolidation (Phase 1): base staff land in /admin, phasing out /employee
+
+First step of collapsing three portals (`/admin` + `/employee` + `/customer`) toward two (one
+employee portal, one customer portal). The base `production` tier — everyone from President down to
+Production Associate who used to live in the `/employee` shell — is now an **admin-surface role**:
+it signs in and lands on `/admin/home` (the shared Company Home) like every other internal role,
+under one roof. `isAdminSurfaceRole()` now returns true for `production`; per-section `/admin`
+access is unchanged (still gated by the `role_permissions` matrix), so a permless production user
+reaches only the always-open `/admin/home` + `/admin/profile` and every other `/admin/*` path
+fail-closes to a 302 — **no new permissions were granted, no migration needed**. The strict
+`getAdminUser()` write gate and the scoped `.can(perm)` write-actors are untouched, so no write
+access shifts. The `/employee/*` routes stay alive and reachable by `production` (its self-service
+pages — My Board, directory, time off — aren't ported yet, so middleware deliberately no longer
+bounces production out of them); only the 5 scoped roles + admin are bounced to `/admin`. The
+first-time set-password **welcome flow** still runs for new `production` invites, then lands them in
+`/admin`. Login + auth-callback redirects and the employee welcome page were updated to match.
+Next: triage/port the remaining `/employee` self-service pages, then Phase 2 (customer portal onto
+its own deployment + database). No customer-facing change.
+
 ## 2026-07-23 — Department dashboards: each scoped role gets its own warm bento
 
 Rebuilt the scoped-role landing page (`DepartmentDashboard`, served to **hr / marketing /

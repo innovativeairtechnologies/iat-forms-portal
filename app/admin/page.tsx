@@ -325,7 +325,7 @@ export default async function AdminDashboard() {
   if (surfaceUser && surfaceUser.role !== 'admin') {
     // isAdminSurfaceRole (inside getAdminSurfaceUser) already ruled out
     // 'production' and 'customer', so this is one of the 5 scoped roles.
-    return <DepartmentDashboard role={surfaceUser.role as Exclude<StaffRole, 'admin' | 'production'>} displayName={surfaceUser.displayName} />
+    return <DepartmentDashboard role={surfaceUser.role as Exclude<StaffRole, 'admin' | 'production'>} displayName={surfaceUser.displayName} userId={surfaceUser.user.id} />
   }
 
   const d = await getData()
