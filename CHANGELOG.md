@@ -2,6 +2,23 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-23 — Internal Apps: "SUPER IMPORTANT SOFTWARE™" (dancing hippo, for laughs)
+
+Added a (tongue-in-cheek) internal app to the **Internal Apps** launcher for a VBS project:
+a browser studio that makes the purple inflatable-hippo mascot **dance**. Pick a move
+(Church Clap, Happy Bounce, Hip Twist, Wiggle), tune tempo/energy, and export either a
+**transparent looping GIF** — the drag-and-drop-into-slides asset (GIFs are the only
+animated+transparent format both PowerPoint and Google Slides honor) — or an **MP4 video**
+with a chosen background.
+
+Fully self-contained static page at `public/tools/super-important-software.html` (inlines the
+`gif.js` encoder, its worker as a Blob URL, and the hippo PNG as a data URI — zero external
+requests), gated to signed-in staff by the existing `/tools/*` middleware, listed via
+`lib/tools.ts` with a `Mission-Critical` tag. Source studio lives outside the repo at
+`~/hippo-dance`. The hippo's white background is removed at load with an edge flood-fill (keeps
+interior whites — teeth, paws); the dance is beat-synced squash-and-stretch with popping
+musical notes.
+
 ## 2026-07-23 — Fix: Company Home no longer shows two top bars
 
 The shared `AdminTopBar` (added to every `/admin` page) was stacking on top of the Company

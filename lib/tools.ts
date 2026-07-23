@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Wind, Image as ImageIcon, Zap, Calculator, Flame } from 'lucide-react'
+import { Wind, Image as ImageIcon, Zap, Calculator, Flame, PartyPopper } from 'lucide-react'
 
 /* Single source of truth for the internal-apps launcher ("Internal Apps" in the
    nav — renamed from "Tools" so it isn't confused with the Tool Crib check-out
@@ -53,5 +53,13 @@ export const TOOL_APPS: ToolApp[] = [
     href: '/tools/us-rotors-pricing-calculator.html',
     icon: Calculator,
     external: true,
+  },
+  {
+    title: 'SUPER IMPORTANT SOFTWARE™',
+    desc: 'Mission-critical hippo choreography. Make the purple hippo dance and export a transparent GIF for slides (or an MP4 video). Business-critical. Do not question it.',
+    href: '/tools/super-important-software.html',
+    icon: PartyPopper,
+    external: true,
+    tag: 'Mission-Critical',
   },
 ]
