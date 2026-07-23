@@ -70,6 +70,7 @@ const PARTICLE_CSS = `
 @keyframes iatFloat3{0%,100%{transform:translate(0,0) rotate(0deg)}40%{transform:translate(20px,-10px) rotate(10deg)}75%{transform:translate(-9px,-20px) rotate(-7deg)}}
 @keyframes iatFloat4{0%,100%{transform:translate(0,0) rotate(0deg)}30%{transform:translate(-13px,-24px) rotate(5deg)}70%{transform:translate(17px,-9px) rotate(-10deg)}}
 @keyframes iatFloat5{0%,100%{transform:translate(0,0) rotate(0deg)}50%{transform:translate(9px,-28px) rotate(9deg)}}
+@keyframes iatFloat6{0%,100%{transform:translate(0,0)}33%{transform:translate(-26px,-30px)}66%{transform:translate(22px,-14px)}}
 .iat-particle{animation-timing-function:ease-in-out;animation-iteration-count:infinite;will-change:transform}
 @media (prefers-reduced-motion:reduce){.iat-particle{animation:none!important}}
 `
@@ -88,6 +89,18 @@ const PARTICLES = [
   { left: '24%', top: '46%', w: 22, o: 0.07, a: 2, d: '14s', dl: '1.1s' },
   { left: '84%', top: '44%', w: 16, o: 0.05, a: 3, d: '16s', dl: '0.4s' },
   { left: '60%', top: '82%', w: 20, o: 0.06, a: 4, d: '13s', dl: '2.1s' },
+]
+
+// Soft light orbs drifting with the logos — bigger, slower, blurrier, about half
+// as many. `s` is the diameter; `a` picks a drift path (6 travels the farthest).
+const ORBS = [
+  { left: '10%', top: '28%', s: 64, o: 0.16, a: 6, d: '19s', dl: '0s' },
+  { left: '30%', top: '70%', s: 44, o: 0.14, a: 4, d: '22s', dl: '1.5s' },
+  { left: '50%', top: '22%', s: 80, o: 0.12, a: 1, d: '24s', dl: '0.7s' },
+  { left: '68%', top: '64%', s: 52, o: 0.15, a: 6, d: '18s', dl: '2.2s' },
+  { left: '83%', top: '14%', s: 40, o: 0.14, a: 5, d: '20s', dl: '1s' },
+  { left: '90%', top: '55%', s: 68, o: 0.12, a: 2, d: '23s', dl: '0.4s' },
+  { left: '20%', top: '10%', s: 48, o: 0.13, a: 3, d: '21s', dl: '1.8s' },
 ]
 
 // ── shared card chrome (mirrors the /admin + /employee dashboards) ───────────
@@ -193,6 +206,18 @@ export function HomeContent({
                   style={{
                     left: p.left, top: p.top, width: p.w, height: 'auto', opacity: p.o,
                     filter: 'brightness(0) invert(1)',
+                    animationName: `iatFloat${p.a}`, animationDuration: p.d, animationDelay: p.dl,
+                  }}
+                />
+              ))}
+              {ORBS.map((p, i) => (
+                <span
+                  key={`orb-${i}`}
+                  className="iat-particle absolute rounded-full"
+                  style={{
+                    left: p.left, top: p.top, width: p.s, height: p.s, opacity: p.o,
+                    background: 'radial-gradient(circle, rgba(255,255,255,0.85), transparent 70%)',
+                    filter: 'blur(6px)',
                     animationName: `iatFloat${p.a}`, animationDuration: p.d, animationDelay: p.dl,
                   }}
                 />
