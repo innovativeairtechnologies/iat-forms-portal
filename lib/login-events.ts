@@ -12,7 +12,10 @@ import { supabaseAdmin } from './supabase-admin'
  * it describes.
  */
 
-export type LoginMethod = 'password' | 'magic_link' | 'invite' | 'recovery'
+// 'microsoft' = Entra ID / Azure AD OAuth ("Sign in with Microsoft"). login_events.method
+// is a plain text column with no CHECK constraint (migration 031), so adding a value here
+// needs no migration.
+export type LoginMethod = 'password' | 'magic_link' | 'invite' | 'recovery' | 'microsoft'
 
 export type LoginEvent = {
   userId?: string | null

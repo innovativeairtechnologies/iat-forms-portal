@@ -18,15 +18,75 @@ export default function LoginPage() {
   )
 }
 
+/* Messages for the ?error= codes /auth/callback redirects back with. Before
+   this existed the callback's ?error=invalid_link was silently swallowed —
+   the user just landed on a blank login form with no idea why. */
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_link:   'That sign-in link has expired or was already used. Please sign in again.',
+  sso_domain:     'That Microsoft account isn’t an Innovative Air Technologies account. Sign in with your @dehumidifiers.com login.',
+  sso_no_account: 'No portal account is linked to that Microsoft account yet. Ask an admin to invite you, then try again.',
+  sso_failed:     'Microsoft sign-in didn’t complete. Please try again, or use your email and password.',
+}
+
+/* The official Microsoft mark. Their brand guidelines require the four-square
+   logo on a "Sign in with Microsoft" button, so this is inlined rather than
+   drawn from lucide (which has no Microsoft icon). */
+function MicrosoftMark({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 21 21" aria-hidden="true" className="flex-shrink-0">
+      <rect x="1"  y="1"  width="9" height="9" fill="#f25022" />
+      <rect x="11" y="1"  width="9" height="9" fill="#7fba00" />
+      <rect x="1"  y="11" width="9" height="9" fill="#00a4ef" />
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+    </svg>
+  )
+}
+
 function LoginForm() {
+  const searchParams = useSearchParams()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
+  const [error, setError]       = useState(() => ERROR_MESSAGES[searchParams.get('error') ?? ''] ?? '')
   const [loading, setLoading]   = useState(false)
+  const [msLoading, setMsLoading] = useState(false)
   const [showPw, setShowPw]     = useState(false)
   const router       = useRouter()
-  const searchParams = useSearchParams()
   const supabase     = createSupabaseBrowser()
+
+  /* Hand off to Entra ID. The heavy lifting — tenant restriction, MFA, and the
+     domain + provisioning gates — happens in Entra and /auth/callback; this
+     only starts the round-trip.
+
+     Scopes MUST include `email`: Supabase's default for azure is `openid`
+     alone, which returns no email claim, and both the domain check and the
+     account matching in the callback key off the email address. `openid` is
+     repeated here on purpose — Supabase prepends its own, so the emitted list
+     reads `openid openid profile email`. A duplicate scope is legal and ignored
+     (RFC 6749 §3.3), and stating it explicitly means the flow still works if
+     Supabase ever stops prepending it. */
+  const signInWithMicrosoft = async () => {
+    setMsLoading(true)
+    setError('')
+
+    const callback = new URL('/auth/callback', window.location.origin)
+    // Carry a deep link (?redirect=, set by middleware) through the round-trip
+    // so a bounced user lands where they were headed. Validated here and again
+    // server-side in the callback.
+    const deepLink = safeRedirect(searchParams.get('redirect'), '')
+    if (deepLink) callback.searchParams.set('next', deepLink)
+
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: { scopes: 'openid profile email', redirectTo: callback.toString() },
+    })
+
+    // On success the browser is already navigating to Microsoft, so there's
+    // nothing to reset — only a failure to *start* the flow lands here.
+    if (oauthError) {
+      setError(ERROR_MESSAGES.sso_failed)
+      setMsLoading(false)
+    }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -246,7 +306,35 @@ function LoginForm() {
               </button>
             </form>
 
-            <p className="text-center text-[12px] text-gray-300 mt-8">
+            {/* ── Microsoft SSO ──
+                Secondary by design: the brand green stays on the single primary
+                action (Sign In above). Staff-only in practice — the Entra app is
+                single-tenant, so a customer clicking this fails at Microsoft's
+                own login screen, never inside the portal. */}
+            <div className="flex items-center gap-3 my-6" aria-hidden="true">
+              <div className="h-px flex-1 bg-gray-100" />
+              <span className="text-[11px] text-gray-300 uppercase tracking-widest">or</span>
+              <div className="h-px flex-1 bg-gray-100" />
+            </div>
+
+            <button
+              type="button"
+              onClick={signInWithMicrosoft}
+              disabled={loading || msLoading}
+              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 text-[14px] font-semibold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {msLoading ? (
+                <span className="animate-pulse">Redirecting to Microsoft…</span>
+              ) : (
+                <><MicrosoftMark /> Sign in with Microsoft</>
+              )}
+            </button>
+
+            <p className="text-center text-[12px] text-gray-300 mt-6">
+              Staff sign in with their Innovative Air Technologies account.
+            </p>
+
+            <p className="text-center text-[12px] text-gray-300 mt-2">
               Secured · Internal access only
             </p>
           </motion.div>
