@@ -13,9 +13,18 @@ export default async function CustomerTicketDetailPage(props: { params: Promise<
   const session = await getCustomerUser()
   if (!session) return <CustomerSessionError />
 
+  // Explicit customer-safe column allow-list — NEVER select('*') here. The row is
+  // handed to a 'use client' component (CustomerTicketDetailClient), so EVERY selected
+  // column is serialized into the RSC/Flight payload the customer's browser receives,
+  // even columns the UI never renders. Internal-only fields (owner_id, notes,
+  // resolved_reason, ai_recommendations, viewed_kb_articles, diagnostic fields) must
+  // never leave the server. `customer_id` is included only for the ownership check
+  // below. Keep this list in sync with the fields CustomerTicketDetailClient reads.
   const { data: ticket } = await supabaseAdmin
     .from('tickets')
-    .select('*')
+    .select(
+      'id, customer_id, ticket_number, status, priority, created_at, problem_description, serial_number, model_number, voltage, customer_name, customer_company, customer_email, customer_phone, preferred_contact_method, customer_marked_resolved, photo_urls'
+    )
     .eq('id', params.id)
     .maybeSingle()
   if (!ticket) notFound()

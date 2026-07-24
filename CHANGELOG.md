@@ -2,6 +2,18 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-24 — Security: customer ticket detail no longer ships internal columns to the browser
+
+The customer ticket detail page (`app/customer/tickets/[id]/page.tsx`) fetched the ticket row with
+`select('*')` and passed it into a `'use client'` component, so every column — including
+internal-only `owner_id`, staff `notes`, `resolved_reason`, `ai_recommendations`, and
+`viewed_kb_articles` — was serialized into the RSC/Flight payload delivered to the customer's
+browser, even though the UI never rendered them. Replaced the wildcard with an explicit
+customer-safe column allow-list (the fields the detail component actually reads, plus `customer_id`
+for the server-side ownership check). The dashboard ticket LIST was already safe (it maps to a
+narrow subset) — only the detail page leaked. Found during the Phase 2 customer-portal
+data-boundary audit; the read bridge will re-enforce this allow-list server-side.
+
 ## 2026-07-24 — reCAPTCHA v3 on all public forms (invisible, frictionless)
 
 Extended the invisible reCAPTCHA v3 (already on the support ticket form) to **every public / anonymous
