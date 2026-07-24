@@ -1,3 +1,15 @@
+// Only OUR Supabase project may be run through next/image. The old wildcard
+// (`*.supabase.co`) let an anonymous attacker point the public /_next/image
+// optimizer at a malicious image in THEIR OWN Supabase project's public bucket,
+// feeding crafted bytes straight into sharp/libvips (Dependabot #37 / the sharp
+// CVEs — patched via the `sharp` override in package.json). Narrowing to this
+// project's host removes that vector; all of our own public-bucket images live
+// on this host, so nothing legitimate breaks.
+const SUPABASE_HOST = (() => {
+  try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname }
+  catch { return 'dsbuhdjlkgwcghskvdse.supabase.co' }
+})()
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Pin the file-tracing root to this app dir. Without it, Next walks up and
@@ -17,7 +29,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.supabase.co',
+        hostname: SUPABASE_HOST,
         pathname: '/storage/v1/object/public/**',
       },
     ],
