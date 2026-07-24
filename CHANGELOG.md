@@ -2,6 +2,36 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-24 — Sign in with Microsoft (Entra ID SSO) for staff
+
+Staff can now sign in with their `@dehumidifiers.com` Microsoft account from `/login`, beside
+the existing email/password form. Additive only — middleware role-routing, RLS policies and
+the customer password flow are untouched. MFA is inherited from the tenant's Entra Conditional
+Access policy; there is nothing portal-side to build for it. See
+[docs/microsoft-sso.md](docs/microsoft-sso.md).
+
+Two gates in `/auth/callback`, both reading the **verified session** rather than any URL param,
+so neither can be spoofed by editing the callback URL:
+
+- **Domain** — the returned email must end in `@dehumidifiers.com`. Defence in depth behind the
+  single-tenant Entra app registration, and it fails closed on a *missing* email (with only the
+  `openid` scope Entra returns no email claim, and "no email" must never read as "allowed").
+- **Provisioning** — the account must already carry an `email` identity, i.e. it was created by
+  an admin invite. This is load-bearing: the trigger from migration 002
+  (`handle_new_user_profile`) creates a `profiles` row at the `employee`/`production` tier for
+  **every** new `auth.users` row, and since the portal consolidation `production` is an
+  admin-surface role. Without this gate any member of the M365 tenant could click the button and
+  silently self-provision a working portal account.
+
+Account linking was verified against the live project rather than assumed: Supabase **does**
+auto-link by verified email, so an existing staff member keeps their role and history on first
+Microsoft sign-in (no duplicate or role-less profile).
+
+Also here: `login_events.method` gains `'microsoft'` (no migration — plain text column, no CHECK
+constraint); `/login` now renders the `?error=` codes the callback redirects back with, which had
+previously been swallowed silently; and Microsoft sign-in carries a `?redirect=` deep link through
+the round-trip, validated by `safeRedirect` on both sides.
+
 ## 2026-07-24 — Customer bridge: serve the customer portal without giving it the database
 
 Phase 2 chunk C. The customer portal now lives on its own deployment and its own Supabase
