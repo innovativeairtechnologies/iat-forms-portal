@@ -26,14 +26,14 @@ export function HomeTopBar({ name, profileHref, unreadCount = 0, ticketCount = 0
 
   return (
     <>
-      <div className="hidden md:flex flex-shrink-0 items-center gap-1.5 px-5 h-14 border-b border-zinc-200 bg-zinc-50/90 backdrop-blur dark:border-zinc-800 dark:bg-[#0a0a0b]/90">
-        <span className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Company Home</span>
+      <div className="hidden md:flex flex-shrink-0 items-center gap-1.5 px-5 h-14 border-b border-stone-200/80 bg-[#FAF6EF]/90 backdrop-blur dark:border-stone-800 dark:bg-[#0c0b0a]/90">
+        <span className="text-[13px] font-semibold text-stone-900 dark:text-stone-100">Company Home</span>
         <div className="flex-1" />
 
         <button
           onClick={() => setIdeaOpen(true)}
           title="Share an idea with leadership"
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-white"
         >
           <Lightbulb size={15} /> <span className="hidden lg:inline">Have an idea?</span>
         </button>
@@ -41,7 +41,7 @@ export function HomeTopBar({ name, profileHref, unreadCount = 0, ticketCount = 0
         <a
           href={`mailto:${IT_SUPPORT.email}`}
           title="Email IT support"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white"
         >
           <Mail size={16} />
         </a>
@@ -52,7 +52,7 @@ export function HomeTopBar({ name, profileHref, unreadCount = 0, ticketCount = 0
         <Link
           href={profileHref}
           title="Your profile"
-          className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-[12px] font-semibold text-white transition-opacity hover:opacity-85 dark:bg-zinc-100 dark:text-zinc-900"
+          className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-stone-900 text-[12px] font-semibold text-white transition-opacity hover:opacity-85 dark:bg-stone-100 dark:text-stone-900"
         >
           {initialsOf(name)}
         </Link>
@@ -88,8 +88,8 @@ function IdeaModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-        <button onClick={onClose} aria-label="Close" className="absolute right-3 top-3 text-zinc-400 transition-colors hover:text-zinc-700 dark:hover:text-zinc-200">
+      <div className="relative w-full max-w-md rounded-2xl border border-stone-200 bg-white p-5 shadow-xl dark:border-stone-800 dark:bg-stone-900">
+        <button onClick={onClose} aria-label="Close" className="absolute right-3 top-3 text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-200">
           <X size={16} />
         </button>
 
@@ -98,7 +98,7 @@ function IdeaModal({ onClose }: { onClose: () => void }) {
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
               <Check size={18} />
             </span>
-            <p className="text-[14px] font-semibold text-zinc-900 dark:text-white">Thanks — sent to leadership.</p>
+            <p className="text-[14px] font-semibold text-stone-900 dark:text-white">Thanks — sent to leadership.</p>
             <button onClick={onClose} className="mt-1 text-[12.5px] font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400">
               Close
             </button>
@@ -107,9 +107,9 @@ function IdeaModal({ onClose }: { onClose: () => void }) {
           <>
             <div className="mb-1 flex items-center gap-2">
               <Lightbulb size={16} className="text-emerald-600 dark:text-emerald-400" />
-              <h2 className="text-[15px] font-bold text-zinc-900 dark:text-white">Have an idea?</h2>
+              <h2 className="text-[15px] font-bold text-stone-900 dark:text-white">Have an idea?</h2>
             </div>
-            <p className="mb-3 text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+            <p className="mb-3 text-[12.5px] leading-relaxed text-stone-500 dark:text-stone-400">
               Something that would make IAT run better? It goes straight to leadership.
             </p>
             <textarea
@@ -117,11 +117,11 @@ function IdeaModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => { setBody(e.target.value); setError('') }}
               autoFocus
               placeholder="Have an idea to improve how things run at IAT?"
-              className="h-32 w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-3 text-[13px] leading-relaxed text-zinc-800 outline-none transition-colors placeholder:text-zinc-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-100"
+              className="h-32 w-full resize-none rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-[13px] leading-relaxed text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-700 dark:bg-stone-800/40 dark:text-stone-100"
             />
             {error && <p className="mt-1.5 text-[12px] text-rose-500">{error}</p>}
             <div className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-[11px] text-zinc-400">Shared with leadership · your name attached</span>
+              <span className="text-[11px] text-stone-400">Shared with leadership · your name attached</span>
               <button
                 onClick={submit}
                 disabled={pending || !body.trim()}

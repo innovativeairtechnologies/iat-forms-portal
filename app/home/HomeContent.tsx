@@ -18,7 +18,7 @@ import { HomeTopBar } from './HomeTopBar'
 
    THE homepage design file. Renders inside both portal shells (/admin/home and
    /employee/home, via app/home/HomePage.tsx). Matches the shipped dashboard
-   chrome: a zinc-50 canvas with an emerald glow, an emerald→teal gradient
+   chrome: a stone-50 canvas with an emerald glow, an emerald→teal gradient
    greeting, white rounded-xl cards, one emerald accent used warmly. Laid out to
    fit close to one screen on desktop (minimal scroll).
 
@@ -106,7 +106,7 @@ const ORBS = [
 // ── shared card chrome (mirrors the /admin + /employee dashboards) ───────────
 function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none ${className}`}>
+    <div className={`flex h-full flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900/40 dark:shadow-none ${className}`}>
       {children}
     </div>
   )
@@ -114,10 +114,10 @@ function Card({ children, className = '' }: { children: ReactNode; className?: s
 
 function CardHead({ icon, title, right }: { icon: ReactNode; title: string; right?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-zinc-200/70 px-4 py-3 dark:border-zinc-800/80">
+    <div className="flex items-center justify-between gap-3 border-b border-stone-200/70 px-4 py-3 dark:border-stone-800/80">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="text-zinc-400 dark:text-zinc-500">{icon}</span>
-        <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+        <span className="text-stone-400 dark:text-stone-500">{icon}</span>
+        <h3 className="text-[13px] font-semibold text-stone-900 dark:text-stone-100">{title}</h3>
       </div>
       {right}
     </div>
@@ -128,13 +128,13 @@ function Kpi({ icon, label, value, sub, valueClassName = 'text-[24px]' }: {
   icon: ReactNode; label: string; value: ReactNode; sub: ReactNode; valueClassName?: string
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-3.5 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none dark:hover:border-zinc-700">
+    <div className="rounded-xl border border-stone-200 bg-white p-3.5 shadow-sm transition-all hover:border-stone-300 hover:shadow-md dark:border-stone-800 dark:bg-stone-900/40 dark:shadow-none dark:hover:border-stone-700">
       <div className="mb-2 flex items-center gap-2">
         <span className="text-emerald-500 dark:text-emerald-400">{icon}</span>
-        <span className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
+        <span className="text-[12px] font-medium text-stone-500 dark:text-stone-400">{label}</span>
       </div>
-      <div className={`font-bold leading-none tracking-tight text-zinc-900 tabular-nums dark:text-white ${valueClassName}`}>{value}</div>
-      <p className="mt-2 text-[11px] text-zinc-400 dark:text-zinc-500">{sub}</p>
+      <div className={`font-bold leading-none tracking-tight text-stone-900 tabular-nums dark:text-white ${valueClassName}`}>{value}</div>
+      <p className="mt-2 text-[11px] text-stone-400 dark:text-stone-500">{sub}</p>
     </div>
   )
 }
@@ -142,7 +142,7 @@ function Kpi({ icon, label, value, sub, valueClassName = 'text-[24px]' }: {
 function DateChip({ day, mon, accent = false }: { day: string; mon: string; accent?: boolean }) {
   return (
     <div className={`flex h-[38px] w-[38px] flex-shrink-0 flex-col items-center justify-center rounded-lg leading-none ${
-      accent ? 'bg-emerald-600 text-white' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+      accent ? 'bg-emerald-600 text-white' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300'
     }`}>
       <span className="text-[13px] font-bold">{day}</span>
       <span className="mt-0.5 text-[8.5px] font-bold uppercase tracking-wide">{mon}</span>
@@ -159,7 +159,7 @@ function HeroLink({ href, icon: Icon, label, primary = false }: {
   return <Link href={href} className={cls}><Icon size={15} className="flex-shrink-0" />{label}</Link>
 }
 
-const overline = 'text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500'
+const overline = 'text-[11px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500'
 
 export function HomeContent({
   greeting, dateET, firstName, funIdx, data, name, profileHref,
@@ -176,7 +176,7 @@ export function HomeContent({
   const outCount = data.whosOut.length
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-zinc-50 text-zinc-700 dark:bg-[#0a0a0b] dark:text-zinc-300">
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-[#FAF6EF] text-stone-700 dark:bg-[#0c0b0a] dark:text-stone-300">
 
       <HomeTopBar name={name} profileHref={profileHref} unreadCount={unreadCount} ticketCount={ticketCount} />
 
@@ -184,16 +184,19 @@ export function HomeContent({
         <style>{PARTICLE_CSS}</style>
 
         {/* Ambient emerald/sky glow — same soft orbs as the /admin dashboard. */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] overflow-hidden">
-          <div className="absolute -top-40 right-[-120px] h-[520px] w-[520px] rounded-full bg-gradient-to-br from-emerald-400/25 via-emerald-500/10 to-transparent blur-3xl dark:from-emerald-500/18 dark:via-emerald-600/8" />
-          <div className="absolute top-10 left-[-140px] h-[360px] w-[360px] rounded-full bg-gradient-to-tr from-sky-400/14 via-teal-400/8 to-transparent blur-3xl dark:from-sky-500/12 dark:via-teal-500/6" />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] overflow-hidden">
+          <div className="absolute -top-44 right-[-100px] h-[540px] w-[540px] rounded-full bg-gradient-to-br from-amber-300/25 via-amber-400/10 to-transparent blur-3xl dark:from-amber-500/14 dark:via-amber-600/6" />
+          <div className="absolute -top-24 right-[26%] h-[380px] w-[380px] rounded-full bg-gradient-to-br from-emerald-400/22 via-emerald-500/10 to-transparent blur-3xl dark:from-emerald-500/16 dark:via-emerald-600/7" />
+          <div className="absolute top-16 left-[-150px] h-[400px] w-[400px] rounded-full bg-gradient-to-tr from-orange-300/16 via-rose-300/8 to-transparent blur-3xl dark:from-orange-500/12 dark:via-rose-500/6" />
         </div>
 
         <div className="mx-auto max-w-[1180px] space-y-4 p-4 sm:p-5">
 
           {/* ── Greeting hero — gradient + floating IAT logos ─────────────── */}
-          <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-6 shadow-sm dark:from-emerald-700 dark:to-teal-900 sm:p-7">
-            <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+          <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 shadow-sm dark:from-emerald-700 dark:to-emerald-950 sm:p-7">
+            <div className="pointer-events-none absolute -right-10 -top-20 h-60 w-60 rounded-full bg-amber-300/30 blur-3xl" />
+            <div className="pointer-events-none absolute right-24 -top-14 h-40 w-40 rounded-full bg-amber-100/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-full bg-orange-400/15 blur-3xl" />
             {/* floating white-logo particles (right side, low opacity) */}
             <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
               {PARTICLES.map((p, i) => (
@@ -264,21 +267,21 @@ export function HomeContent({
             <Card className="lg:col-span-2">
               <CardHead icon={<Newspaper size={14} />} title="Company News" />
               {lead && (
-                <article className="border-b border-zinc-100 px-4 py-3.5 dark:border-zinc-800/50">
+                <article className="border-b border-stone-100 px-4 py-3.5 dark:border-stone-800/50">
                   <div className="mb-2 flex items-center gap-2.5">
                     {lead.category && <StatusPill tone={CATEGORY_TONE[lead.category] ?? 'slate'}>{lead.category}</StatusPill>}
-                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                    <span className="text-[11px] text-stone-400 dark:text-stone-500">
                       {new Date(lead.date).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric' })}
                     </span>
                   </div>
-                  <h2 className="text-[16px] font-bold leading-snug tracking-tight text-zinc-900 dark:text-white">{lead.title}</h2>
-                  {lead.body && <p className="mt-1 line-clamp-2 max-w-[64ch] text-[12.5px] leading-relaxed text-zinc-500 dark:text-zinc-400">{lead.body}</p>}
+                  <h2 className="text-[16px] font-bold leading-snug tracking-tight text-stone-900 dark:text-white">{lead.title}</h2>
+                  {lead.body && <p className="mt-1 line-clamp-2 max-w-[64ch] text-[12.5px] leading-relaxed text-stone-500 dark:text-stone-400">{lead.body}</p>}
                   <span className="mt-2.5 inline-flex items-center gap-1 text-[12.5px] font-semibold text-emerald-600 dark:text-emerald-400">
                     Read the full update <ArrowRight size={13} />
                   </span>
                 </article>
               )}
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+              <ul className="divide-y divide-stone-100 dark:divide-stone-800/50">
                 {restNews.slice(0, 2).map((n) => {
                   const { day, mon } = isoTile(n.date)
                   return (
@@ -286,10 +289,10 @@ export function HomeContent({
                       <DateChip day={day} mon={mon} accent={n.pinned} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-[13px] font-semibold leading-snug text-zinc-800 dark:text-zinc-100">{n.title}</p>
+                          <p className="text-[13px] font-semibold leading-snug text-stone-800 dark:text-stone-100">{n.title}</p>
                           {n.category && <StatusPill tone={CATEGORY_TONE[n.category] ?? 'slate'}>{n.category}</StatusPill>}
                         </div>
-                        {n.body && <p className="mt-0.5 truncate text-[11.5px] text-zinc-400 dark:text-zinc-500">{n.body}</p>}
+                        {n.body && <p className="mt-0.5 truncate text-[11.5px] text-stone-400 dark:text-stone-500">{n.body}</p>}
                       </div>
                     </li>
                   )
@@ -303,14 +306,14 @@ export function HomeContent({
                 <div className="mx-3.5 mt-3 flex items-center gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50 px-3.5 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/10">
                   <PartyPopper size={16} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <div className="min-w-0">
-                    <p className="truncate text-[12.5px] font-semibold text-zinc-900 dark:text-white">{nh.name}</p>
-                    <p className="text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400">
+                    <p className="truncate text-[12.5px] font-semibold text-stone-900 dark:text-white">{nh.name}</p>
+                    <p className="text-[11px] tabular-nums text-stone-500 dark:text-stone-400">
                       {nh.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {daysUntil(nh.date)}
                     </p>
                   </div>
                 </div>
               )}
-              <ul className="mt-2 divide-y divide-zinc-100 dark:divide-zinc-800/50">
+              <ul className="mt-2 divide-y divide-stone-100 dark:divide-stone-800/50">
                 {data.events.slice(0, 3).map((e) => {
                   const { day, mon } = ymdTile(e.startsOn)
                   return (
@@ -318,29 +321,29 @@ export function HomeContent({
                       <DateChip day={day} mon={mon} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-[12.5px] font-semibold leading-snug text-zinc-800 dark:text-zinc-100">{e.title}</p>
+                          <p className="text-[12.5px] font-semibold leading-snug text-stone-800 dark:text-stone-100">{e.title}</p>
                           <StatusPill tone={KIND_TONE[e.kind] ?? 'slate'}>{cap(e.kind)}</StatusPill>
                         </div>
                       </div>
                     </li>
                   )
                 })}
-                {data.events.length === 0 && <li className="px-3.5 py-3 text-[11.5px] text-zinc-400 dark:text-zinc-500">No upcoming events.</li>}
+                {data.events.length === 0 && <li className="px-3.5 py-3 text-[11.5px] text-stone-400 dark:text-stone-500">No upcoming events.</li>}
               </ul>
-              <div className="mt-auto border-t border-zinc-100 px-3.5 py-3 dark:border-zinc-800/50">
+              <div className="mt-auto border-t border-stone-100 px-3.5 py-3 dark:border-stone-800/50">
                 <p className={overline}>Out this week</p>
                 {outCount > 0 ? (
                   <ul className="mt-2 space-y-1.5">
                     {data.whosOut.slice(0, 3).map((w, i) => (
                       <li key={i} className="flex items-center gap-2.5">
                         <PersonAvatar name={w.name} size={22} />
-                        <span className="flex-1 truncate text-[12.5px] font-medium text-zinc-700 dark:text-zinc-200">{w.name}</span>
-                        <span className="text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">{fmtRange(w.startsOn, w.endsOn)}</span>
+                        <span className="flex-1 truncate text-[12.5px] font-medium text-stone-700 dark:text-stone-200">{w.name}</span>
+                        <span className="text-[11px] tabular-nums text-stone-400 dark:text-stone-500">{fmtRange(w.startsOn, w.endsOn)}</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-1 text-[11.5px] text-zinc-400 dark:text-zinc-500">Everyone&apos;s in this week.</p>
+                  <p className="mt-1 text-[11.5px] text-stone-400 dark:text-stone-500">Everyone&apos;s in this week.</p>
                 )}
               </div>
             </Card>
@@ -351,27 +354,27 @@ export function HomeContent({
 
             <Card>
               <CardHead icon={<Users size={14} />} title="Our People" />
-              <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+              <div className="divide-y divide-stone-100 dark:divide-stone-800/50">
                 <div className="flex items-start gap-3 px-4 py-3">
                   <PersonAvatar name={data.newHire.name} src={data.newHire.avatarUrl} size={38} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-[13px] font-bold capitalize text-zinc-900 dark:text-white">{data.newHire.name}</p>
+                      <p className="truncate text-[13px] font-bold capitalize text-stone-900 dark:text-white">{data.newHire.name}</p>
                       <StatusPill tone="emerald">New hire</StatusPill>
                     </div>
-                    <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">{[data.newHire.title, data.newHire.department].filter(Boolean).join(' · ')}</p>
-                    {data.newHire.blurb && <p className="mt-1 line-clamp-1 text-[11.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">{data.newHire.blurb}</p>}
+                    <p className="truncate text-[11px] text-stone-500 dark:text-stone-400">{[data.newHire.title, data.newHire.department].filter(Boolean).join(' · ')}</p>
+                    {data.newHire.blurb && <p className="mt-1 line-clamp-1 text-[11.5px] leading-relaxed text-stone-600 dark:text-stone-300">{data.newHire.blurb}</p>}
                   </div>
                 </div>
                 <div className="flex items-start gap-3 px-4 py-3">
                   <PersonAvatar name={data.spotlight.name} src={data.spotlight.avatarUrl} size={38} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-[13px] font-bold text-zinc-900 dark:text-white">{data.spotlight.name}</p>
+                      <p className="truncate text-[13px] font-bold text-stone-900 dark:text-white">{data.spotlight.name}</p>
                       <StatusPill tone="violet">Spotlight</StatusPill>
                     </div>
-                    <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">{[data.spotlight.title, data.spotlight.meta].filter(Boolean).join(' · ')}</p>
-                    {data.spotlight.blurb && <p className="mt-1 line-clamp-1 text-[11.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">{data.spotlight.blurb}</p>}
+                    <p className="truncate text-[11px] text-stone-500 dark:text-stone-400">{[data.spotlight.title, data.spotlight.meta].filter(Boolean).join(' · ')}</p>
+                    {data.spotlight.blurb && <p className="mt-1 line-clamp-1 text-[11.5px] leading-relaxed text-stone-600 dark:text-stone-300">{data.spotlight.blurb}</p>}
                   </div>
                 </div>
               </div>
@@ -379,34 +382,34 @@ export function HomeContent({
 
             <Card>
               <CardHead icon={<Cake size={14} />} title="Milestones" />
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+              <ul className="divide-y divide-stone-100 dark:divide-stone-800/50">
                 {data.peopleEvents.slice(0, 4).map((p, i) => (
                   <li key={i} className="flex items-center gap-3 px-4 py-2">
                     <PersonAvatar name={p.name} src={p.avatarUrl} size={28} />
-                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-zinc-800 dark:text-zinc-100">{p.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-stone-800 dark:text-stone-100">{p.name}</span>
                     <StatusPill tone={p.kind === 'birthday' ? 'sky' : 'emerald'}>
                       {p.kind === 'birthday' ? `Birthday · ${p.label}` : p.label}
                     </StatusPill>
                   </li>
                 ))}
-                {data.peopleEvents.length === 0 && <li className="px-4 py-4 text-[11.5px] text-zinc-400 dark:text-zinc-500">No upcoming milestones.</li>}
+                {data.peopleEvents.length === 0 && <li className="px-4 py-4 text-[11.5px] text-stone-400 dark:text-stone-500">No upcoming milestones.</li>}
               </ul>
             </Card>
 
             <Card>
               <CardHead icon={<Briefcase size={14} />} title="Open Positions"
-                right={<span className="text-[11.5px] tabular-nums text-zinc-400 dark:text-zinc-500">{data.openings.length} open</span>} />
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                right={<span className="text-[11.5px] tabular-nums text-stone-400 dark:text-stone-500">{data.openings.length} open</span>} />
+              <ul className="divide-y divide-stone-100 dark:divide-stone-800/50">
                 {data.openings.slice(0, 3).map((o) => (
                   <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-2">
                     <div className="min-w-0">
                       {o.applyUrl ? (
-                        <a href={o.applyUrl} className="truncate text-[12.5px] font-semibold text-zinc-800 hover:text-emerald-600 dark:text-zinc-100 dark:hover:text-emerald-400">{o.title}</a>
+                        <a href={o.applyUrl} className="truncate text-[12.5px] font-semibold text-stone-800 hover:text-emerald-600 dark:text-stone-100 dark:hover:text-emerald-400">{o.title}</a>
                       ) : (
-                        <p className="truncate text-[12.5px] font-semibold text-zinc-800 dark:text-zinc-100">{o.title}</p>
+                        <p className="truncate text-[12.5px] font-semibold text-stone-800 dark:text-stone-100">{o.title}</p>
                       )}
                       {(o.department || o.employmentType) && (
-                        <p className="truncate text-[11px] text-zinc-400 dark:text-zinc-500">{[o.department, o.employmentType].filter(Boolean).join(' · ')}</p>
+                        <p className="truncate text-[11px] text-stone-400 dark:text-stone-500">{[o.department, o.employmentType].filter(Boolean).join(' · ')}</p>
                       )}
                     </div>
                     <StatusPill tone="sky">Open</StatusPill>
@@ -415,8 +418,8 @@ export function HomeContent({
               </ul>
               <div className="mx-3.5 mb-3.5 mt-auto flex items-center gap-2.5 rounded-xl border border-emerald-200/70 bg-emerald-50 px-3.5 py-2 dark:border-emerald-500/20 dark:bg-emerald-500/10">
                 <Gift size={16} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <p className="text-[11.5px] leading-snug text-zinc-600 dark:text-zinc-300">
-                  {REFERRAL.lead} — earn <span className="font-bold text-zinc-900 dark:text-white">{REFERRAL.bonus}</span> if hired.
+                <p className="text-[11.5px] leading-snug text-stone-600 dark:text-stone-300">
+                  {REFERRAL.lead} — earn <span className="font-bold text-stone-900 dark:text-white">{REFERRAL.bonus}</span> if hired.
                 </p>
               </div>
             </Card>
@@ -429,8 +432,8 @@ export function HomeContent({
                 <Compass size={15} className="text-emerald-600 dark:text-emerald-400" />
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Core value · this week</span>
               </div>
-              <p className="min-w-0 text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200">
-                <span className="font-bold text-zinc-900 dark:text-white">{coreValue.title}</span> — {coreValue.body}
+              <p className="min-w-0 text-[13px] leading-relaxed text-stone-700 dark:text-stone-200">
+                <span className="font-bold text-stone-900 dark:text-white">{coreValue.title}</span> — {coreValue.body}
               </p>
               <span className="ml-auto hidden flex-shrink-0 text-[11px] tabular-nums text-emerald-700/70 dark:text-emerald-400/70 sm:block">
                 {coreValueIndex + 1} of {coreValueTotal}
