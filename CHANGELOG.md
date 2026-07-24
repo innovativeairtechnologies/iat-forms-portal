@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — CRM Calendar: add your own events
+
+Sales can now add calendar items directly instead of relying only on the auto 2-week
+follow-up. A **New event** button (and a per-day "Add event") on the CRM Calendar opens a composer
+— date, event text, and an optional deal to link it to. Events with no deal are **standalone**
+(migration `064_calendar_events.sql` makes `deal_follow_ups.deal_id` nullable) and, unlike deal
+follow-ups, **survive DryWare syncs** — a deal follow-up cascade-deletes if its project is pruned
+from the feed, so standalone events are the right home for meetings, trade shows, and general
+reminders. Standalone events render on the calendar labeled by their text with an "event" tag.
+
 ## 2026-07-24 — Security: customer ticket detail no longer ships internal columns to the browser
 
 The customer ticket detail page (`app/customer/tickets/[id]/page.tsx`) fetched the ticket row with

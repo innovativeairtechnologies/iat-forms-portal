@@ -493,11 +493,13 @@ export type DealStageHistory = {
   changed_at: string
 }
 
-// A dated reminder on a deal (deal_follow_ups, migration 048). auto_generated
-// marks the New-Deal automation's 2-week reminder vs a hand-scheduled one.
+// A dated item on the CRM calendar (deal_follow_ups, migrations 048 + 064).
+// deal_id set = a follow-up on that deal (auto_generated marks the New-Deal
+// 2-week reminder); deal_id null = a standalone event (note carries the text)
+// that survives DryWare syncs.
 export type DealFollowUp = {
   id: string
-  deal_id: string
+  deal_id: string | null
   due_date: string // YYYY-MM-DD
   note: string | null
   done: boolean

@@ -1,0 +1,21 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 064_calendar_events.sql — standalone calendar events
+--
+-- deal_follow_ups (migration 048) was strictly a deal reminder: deal_id NOT NULL,
+-- ON DELETE CASCADE. Sales asked to add their own calendar events that aren't a
+-- follow-up on a specific deal (a meeting, a trade show, a personal reminder).
+--
+-- Making deal_id NULLABLE turns the table into the CRM calendar generally:
+--   • deal_id set  → a deal follow-up (cascades when the deal is deleted — and
+--     since deals are now materialized from DryWare, a follow-up on a project
+--     that later drops off the feed is pruned with it).
+--   • deal_id NULL → a standalone event that survives DryWare syncs. Its `note`
+--     carries the event text.
+--
+-- The FK stays (nullable FKs simply don't constrain NULLs), so ON DELETE CASCADE
+-- still protects deal-linked rows. Additive + reversible.
+--
+-- Apply via Supabase CLI (npx supabase db query --linked -f <this file>).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE deal_follow_ups ALTER COLUMN deal_id DROP NOT NULL;

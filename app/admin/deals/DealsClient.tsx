@@ -176,7 +176,8 @@ export default function DealsClient({
   }
 
   // ── Follow-up handlers (optimistic; temp ids until the POST resolves) ──
-  const addFollowUp = async (dealId: string, dueDate: string, note: string) => {
+  // dealId null = a standalone calendar event (migration 064).
+  const addFollowUp = async (dealId: string | null, dueDate: string, note: string) => {
     const tmp = `temp-${++tmpId.current}`
     const optimistic: DealFollowUp = {
       id: tmp, deal_id: dealId, due_date: dueDate, note: note.trim() || null,
@@ -193,7 +194,7 @@ export default function DealsClient({
       if (!res.ok) {
         setFollowUps((prev) => prev.filter((f) => f.id !== tmp))
         pendingFollowUp.current.delete(tmp)
-        setErr(json.error || 'Could not schedule that follow-up.')
+        setErr(json.error || 'Could not save that event.')
         return
       }
       // Reconcile any delete/toggle the user did while this POST was in flight.
@@ -385,6 +386,7 @@ export default function DealsClient({
             onToggleDone={toggleFollowUpDone}
             onRemove={removeFollowUp}
             onOpenDeal={(id) => openDetail(id, deals.map((d) => d.id))}
+            onAddEvent={(dueDate, note, dealId) => addFollowUp(dealId ?? null, dueDate, note)}
           />
         </div>
       </div>

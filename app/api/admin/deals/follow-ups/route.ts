@@ -22,14 +22,17 @@ export async function POST(req: NextRequest) {
   const err = await requireDealsAuth(); if (err) return err
   const body = await req.json().catch(() => ({}))
 
-  const dealId = typeof body.deal_id === 'string' ? body.deal_id : ''
-  if (!dealId) return NextResponse.json({ error: 'deal_id is required' }, { status: 400 })
+  // deal_id is now OPTIONAL (migration 064): a row with no deal is a standalone
+  // calendar event. When there's no deal, the note IS the event, so it's
+  // required; a deal follow-up can leave it blank (the deal is the label).
+  const dealId = typeof body.deal_id === 'string' && body.deal_id ? body.deal_id : null
 
   const due = typeof body.due_date === 'string' ? body.due_date : ''
   if (!isRealDate(due)) return NextResponse.json({ error: 'due_date must be a valid YYYY-MM-DD date' }, { status: 400 })
 
   const rawNote = typeof body.note === 'string' ? body.note.trim() : ''
   if (rawNote.length > 500) return NextResponse.json({ error: 'note is too long (500 chars max)' }, { status: 400 })
+  if (!dealId && !rawNote) return NextResponse.json({ error: 'Give the event a name.' }, { status: 400 })
 
   const { data, error } = await supabaseAdmin
     .from('deal_follow_ups')
