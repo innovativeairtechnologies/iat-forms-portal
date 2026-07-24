@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 // Neutralize LIKE/ILIKE wildcards so a value like "%" can't match every row.
 function escapeLike(value: string): string {
@@ -19,6 +20,11 @@ export async function POST(req: NextRequest) {
 
     if (!ticketNumber || !email) {
       return NextResponse.json({ error: 'Ticket number and email are both required.' }, { status: 400 })
+    }
+
+    const recaptcha = await verifyRecaptcha(body.recaptcha_token, 'request_account')
+    if (!recaptcha.ok) {
+      return NextResponse.json({ error: 'Could not verify your request. Please try again.' }, { status: 400 })
     }
 
     // Re-prove ownership exactly like /api/tickets/status.

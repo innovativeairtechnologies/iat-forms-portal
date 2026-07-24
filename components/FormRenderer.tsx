@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Logo from '@/components/Logo'
 import type { Form, FormField } from '@/lib/supabase'
 import { visibleFields, stripHiddenAnswers } from '@/lib/forms'
+import { getRecaptchaToken } from '@/components/use-recaptcha'
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import SelectChipField from './fields/SelectChipField'
 import FileField from './fields/FileField'
@@ -68,10 +69,11 @@ export default function FormRenderer({ form, fields, embedded = false }: Props) 
     setSubmitting(true)
     setSubmitError(null)
     try {
+      const recaptcha_token = await getRecaptchaToken('submit_form')
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ form_id: form.id, data: stripHiddenAnswers(fields, answers) }),
+        body: JSON.stringify({ form_id: form.id, data: stripHiddenAnswers(fields, answers), ...(recaptcha_token ? { recaptcha_token } : {}) }),
       })
       if (!res.ok) throw new Error('Submission failed')
       if (embedded) {

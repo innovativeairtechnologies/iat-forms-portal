@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { anthropic } from '@/lib/anthropic'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 // Reads an equipment nameplate photo and pulls out serial / model / voltage so
 // the customer (often a contractor or 3rd-party tech) doesn't have to transcribe
@@ -28,6 +29,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
+    const recaptcha = await verifyRecaptcha(body.recaptcha_token, 'ocr_label')
+    if (!recaptcha.ok) {
+      return NextResponse.json({ error: 'Could not verify the request. Please enter the details manually.' }, { status: 400 })
+    }
     const img = parseDataUrl(body.image)
     if (!img) {
       return NextResponse.json({ error: 'Send a base64 image data URL (PNG, JPG, or WebP).' }, { status: 400 })

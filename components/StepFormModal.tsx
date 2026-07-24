@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import type { Form, FormField } from '@/lib/supabase'
 import { visibleFields, stripHiddenAnswers } from '@/lib/forms'
+import { getRecaptchaToken } from '@/components/use-recaptcha'
 import SelectChipField from './fields/SelectChipField'
 import FileField from './fields/FileField'
 import SignatureField from './fields/SignatureField'
@@ -362,10 +363,11 @@ export default function StepFormModal({ slug, onClose, serverDrafts = false, res
     if (!validateStep(currentStep) || !form) return
     setSubmitting(true); setSubmitError(null)
     try {
+      const recaptcha_token = await getRecaptchaToken('submit_form')
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ form_id: form.id, data: stripHiddenAnswers(fields, answers) }),
+        body: JSON.stringify({ form_id: form.id, data: stripHiddenAnswers(fields, answers), ...(recaptcha_token ? { recaptcha_token } : {}) }),
       })
       if (!res.ok) throw new Error()
       // submitted → drop the saved draft so it doesn't linger in "Resume"

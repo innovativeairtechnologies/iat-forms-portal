@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { sendSubmissionEmail } from '@/lib/resend'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 import type { Form, FormField, NotificationRule } from '@/lib/supabase'
 import { isFieldVisible } from '@/lib/forms'
 
@@ -50,6 +51,13 @@ export async function POST(req: NextRequest) {
 
     if (!form_id || !data || typeof data !== 'object') {
       return NextResponse.json({ error: 'Missing form_id or data' }, { status: 400 })
+    }
+
+    // reCAPTCHA v3 — this form-fill path is public/anonymous, so gate it with the
+    // bot score. Fails open (no secret / Google outage never blocks a real user).
+    const recaptcha = await verifyRecaptcha(body.recaptcha_token, 'submit_form')
+    if (!recaptcha.ok) {
+      return NextResponse.json({ error: 'Could not verify your submission. Please try again.' }, { status: 400 })
     }
 
     // Fetch form info

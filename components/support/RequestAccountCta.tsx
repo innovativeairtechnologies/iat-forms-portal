@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Loader2, UserPlus, Clock, LogIn } from 'lucide-react'
+import { getRecaptchaToken } from '@/components/use-recaptcha'
 
 type CtaStatus = 'idle' | 'loading' | 'submitted' | 'already_pending' | 'already_linked' | 'error'
 
@@ -31,10 +32,11 @@ export default function RequestAccountCta({
     setStatus('loading')
     setError(null)
     try {
+      const recaptcha_token = await getRecaptchaToken('request_account')
       const res = await fetch('/api/tickets/request-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticket_number: ticketNumber, email }),
+        body: JSON.stringify({ ticket_number: ticketNumber, email, ...(recaptcha_token ? { recaptcha_token } : {}) }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Something went wrong.')

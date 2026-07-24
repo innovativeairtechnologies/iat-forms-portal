@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-24 — reCAPTCHA v3 on all public forms (invisible, frictionless)
+
+Extended the invisible reCAPTCHA v3 (already on the support ticket form) to **every public / anonymous
+submit path**, so bot spam is scored + gated with **zero user friction** — no checkbox, no image
+puzzles. Covered: **`/api/submit`** — the entire dynamic forms engine (PTO, sick, IDP, performance /
+annual review, and every other builder form), via both `StepFormModal` and the embed `FormRenderer`;
+**`/api/tickets/request-account`** (anonymous portal-access requests); and the two public AI POSTs
+reachable from the support wizard — **`/api/ocr-label`** (nameplate OCR) + **`/api/tickets/analyze`**
+(pre-submit tips). Extracted the token logic into a shared **`components/use-recaptcha.ts`**
+(`getRecaptchaToken(action)` — lazy-loads the script, deduped, fail-open), and each route verifies
+server-side via the existing `lib/recaptcha.ts` (score ≥ 0.5 + action match). **Gated forms**
+(logged-in employee PTO, US Rotors, customer portal) were intentionally **skipped** — the login already
+stops bots there. Fails open throughout (a missing key or a Google outage never blocks a real
+submission); `analyze` degrades to empty tips, `ocr-label` to manual entry. This also hardens the open
+"anonymous submissions" surface without dropping the public form-fill path.
+
 ## 2026-07-23 — Admin dashboard is customizable too (executive widgets → cards)
 
 The admin **executive dashboard is now the same per-user customizable card grid** as the department

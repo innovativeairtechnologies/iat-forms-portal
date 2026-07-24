@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
+import { getRecaptchaToken } from '@/components/use-recaptcha'
 import { SampleLabelThumb } from './SampleLabelThumb'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -590,10 +591,11 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
     setAnalyzing(true)
     setAnalyzeError(null)
     try {
+      const recaptcha_token = await getRecaptchaToken('analyze_ticket')
       const res = await fetch('/api/tickets/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, airflow_balanced: form.airflow_balanced === 'unsure' ? null : form.airflow_balanced }),
+        body: JSON.stringify({ ...form, airflow_balanced: form.airflow_balanced === 'unsure' ? null : form.airflow_balanced, ...(recaptcha_token ? { recaptcha_token } : {}) }),
       })
       const json = await res.json()
       setRecommendations(Array.isArray(json.recommendations) ? json.recommendations : [])
@@ -1007,10 +1009,11 @@ function StepEquipment({ form, set }: { form: FormData; set: SetFn }) {
     setScanMsg('')
     try {
       const image = await fileToResizedDataUrl(file)
+      const recaptcha_token = await getRecaptchaToken('ocr_label')
       const res = await fetch('/api/ocr-label', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image }),
+        body: JSON.stringify({ image, ...(recaptcha_token ? { recaptcha_token } : {}) }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Scan failed')
