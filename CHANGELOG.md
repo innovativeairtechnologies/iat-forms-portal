@@ -2,6 +2,34 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-24 — Customer bridge: serve the customer portal without giving it the database
+
+Phase 2 chunk C. The customer portal now lives on its own deployment and its own Supabase
+project (`iat-customer`), so it holds **no credential to this database**. These four endpoints
+under `/api/bridge/*` are the only path between the two systems — everything IAT authors
+(equipment, milestones, tickets, KB) stays here and is served on request:
+
+- `equipment` — the customer's units + milestones + warranty state, computed with the existing
+  `lib/equipment.ts` / `lib/customer.ts` helpers so both portals can never disagree about a
+  warranty date.
+- `tickets` — "My Requests" (tickets + historical troubleshooting intakes), merged and sorted.
+- `kb` — published KB articles for the dashboard rail.
+- `warranty` — file a claim (the first customer→internal write), reproducing the existing route
+  including the one-pending-per-unit idempotency.
+
+Auth is a new `requireBridgeAuth` guard (`lib/bridge-auth.ts`): HMAC-SHA256 over
+timestamp·method·path·body, timing-safe compare, a 5-minute freshness window so a captured
+request can't be replayed, and **fail-closed when `INTERNAL_BRIDGE_SECRET` is unset** (an empty
+secret would otherwise verify every unsigned request). Its own named guard, per the
+one-guard-per-surface convention in `lib/api-auth.ts`.
+
+Every endpoint lists columns explicitly — the internal pages can afford `select('*')` because
+their view mapping runs before the RSC boundary, but a JSON bridge has no such backstop.
+**Security narrowing:** the tickets bridge derives the match email from the customer's own
+record instead of trusting a caller-supplied one, and re-filters results to drop any row linked
+to a different customer. A caller-supplied email would let a compromised customer deployment
+read another company's tickets. Inert until the secret is configured. See `docs/customer-bridge.md`.
+
 ## 2026-07-21 — CRM Calendar: add your own events
 
 Sales can now add calendar items directly instead of relying only on the auto 2-week
