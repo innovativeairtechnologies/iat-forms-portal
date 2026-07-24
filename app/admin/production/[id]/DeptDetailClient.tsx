@@ -99,7 +99,7 @@ export default function DeptDetailClient({ department, projects, tasks, people, 
           </div>
           <button
             onClick={() => setAddingProject(true)}
-            className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink px-4 py-2.5 text-[13px]`}
+            className={`${btnCx} bg-brand hover:bg-brand-hover text-white px-4 py-2.5 text-[13px]`}
           >
             <Plus size={15} />
             New project
@@ -481,7 +481,7 @@ function NewProjectModal({ department, onClose }: { department: ProductionDepart
           <button type="button" onClick={onClose} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
             Cancel
           </button>
-          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-white`}>
             {saving ? 'Creating…' : 'Create project'}
           </button>
         </div>
@@ -560,7 +560,7 @@ function AddStandingModal({
           <button type="button" onClick={onClose} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
             Cancel
           </button>
-          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-white`}>
             {saving ? 'Adding…' : 'Add duty'}
           </button>
         </div>

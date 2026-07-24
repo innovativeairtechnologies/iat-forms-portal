@@ -170,7 +170,7 @@ export default function ProjectDetailClient({ department, project, tasks, people
         {/* ── Tasks ─────────────────────────────────────────────────────────── */}
         <div className="mb-2 flex items-center justify-between px-1">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Tasks</h2>
-          <button onClick={() => setAddingTask(true)} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+          <button onClick={() => setAddingTask(true)} className={`${btnCx} bg-brand hover:bg-brand-hover text-white`}>
             <Plus size={14} />
             Add task
           </button>
@@ -461,7 +461,7 @@ function EditProjectModal({
           <button type="button" onClick={onClose} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
             Cancel
           </button>
-          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-white`}>
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -575,7 +575,7 @@ function TaskModal({
           <button type="button" onClick={onClose} className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}>
             Cancel
           </button>
-          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+          <button type="submit" disabled={saving} className={`${btnCx} bg-brand hover:bg-brand-hover text-white`}>
             {saving ? 'Saving…' : mode === 'add' ? 'Add task' : 'Save'}
           </button>
         </div>

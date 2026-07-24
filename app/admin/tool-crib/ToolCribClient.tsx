@@ -88,7 +88,7 @@ export default function ToolCribClient({ tools, employees }: { tools: CribToolRo
               </Link>
               <button
                 onClick={() => setAdding(true)}
-                className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-brand-ink text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white text-[13px] font-semibold px-4 py-2.5 rounded-lg transition-colors"
               >
                 <Plus size={15} />Add tool
               </button>

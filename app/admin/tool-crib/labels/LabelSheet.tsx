@@ -68,7 +68,7 @@ export default function LabelSheet({ tools, origin }: { tools: LabelTool[]; orig
         <button
           onClick={() => window.print()}
           disabled={chosen.length === 0}
-          className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-brand-ink text-[13px] font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white text-[13px] font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
         >
           <Printer size={14} />Print
         </button>

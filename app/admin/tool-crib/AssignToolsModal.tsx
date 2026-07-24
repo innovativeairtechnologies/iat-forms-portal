@@ -69,7 +69,7 @@ export default function AssignToolsModal({
             </p>
             {done > 0 && who && <p className="text-[13px] text-ink-muted mt-1">to {who}</p>}
             <button onClick={onClose}
-              className="mt-5 px-4 py-2 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors">
+              className="mt-5 px-4 py-2 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors">
               Done
             </button>
           </div>
@@ -114,7 +114,7 @@ export default function AssignToolsModal({
                 Cancel
               </button>
               <button onClick={submit} disabled={busy || !to}
-                className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors disabled:opacity-60">
+                className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors disabled:opacity-60">
                 {busy && <Loader2 size={13} className="animate-spin" />}
                 {busy ? 'Assigning…' : 'Assign'}
               </button>

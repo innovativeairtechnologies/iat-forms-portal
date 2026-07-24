@@ -257,7 +257,7 @@ export default function ToolDetailClient({
                               ? { action: 'transfer', to: target, reason }
                               : { action: 'assign', to: target, reason }
                         )}
-                        className={`${btnCx} bg-brand hover:bg-brand-hover text-brand-ink`}>
+                        className={`${btnCx} bg-brand hover:bg-brand-hover text-white`}>
                         {busy && <Loader2 size={13} className="animate-spin" />}
                         {mode === 'force' ? 'Force return' : mode === 'transfer' ? 'Transfer' : 'Assign'}
                       </button>

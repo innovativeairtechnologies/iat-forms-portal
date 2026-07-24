@@ -181,7 +181,7 @@ export default function ScannerClient() {
             <button
               onClick={start}
               disabled={starting}
-              className="h-12 px-6 flex items-center gap-2 text-[15px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors disabled:opacity-60"
+              className="h-12 px-6 flex items-center gap-2 text-[15px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors disabled:opacity-60"
             >
               {starting ? <Loader2 size={17} className="animate-spin" /> : <Camera size={17} />}
               {starting ? 'Starting…' : camError ? 'Try again' : 'Start camera'}

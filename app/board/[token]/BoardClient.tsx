@@ -420,7 +420,7 @@ function TaskRow({
       <span
         className={[
           'mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-colors',
-          done ? 'border-brand bg-brand text-brand-ink' : 'border-hairline-strong bg-canvas',
+          done ? 'border-brand bg-brand text-white' : 'border-hairline-strong bg-canvas',
           blocked ? 'border-hairline' : '',
         ].join(' ')}
       >
@@ -565,7 +565,7 @@ function WhoModal({
             <button
               type="submit"
               disabled={!typed.trim()}
-              className="flex-shrink-0 rounded-lg bg-brand px-4 text-[13px] font-semibold text-brand-ink transition-colors hover:bg-brand-hover disabled:opacity-50"
+              className="flex-shrink-0 rounded-lg bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-50"
             >
               Continue
             </button>

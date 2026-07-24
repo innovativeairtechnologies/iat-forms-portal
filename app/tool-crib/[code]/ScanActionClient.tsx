@@ -60,7 +60,7 @@ export default function ScanActionClient({
         <p className="text-[13px] text-ink-muted mt-1.5">{tool.name}</p>
         <div className="mt-6 flex flex-col gap-2 max-w-xs mx-auto">
           <Link href="/tool-crib/scan"
-            className="h-12 flex items-center justify-center text-[15px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors">
+            className="h-12 flex items-center justify-center text-[15px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors">
             Scan another
           </Link>
           <Link href="/tool-crib"
@@ -117,13 +117,13 @@ export default function ScanActionClient({
         <div className="mt-5">
           {isMine ? (
             <button onClick={() => act('check_in')} disabled={busy}
-              className="w-full h-14 flex items-center justify-center gap-2 text-[16px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors disabled:opacity-60">
+              className="w-full h-14 flex items-center justify-center gap-2 text-[16px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors disabled:opacity-60">
               {busy ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
               Check it back in
             </button>
           ) : canCheckOut ? (
             <button onClick={() => act('check_out')} disabled={busy}
-              className="w-full h-14 flex items-center justify-center gap-2 text-[16px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors disabled:opacity-60">
+              className="w-full h-14 flex items-center justify-center gap-2 text-[16px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors disabled:opacity-60">
               {busy ? <Loader2 size={18} className="animate-spin" /> : <LogOut size={18} />}
               Check it out
             </button>

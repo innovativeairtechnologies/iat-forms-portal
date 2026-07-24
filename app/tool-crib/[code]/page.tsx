@@ -56,7 +56,7 @@ function NotFound({ raw }: { raw: string }) {
         damaged, type the code by hand.
       </p>
       <Link href="/tool-crib"
-        className="inline-block mt-5 px-4 py-2.5 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors">
+        className="inline-block mt-5 px-4 py-2.5 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors">
         Enter a code
       </Link>
       <div className="max-w-md mx-auto"><LostFoundNote /></div>

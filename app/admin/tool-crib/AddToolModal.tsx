@@ -235,7 +235,7 @@ export default function AddToolModal({ onClose }: { onClose: () => void }) {
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors disabled:opacity-60">
+              className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors disabled:opacity-60">
               {saving && <Loader2 size={13} className="animate-spin" />}
               {saving ? 'Adding…' : 'Add tool'}
             </button>

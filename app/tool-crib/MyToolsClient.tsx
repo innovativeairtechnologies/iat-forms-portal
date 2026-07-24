@@ -39,7 +39,7 @@ export default function MyToolsClient({ mine, badCode }: { mine: CribTool[]; bad
 
       <Link
         href="/tool-crib/scan"
-        className="w-full h-14 flex items-center justify-center gap-2.5 text-[16px] font-semibold bg-brand hover:bg-brand-hover text-brand-ink rounded-lg transition-colors"
+        className="w-full h-14 flex items-center justify-center gap-2.5 text-[16px] font-semibold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors"
       >
         <ScanLine size={19} />
         Scan a tool
