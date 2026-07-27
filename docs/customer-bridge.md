@@ -22,6 +22,38 @@ All are `POST`, all require a valid signature (below).
 | `/api/bridge/tickets` | read | "My Requests" — tickets + historical troubleshooting intakes |
 | `/api/bridge/kb` | read | Published KB articles (no customer scope — already public) |
 | `/api/bridge/warranty` | write | File a warranty claim |
+| `/api/bridge/ticket` | read | One ticket + its **public** reply thread |
+| `/api/bridge/ticket-note` | write | Customer posts a reply (visibility/author_type forced) |
+| `/api/bridge/ticket-resolve` | write | Advisory "mark resolved" — never the staff status enum |
+| `/api/bridge/ticket-contact` | write | Phone + preferred contact method (field-by-field allow-list) |
+| `/api/bridge/ticket-attachment` | write | Signed **upload** into the internal private bucket |
+| `/api/bridge/ticket-attachment-url` | read | Short-lived signed **download** url (public-note check) |
+| `/api/bridge/jerry` | read | Ask Jerry — runs internally, returns only the answer |
+| `/api/bridge/srv-bootstrap` | read | SRV sections + units + prefill + in-flight revision |
+| `/api/bridge/srv-config` | read | Live SRV section content |
+| `/api/bridge/srv-photo` | write | Signed upload for an SRV photo (internal `form-uploads`) |
+| `/api/bridge/srv-submit` | write | Submit/revise an SRV |
+| `/api/bridge/srv-list` | read | This customer's SRVs for "My Requests" |
+
+### Notes on the trickier ones
+
+**Jerry** executes entirely internally and returns only the finished answer. That's the point:
+the Anthropic key, the RAG pool, the `is_internal` exclusion and the competitor scrub never
+leave this deployment. The transcript is shape-validated and capped (12 turns), and the company
+name is looked up here rather than accepted — it goes into the system prompt, so taking it from
+the request would be a prompt-injection seam.
+
+**SRV photos** upload to *this* project's public `form-uploads` bucket, not the customer
+project's. `srv-submit` validates every photo URL with `isOurUpload()`, which requires the
+internal storage host — uploading customer-side would produce URLs submit then rejects. The
+**signature** is not an upload at all: it travels inline as a PNG data URL in the payload and
+gets its own size check.
+
+**Ticket attachments** likewise stay in the internal private bucket. The download endpoint adds
+a check the internal routes don't have: the path must be referenced by a **public** note on that
+ticket. Internally, an owning customer is kept out of an internal-note attachment on their own
+ticket only by the path being unguessable — isolation resting on secrecy. Paths leak, so this
+side verifies membership.
 
 ## Authentication — `lib/bridge-auth.ts`
 

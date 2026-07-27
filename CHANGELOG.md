@@ -2,6 +2,32 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Customer bridge complete: tickets, Jerry, attachments and SRV
+
+Finishes the bridge, so every customer surface now works from the split deployment. Eleven more
+endpoints under `/api/bridge/*`, all reusing the existing internal logic rather than
+reimplementing it:
+
+- **Tickets** — detail + public reply thread, post a reply, advisory mark-resolved, contact
+  prefs. Staff identity is stripped (a public note is "IAT replying"); resolve never touches the
+  staff-owned status enum; contact updates are built field-by-field so a customer can't reach
+  `status` or `owner_id`.
+- **Attachments** — signed upload/download against the internal private bucket. The download
+  endpoint adds a **public-note membership check** the internal routes don't have: today an
+  owning customer is kept out of an internal-note attachment on their own ticket only by the
+  path being unguessable, which is secrecy rather than a check.
+- **Jerry** — runs entirely internally and returns only the finished answer, so the Anthropic
+  key, the RAG pool, the `is_internal` exclusion and the competitor scrub never leave this
+  deployment. The transcript is validated and capped; the company name is looked up here rather
+  than accepted, since it lands in the system prompt.
+- **SRV** — bootstrap (sections + units + prefill + revision in one call, so they can't
+  disagree), live config, photo upload, submit/revise, and list. Photos go to *this* project's
+  `form-uploads` bucket because submit validates them against the internal host.
+
+Ownership is re-checked internally on every call; "not yours" and "doesn't exist" both return
+404 so ids can't be probed. Verified live end-to-end with signed requests, including a
+cross-tenant probe that correctly returns 404. See `docs/customer-bridge.md`.
+
 ## 2026-07-27 — Support flow: light/dark toggle, home link, and a leave-guard
 
 Release polish for the public `/support` customer flow:
@@ -17,6 +43,32 @@ Release polish for the public `/support` customer flow:
 
 reCAPTCHA v3 is fully wired (client + server, fail-open) and activates the moment the
 `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` env vars are set.
+
+## 2026-07-27 — One breadcrumb bar: detail pages fold into the top nav
+
+Clicking into a record (Operations → Equipment → a unit) used to stack a *second* breadcrumb bar
+under the shared `AdminTopBar`: one showing `Operations › Equipment`, another showing
+`Equipment › 26-5875` with the page's Save/Delete/Print buttons. Now there is one bar — the top nav
+reads `Operations › Equipment › 26-5875` (with **Equipment** clickable back to the list) and holds
+the page's actions.
+
+- New `app/admin/PageChrome.tsx` + `app/admin/crumbs.ts` (the `ROUTES`/`crumbsFor` map, lifted out
+  of `AdminTopBar` so both share it). A detail/editor page drops in
+  `<PageChrome record={…}>{actions}</PageChrome>`: the record crumb is fed up into `AdminTopBar`
+  (via context) and the action buttons are portaled into a new `#admin-topbar-actions` slot. On
+  mobile — where `AdminTopBar` is hidden — `PageChrome` renders its own sticky bar (list crumb +
+  record + actions), so **mobile is unchanged**.
+- Migrated all 16 stacked admin bars: the 8 `DetailTopBar` detail pages (submissions, tickets,
+  equipment, employees, customers, troubleshooting, tool crib, forms tally), the production
+  department/project pages, the Presentations and SRV editors, and the four redundant static bars
+  (Permissions, Ask Jerry, Jerry's Brain, Customer Jerry) whose crumb the top bar already showed.
+- `DetailTopBar` stays in `components/admin/detail-ui.tsx` for the customer ticket page, which has no
+  shared top bar and never stacked.
+- Presentations: the editable deck title + Save/Present now live in the one top bar; the breadcrumb
+  reads `Sales › Presentations`.
+
+The `/learn` surface has a similar generic-bar-over-inline-breadcrumb stack; it uses a different
+top-bar mechanism (`PortalTopBar`) and is left for a follow-up.
 
 ## 2026-07-27 — Customer portal provisioning: the split portal can finally have accounts
 
