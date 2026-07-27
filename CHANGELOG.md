@@ -2,6 +2,13 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Favicon: white IAT mark on a deep-pine tile
+
+Added a real browser favicon (`app/icon.png`, auto-detected by Next 15): the white IAT
+logomark centered on a deep-pine (`#0e1a14`) square — the same treatment the logo already
+has on the sidebar. A bare white-on-transparent logo is invisible on light browser tabs, so
+it sits on the tile. The customer portal (`iat-customer`) got the same icon.
+
 ## 2026-07-24 — Sign in with Microsoft (Entra ID SSO) for staff
 
 Staff can now sign in with their `@dehumidifiers.com` Microsoft account from `/login`, beside
