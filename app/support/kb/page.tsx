@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Logo from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import { ArrowRight, BookOpen, ChevronLeft } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
@@ -28,6 +29,7 @@ export default async function KbIndexPage() {
               <span className="text-[15px] font-medium text-gray-500 dark:text-gray-400">Knowledge Base</span>
             </div>
           </Link>
+          <ThemeToggle className="ml-auto" />
         </div>
       </header>
 

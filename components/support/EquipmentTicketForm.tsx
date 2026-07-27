@@ -4,10 +4,12 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Script from 'next/script'
 import Logo from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, CheckCircle, Check, Lightbulb,
-  RotateCcw, Upload, X, Loader2, ImageIcon, Info, Camera, ChevronDown,
+  RotateCcw, Upload, X, Loader2, ImageIcon, Info, Camera, ChevronDown, Home, AlertTriangle,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
@@ -557,6 +559,12 @@ function CustomerEquipmentCard({
 type Stage = 'form' | 'loading' | 'success'
 
 export default function EquipmentTicketForm({ customerContext = null }: { customerContext?: SupportCustomerContext | null }) {
+  // The logo + top-right "Home" link always return to the /support landing. (The
+  // customer portal is on the back burner and isn't part of this release, so we
+  // never route back to /customer from here.)
+  const homeHref = '/support'
+  const router = useRouter()
+  const [confirmLeave, setConfirmLeave] = useState(false)
   const [step, setStep] = useState(1)
   const [dir, setDir] = useState(1)
   const [form, setForm] = useState<FormData>(() => seedForm(customerContext))
@@ -577,6 +585,18 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
   const set = useCallback(<K extends keyof FormData>(key: K, val: FormData[K]) => {
     setForm(f => ({ ...f, [key]: val }))
   }, [])
+
+  // Leaving mid-form (logo or "Home") discards the request, which hasn't been
+  // submitted yet — so warn first, but only when there's actual progress to lose.
+  const hasProgress =
+    step > 1 ||
+    photos.length > 0 ||
+    JSON.stringify(form) !== JSON.stringify(seedForm(customerContext))
+
+  const goHome = useCallback(() => {
+    if (stage === 'form' && hasProgress) setConfirmLeave(true)
+    else router.push(homeHref)
+  }, [stage, hasProgress, router])
 
   // Brand toggle retired (the support form is IAT-only now). Kept for reference if US
   // Rotors support returns:
@@ -729,8 +749,20 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
         <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
-          <Logo size={28} className="flex-shrink-0" />
-          <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
+          <Link href={homeHref} className="group flex items-center gap-3 no-underline">
+            <Logo size={28} className="flex-shrink-0" />
+            <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200 transition-colors group-hover:text-gray-900 dark:group-hover:text-white">IAT Support</span>
+          </Link>
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href={homeHref}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-gray-400 no-underline transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <Home size={15} />
+              <span className="hidden sm:inline">Home</span>
+            </Link>
+            <ThemeToggle />
+          </div>
         </header>
 
         <div className="flex-1 flex items-start justify-center py-12 px-4">
@@ -839,10 +871,23 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
 
       {/* Header */}
       <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
-        <Logo size={28} className="flex-shrink-0" />
-        <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200">IAT Support</span>
+        <button type="button" onClick={goHome} className="group flex items-center gap-3 no-underline">
+          <Logo size={28} className="flex-shrink-0" />
+          <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200 transition-colors group-hover:text-gray-900 dark:group-hover:text-white">IAT Support</span>
+        </button>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>
         <span className="text-[14px] text-gray-400">Submit a Ticket</span>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={goHome}
+            className="flex items-center gap-1.5 text-[13px] font-medium text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <Home size={15} />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
@@ -967,6 +1012,63 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
           Step {step} of {totalSteps}
         </p>
       </div>
+
+      {/* Leave-mid-form guard — nothing is submitted until "Submit Ticket", so a
+          logo/Home click with unsaved progress confirms before discarding it. */}
+      <AnimatePresence>
+        {confirmLeave && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            onClick={() => setConfirmLeave(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              onClick={e => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="leave-title"
+              className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <div className="mb-3 flex items-center gap-3">
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-950/40">
+                  <AlertTriangle size={18} className="text-amber-500" />
+                </span>
+                <h2 id="leave-title" className="text-[16px] font-semibold text-gray-900 dark:text-white">
+                  Leave and lose your answers?
+                </h2>
+              </div>
+              <p className="text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400">
+                Your support request hasn&apos;t been submitted yet. If you leave now, the details
+                you&apos;ve entered won&apos;t be saved.
+              </p>
+              <div className="mt-6 flex items-center justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setConfirmLeave(false); router.push(homeHref) }}
+                  className="rounded-xl px-4 py-2.5 text-[13px] font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                >
+                  Leave anyway
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmLeave(false)}
+                  autoFocus
+                  className="rounded-xl bg-[#089447] px-4 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-[#077a3c]"
+                >
+                  Keep editing
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Logo from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import { LifeBuoy, ArrowRight, Camera, Sparkles, Clock, type LucideIcon } from 'lucide-react'
 
 // A single support avenue for now: the Equipment Support request. This page is
@@ -29,6 +30,7 @@ export default function SupportPortal() {
               <span className="text-[13px] font-medium text-ink-muted">Support</span>
             </div>
           </Link>
+          <ThemeToggle className="ml-auto" />
         </div>
       </header>
 

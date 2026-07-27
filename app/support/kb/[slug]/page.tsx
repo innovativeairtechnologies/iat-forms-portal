@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Logo from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import { ChevronLeft, ArrowRight } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -38,6 +39,7 @@ export default async function KbArticlePage(props: { params: Promise<{ slug: str
               <span className="text-[15px] font-medium text-gray-500 dark:text-gray-400">Knowledge Base</span>
             </div>
           </Link>
+          <ThemeToggle className="ml-auto" />
         </div>
       </header>
 

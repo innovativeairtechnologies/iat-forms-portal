@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Logo from '@/components/Logo'
+import ThemeToggle from '@/components/ThemeToggle'
 import Link from 'next/link'
 import {
   Search, Loader2, CheckCircle, Clock, Wrench, Lightbulb,
@@ -130,6 +131,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
         </Link>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>
         <span className="text-[14px] text-gray-400">Request Status</span>
+        <ThemeToggle className="ml-auto" />
       </header>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
