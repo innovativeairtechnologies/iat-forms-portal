@@ -12,6 +12,12 @@ container to `position: relative` after Tailwind loads, collapsing it to 0 heigh
 container positioning is now inline styles. Also: panel search overflow fix, breadcrumb
 entry, and on-page surfacing of map-engine errors.
 
+Camera behaviour fixed too: clicking a pin used to re-frame the map to the firm's whole
+multi-state footprint (jumping a couple of states away, and zooming *out* because
+`fitBounds` caps at zoom 7). Pin clicks now zoom **in** on the clicked pin, fill clicks
+identify the owner without moving the camera, and re-framing a whole footprint is an
+explicit action ("Show all" in the firm panel, or picking the firm from the list).
+
 Then the Mapline roster was imported (`scripts/import-mapline.mjs`, curated data kept
 out of this public repo): 34 rep firms, 71 territory assignments (incl. real
 county-level for LJ Early: 20 NY counties + Berkshire MA + VT), 54 office pins, all

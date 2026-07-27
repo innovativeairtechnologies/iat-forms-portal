@@ -13,7 +13,7 @@ import { useTheme } from 'next-themes'
 import { Check, PanelRight, X } from 'lucide-react'
 import type { Company, Contact, CompanyLocation, CompanyTerritory } from '@/lib/supabase'
 import { SHARED_FILL, type TerritoryLevel } from '@/lib/territories'
-import type { HoverInfo, MapMode, PinDatum } from './MapCanvas'
+import type { HoverInfo, MapFocus, MapMode, PinDatum } from './MapCanvas'
 import RepPanel from './RepPanel'
 
 const MapCanvas = dynamic(() => import('./MapCanvas'), {
@@ -65,7 +65,7 @@ export default function TerritoriesClient({
   const [placingId, setPlacingId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [focus, setFocus] = useState<{ token: number; codes: Record<TerritoryLevel, string[]>; pins: [number, number][] } | null>(null)
+  const [focus, setFocus] = useState<MapFocus | null>(null)
   const focusToken = useRef(0)
 
   // next-themes hydration guard (AdminSidebar precedent).
@@ -130,7 +130,8 @@ export default function TerritoriesClient({
     [territories, companiesById],
   )
 
-  // Selecting a firm flies the map to its footprint.
+  // Frame a firm's whole footprint — the right move when you PICK a firm from
+  // the list ("show me everything they own").
   const focusFirm = useCallback((id: string) => {
     const codes: Record<TerritoryLevel, string[]> = { state: [], province: [], county: [] }
     for (const t of territories) if (t.company_id === id) codes[t.level].push(t.code)
@@ -139,15 +140,27 @@ export default function TerritoriesClient({
       .map((l) => [l.lng as number, l.lat as number] as [number, number])
     if (codes.state.length + codes.province.length + codes.county.length + firmPins.length === 0) return
     focusToken.current += 1
-    setFocus({ token: focusToken.current, codes, pins: firmPins })
+    setFocus({ token: focusToken.current, kind: 'bounds', codes, pins: firmPins })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [territories, locations])
 
-  const select = useCallback((id: string | null) => {
+  /** Go to one spot and zoom in — used when a specific pin is clicked. */
+  const focusPoint = useCallback((lng: number, lat: number) => {
+    focusToken.current += 1
+    setFocus({ token: focusToken.current, kind: 'point', center: [lng, lat], minZoom: 8 })
+  }, [])
+
+  // `fit` defaults ON for list picks. Map clicks pass fit:false: re-framing to
+  // a multi-state footprint would yank the camera away from the very thing the
+  // user just clicked (and fitBounds' maxZoom would zoom them back OUT).
+  const select = useCallback((id: string | null, opts?: { fit?: boolean }) => {
     setSelectedId(id)
     setMode('view')
     setPlacingId(null)
-    if (id) { focusFirm(id); setPanelOpen(true) }
+    if (id) {
+      setPanelOpen(true)
+      if (opts?.fit !== false) focusFirm(id)
+    }
   }, [focusFirm])
 
   // ── Firm CRUD (alive CRM routes) ────────────────────────────────────────────
@@ -310,10 +323,16 @@ export default function TerritoriesClient({
   const onFeatureClick = useCallback((level: TerritoryLevel, code: string, name: string) => {
     if (mode === 'paint') { toggleTerritory(level, code, name); return }
     const owners = territories.filter((t) => t.level === level && t.code === code)
-    if (owners.length > 0) select(owners[0].company_id)
+    // Identify-only: show the owner in the panel, leave the camera alone.
+    if (owners.length > 0) select(owners[0].company_id, { fit: false })
   }, [mode, toggleTerritory, territories, select])
 
-  const onPinClick = useCallback((companyId: string) => { select(companyId) }, [select])
+  // Clicking a pin zooms to THAT pin — not to its firm's whole footprint.
+  const onPinClick = useCallback((companyId: string, locationId: string) => {
+    select(companyId, { fit: false })
+    const loc = locations.find((l) => l.id === locationId)
+    if (loc?.lat != null && loc?.lng != null) focusPoint(loc.lng, loc.lat)
+  }, [select, locations, focusPoint])
 
   const placingLocation = placingId ? locations.find((l) => l.id === placingId) : null
   const placing = mode === 'place' && placingLocation && placingLocation.lat != null && placingLocation.lng != null
@@ -419,6 +438,7 @@ export default function TerritoriesClient({
             onDeleteLocation={deleteLocation}
             onStartPlace={startPlace}
             onStartPaint={() => setMode('paint')}
+            onFitFirm={focusFirm}
             onRemoveTerritory={removeTerritory}
             onEditExclusivity={editExclusivity}
           />

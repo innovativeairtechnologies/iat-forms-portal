@@ -65,6 +65,13 @@ export type HoverInfo = { title: string; owners: { name: string; color: string |
 
 export type MapMode = 'view' | 'paint' | 'place'
 
+/** A camera request. Bump `token` to (re-)run it.
+ *  'bounds' — frame a firm's whole footprint (picking it from the list).
+ *  'point'  — go TO one spot and zoom IN, never out (clicking a pin). */
+export type MapFocus =
+  | { token: number; kind: 'bounds'; codes: Record<TerritoryLevel, string[]>; pins: [number, number][] }
+  | { token: number; kind: 'point'; center: [number, number]; minZoom?: number }
+
 type Props = {
   dark: boolean
   /** owner colors per territory code, per level (already includes optimistic edits) */
@@ -74,8 +81,7 @@ type Props = {
   paintLevel: 'state' | 'county'
   /** county layer shown when painting counties OR any county assignment exists */
   countiesVisible: boolean
-  /** bump `token` to fit the view to these codes/pins (firm selected) */
-  focus: { token: number; codes: Record<TerritoryLevel, string[]>; pins: [number, number][] } | null
+  focus: MapFocus | null
   /** the location being placed — rendered as a draggable marker */
   placing: { lng: number; lat: number } | null
   lookup: (level: TerritoryLevel, code: string) => HoverInfo | null
@@ -394,7 +400,14 @@ export default function MapCanvas(props: Props) {
           const clusterId = clusterHits[0].properties?.cluster_id as number
           const src = map.getSource('pins') as maplibregl.GeoJSONSource
           src.getClusterExpansionZoom(clusterId).then((zoom) => {
-            map.easeTo({ center: (clusterHits[0].geometry as GeoJSON.Point).coordinates as [number, number], zoom })
+            // Expansion zoom is the exact zoom the cluster splits at, which can
+            // be a barely-visible step; the floor guarantees the click feels
+            // like it did something.
+            map.easeTo({
+              center: (clusterHits[0].geometry as GeoJSON.Point).coordinates as [number, number],
+              zoom: Math.max(zoom, map.getZoom() + 0.75),
+              duration: 600,
+            })
           })
           return
         }
@@ -464,11 +477,18 @@ export default function MapCanvas(props: Props) {
     if (map) map.getCanvas().style.cursor = props.mode === 'place' ? 'crosshair' : ''
   }, [props.mode])
 
-  // Focus → fit the view to a firm's territories + pins.
+  // Focus → move the camera. Point focus zooms IN on one spot (clicking a pin);
+  // bounds focus frames a whole footprint (picking a firm from the list).
   useEffect(() => {
     const map = mapRef.current
     const focus = props.focus
     if (!map || !focus || focus.token === 0) return
+    if (focus.kind === 'point') {
+      // Never zoom OUT to reach a pin the user just clicked — max() keeps the
+      // current zoom when they're already closer than the target.
+      map.easeTo({ center: focus.center, zoom: Math.max(map.getZoom(), focus.minZoom ?? 8), duration: 600 })
+      return
+    }
     const bounds = new maplibregl.LngLatBounds()
     let any = false
     for (const def of GEO_LAYERS) {

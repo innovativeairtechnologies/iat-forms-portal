@@ -74,6 +74,23 @@ companion directory of every rep. Shipped 2026-07-27 (migration 068).
 - **Reps tab** — the flat Mapline-style directory (name, firm, title, email,
   phone) across all firms.
 
+## Camera rules (deliberate — don't "helpfully" refit)
+
+Only ONE gesture re-frames the map to a firm's whole footprint: picking that
+firm from the panel list, or its "Show all" button in the detail view. Map
+clicks never refit:
+
+- **Click a pin** → zooms IN on that pin (`max(currentZoom, 8)`, so it can
+  never zoom out) and selects its firm.
+- **Click a fill** → identify only: names the owner in the panel, camera stays put.
+- **Click a cluster** → expansion zoom, floored at `currentZoom + 0.75` so the
+  click always visibly does something.
+
+This is a fix, not an accident: refitting on pin click threw the camera to the
+centroid of a multi-state footprint (clicking Hoffman & Hoffman's Charlotte
+office jumped two states north), and `fitBounds`' `maxZoom: 7` zoomed the user
+back OUT exactly when they were trying to get closer.
+
 ## Import from Mapline — RAN 2026-07-27
 
 `scripts/import-mapline.mjs <csv> <curated.json> [--apply] [--geocode]` —

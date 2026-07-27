@@ -45,6 +45,9 @@ type Props = {
   onDeleteLocation: (id: string) => void
   onStartPlace: (id: string) => void
   onStartPaint: () => void
+  /** Frame this firm's whole footprint — map clicks no longer do this
+   *  implicitly, so the detail view offers it explicitly. */
+  onFitFirm: (id: string) => void
   onRemoveTerritory: (t: CompanyTerritory) => void
   onEditExclusivity: (t: CompanyTerritory, value: string) => void
 }
@@ -277,7 +280,7 @@ function FirmDetail({
   firm, contacts, locations, territories: firmTerritories,
   canEdit, mode, placingId,
   onSelect, onUpdateFirm, onDeleteFirm, onSetColor, onAddContact, onDeleteContact,
-  onAddLocation, onDeleteLocation, onStartPlace, onStartPaint,
+  onAddLocation, onDeleteLocation, onStartPlace, onStartPaint, onFitFirm,
   onRemoveTerritory, onEditExclusivity,
 }: Props & { firm: Company; contacts: Contact[]; locations: CompanyLocation[]; territories: CompanyTerritory[] }) {
   const [editingMeta, setEditingMeta] = useState(false)
@@ -389,13 +392,24 @@ function FirmDetail({
 
       {/* Territories */}
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className={SECTION_CX}>Territories ({sortedTerritories.length})</p>
-          {canEdit && mode !== 'paint' && (
-            <button className="text-[11.5px] font-medium text-brand hover:underline" onClick={onStartPaint}>
-              Edit on map
-            </button>
-          )}
+          <span className="flex items-center gap-2.5">
+            {sortedTerritories.length > 0 && (
+              <button
+                className="text-[11.5px] font-medium text-ink-muted hover:text-ink transition-colors"
+                title="Zoom the map out to this firm's whole footprint"
+                onClick={() => onFitFirm(firm.id)}
+              >
+                Show all
+              </button>
+            )}
+            {canEdit && mode !== 'paint' && (
+              <button className="text-[11.5px] font-medium text-brand hover:underline" onClick={onStartPaint}>
+                Edit on map
+              </button>
+            )}
+          </span>
         </div>
         {sortedTerritories.length === 0 ? (
           <p className="mt-1.5 text-[12px] text-ink-faint">
