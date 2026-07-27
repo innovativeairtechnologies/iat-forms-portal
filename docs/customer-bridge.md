@@ -89,13 +89,49 @@ Note `warrantyState` returns only `'in' | 'out' | 'unknown'`. **There is no `exp
 the data layer** — "expiring soon" is a presentation rule (`state === 'in' && daysLeft <= 90`)
 applied in the UI on both sides.
 
+## The other direction: provisioning (internal → customer)
+
+Everything above is customer→internal. There is exactly **one** call the other way, and it's
+the only way a login can come to exist in the customer project — there is no self-signup.
+
+`lib/customer-portal.ts` → `provisionCustomerPortalAccount({ op, customerId, ... })` signs a
+request (same contract, same secret) to the customer app's `POST /api/provision`:
+
+| op | Called from | Effect on the customer project |
+| --- | --- | --- |
+| `create` | `/api/admin/customers/invite` | Upserts the company mirror + creates/resets the login with the same temp password the welcome email carries |
+| `deactivate` | `/api/admin/customers/[id]/remove` | Deletes the logins, marks the company inactive |
+| `delete` | `DELETE /api/admin/customers/[id]` | Deletes the logins and the mirror row |
+
+`customerId` is the internal `customers.id`, reused verbatim as the mirror-row id, so both
+systems share one key and can't drift.
+
+**The removal ops are not optional.** Deleting a customer here without deleting their login
+there leaves an orphaned login pointing at a company that no longer exists — exactly the
+`/customer ↔ /login` redirect loop this app already shipped a fix for once.
+
+Provisioning is **best-effort at the call site**: the internal account is already usable by the
+time it runs, so a failure never fails the invite or rolls anything back. But every call site
+records the outcome in the audit log (`customer_portal_provisioned`), and `remove`/`delete`
+return a flag, so a silent divergence between the two systems is always traceable.
+
+### Backfilling existing customers
+
+`node scripts/backfill-customer-portal.mjs [--dry-run] [--all]` walks the customers table and
+provisions each one through the same endpoint — one code path for creating customer logins,
+with the script as a bulk driver. Accounts get a fresh random temp password that is **not**
+emailed: the goal is to get accounts and mirrors in place so the bridge can be exercised, not
+to spray credentials at customers before cutover. At cutover, re-run the invite flow (which
+does email) or have customers use password reset.
+
 ## Configuration
 
 | Variable | Where | Notes |
 | --- | --- | --- |
-| `INTERNAL_BRIDGE_SECRET` | this app | Shared secret. Until it's set, every bridge call returns 503 — the endpoints ship inert. |
-| `INTERNAL_BRIDGE_SECRET` | `iat-customer` | Must match exactly. |
+| `INTERNAL_BRIDGE_SECRET` | this app | Shared secret, used in BOTH directions. Until it's set, every bridge call returns 503 — the endpoints ship inert. |
+| `INTERNAL_BRIDGE_SECRET` | `iat-customer` | Must match exactly. Also gates `/api/provision`. |
 | `INTERNAL_BRIDGE_URL` | `iat-customer` | This app's origin. Until set, the customer app degrades to "temporarily unavailable" cards rather than erroring. |
+| `CUSTOMER_PORTAL_URL` | this app | The customer deployment's origin (e.g. `https://iat-customer.vercel.app`). Until set, provisioning is skipped and logged as `skipped (not configured)` — invites still work internally. |
 
 Generate the secret with something like `openssl rand -hex 32` and set it in **both** Vercel
 projects. It is a credential: never commit it, and rotate by updating both projects together.

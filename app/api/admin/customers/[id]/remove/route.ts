@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
+import { provisionCustomerPortalAccount, provisionSummary } from '@/lib/customer-portal'
 
 // Remove a customer's portal access: delete their login(s) so they can no longer
 // sign in, and mark the account inactive. The company + its equipment records are
@@ -35,14 +36,31 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
 
   await supabaseAdmin.from('customers').update({ status: 'inactive' }).eq('id', id)
 
+  // Revoke on the customer-portal deployment too — it has its own auth, so a
+  // login deleted here still works there until this call runs. "Removed from the
+  // portal" has to mean both portals or it means nothing.
+  const provision = await provisionCustomerPortalAccount({ op: 'deactivate', customerId: id })
+  if (!provision.ok && !provision.skipped) {
+    console.error('[customers/remove] customer-portal deactivation failed:', provision.reason)
+  }
+
   await logAudit({
     actor: { id: admin.user.id, name: admin.displayName },
     action: 'customer.remove',
     entityType: 'customer',
     entityId: id,
     summary: `Removed portal access for ${customer.company_name}`,
-    metadata: { removed_logins: removedLogins },
+    metadata: {
+      removed_logins: removedLogins,
+      customer_portal_provisioned: provisionSummary(provision),
+    },
   })
 
-  return NextResponse.json({ ok: true, removed_logins: removedLogins })
+  return NextResponse.json({
+    ok: true,
+    removed_logins: removedLogins,
+    // Surfaced so the UI can warn rather than silently leaving access live on
+    // the other portal.
+    customer_portal_revoked: provision.ok,
+  })
 }

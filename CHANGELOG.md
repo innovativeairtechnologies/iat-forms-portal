@@ -2,6 +2,34 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Customer portal provisioning: the split portal can finally have accounts
+
+The customer portal has its own Supabase project, so a customer invited here didn't exist
+there — the new portal was a working shell with no way to create a login. This adds the one
+internal→customer write that fixes that, and wires it into the whole customer lifecycle:
+
+- **invite / re-invite** → provisions the login on the customer portal with the *same* temp
+  password the welcome email already carries, so the credentials in that email work on either
+  portal during the dual-run.
+- **remove portal access** → deletes the logins there too. "Removed from the portal" has to mean
+  both portals or it means nothing.
+- **hard delete** → deletes the mirrored login and company row. This is the one that must not be
+  missed: leaving a login whose company no longer exists recreates the orphaned-session
+  redirect loop this app already fixed once.
+
+New `lib/customer-portal.ts` signs the call (same HMAC contract and shared secret as the inbound
+bridge, one secret both directions) and the customer app verifies it in `/api/provision`, which
+fails closed when the secret is unset. Provisioning is best-effort at each call site — the
+internal account is already usable by then, so a failure never fails the invite — but every call
+site records the outcome in the audit log (`customer_portal_provisioned`) and the remove/delete
+routes return a flag, so divergence between the two systems is always traceable.
+
+Also adds `scripts/backfill-customer-portal.mjs` (`--dry-run`, `--all`) to provision existing
+customers through that same endpoint. Backfilled accounts get a fresh temp password that is
+**not** emailed — the point is to get accounts in place so the bridge can be exercised, not to
+send credentials weeks before cutover. Needs the new `CUSTOMER_PORTAL_URL` env var; without it
+provisioning is skipped and logged, and invites keep working exactly as before.
+
 ## 2026-07-27 — Company Home & login: team-feedback fixes
 
 Six fixes from the team's notes, across the Company Home (`/home`) and the login screen:

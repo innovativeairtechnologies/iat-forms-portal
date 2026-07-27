@@ -5,6 +5,7 @@ import { logAudit } from '@/lib/audit'
 import { DEFAULT_MILESTONE_STAGES } from '@/lib/customer'
 import { sendCustomerWelcomeEmail } from '@/lib/resend-customer'
 import { genTempPassword } from '@/lib/temp-password'
+import { provisionCustomerPortalAccount, provisionSummary } from '@/lib/customer-portal'
 
 type InvitePayload = {
   company_name?: string
@@ -195,6 +196,28 @@ export async function POST(req: NextRequest) {
     console.error('[customers/invite] welcome email threw:', e)
   }
 
+  // ── 6c. Mirror the account onto the CUSTOMER PORTAL deployment ─────────────
+  // That portal has its own Supabase project, so the login created above doesn't
+  // exist there. Provision it with the SAME temp password, so whichever portal
+  // the customer opens, the credentials in their welcome email work.
+  //
+  // Best-effort: the internal account is already usable by this point, so a
+  // failure here must not fail the invite or roll anything back — but it IS
+  // recorded in the audit metadata below, because a silent divergence between
+  // the two systems is exactly the kind of thing nobody notices until a customer
+  // can't log in.
+  const provision = await provisionCustomerPortalAccount({
+    op: 'create',
+    customerId: customerId!,
+    email: contactEmail,
+    companyName,
+    displayName: contactName,
+    tempPassword,
+  })
+  if (!provision.ok && !provision.skipped) {
+    console.error('[customers/invite] customer-portal provisioning failed:', provision.reason)
+  }
+
   // ── 6b. Mark the originating portal-access request approved ────────────────
   if (body.link_request_id) {
     await supabaseAdmin
@@ -223,6 +246,7 @@ export async function POST(req: NextRequest) {
       linked_ticket_id: body.link_ticket_id ?? null,
       backfilled_ticket_count: backfilledTicketCount,
       approved_request_id: body.link_request_id ?? null,
+      customer_portal_provisioned: provisionSummary(provision),
     },
   })
 

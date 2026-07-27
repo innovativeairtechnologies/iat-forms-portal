@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
+import { provisionCustomerPortalAccount, provisionSummary } from '@/lib/customer-portal'
 
 // Permanently delete a customer company AND its portal logins. This is distinct
 // from POST .../remove, which only revokes access and keeps the record. Deleting
@@ -44,14 +45,29 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   // Safety net for any profile rows that didn't cascade with the auth user.
   if (loginIds.length) await supabaseAdmin.from('profiles').delete().in('id', loginIds)
 
+  // Delete the mirrored account on the customer-portal deployment. This is the
+  // call that must not be missed: leaving a login there whose company row is gone
+  // recreates the orphaned-session redirect loop this app already fixed once.
+  const provision = await provisionCustomerPortalAccount({ op: 'delete', customerId: id })
+  if (!provision.ok && !provision.skipped) {
+    console.error('[customers/delete] customer-portal deletion failed:', provision.reason)
+  }
+
   await logAudit({
     actor: { id: admin.user.id, name: admin.displayName },
     action: 'customer.delete',
     entityType: 'customer',
     entityId: id,
     summary: `Deleted customer ${customer.company_name}`,
-    metadata: { removed_logins: removedLogins },
+    metadata: {
+      removed_logins: removedLogins,
+      customer_portal_provisioned: provisionSummary(provision),
+    },
   })
 
-  return NextResponse.json({ success: true, removed_logins: removedLogins })
+  return NextResponse.json({
+    success: true,
+    removed_logins: removedLogins,
+    customer_portal_deleted: provision.ok,
+  })
 }
