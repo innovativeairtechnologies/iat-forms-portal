@@ -74,6 +74,20 @@ companion directory of every rep. Shipped 2026-07-27 (migration 068).
 - **Reps tab** — the flat Mapline-style directory (name, firm, title, email,
   phone) across all firms.
 
+## Panel scroll — the side panel MUST stay `absolute inset-0`
+
+The admin shell root is `min-h-screen` (growable, no fixed-height anchor). Any
+flow content taller than the viewport grows that root and the WHOLE PAGE
+scrolls — `min-h-0` / `overflow-hidden` caps do **not** stop it (verified
+against the real compiled Tailwind: caps left the page at 2064px; only this fix
+bounded it to the viewport). The map canvas avoids the problem because it's
+`absolute inset-0` (zero intrinsic height) — the same trick the org chart uses.
+So the rep panel does the same: the `<aside>` is a POSITIONED box (absolute on
+mobile, `md:relative` on desktop) and `RepPanel`'s root is `absolute inset-0`.
+Its tall firm/rep list is out of flow, can't grow the page, and scrolls inside
+its own `overflow-y-auto` region. Do not "simplify" RepPanel back to a
+flow `h-full` container — that reintroduces the whole-page scroll.
+
 ## Camera rules (deliberate — don't "helpfully" refit)
 
 Only ONE gesture re-frames the map to a firm's whole footprint: picking that

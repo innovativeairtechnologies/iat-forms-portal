@@ -55,6 +55,12 @@ container to `position: relative` after Tailwind loads, collapsing it to 0 heigh
 container positioning is now inline styles. Also: panel search overflow fix, breadcrumb
 entry, and on-page surfacing of map-engine errors.
 
+Panel scrolling fixed: the rep list is tall, and the admin shell root grows with
+content (`min-h-screen`), so scrolling the list scrolled the whole page (map and all)
+instead of just the list. The panel now renders out of page flow (`absolute inset-0`
+inside a positioned `<aside>`, the same technique the map canvas uses) so it scrolls
+internally and the page stays put.
+
 Camera behaviour fixed too: clicking a pin used to re-frame the map to the firm's whole
 multi-state footprint (jumping a couple of states away, and zooming *out* because
 `fitBounds` caps at zoom 7). Pin clicks now zoom **in** on the clicked pin, fill clicks

@@ -106,7 +106,9 @@ export default function RepPanel(props: Props) {
   }, [contacts, companies, search])
 
   return (
-    <div className="h-full flex flex-col bg-surface">
+    // absolute inset-0 (parent <aside> is positioned): keeps the tall list out
+    // of page flow so it scrolls internally instead of growing the whole page.
+    <div className="absolute inset-0 flex flex-col bg-surface">
       {/* Header */}
       <div className="flex-shrink-0 px-4 pt-4 pb-0 border-b border-hairline">
         <div className="flex items-center justify-between gap-2 mb-3">

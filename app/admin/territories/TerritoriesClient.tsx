@@ -414,9 +414,16 @@ export default function TerritoriesClient({
         </button>
       </div>
 
-      {/* Side panel — overlays on small screens, docks from md up */}
+      {/* Side panel — overlays on small screens, docks from md up. It's a
+          POSITIONED box (absolute on mobile, relative on desktop) with RepPanel
+          filling it via `absolute inset-0`, so the panel's tall list is taken
+          out of flow and can't grow the page — exactly how the map canvas and
+          the org chart avoid growing their column. A plain flow panel here
+          grows the min-h-screen root past the viewport, and the whole page
+          scrolls instead of just the list (verified against the real
+          compiled CSS — see docs/territory-map.md "Panel scroll"). */}
       {panelOpen && (
-        <aside className="absolute md:static inset-y-0 right-0 z-20 w-full sm:w-[380px] md:w-[380px] flex-shrink-0 border-l border-hairline bg-surface flex flex-col">
+        <aside className="absolute md:relative inset-y-0 right-0 z-20 w-full sm:w-[380px] md:w-[380px] flex-shrink-0 border-l border-hairline bg-surface">
           <RepPanel
             companies={companies}
             contacts={contacts}
