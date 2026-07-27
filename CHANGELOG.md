@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Support flow: light/dark toggle, home link, and a leave-guard
+
+Release polish for the public `/support` customer flow:
+
+- **Light/dark toggle** (Sun/Moon) now sits top-right on every customer-facing support
+  screen — the landing, the ticket form, status lookup, and the KB index + articles. It
+  reuses the shared `ThemeToggle`; default still follows the visitor's OS setting.
+- **Home access**: the IAT logo in the support form header (and a new top-right *Home*
+  control) return to `/support`. The customer portal (`/customer`) is back-burnered and
+  out of this release, so the support flow never routes there.
+- **Leave-guard**: navigating away mid-form now confirms first ("Leave and lose your
+  answers?") when there's unsaved progress — nothing is stored until *Submit Ticket*.
+
+reCAPTCHA v3 is fully wired (client + server, fail-open) and activates the moment the
+`NEXT_PUBLIC_RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` env vars are set.
+
 ## 2026-07-27 — Customer portal provisioning: the split portal can finally have accounts
 
 The customer portal has its own Supabase project, so a customer invited here didn't exist
