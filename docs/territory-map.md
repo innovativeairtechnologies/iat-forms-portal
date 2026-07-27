@@ -74,13 +74,32 @@ companion directory of every rep. Shipped 2026-07-27 (migration 068).
 - **Reps tab** — the flat Mapline-style directory (name, firm, title, email,
   phone) across all firms.
 
-## Import from Mapline (phase 2)
+## Import from Mapline — RAN 2026-07-27
 
-`scripts/import-mapline.mts` (to be written when Jacob provides the Mapline
-CSV/XLSX export): SheetJS parse → find-or-create firms via
-`lib/crm-normalize.ts` → upsert contacts → map territory names to codes →
-create unplaced locations. `--dry-run` first. Personal-sensitive columns are
-skipped until approved.
+`scripts/import-mapline.mjs <csv> <curated.json> [--apply] [--geocode]` —
+dry-run by default. Imported 34 firms / 71 territory assignments / 54 pins
+(all geocoded city-level via Nominatim, 1 req/s; street addresses are stored
+but never sent to the geocoder). The script is generic and committed; the CSV
+and the curated JSON (firm renames, note overrides, territory assignments
+hand-derived from the sheet's free-text notes) are business data and stay OUT
+of this public repo. Idempotent — re-running with a fuller export only adds.
+
+Import decisions of record:
+- "Hoffman & Hoffamn" typo folded into Hoffman & Hoffman; ~14 Mid South
+  duplicate rows deduped to its 3 real offices.
+- The two "Norman S. Wright (…)" firms were renamed without parentheses —
+  `normalizeCompany()` strips trailing parentheticals, so they'd have
+  collided into one company.
+- "Trane" imported as **Trane Canada** so it can never collide with a Trane
+  customer/prospect record in the CRM.
+- LJ Early Company got real county-level assignments (20 NY counties +
+  Berkshire MA + all of VT) from its notes.
+- Sub-state notes ("Northern Illinois", "East Michigan"…) became state-level
+  assignments with the detail preserved in the exclusivity text — county-level
+  carve-outs can be painted later in the UI.
+- One personal cell/email (AMZ note) was withheld per the sensitive-data
+  decision; no rep-person contacts were in the sheet, so the Reps tab starts
+  empty.
 
 ## Files
 

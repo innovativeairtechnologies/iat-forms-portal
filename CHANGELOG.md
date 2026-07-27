@@ -2,6 +2,22 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Territory Map: rendering fixes + Mapline data import
+
+Two silent-blank-map bugs fixed post-launch: (1) maplibre v6's render worker never
+loaded under webpack (`import.meta.url` inlined as a build-machine `file:///` path) —
+the worker is now vendored into `public/maplibre/` and pinned via `setWorkerUrl`
+(`scripts/sync-maplibre-worker.mjs`, prebuild); (2) maplibre's own CSS flips the map
+container to `position: relative` after Tailwind loads, collapsing it to 0 height —
+container positioning is now inline styles. Also: panel search overflow fix, breadcrumb
+entry, and on-page surfacing of map-engine errors.
+
+Then the Mapline roster was imported (`scripts/import-mapline.mjs`, curated data kept
+out of this public repo): 34 rep firms, 71 territory assignments (incl. real
+county-level for LJ Early: 20 NY counties + Berkshire MA + VT), 54 office pins, all
+geocoded city-level. Personal contact details deliberately withheld. See
+[docs/territory-map.md](docs/territory-map.md).
+
 ## 2026-07-27 — Territory Map: rep firms & territories on a live map (replaces Mapline)
 
 New `/admin/territories` (Sales → Territories): an interactive US + Canada map — real
