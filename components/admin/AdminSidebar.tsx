@@ -86,6 +86,9 @@ const NAV_PARENTS: NavParent[] = [
       // Performance — the DryWare "projected sales" mirror + sync (059). Shares
       // the `deals` perm (Sales + admin); the sync also refreshes the CRM deals.
       { href: '/admin/projected-sales', label: 'Performance', perm: 'deals' },
+      // Territory map (068) — which rep firm owns which state/county, on a live
+      // map. Shares the `deals` perm like Performance above.
+      { href: '/admin/territories', label: 'Territories', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
       { href: '/admin/presentations', label: 'Presentations', perm: 'presentations' },
     ],

@@ -462,6 +462,9 @@ export type Company = {
   phone: string | null
   location: string | null
   notes: string | null
+  /** Territory-map fill color (068) — a lib/territories.ts MAP_PALETTE hex,
+   *  auto-assigned on first territory. NULL renders the neutral slate. */
+  map_color: string | null
   created_at: string
   updated_at: string
 }
@@ -475,6 +478,42 @@ export type Contact = {
   title: string | null
   email: string | null
   phone: string | null
+  is_primary: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// A territory assignment on the rep map (company_territories, migration 068).
+// code is a USPS state code ('TX'), Canadian province code ('ON'), or 5-digit
+// county FIPS. Overlap between firms is allowed — exclusivity carries the
+// per-assignment arrangement detail ("yes, for food and bev").
+export type CompanyTerritory = {
+  id: string
+  company_id: string
+  level: 'state' | 'province' | 'county'
+  code: string
+  exclusivity: string | null
+  created_at: string
+}
+
+// A pin on the rep map (company_locations, migration 068). lat/lng are real
+// numbers via PostgREST (double precision — only `numeric` arrives as string);
+// NULL lat/lng = not yet placed (pins are click-to-place, no geocoder).
+// contact_id is the seam for deferred per-rep pins; address fields stay
+// nullable until the sensitive-fields import is approved.
+export type CompanyLocation = {
+  id: string
+  company_id: string
+  contact_id: string | null
+  label: string | null
+  address: string | null
+  city: string | null
+  region: string | null
+  postal: string | null
+  country: 'US' | 'CA'
+  lat: number | null
+  lng: number | null
   is_primary: boolean
   notes: string | null
   created_at: string

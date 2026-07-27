@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
-  MessageCircle, KeyRound, Wrench,
+  MessageCircle, KeyRound, Wrench, Map as MapIcon,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -45,6 +45,7 @@ const STATIC: Item[] = [
   { id: 'nav-srv',     label: 'SRV Form',         group: 'Go to', icon: FileCheck2,      href: '/admin/srv', keywords: 'start-up readiness verification checklist edit content', perm: 'srv' },
   { id: 'nav-deals',   label: 'CRM',              group: 'Go to', icon: DollarSign,      href: '/admin/deals', keywords: 'pipeline crm forecast sales opportunities deals board', perm: 'deals' },
   { id: 'nav-perf',    label: 'Performance',      group: 'Go to', icon: DollarSign,      href: '/admin/projected-sales', keywords: 'projected sales dryware forecast pipeline performance', perm: 'deals' },
+  { id: 'nav-terr',    label: 'Territories',      group: 'Go to', icon: MapIcon,         href: '/admin/territories', keywords: 'map reps rep firms sales regions states counties territory mapline', perm: 'deals' },
   // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
   // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series', perm: 'us_rotors' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },

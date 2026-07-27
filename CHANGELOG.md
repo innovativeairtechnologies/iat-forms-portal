@@ -2,6 +2,26 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Territory Map: rep firms & territories on a live map (replaces Mapline)
+
+New `/admin/territories` (Sales → Territories): an interactive US + Canada map — real
+street-level basemap (MapLibre + OpenFreeMap, free, no API key) — where Sales tracks which
+rep firm owns which state, province, or **county**, with clustered pins at rep locations and
+a flat Reps directory. Replaces the $1,700/yr Mapline subscription.
+
+- Built on the dormant CRM layer (062): firms are `companies` (`kind='rep_firm'`), reps are
+  `contacts`. Migration 068 adds `company_territories` (overlap allowed, per-assignment
+  `exclusivity` note), `company_locations` (pins; click-to-place + drag, no geocoder), and
+  `companies.map_color` (curated palette, auto-assigned).
+- Access shares the `deals` perm (no new seed); **editing is admin + sales roles only**
+  (`requireTerritoryAuth({ write: true })`). All writes audit-logged (`territory.*`).
+- Boundaries are committed public-domain TopoJSON (`public/geo/`, `scripts/build-geo.mjs`);
+  counties (~1.7MB) lazy-load on first use. Dark mode swaps to OpenFreeMap's dark style.
+- Sensitive personal rep data (home addresses, personal phone/email) deliberately not
+  imported yet; the Mapline roster import lands as a phase-2 script.
+
+See [docs/territory-map.md](docs/territory-map.md).
+
 ## 2026-07-27 — Favicon: white IAT mark on a deep-pine tile
 
 Added a real browser favicon (`app/icon.png`, auto-detected by Next 15): the white IAT

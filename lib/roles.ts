@@ -295,6 +295,10 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // perm (Sales + admin) so it needs no new permission key or role_permissions
   // seed. Distinct prefix from /admin/deals, so longest-match keeps them separate.
   { prefix: '/admin/projected-sales', perm: 'deals' },
+  // Territory map (068) — rep firms, territories and pins. Shares `deals` like
+  // projected-sales above (same Sales + admin audience, no new perm to seed);
+  // writes are further restricted to admin/sales in requireTerritoryAuth.
+  { prefix: '/admin/territories', perm: 'deals' },
   { prefix: '/admin/gantt', perm: 'gantt' },
   { prefix: '/admin/org-chart', perm: 'org_chart' },
   { prefix: '/admin/forms', perm: 'forms' },

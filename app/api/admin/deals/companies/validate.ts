@@ -3,6 +3,8 @@
 // admits every sales-role session as a plain API), so shapes are enforced here
 // with clean 400s instead of raw Postgres errors.
 
+import { isMapColor } from '@/lib/territories'
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export const COMPANY_KINDS = ['prospect', 'customer', 'rep_firm', 'other'] as const
@@ -38,6 +40,12 @@ export function sanitizeCompanyField(field: string, raw: unknown): { value?: unk
     case 'customer_id': {
       if (raw === null || raw === '') return { value: null }
       if (typeof raw !== 'string' || !UUID_RE.test(raw)) return { error: 'customer_id must be a uuid or null' }
+      return { value: raw }
+    }
+    case 'map_color': {
+      // Territory-map fill (068) — must be a palette swatch, never free hex.
+      if (raw === null || raw === '') return { value: null }
+      if (!isMapColor(raw)) return { error: 'map_color must be one of the territory palette colors' }
       return { value: raw }
     }
     default: {

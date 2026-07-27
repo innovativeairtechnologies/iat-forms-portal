@@ -111,6 +111,41 @@ export async function requireCrmAuth(): Promise<NextResponse | null> {
 }
 
 /**
+ * Guard for the territory-map API (company_territories / company_locations,
+ * migration 068). Keyed on the SAME `deals` permission as the pipeline/CRM —
+ * same trust boundary and audience — so there's no new permission to seed; its
+ * own named guard per requireDealsAuth's note, so it can be split onto a
+ * dedicated `territories` perm later by changing one line here plus the
+ * ADMIN_PATH_PERMS entry.
+ *
+ * Writes ({ write: true }) additionally require the admin or sales ROLE — the
+ * user decision for this feature is "admin and sales only" edit the map, so a
+ * scoped role that's merely been granted `deals` in /admin/permissions can view
+ * the page but not mutate territories or pins.
+ */
+export async function requireTerritoryAuth(opts: { write?: boolean } = {}): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'deals', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (opts.write && role !== 'admin' && role !== 'sales') {
+    return NextResponse.json({ error: 'Only admin and sales can edit the territory map.' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * Manage guard for the Tool Crib admin routes (registry writes, force check-in,
  * custody transfer, labels). Matrix-backed like requireDealsAuth — that one's
  * doc comment says to add a similarly-scoped, similarly-named guard rather than

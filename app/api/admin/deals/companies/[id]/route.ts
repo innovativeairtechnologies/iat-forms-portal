@@ -6,7 +6,7 @@ import { logAudit } from '@/lib/audit'
 import { normalizeCompany } from '@/lib/crm-normalize'
 import { sanitizeCompanyField } from '../validate'
 
-const EDITABLE_FIELDS = ['name', 'kind', 'customer_id', 'domain', 'website', 'phone', 'location', 'notes'] as const
+const EDITABLE_FIELDS = ['name', 'kind', 'customer_id', 'domain', 'website', 'phone', 'location', 'notes', 'map_color'] as const
 
 // PATCH a company. Renaming CASCADES to every linked deal's `customer` display
 // cache — that column is derived once company_id is set (see ../../[id]/route.ts),
