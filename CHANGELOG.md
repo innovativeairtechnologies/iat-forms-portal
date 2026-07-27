@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Housekeeping: Presentations → Internal Apps; typeface → Nunito Sans
+
+Two small cleanups:
+
+**Presentations left the Sales nav group.** It's now the first entry on the
+**Internal Apps** launcher (`/admin/tools`) — an in-app link (not a new-tab HTML
+app), gated by the `presentations` perm so a `tools`-only user never sees a dead
+link. The shared employee tools list (`/employee/resources/tools`) is unchanged.
+No perm/migration change: `presentations` already existed and `/admin/presentations`
+stays gated as before.
+
+**Portal typeface is now Nunito Sans** (was Inter) — a geometric-humanist sans used
+as a freely-licensable stand-in for Avenir. Swapped centrally: the `next/font` import
+(`app/layout.tsx`, now exposed as `--font-sans`), the Tailwind `sans` stack, the
+`globals.css` body, and the embedded-form layout (`/forms/[slug]/embed`). Same weights,
+sizes, and tokens — only the letterforms change. Transactional email templates still name
+Inter in their fallback stack (mail clients render Arial regardless, so it's a no-op there).
+
 ## 2026-07-27 — Territory Map: rendering fixes + Mapline data import
 
 Two silent-blank-map bugs fixed post-launch: (1) maplibre v6's render worker never

@@ -48,7 +48,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Nunito Sans', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '8px',

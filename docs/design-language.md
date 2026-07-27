@@ -4,7 +4,7 @@
 > (semantic tokens, type scale, component recipes, dark-mode surface ladder, migration plan)
 > lives in `DESIGN.md` at the IAT-Portal workspace root, with the always-on rules mirrored in
 > the workspace `CLAUDE.md`. Phase 0 (token layer: CSS variables in `app/globals.css`,
-> semantic Tailwind colors `canvas/surface/hairline/ink/brand`, Inter via `next/font`,
+> semantic Tailwind colors `canvas/surface/hairline/ink/brand`, the portal typeface via `next/font`,
 > indigo-override + green-theme dead code removed) shipped 2026-07-07. New/edited components
 > use the semantic tokens — raw `gray-*`/`zinc-*`/`slate-*` and hex literals are banned.
 > The principles below predate that doc and still hold; DESIGN.md is the token-level authority.

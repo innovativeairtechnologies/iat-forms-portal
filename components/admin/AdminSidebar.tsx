@@ -90,7 +90,8 @@ const NAV_PARENTS: NavParent[] = [
       // map. Shares the `deals` perm like Performance above.
       { href: '/admin/territories', label: 'Territories', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
-      { href: '/admin/presentations', label: 'Presentations', perm: 'presentations' },
+      // Presentations moved out of Sales — it now lives on the Internal Apps
+      // launcher (/admin/tools), perm-gated by `presentations` there.
     ],
   },
   {

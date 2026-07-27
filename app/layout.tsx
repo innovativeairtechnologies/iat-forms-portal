@@ -1,12 +1,15 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Nunito_Sans } from 'next/font/google'
 import './globals.css'
 import ThemeProvider from '@/components/ThemeProvider'
 
-const inter = Inter({
+// Portal typeface — Nunito Sans, the geometric-humanist sans we use as a freely
+// licensable stand-in for Avenir (Avenir itself isn't web-embeddable). Exposed as
+// --font-sans; the Tailwind `sans` stack and globals.css body both read it.
+const nunitoSans = Nunito_Sans({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-sans',
 })
 
 export const metadata: Metadata = {
@@ -16,7 +19,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html lang="en" suppressHydrationWarning className={nunitoSans.variable}>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
