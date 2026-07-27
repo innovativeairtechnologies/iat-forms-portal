@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import {
-  Newspaper, CalendarDays, Users, Briefcase, Cake, Compass,
+  Newspaper, CalendarDays, Users, Briefcase, Cake,
   ShieldCheck, ArrowRight, Gift, PartyPopper,
   CalendarClock, FileText, Network, Wrench, GraduationCap,
 } from 'lucide-react'
@@ -12,6 +12,10 @@ import { StatusPill, type Tone } from '@/components/admin/list'
 import { PersonAvatar } from './home-ui'
 import { FunFact } from './FunFact'
 import { HomeTopBar } from './HomeTopBar'
+import { CoreValuesBand, HolidaysModal, OpenHolidays } from './home-modals'
+
+// IAT careers page — the "open roles" boxes link out here (item: open roles → website).
+const JOBS_URL = 'https://www.dehumidifiers.com/jobs'
 
 /* ════════════════════════════════════════════════════════════════════════════
    COMPANY HOME — "The Lobby" (compact dashboard)
@@ -175,6 +179,15 @@ export function HomeContent({
   const [lead, ...restNews] = data.news
   const outCount = data.whosOut.length
 
+  // Display rows for the "all holidays" modal (labels computed server-side so the
+  // relative "in N days" stays consistent with the KPI's).
+  const holidayRows = data.holidays.map((h, i) => ({
+    name: h.name,
+    dateLabel: h.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+    relLabel: daysUntil(h.date),
+    isNext: i === 0,
+  }))
+
   return (
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-[#FAF6EF] text-stone-700 dark:bg-[#0c0b0a] dark:text-stone-300">
 
@@ -250,15 +263,26 @@ export function HomeContent({
             </div>
           </section>
 
+          {/* ── Core value of the week — slim band, clickable → all values ──── */}
+          <CoreValuesBand current={coreValue} index={coreValueIndex} total={coreValueTotal} />
+
+          {/* Shared "all holidays" modal — opened from the holiday boxes below. */}
+          <HolidaysModal holidays={holidayRows} />
+
           {/* ── Company at a glance ───────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <Kpi icon={<Users size={15} />} label="Teammates" value={data.headcount} sub="Active on the team" />
             <Kpi icon={<ShieldCheck size={15} />} label="Days incident-free" value={daysIncidentFree}
               sub={<span className="font-medium text-emerald-600 dark:text-emerald-400">Shop-floor safety streak</span>} />
-            <Kpi icon={<Briefcase size={15} />} label="Open roles" value={data.openings.length} sub="Hiring now" />
-            <Kpi icon={<CalendarDays size={15} />} label="Next holiday" valueClassName="text-[17px]"
-              value={nh ? nh.name : '—'}
-              sub={nh ? `${nh.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${daysUntil(nh.date)}` : 'None scheduled'} />
+            <a href={JOBS_URL} target="_blank" rel="noreferrer" title="See all open roles on dehumidifiers.com"
+              className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40">
+              <Kpi icon={<Briefcase size={15} />} label="Open roles" value={data.openings.length} sub="Hiring now · view all →" />
+            </a>
+            <OpenHolidays title="See all upcoming holidays">
+              <Kpi icon={<CalendarDays size={15} />} label="Next holiday" valueClassName="text-[17px]"
+                value={nh ? nh.name : '—'}
+                sub={nh ? `${nh.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${daysUntil(nh.date)}` : 'None scheduled'} />
+            </OpenHolidays>
           </div>
 
           {/* ── Company News + This Week ──────────────────────────────────── */}
@@ -303,7 +327,10 @@ export function HomeContent({
             <Card>
               <CardHead icon={<CalendarDays size={14} />} title="This Week" />
               {nh && (
-                <div className="mx-3.5 mt-3 flex items-center gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50 px-3.5 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                <OpenHolidays
+                  title="See all upcoming holidays"
+                  className="mx-3.5 mt-3 flex items-center gap-3 border border-emerald-200/70 bg-emerald-50 px-3.5 py-2.5 transition-colors hover:bg-emerald-100/70 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/[0.14]"
+                >
                   <PartyPopper size={16} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <div className="min-w-0">
                     <p className="truncate text-[12.5px] font-semibold text-stone-900 dark:text-white">{nh.name}</p>
@@ -311,7 +338,8 @@ export function HomeContent({
                       {nh.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {daysUntil(nh.date)}
                     </p>
                   </div>
-                </div>
+                  <span className="ml-auto flex-shrink-0 text-[11px] font-semibold text-emerald-700/70 dark:text-emerald-400/70">See all →</span>
+                </OpenHolidays>
               )}
               <ul className="mt-2 divide-y divide-stone-100 dark:divide-stone-800/50">
                 {data.events.slice(0, 3).map((e) => {
@@ -398,7 +426,12 @@ export function HomeContent({
 
             <Card>
               <CardHead icon={<Briefcase size={14} />} title="Open Positions"
-                right={<span className="text-[11.5px] tabular-nums text-stone-400 dark:text-stone-500">{data.openings.length} open</span>} />
+                right={
+                  <a href={JOBS_URL} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[11.5px] font-semibold tabular-nums text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400">
+                    {data.openings.length} open <ArrowRight size={12} />
+                  </a>
+                } />
               <ul className="divide-y divide-stone-100 dark:divide-stone-800/50">
                 {data.openings.slice(0, 3).map((o) => (
                   <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-2">
@@ -406,7 +439,7 @@ export function HomeContent({
                       {o.applyUrl ? (
                         <a href={o.applyUrl} className="truncate text-[12.5px] font-semibold text-stone-800 hover:text-emerald-600 dark:text-stone-100 dark:hover:text-emerald-400">{o.title}</a>
                       ) : (
-                        <p className="truncate text-[12.5px] font-semibold text-stone-800 dark:text-stone-100">{o.title}</p>
+                        <a href={JOBS_URL} target="_blank" rel="noreferrer" className="truncate text-[12.5px] font-semibold text-stone-800 hover:text-emerald-600 dark:text-stone-100 dark:hover:text-emerald-400">{o.title}</a>
                       )}
                       {(o.department || o.employmentType) && (
                         <p className="truncate text-[11px] text-stone-400 dark:text-stone-500">{[o.department, o.employmentType].filter(Boolean).join(' · ')}</p>
@@ -424,22 +457,6 @@ export function HomeContent({
               </div>
             </Card>
           </div>
-
-          {/* ── Core value of the week — slim band ────────────────────────── */}
-          <section className="rounded-xl border border-emerald-200/60 bg-emerald-50/60 px-5 py-3.5 dark:border-emerald-500/20 dark:bg-emerald-500/[0.06]">
-            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex flex-shrink-0 items-center gap-2">
-                <Compass size={15} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Core value · this week</span>
-              </div>
-              <p className="min-w-0 text-[13px] leading-relaxed text-stone-700 dark:text-stone-200">
-                <span className="font-bold text-stone-900 dark:text-white">{coreValue.title}</span> — {coreValue.body}
-              </p>
-              <span className="ml-auto hidden flex-shrink-0 text-[11px] tabular-nums text-emerald-700/70 dark:text-emerald-400/70 sm:block">
-                {coreValueIndex + 1} of {coreValueTotal}
-              </span>
-            </div>
-          </section>
 
         </div>
       </div>

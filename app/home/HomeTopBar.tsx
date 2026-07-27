@@ -26,16 +26,21 @@ export function HomeTopBar({ name, profileHref, unreadCount = 0, ticketCount = 0
 
   return (
     <>
-      <div className="hidden md:flex flex-shrink-0 items-center gap-1.5 px-5 h-14 border-b border-stone-200/80 bg-[#FAF6EF]/90 backdrop-blur dark:border-stone-800 dark:bg-[#0c0b0a]/90">
+      {/* `relative z-40` lifts the whole bar (and the bell dropdown inside it)
+          above the scroll region below, which is its own stacking context
+          (`isolate`) and was otherwise painting over the dropdown. */}
+      <div className="relative z-40 hidden md:flex flex-shrink-0 items-center gap-1.5 px-5 h-14 border-b border-stone-200/80 bg-[#FAF6EF]/90 backdrop-blur dark:border-stone-800 dark:bg-[#0c0b0a]/90">
         <span className="text-[13px] font-semibold text-stone-900 dark:text-stone-100">Company Home</span>
         <div className="flex-1" />
 
+        {/* Brand-tinted so it stands out from the plain ghost icons beside it —
+            it's the one "reach out to leadership" affordance, so it earns emphasis. */}
         <button
           onClick={() => setIdeaOpen(true)}
           title="Share an idea with leadership"
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-white"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200/70 transition-colors hover:bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-500/10 dark:ring-emerald-500/20 dark:hover:bg-emerald-500/20"
         >
-          <Lightbulb size={15} /> <span className="hidden lg:inline">Have an idea?</span>
+          <Lightbulb size={15} /> <span>Have an idea?</span>
         </button>
 
         <a

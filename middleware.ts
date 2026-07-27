@@ -2,6 +2,12 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { normalizeRole, homeForRole, landingForRole, isAdminSurfaceRole, canAccessAdminPath, type PermMatrix, type Perm } from '@/lib/roles'
 
+// Employee self-service pages the Company Home links to (Submit a form, Request
+// time off, Team directory). These live only under /employee for now, so every
+// signed-in staff member — including full admin and the scoped roles — must be
+// able to reach them; otherwise the home-page hero buttons bounce to /admin.
+const EMPLOYEE_SELF_SERVICE = ['/employee/requests', '/employee/resources', '/employee/directory']
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -137,7 +143,18 @@ export async function middleware(request: NextRequest) {
     // ported off /employee yet — so it is deliberately NOT bounced and keeps
     // reaching them. (`isAdminSurfaceRole` includes production since the portal
     // consolidation, hence the explicit exclusion here.)
-    if (isAdminSurfaceRole(role) && role !== 'production') return redirectTo(new URL('/admin', request.url))
+    //
+    // EXCEPTION: the Company Home hero buttons (Submit a form, Request time off,
+    // Team directory) point at these self-service pages, which live ONLY under
+    // /employee until they're ported to /admin. Bouncing admin-surface roles here
+    // made those buttons dead-end on /admin. So every signed-in staffer may reach
+    // the self-service leaves; other /employee/* paths still funnel to /admin.
+    if (isAdminSurfaceRole(role) && role !== 'production') {
+      const selfService = EMPLOYEE_SELF_SERVICE.some(
+        (p) => pathname === p || pathname.startsWith(p + '/'),
+      )
+      if (!selfService) return redirectTo(new URL('/admin', request.url))
+    }
     if (role === 'customer') return redirectTo(new URL('/customer', request.url))
     return supabaseResponse
   }

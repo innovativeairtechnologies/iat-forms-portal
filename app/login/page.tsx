@@ -255,6 +255,36 @@ function LoginForm() {
               </p>
             </div>
 
+            {/* ── Microsoft SSO — the primary way in ──
+                Staff sign in with their Innovative Air Technologies account. The
+                Entra app is single-tenant, so a customer clicking this fails at
+                Microsoft's own login screen, never inside the portal. Email +
+                password stays below as a fallback while the SSO-only posture
+                switch (delete passwords) is still pending. */}
+            <button
+              type="button"
+              onClick={signInWithMicrosoft}
+              disabled={loading || msLoading}
+              className="w-full flex items-center justify-center gap-2.5 bg-[#2f2f2f] hover:bg-[#1f1f1f] text-white text-[14px] font-semibold py-3.5 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            >
+              {msLoading ? (
+                <span className="animate-pulse">Redirecting to Microsoft…</span>
+              ) : (
+                <><MicrosoftMark size={17} /> Sign in with Microsoft</>
+              )}
+            </button>
+
+            <p className="text-center text-[12px] text-gray-400 mt-3">
+              Staff sign in with their Innovative Air Technologies account.
+            </p>
+
+            {/* ── Email + password — the fallback path (secondary, outline) ── */}
+            <div className="flex items-center gap-3 my-6" aria-hidden="true">
+              <div className="h-px flex-1 bg-gray-100" />
+              <span className="text-[11px] text-gray-300 uppercase tracking-widest">or sign in with email</span>
+              <div className="h-px flex-1 bg-gray-100" />
+            </div>
+
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
@@ -264,7 +294,6 @@ function LoginForm() {
                   type="email"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
-                  autoFocus
                   placeholder="you@iat.com"
                   className="w-full bg-white border border-gray-200 text-gray-900 text-[14px] rounded-xl px-4 py-3 outline-none transition-all placeholder:text-gray-300 focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10"
                 />
@@ -297,7 +326,7 @@ function LoginForm() {
               )}
 
               <button type="submit" disabled={loading || !email || !password}
-                className="w-full flex items-center justify-center gap-2 bg-[#089447] hover:bg-[#077a3c] text-white text-[14px] font-semibold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 text-[14px] font-semibold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                 {loading ? (
                   <span className="animate-pulse">Signing in…</span>
                 ) : (
@@ -306,35 +335,7 @@ function LoginForm() {
               </button>
             </form>
 
-            {/* ── Microsoft SSO ──
-                Secondary by design: the brand green stays on the single primary
-                action (Sign In above). Staff-only in practice — the Entra app is
-                single-tenant, so a customer clicking this fails at Microsoft's
-                own login screen, never inside the portal. */}
-            <div className="flex items-center gap-3 my-6" aria-hidden="true">
-              <div className="h-px flex-1 bg-gray-100" />
-              <span className="text-[11px] text-gray-300 uppercase tracking-widest">or</span>
-              <div className="h-px flex-1 bg-gray-100" />
-            </div>
-
-            <button
-              type="button"
-              onClick={signInWithMicrosoft}
-              disabled={loading || msLoading}
-              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 text-[14px] font-semibold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {msLoading ? (
-                <span className="animate-pulse">Redirecting to Microsoft…</span>
-              ) : (
-                <><MicrosoftMark /> Sign in with Microsoft</>
-              )}
-            </button>
-
             <p className="text-center text-[12px] text-gray-300 mt-6">
-              Staff sign in with their Innovative Air Technologies account.
-            </p>
-
-            <p className="text-center text-[12px] text-gray-300 mt-2">
               Secured · Internal access only
             </p>
           </motion.div>

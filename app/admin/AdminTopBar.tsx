@@ -104,7 +104,7 @@ export default function AdminTopBar({ displayName, unreadCount, ticketCount, pre
   const initial = (displayName || 'A').charAt(0).toUpperCase()
 
   return (
-    <div className="hidden md:flex flex-shrink-0 items-center gap-2.5 px-5 h-14 border-b border-hairline bg-canvas">
+    <div className="relative z-30 hidden md:flex flex-shrink-0 items-center gap-2.5 px-5 h-14 border-b border-hairline bg-canvas">
       {/* Breadcrumb */}
       <div className="flex min-w-0 items-center gap-1.5 text-[13px]">
         {trail.map((c, i) => {

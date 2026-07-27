@@ -2,6 +2,31 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-27 — Company Home & login: team-feedback fixes
+
+Six fixes from the team's notes, across the Company Home (`/home`) and the login screen:
+
+- **Notifications bell no longer falls behind the page.** The scroll region below the home/admin
+  top bar is its own stacking context (`isolate`); the bars now carry `relative z-40`/`z-30` so the
+  bell dropdown paints above the content (`app/home/HomeTopBar.tsx`, `app/admin/AdminTopBar.tsx`).
+- **"Have an idea" is now a brand-tinted pill** instead of a faint ghost button, so it stands out
+  from the other top-bar icons.
+- **Home hero quick-links work for every role.** "Submit a form / Request time off / Team directory"
+  point at `/employee/*`, which middleware bounced every admin-surface role away from (dead-ending
+  on `/admin`). A new `EMPLOYEE_SELF_SERVICE` allowlist in `middleware.ts` lets any signed-in staffer
+  reach those self-service pages; all other `/employee/*` paths still funnel admins to `/admin`.
+- **Login restacked** so **Microsoft SSO is the primary action** (solid dark button on top); email +
+  password moved below an "or sign in with email" divider as a secondary outline button. Password
+  sign-in is unchanged.
+- **Core Value of the week** moved from the footer to directly under the hero and is now
+  **clickable → a modal of all values**.
+- **Holidays & open roles are clickable.** The "Next holiday" KPI and the This-Week holiday chip open
+  an all-upcoming-holidays modal (new `upcomingFederalHolidays()` in `lib/home-data.ts`); the "Open
+  roles" KPI, the Open Positions header, and each listed role link out to `dehumidifiers.com/jobs`.
+  New client module `app/home/home-modals.tsx` holds both modals.
+
+No DB / permission / migration changes.
+
 ## 2026-07-27 — Housekeeping: Presentations → Internal Apps; typeface → Nunito Sans
 
 Two small cleanups:

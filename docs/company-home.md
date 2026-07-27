@@ -24,13 +24,35 @@ with `shadow-sm`, one emerald accent. Top to bottom:
    the wrapping fun-fact line (moved here from the old footer).
 3. **Company at a glance** — a 4-up KPI row (Teammates · Days incident-free · Open roles · Next holiday).
 4. **Content** — equal-height cards (`items-stretch` + `h-full`): News (lead + 2) spanning 2 of a
-   3-col row beside This Week; then Our People · Milestones · Open Positions (3-col); then a slim
-   full-width **Core Value** strip.
+   3-col row beside This Week; then Our People · Milestones · Open Positions (3-col). The slim
+   full-width **Core Value** strip sits **directly under the hero** (moved up from the footer
+   2026-07-27) and is **clickable → a modal of all values**.
 
 The **Suggestion box and Email IT moved out of a footer into the top bar** (the footer is gone).
 `HomeContent`'s root is a flex column — the top bar (`flex-shrink-0`) over a
 `flex-1 min-h-0 overflow-y-auto` scroll area (the same scroll pattern `/admin` uses); the
 `heightClass` prop is removed. The sidebar + Jerry orb still come from the portal shell.
+
+## Team-feedback pass (2026-07-27)
+
+A batch of small fixes from the team's notes:
+
+- **Notifications bell no longer hides behind the page.** The scroll region under the top bar is
+  its own stacking context (`isolate`); the bar now carries `relative z-40` (and `AdminTopBar`
+  `z-30`) so the bell dropdown paints above it.
+- **"Have an idea" stands out** — restyled from a ghost text button to a brand-tinted emerald pill.
+- **Hero quick-links work for everyone.** "Submit a form / Request time off / Team directory" point
+  at `/employee/*`, which middleware used to bounce every admin-surface role away from.
+  `EMPLOYEE_SELF_SERVICE` in `middleware.ts` now lets any signed-in staffer reach those
+  self-service pages (other `/employee/*` paths still funnel admins to `/admin`). Note: an admin
+  reaching them lands in the *employee* shell until those pages are ported to `/admin`.
+- **Core Value strip** moved directly under the hero and is now **clickable → a modal listing all
+  values** (`app/home/home-modals.tsx`, `CoreValuesBand`).
+- **Holidays + open roles are clickable.** The "Next holiday" KPI and the This-Week holiday chip
+  open an **all-upcoming-holidays modal** (`upcomingFederalHolidays()` in `lib/home-data.ts` →
+  `HolidaysModal`); the "Open roles" KPI, the Open Positions header, and each listed role link out
+  to `https://www.dehumidifiers.com/jobs`.
+- **Login restacked** so Microsoft SSO is the primary action — see `docs/microsoft-sso.md`.
 
 ## What changed for routing
 

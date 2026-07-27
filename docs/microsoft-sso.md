@@ -1,8 +1,14 @@
 # Microsoft SSO (Entra ID)
 
-Staff sign in with their `@dehumidifiers.com` Microsoft account from `/login`, alongside the
-existing email/password form. Shipped 2026-07-24. Scoping/rationale lives in the parent
-`docs/microsoft-sso-mfa-plan.md`; this file is the operational reference.
+Staff sign in with their `@dehumidifiers.com` Microsoft account from `/login`. Shipped 2026-07-24.
+Scoping/rationale lives in the parent `docs/microsoft-sso-mfa-plan.md`; this file is the
+operational reference.
+
+**Login layout (restacked 2026-07-27):** Microsoft is now the **primary** action — a solid dark
+button at the top of the form panel. Email + password moved below an "or sign in with email"
+divider and were demoted to a secondary outline button. Password sign-in still works; this is the
+visual lead-in to the eventual SSO-only posture (deleting passwords stays gated on removing the
+provisioning gate first — see the parent plan).
 
 ## How it fits
 

@@ -74,6 +74,19 @@ export function nextFederalHoliday(now = new Date()): { name: string; date: Date
   return { name: next.name, date: new Date(next.y, next.m - 1, next.d) }
 }
 
+/** The next `count` federal holidays (today onward), soonest first — powers the
+ *  "all holidays" modal opened from the home page's holiday box. */
+export function upcomingFederalHolidays(now = new Date(), count = 12): { name: string; date: Date }[] {
+  const { y, m, d } = easternYMD(now)
+  const today = ymdNum(y, m, d)
+  return [...holidaysFor(y), ...holidaysFor(y + 1)]
+    .map((h) => ({ ...h, num: ymdNum(h.y, h.m, h.d) }))
+    .filter((h) => h.num >= today)
+    .sort((a, b) => a.num - b.num)
+    .slice(0, count)
+    .map((h) => ({ name: h.name, date: new Date(h.y, h.m - 1, h.d) }))
+}
+
 // ── Live read helper: null = couldn't read (missing table), array otherwise ───
 async function safeSelect(table: string, build: (q: any) => any): Promise<any[] | null> {
   try {
@@ -201,6 +214,8 @@ export type HomeData = {
   news: NewsItem[]
   events: EventItem[]
   nextHoliday: { name: string; date: Date } | null
+  /** All upcoming federal holidays (soonest first) — for the "all holidays" modal. */
+  holidays: { name: string; date: Date }[]
   openings: Opening[]
   spotlight: Person
   newHire: Person
@@ -263,7 +278,7 @@ export async function getHomeData(now = new Date()): Promise<HomeData> {
     .filter((r) => r.name)
 
   return {
-    news, events, nextHoliday: nextFederalHoliday(now), openings,
+    news, events, nextHoliday: nextFederalHoliday(now), holidays: upcomingFederalHolidays(now), openings,
     spotlight, newHire, peopleEvents: finalPeople, whosOut,
     headcount: employees.length,
   }
