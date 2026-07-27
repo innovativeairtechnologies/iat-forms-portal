@@ -70,7 +70,17 @@ export async function provisionCustomerPortalAccount(
       body: payload,
       signal: AbortSignal.timeout(TIMEOUT_MS),
       cache: 'no-store',
+      // Do NOT follow redirects. A misrouted call (e.g. an auth gate bouncing
+      // /api/provision to /login) would otherwise return the login PAGE with
+      // HTTP 200, and this function would report provisioning as SUCCESSFUL
+      // while nothing was created. That exact bug shipped once — the customer
+      // app's middleware matcher was swallowing /api/*. Treat any redirect as
+      // the error it is.
+      redirect: 'manual',
     })
+    if (res.status >= 300 && res.status < 400) {
+      return { ok: false, reason: `unexpected redirect (HTTP ${res.status}) — check CUSTOMER_PORTAL_URL` }
+    }
     const data = await res.json().catch(() => ({}))
     if (!res.ok) return { ok: false, reason: data?.error || `HTTP ${res.status}` }
     return { ok: true, data }

@@ -78,7 +78,14 @@ async function provision(input) {
       'x-iat-signature': signature,
     },
     body: payload,
+    // Never follow redirects — a bounced /api/provision would return the login
+    // page with HTTP 200 and this script would report every customer as
+    // provisioned while nothing happened.
+    redirect: 'manual',
   })
+  if (res.status >= 300 && res.status < 400) {
+    return { ok: false, status: res.status, data: { error: 'unexpected redirect — check CUSTOMER_PORTAL_URL' } }
+  }
   const data = await res.json().catch(() => ({}))
   return { ok: res.ok, status: res.status, data }
 }
