@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireBridgeAuth, requireString } from '@/lib/bridge-auth'
 import { getBridgeTicket } from '@/lib/bridge-ticket-access'
-import { sanitizeNoteHtml, noteHasContent } from '@/lib/sanitize'
+import { sanitizeNoteHtml, sanitizeAttachments, noteHasContent } from '@/lib/sanitize'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,9 +14,9 @@ export const dynamic = 'force-dynamic'
  * note or impersonate staff, and the only way to guarantee that is to ignore
  * whatever the caller sends for those fields.
  *
- * Attachments are not accepted here yet: ticket media lives in the internal
- * private bucket and needs its own signed-upload bridge, so a customer-side
- * attachment would have nowhere to land.
+ * Attachments are run through sanitizeAttachments, which drops anything not
+ * under this ticket's id prefix — so a note can't reference another ticket's
+ * files even though the bucket is shared.
  */
 export async function POST(request: Request) {
   const auth = await requireBridgeAuth(request, '/api/bridge/ticket-note')
@@ -34,7 +34,11 @@ export async function POST(request: Request) {
   if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const content = sanitizeNoteHtml(rawContent)
-  if (!noteHasContent(content)) {
+  // Scoped to this ticket's prefix, so a note can't reference another ticket's files.
+  const attachments = sanitizeAttachments(auth.body.attachments, ticketId)
+
+  // A note needs SOMETHING — text or a file.
+  if (!noteHasContent(content) && attachments.length === 0) {
     return NextResponse.json({ error: 'Please write a message.' }, { status: 400 })
   }
 
@@ -43,12 +47,13 @@ export async function POST(request: Request) {
     .insert({
       ticket_id: ticketId,
       content,
+      attachments,
       visibility: 'public', // forced
       author_type: 'customer', // forced
     })
-    .select('id, content, created_at, author_type')
+    .select('id, content, attachments, created_at, author_type')
     .single()
 
   if (error) return NextResponse.json({ error: 'Could not post your message.' }, { status: 500 })
-  return NextResponse.json({ note: { ...data, attachments: [] } })
+  return NextResponse.json({ note: data })
 }
