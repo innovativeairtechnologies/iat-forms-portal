@@ -512,7 +512,13 @@ export default function MapCanvas(props: Props) {
 
   return (
     <div className="relative flex-1 min-h-0">
-      <div ref={containerRef} className="absolute inset-0" />
+      {/* Inline position/inset, NOT classes: maplibre-gl.css sets
+          `.maplibregl-map { position: relative; overflow: hidden }` on this
+          element when the map attaches, and its stylesheet loads after
+          Tailwind (it ships with this lazy chunk) — a class-based
+          `absolute` loses that fight and the container collapses to 0px
+          height (proven in the css-order harness). Inline style always wins. */}
+      <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
       {mapError && (
         <div className="pointer-events-none absolute inset-x-0 top-14 z-30 flex justify-center px-4">
           <p className="max-w-[480px] rounded-lg border border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
