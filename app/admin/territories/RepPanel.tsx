@@ -157,7 +157,8 @@ export default function RepPanel(props: Props) {
         ) : (
           <>
             <div className="px-4 py-3">
-              <ListSearch value={search} onChange={setSearch} placeholder={tab === 'firms' ? 'Search firms…' : 'Search reps…'} width={999} />
+              {/* width is px (ListSearch styles a fixed box) — 348 = panel 380 minus px-4 */}
+              <ListSearch value={search} onChange={setSearch} placeholder={tab === 'firms' ? 'Search firms…' : 'Search reps…'} width={348} />
             </div>
             {tab === 'firms' ? (
               <ul>

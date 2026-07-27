@@ -42,6 +42,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   // Sales
   { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },
   { prefix: '/admin/projected-sales', section: 'Sales',   label: 'Performance' },
+  { prefix: '/admin/territories',     section: 'Sales',   label: 'Territories' },
   { prefix: '/admin/customers',       section: 'Sales',   label: 'Customers' },
   { prefix: '/admin/presentations',   section: 'Sales',   label: 'Presentations' },
   // People

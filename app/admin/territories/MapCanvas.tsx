@@ -121,31 +121,46 @@ export default function MapCanvas(props: Props) {
   const propsRef = useRef(props)
   propsRef.current = props
   const [tooltip, setTooltip] = useState<{ x: number; y: number; info: HoverInfo } | null>(null)
-  const [mapFailed, setMapFailed] = useState(false)
+  // The actual failure message, shown ON the page — a silent blank map is
+  // undebuggable from a user screenshot; this makes the screenshot the diagnosis.
+  const [mapError, setMapError] = useState<string | null>(null)
 
   // ── One-time init ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return
     let disposed = false
 
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: propsRef.current.dark ? STYLE_DARK : STYLE_LIGHT,
-      center: [-95.5, 39.5],
-      zoom: 3.4,
-      minZoom: 2.5,
-      attributionControl: { compact: true },
-    })
+    let map: maplibregl.Map
+    try {
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        style: propsRef.current.dark ? STYLE_DARK : STYLE_LIGHT,
+        center: [-95.5, 39.5],
+        zoom: 3.4,
+        minZoom: 2.5,
+        attributionControl: { compact: true },
+      })
+    } catch (e) {
+      // Most likely WebGL unavailable (hardware acceleration off) — the
+      // constructor throws synchronously and there is no map to attach to.
+      console.error('[territories map] init failed', e)
+      setMapError(e instanceof Error ? e.message : 'The map engine failed to start.')
+      return
+    }
     mapRef.current = map
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left')
     map.on('error', (e) => {
-      // A dead tile server would otherwise fail silently into a blank canvas.
-      if (!map.isStyleLoaded() && !disposed) setMapFailed(true)
+      // Surface load-time failures (blocked tile host, dead style URL) instead
+      // of a silent blank canvas; a later successful style.load clears this.
+      if (!map.isStyleLoaded() && !disposed) {
+        setMapError(e?.error?.message ? `Basemap failed to load: ${e.error.message}` : 'Basemap failed to load.')
+      }
       console.error('[territories map]', e?.error ?? e)
     })
 
     const ensureLayers = () => {
       if (disposed || !map.getStyle()) return
+      setMapError(null) // the style DID load — clear any transient load error
       // Insert our fills beneath the basemap's labels so place names stay readable.
       const firstSymbol = map.getStyle().layers?.find((l) => l.type === 'symbol')?.id
 
@@ -487,10 +502,10 @@ export default function MapCanvas(props: Props) {
   return (
     <div className="relative flex-1 min-h-0">
       <div ref={containerRef} className="absolute inset-0" />
-      {mapFailed && (
-        <div className="absolute inset-0 flex items-center justify-center bg-canvas">
-          <p className="text-[13px] text-ink-muted">
-            The basemap failed to load — check your connection and reload.
+      {mapError && (
+        <div className="pointer-events-none absolute inset-x-0 top-14 z-30 flex justify-center px-4">
+          <p className="max-w-[480px] rounded-lg border border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
+            {mapError} — try reloading; if it persists, screenshot this message.
           </p>
         </div>
       )}
