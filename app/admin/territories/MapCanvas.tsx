@@ -29,6 +29,17 @@ import { buildFillExpr, SHARED_FILL, type TerritoryLevel } from '@/lib/territori
 const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron'
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark'
 
+// MapLibre v6 (ESM-only) locates its render worker via
+// new URL('./maplibre-gl-worker.mjs', import.meta.url) — webpack inlines
+// import.meta.url as a literal build-machine file:/// path, the worker never
+// loads, and the map paints a silent blank canvas ("module script ...
+// text/html" in the console as the fallback fetch gets 307'd to /login).
+// Point maplibre at the vendored same-origin copy instead (kept in sync by
+// scripts/sync-maplibre-worker.mjs on prebuild). Must run before any Map is
+// constructed; this module is client-only (dynamic ssr:false), so no window
+// guard is needed.
+maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs')
+
 // One geography layer = one source + one fill + one line. Counties sit ABOVE
 // states/provinces so a county assignment paints over the state wash.
 const GEO_LAYERS: { key: GeoKey; url: string; object: string; level: TerritoryLevel }[] = [
