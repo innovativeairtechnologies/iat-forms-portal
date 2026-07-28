@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — CRM Board facelift
+
+Restyled the kanban to match the portal's warm bento look. Each **stage lane** now carries its own
+tone (a colored dot + a soft-tinted header band + count pill + lane total) — Lead slate · Quoted sky
+· Follow-up amber · Verbal violet · Won emerald · Lost rose — so the pipeline reads as a real
+left-to-right progression instead of six identical grey wells. **Deal cards** gained a confidence
+meter (a thin tinted bar), a rep initials avatar in place of the blocky uppercase group tag, a more
+prominent amount, and a quiet days-in-stage chip that appears (amber past 30 days) as deals age.
+Purely cosmetic — drag-and-drop, the collapsed Lost rail, and the won/lost reason prompt are
+unchanged. `app/admin/deals/BoardView.tsx`.
+
 ## 2026-07-28 — Dashboard: briefing folds into the welcome hero; Edit dashboard moves to the top bar
 
 Two tidy-ups to the admin dashboard:

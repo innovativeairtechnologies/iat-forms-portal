@@ -1,10 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Search, Star, X } from 'lucide-react'
+import { Search, Star, X, Clock } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
-import { computeWeighted, STAGES, CLOSED_REASONS, type DealStage } from '@/lib/deals'
+import { computeWeighted, STAGES, CLOSED_REASONS, stageAgeDays, type DealStage } from '@/lib/deals'
 import { filterPillCx } from '@/components/admin/list'
 import { inp } from './form'
 
@@ -15,15 +15,40 @@ import { inp } from './form'
    back. Dropping onto Won/Lost holds the move behind a closed-reason prompt —
    the stage doesn't change until the reason is confirmed (or skipped).
 
-   Columns render the biggest deals first and cap the visible stack — with
-   400+ open deals a full render would drown the DOM; "Show all" expands a
-   column on demand. Search + group pills mirror the Table view's toolbar.
+   Each stage lane carries its own tone (dot + soft-tinted header + count +
+   total); cards show a confidence meter, the amount, a rep avatar, and a
+   days-in-stage nudge as deals age. Columns render the biggest deals first and
+   cap the visible stack — with 300+ open deals a full render would drown the
+   DOM; "Show all" expands a column on demand. Search + group pills mirror the
+   Table view's toolbar.
    ──────────────────────────────────────────────────────────────────────────── */
 
 const SHOW_CAP = 40
 
 const fmtShort = (n: number) =>
   n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `$${Math.round(n / 1_000)}K` : `$${Math.round(n)}`
+
+/** Up to 2 uppercase initials for a rep's avatar; '—' when unassigned. */
+const initialsOf = (name: string | null | undefined) => {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '—'
+  return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase()
+}
+
+/** Per-tone lane styling. Raw palettes (not semantic tokens) so /opacity works
+ *  — the sanctioned dashboard-style tone usage (DESIGN.md §2.4). Keys match the
+ *  STAGES tones (lib/deals): lead slate · quoted sky · follow_up amber ·
+ *  verbal violet · won emerald · lost rose. */
+type ToneStyle = { head: string; dot: string; meter: string; count: string }
+const TONE: Record<string, ToneStyle> = {
+  slate:   { head: 'bg-zinc-100/70 dark:bg-zinc-800/40',   dot: 'bg-zinc-400 dark:bg-zinc-500',    meter: 'bg-zinc-400 dark:bg-zinc-500',    count: 'text-ink-muted' },
+  sky:     { head: 'bg-sky-50 dark:bg-sky-500/10',         dot: 'bg-sky-500',                      meter: 'bg-sky-500 dark:bg-sky-400',      count: 'text-sky-600 dark:text-sky-400' },
+  amber:   { head: 'bg-amber-50 dark:bg-amber-500/10',     dot: 'bg-amber-500',                    meter: 'bg-amber-500 dark:bg-amber-400',  count: 'text-amber-600 dark:text-amber-400' },
+  violet:  { head: 'bg-violet-50 dark:bg-violet-500/10',   dot: 'bg-violet-500',                   meter: 'bg-violet-500 dark:bg-violet-400', count: 'text-violet-600 dark:text-violet-400' },
+  emerald: { head: 'bg-emerald-50 dark:bg-emerald-500/10', dot: 'bg-emerald-500',                  meter: 'bg-emerald-500 dark:bg-emerald-400', count: 'text-emerald-600 dark:text-emerald-400' },
+  rose:    { head: 'bg-rose-50 dark:bg-rose-500/10',       dot: 'bg-rose-500',                     meter: 'bg-rose-500 dark:bg-rose-400',    count: 'text-rose-600 dark:text-rose-400' },
+}
+const toneFor = (t: string): ToneStyle => TONE[t] ?? TONE.slate
 
 type Row = Deal & { weighted: number }
 
@@ -44,6 +69,9 @@ export default function BoardView({
   const [lostOpen, setLostOpen] = useState(false)
   // A drop onto won/lost parks here until the reason prompt resolves.
   const [pendingClose, setPendingClose] = useState<{ id: string; to: 'won' | 'lost' } | null>(null)
+  // Client-only "now" so the days-in-stage chip can't cause a hydration mismatch.
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => setNow(new Date()), [])
 
   const rows: Row[] = useMemo(() => deals.map((d) => ({ ...d, weighted: computeWeighted(d) })), [deals])
   const repOptions = useMemo(() => [...new Set(rows.map((r) => r.group_name))].sort(), [rows])
@@ -122,8 +150,10 @@ export default function BoardView({
           {STAGES.map((stage) => {
             const list = columns.get(stage.key) ?? []
             const weighted = list.reduce((a, d) => a + d.weighted, 0)
+            const tone = toneFor(stage.tone)
             const isLostRail = stage.key === 'lost' && !lostOpen
 
+            // Collapsed Lost lane — a slim rose drop rail.
             if (isLostRail) {
               return (
                 <Droppable key={stage.key} droppableId={stage.key}>
@@ -131,7 +161,7 @@ export default function BoardView({
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex-shrink-0 w-[52px] self-stretch min-h-[320px] rounded-xl border transition-colors duration-150 flex flex-col items-center pt-3 ${
+                      className={`flex-shrink-0 w-[46px] self-stretch min-h-[340px] rounded-xl border transition-colors duration-150 flex flex-col items-center pt-3 ${
                         snapshot.isDraggingOver
                           ? 'border-rose-300 dark:border-rose-500/40 bg-rose-50/60 dark:bg-rose-500/10'
                           : 'border-hairline bg-surface-soft hover:bg-surface-strong/60'
@@ -140,8 +170,9 @@ export default function BoardView({
                       <button
                         onClick={() => setLostOpen(true)}
                         title="Show lost deals"
-                        className="flex flex-col items-center gap-2 text-ink-faint hover:text-ink-secondary transition-colors"
+                        className="flex flex-col items-center gap-2 text-ink-muted hover:text-ink-secondary transition-colors"
                       >
+                        <span className={`w-2 h-2 rounded-full ${tone.dot}`} />
                         <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ writingMode: 'vertical-rl' }}>
                           Lost · {list.length}
                         </span>
@@ -155,19 +186,18 @@ export default function BoardView({
 
             const capped = expanded[stage.key] ? list : list.slice(0, SHOW_CAP)
             return (
-              <div key={stage.key} className="flex-shrink-0 w-[264px] flex flex-col">
-                {/* Column head */}
-                <div className="flex items-baseline justify-between px-1.5 pb-2">
-                  <div className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">{stage.label}</span>
-                    <span className="text-[11px] text-ink-faint tabular-nums">{list.length}</span>
-                    {stage.key === 'lost' && (
-                      <button onClick={() => setLostOpen(false)} title="Collapse" className="text-ink-faint hover:text-ink-secondary transition-colors">
-                        <X size={11} />
-                      </button>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-ink-faint tabular-nums">{weighted > 0 ? fmtShort(weighted) : ''}</span>
+              <div key={stage.key} className="flex-shrink-0 w-[268px] rounded-xl border border-hairline bg-surface-soft overflow-hidden flex flex-col">
+                {/* Lane header — tone dot + soft-tinted band + count + total */}
+                <div className={`flex items-center gap-2 px-3 h-11 flex-shrink-0 border-b border-hairline-soft ${tone.head}`}>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${tone.dot}`} />
+                  <span className="text-[12.5px] font-semibold text-ink">{stage.label}</span>
+                  <span className={`text-[11px] tabular-nums px-1.5 rounded-full bg-surface border border-hairline ${tone.count}`}>{list.length}</span>
+                  {stage.key === 'lost' && (
+                    <button onClick={() => setLostOpen(false)} title="Collapse lane" className="text-ink-faint hover:text-ink-secondary transition-colors">
+                      <X size={12} />
+                    </button>
+                  )}
+                  <span className="ml-auto text-[11px] text-ink-muted tabular-nums">{weighted > 0 ? fmtShort(weighted) : '—'}</span>
                 </div>
 
                 <Droppable droppableId={stage.key}>
@@ -175,60 +205,82 @@ export default function BoardView({
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`rounded-xl border p-1.5 space-y-1.5 min-h-[320px] max-h-[calc(100vh-320px)] overflow-y-auto transition-colors duration-150 ${
-                        snapshot.isDraggingOver
-                          ? 'border-hairline-strong bg-surface-strong/60'
-                          : 'border-hairline bg-surface-soft'
+                      className={`p-2 space-y-2 min-h-[300px] max-h-[calc(100vh-300px)] overflow-y-auto transition-colors duration-150 ${
+                        snapshot.isDraggingOver ? 'bg-surface-strong/50' : ''
                       }`}
                     >
-                      {capped.map((d, i) => (
-                        <Draggable key={d.id} draggableId={d.id} index={i}>
-                          {(drag, dragState) => (
-                            <div
-                              ref={drag.innerRef}
-                              {...drag.draggableProps}
-                              {...drag.dragHandleProps}
-                              onClick={() => onView(d.id, visibleIds)}
-                              className={`group rounded-lg border bg-surface px-3 py-2.5 cursor-grab active:cursor-grabbing transition-shadow duration-150 ${
-                                dragState.isDragging
-                                  ? 'border-hairline-strong shadow-lg rotate-[0.4deg]'
-                                  : 'border-hairline hover:border-hairline-strong'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="text-[12.5px] font-semibold text-ink leading-snug break-words min-w-0">{d.customer}</p>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); onToggleFocus(d.id, !(d.focused === true)) }}
-                                  title={d.focused ? 'Remove from Focused' : 'Add to Focused'}
-                                  className="flex-shrink-0 mt-0.5"
-                                >
-                                  <Star
-                                    size={12}
-                                    className={d.focused
-                                      ? 'fill-amber-400 text-amber-400'
-                                      : 'text-transparent group-hover:text-ink-faint hover:!text-amber-400 transition-colors'}
-                                  />
-                                </button>
-                              </div>
-                              {(d.job_name || d.unit_model) && (
-                                <p className="mt-0.5 text-[11px] text-ink-muted leading-snug truncate">{d.job_name || d.unit_model}</p>
-                              )}
-                              <div className="mt-1.5 flex items-center justify-between gap-2">
-                                <span className="text-[12px] font-medium text-ink tabular-nums">{fmtShort(d.total_cost)}</span>
-                                <span className="flex items-center gap-1.5">
-                                  <span className="text-[10.5px] text-ink-faint tabular-nums">{d.confidence}%</span>
-                                  <span className="text-[9.5px] font-semibold uppercase tracking-wider px-1.5 py-[2px] rounded bg-surface-strong text-ink-muted">
-                                    {d.group_name}
+                      {capped.map((d, i) => {
+                        const age = now ? stageAgeDays(d, now) : null
+                        const focused = d.focused === true
+                        const sub = [d.job_name || d.unit_model, d.project_type].filter(Boolean).join(' · ')
+                        return (
+                          <Draggable key={d.id} draggableId={d.id} index={i}>
+                            {(drag, dragState) => (
+                              <div
+                                ref={drag.innerRef}
+                                {...drag.draggableProps}
+                                {...drag.dragHandleProps}
+                                onClick={() => onView(d.id, visibleIds)}
+                                className={`group rounded-lg border bg-surface px-3 py-2.5 cursor-grab active:cursor-grabbing transition-all duration-150 ${
+                                  dragState.isDragging
+                                    ? 'border-hairline-strong shadow-lg rotate-[0.4deg]'
+                                    : 'border-hairline hover:border-hairline-strong'
+                                }`}
+                              >
+                                {/* Title + focus star */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-[13px] font-semibold text-ink leading-snug break-words min-w-0">{d.customer}</p>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); onToggleFocus(d.id, !focused) }}
+                                    title={focused ? 'Remove from Focused' : 'Add to Focused'}
+                                    className="flex-shrink-0 mt-0.5"
+                                  >
+                                    <Star
+                                      size={13}
+                                      className={focused
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-transparent group-hover:text-ink-faint hover:!text-amber-400 transition-colors'}
+                                    />
+                                  </button>
+                                </div>
+                                {sub && <p className="mt-0.5 text-[11.5px] text-ink-muted leading-snug truncate">{sub}</p>}
+
+                                {/* Confidence meter */}
+                                <div className="mt-2.5 flex items-center gap-2">
+                                  <div className="flex-1 h-1 rounded-full bg-surface-strong overflow-hidden">
+                                    <div className={`h-full rounded-full ${tone.meter}`} style={{ width: `${Math.max(0, Math.min(100, d.confidence))}%` }} />
+                                  </div>
+                                  <span className="text-[10.5px] text-ink-muted tabular-nums w-8 text-right">{d.confidence}%</span>
+                                </div>
+
+                                {/* Amount · aging · rep avatar */}
+                                <div className="mt-2 flex items-center justify-between gap-2">
+                                  <span className="text-[13px] font-semibold text-ink tabular-nums">{fmtShort(d.total_cost)}</span>
+                                  <span className="flex items-center gap-2 flex-shrink-0">
+                                    {age !== null && age >= 14 && (
+                                      <span
+                                        title={`${age} days in ${stage.label}`}
+                                        className={`inline-flex items-center gap-0.5 text-[10.5px] tabular-nums ${age >= 30 ? 'text-amber-600 dark:text-amber-400' : 'text-ink-faint'}`}
+                                      >
+                                        <Clock size={10} /> {age}d
+                                      </span>
+                                    )}
+                                    <span
+                                      title={d.assigned_to || d.group_name}
+                                      className="w-[22px] h-[22px] rounded-full bg-surface-strong border border-hairline flex items-center justify-center text-[10.5px] font-semibold text-ink-secondary flex-shrink-0"
+                                    >
+                                      {initialsOf(d.assigned_to || d.group_name)}
+                                    </span>
                                   </span>
-                                </span>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
+                            )}
+                          </Draggable>
+                        )
+                      })}
                       {provided.placeholder}
                       {list.length === 0 && !snapshot.isDraggingOver && (
-                        <p className="px-2 py-6 text-center text-[11px] text-ink-faint">Drop deals here</p>
+                        <p className="px-2 py-8 text-center text-[11px] text-ink-faint">Drop deals here</p>
                       )}
                       {list.length > SHOW_CAP && !expanded[stage.key] && (
                         <button
