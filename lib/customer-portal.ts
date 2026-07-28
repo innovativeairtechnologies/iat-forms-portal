@@ -52,6 +52,18 @@ export async function provisionCustomerPortalAccount(
   // dual-run the internal portal remains fully functional on its own.
   if (!baseUrl || !secret) return { ok: false, skipped: true, reason: 'unconfigured' }
 
+  // Validate the URL up front. Pasting the variable NAME into Vercel's value
+  // field is an easy slip, and without this the failure surfaces as a cryptic
+  // "Failed to parse URL from CUSTOMER_PORTAL_URL/api/provision" in an audit
+  // entry — which reads like a code bug rather than a config typo. (That
+  // happened.) Name the variable and echo the bad value instead.
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    return {
+      ok: false,
+      reason: `CUSTOMER_PORTAL_URL is not a valid URL (got "${baseUrl}") — it should look like https://iat-customer.vercel.app`,
+    }
+  }
+
   const path = '/api/provision'
   const timestamp = Date.now().toString()
   const payload = JSON.stringify(input)
