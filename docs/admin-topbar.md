@@ -17,7 +17,7 @@ page actions · search · notifications bell · profile avatar.
 | Element        | Source | Notes |
 | -------------- | ------ | ----- |
 | Breadcrumb     | route + `PageChrome` | `crumbsFor(pathname)` gives `Section › Page` (longest-prefix match against `ROUTES`). A detail/editor page appends the record crumb via `<PageChrome record={…}>`, so it reads `Operations › Equipment › 26-5875`; the Page crumb becomes a link to its list once a record follows it. Add a page to `ROUTES` to give it a breadcrumb. |
-| Page actions   | `PageChrome` | Buttons a detail/editor page hoists up (Save, Delete, Print, status pills…), portaled into the `#admin-topbar-actions` slot. `empty:hidden` keeps it out of the layout on list/overview pages. |
+| Page actions   | `PageChrome` (detail/editor pages) · `DashboardGrid` (the dashboard's "Edit dashboard" toolbar) | Buttons a page hoists up (Save, Delete, Print, status pills, Edit dashboard…), portaled into the `#admin-topbar-actions` slot. `empty:hidden` keeps it out of the layout on pages with no actions. |
 | Search         | `TopBarSearch` | Opens the ⌘K command palette. |
 | View-switcher  | `DashboardPresetPicker` | Retired from general use — `showPresets` defaults to `false`. |
 | Bell           | `TopBarBell` | Unread submissions (emerald dot) + open tickets (rose dot); counts come from the layout. |

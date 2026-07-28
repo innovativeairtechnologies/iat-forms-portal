@@ -2,6 +2,20 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-28 — Dashboard: briefing folds into the welcome hero; Edit dashboard moves to the top bar
+
+Two tidy-ups to the admin dashboard:
+
+- **Executive Briefing folded into the greeting.** It was a full card (icon, an "Executive Briefing"
+  title, an "AI-generated · live data" badge) sitting above the grid. Now the AI summary renders bare —
+  no title, no badge — as a quiet line of context under "Welcome back", separated by a hairline: one
+  block instead of two. Removed as a grid card (`ai_briefing`); any saved layout that still had it just
+  drops it. Admin-only, as before. (`ExecutiveBriefing.tsx`, `DepartmentDashboard.tsx`, `dept-cards.tsx`)
+- **"Edit dashboard" moved to the top bar.** The edit toolbar (Edit → Add card / Reset / Cancel /
+  Save) now portals into the shared `AdminTopBar` actions slot on desktop, so it appears only on the
+  dashboard page and sits with the rest of the top-bar chrome. Mobile keeps the toolbar inline above the
+  grid (the top bar is hidden there). (`DashboardGrid.tsx`)
+
 ## 2026-07-28 — Security: postcss and brace-expansion advisories
 
 Two high-severity Dependabot alerts.

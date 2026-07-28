@@ -11,7 +11,6 @@ import {
   Calendar, Users, FileText, Presentation, CalendarRange, DollarSign, CalendarClock,
   MessageSquare, LayoutGrid, Compass, ClipboardList, CheckCircle2,
 } from 'lucide-react'
-import ExecutiveBriefing from '@/app/admin/ExecutiveBriefing'
 import type { ExecData } from '@/lib/exec-dashboard-data'
 import {
   FormsPerformanceCard, TopFormsCard, TopSubmittersCard, ActivityCard,
@@ -364,7 +363,6 @@ export const CARD_REGISTRY: CardDef[] = [
     Component: async (ctx) => <SnapshotCard role={ctx.role} headcount={ctx.headcount} toolCount={ctx.quickLinks.length} />,
   },
   // ── Admin executive cards (admin-only; read the shared exec data batch) ──
-  { id: 'ai_briefing', title: 'Executive Briefing', defaultSpan: 3, sizes: [2, 3], available: (ctx) => ctx.role === 'admin', Component: async () => <ExecutiveBriefing /> },
   execCard('exec_forms_performance', 'Forms Performance', 2, [1, 2, 3], (e) => <FormsPerformanceCard d={e} />),
   execCard('exec_top_forms', 'Top Forms by Volume', 1, [1, 2], (e) => <TopFormsCard d={e} />),
   execCard('exec_top_submitters', 'Top Submitters', 1, [1, 2], (e) => <TopSubmittersCard d={e} />),
@@ -382,7 +380,6 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
   // Admin default reproduces the old executive dashboard arrangement.
   if (ctx.role === 'admin') {
     return ([
-      { id: 'ai_briefing', span: 3 },
       { id: 'metrics', span: 3 },
       { id: 'exec_forms_performance', span: 2 }, { id: 'tickets_donut', span: 1 },
       { id: 'exec_top_forms', span: 1 }, { id: 'exec_top_submitters', span: 1 }, { id: 'exec_needs_attention', span: 1 },

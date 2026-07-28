@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react'
+import { RefreshCw, AlertCircle } from 'lucide-react'
 
 /* AI Executive Briefing — a plain-English read of the operation, written by
    Claude from live metrics. Fetched client-side (the model call is too slow to
-   block the dashboard render) and cached server-side for an hour. */
+   block the dashboard render) and cached server-side for an hour.
+
+   Renders BARE — no card chrome, title, or badge — because it lives folded under
+   the dashboard's "Welcome back" hero as an inconspicuous summary of the day. */
 
 type State =
   | { status: 'loading' }
@@ -44,51 +47,41 @@ export default function ExecutiveBriefing() {
 
   useEffect(() => { load() }, [load])
 
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-hairline bg-surface">
-      <div className="relative px-5 py-4">
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <Sparkles size={15} />
-            </span>
-            <div>
-              <h3 className="text-[13px] font-semibold text-ink leading-none">Executive Briefing</h3>
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium uppercase tracking-wider">
-                AI-generated · live data
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => load(true)}
-            disabled={refreshing || state.status === 'loading'}
-            title="Regenerate briefing"
-            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-[11px] font-medium text-ink-muted hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-surface-soft transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Regenerate</span>
-          </button>
-        </div>
-
-        {state.status === 'loading' ? (
-          <div className="space-y-2 py-0.5" aria-label="Generating briefing">
-            <div className="h-3 rounded bg-surface-strong animate-pulse w-[92%]" />
-            <div className="h-3 rounded bg-surface-strong animate-pulse w-[78%]" />
-            <div className="h-3 rounded bg-surface-strong animate-pulse w-[60%]" />
-          </div>
-        ) : state.status === 'error' ? (
-          <div className="flex items-center gap-2 text-[13px] text-ink-secondary py-1">
-            <AlertCircle size={15} className="text-amber-500 flex-shrink-0" />
-            <span>{state.message}</span>
-            <button onClick={() => load(true)} className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">Retry</button>
-          </div>
-        ) : (
-          <>
-            <p className="text-[14px] leading-relaxed text-ink-secondary">{state.briefing}</p>
-            <p className="text-[10px] text-ink-faint mt-2.5">Briefed {timeAgo(state.generatedAt)}</p>
-          </>
-        )}
+  if (state.status === 'loading') {
+    return (
+      <div className="space-y-2" aria-label="Generating briefing">
+        <div className="h-2.5 w-[94%] animate-pulse rounded bg-surface-strong" />
+        <div className="h-2.5 w-[81%] animate-pulse rounded bg-surface-strong" />
+        <div className="h-2.5 w-[64%] animate-pulse rounded bg-surface-strong" />
       </div>
-    </div>
+    )
+  }
+
+  if (state.status === 'error') {
+    return (
+      <div className="flex items-center gap-2 text-[13px] text-ink-secondary">
+        <AlertCircle size={14} className="flex-shrink-0 text-amber-500" />
+        <span>{state.message}</span>
+        <button onClick={() => load(true)} className="font-medium text-emerald-600 hover:underline dark:text-emerald-400">Retry</button>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <p className="text-[13.5px] leading-relaxed text-ink-secondary">{state.briefing}</p>
+      <div className="mt-2 flex items-center gap-2 text-[10px] text-ink-faint">
+        <span>Briefed {timeAgo(state.generatedAt)}</span>
+        <button
+          onClick={() => load(true)}
+          disabled={refreshing}
+          title="Regenerate briefing"
+          className="inline-flex items-center gap-1 transition-colors hover:text-emerald-600 disabled:opacity-50 dark:hover:text-emerald-400"
+        >
+          <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
+      </div>
+    </>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
@@ -33,6 +34,11 @@ export default function DashboardGrid({ cards, initialLayout, defaultLayout, rea
   const [saving, setSaving] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // "Edit dashboard" + its edit controls live in the shared AdminTopBar actions
+  // slot on desktop — portaled there so they only appear on this (dashboard)
+  // page. Mobile keeps the toolbar inline above the grid (top bar is hidden there).
+  const [topBarSlot, setTopBarSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => { setTopBarSlot(document.getElementById('admin-topbar-actions')) }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -75,52 +81,56 @@ export default function DashboardGrid({ cards, initialLayout, defaultLayout, rea
   }
   function onCancel() { setLayout(baseline); setEditing(false); setAddOpen(false); setError(null) }
 
+  const toolbar = (
+    <>
+      {error && <span className="text-[12px] text-rose-600 dark:text-rose-400">{error}</span>}
+      {!editing ? (
+        <button onClick={() => setEditing(true)}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft hover:text-ink transition-colors">
+          <Pencil size={13} /> Edit dashboard
+        </button>
+      ) : (
+        <>
+          <div className="relative">
+            <button onClick={() => setAddOpen((o) => !o)} disabled={availableToAdd.length === 0}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft hover:text-ink transition-colors disabled:opacity-50">
+              <Plus size={13} /> Add card
+            </button>
+            {addOpen && availableToAdd.length > 0 && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-xl border border-hairline bg-surface p-1.5 shadow-[0_8px_24px_rgba(31,30,27,0.10)]">
+                {availableToAdd.map((c) => (
+                  <button key={c.id} onClick={() => add(c.id)}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-[12px] text-ink-secondary hover:bg-surface-soft hover:text-ink transition-colors">
+                    <Plus size={13} className="text-ink-faint flex-shrink-0" /> {c.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={onReset} disabled={saving}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-muted hover:text-ink transition-colors disabled:opacity-50">
+            <RotateCcw size={13} /> Reset
+          </button>
+          <button onClick={onCancel} disabled={saving}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={onSave} disabled={saving}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-semibold text-white transition-colors disabled:opacity-60"
+            style={{ backgroundColor: 'var(--brand)' }}>
+            <Check size={13} /> {saving ? 'Saving…' : 'Save'}
+          </button>
+        </>
+      )}
+    </>
+  )
+
   return (
     <div className="space-y-3">
-      {/* Toolbar (hidden in read-only preview) */}
-      {!readOnly && (
-      <div className="flex items-center justify-end gap-2 min-h-8">
-        {error && <span className="mr-auto text-[12px] text-rose-600 dark:text-rose-400">{error}</span>}
-        {!editing ? (
-          <button onClick={() => setEditing(true)}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft hover:text-ink transition-colors">
-            <Pencil size={13} /> Edit dashboard
-          </button>
-        ) : (
-          <>
-            <div className="relative mr-auto">
-              <button onClick={() => setAddOpen((o) => !o)} disabled={availableToAdd.length === 0}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft hover:text-ink transition-colors disabled:opacity-50">
-                <Plus size={13} /> Add card
-              </button>
-              {addOpen && availableToAdd.length > 0 && (
-                <div className="absolute left-0 top-9 z-30 w-56 rounded-xl border border-hairline bg-surface p-1.5 shadow-[0_8px_24px_rgba(31,30,27,0.10)]">
-                  {availableToAdd.map((c) => (
-                    <button key={c.id} onClick={() => add(c.id)}
-                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-[12px] text-ink-secondary hover:bg-surface-soft hover:text-ink transition-colors">
-                      <Plus size={13} className="text-ink-faint flex-shrink-0" /> {c.title}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button onClick={onReset} disabled={saving}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-muted hover:text-ink transition-colors disabled:opacity-50">
-              <RotateCcw size={13} /> Reset
-            </button>
-            <button onClick={onCancel} disabled={saving}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft transition-colors disabled:opacity-50">
-              Cancel
-            </button>
-            <button onClick={onSave} disabled={saving}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-semibold text-white transition-colors disabled:opacity-60"
-              style={{ backgroundColor: 'var(--brand)' }}>
-              <Check size={13} /> {saving ? 'Saving…' : 'Save'}
-            </button>
-          </>
-        )}
-      </div>
-      )}
+      {/* Edit controls: portaled into the AdminTopBar on desktop (so they show
+          only on this page), kept inline above the grid on mobile. */}
+      {!readOnly && topBarSlot ? createPortal(toolbar, topBarSlot) : null}
+      {!readOnly && <div className="md:hidden flex items-center justify-end gap-2 min-h-8">{toolbar}</div>}
 
       {/* Grid */}
       {visible.length === 0 ? (

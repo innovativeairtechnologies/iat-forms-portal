@@ -4,6 +4,7 @@ import { getPermMatrix } from '@/lib/permissions'
 import { getLayout } from '@/lib/dashboard-layouts'
 import { getExecData } from '@/lib/exec-dashboard-data'
 import DashboardGrid from '@/components/dashboards/DashboardGrid'
+import ExecutiveBriefing from '@/app/admin/ExecutiveBriefing'
 import {
   CARD_REGISTRY, computeQuickLinks, defaultLayout,
   type CardCtx, type DeptRole, type RenderedCard, type LayoutItem,
@@ -78,13 +79,21 @@ export default async function DepartmentDashboard({ role, displayName, userId, p
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live
             </span>
           </div>
+
+          {/* Today's briefing — the AI summary folded in under the greeting as a
+              quiet line of context (admin only), not its own card. */}
+          {role === 'admin' && (
+            <div className="relative mt-5 border-t border-hairline/70 pt-4">
+              <ExecutiveBriefing />
+            </div>
+          )}
         </section>
 
         {/* The customizable card grid (view + edit modes; read-only in preview). */}
         <DashboardGrid cards={rendered} initialLayout={layout} defaultLayout={dflt} readOnly={preview} />
 
         <p className="text-[11px] text-ink-faint text-center pt-1 pb-4">
-          Live data from your Supabase instance · arrange your cards with “Edit dashboard”
+          Live data from your Supabase instance · arrange your cards with “Edit dashboard” in the top bar
         </p>
       </div>
     </div>
