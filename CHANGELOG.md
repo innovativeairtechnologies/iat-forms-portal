@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — CRM Board: lanes actually pin to the viewport; narrower + Lost expanded
+
+Follow-up on the full-page board. The lanes were still growing and scrolling the whole page because
+the admin shell's outer is `min-h-screen` (a minimum, not a definite height), so the board's
+`flex-1 min-h-0` chain had nothing to constrain against. Gave the CRM shell a **definite height** —
+`h-[calc(100dvh-3.5rem)]` (viewport minus the `h-14` top bar) — so the stage lanes now hold the
+viewport and **scroll internally**, page stays put. Also narrowed the lanes (268→244px) so **all six
+stages fit across**, and **Lost now shows expanded by default** instead of the collapsed rail (still
+collapsible). `DealsClient` + `BoardView`.
+
 ## 2026-07-21 — CRM Board goes full-page
 
 The Board is now a proper full-height workspace instead of a card on a scrolling page. The CRM header

@@ -66,7 +66,7 @@ export default function BoardView({
   const [search, setSearch] = useState('')
   const [repFilter, setRepFilter] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Partial<Record<DealStage, boolean>>>({})
-  const [lostOpen, setLostOpen] = useState(false)
+  const [lostOpen, setLostOpen] = useState(true)
   // A drop onto won/lost parks here until the reason prompt resolves.
   const [pendingClose, setPendingClose] = useState<{ id: string; to: 'won' | 'lost' } | null>(null)
   // Client-only "now" so the days-in-stage chip can't cause a hydration mismatch.
@@ -205,7 +205,7 @@ export default function BoardView({
 
             const capped = expanded[stage.key] ? list : list.slice(0, SHOW_CAP)
             return (
-              <div key={stage.key} className="flex-shrink-0 w-[268px] rounded-xl border border-hairline bg-surface-soft overflow-hidden flex flex-col">
+              <div key={stage.key} className="flex-shrink-0 w-[244px] rounded-xl border border-hairline bg-surface-soft overflow-hidden flex flex-col">
                 {/* Lane header — tone dot + soft-tinted band + count + total */}
                 <div className={`flex items-center gap-2 px-3 h-11 flex-shrink-0 border-b border-hairline-soft ${tone.head}`}>
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${tone.dot}`} />

@@ -307,7 +307,13 @@ export default function DealsClient({
   const detailFollowUps = detailDeal ? followUps.filter((f) => f.deal_id === detailDeal.id) : []
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-canvas overflow-hidden">
+    // Definite viewport height (100dvh minus the h-14 AdminTopBar, which equals
+    // the mobile pt-14 spacer) so the internal flex chain can constrain and the
+    // Board's lanes scroll internally instead of growing the page. `flex-1
+    // min-h-0` alone doesn't work here: the admin shell's outer is `min-h-screen`
+    // (a minimum, not a definite size), so flex-basis:0 children fall back to
+    // content height and the page scrolls.
+    <div className="h-[calc(100dvh_-_3.5rem)] shrink-0 flex flex-col bg-canvas overflow-hidden">
       {/* Tab row — the CRM's primary control. Slim + fixed so the active view
           (esp. the full-height Board) owns the rest of the screen. Each view
           carries its own search / filters / sort, so all stay mounted below. */}
