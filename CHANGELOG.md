@@ -44,8 +44,10 @@ client authenticates and returns the new `{data, error, headers}` shape correctl
 `js-beautify`, `editorconfig`, `html-to-text` and `glob@10` with it. That removes both
 `minimatch@9` copies and both `brace-expansion@2.1.3` copies, so the GHSA-mh99-v99m-4gvg
 exposure on the *email* path is gone (`npm audit` 17 → 13 high). What remains is
-`brace-expansion@1.1.16` under eslint — dev-only, and still with no patched release on the 1.x
-line, so Dependabot #39 stays open by design. See the brace-expansion note in the previous entry.
+`brace-expansion@1.1.16` under eslint, which still has no patched release on the 1.x line —
+but removing the runtime path reclassified alert #39 from `scope=runtime` to
+`scope=development`, and GitHub **auto-dismissed it**. The repo is now at **zero open
+Dependabot alerts**.
 
 Pinned to `6.18.1` deliberately rather than `@latest`: every finding above was verified against
 that exact version, and `parseEmailToApiOptions` is a hand-maintained key allowlist, so a future
