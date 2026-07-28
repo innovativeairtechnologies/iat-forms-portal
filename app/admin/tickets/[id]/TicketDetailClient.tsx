@@ -7,7 +7,8 @@ import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/s
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import dynamic from 'next/dynamic'
-import { DetailShell, DetailTopBar, Card, CardHead, Field } from '@/components/admin/detail-ui'
+import { DetailShell, Card, CardHead, Field } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 import { isInlineViewable, AttachmentViewerModal } from '@/components/shared/AttachmentViewer'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { StatusPill } from '@/components/admin/list'
@@ -411,18 +412,13 @@ export default function TicketDetailClient({
 
   return (
     <DetailShell>
-      <DetailTopBar
-        crumbs={[
-          { label: 'Tickets', href: '/admin/tickets' },
-          { label: ticket.ticket_number },
-        ]}
-      >
+      <PageChrome record={ticket.ticket_number}>
         <DeleteRecordButton
           endpoint={`/api/tickets/${ticket.id}`}
           entityLabel="ticket"
           redirectTo="/admin/tickets"
         />
-      </DetailTopBar>
+      </PageChrome>
 
       <div className="p-5 space-y-4">
         {/* Hero */}

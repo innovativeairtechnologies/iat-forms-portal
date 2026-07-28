@@ -6,80 +6,30 @@ import { usePathname } from 'next/navigation'
 import { TopBarSearch, TopBarBell } from './TopBarActions'
 import DashboardPresetPicker from './DashboardPresetPicker'
 import type { Preset } from './dashboard-presets'
+import { crumbsFor, type Crumb } from './crumbs'
+import { usePageChromeTail } from './PageChrome'
 
 /* ────────────────────────────────────────────────────────────────────────────
    AdminTopBar — the shared operations top bar.
 
    Lifted out of the dashboard page so EVERY /admin/* page carries the same
-   chrome: breadcrumb · search · (page-specific actions) · notification bell ·
-   profile avatar. Rendered once from app/admin/layout.tsx, above each page's
-   own scroll container.
+   chrome: breadcrumb · (page actions) · search · notification bell · profile
+   avatar. Rendered once from app/admin/layout.tsx, above each page's own scroll
+   container.
 
-   The "page-specific actions" slot is contextual: on the dashboard it holds the
-   layout view-switcher (DashboardPresetPicker); on every other page it's empty
-   for now — the slot is the hook for per-page actions later.
+   Detail/editor pages feed their record crumb + action buttons UP into this one
+   bar via <PageChrome> (see PageChrome.tsx), so there is never a second stacked
+   breadcrumb bar. The record crumb arrives through usePageChromeTail(); the
+   action buttons are portaled into the #admin-topbar-actions slot below.
 
    Desktop only (md+), matching PortalTopBar. On mobile the AdminSidebar's own
-   fixed bar (logo + hamburger) is the top chrome, so we don't stack two bars.
+   fixed bar is the top chrome (and PageChrome renders its own mobile bar), so we
+   don't stack two bars.
    ──────────────────────────────────────────────────────────────────────────── */
 
-export type Crumb = { label: string; href?: string }
-
-// Route → breadcrumb map. Longest matching prefix wins, so
-// /admin/requests/pto beats /admin/requests beats /admin. Mirrors the sidebar
-// section names (Operations / Sales / People / Jerry / System).
-const ROUTES: { prefix: string; section: string; label: string }[] = [
-  // Operations
-  { prefix: '/admin/submissions',     section: 'Operations', label: 'Submissions' },
-  { prefix: '/admin/tickets',         section: 'Operations', label: 'Tickets' },
-  { prefix: '/admin/troubleshooting', section: 'Operations', label: 'Troubleshooting' },
-  { prefix: '/admin/forms',           section: 'Operations', label: 'Forms' },
-  { prefix: '/admin/equipment',       section: 'Operations', label: 'Equipment' },
-  { prefix: '/admin/tool-crib',       section: 'Operations', label: 'Tool Crib' },
-  { prefix: '/admin/production',      section: 'Operations', label: 'Production Board' },
-  { prefix: '/admin/srv',             section: 'Operations', label: 'SRV Form' },
-  { prefix: '/admin/gantt',           section: 'Operations', label: 'Gantt' },
-  // Sales
-  { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },
-  { prefix: '/admin/projected-sales', section: 'Sales',   label: 'Performance' },
-  { prefix: '/admin/territories',     section: 'Sales',   label: 'Territories' },
-  { prefix: '/admin/customers',       section: 'Sales',   label: 'Customers' },
-  { prefix: '/admin/presentations',   section: 'Sales',   label: 'Presentations' },
-  // People
-  { prefix: '/admin/employees',       section: 'People',  label: 'Accounts' },
-  { prefix: '/admin/org-chart',       section: 'People',  label: 'Org Chart' },
-  { prefix: '/admin/employee-forms',  section: 'People',  label: 'Employee Forms' },
-  { prefix: '/admin/requests/pto',    section: 'People',  label: 'PTO' },
-  { prefix: '/admin/requests/sick',   section: 'People',  label: 'Sick Time' },
-  { prefix: '/admin/requests',        section: 'People',  label: 'Requests' },
-  { prefix: '/admin/schedule',        section: 'People',  label: 'Scheduling' },
-  { prefix: '/admin/scheduling',      section: 'People',  label: 'Scheduling' },
-  { prefix: '/admin/accrual',         section: 'People',  label: 'Accrual' },
-  // Jerry
-  { prefix: '/admin/customer-jerry',  section: 'Jerry',   label: 'Customer Jerry' },
-  { prefix: '/admin/jerry',           section: 'Jerry',   label: 'Ask Jerry' },
-  { prefix: '/admin/knowledge',       section: 'Jerry',   label: "Jerry's Brain" },
-  // System
-  { prefix: '/admin/home-content',    section: 'System',  label: 'Company Home' },
-  { prefix: '/admin/audit',           section: 'System',  label: 'Audit Log' },
-  { prefix: '/admin/permissions',     section: 'System',  label: 'Permissions' },
-  // US Rotors
-  { prefix: '/admin/us-rotors',       section: 'US Rotors', label: 'Orders' },
-  // Standalone
-  { prefix: '/admin/tools',           section: 'Operations', label: 'Internal Apps' },
-  { prefix: '/admin/home',            section: 'Company',    label: 'Home' },
-  { prefix: '/admin/profile',         section: 'Account',    label: 'Profile' },
-  // Dashboard (shortest — matched last)
-  { prefix: '/admin',                 section: 'Operations', label: 'Overview' },
-]
-
-function crumbsFor(pathname: string): Crumb[] {
-  const hit = ROUTES
-    .filter((r) => pathname === r.prefix || pathname.startsWith(r.prefix + '/'))
-    .sort((a, b) => b.prefix.length - a.prefix.length)[0]
-  if (!hit) return [{ label: 'Operations' }]
-  return [{ label: hit.section }, { label: hit.label }]
-}
+// Crumb + the Section › Page derivation now live in ./crumbs (shared with
+// PageChrome). Re-exported for any existing importers.
+export type { Crumb }
 
 interface Props {
   displayName: string
@@ -94,10 +44,13 @@ interface Props {
 
 export default function AdminTopBar({ displayName, unreadCount, ticketCount, preset, crumbs, showPresets }: Props) {
   const pathname = usePathname()
+  const tail = usePageChromeTail()
   // Company Home (/admin/home) renders its own HomeTopBar, so suppress the
   // operations bar there — otherwise the page shows two stacked top bars.
   if (pathname === '/admin/home') return null
-  const trail = crumbs ?? crumbsFor(pathname)
+  // Explicit override (preview route) wins; otherwise derive Section › Page and
+  // append the record crumb(s) a detail page fed up through <PageChrome>.
+  const trail = crumbs ?? [...crumbsFor(pathname), ...(tail ?? [])]
   // Layout presets retired: the admin dashboard is now the customizable card
   // grid (add/remove/reorder/resize), so the old view-switcher no longer applies.
   const withPresets = showPresets ?? false
@@ -127,6 +80,10 @@ export default function AdminTopBar({ displayName, unreadCount, ticketCount, pre
       </div>
 
       <div className="flex-1" />
+
+      {/* Page-specific action buttons, portaled in by <PageChrome>. `empty:hidden`
+          keeps it from taking layout space on list/overview pages. */}
+      <div id="admin-topbar-actions" className="flex items-center gap-2 empty:hidden" />
 
       <TopBarSearch />
       {withPresets && <DashboardPresetPicker current={preset} />}

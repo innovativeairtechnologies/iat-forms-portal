@@ -1,0 +1,68 @@
+export type Crumb = { label: string; href?: string }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Shared breadcrumb derivation for the /admin surface.
+
+   Both AdminTopBar (the single top nav bar) and PageChrome (which lets a detail
+   page feed its record name up into that bar) derive the base `Section › Page`
+   trail from the URL here, so the two never disagree.
+
+   Longest matching prefix wins, so /admin/requests/pto beats /admin/requests
+   beats /admin. Mirrors the sidebar section names (Operations / Sales / People /
+   Jerry / System).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+const ROUTES: { prefix: string; section: string; label: string }[] = [
+  // Operations
+  { prefix: '/admin/submissions',     section: 'Operations', label: 'Submissions' },
+  { prefix: '/admin/tickets',         section: 'Operations', label: 'Tickets' },
+  { prefix: '/admin/troubleshooting', section: 'Operations', label: 'Troubleshooting' },
+  { prefix: '/admin/forms',           section: 'Operations', label: 'Forms' },
+  { prefix: '/admin/equipment',       section: 'Operations', label: 'Equipment' },
+  { prefix: '/admin/tool-crib',       section: 'Operations', label: 'Tool Crib' },
+  { prefix: '/admin/production',      section: 'Operations', label: 'Production Board' },
+  { prefix: '/admin/srv',             section: 'Operations', label: 'SRV Form' },
+  { prefix: '/admin/gantt',           section: 'Operations', label: 'Gantt' },
+  // Sales
+  { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },
+  { prefix: '/admin/projected-sales', section: 'Sales',   label: 'Performance' },
+  { prefix: '/admin/territories',     section: 'Sales',   label: 'Territories' },
+  { prefix: '/admin/customers',       section: 'Sales',   label: 'Customers' },
+  { prefix: '/admin/presentations',   section: 'Sales',   label: 'Presentations' },
+  // People
+  { prefix: '/admin/employees',       section: 'People',  label: 'Accounts' },
+  { prefix: '/admin/org-chart',       section: 'People',  label: 'Org Chart' },
+  { prefix: '/admin/employee-forms',  section: 'People',  label: 'Employee Forms' },
+  { prefix: '/admin/requests/pto',    section: 'People',  label: 'PTO' },
+  { prefix: '/admin/requests/sick',   section: 'People',  label: 'Sick Time' },
+  { prefix: '/admin/requests',        section: 'People',  label: 'Requests' },
+  { prefix: '/admin/schedule',        section: 'People',  label: 'Scheduling' },
+  { prefix: '/admin/scheduling',      section: 'People',  label: 'Scheduling' },
+  { prefix: '/admin/accrual',         section: 'People',  label: 'Accrual' },
+  // Jerry
+  { prefix: '/admin/customer-jerry',  section: 'Jerry',   label: 'Customer Jerry' },
+  { prefix: '/admin/jerry',           section: 'Jerry',   label: 'Ask Jerry' },
+  { prefix: '/admin/knowledge',       section: 'Jerry',   label: "Jerry's Brain" },
+  // System
+  { prefix: '/admin/home-content',    section: 'System',  label: 'Company Home' },
+  { prefix: '/admin/audit',           section: 'System',  label: 'Audit Log' },
+  { prefix: '/admin/permissions',     section: 'System',  label: 'Permissions' },
+  // US Rotors
+  { prefix: '/admin/us-rotors',       section: 'US Rotors', label: 'Orders' },
+  // Standalone
+  { prefix: '/admin/tools',           section: 'Operations', label: 'Internal Apps' },
+  { prefix: '/admin/home',            section: 'Company',    label: 'Home' },
+  { prefix: '/admin/profile',         section: 'Account',    label: 'Profile' },
+  // Dashboard (shortest — matched last)
+  { prefix: '/admin',                 section: 'Operations', label: 'Overview' },
+]
+
+/** The base `Section › Page` trail for a pathname. The page-level crumb carries
+ *  an href (its list route) so it becomes a link once a record crumb follows it. */
+export function crumbsFor(pathname: string): Crumb[] {
+  const hit = ROUTES
+    .filter((r) => pathname === r.prefix || pathname.startsWith(r.prefix + '/'))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0]
+  if (!hit) return [{ label: 'Operations' }]
+  return [{ label: hit.section }, { label: hit.label, href: hit.prefix }]
+}

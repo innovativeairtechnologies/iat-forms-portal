@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import PageChrome from '@/app/admin/PageChrome'
 import {
   ChevronRight, Plus, Trash2, X, ExternalLink, Ban, RotateCcw, Check, Copy, Pencil, Loader2,
 } from 'lucide-react'
@@ -81,29 +81,18 @@ export default function ProjectDetailClient({ department, project, tasks, people
 
   return (
     <div className="flex-1 overflow-auto bg-canvas">
-      <div className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-hairline bg-canvas px-5">
-        <div className="flex min-w-0 items-center gap-1.5 text-[13px]">
-          <Link href="/admin/production" className="text-ink-faint transition-colors hover:text-ink-secondary">
-            Production Board
-          </Link>
-          <ChevronRight size={13} className="flex-shrink-0 text-ink-faint" />
-          <Link href={`/admin/production/${department.id}`} className="text-ink-faint transition-colors hover:text-ink-secondary">
-            {department.name}
-          </Link>
-          <ChevronRight size={13} className="flex-shrink-0 text-ink-faint" />
-          <span className="truncate font-semibold text-ink">{project.name}</span>
-        </div>
+      <PageChrome record={[{ label: department.name, href: `/admin/production/${department.id}` }, { label: project.name }]}>
         <a
           href={`/board/${department.token}?project=${project.id}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto flex flex-shrink-0 items-center gap-1.5 text-[12px] text-ink-muted transition-colors hover:text-ink-secondary"
+          className="flex flex-shrink-0 items-center gap-1.5 text-[12px] text-ink-muted transition-colors hover:text-ink-secondary"
         >
           <ExternalLink size={13} />
           <span className="hidden sm:inline">View this project&apos;s board</span>
           <span className="sm:hidden">Board</span>
         </a>
-      </div>
+      </PageChrome>
 
       <div className="max-w-3xl p-4 sm:p-8">
         {/* ── Project header ────────────────────────────────────────────────── */}

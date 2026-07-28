@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation'
 import { formatDateTime } from '@/lib/utils'
 import { FileText, Calendar, ClipboardList, Info, BarChart3, Printer, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
-import { DetailShell, DetailTopBar, Card, CardHead, MetaRow, Field } from '@/components/admin/detail-ui'
+import { DetailShell, Card, CardHead, MetaRow, Field } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 import SubmissionDetailClient from './SubmissionDetailClient'
 import SubmissionNotes from './SubmissionNotes'
 import SubmissionStatus from './SubmissionStatus'
@@ -109,12 +110,7 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
     <DetailShell>
       <MarkAsRead submissionId={submission.id} isRead={submission.is_read} />
 
-      <DetailTopBar
-        crumbs={[
-          { label: 'Submissions', href: '/admin/submissions' },
-          { label: submitterName || 'Submission' },
-        ]}
-      >
+      <PageChrome record={submitterName || 'Submission'}>
         <SubmissionStatus submissionId={submission.id} initialStatus={status} />
         <Link
           href={`/print/submissions/${submission.id}`}
@@ -130,7 +126,7 @@ export default async function SubmissionDetailPage(props: { params: Promise<{ id
           entityLabel="submission"
           redirectTo="/admin/submissions"
         />
-      </DetailTopBar>
+      </PageChrome>
 
       <div className="p-5 space-y-4">
         {/* Hero */}

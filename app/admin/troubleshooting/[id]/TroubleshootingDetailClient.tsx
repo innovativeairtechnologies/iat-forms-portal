@@ -8,7 +8,8 @@ import {
 } from 'lucide-react'
 import type { TroubleshootingIntake } from '@/lib/supabase'
 import { updateTroubleshootingStatus } from '../actions'
-import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import { DetailShell, Card, CardHead } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 
 const STATUS_OPTIONS: { value: TroubleshootingIntake['status']; label: string; cls: string }[] = [
   { value: 'new',      label: 'New',      cls: 'bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-500/30' },
@@ -92,16 +93,11 @@ export default function TroubleshootingDetailClient({
 
   return (
     <DetailShell>
-      <DetailTopBar
-        crumbs={[
-          { label: 'Troubleshooting', href: '/admin/troubleshooting' },
-          { label: intake.reference_number },
-        ]}
-      >
+      <PageChrome record={intake.reference_number}>
         <span className={`inline-flex items-center text-[12px] font-semibold px-3 h-7 rounded-full border ${currentStatus?.cls}`}>
           {currentStatus?.label}
         </span>
-      </DetailTopBar>
+      </PageChrome>
 
       <div className="p-5 space-y-4">
         {/* Hero */}

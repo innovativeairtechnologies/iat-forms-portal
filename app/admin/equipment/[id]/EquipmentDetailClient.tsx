@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { Save, Boxes, ShieldCheck, ShieldAlert, ShieldQuestion, Ticket as TicketIcon, Wrench, ClipboardList } from 'lucide-react'
 import type { Equipment, Customer, EquipmentMilestone } from '@/lib/supabase'
 import { effectiveWarrantyEnd, warrantyState, daysUntilWarrantyEnd, nextPmDue, pmState } from '@/lib/equipment'
-import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import { DetailShell, Card, CardHead } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import CustomerPortalCard from '@/components/admin/CustomerPortalCard'
 import EquipmentPhotos from '@/components/admin/EquipmentPhotos'
@@ -104,12 +105,7 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
 
   return (
     <DetailShell>
-      <DetailTopBar
-        crumbs={[
-          { label: 'Equipment', href: '/admin/equipment' },
-          { label: equipment.serial_number || 'Unit' },
-        ]}
-      >
+      <PageChrome record={equipment.serial_number || 'Unit'}>
         {saved && <span className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
         <DeleteRecordButton
           endpoint={`/api/equipment/${equipment.id}`}
@@ -124,7 +120,7 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
         >
           <Save size={13} />{saving ? 'Saving…' : 'Save'}
         </button>
-      </DetailTopBar>
+      </PageChrome>
 
       <div className="p-5 space-y-4">
         {/* Hero */}

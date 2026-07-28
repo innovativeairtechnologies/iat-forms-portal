@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import PageChrome from '@/app/admin/PageChrome'
 import {
   ChevronRight, Plus, Trash2, X, UserRound, ExternalLink, Ban, RotateCcw, Check,
   Copy, FolderKanban, Loader2,
@@ -64,26 +65,17 @@ export default function DeptDetailClient({ department, projects, tasks, people, 
 
   return (
     <div className="flex-1 overflow-auto bg-canvas">
-      {/* Breadcrumb bar. Solid background — opacity modifiers on the semantic
-          tokens compile to nothing. See DESIGN.md §2.5. */}
-      <div className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-hairline bg-canvas px-5">
-        <div className="flex items-center gap-1.5 text-[13px]">
-          <Link href="/admin/production" className="text-ink-faint transition-colors hover:text-ink-secondary">
-            Production Board
-          </Link>
-          <ChevronRight size={13} className="text-ink-faint" />
-          <span className="font-semibold text-ink">{department.name}</span>
-        </div>
+      <PageChrome record={department.name}>
         <a
           href={`/board/${department.token}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto flex items-center gap-1.5 text-[12px] text-ink-muted transition-colors hover:text-ink-secondary"
+          className="flex items-center gap-1.5 text-[12px] text-ink-muted transition-colors hover:text-ink-secondary"
         >
           <ExternalLink size={13} />
           View as the floor
         </a>
-      </div>
+      </PageChrome>
 
       <div className="max-w-4xl p-4 sm:p-8">
         <div className="mb-6 flex items-end justify-between gap-3">

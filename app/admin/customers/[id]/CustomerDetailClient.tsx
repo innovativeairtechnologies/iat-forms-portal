@@ -7,7 +7,8 @@ import {
   Building2, Boxes, Send, Trash2, ShieldCheck, ShieldOff, Copy, Check,
   Loader2, CheckCircle2, AlertTriangle, ChevronRight,
 } from 'lucide-react'
-import { DetailShell, DetailTopBar, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
+import { DetailShell, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { StatusPill } from '@/components/admin/list'
 import { warrantyState } from '@/lib/equipment'
@@ -81,7 +82,7 @@ export default function CustomerDetailClient({
 
   return (
     <DetailShell>
-      <DetailTopBar crumbs={[{ label: 'Customers', href: '/admin/customers' }, { label: customer.company_name }]}>
+      <PageChrome record={customer.company_name}>
         {customer.status === 'inactive' ? (
           <StatusPill tone="slate">Inactive</StatusPill>
         ) : (
@@ -93,7 +94,7 @@ export default function CustomerDetailClient({
           redirectTo="/admin/customers"
           warn="Deletes the company + its logins."
         />
-      </DetailTopBar>
+      </PageChrome>
 
       <div className="mx-auto max-w-[1100px] p-5 lg:p-8">
         {/* Title */}

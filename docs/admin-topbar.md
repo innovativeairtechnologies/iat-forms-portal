@@ -1,11 +1,14 @@
 # Admin top bar (`AdminTopBar`)
 
 The shared operations top bar shown on **every `/admin/*` page**: breadcrumb ·
-search · (contextual view-switcher) · notifications bell · profile avatar.
+page actions · search · notifications bell · profile avatar.
 
 - **Component:** `app/admin/AdminTopBar.tsx` (client)
 - **Rendered from:** `app/admin/layout.tsx` — once, above every page's own scroll
-  container, so it's consistent across the whole admin surface.
+  container, so it's consistent across the whole admin surface. Wrapped in
+  `PageChromeProvider` so detail pages can feed it their record crumb + actions.
+- **Breadcrumb derivation:** `app/admin/crumbs.ts` (`crumbsFor` + the `ROUTES`
+  map), shared with `PageChrome` so the top bar and the detail page never disagree.
 - **Client pieces reused:** `TopBarSearch` + `TopBarBell` (`app/admin/TopBarActions.tsx`)
   and `DashboardPresetPicker` (`app/admin/DashboardPresetPicker.tsx`).
 
@@ -13,25 +16,50 @@ search · (contextual view-switcher) · notifications bell · profile avatar.
 
 | Element        | Source | Notes |
 | -------------- | ------ | ----- |
-| Breadcrumb     | route  | `crumbsFor(pathname)` — longest-prefix match against the `ROUTES` map (mirrors the sidebar sections). Add a page here to give it a breadcrumb. |
+| Breadcrumb     | route + `PageChrome` | `crumbsFor(pathname)` gives `Section › Page` (longest-prefix match against `ROUTES`). A detail/editor page appends the record crumb via `<PageChrome record={…}>`, so it reads `Operations › Equipment › 26-5875`; the Page crumb becomes a link to its list once a record follows it. Add a page to `ROUTES` to give it a breadcrumb. |
+| Page actions   | `PageChrome` | Buttons a detail/editor page hoists up (Save, Delete, Print, status pills…), portaled into the `#admin-topbar-actions` slot. `empty:hidden` keeps it out of the layout on list/overview pages. |
 | Search         | `TopBarSearch` | Opens the ⌘K command palette. |
-| View-switcher  | `DashboardPresetPicker` | The "Balanced / Tickets / Submissions" layout toggle. **Dashboard only** — `showPresets` defaults to `pathname === '/admin'`. On other pages this slot is free for per-page actions. |
+| View-switcher  | `DashboardPresetPicker` | Retired from general use — `showPresets` defaults to `false`. |
 | Bell           | `TopBarBell` | Unread submissions (emerald dot) + open tickets (rose dot); counts come from the layout. |
 | Avatar         | layout | First initial of `admin.displayName`, links to `/admin/profile`. |
+
+## Detail & editor pages — `PageChrome`
+
+Instead of rendering their own second breadcrumb bar, detail/editor pages use
+`app/admin/PageChrome.tsx`:
+
+```tsx
+<PageChrome record={equipment.serial_number}>
+  <DeleteRecordButton … />
+  <button form="equip-form">Save</button>
+</PageChrome>
+```
+
+- `record` (`string | Crumb[]`) is appended to the derived `Section › Page` trail.
+  A string is one trailing crumb; a `Crumb[]` is several (e.g. a project nested
+  under a department).
+- `children` are the page's action buttons.
+- **Desktop:** the record crumb is added to `AdminTopBar` (via context) and the
+  actions are portaled into its `#admin-topbar-actions` slot → one bar.
+- **Mobile:** `AdminTopBar` is hidden, so `PageChrome` renders its own sticky bar
+  (list crumb + record + actions), matching the old `DetailTopBar`.
+
+Works from both Server and Client Components (e.g. the submissions and forms-tally
+pages are Server Components that pass client action children through).
 
 ## Behavior
 
 - **Desktop only** (`hidden md:flex`). On mobile the `AdminSidebar` fixed bar
-  (logo + hamburger) is the top chrome, so there are never two stacked bars. The
-  layout's `pt-14 md:pt-0` clears that mobile bar.
-- `preset` is read from the `iat_dash_preset` cookie in the layout (same as the
-  dashboard) and passed down so the view-switcher shows the current layout.
+  (logo + hamburger) is the top chrome — plus `PageChrome`'s own bar on detail
+  pages — so there are never two stacked bars. The layout's `pt-14 md:pt-0`
+  clears the mobile bar.
+- Suppressed on `/admin/home` (renders its own `HomeTopBar`).
+- `preset` is read from the `iat_dash_preset` cookie in the layout and passed down.
 
-## Extending
+## Other surfaces
 
-- **Per-page actions:** pass `crumbs` and/or wire a page-specific actions node into
-  the contextual slot (currently the view-switcher on the dashboard).
-- **Other surfaces:** the employee (`EmployeeShell`) and Learn (`LearnShell`)
-  surfaces still use their own `PortalTopBar`. Unifying them onto `AdminTopBar`
-  would need a non-admin data/permission context (their notifications and profile
-  targets differ), so it's deliberately out of scope for this pass.
+- The customer ticket page still uses `DetailTopBar` (`components/admin/detail-ui.tsx`);
+  the customer surface has no shared top bar, so it never stacked.
+- The employee (`EmployeeShell`) and Learn (`LearnShell`) surfaces use their own
+  `PortalTopBar`. Learn still stacks a generic bar over an inline breadcrumb — a
+  follow-up, since it's a different top-bar mechanism.

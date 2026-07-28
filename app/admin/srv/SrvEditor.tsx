@@ -6,6 +6,7 @@ import {
   Save, Loader2, CheckCircle2, AlertTriangle, ClipboardCheck, Info,
 } from 'lucide-react'
 import type { SrvSection } from '@/lib/srv'
+import PageChrome from '@/app/admin/PageChrome'
 
 const INPUT =
   'w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-[13px] text-zinc-700 dark:text-zinc-200 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all'
@@ -86,25 +87,18 @@ export default function SrvEditor({ initialSections }: { initialSections: SrvSec
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0b]/90 backdrop-blur">
-        <div className="flex items-center gap-1.5 text-[13px]">
-          <span className="text-zinc-400 dark:text-zinc-500">IAT</span>
-          <ChevronRight size={13} className="text-zinc-300 dark:text-zinc-700" />
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">SRV Form</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {saved && !dirty && <span className="flex items-center gap-1.5 text-[12px] font-medium text-emerald-600 dark:text-emerald-400"><CheckCircle2 size={14} /> Saved</span>}
-          <button
-            type="button"
-            onClick={save}
-            disabled={!dirty || saving}
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-9 rounded-lg disabled:opacity-40 transition-colors"
-          >
-            {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-        </div>
-      </div>
+      <PageChrome>
+        {saved && !dirty && <span className="flex items-center gap-1.5 text-[12px] font-medium text-emerald-600 dark:text-emerald-400"><CheckCircle2 size={14} /> Saved</span>}
+        <button
+          type="button"
+          onClick={save}
+          disabled={!dirty || saving}
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-9 rounded-lg disabled:opacity-40 transition-colors"
+        >
+          {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+      </PageChrome>
 
       <div className="p-5 space-y-4 max-w-3xl">
         <div>

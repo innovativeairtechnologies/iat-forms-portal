@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, Check, Lock, Loader2, KeyRound } from 'lucide-react'
+import { Check, Lock, Loader2, KeyRound } from 'lucide-react'
 import {
   PERM_LABELS,
   NON_DELEGATABLE_PERMS,
@@ -66,14 +66,6 @@ export default function PermissionsMatrix({ initialMatrix }: { initialMatrix: Pe
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
-      <div className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0b]/90 backdrop-blur">
-        <div className="flex items-center gap-1.5 text-[13px]">
-          <span className="text-zinc-400 dark:text-zinc-500">System</span>
-          <ChevronRight size={13} className="text-zinc-300 dark:text-zinc-700" />
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">Permissions</span>
-        </div>
-      </div>
-
       <div className="p-5 space-y-4 max-w-5xl">
         <div>
           <div className="flex items-center gap-2">

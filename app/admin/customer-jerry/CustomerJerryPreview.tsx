@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import PageChrome from '@/app/admin/PageChrome'
 import JerryWidget from '@/components/shared/JerryWidget'
 import { CUSTOMER_JERRY_SUGGESTIONS } from '@/lib/jerry-questions'
 
@@ -17,14 +17,9 @@ export default function CustomerJerryPreview({ customers }: { customers: { id: s
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300">
-      <div className="flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0b]/90 backdrop-blur flex-shrink-0">
-        <div className="flex items-center gap-1.5 text-[13px]">
-          <span className="text-zinc-400 dark:text-zinc-500">Tools</span>
-          <ChevronRight size={13} className="text-zinc-300 dark:text-zinc-700" />
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">Customer Jerry</span>
-          <span className="ml-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">Preview</span>
-        </div>
-      </div>
+      <PageChrome>
+        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">Preview</span>
+      </PageChrome>
 
       <div className="flex-1 min-h-0 flex justify-center px-5 py-5">
         <div className="w-full max-w-2xl flex flex-col min-h-0 gap-3">

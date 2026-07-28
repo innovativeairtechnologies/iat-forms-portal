@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import PageChrome from '@/app/admin/PageChrome'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import {
   ChevronRight, Play, Type as TypeIcon, Plus, X, Pencil, Presentation as PresentationIcon,
@@ -102,18 +102,17 @@ export default function BuilderClient({
 
   return (
     <div className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-[#0a0a0b] text-zinc-700 dark:text-zinc-300 min-h-0">
-      {/* ── Header ── */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0b]/90 backdrop-blur">
-        <Link href="/admin/presentations" className="text-[13px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 flex-shrink-0">Presentations</Link>
-        <ChevronRight size={13} className="text-zinc-300 dark:text-zinc-700 flex-shrink-0" />
+      {/* ── Header ── the editable deck title + Save/Present hoist into the one
+          shared top bar via <PageChrome>; the breadcrumb reads Sales › Presentations. */}
+      <PageChrome>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={commitTitle}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 bg-transparent border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 focus:border-emerald-400 rounded-md px-1.5 py-0.5 focus:outline-none min-w-0 flex-1 max-w-[320px]"
+          aria-label="Presentation title"
+          className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 bg-transparent border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 focus:border-emerald-400 rounded-md px-1.5 py-0.5 focus:outline-none w-[200px]"
         />
-        <div className="flex-1" />
         <SaveIndicator state={saveState} />
         <button onClick={doSave} className="text-[13px] px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800">
           {status === 'saved' ? 'Saved' : 'Save'}
@@ -121,7 +120,7 @@ export default function BuilderClient({
         <button onClick={doPresent} disabled={deck.length === 0} className="text-[13px] px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium inline-flex items-center gap-1.5 disabled:opacity-50">
           <Play size={14} /> Present
         </button>
-      </div>
+      </PageChrome>
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="p-5 space-y-5">

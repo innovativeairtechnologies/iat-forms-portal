@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminTopBar from './AdminTopBar'
+import { PageChromeProvider } from './PageChrome'
 import RefreshOnNavigate from '@/components/admin/RefreshOnNavigate'
 import CommandPalette from '@/components/admin/CommandPalette'
 import { ViewAsProvider, ViewAsBanner } from '@/components/admin/ViewAs'
@@ -74,14 +75,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {/* pt-14 clears the fixed mobile top bar (the sidebar's old h-14 spacer sat in
             this flex-row, so it never actually pushed content down) */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden pt-14 md:pt-0">
-          <AdminTopBar
-            displayName={admin.displayName}
-            unreadCount={unreadCount ?? 0}
-            ticketCount={openTickets ?? 0}
-            preset={preset}
-          />
-          <ViewAsBanner />
-          {children}
+          <PageChromeProvider>
+            <AdminTopBar
+              displayName={admin.displayName}
+              unreadCount={unreadCount ?? 0}
+              ticketCount={openTickets ?? 0}
+              preset={preset}
+            />
+            <ViewAsBanner />
+            {children}
+          </PageChromeProvider>
         </div>
       </div>
     </ViewAsProvider>

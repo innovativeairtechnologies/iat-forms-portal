@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save, Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Shield, User, Power, UserRound, History } from 'lucide-react'
 import type { Employee, TimeOffRequest } from '@/lib/supabase'
-import { DetailShell, DetailTopBar, Card, CardHead } from '@/components/admin/detail-ui'
+import { DetailShell, Card, CardHead } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { ASSIGNABLE_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole } from '@/lib/roles'
 
@@ -115,12 +116,7 @@ export default function EmployeeDetailClient({
 
   return (
     <DetailShell>
-      <DetailTopBar
-        crumbs={[
-          { label: 'Employees', href: '/admin/employees' },
-          { label: employee.name || employee.email },
-        ]}
-      >
+      <PageChrome record={employee.name || employee.email}>
         {saved && <span className="text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">Saved ✓</span>}
         {/* No self-delete — the server refuses it too (400). Hide to avoid a dead button. */}
         {employee.id !== currentAdminId && (
@@ -139,7 +135,7 @@ export default function EmployeeDetailClient({
         >
           <Save size={13} />{saving ? 'Saving…' : 'Save'}
         </button>
-      </DetailTopBar>
+      </PageChrome>
 
       <div className="p-5 space-y-4">
         {/* Hero */}

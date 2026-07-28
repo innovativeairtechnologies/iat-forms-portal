@@ -8,7 +8,8 @@ import {
 import type { CribTool, CribEvent, CribToolStatus } from '@/lib/supabase'
 import { CRIB_STATUS, CRIB_EVENT_LABEL, formatCost, toolThumbPath, photoSrc, CRIB_SHORT_LABEL_MAX } from '@/lib/tool-crib'
 import { StatusPill, timeAgo, Avatar } from '@/components/admin/list'
-import { DetailTopBar, DetailShell, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
+import { DetailShell, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 import ToolPhotos from '@/components/admin/ToolPhotos'
 import { ToolThumb } from '@/components/admin/ToolThumb'
 import type { EmployeeOption } from './page'
@@ -160,19 +161,14 @@ export default function ToolDetailClient({
 
   return (
     <DetailShell>
-      <DetailTopBar
-        crumbs={[
-          { label: 'Tool Crib', href: '/admin/tool-crib' },
-          { label: tool.name },
-        ]}
-      >
+      <PageChrome record={tool.name}>
         <a
           href={`/admin/tool-crib/labels?ids=${tool.id}`}
           className={`${btnCx} border border-hairline text-ink-secondary hover:bg-surface-soft`}
         >
           <QrCode size={13} />Label
         </a>
-      </DetailTopBar>
+      </PageChrome>
 
       <div className="p-4 sm:p-6 grid gap-5 lg:grid-cols-[1fr_320px] max-w-6xl">
         {/* ── Left: identity + custody + history ── */}

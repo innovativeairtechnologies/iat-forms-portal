@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { BarChart3 } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { DetailShell, DetailTopBar } from '@/components/admin/detail-ui'
+import { DetailShell } from '@/components/admin/detail-ui'
+import PageChrome from '@/app/admin/PageChrome'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,9 +63,8 @@ export default async function FormTallyPage(props: { params: Promise<{ id: strin
 
   return (
     <DetailShell>
-      <DetailTopBar
-        crumbs={[
-          { label: 'Forms', href: '/admin/forms' },
+      <PageChrome
+        record={[
           { label: form.title || 'Form', href: `/admin/forms/${id}/edit` },
           { label: 'Ratings tally' },
         ]}
