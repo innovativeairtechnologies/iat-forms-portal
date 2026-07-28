@@ -2,6 +2,39 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-28 — Security: postcss and brace-expansion advisories
+
+Two high-severity Dependabot alerts.
+
+**postcss (GHSA-r28c-9q8g-f849, path traversal via `sourceMappingURL`) — fixed.** Bumped the
+direct dev dependency and the `next`-scoped override to `^8.5.18`; the whole tree now resolves to
+a single postcss 8.5.24. Not runtime-reachable here regardless: the one path that could feed
+user input to postcss is `sanitize-html` parsing `style` attributes, and `lib/sanitize.ts`
+strips `style` entirely (no `allowedStyles`), so only our own build-time CSS is ever parsed.
+
+**brace-expansion (GHSA-mh99-v99m-4gvg, unbounded-expansion DoS) — partially fixed.** Upstream
+patched **only the 5.x line** (5.0.8), but the advisory range is `<= 5.0.7`, which also covers
+the 1.x and 2.x copies in the tree. A blanket `brace-expansion` override is **not** viable —
+5.x changed its export shape, and forcing it breaks every older consumer:
+
+```
+minimatch@3.1.5  ->  expand is not a function
+minimatch@9.0.9  ->  (0, brace_expansion_1.default) is not a function
+```
+
+`npm audit` reports "0 vulnerabilities" in that state, so it would have shipped silently broken —
+including on `resend -> @react-email/render -> js-beautify -> editorconfig -> minimatch@9`, which
+runs when emails render. The override is therefore **version-scoped to `minimatch@10`**, which is
+the only consumer written against brace-expansion 5.x. All six minimatch copies in the tree are
+verified to still brace-expand correctly.
+
+Left in place deliberately: brace-expansion 1.1.16 (eslint, dev-only — `next lint` isn't even
+configured here) and 2.1.3 (editorconfig, via resend's old `@react-email/render`). Neither takes
+attacker-controlled input — the patterns come from our own config and build files — and there is
+no patched release on either line to move to. The real fix for the 2.x branch is upgrading
+**resend 3.5.0 → 6.x**, which drops `@react-email/render` altogether; that is a three-major bump
+of the SDK behind every portal email and wants its own change plus a send test.
+
 ## 2026-07-28 — Sizing Studio: psychrometric dehumidifier selection
 
 New `/admin/sizing-studio`. Enter a job's design conditions — airflow (or room volume × air
