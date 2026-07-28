@@ -112,7 +112,12 @@ export async function POST(req: NextRequest) {
     const { error } = await resend.emails.send({
       from: FROM,
       to,
-      reply_to: user.email || undefined,
+      // resend v4 renamed this from snake_case `reply_to`. The old key is not an
+      // alias — v6's normalizer reads only `replyTo`, so a stale name is dropped
+      // on the wire with no error. Keep it as an inline literal: TypeScript's
+      // excess-property check only fires on fresh object literals, so hoisting
+      // this payload into a variable would let a future rename regress silently.
+      replyTo: user.email || undefined,
       subject,
       html,
       attachments: [{ filename, content: pdf }],

@@ -16,6 +16,42 @@ Two tidy-ups to the admin dashboard:
   dashboard page and sits with the rest of the top-bar chrome. Mobile keeps the toolbar inline above the
   grid (the top bar is hidden there). (`DashboardGrid.tsx`)
 
+## 2026-07-28 — resend 3.5.0 → 6.18.1
+
+Upgrades the email SDK three majors. This is the dependency behind every transactional
+email — tickets, PTO, customer invites, digests, SRV reviews — so it was ground-truthed
+against the actual v6 `.d.ts` files and verified at the wire level before landing, rather
+than from changelogs alone.
+
+**One source change was required.** v4 renamed the send payload's `reply_to` to `replyTo`,
+and the old key is *not* an alias — v6's normalizer (`parseEmailToApiOptions`) reads only
+`replyTo`, so a stale name is dropped on the wire with no error and a successful-looking
+`{data:{id},error:null}` response. The repo had exactly one occurrence, in
+`app/api/tools/duct-traverse/email/route.ts`. It was a fresh inline object literal, so
+`tsc` caught it (TS2561).
+
+⚠️ **The type check only protects inline literals.** TypeScript's excess-property check does
+not fire on a payload built as a variable or assembled with a spread — those compile clean
+and silently drop the field. Keep resend payloads as inline literals at the call site.
+
+Everything else was already compatible: no `react:` prop anywhere, the one attachment passes
+`{filename, content}` and never `content_type` (also renamed), no code reads `error.name` or
+`.statusCode`, and the `result.data?.id` pattern still compiles under v6's discriminated-union
+response. Verified live against the Resend API with a read-only `domains.list()` call — the v6
+client authenticates and returns the new `{data, error, headers}` shape correctly.
+
+**Dependency effect — 0 added, 1 changed, 52 removed.** v6 drops `@react-email/render`, taking
+`js-beautify`, `editorconfig`, `html-to-text` and `glob@10` with it. That removes both
+`minimatch@9` copies and both `brace-expansion@2.1.3` copies, so the GHSA-mh99-v99m-4gvg
+exposure on the *email* path is gone (`npm audit` 17 → 13 high). What remains is
+`brace-expansion@1.1.16` under eslint — dev-only, and still with no patched release on the 1.x
+line, so Dependabot #39 stays open by design. See the brace-expansion note in the previous entry.
+
+Pinned to `6.18.1` deliberately rather than `@latest`: every finding above was verified against
+that exact version, and `parseEmailToApiOptions` is a hand-maintained key allowlist, so a future
+minor could drop a field with no type error. The lockfile diff was reviewed and confined to the
+resend subtree.
+
 ## 2026-07-28 — Security: postcss and brace-expansion advisories
 
 Two high-severity Dependabot alerts.

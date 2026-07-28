@@ -47,7 +47,7 @@
     "react-grid-layout": "^1.5.0",
     "react-hook-form": "^7.81.0",
     "react-signature-canvas": "^1.0.6",
-    "resend": "^3.4.0",
+    "resend": "^6.18.1",
     "sanitize-html": "^2.17.5",
     "svix": "^1.96.1",
     "tailwind-merge": "^2.4.0",
