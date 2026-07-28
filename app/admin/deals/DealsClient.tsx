@@ -1,12 +1,10 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { Deal, DealFollowUp } from '@/lib/supabase'
-import { computeSummary, PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
-import { formatCurrency } from '@/lib/utils'
+import { PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
 import { tabCx } from '@/components/admin/list'
-import { ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar } from '@/components/admin/list-card'
 import BoardView from './BoardView'
 import FocusedView from './FocusedView'
 import CalendarView from './CalendarView'
@@ -64,8 +62,6 @@ export default function DealsClient({
   // follow-up that's still mid-POST — reconciled once the real row lands, so
   // the server INSERT (which already committed) isn't orphaned or its toggle lost.
   const pendingFollowUp = useRef<Map<string, 'delete' | { done: boolean }>>(new Map())
-
-  const summary = useMemo(() => computeSummary(deals), [deals])
 
   // Last-known-server-good copy of every deal. Optimistic edits update `deals`
   // immediately; a successful persist folds the patch in here, and a failed or
@@ -311,84 +307,57 @@ export default function DealsClient({
   const detailFollowUps = detailDeal ? followUps.filter((f) => f.deal_id === detailDeal.id) : []
 
   return (
-    <ListCardPage>
-      {/* Header module — one card on the warm canvas (docs/list-views.md). The
-          CRM body is a kanban Board / editable Focused table / Calendar, not a
-          flat table, so the views render on the canvas BELOW the card rather
-          than being forced into it (and no pager is imposed on the board). */}
-      <ListCard>
-        <CardHead
-          overline="Sales"
-          title="CRM"
-          count={`${deals.length} ${deals.length === 1 ? 'project' : 'projects'}`}
-          actions={
-            <button
-              onClick={openNew}
-              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-semibold transition-colors"
-            >
-              <Plus size={15} />
-              New Deal
-            </button>
-          }
+    <div className="flex-1 min-h-0 flex flex-col bg-canvas overflow-hidden">
+      {/* Tab row — the CRM's primary control. Slim + fixed so the active view
+          (esp. the full-height Board) owns the rest of the screen. Each view
+          carries its own search / filters / sort, so all stay mounted below. */}
+      <div className="flex items-center gap-2 px-4 sm:px-6 h-12 border-b border-hairline flex-shrink-0">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          {TABS.map(({ value, label, blurb }) => {
+            const active = tab === value
+            return (
+              <button key={value} onClick={() => setTab(value)} className={tabCx(active)}>
+                {label}
+                <span className="text-[11px] font-normal text-ink-faint hidden sm:inline">{blurb}</span>
+              </button>
+            )
+          })}
+        </div>
+        <button
+          onClick={openNew}
+          className="ml-auto flex-shrink-0 inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-semibold transition-colors"
+        >
+          <Plus size={15} />
+          New Deal
+        </button>
+      </div>
+
+      {err && (
+        <div className="mx-4 sm:mx-6 mt-3 flex-shrink-0 flex items-center justify-between gap-3 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
+          {err}
+          <button onClick={() => setErr(null)} className="text-rose-400 hover:text-rose-600 flex-shrink-0"><X size={13} /></button>
+        </div>
+      )}
+
+      {/* All views stay mounted (hidden when inactive) so tab switches never
+          reset a view's own state. The active view fills the shell: Board is a
+          full-height app surface with internal-scroll lanes; Focused / Calendar
+          scroll within their own area. */}
+      <div className={tab === 'board' ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
+        <BoardView deals={deals} onStage={setStage} onView={openDetail} onToggleFocus={toggleFocus} />
+      </div>
+      <div className={tab === 'focused' ? 'flex-1 min-h-0 overflow-y-auto p-4 sm:p-6' : 'hidden'}>
+        <FocusedView deals={deals} onPatchLocal={patchLocal} onPersist={persist} onDelete={removeDeal} onView={openDetail} onToggleFocus={toggleFocus} />
+      </div>
+      <div className={tab === 'calendar' ? 'flex-1 min-h-0 overflow-y-auto p-4 sm:p-6' : 'hidden'}>
+        <CalendarView
+          deals={deals}
+          followUps={followUps}
+          onToggleDone={toggleFollowUpDone}
+          onRemove={removeFollowUp}
+          onOpenDeal={(id) => openDetail(id, deals.map((d) => d.id))}
+          onAddEvent={(dueDate, note, dealId) => addFollowUp(dealId ?? null, dueDate, note)}
         />
-
-        {/* Pipeline summary — dataset-wide (all deals), from computeSummary. */}
-        <StatStrip>
-          <Stat tone="sky" label="Pipeline" value={formatCurrency(summary.totalCost)} />
-          <Stat tone="emerald" label="Weighted" value={formatCurrency(summary.totalWeighted)} sub="cost × confidence" />
-          <Stat tone="violet" label="Open deals" value={summary.openCount.toLocaleString()} />
-          <Stat
-            tone="amber"
-            label="Win rate"
-            value={summary.winRate == null ? '—' : `${Math.round(summary.winRate)}%`}
-            sub={`${summary.wonCount} won · ${summary.lostCount} lost`}
-          />
-        </StatStrip>
-
-        {/* View tabs — the CRM's primary control (each view carries its own
-            search / filters / sort internally, so they stay mounted below). */}
-        <Toolbar>
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-            {TABS.map(({ value, label, blurb }) => {
-              const active = tab === value
-              return (
-                <button key={value} onClick={() => setTab(value)} className={tabCx(active)}>
-                  {label}
-                  <span className="text-[11px] font-normal text-ink-faint hidden sm:inline">{blurb}</span>
-                </button>
-              )
-            })}
-          </div>
-        </Toolbar>
-      </ListCard>
-
-      <div className="mt-4 sm:mt-6">
-
-        {err && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
-            {err}
-            <button onClick={() => setErr(null)} className="text-rose-400 hover:text-rose-600 flex-shrink-0"><X size={13} /></button>
-          </div>
-        )}
-
-        {/* All views stay mounted so switching tabs never resets a view's
-            own filter/sort state — see the module comment above. */}
-        <div className={tab === 'board' ? '' : 'hidden'}>
-          <BoardView deals={deals} onStage={setStage} onView={openDetail} onToggleFocus={toggleFocus} />
-        </div>
-        <div className={tab === 'focused' ? '' : 'hidden'}>
-          <FocusedView deals={deals} onPatchLocal={patchLocal} onPersist={persist} onDelete={removeDeal} onView={openDetail} onToggleFocus={toggleFocus} />
-        </div>
-        <div className={tab === 'calendar' ? '' : 'hidden'}>
-          <CalendarView
-            deals={deals}
-            followUps={followUps}
-            onToggleDone={toggleFollowUpDone}
-            onRemove={removeFollowUp}
-            onOpenDeal={(id) => openDetail(id, deals.map((d) => d.id))}
-            onAddEvent={(dueDate, note, dealId) => addFollowUp(dealId ?? null, dueDate, note)}
-          />
-        </div>
       </div>
 
       {/* Deal detail modal */}
@@ -514,6 +483,6 @@ export default function DealsClient({
           </form>
         </div>
       )}
-    </ListCardPage>
+    </div>
   )
 }

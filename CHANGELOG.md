@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-21 — CRM Board goes full-page
+
+The Board is now a proper full-height workspace instead of a card on a scrolling page. The CRM header
+collapses into one slim bar: a **compact numbers strip** (Pipeline · Weighted · Open · Avg confidence,
+open-deals only and rep-filter-aware) on the left, search + rep filters on the right, with the
+Board/Focused/Calendar tabs and New Deal on the row above. The **stage lanes fill the entire screen
+and scroll internally** — the page itself no longer scrolls — so you see 7–8 cards per lane at once and
+dragging never fights a moving page. `DealsClient` became a fixed-height flex shell (Focused/Calendar
+scroll within their own area); `BoardView` owns the stat bar and full-height internal-scroll lanes.
+Cosmetic/layout only — data, drag-drop, and the lane/card design are unchanged.
+
 ## 2026-07-21 — CRM Board facelift
 
 Restyled the kanban to match the portal's warm bento look. Each **stage lane** now carries its own

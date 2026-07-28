@@ -91,6 +91,16 @@ export default function BoardView({
     return out
   }, [rows, repFilter, q])
 
+  // Compact top-bar numbers — rep-scoped (respects the rep filter, not the
+  // transient search) and open-deals only, so picking a rep shows their book.
+  const stats = useMemo(() => {
+    const scope = repFilter ? rows.filter((r) => r.group_name === repFilter) : rows
+    const open = scope.filter((d) => d.status === null)
+    const pipeline = open.reduce((a, d) => a + d.total_cost, 0)
+    const weighted = open.reduce((a, d) => a + d.weighted, 0)
+    return { pipeline, weighted, open: open.length, avgConf: pipeline > 0 ? Math.round((weighted / pipeline) * 100) : 0 }
+  }, [rows, repFilter])
+
   // Per-stage stacks, biggest weighted value first.
   const columns = useMemo(() => {
     const map = new Map<DealStage, Row[]>(STAGES.map((s) => [s.key, []]))
@@ -123,30 +133,39 @@ export default function BoardView({
   }
 
   return (
-    <div>
-      {/* Toolbar — mirrors the Table view */}
-      <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-        <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search deals…"
-            className={`${inp} pl-8 w-[200px]`}
-          />
+    <div className="flex-1 min-h-0 flex flex-col">
+      {/* Stat + controls bar — numbers on the left, search + rep filters on the
+          right. Kept slim so the lanes own the rest of the screen. */}
+      <div className="flex items-center gap-x-6 gap-y-2.5 flex-wrap px-4 sm:px-6 py-2.5 border-b border-hairline flex-shrink-0">
+        <div className="flex items-center gap-5 sm:gap-6">
+          <BoardStat label="Pipeline" value={fmtShort(stats.pipeline)} />
+          <BoardStat label="Weighted" value={fmtShort(stats.weighted)} />
+          <BoardStat label="Open" value={stats.open.toLocaleString()} />
+          <BoardStat label="Avg conf" value={`${stats.avgConf}%`} />
         </div>
-        <div className="flex items-center gap-1 flex-wrap">
-          <button onClick={() => setRepFilter(null)} className={filterPillCx(repFilter === null)}>All</button>
-          {repOptions.map((g) => (
-            <button key={g} onClick={() => setRepFilter(repFilter === g ? null : g)} className={filterPillCx(repFilter === g)}>
-              {g}
-            </button>
-          ))}
+        <div className="ml-auto flex items-center gap-2.5 flex-wrap">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search deals…"
+              className={`${inp} pl-8 w-[180px]`}
+            />
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            <button onClick={() => setRepFilter(null)} className={filterPillCx(repFilter === null)}>All</button>
+            {repOptions.map((g) => (
+              <button key={g} onClick={() => setRepFilter(repFilter === g ? null : g)} className={filterPillCx(repFilter === g)}>
+                {g}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-3 items-start overflow-x-auto pb-4">
+        <div className="flex-1 min-h-0 flex gap-3 items-stretch overflow-x-auto px-4 sm:px-6 py-4">
           {STAGES.map((stage) => {
             const list = columns.get(stage.key) ?? []
             const weighted = list.reduce((a, d) => a + d.weighted, 0)
@@ -205,9 +224,9 @@ export default function BoardView({
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`p-2 space-y-2 min-h-[300px] max-h-[calc(100vh-300px)] overflow-y-auto transition-colors duration-150 ${
+                      className={`flex-1 min-h-0 overflow-y-auto p-2 flex flex-col gap-2 transition-colors duration-150 ${
                         snapshot.isDraggingOver ? 'bg-surface-strong/50' : ''
-                      }`}
+                      } ${list.length === 0 ? 'items-center justify-center' : ''}`}
                     >
                       {capped.map((d, i) => {
                         const age = now ? stageAgeDays(d, now) : null
@@ -314,6 +333,16 @@ export default function BoardView({
           }}
         />
       )}
+    </div>
+  )
+}
+
+/** Compact stat cell for the board's top bar. */
+function BoardStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="leading-none">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-muted">{label}</p>
+      <p className="mt-1 text-[16px] font-semibold text-ink tabular-nums tracking-[-0.01em]">{value}</p>
     </div>
   )
 }
