@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, CheckCircle, Check, Lightbulb,
-  RotateCcw, Upload, X, Loader2, ImageIcon, Info, Camera, ChevronDown, Home, AlertTriangle,
+  RotateCcw, Upload, X, Loader2, ImageIcon, Info, Camera, ChevronDown, AlertTriangle,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
@@ -753,16 +753,7 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
             <Logo size={28} className="flex-shrink-0" />
             <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200 transition-colors group-hover:text-gray-900 dark:group-hover:text-white">IAT Support</span>
           </Link>
-          <div className="ml-auto flex items-center gap-2">
-            <Link
-              href={homeHref}
-              className="flex items-center gap-1.5 text-[13px] font-medium text-gray-400 no-underline transition-colors hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <Home size={15} />
-              <span className="hidden sm:inline">Home</span>
-            </Link>
-            <ThemeToggle />
-          </div>
+          <ThemeToggle className="ml-auto" onHome={goHome} />
         </header>
 
         <div className="flex-1 flex items-start justify-center py-12 px-4">
@@ -877,17 +868,7 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
         </button>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>
         <span className="text-[14px] text-gray-400">Submit a Ticket</span>
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            onClick={goHome}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <Home size={15} />
-            <span className="hidden sm:inline">Home</span>
-          </button>
-          <ThemeToggle />
-        </div>
+        <ThemeToggle className="ml-auto" onHome={goHome} />
       </header>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">

@@ -35,14 +35,14 @@ Release polish for the public `/support` customer flow:
 - **Light/dark toggle** (Sun/Moon) now sits top-right on every customer-facing support
   screen — the landing, the ticket form, status lookup, and the KB index + articles. It
   reuses the shared `ThemeToggle`; default still follows the visitor's OS setting.
-- **Home access**: the IAT logo in the support form header (and a new top-right *Home*
-  control) return to `/support`. The customer portal (`/customer`) is back-burnered and
-  out of this release, so the support flow never routes there.
+- **Home access**: the IAT logo in the support form header (and a highlighted Home button
+  built into the light/dark toggle) return to `/support`. The customer portal (`/customer`)
+  is back-burnered and out of this release, so the support flow never routes there.
 - **Leave-guard**: navigating away mid-form now confirms first ("Leave and lose your
   answers?") when there's unsaved progress — nothing is stored until *Submit Ticket*.
 
-reCAPTCHA v3 is fully wired (client + server, fail-open) and activates the moment the
-`NEXT_PUBLIC_RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` env vars are set.
+reCAPTCHA v3 is fully wired (client + server, fail-open) and confirmed **live** in production —
+both `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` and `RECAPTCHA_SECRET_KEY` are set in Vercel prod.
 
 ## 2026-07-27 — One breadcrumb bar: detail pages fold into the top nav
 
