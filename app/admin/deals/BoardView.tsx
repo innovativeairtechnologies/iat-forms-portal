@@ -221,7 +221,10 @@ export default function BoardView({
                                 {...drag.draggableProps}
                                 {...drag.dragHandleProps}
                                 onClick={() => onView(d.id, visibleIds)}
-                                className={`group rounded-lg border bg-surface px-3 py-2.5 cursor-grab active:cursor-grabbing transition-all duration-150 ${
+                                // select-none: without it, in the tall Quoted lane
+                                // the browser starts a native text-selection drag
+                                // (copy cursor) before dnd claims the lift.
+                                className={`group select-none rounded-lg border bg-surface px-3 py-2.5 cursor-grab active:cursor-grabbing transition-all duration-150 ${
                                   dragState.isDragging
                                     ? 'border-hairline-strong shadow-lg rotate-[0.4deg]'
                                     : 'border-hairline hover:border-hairline-strong'
