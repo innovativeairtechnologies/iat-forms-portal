@@ -35,9 +35,10 @@ Release polish for the public `/support` customer flow:
 - **Light/dark toggle** (Sun/Moon) now sits top-right on every customer-facing support
   screen — the landing, the ticket form, status lookup, and the KB index + articles. It
   reuses the shared `ThemeToggle`; default still follows the visitor's OS setting.
-- **Home access**: the IAT logo in the support form header (and a highlighted Home button
-  built into the light/dark toggle) return to `/support`. The customer portal (`/customer`)
-  is back-burnered and out of this release, so the support flow never routes there.
+- **Home access**: the IAT logo in the support form header (and a standalone Home button next to
+  the light/dark toggle — gray tile with a green icon that inverts to a green tile on hover)
+  return to `/support`. The customer portal (`/customer`) is back-burnered and out of this
+  release, so the support flow never routes there.
 - **Leave-guard**: navigating away mid-form now confirms first ("Leave and lose your
   answers?") when there's unsaved progress — nothing is stored until *Submit Ticket*.
 

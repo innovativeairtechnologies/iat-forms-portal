@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, ArrowRight, CheckCircle, Check, Lightbulb,
-  RotateCcw, Upload, X, Loader2, ImageIcon, Info, Camera, ChevronDown, AlertTriangle,
+  RotateCcw, Upload, X, Loader2, ImageIcon, Info, Camera, ChevronDown, AlertTriangle, Home,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
@@ -753,7 +753,18 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
             <Logo size={28} className="flex-shrink-0" />
             <span className="text-[14px] font-semibold text-gray-700 dark:text-gray-200 transition-colors group-hover:text-gray-900 dark:group-hover:text-white">IAT Support</span>
           </Link>
-          <ThemeToggle className="ml-auto" onHome={goHome} />
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={goHome}
+              title="Home"
+              aria-label="Home"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[#089447] transition-colors hover:bg-[#089447] hover:text-gray-100 dark:bg-zinc-800 dark:hover:bg-[#089447] dark:hover:text-zinc-800"
+            >
+              <Home size={15} />
+            </button>
+            <ThemeToggle />
+          </div>
         </header>
 
         <div className="flex-1 flex items-start justify-center py-12 px-4">
@@ -868,7 +879,18 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
         </button>
         <span className="text-gray-200 dark:text-gray-700 mx-1">/</span>
         <span className="text-[14px] text-gray-400">Submit a Ticket</span>
-        <ThemeToggle className="ml-auto" onHome={goHome} />
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={goHome}
+            title="Home"
+            aria-label="Home"
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-[#089447] transition-colors hover:bg-[#089447] hover:text-gray-100 dark:bg-zinc-800 dark:hover:bg-[#089447] dark:hover:text-zinc-800"
+          >
+            <Home size={15} />
+          </button>
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex-1 flex flex-col items-center py-10 px-4">
