@@ -2,6 +2,41 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-28 — Sizing Studio: psychrometric dehumidifier selection
+
+New `/admin/sizing-studio`. Enter a job's design conditions — airflow (or room volume × air
+changes), entering/target/outdoor conditions, outside-air fraction, altitude, internal moisture
+load — and get a recommended IAT unit, the predicted leaving-air condition, the moisture-removal
+duty and the reactivation energy, plotted on a live psychrometric chart. Pure calculator: no
+reads, no writes, recalculates as you type.
+
+Three layers, each replaceable on its own:
+
+- **`lib/psychro.ts`** — ASHRAE Fundamentals (2017) Ch.1 in IP units: saturation pressure over
+  water *and* ice, humidity ratio, grains, dew point, wet bulb, enthalpy, specific volume,
+  pressure vs. altitude, adiabatic mixing. Dependency-free and side-effect-free.
+- **`lib/sizing-catalog.ts`** — the product line as typed data, transcribed from the 2022
+  nomenclature sheet, plus a model-number builder **and parser** (the parser decodes any IAT
+  model number, so it's reusable against the free-text `model_number` on equipment records).
+- **`lib/sizing.ts`** — the selection logic: mix in outside air, pick the wheel, predict the
+  leaving state, size airflow as `max(circulation, load)`, select the catalog size, compute
+  reactivation duty. Altitude is honoured throughout — the chart's own curves shift with it.
+
+**The psychrometrics are exact; the wheel performance is not.** IAT's real rotor curves live in
+the DryWare calculator, not this repo, so wheel behaviour uses planning coefficients (80%/90%
+removal, derated by reactivation temperature). Every result is stamped **Preliminary** in the UI
+and in the copied summary, and engineering confirms rotor performance before a submittal. When
+the real curves land, `predictLeavingState()` is the only function that changes.
+
+Verified by two scripts — 40 checks against published ASHRAE values and 66 on the engineering
+logic, including all 224 model-number round trips and a 648-case sweep asserting the wheel never
+adds moisture, never cools and never returns NaN. Independent corroboration: reactivation lands
+at ~2,068 BTU per lb of water on the baseline job, mid-band of the industry's 1,500–2,500, which
+the engine has no knowledge of.
+
+Gated by a new `sizing` permission — admin-only by omission, like the SRV editor, so no
+migration or `role_permissions` seed was needed. See `docs/sizing-studio.md`.
+
 ## 2026-07-27 — Customer bridge complete: tickets, Jerry, attachments and SRV
 
 Finishes the bridge, so every customer surface now works from the split deployment. Eleven more

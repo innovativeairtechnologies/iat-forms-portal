@@ -72,6 +72,9 @@ const NAV_PARENTS: NavParent[] = [
       // scans into at /board/<token> (migration 055).
       { href: '/admin/production', label: 'Production Board', perm: 'production_board' },
       { href: '/admin/srv', label: 'SRV Form', perm: 'srv' },
+      // Sizing Studio — psychrometric unit selection (lib/sizing.ts). Admin-only
+      // by omission from DEFAULT_ROLE_PERMS, like SRV above.
+      { href: '/admin/sizing-studio', label: 'Sizing Studio', perm: 'sizing' },
       // Gantt kept visible to demo despite leadership concerns; pause with `hidden: true`.
       { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
     ],

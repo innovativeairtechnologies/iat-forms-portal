@@ -22,6 +22,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/tool-crib',       section: 'Operations', label: 'Tool Crib' },
   { prefix: '/admin/production',      section: 'Operations', label: 'Production Board' },
   { prefix: '/admin/srv',             section: 'Operations', label: 'SRV Form' },
+  { prefix: '/admin/sizing-studio',   section: 'Operations', label: 'Sizing Studio' },
   { prefix: '/admin/gantt',           section: 'Operations', label: 'Gantt' },
   // Sales
   { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },

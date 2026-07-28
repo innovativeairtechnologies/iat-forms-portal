@@ -85,6 +85,11 @@ export type Perm =
   | 'customer_jerry' // admin preview of the customer-facing Jerry; admin-only
   | 'permissions' // the role-permission matrix editor itself; admin-only, non-delegatable
   | 'srv' // the SRV content editor (/admin/srv); admin-only by omission
+  // /admin/sizing-studio — the psychrometric dehumidifier selection engine.
+  // Admin-only by omission from the scoped-role defaults below, like 'srv', so it
+  // needs no role_permissions seed. Sales is the obvious next audience: grant it
+  // from /admin/permissions, or add a migration INSERT when that call is made.
+  | 'sizing'
   | 'tools' // /admin/tools — the internal field-tool/app launcher (duct traverse, calculators)
   | 'tool_crib' // /admin/tool-crib — the warehouse tool check-out registry. NOT 'tools' (above).
   // /admin/production — manage the departments, rosters and tasks behind the
@@ -127,6 +132,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   customer_jerry: 'Customer Jerry (preview)',
   permissions: 'Permissions',
   srv: 'SRV editor',
+  sizing: 'Sizing Studio',
   tools: 'Internal Apps',
   tool_crib: 'Tool Crib',
   production_board: 'Production Board',
@@ -285,6 +291,7 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/knowledge', perm: 'knowledge' },
   { prefix: '/admin/permissions', perm: 'permissions' },
   { prefix: '/admin/srv', perm: 'srv' },
+  { prefix: '/admin/sizing-studio', perm: 'sizing' },
   { prefix: '/admin/submissions', perm: 'submissions' },
   { prefix: '/admin/tickets', perm: 'tickets' },
   { prefix: '/admin/troubleshooting', perm: 'tickets' },
