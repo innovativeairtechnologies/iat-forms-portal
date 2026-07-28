@@ -348,20 +348,31 @@ export default function TerritoriesClient({
     <div className="flex-1 min-h-0 flex relative">
       {/* Map column */}
       <div className="relative flex-1 min-w-0 flex flex-col">
-        <MapCanvas
-          dark={dark}
-          fills={fills}
-          pins={pins}
-          mode={mode}
-          paintLevel={paintLevel}
-          countiesVisible={countiesVisible}
-          focus={focus}
-          placing={placing}
-          lookup={lookup}
-          onFeatureClick={onFeatureClick}
-          onMapClick={placeAt}
-          onPinClick={onPinClick}
-        />
+        {/* Wait for next-themes to resolve before mounting the map: `dark` is
+            false until `mounted`, so mounting earlier would boot the map on the
+            LIGHT basemap and then swap to dark for dark-mode users — a visible
+            "colors → black-and-white → colors" flash on every load. Gating here
+            inits the map on the correct basemap the first time. */}
+        {mounted ? (
+          <MapCanvas
+            dark={dark}
+            fills={fills}
+            pins={pins}
+            mode={mode}
+            paintLevel={paintLevel}
+            countiesVisible={countiesVisible}
+            focus={focus}
+            placing={placing}
+            lookup={lookup}
+            onFeatureClick={onFeatureClick}
+            onMapClick={placeAt}
+            onPinClick={onPinClick}
+          />
+        ) : (
+          <div className="flex-1 min-h-0 flex items-center justify-center bg-canvas">
+            <p className="text-[13px] text-ink-muted animate-pulse">Loading map…</p>
+          </div>
+        )}
 
         {/* Mode banner — the single floating control while painting / placing */}
         {mode === 'paint' && selected && (

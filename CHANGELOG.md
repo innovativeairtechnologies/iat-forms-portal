@@ -152,6 +152,13 @@ container to `position: relative` after Tailwind loads, collapsing it to 0 heigh
 container positioning is now inline styles. Also: panel search overflow fix, breadcrumb
 entry, and on-page surfacing of map-engine errors.
 
+Map theme polish: the basemaps are near-monochrome by design (colour comes from the
+translucent territory fills), so a theme change briefly drops the fills while the basemap
+reloads. Removed the avoidable version of this — the map used to boot on the light basemap
+and then swap to dark for dark-mode users (a "colours → black-and-white → colours" flash on
+every load); it now initialises on the correct basemap. Dark-mode fills are also more opaque
+so territories stay clearly coloured on the near-black map.
+
 Panel scrolling fixed: the rep list is tall, and the admin shell root grows with
 content (`min-h-screen`), so scrolling the list scrolled the whole page (map and all)
 instead of just the list. The panel now renders out of page flow (`absolute inset-0`

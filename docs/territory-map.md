@@ -74,6 +74,26 @@ companion directory of every rep. Shipped 2026-07-27 (migration 068).
 - **Reps tab** — the flat Mapline-style directory (name, firm, title, email,
   phone) across all firms.
 
+## Theme swap (colours vs "black and white")
+
+The basemaps are deliberately near-monochrome — light is OpenFreeMap `positron`
+(pale grey), dark is `dark` (near-black). **All the colour comes from the
+translucent territory fills on top.** So when the page theme changes,
+`map.setStyle()` reloads the basemap and, for a few hundred ms while it loads,
+the fills are gone and you see just the grey/black basemap — then `style.load`
+→ `ensureLayers()` re-adds them. This is expected and self-healing (verified:
+fills return on every one of 6 back-to-back toggles).
+
+Two things reduce it:
+- **No init flash for dark-mode users.** `dark` is `false` until next-themes
+  resolves (`mounted`), so mounting the map earlier boots it on the LIGHT
+  basemap and then swaps to dark — a "colours → black-and-white → colours"
+  flash on every load. `TerritoriesClient` now gates the map mount on `mounted`
+  so it inits on the correct basemap the first time.
+- **Higher fill opacity on the dark basemap** (0.5 vs 0.35 light; hover 0.68 vs
+  0.55), set in `ensureLayers` from the current theme, so territories stay
+  clearly coloured on the near-black map instead of washing out.
+
 ## Panel scroll — the side panel MUST stay `absolute inset-0`
 
 The admin shell root is `min-h-screen` (growable, no fixed-height anchor). Any

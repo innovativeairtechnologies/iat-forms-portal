@@ -190,6 +190,13 @@ export default function MapCanvas(props: Props) {
         const fillId = `${def.key}-fill`
         const lineId = `${def.key}-line`
         if (!map.getLayer(fillId)) {
+          // ensureLayers re-runs on every style.load (incl. after a theme swap),
+          // so reading the current theme here keeps fills legible on both
+          // basemaps: the dark basemap is near-black, so the same 0.35 wash that
+          // reads well on the light "positron" map looks washed-out on it —
+          // bump the dark opacity so territories stay clearly colored.
+          const base = propsRef.current.dark ? 0.5 : 0.35
+          const hover = propsRef.current.dark ? 0.68 : 0.55
           map.addLayer(
             {
               id: fillId,
@@ -198,7 +205,7 @@ export default function MapCanvas(props: Props) {
               paint: {
                 'fill-color': 'rgba(0,0,0,0)',
                 'fill-opacity': [
-                  'case', ['boolean', ['feature-state', 'hover'], false], 0.55, 0.35,
+                  'case', ['boolean', ['feature-state', 'hover'], false], hover, base,
                 ] as unknown as ExpressionSpecification,
               },
             },
