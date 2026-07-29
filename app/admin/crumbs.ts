@@ -50,6 +50,11 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/permissions',     section: 'System',  label: 'Permissions' },
   // US Rotors
   { prefix: '/admin/us-rotors',       section: 'US Rotors', label: 'Orders' },
+  // Self-service (/admin/me/*) — personal pages open to every admin-surface role
+  { prefix: '/admin/me/time-off',     section: 'Self-service', label: 'Time Off' },
+  { prefix: '/admin/me/forms',        section: 'Self-service', label: 'Submit a Form' },
+  { prefix: '/admin/me/directory',    section: 'Self-service', label: 'Directory' },
+  { prefix: '/admin/me/apps',         section: 'Self-service', label: 'Internal Apps' },
   // Standalone
   { prefix: '/admin/tools',           section: 'Operations', label: 'Internal Apps' },
   { prefix: '/admin/home',            section: 'Company',    label: 'Home' },

@@ -41,11 +41,12 @@ A batch of small fixes from the team's notes:
   its own stacking context (`isolate`); the bar now carries `relative z-40` (and `AdminTopBar`
   `z-30`) so the bell dropdown paints above it.
 - **"Have an idea" stands out** — restyled from a ghost text button to a brand-tinted emerald pill.
-- **Hero quick-links work for everyone.** "Submit a form / Request time off / Team directory" point
-  at `/employee/*`, which middleware used to bounce every admin-surface role away from.
-  `EMPLOYEE_SELF_SERVICE` in `middleware.ts` now lets any signed-in staffer reach those
-  self-service pages (other `/employee/*` paths still funnel admins to `/admin`). Note: an admin
-  reaching them lands in the *employee* shell until those pages are ported to `/admin`.
+- **Hero quick-links work for everyone.** "Request time off / Submit a form / Team directory /
+  Tools & apps" now point at the `/admin/me/*` self-service namespace inside the admin shell
+  (`/admin/me/time-off`, `/forms`, `/directory`, `/apps`) — added to `OPEN_ADMIN_PREFIXES` so every
+  admin-surface role can reach them. No `/admin` page links into `/employee` anymore; the old
+  `/employee/*` self-service routes stay only for the legacy employee shell. See the
+  `2026-07-29` changelog entry for the full port.
 - **Core Value strip** moved directly under the hero and is now **clickable → a modal listing all
   values** (`app/home/home-modals.tsx`, `CoreValuesBand`).
 - **Holidays + open roles are clickable.** The "Next holiday" KPI and the This-Week holiday chip

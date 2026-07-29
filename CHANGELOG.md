@@ -2,6 +2,29 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-29 — Self-service ported into the admin shell (`/admin/me/*`)
+
+Follow-up to the Company Home feedback batch: employees are merged into the admin
+surface, so **no `/admin` page should link into `/employee`**. The home hero's
+self-service buttons now point at a new open namespace inside the admin shell:
+
+- `/admin/me/time-off` — request PTO/sick + history (the `/employee/requests` view,
+  extracted to a shared `components/self-service/TimeOffRequests.tsx` and rendered by
+  both routes)
+- `/admin/me/forms` — browse & submit internal forms (shared `EmployeeFormsView`)
+- `/admin/me/directory` — read-only team directory (`OrgDirectory`, `canEdit` off)
+- `/admin/me/apps` — internal field-apps launcher (`TOOL_APPS`, no perm-gated extras)
+
+`/admin/me` is added to `OPEN_ADMIN_PREFIXES`, so every admin-surface role reaches it
+like `/admin/home` — deliberately distinct from the perm-gated *management* copies
+(`/admin/requests` approval queue, `/admin/employee-forms`, `/admin/org-chart` which is
+editable, `/admin/tools`). The temporary `EMPLOYEE_SELF_SERVICE` middleware allowlist
+from the previous entry is reverted — admin-surface roles are fully funneled out of
+`/employee/*` again, since everything they need now lives under `/admin/me`. Breadcrumbs
+added under a "Self-service" section.
+
+No DB / permission-key / migration changes (`OPEN_ADMIN_PREFIXES` is code-only).
+
 ## 2026-07-29 — Admin sidebar scrollbar matches the rail
 
 When enough nav groups are expanded the admin sidebar overflows and scrolls, and

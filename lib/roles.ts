@@ -279,7 +279,12 @@ export function landingForRole(role: Role | null): string {
 // Paths under /admin that are always allowed for any admin-surface role.
 // /admin/home is the Company Home rendered in the admin shell — every internal
 // role lands there, so it must not fall through to the admin-only 'dashboard' gate.
-const OPEN_ADMIN_PREFIXES = ['/admin/profile', '/admin/home']
+// '/admin/me/*' is the self-service namespace (Time Off, Submit a form, Directory,
+// Internal Apps) — the pages every employee needs, ported off '/employee' into the
+// admin shell. Open to any admin-surface role, like /admin/home. The perm-gated
+// management copies (/admin/requests, /admin/employee-forms, /admin/org-chart,
+// /admin/tools) are unaffected.
+const OPEN_ADMIN_PREFIXES = ['/admin/profile', '/admin/home', '/admin/me']
 
 // Longest matching prefix wins. The bare '/admin' catch-all maps to 'dashboard'
 // (admin-only), so ANY /admin/* route not explicitly listed here is fail-closed

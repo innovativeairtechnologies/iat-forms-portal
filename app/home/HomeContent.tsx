@@ -251,10 +251,10 @@ export function HomeContent({
                 {nh ? <>, and {nh.name} is {daysUntil(nh.date)}</> : null}.
               </p>
               <div className="mt-4 flex flex-wrap gap-2.5">
-                <HeroLink href="/employee/requests" icon={CalendarClock} label="Request time off" primary />
-                <HeroLink href="/employee/resources" icon={FileText} label="Submit a form" />
-                <HeroLink href="/employee/directory" icon={Network} label="Team directory" />
-                <HeroLink href="/employee/resources/tools" icon={Wrench} label="Tools & apps" />
+                <HeroLink href="/admin/me/time-off" icon={CalendarClock} label="Request time off" primary />
+                <HeroLink href="/admin/me/forms" icon={FileText} label="Submit a form" />
+                <HeroLink href="/admin/me/directory" icon={Network} label="Team directory" />
+                <HeroLink href="/admin/me/apps" icon={Wrench} label="Tools & apps" />
                 <HeroLink href="/learn" icon={GraduationCap} label="Browse training" />
               </div>
               <div className="mt-4">

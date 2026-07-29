@@ -16,7 +16,7 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 | `marketing` | `/admin` (department dashboard) | Presentations, Jerry |
 | `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Jerry |
 | `production_manager` | `/admin` (department dashboard) | Tickets, Equipment, Gantt, Scheduling, Jerry |
-| `production` | `/admin` (Company Home) | The always-open `/admin/home` + `/admin/profile`; self-service pages still under `/employee` (My Board, time off, org chart, resources) |
+| `production` | `/admin` (Company Home) | The always-open `/admin/home`, `/admin/profile`, and the `/admin/me/*` self-service pages (time off, forms, directory, apps); My Board + US Rotors still under `/employee` |
 | `customer` | `/customer` | External customer portal |
 
 `production` is the base employee tier — it's the old `employee` role, renamed.
@@ -26,11 +26,13 @@ Roles that land in `/admin` (everything except `customer`) are "admin-surface"
 roles. **As of the portal consolidation (2026-07-23, Phase 1), `production` is an
 admin-surface role too** — it lands in `/admin/home` like every other internal
 role, holding no permissions, so per-section gating fail-closes it to the two
-always-open prefixes (`/admin/home`, `/admin/profile`). Its self-service pages
-haven't been ported off `/employee` yet, so those `/employee/*` routes stay alive
-and reachable by `production` (middleware bounces only the 5 scoped roles + admin
-out of `/employee`). New `production` invites still run the `/employee/welcome`
-set-password flow, then land in `/admin`.
+always-open prefixes (`/admin/home`, `/admin/profile`, and `/admin/me/*` — the
+self-service namespace: time off, forms, directory, apps). The shared self-service
+pages were ported off `/employee` into the admin shell (2026-07-29), so the 5 scoped
+roles + admin are now bounced out of `/employee/*` entirely and use `/admin/me/*`.
+`production` is still NOT bounced (it keeps reaching the remaining `/employee` pages —
+My Board, US Rotors — that haven't been ported). New `production` invites still run the
+`/employee/welcome` set-password flow, then land in `/admin`.
 
 ## Where it's defined
 
