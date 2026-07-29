@@ -77,9 +77,47 @@ there's no new permission to seed (the `check-perm-seed` prebuild gate stays
 happy); splitting it onto a dedicated `projected_sales` perm later is a one-line
 change in both spots.
 
+## Cross-link to the CRM Board (2026-07-29)
+
+Each expanded row carries **"Open in CRM Board"** → `/admin/deals?deal=<id>`.
+These two sales surfaces show the same project under a forecast view and a
+workflow view, and until now nothing connected them.
+
+There is no FK to follow. `projected_sales` has no `deal_id`, and **its `id` is
+useless as a handle**: `replace_projected_sales()` wipes the table (`DELETE`) and
+re-inserts, and because `id` is `GENERATED ALWAYS AS IDENTITY` — a `DELETE` does
+not reset the sequence — *every row gets a brand-new id on every sync*. The tie
+is the computed `dryware_key` = `lower(customer)|lower(project)`, which
+`materializeDealsFromProjectedSales()` stamps onto `deals` (migration 063).
+
+So the page passes a `dealIdByKey: Record<dryware_key, deals.id>` map, and the
+client computes each row's key. **Do not re-key this on `projected_sales.id`** —
+an id-keyed map goes 100% stale the instant someone hits "Sync now" (the client
+swaps in freshly-ided rows while the server prop still describes the old ones),
+so every link vanishes and the fallback tells the user to sync again, which
+breaks it further. `doSync` also calls `router.refresh()` so a project that only
+just materialized picks up its link without a reload.
+
+`drywareKey` lives in its own module (`lib/dryware-key.ts`, re-exported from
+`lib/dryware-deals.ts`) so the client can compute it without pulling the
+materializer into the browser bundle.
+
+Live at time of writing: 374 rows, 366 keyed deals, 366 distinct keys, 0
+duplicates, 0 unmatched. The "Not on the CRM Board yet" fallback is a safety net,
+not a normal state.
+
+On the receiving side, `DealsClient` reads `?deal=` once on mount, validates it
+against the loaded deals (DryWare prunes, so the id can be stale — it says so
+rather than no-opping), opens the drawer on the Board tab, and strips the param.
+It passes `window.history.state` through to `replaceState`: on a hard load that
+effect runs *before* Next patches `replaceState`, and a `null` state wipes the
+router's history entry, which kills the Back button and lets a later refresh
+resurrect `?deal=`.
+
 ## Files
 
 - `lib/dryware.ts` — fetch wrapper + dedupe/derive (pure, testable)
+- `lib/dryware-key.ts` — `drywareKey()`, shared by server and client
 - `app/api/admin/projected-sales/sync/route.ts` — the sync endpoint
 - `app/admin/projected-sales/page.tsx` + `ProjectedSalesClient.tsx` — the page
 - `supabase/migrations/059_projected_sales.sql` — tables + `replace_projected_sales`

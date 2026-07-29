@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { Deal, DealFollowUp } from '@/lib/supabase'
 import { PROJECT_TYPES, AUTO_FOLLOW_UP_DAYS, followUpDateFrom, statusForStage, type DealStage } from '@/lib/deals'
@@ -56,6 +56,42 @@ export default function DealsClient({
   // view it was opened from (its current filter/sort), powering prev/next.
   const [detail, setDetail] = useState<{ id: string; ids: string[] } | null>(null)
   const openDetail = (id: string, ids: string[]) => setDetail({ id, ids })
+
+  /* Deep link: /admin/deals?deal=<id> opens that record straight away — the
+     Performance tab (/admin/projected-sales) links across this way, since a
+     projected-sales row and a deal are the same project under two views.
+
+     Read once on mount from window.location rather than useSearchParams(): this
+     is a one-shot read, and useSearchParams opts the subtree into a Suspense/CSR
+     bailout it does not otherwise need. The id is validated against the loaded
+     deals before opening, so a stale or hand-typed link is a no-op rather than a
+     modal bound to a deal that no longer exists (DryWare prunes on every sync).
+     The param is then stripped so a refresh — or closing the drawer and hitting
+     back — doesn't spring it open again. */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('deal')
+    if (!id) return
+    // Strip only `deal`, keeping any other params intact. Pass the EXISTING
+    // history state through rather than null: on a hard load this effect runs
+    // before Next has patched replaceState, so a null state wipes the router's
+    // own history entry — which silently kills the Back button (popstate bails
+    // on a null state) and lets a later refresh resurrect ?deal= in the URL.
+    params.delete('deal')
+    const qs = params.toString()
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    if (!initialDeals.some((d) => d.id === id)) {
+      // Say so rather than no-op: the user clicked "Open in CRM Board", landed
+      // here, and nothing happening is indistinguishable from a broken link.
+      // Reachable when DryWare pruned the deal between page render and click.
+      setErr('That project is no longer on the Board — it may have been closed out by the last DryWare sync.')
+      return
+    }
+    setTab('board')
+    setDetail({ id, ids: initialDeals.map((d) => d.id) })
+    // Mount-only: initialDeals is the server snapshot and never changes identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const tmpId = useRef(0) // client-side temp ids for optimistic follow-up inserts
   // Intent recorded against a temp id when the user deletes/completes a

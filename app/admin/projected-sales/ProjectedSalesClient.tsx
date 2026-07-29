@@ -1,11 +1,14 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   RefreshCw, ChevronRight, ChevronLeft, ChevronDown, ChevronsUpDown,
-  AlertTriangle, TrendingUp, Search, Users,
+  AlertTriangle, TrendingUp, Search, Users, ArrowRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { drywareKey } from '@/lib/dryware-key'
 import { timeAgo, type Tone } from '@/components/admin/list'
 
 // ─── Types (shape of the projected_sales / projected_sales_sync rows) ─────────
@@ -97,11 +100,15 @@ const NUMERIC_KEYS: SortKey[] = ['confidence', 'quote', 'weighted']
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProjectedSalesClient({
-  initialProjects, initialSync,
+  initialProjects, initialSync, dealIdByKey,
 }: {
   initialProjects: ProjectedSale[]
   initialSync: SyncMeta
+  /** dryware_key (customer|project) → deals.id. Keyed by the computed key, not
+   *  by a row id, because projected_sales ids are regenerated on every sync. */
+  dealIdByKey: Record<string, string>
 }) {
+  const router = useRouter()
   const [projects, setProjects] = useState<ProjectedSale[]>(initialProjects)
   const [sync, setSync] = useState<SyncMeta>(initialSync)
   const [syncing, setSyncing] = useState(false)
@@ -178,6 +185,11 @@ export default function ProjectedSalesClient({
       setProjects((json.projects ?? []) as ProjectedSale[])
       setSync((json.sync ?? null) as SyncMeta)
       setExpandedId(null)
+      // The sync also materializes deals, so a brand-new project now has a Board
+      // record that `dealIdByKey` (a server prop captured at page render) doesn't
+      // know about yet. Re-run the server component to pick it up; `projects` is
+      // local state so this can't clobber the rows we just set.
+      router.refresh()
       const ds = json.dealStats as { inserted: number; updated: number; pruned: number } | null
       if (ds) {
         const bits = [
@@ -322,6 +334,8 @@ export default function ProjectedSalesClient({
                   {pageRows.map((p) => {
                     const expanded = expandedId === p.id
                     const units = p.units ?? []
+                    const key = drywareKey(p.project_customer, p.project_name)
+                    const dealId = key ? dealIdByKey[key] : undefined
                     const conf = num(p.confidence_level)
                     const band = confBand(conf)
                     const repTone = TONE[toneFor(p.user_name || '—', AVATAR_TONES)]
@@ -419,6 +433,24 @@ export default function ProjectedSalesClient({
                                   <span className="tabular-nums text-ink flex-shrink-0">{fmtUsd(u.quoteTotal)}</span>
                                 </div>
                               ))}
+                            </div>
+
+                            {/* Cross-link to the CRM Board. These two sales surfaces were
+                                previously unconnected — this is the one place the same project
+                                exists under both a forecast and a workflow view. */}
+                            <div className="mt-3 pt-3 border-t border-hairline">
+                              {dealId ? (
+                                <Link
+                                  href={`/admin/deals?deal=${dealId}`}
+                                  className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-secondary hover:text-brand-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand rounded"
+                                >
+                                  Open in CRM Board <ArrowRight size={13} />
+                                </Link>
+                              ) : (
+                                <p className="text-[12px] text-ink-faint">
+                                  Not on the CRM Board yet — it appears after the next sync.
+                                </p>
+                              )}
                             </div>
                           </div>
                         )}

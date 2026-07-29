@@ -2,6 +2,32 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-29 — Performance rows link across to the CRM Board
+
+Expanding a project on **Performance** (`/admin/projected-sales`) now offers
+**"Open in CRM Board"**, which opens that deal's record on `/admin/deals`. The
+forecast view and the workflow view show the same projects and were completely
+unconnected until now.
+
+There's no FK between them, and `projected_sales.id` can't stand in for one: the
+table is wiped and re-inserted on every sync, and since `id` is an identity
+column that a `DELETE` doesn't reset, every row is re-numbered each time. The tie
+is the computed `dryware_key` (`customer|project`) that the materializer already
+stamps onto `deals`, so the page hands the client a key-keyed map. Verified
+against production: 374 rows, 366 keyed deals, 0 duplicate keys, 0 unmatched.
+
+Caught in review before shipping — the first cut keyed the map on
+`projected_sales.id`, which would have gone **100% stale the moment anyone
+clicked "Sync now"**: every link would vanish and the fallback would advise
+syncing again, which re-breaks it. Also fixed: the `?deal=` param strip now
+passes the existing history state through, because on a hard load that effect
+runs before Next patches `replaceState` and a null state kills the Back button
+and lets a refresh resurrect the param; and a deep link to a pruned deal now says
+so instead of silently doing nothing.
+
+`projected-sales/page.tsx` · `ProjectedSalesClient` · `DealsClient` ·
+`lib/dryware-key.ts` (new).
+
 ## 2026-07-29 — Territories: the panel floats, and clicking a rep drills into it
 
 The rep panel was a docked column with a left border. It's now a **floating

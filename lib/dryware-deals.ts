@@ -20,14 +20,11 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-/** Stable identity for a DryWare project. `company` is always "Innovative Air"
- *  (the seller) — the account is project_customer, so the key never uses company. */
-export function drywareKey(projectCustomer: string | null, projectName: string | null): string | null {
-  const c = (projectCustomer ?? '').trim().toLowerCase()
-  const p = (projectName ?? '').trim().toLowerCase()
-  if (!c && !p) return null
-  return `${c}|${p}`
-}
+// Moved to its own module so client components can compute the key without
+// dragging this file's materializer into the browser bundle. Re-exported here
+// because every existing caller imports it from lib/dryware-deals.
+export { drywareKey } from './dryware-key'
+import { drywareKey } from './dryware-key'
 
 type ProjectedSalesRow = {
   user_name: string | null
