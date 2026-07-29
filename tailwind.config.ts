@@ -70,11 +70,23 @@ const config: Config = {
       },
       animation: {
         'fade-up': 'fadeUp 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        // Floating right drawer (components/ui/Drawer.tsx) — 200ms ease-out per
+        // DESIGN.md §7; slides in from the right edge rather than rising.
+        'drawer-in': 'drawerIn 0.2s cubic-bezier(0.22, 0.61, 0.36, 1)',
+        'scrim-in': 'scrimIn 0.16s ease-out',
       },
       keyframes: {
         fadeUp: {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        drawerIn: {
+          '0%': { opacity: '0', transform: 'translateX(calc(100% + 1.5rem))' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        scrimIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
       },
     },

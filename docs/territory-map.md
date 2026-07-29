@@ -108,6 +108,47 @@ Its tall firm/rep list is out of flow, can't grow the page, and scrolls inside
 its own `overflow-y-auto` region. Do not "simplify" RepPanel back to a
 flow `h-full` container — that reintroduces the whole-page scroll.
 
+## Rep drawer (2026-07-29) — reps are clickable now
+
+Reps used to be dead text: three lines in the roster, no click target, no way
+in. Only *firms* were selectable. Clicking a rep now opens
+`app/admin/territories/RepDrawer.tsx` — the same floating right-hand drawer the
+deals board uses (`components/ui/Drawer.tsx` + `Tabs.tsx`), so the two pages
+share one "click a record, it floats in" pattern.
+
+Both rep lists open it: the flat **Reps** tab and the **Reps** section inside a
+firm's detail view.
+
+| Tab | Holds |
+|---|---|
+| **Overview** | Stat strip (territories / pins / firm reps), the firm (click → selects it + frames the map), and the rep's contact card — editable inline for admin/sales |
+| **Territories** | The firm's assigned states/counties + "Show on map" |
+| **Locations** | The firm's pins, placed and unplaced |
+| **Notes** | `contacts.notes`, the one free-text field on the row |
+
+There is deliberately **no Activity tab** — there is no per-rep activity table,
+and a tab that can only ever be empty is worse than no tab.
+
+**The Drawer MUST portal to `document.body` — don't "simplify" that away.**
+`position: fixed` fixes the drawer's *geometry* to the viewport but does **not**
+escape an ancestor **stacking context**. The rep drawer renders inside
+`<aside … z-20>` (TerritoriesClient), so rendered inline the entire `z-50` drawer
+painted as one z-20 unit, and the map column's `z-30` controls — the panel-toggle
+button at `absolute top-3 right-3 z-30`, plus the mode/placing toolbars — sat *on
+top of* the panel, outside the scrim and still clickable. Clicking the toggle
+unmounted the drawer out from under the user. Confirmed in Chromium with
+`elementFromPoint` at 390/700/1024/1440/1920px: the toggle won at every width.
+Bumping the aside's z-index is **not** an equivalent fix — that would also lift
+the docked panel over the map's floating controls.
+
+Writes go through `onUpdateContact` → `PATCH /api/admin/deals/contacts/:id`
+(fields `name`/`title`/`email`/`phone`/`notes`), added to `TerritoriesClient`
+alongside the existing add/delete so every mutation stays in one place. The
+open rep is resolved from the live `contacts` array, not held as a copy — a rep
+deleted elsewhere closes the drawer instead of stranding a stale record. The
+drawer is `fixed`, so it floats over the whole page even though `RepPanel` is
+`absolute inset-0` (see Panel scroll above).
+
 ## Camera rules (deliberate — don't "helpfully" refit)
 
 Only ONE gesture re-frames the map to a firm's whole footprint: picking that

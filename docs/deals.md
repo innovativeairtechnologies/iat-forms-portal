@@ -207,17 +207,31 @@ pattern.
 "New Deal" (header button) opens a modal; created deals prepend to the shared
 dataset so all views update at once.
 
-## Deal detail modal (2026-07-10)
+## Deal detail drawer (2026-07-10; floating + tabbed 2026-07-29)
 
-`app/admin/deals/DealDetailModal.tsx` — the "click into a deal" card, matching
+`app/admin/deals/DealDetailModal.tsx` — the "click into a deal" record, matching
 the monday.com item view the team is used to, without per-deal pages (440
 deals don't need 440 routes). **Open it from any list view**: click a row in
-Pipeline or CRM (inline controls stopPropagation), or the ⤢ icon in Focused
-(those rows are full of inline inputs, so no row-click there).
+Pipeline or CRM (inline controls stopPropagation), a card on the Board, or the
+⤢ icon in Focused (those rows are full of inline inputs, so no row-click there).
 
-- **View mode**: money strip (cost / weighted / confidence), one-click status
-  segmented control (same semantics as the Pipeline select), every field with
-  icons, an **Updates & notes** panel, created/updated meta, Delete.
+**Presentation (2026-07-29):** a **floating right-hand drawer**, not a centre
+modal — built on the shared `components/ui/Drawer.tsx` + `Tabs.tsx` primitives.
+Inset from all four edges so the board stays visible beside it, and the content
+is split across **four tabs** instead of one ~88vh scroll:
+
+| Tab | Holds |
+|---|---|
+| **Overview** | Money strip, stage stepper (+ Won/Lost reason picker), the field grid, created/updated meta |
+| **Comments** | The four quick-action loggers + their composer, and the dated **Updates & notes** thread. Count = non-blank note lines |
+| **Checklist** | The 5 process steps — **promoted out of the old collapsed accordion**, all visible at once — plus Follow-ups. Count = `done/total` |
+| **Activity** | Logged activity merged with stage transitions, newest first. Count = feed length |
+
+Editing **hides the tab strip** and pins the drawer open (`dismissable={false}`),
+so a half-filled form can't be abandoned by clicking a tab or the scrim.
+
+- **View mode**: money strip (cost / weighted / confidence), stage chips,
+  every field with icons, an **Updates & notes** panel, created/updated meta, Delete.
 - **Add update**: a one-line input that PREPENDS a dated line to `notes`
   ("7.10.26 — got the PO") — the sheet's own convention, so Monday's
   updates-feed habit works with zero schema change and survives re-import
@@ -227,10 +241,14 @@ Pipeline or CRM (inline controls stopPropagation), or the ⤢ icon in Focused
   PATCHes only changed fields; Cancel discards.
 - **Prev/next**: chevrons + ←/→ keys walk an ordered-id snapshot of the view
   it was opened from (its filter/sort at that moment); deals deleted or
-  replaced mid-browse silently drop out of the order. Esc closes (cancels
-  edit first). Counter shows "N / M".
+  replaced mid-browse silently drop out of the order. Counter shows "N / M".
+  Switching deals resets the drawer to the Overview tab.
+- **Esc**: closing is the Drawer's job. While editing, the Drawer's Esc handler
+  is disabled and the component's own handler cancels the edit instead — so one
+  Esc can never both discard the form *and* close the record.
 - Persistence rides DealsClient's existing optimistic machinery (patchLocal →
-  persist → revert-on-fail); the modal never calls the API directly.
+  persist → revert-on-fail); the component never calls the API directly **except**
+  for the activity log, which is its own endpoint.
   Verified end-to-end: optimistic value → 401 (anon) → revert + error banner.
 
 ## Deal workflow layer (2026-07-10, migration `047_deal_workflow.sql`)

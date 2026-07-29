@@ -8,12 +8,13 @@
 
 import { useMemo, useState } from 'react'
 import {
-  Plus, X, MapPin, Trash2, ChevronLeft, Check, Building2, Crosshair, Loader2, Pencil,
+  Plus, X, MapPin, Trash2, ChevronLeft, ChevronRight, Check, Building2, Crosshair, Loader2, Pencil,
 } from 'lucide-react'
 import type { Company, Contact, CompanyLocation, CompanyTerritory } from '@/lib/supabase'
 import { ListSearch } from '@/components/admin/list-card'
 import { MAP_PALETTE, SHARED_FILL, territoryLabel } from '@/lib/territories'
 import { tabCx } from '@/components/admin/list'
+import RepDrawer from './RepDrawer'
 import type { MapMode } from './MapCanvas'
 
 const INPUT_CX =
@@ -40,6 +41,7 @@ type Props = {
   onDeleteFirm: (id: string) => void
   onSetColor: (id: string, color: string) => void
   onAddContact: (companyId: string, fields: { name: string; title?: string; email?: string; phone?: string }) => Promise<string | null>
+  onUpdateContact: (id: string, patch: Partial<Pick<Contact, 'name' | 'title' | 'email' | 'phone' | 'notes'>>) => Promise<string | null>
   onDeleteContact: (id: string) => void
   onAddLocation: (companyId: string, fields: { label?: string; city?: string; region?: string; country: 'US' | 'CA' }) => Promise<string | null>
   onDeleteLocation: (id: string) => void
@@ -57,8 +59,14 @@ export default function RepPanel(props: Props) {
   const [tab, setTab] = useState<'firms' | 'reps'>('firms')
   const [search, setSearch] = useState('')
   const [addingFirm, setAddingFirm] = useState(false)
+  // Which rep's floating record is open. Reps used to be dead text; clicking
+  // one now opens the same Drawer pattern the deals board uses.
+  const [repId, setRepId] = useState<string | null>(null)
 
   const selected = companies.find((c) => c.id === selectedId) ?? null
+  // Resolved from the live list, so a rep deleted elsewhere closes the drawer
+  // instead of stranding it on a stale copy.
+  const openRep = repId ? contacts.find((k) => k.id === repId) ?? null : null
 
   const byCompany = useMemo(() => {
     const t = new Map<string, CompanyTerritory[]>()
@@ -149,6 +157,7 @@ export default function RepPanel(props: Props) {
             contacts={byCompany.contacts.get(selected.id) ?? []}
             locations={byCompany.locations.get(selected.id) ?? []}
             territories={byCompany.territories.get(selected.id) ?? []}
+            onOpenRep={setRepId}
           />
         ) : addingFirm ? (
           <AddFirmForm
@@ -206,17 +215,28 @@ export default function RepPanel(props: Props) {
                   </li>
                 )}
                 {filteredReps.map(({ contact: k, firm }) => (
-                  <li key={k.id} className="px-4 py-2.5 border-t border-hairline-soft">
-                    <p className="text-[13px] font-semibold text-ink truncate">
-                      {k.name}
-                      {k.title && <span className="font-normal text-ink-faint"> · {k.title}</span>}
-                    </p>
-                    <p className="text-[11.5px] text-ink-muted truncate flex items-center gap-1">
-                      <Building2 size={11} className="flex-shrink-0" /> {firm}
-                    </p>
-                    <p className="text-[11.5px] text-ink-faint truncate tabular-nums">
-                      {k.email ?? '—'} · {k.phone ?? '—'}
-                    </p>
+                  <li key={k.id}>
+                    <button
+                      onClick={() => setRepId(k.id)}
+                      className={`group w-full flex items-center gap-2 px-4 py-2.5 text-left border-t border-hairline-soft transition-colors ${
+                        repId === k.id ? 'bg-brand-soft' : 'hover:bg-surface-soft'
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-semibold text-ink truncate">
+                          {k.name}
+                          {k.title && <span className="font-normal text-ink-faint"> · {k.title}</span>}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11.5px] text-ink-muted">
+                          <Building2 size={11} className="flex-shrink-0" />
+                          <span className="truncate">{firm}</span>
+                        </span>
+                        <span className="block text-[11.5px] text-ink-faint truncate tabular-nums">
+                          {k.email ?? '—'} · {k.phone ?? '—'}
+                        </span>
+                      </span>
+                      <ChevronRight size={15} className="flex-shrink-0 text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -224,6 +244,27 @@ export default function RepPanel(props: Props) {
           </>
         )}
       </div>
+
+      {/* Floating rep record — shared Drawer pattern (components/ui/Drawer).
+          Rendered here rather than in TerritoriesClient so the roster owns its
+          own selection; the panel is `absolute inset-0` but the Drawer is
+          `fixed`, so it floats over the whole page, not just this column. */}
+      {openRep && (
+        <RepDrawer
+          key={openRep.id}
+          rep={openRep}
+          firm={companies.find((c) => c.id === openRep.company_id) ?? null}
+          territories={byCompany.territories.get(openRep.company_id) ?? []}
+          locations={byCompany.locations.get(openRep.company_id) ?? []}
+          firmRepCount={(byCompany.contacts.get(openRep.company_id) ?? []).length}
+          canEdit={canEdit}
+          onClose={() => setRepId(null)}
+          onUpdateContact={props.onUpdateContact}
+          onDeleteContact={props.onDeleteContact}
+          onFitFirm={props.onFitFirm}
+          onSelectFirm={(id) => { setRepId(null); props.onSelect(id) }}
+        />
+      )}
     </div>
   )
 }
@@ -283,8 +324,11 @@ function FirmDetail({
   canEdit, mode, placingId,
   onSelect, onUpdateFirm, onDeleteFirm, onSetColor, onAddContact, onDeleteContact,
   onAddLocation, onDeleteLocation, onStartPlace, onStartPaint, onFitFirm,
-  onRemoveTerritory, onEditExclusivity,
-}: Props & { firm: Company; contacts: Contact[]; locations: CompanyLocation[]; territories: CompanyTerritory[] }) {
+  onRemoveTerritory, onEditExclusivity, onOpenRep,
+}: Props & {
+  firm: Company; contacts: Contact[]; locations: CompanyLocation[]; territories: CompanyTerritory[]
+  onOpenRep: (id: string) => void
+}) {
   const [editingMeta, setEditingMeta] = useState(false)
   const [meta, setMeta] = useState({ name: firm.name, phone: firm.phone ?? '', website: firm.website ?? '', location: firm.location ?? '' })
   const [metaBusy, setMetaBusy] = useState(false)
@@ -497,17 +541,21 @@ function FirmDetail({
         )}
         <ul className="mt-1.5 space-y-0.5">
           {contacts.map((k) => (
-            <li key={k.id} className="group flex items-start gap-2 rounded-lg px-1.5 py-1.5 hover:bg-surface-soft transition-colors">
-              <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] font-medium text-ink truncate">
+            <li key={k.id} className="group flex items-start gap-2 rounded-lg hover:bg-surface-soft transition-colors">
+              <button
+                className="min-w-0 flex-1 px-1.5 py-1.5 text-left"
+                title={`Open ${k.name}`}
+                onClick={() => onOpenRep(k.id)}
+              >
+                <span className="block text-[12.5px] font-medium text-ink truncate">
                   {k.name}
                   {k.title && <span className="font-normal text-ink-faint"> · {k.title}</span>}
-                </p>
-                <p className="text-[11px] text-ink-faint truncate">{[k.email, k.phone].filter(Boolean).join(' · ') || '—'}</p>
-              </div>
+                </span>
+                <span className="block text-[11px] text-ink-faint truncate">{[k.email, k.phone].filter(Boolean).join(' · ') || '—'}</span>
+              </button>
               {canEdit && (
                 <button
-                  className="opacity-0 group-hover:opacity-100 p-1 rounded text-ink-faint hover:text-rose-500 transition-all flex-shrink-0"
+                  className="opacity-0 group-hover:opacity-100 mt-1.5 p-1 rounded text-ink-faint hover:text-rose-500 transition-all flex-shrink-0"
                   title={`Remove ${k.name}`}
                   onClick={() => onDeleteContact(k.id)}
                 >

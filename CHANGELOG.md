@@ -2,6 +2,50 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-29 — Floating record drawer: the deal modal goes tabbed, and reps become clickable
+
+Clicking a kanban card used to throw a centre modal over the board and bury
+everything in one ~88vh scroll. It's now a **floating right-hand drawer** —
+inset from all four edges so the board stays visible beside it — with the
+content split across **four tabs**: Overview (money, stage, fields), Comments
+(quick-action loggers + the dated updates thread), Checklist (the 5 process
+steps, finally out of that collapsed accordion, + follow-ups), and Activity.
+Editing hides the tab strip and pins the drawer open, so a half-filled form
+can't be abandoned by clicking away. Esc-while-editing cancels the edit; Esc
+otherwise closes — one key can't do both.
+
+Two new shared primitives back it, the first residents of `components/ui/`:
+**`Drawer.tsx`** (scrim, Esc, body-scroll lock, Level-3 shadow in light and
+`ring-white/10` with *no* shadow in dark, per DESIGN.md §5) and **`Tabs.tsx`**
+(the canonical underline strip, replacing the hex-hardcoded `tabCx` for new
+work). The drawer's scrim runs lighter than the modal recipe's `bg-black/40` —
+at 40% the context behind is dimmed to the point that the "floating over your
+work" read is lost, which is the whole reason to use a drawer.
+
+**Territories reps are no longer dead text.** They were three lines with no
+click target — only firms were selectable. A rep now opens the same drawer
+(`RepDrawer.tsx`): Overview (stats + firm + an editable contact card),
+Territories, Locations, and Notes. No Activity tab — there's no per-rep
+activity table, and an always-empty tab is worse than none. Rep edits go
+through a new `updateContact` → `PATCH /api/admin/deals/contacts/:id`.
+
+Caught in adversarial review before shipping, all fixed: the drawer now
+**portals to `document.body`** — `fixed` positioning does not escape an ancestor
+stacking context, so inside territories' `z-20` aside the map's `z-30` toggle
+button rendered *on top of* the drawer and unmounted it when clicked (confirmed
+in Chromium at five viewport widths). **⌘K no longer takes the drawer with it**:
+`CommandPalette` listens on `document` and the drawer on `window`, so Escape
+closed both — the palette now consumes Escape only when it's actually open.
+Plus real focus management (the panel claimed `aria-modal` without it), a
+record-id guard so an activity POST resolving after ←/→ can't land in the wrong
+deal's feed, a rep-reset effect keyed on `id` only (it was firing on every save
+and bouncing you off the Notes tab), and `dark:text-rose-400` on the confirm-
+delete state.
+
+`DealDetailModal` · `RepPanel` · `RepDrawer` · `TerritoriesClient` ·
+`CommandPalette` · `components/ui/{Drawer,Tabs}` · `tailwind.config.ts`
+(drawer-in/scrim-in keyframes).
+
 ## 2026-07-21 — CRM Board: lanes actually pin to the viewport; narrower + Lost expanded
 
 Follow-up on the full-page board. The lanes were still growing and scrolling the whole page because

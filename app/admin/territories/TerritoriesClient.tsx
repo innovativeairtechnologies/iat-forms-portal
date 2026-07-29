@@ -222,6 +222,16 @@ export default function TerritoriesClient({
     return null
   }, [])
 
+  const updateContact = useCallback(async (
+    id: string,
+    patch: Partial<Pick<Contact, 'name' | 'title' | 'email' | 'phone' | 'notes'>>,
+  ) => {
+    const res = await api<{ contact: Contact }>(`/api/admin/deals/contacts/${id}`, 'PATCH', patch)
+    if (!res.ok) return res.error
+    setContacts((ks) => ks.map((k) => (k.id === id ? res.json.contact : k)))
+    return null
+  }, [])
+
   const deleteContact = useCallback(async (id: string) => {
     const prev = contacts
     setContacts((ks) => ks.filter((k) => k.id !== id))
@@ -451,6 +461,7 @@ export default function TerritoriesClient({
             onDeleteFirm={deleteFirm}
             onSetColor={setColor}
             onAddContact={addContact}
+            onUpdateContact={updateContact}
             onDeleteContact={deleteContact}
             onAddLocation={addLocation}
             onDeleteLocation={deleteLocation}

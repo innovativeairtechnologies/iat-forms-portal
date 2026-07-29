@@ -119,6 +119,11 @@ export default function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
+  // Mirror `open` into a ref so the (mount-once) key handler below can read the
+  // current value without re-registering.
+  const openRef = useRef(false)
+  useEffect(() => { openRef.current = open }, [open])
+
   // ── Open / close via ⌘K, Ctrl+K (and Esc to close) ──────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -126,6 +131,13 @@ export default function CommandPalette() {
         e.preventDefault()
         setOpen((v) => !v)
       } else if (e.key === 'Escape') {
+        // Only consume Escape when the palette is actually open, and stop it
+        // there. This listener is on `document`, so it runs BEFORE any
+        // window-level one (components/ui/Drawer.tsx registers exactly that);
+        // without these two guards, dismissing the palette also closed the
+        // record drawer sitting behind it.
+        if (!openRef.current) return
+        e.stopPropagation()
         setOpen(false)
       }
     }

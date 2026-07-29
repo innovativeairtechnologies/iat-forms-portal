@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  X, ChevronLeft, ChevronRight, ChevronDown, Pencil, Trash2, CornerDownLeft,
+  X, ChevronLeft, ChevronRight, Pencil, Trash2, CornerDownLeft,
   User, Users, Cpu, Briefcase, CalendarDays, CalendarRange, Contact as ContactIcon,
   Phone, Mail, CalendarClock, FileText, Check, ClipboardList, StickyNote,
   Star, CalendarPlus, Factory, ArrowRight, Flag,
@@ -14,19 +14,32 @@ import {
 } from '@/lib/deals'
 import { formatCurrency, formatDateOnly } from '@/lib/utils'
 import { StatusPill, timeAgo } from '@/components/admin/list'
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/Drawer'
+import { Tabs, type TabDef } from '@/components/ui/Tabs'
 import { inp, lbl } from './form'
 
 /* ────────────────────────────────────────────────────────────────────────────
-   Deal detail — the "click into a deal" card, mirroring the monday.com item
+   Deal detail — the "click into a deal" record, mirroring the monday.com item
    view the sales team is used to (all columns + a running Updates thread)
-   without per-deal pages. Center modal, two modes:
+   without per-deal pages.
 
-   • View: every field, money strip, one-click status, dated updates.
-   • Edit: the same fields as the New Deal modal, Save/Cancel.
+   Presented as a floating right-hand Drawer with four tabs rather than one
+   ~88vh scroll: the board stays visible beside it, and each tab is a complete
+   thought you can act on without hunting.
+
+     Overview  — money, stage, the field grid
+     Comments  — quick-action loggers + the dated updates thread
+     Checklist — the 5 process steps (no longer buried in an accordion) + follow-ups
+     Activity  — logged activity merged with stage transitions
+
+   Two modes: view (above) and edit (the New Deal field set). Editing hides the
+   tab strip — a half-filled form must not be abandonable by clicking a tab —
+   and pins the drawer open until Save/Cancel.
 
    Persistence rides the parent's optimistic machinery (patchLocal → persist →
-   revert-on-fail), identical to the Focused tab's inline edits — this modal
-   never talks to the API directly.
+   revert-on-fail), identical to the Focused tab's inline edits — this component
+   never talks to the API directly *except* for the activity log, which is its
+   own endpoint.
 
    "Add update" prepends a dated line to `notes` (the sheet's own convention —
    "8.27.25, Chris said…"), so the Monday updates-feed habit works with zero
@@ -39,6 +52,8 @@ type EditForm = {
   projected: string; rep: string; rep_contact: string; notes: string; project_type: string
   expected_close: string; next_step: string; next_step_due: string
 }
+
+type TabKey = 'overview' | 'comments' | 'checklist' | 'activity'
 
 const toForm = (d: Deal): EditForm => ({
   customer: d.customer,
@@ -116,6 +131,8 @@ const ACTIVITY_ICONS: Record<DealActivityKind, React.ReactNode> = {
   note: <StickyNote size={12} />,
 }
 
+const SECTION_CX = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted'
+
 export default function DealDetailModal({
   deal, index, total, prevId, nextId, followUps,
   onOpen, onClose, onPatchLocal, onPersist, onStatus, onStage, onDelete,
@@ -142,6 +159,7 @@ export default function DealDetailModal({
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<EditForm>(() => toForm(deal))
   const [update, setUpdate] = useState('')
+  const [tab, setTab] = useState<TabKey>('overview')
 
   // Activity log + quick-action composer
   const [activities, setActivities] = useState<DealActivity[] | null>(null) // null = loading
@@ -151,19 +169,22 @@ export default function DealDetailModal({
   const [composerText, setComposerText] = useState('')
   const [logging, setLogging] = useState(false)
 
-  // Stage controls: closing = the Won/Lost reason picker is open; the process
-  // checklist lives in a collapsed accordion now that stages carry the pipeline.
+  // Stage controls: closing = the Won/Lost reason picker is open.
   const [closing, setClosing] = useState<'won' | 'lost' | null>(null)
   const [closePicked, setClosePicked] = useState<string | null>(null)
   const [closeNote, setCloseNote] = useState('')
-  const [processOpen, setProcessOpen] = useState(false)
 
   // Schedule-follow-up composer (default 2 weeks out, matching the automation)
   const [showSchedule, setShowSchedule] = useState(false)
   const [fuDate, setFuDate] = useState('')
   const [fuNote, setFuNote] = useState('')
 
-  // Navigating to another deal resets the modal to view mode for that deal.
+  // Which deal the drawer is currently showing — read by async handlers to drop
+  // responses that arrive after the user has paged to a different deal.
+  const dealIdRef = useRef(deal.id)
+  useEffect(() => { dealIdRef.current = deal.id }, [deal.id])
+
+  // Navigating to another deal resets to view mode, back on Overview.
   useEffect(() => {
     setEditing(false)
     setForm(toForm(deal))
@@ -176,7 +197,7 @@ export default function DealDetailModal({
     setClosing(null)
     setClosePicked(null)
     setCloseNote('')
-    setProcessOpen(false)
+    setTab('overview')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.id])
 
@@ -199,12 +220,18 @@ export default function DealDetailModal({
   }, [deal.id])
 
   const logActivity = async (kind: DealActivityKind, summary: string) => {
-    const res = await fetch(`/api/admin/deals/${deal.id}/activity`, {
+    // Pin the deal this POST belongs to. ←/→ can swap `deal` while the request
+    // is in flight (the arrow guard only ignores keys typed into a field, and
+    // "Log it" leaves focus on a button), and without this the response would
+    // prepend deal A's activity into deal B's feed and tab count.
+    const forId = deal.id
+    const res = await fetch(`/api/admin/deals/${forId}/activity`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind, summary }),
     })
     const json = await res.json().catch(() => ({}))
+    if (dealIdRef.current !== forId) return res.ok
     if (res.status === 503) { setActivityUnavailable(true); return false }
     if (!res.ok) return false
     if (json.activity) setActivities((prev) => [json.activity, ...(prev ?? [])])
@@ -228,10 +255,12 @@ export default function DealDetailModal({
     void logActivity('checklist', `${next[key] ? 'Completed' : 'Unchecked'}: ${label}`)
   }
 
-  // Esc closes (cancels edit first); ←/→ page through deals in view mode.
+  // ←/→ page through deals in view mode; Esc-while-editing cancels the edit.
+  // Esc-to-close is the Drawer's job (it owns dismissal), and it's disabled
+  // while editing so one Esc can't both cancel the form and close the record.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); if (editing) setEditing(false); else onClose() }
+      if (e.key === 'Escape' && editing) { e.preventDefault(); setEditing(false); return }
       if (editing) return
       const tag = (e.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
@@ -240,7 +269,7 @@ export default function DealDetailModal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [editing, prevId, nextId, onOpen, onClose])
+  }, [editing, prevId, nextId, onOpen])
 
   const set = (k: keyof EditForm, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -285,238 +314,369 @@ export default function DealDetailModal({
     if (a.done !== b.done) return a.done ? 1 : -1
     return a.due_date.localeCompare(b.due_date)
   })
+  const openFollowUps = sortedFollowUps.filter((f) => !f.done).length
+
+  // Notes are one text field used as a dated-update thread, so "how many
+  // comments" is a line count — blank lines don't count as updates.
+  const noteLines = (deal.notes ?? '').split('\n').filter((l) => l.trim() !== '').length
+
+  const TABS: TabDef<TabKey>[] = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'comments', label: 'Comments', count: noteLines || undefined },
+    { key: 'checklist', label: 'Checklist', count: `${progress.done}/${progress.total}` },
+    { key: 'activity', label: 'Activity', count: activities === null ? undefined : feedItems.length },
+  ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onMouseDown={editing ? undefined : onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        onMouseDown={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl rounded-2xl border border-hairline bg-surface max-h-[88vh] overflow-y-auto animate-fade-up"
-        style={{ boxShadow: '0 8px 24px rgba(31,30,27,.10), 0 2px 6px rgba(31,30,27,.05)' }}
-      >
-        {/* ── Header ── */}
-        <div className="sticky top-0 z-10 bg-surface border-b border-hairline-soft px-5 sm:px-6 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => onToggleFocus(deal.id, !focused)}
-                  title={focused ? 'Remove from Focused' : 'Add to Focused'}
-                  className="flex-shrink-0 p-0.5 -ml-0.5"
-                >
-                  <Star size={16} className={focused ? 'fill-amber-400 text-amber-400' : 'text-ink-faint hover:text-amber-400 transition-colors'} />
-                </button>
-                <h2 className="text-[17px] font-semibold text-ink tracking-[-0.01em] truncate">{deal.customer}</h2>
-                <StatusPill tone={stInfo.tone}>{stInfo.label}</StatusPill>
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">{deal.group_name}</span>
-                {deal.project_type && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">
-                    <Factory size={10} /> {deal.project_type}
-                  </span>
-                )}
-              </div>
-              {(deal.job_name || deal.unit_model) && (
-                <p className="mt-0.5 text-[12.5px] text-ink-muted truncate">
-                  {deal.job_name || deal.unit_model}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={() => prevId && onOpen(prevId)}
-                disabled={!prevId || editing}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink-secondary hover:bg-surface-soft disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                title="Previous deal (←)"
-              >
-                <ChevronLeft size={15} />
-              </button>
-              <span className="text-[11px] text-ink-faint tabular-nums px-0.5 whitespace-nowrap">{index + 1} / {total}</span>
-              <button
-                onClick={() => nextId && onOpen(nextId)}
-                disabled={!nextId || editing}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink-secondary hover:bg-surface-soft disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                title="Next deal (→)"
-              >
-                <ChevronRight size={15} />
-              </button>
-              <button onClick={onClose} className="ml-1 w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink-secondary hover:bg-surface-soft transition-colors" title="Close (Esc)">
-                <X size={16} />
-              </button>
-            </div>
+    <Drawer onClose={onClose} dismissable={!editing} width={520} labelledBy="deal-drawer-title">
+      {/* ── Header ── */}
+      <DrawerHeader>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onToggleFocus(deal.id, !focused)}
+            title={focused ? 'Remove from Focused' : 'Add to Focused'}
+            className="w-7 h-7 -ml-1 rounded-lg flex items-center justify-center hover:bg-surface-soft transition-colors"
+          >
+            <Star size={15} className={focused ? 'fill-amber-400 text-amber-400' : 'text-ink-faint hover:text-amber-400 transition-colors'} />
+          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => prevId && onOpen(prevId)}
+              disabled={!prevId || editing}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink-secondary hover:bg-surface-soft disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              title="Previous deal (←)"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <span className="text-[11px] text-ink-faint tabular-nums px-0.5 whitespace-nowrap">{index + 1} / {total}</span>
+            <button
+              onClick={() => nextId && onOpen(nextId)}
+              disabled={!nextId || editing}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink-secondary hover:bg-surface-soft disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              title="Next deal (→)"
+            >
+              <ChevronRight size={15} />
+            </button>
+            <button onClick={onClose} className="ml-1 w-7 h-7 rounded-lg flex items-center justify-center text-ink-faint hover:text-ink-secondary hover:bg-surface-soft transition-colors" title="Close (Esc)">
+              <X size={16} />
+            </button>
           </div>
         </div>
 
-        <div className="px-5 sm:px-6 py-5 space-y-5">
+        <h2 id="deal-drawer-title" className="mt-2 text-[17px] font-semibold text-ink tracking-[-0.014em] break-words">
+          {deal.customer}
+        </h2>
+        {(deal.job_name || deal.unit_model) && (
+          <p className="mt-0.5 text-[12.5px] text-ink-muted truncate">{deal.job_name || deal.unit_model}</p>
+        )}
+        <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+          <StatusPill tone={stInfo.tone}>{stInfo.label}</StatusPill>
+          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">{deal.group_name}</span>
+          {deal.project_type && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-surface-strong text-ink-muted">
+              <Factory size={10} /> {deal.project_type}
+            </span>
+          )}
+        </div>
+      </DrawerHeader>
 
-          {/* ── Money strip ── */}
-          <div className="grid grid-cols-3 gap-2.5">
-            <MoneyTile label="Total Cost" value={formatCurrency(deal.total_cost)} />
-            <MoneyTile label="Weighted" value={formatCurrency(weighted)} accent />
-            <MoneyTile label="Confidence" value={`${deal.confidence}%`} />
+      {/* Tabs are hidden while editing — a half-filled form must not be
+          abandonable by clicking away to another tab. */}
+      {!editing && <Tabs tabs={TABS} active={tab} onChange={setTab} />}
+
+      <DrawerBody>
+        {editing ? (
+          /* ── Edit mode — same fields as the New Deal modal ── */
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className={lbl}>Customer</label>
+              <input className={inp} value={form.customer} onChange={(e) => set('customer', e.target.value)} autoFocus />
+            </div>
+            <div>
+              <label className={lbl}>Group</label>
+              <input className={inp} value={form.group_name} onChange={(e) => set('group_name', e.target.value)} placeholder="MIKE / JACOB / DAVE…" />
+            </div>
+            <div>
+              <label className={lbl}>Assigned To</label>
+              <input className={inp} value={form.assigned_to} onChange={(e) => set('assigned_to', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Total Cost</label>
+              <input className={inp} type="number" min="0" step="1" value={form.total_cost} onChange={(e) => set('total_cost', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Confidence %</label>
+              <input className={inp} type="number" min="0" max="100" step="1" value={form.confidence} onChange={(e) => set('confidence', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Unit Model</label>
+              <input className={inp} value={form.unit_model} onChange={(e) => set('unit_model', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Job Name</label>
+              <input className={inp} value={form.job_name} onChange={(e) => set('job_name', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Date Quoted</label>
+              <input className={inp} type="date" value={form.date_quoted} onChange={(e) => set('date_quoted', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Projected (legacy text)</label>
+              <input className={inp} value={form.projected} onChange={(e) => set('projected', e.target.value)} placeholder="Q4 2026" />
+            </div>
+            <div>
+              <label className={lbl}>Expected Close</label>
+              <input className={inp} type="date" value={form.expected_close} onChange={(e) => set('expected_close', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Next Step</label>
+              <input className={inp} value={form.next_step} onChange={(e) => set('next_step', e.target.value)} placeholder="What's the next move?" />
+            </div>
+            <div>
+              <label className={lbl}>Next Step Due</label>
+              <input className={inp} type="date" value={form.next_step_due} onChange={(e) => set('next_step_due', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Rep</label>
+              <input className={inp} value={form.rep} onChange={(e) => set('rep', e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Rep Contact</label>
+              <input className={inp} value={form.rep_contact} onChange={(e) => set('rep_contact', e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <label className={lbl}>Project Type</label>
+              <select className={inp} value={form.project_type} onChange={(e) => set('project_type', e.target.value)}>
+                <option value="">— None —</option>
+                {PROJECT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className={lbl}>Notes</label>
+              <textarea className={inp} rows={5} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+            </div>
           </div>
+        ) : tab === 'overview' ? (
+          <div className="space-y-5">
+            {/* ── Money strip ── */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <MoneyTile label="Total Cost" value={formatCurrency(deal.total_cost)} />
+              <MoneyTile label="Weighted" value={formatCurrency(weighted)} accent />
+              <MoneyTile label="Confidence" value={`${deal.confidence}%`} />
+            </div>
 
-          {!editing ? (
-            <>
-              {/* ── Stage stepper ── */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Stage</span>
-                  <span className="text-[11px] text-ink-faint tabular-nums">{stageAgeDays(deal, new Date())}d in {stInfo.label}</span>
-                </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {STAGES.filter((s) => s.key !== 'won' && s.key !== 'lost').map((s) => (
-                    <StageChip
-                      key={s.key}
-                      tone={s.tone}
-                      active={deal.stage === s.key}
-                      onClick={() => { setClosing(null); onStage(deal.id, s.key) }}
-                    >
-                      {s.label}
-                    </StageChip>
-                  ))}
-                  <span className="h-5 border-l border-hairline mx-0.5" />
-                  <StageChip tone="emerald" active={deal.stage === 'won'} onClick={() => { if (deal.stage !== 'won') { setClosing(closing === 'won' ? null : 'won'); setClosePicked(null); setCloseNote('') } }}>
-                    Won
+            {/* ── Stage stepper ── */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={SECTION_CX}>Stage</span>
+                <span className="text-[11px] text-ink-faint tabular-nums">{stageAgeDays(deal, new Date())}d in {stInfo.label}</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {STAGES.filter((s) => s.key !== 'won' && s.key !== 'lost').map((s) => (
+                  <StageChip
+                    key={s.key}
+                    tone={s.tone}
+                    active={deal.stage === s.key}
+                    onClick={() => { setClosing(null); onStage(deal.id, s.key) }}
+                  >
+                    {s.label}
                   </StageChip>
-                  <StageChip tone="rose" active={deal.stage === 'lost'} onClick={() => { if (deal.stage !== 'lost') { setClosing(closing === 'lost' ? null : 'lost'); setClosePicked(null); setCloseNote('') } }}>
-                    Lost
-                  </StageChip>
-                  {(deal.stage === 'won' || deal.stage === 'lost') && (
-                    <button
-                      onClick={() => onStatus(deal.id, null)}
-                      className="h-7 px-2.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider border border-hairline text-ink-faint hover:text-ink-secondary hover:bg-surface-soft transition-colors"
-                    >
-                      Reopen
-                    </button>
-                  )}
-                </div>
-                {deal.closed_reason && (deal.stage === 'won' || deal.stage === 'lost') && (
-                  <p className="mt-1.5 text-[11.5px] text-ink-muted">
-                    <Flag size={11} className="inline mr-1 -mt-0.5" />{deal.closed_reason}
-                  </p>
-                )}
-                {closing && (
-                  <div className="mt-2 rounded-xl border border-hairline bg-surface-soft p-3 space-y-2">
-                    <p className="text-[11.5px] text-ink-muted">
-                      {closing === 'won' ? 'What sealed it? (optional)' : 'Why was it lost? A reason keeps the loss reporting honest.'}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {CLOSED_REASONS.map((r) => (
-                        <button
-                          key={r}
-                          onClick={() => setClosePicked(closePicked === r ? null : r)}
-                          className={`h-7 px-2.5 rounded-lg text-[11.5px] font-medium border transition-colors ${
-                            closePicked === r ? 'border-brand bg-brand-soft text-ink' : 'border-hairline text-ink-secondary hover:bg-surface'
-                          }`}
-                        >
-                          {r}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        value={closeNote}
-                        onChange={(e) => setCloseNote(e.target.value)}
-                        placeholder="Add detail… (optional)"
-                        className={inp}
-                      />
-                      <button
-                        onClick={() => {
-                          const reason = closeNote.trim()
-                            ? (closePicked && closePicked !== 'Other' ? `${closePicked} — ${closeNote.trim()}` : closeNote.trim())
-                            : closePicked ?? undefined
-                          onStage(deal.id, closing, reason)
-                          setClosing(null)
-                        }}
-                        className={`h-9 px-3.5 flex-shrink-0 rounded-lg text-[12.5px] font-medium text-white transition-colors ${closing === 'lost' ? 'bg-rose-600 hover:bg-rose-500' : ''}`}
-                        style={closing === 'won' ? { backgroundColor: 'var(--brand)' } : undefined}
-                      >
-                        Mark {closing === 'won' ? 'Won' : 'Lost'}
-                      </button>
-                    </div>
-                  </div>
+                ))}
+                <span className="h-5 border-l border-hairline mx-0.5" />
+                <StageChip tone="emerald" active={deal.stage === 'won'} onClick={() => { if (deal.stage !== 'won') { setClosing(closing === 'won' ? null : 'won'); setClosePicked(null); setCloseNote('') } }}>
+                  Won
+                </StageChip>
+                <StageChip tone="rose" active={deal.stage === 'lost'} onClick={() => { if (deal.stage !== 'lost') { setClosing(closing === 'lost' ? null : 'lost'); setClosePicked(null); setCloseNote('') } }}>
+                  Lost
+                </StageChip>
+                {(deal.stage === 'won' || deal.stage === 'lost') && (
+                  <button
+                    onClick={() => onStatus(deal.id, null)}
+                    className="h-7 px-2.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider border border-hairline text-ink-faint hover:text-ink-secondary hover:bg-surface-soft transition-colors"
+                  >
+                    Reopen
+                  </button>
                 )}
               </div>
-
-              {/* ── Quick actions ── */}
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted mb-2">Quick Actions</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {QUICK_ACTIONS.map((a) => (
-                    <button
-                      key={a.kind}
-                      onClick={() => { setComposer(composer === a.kind ? null : a.kind); setComposerText('') }}
-                      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                        composer === a.kind ? 'border-brand bg-brand-soft' : 'border-hairline bg-surface hover:bg-surface-soft hover:border-hairline-strong'
-                      }`}
-                    >
-                      <span className="w-8 h-8 rounded-lg bg-surface-strong flex items-center justify-center flex-shrink-0" style={{ color: 'var(--brand-ink)' }}>
-                        {a.icon}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[12.5px] font-medium text-ink truncate">{a.label}</span>
-                        <span className="block text-[11px] text-ink-muted truncate">{a.blurb}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                {composer && (
-                  <div className="mt-2 flex gap-2">
+              {deal.closed_reason && (deal.stage === 'won' || deal.stage === 'lost') && (
+                <p className="mt-1.5 text-[11.5px] text-ink-muted">
+                  <Flag size={11} className="inline mr-1 -mt-0.5" />{deal.closed_reason}
+                </p>
+              )}
+              {closing && (
+                <div className="mt-2 rounded-xl border border-hairline bg-surface-soft p-3 space-y-2">
+                  <p className="text-[11.5px] text-ink-muted">
+                    {closing === 'won' ? 'What sealed it? (optional)' : 'Why was it lost? A reason keeps the loss reporting honest.'}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CLOSED_REASONS.map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setClosePicked(closePicked === r ? null : r)}
+                        className={`h-7 px-2.5 rounded-lg text-[11.5px] font-medium border transition-colors ${
+                          closePicked === r ? 'border-brand bg-brand-soft text-ink' : 'border-hairline text-ink-secondary hover:bg-surface'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
                     <input
-                      autoFocus
-                      value={composerText}
-                      onChange={(e) => setComposerText(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitComposer() } }}
-                      placeholder={QUICK_ACTIONS.find((a) => a.kind === composer)?.placeholder}
+                      value={closeNote}
+                      onChange={(e) => setCloseNote(e.target.value)}
+                      placeholder="Add detail… (optional)"
                       className={inp}
                     />
                     <button
-                      onClick={submitComposer}
-                      disabled={logging}
-                      className="h-9 px-3.5 flex-shrink-0 rounded-lg text-[12.5px] font-medium text-white disabled:opacity-60 transition-colors"
-                      style={{ backgroundColor: 'var(--brand)' }}
+                      onClick={() => {
+                        const reason = closeNote.trim()
+                          ? (closePicked && closePicked !== 'Other' ? `${closePicked} — ${closeNote.trim()}` : closeNote.trim())
+                          : closePicked ?? undefined
+                        onStage(deal.id, closing, reason)
+                        setClosing(null)
+                      }}
+                      className={`h-9 px-3.5 flex-shrink-0 rounded-lg text-[12.5px] font-medium text-white transition-colors ${closing === 'lost' ? 'bg-rose-600 hover:bg-rose-500' : 'bg-brand hover:bg-brand-hover'}`}
                     >
-                      {logging ? 'Logging…' : 'Log it'}
+                      Mark {closing === 'won' ? 'Won' : 'Lost'}
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Fields ── */}
+            <div className="rounded-xl border border-hairline overflow-hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-2">
+                <Field icon={<User size={13} />} label="Assigned To" value={deal.assigned_to} />
+                <Field icon={<Users size={13} />} label="Rep" value={deal.rep} />
+                <Field icon={<ContactIcon size={13} />} label="Rep Contact" value={deal.rep_contact} />
+                <Field icon={<Cpu size={13} />} label="Unit Model" value={deal.unit_model} mono />
+                <Field icon={<Briefcase size={13} />} label="Job Name" value={deal.job_name} />
+                <Field icon={<CalendarDays size={13} />} label="Date Quoted" value={deal.date_quoted ? formatDateOnly(deal.date_quoted) : null} />
+                <Field icon={<CalendarRange size={13} />} label="Expected Close" value={deal.expected_close ? formatDateOnly(deal.expected_close) : deal.projected} />
+                <Field icon={<Flag size={13} />} label="Next Step" value={deal.next_step ? `${deal.next_step}${deal.next_step_due ? ` · by ${formatDateOnly(deal.next_step_due)}` : ''}` : null} />
+                <Field icon={<Factory size={13} />} label="Project Type" value={deal.project_type ?? null} />
+                <Field icon={<Users size={13} />} label="Group" value={deal.group_name} />
+              </div>
+            </div>
+
+            {/* ── Meta ── */}
+            <p className="text-[11px] text-ink-faint tabular-nums">
+              Created {formatDateOnly(deal.created_at.slice(0, 10))} · last updated {timeAgo(deal.updated_at)} ago
+            </p>
+          </div>
+        ) : tab === 'comments' ? (
+          <div className="space-y-5">
+            {/* ── Quick actions ── */}
+            <div>
+              <p className={`${SECTION_CX} mb-2`}>Quick Actions</p>
+              <div className="grid grid-cols-2 gap-2">
+                {QUICK_ACTIONS.map((a) => (
+                  <button
+                    key={a.kind}
+                    onClick={() => { setComposer(composer === a.kind ? null : a.kind); setComposerText('') }}
+                    className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                      composer === a.kind ? 'border-brand bg-brand-soft' : 'border-hairline bg-surface hover:bg-surface-soft hover:border-hairline-strong'
+                    }`}
+                  >
+                    <span className="w-8 h-8 rounded-lg bg-surface-strong flex items-center justify-center flex-shrink-0 text-brand-ink">
+                      {a.icon}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[12.5px] font-medium text-ink truncate">{a.label}</span>
+                      <span className="block text-[11px] text-ink-muted truncate">{a.blurb}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {composer && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    autoFocus
+                    value={composerText}
+                    onChange={(e) => setComposerText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitComposer() } }}
+                    placeholder={QUICK_ACTIONS.find((a) => a.kind === composer)?.placeholder}
+                    className={inp}
+                  />
+                  <button
+                    onClick={submitComposer}
+                    disabled={logging}
+                    className="h-9 px-3.5 flex-shrink-0 rounded-lg text-[12.5px] font-medium text-white bg-brand hover:bg-brand-hover disabled:opacity-60 transition-colors"
+                  >
+                    {logging ? 'Logging…' : 'Log it'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Updates / notes ── */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className={SECTION_CX}>Updates &amp; notes</span>
+                {deal.notes && <span className="text-[11px] text-ink-faint tabular-nums">{deal.notes.length} chars</span>}
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    value={update}
+                    onChange={(e) => setUpdate(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); postUpdate() } }}
+                    placeholder="Add a dated update… (Enter to post)"
+                    className={inp}
+                  />
+                  {update.trim() && (
+                    <CornerDownLeft size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+                  )}
+                </div>
+                <button
+                  onClick={postUpdate}
+                  disabled={!update.trim()}
+                  className="h-9 px-3 self-start rounded-lg text-[12.5px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft disabled:opacity-40 transition-colors"
+                >
+                  Post
+                </button>
+              </div>
+              <div className="mt-2 rounded-xl border border-hairline bg-surface-soft px-3.5 py-3">
+                {deal.notes ? (
+                  <p className="text-[12.5px] text-ink-secondary whitespace-pre-wrap break-words leading-relaxed">{deal.notes}</p>
+                ) : (
+                  <p className="text-[12.5px] text-ink-faint">No notes yet — post the first update above.</p>
                 )}
               </div>
-
-              {/* ── Process checklist (demoted to an accordion — stages carry the
-                     pipeline now; the 5 steps remain as an optional worklist) ── */}
+            </div>
+          </div>
+        ) : tab === 'checklist' ? (
+          <div className="space-y-5">
+            {/* ── Process checklist — promoted out of its accordion; on its own
+                   tab there is room to show all five steps at once. ── */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className={SECTION_CX}>Process Checklist</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-[11px] text-ink-muted tabular-nums">{progress.done}/{progress.total}</span>
+                  <span className="w-16 h-1.5 rounded-full bg-surface-strong overflow-hidden">
+                    <span
+                      className="block h-full rounded-full bg-brand transition-all duration-200"
+                      style={{ width: `${(progress.done / progress.total) * 100}%` }}
+                    />
+                  </span>
+                </span>
+              </div>
               <div className="rounded-xl border border-hairline overflow-hidden">
-                <button
-                  onClick={() => setProcessOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-left hover:bg-surface-soft transition-colors"
-                >
-                  <span className="flex items-center gap-2">
-                    <ClipboardList size={13} className="text-ink-faint" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Process Checklist</span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-[11px] text-ink-muted tabular-nums">{progress.done}/{progress.total}</span>
-                    <span className="w-16 h-1.5 rounded-full bg-surface-strong overflow-hidden">
-                      <span
-                        className="block h-full rounded-full transition-all duration-200"
-                        style={{ width: `${(progress.done / progress.total) * 100}%`, backgroundColor: 'var(--brand)' }}
-                      />
-                    </span>
-                    <ChevronDown size={13} className={`text-ink-faint transition-transform duration-150 ${processOpen ? 'rotate-180' : ''}`} />
-                  </span>
-                </button>
-                {processOpen && CHECKLIST_STEPS.map((s) => {
+                {CHECKLIST_STEPS.map((s) => {
                   const done = (deal.checklist ?? {})[s.key] === true
                   return (
                     <button
                       key={s.key}
                       onClick={() => toggleStep(s.key, s.label)}
-                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left border-t border-hairline-soft hover:bg-surface-soft transition-colors"
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left border-t border-hairline-soft first:border-t-0 hover:bg-surface-soft transition-colors"
                     >
                       <span
-                        className="w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors"
-                        style={done
-                          ? { backgroundColor: 'var(--brand)', borderColor: 'var(--brand)', color: '#fff' }
-                          : { borderColor: 'var(--hairline-strong)' }}
+                        className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${
+                          done ? 'bg-brand border-brand text-white' : 'border-hairline-strong'
+                        }`}
                       >
                         {done && <Check size={11} strokeWidth={3} />}
                       </span>
@@ -528,313 +688,182 @@ export default function DealDetailModal({
                   )
                 })}
               </div>
+            </div>
 
-              {/* ── Follow-ups ── */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Follow-ups</span>
-                  <button
-                    onClick={() => setShowSchedule((v) => !v)}
-                    className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-ink-secondary hover:text-ink transition-colors"
-                  >
-                    <CalendarPlus size={13} /> Schedule Follow-up
-                  </button>
-                </div>
-
-                {showSchedule && (
-                  <div className="mb-2 rounded-xl border border-hairline bg-surface-soft p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <input type="date" value={fuDate} onChange={(e) => setFuDate(e.target.value)} className={`${inp} flex-shrink-0 w-[160px]`} />
-                      <input
-                        value={fuNote}
-                        onChange={(e) => setFuNote(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitSchedule() } }}
-                        placeholder="What's the follow-up? (optional)"
-                        className={inp}
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => setShowSchedule(false)} className="h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary hover:bg-surface transition-colors">Cancel</button>
-                      <button
-                        onClick={submitSchedule}
-                        className="h-8 px-3 rounded-lg text-[12px] font-medium text-white transition-colors"
-                        style={{ backgroundColor: 'var(--brand)' }}
-                      >
-                        Add reminder
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {sortedFollowUps.length === 0 ? (
-                  <p className="rounded-xl border border-hairline bg-surface-soft px-3.5 py-3 text-[12px] text-ink-faint">
-                    No follow-ups scheduled. New deals auto-schedule one 2 weeks out.
-                  </p>
-                ) : (
-                  <div className="rounded-xl border border-hairline overflow-hidden">
-                    {sortedFollowUps.map((f) => (
-                      <div key={f.id} className="flex items-center gap-3 px-3.5 py-2.5 border-t border-hairline-soft first:border-t-0">
-                        <button
-                          onClick={() => onToggleFollowUpDone(f.id)}
-                          title={f.done ? 'Mark not done' : 'Mark done'}
-                          className="w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors"
-                          style={f.done
-                            ? { backgroundColor: 'var(--brand)', borderColor: 'var(--brand)', color: '#fff' }
-                            : { borderColor: 'var(--hairline-strong)' }}
-                        >
-                          {f.done && <Check size={11} strokeWidth={3} />}
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-[12.5px] leading-snug ${f.done ? 'text-ink-muted line-through' : 'text-ink-secondary'}`}>
-                            {f.note || 'Follow up'}
-                          </p>
-                          <p className="text-[11px] text-ink-faint tabular-nums">
-                            {formatDateOnly(f.due_date)}{f.auto_generated ? ' · auto' : ''}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => onRemoveFollowUp(f.id)}
-                          title="Delete follow-up"
-                          className="w-6 h-6 rounded-md flex items-center justify-center text-ink-faint hover:text-rose-500 hover:bg-surface-soft transition-colors flex-shrink-0"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {/* ── Follow-ups ── */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className={SECTION_CX}>Follow-ups</span>
+                <button
+                  onClick={() => setShowSchedule((v) => !v)}
+                  className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-ink-secondary hover:text-ink transition-colors"
+                >
+                  <CalendarPlus size={13} /> Schedule Follow-up
+                </button>
               </div>
 
-              {/* ── Activity log ── */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Activity Log</span>
-                  {activities !== null && activities.length > 0 && (
-                    <span className="text-[11px] text-ink-faint tabular-nums">{activities.length}{activities.length === 100 ? '+' : ''}</span>
-                  )}
-                </div>
-                <div className="rounded-xl border border-hairline bg-surface-soft max-h-56 overflow-y-auto">
-                  {activityUnavailable ? (
-                    <p className="px-3.5 py-4 text-[12px] text-amber-600 dark:text-amber-400 text-center">
-                      Activity &amp; checklist need migration <span className="font-mono">047_deal_workflow.sql</span> — run it in the Supabase SQL editor.
-                    </p>
-                  ) : activities === null ? (
-                    <p className="px-3.5 py-4 text-[12px] text-ink-faint text-center">Loading…</p>
-                  ) : feedItems.length === 0 ? (
-                    <p className="px-3.5 py-4 text-[12px] text-ink-faint text-center">
-                      No activity yet. Use the quick actions above to log your first interaction.
-                    </p>
-                  ) : (
-                    feedItems.map((item) => (
-                      <div key={item.key} className="flex items-start gap-2.5 px-3.5 py-2 border-t border-hairline-soft first:border-t-0">
-                        <span className="mt-0.5 w-6 h-6 rounded-md bg-surface-strong flex items-center justify-center text-ink-muted flex-shrink-0">
-                          {item.kind === 'activity' ? (ACTIVITY_ICONS[item.a.kind] ?? ACTIVITY_ICONS.note) : <ArrowRight size={12} />}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          {item.kind === 'activity' ? (
-                            <>
-                              <p className="text-[12.5px] text-ink-secondary leading-snug break-words">{item.a.summary}</p>
-                              <p className="text-[10.5px] text-ink-faint tabular-nums">
-                                {item.a.actor ? `${item.a.actor} · ` : ''}{timeAgo(item.a.created_at)} ago
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="text-[12.5px] text-ink-secondary leading-snug break-words">
-                                {item.h.from_stage === null
-                                  ? `Entered pipeline at ${stageInfo(item.h.to_stage).label}`
-                                  : `Moved to ${stageInfo(item.h.to_stage).label} (from ${stageInfo(item.h.from_stage).label})`}
-                                {item.h.note ? ` — ${item.h.note}` : ''}
-                              </p>
-                              <p className="text-[10.5px] text-ink-faint tabular-nums">
-                                {item.h.actor && !item.h.actor.startsWith('migration') ? `${item.h.actor} · ` : ''}{timeAgo(item.h.changed_at)} ago
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* ── Fields ── */}
-              <div className="rounded-xl border border-hairline overflow-hidden">
-                <div className="grid grid-cols-1 sm:grid-cols-2">
-                  <Field icon={<User size={13} />} label="Assigned To" value={deal.assigned_to} />
-                  <Field icon={<Users size={13} />} label="Rep" value={deal.rep} />
-                  <Field icon={<ContactIcon size={13} />} label="Rep Contact" value={deal.rep_contact} />
-                  <Field icon={<Cpu size={13} />} label="Unit Model" value={deal.unit_model} mono />
-                  <Field icon={<Briefcase size={13} />} label="Job Name" value={deal.job_name} />
-                  <Field icon={<CalendarDays size={13} />} label="Date Quoted" value={deal.date_quoted ? formatDateOnly(deal.date_quoted) : null} />
-                  <Field icon={<CalendarRange size={13} />} label="Expected Close" value={deal.expected_close ? formatDateOnly(deal.expected_close) : deal.projected} />
-                  <Field icon={<Flag size={13} />} label="Next Step" value={deal.next_step ? `${deal.next_step}${deal.next_step_due ? ` · by ${formatDateOnly(deal.next_step_due)}` : ''}` : null} />
-                  <Field icon={<Factory size={13} />} label="Project Type" value={deal.project_type ?? null} />
-                  <Field icon={<Users size={13} />} label="Group" value={deal.group_name} />
-                </div>
-              </div>
-
-              {/* ── Updates / notes ── */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Updates & notes</span>
-                  {deal.notes && <span className="text-[11px] text-ink-faint tabular-nums">{deal.notes.length} chars</span>}
-                </div>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
+              {showSchedule && (
+                <div className="mb-2 rounded-xl border border-hairline bg-surface-soft p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input type="date" value={fuDate} onChange={(e) => setFuDate(e.target.value)} className={`${inp} flex-shrink-0 w-[160px]`} />
                     <input
-                      value={update}
-                      onChange={(e) => setUpdate(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); postUpdate() } }}
-                      placeholder="Add a dated update… (Enter to post)"
+                      value={fuNote}
+                      onChange={(e) => setFuNote(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitSchedule() } }}
+                      placeholder="What's the follow-up? (optional)"
                       className={inp}
                     />
-                    {update.trim() && (
-                      <CornerDownLeft size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
-                    )}
                   </div>
-                  <button
-                    onClick={postUpdate}
-                    disabled={!update.trim()}
-                    className="h-9 px-3 self-start rounded-lg text-[12.5px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft disabled:opacity-40 transition-colors"
-                  >
-                    Post
-                  </button>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setShowSchedule(false)} className="h-8 px-3 rounded-lg text-[12px] font-medium text-ink-secondary hover:bg-surface transition-colors">Cancel</button>
+                    <button
+                      onClick={submitSchedule}
+                      className="h-8 px-3 rounded-lg text-[12px] font-medium text-white bg-brand hover:bg-brand-hover transition-colors"
+                    >
+                      Add reminder
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-2 rounded-xl border border-hairline bg-surface-soft px-3.5 py-3 max-h-48 overflow-y-auto">
-                  {deal.notes ? (
-                    <p className="text-[12.5px] text-ink-secondary whitespace-pre-wrap break-words leading-relaxed">{deal.notes}</p>
-                  ) : (
-                    <p className="text-[12.5px] text-ink-faint">No notes yet — post the first update above.</p>
-                  )}
-                </div>
-              </div>
+              )}
 
-              {/* ── Meta ── */}
-              <p className="text-[11px] text-ink-faint tabular-nums">
-                Created {formatDateOnly(deal.created_at.slice(0, 10))} · last updated {timeAgo(deal.updated_at)} ago
-              </p>
-            </>
-          ) : (
-            /* ── Edit mode — same fields as the New Deal modal ── */
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className={lbl}>Customer</label>
-                <input className={inp} value={form.customer} onChange={(e) => set('customer', e.target.value)} autoFocus />
-              </div>
-              <div>
-                <label className={lbl}>Group</label>
-                <input className={inp} value={form.group_name} onChange={(e) => set('group_name', e.target.value)} placeholder="MIKE / JACOB / DAVE…" />
-              </div>
-              <div>
-                <label className={lbl}>Assigned To</label>
-                <input className={inp} value={form.assigned_to} onChange={(e) => set('assigned_to', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Total Cost</label>
-                <input className={inp} type="number" min="0" step="1" value={form.total_cost} onChange={(e) => set('total_cost', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Confidence %</label>
-                <input className={inp} type="number" min="0" max="100" step="1" value={form.confidence} onChange={(e) => set('confidence', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Unit Model</label>
-                <input className={inp} value={form.unit_model} onChange={(e) => set('unit_model', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Job Name</label>
-                <input className={inp} value={form.job_name} onChange={(e) => set('job_name', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Date Quoted</label>
-                <input className={inp} type="date" value={form.date_quoted} onChange={(e) => set('date_quoted', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Projected (legacy text)</label>
-                <input className={inp} value={form.projected} onChange={(e) => set('projected', e.target.value)} placeholder="Q4 2026" />
-              </div>
-              <div>
-                <label className={lbl}>Expected Close</label>
-                <input className={inp} type="date" value={form.expected_close} onChange={(e) => set('expected_close', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Next Step</label>
-                <input className={inp} value={form.next_step} onChange={(e) => set('next_step', e.target.value)} placeholder="What's the next move?" />
-              </div>
-              <div>
-                <label className={lbl}>Next Step Due</label>
-                <input className={inp} type="date" value={form.next_step_due} onChange={(e) => set('next_step_due', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Rep</label>
-                <input className={inp} value={form.rep} onChange={(e) => set('rep', e.target.value)} />
-              </div>
-              <div>
-                <label className={lbl}>Rep Contact</label>
-                <input className={inp} value={form.rep_contact} onChange={(e) => set('rep_contact', e.target.value)} />
-              </div>
-              <div className="col-span-2">
-                <label className={lbl}>Project Type</label>
-                <select className={inp} value={form.project_type} onChange={(e) => set('project_type', e.target.value)}>
-                  <option value="">— None —</option>
-                  {PROJECT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className={lbl}>Notes</label>
-                <textarea className={inp} rows={5} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
-              </div>
+              {sortedFollowUps.length === 0 ? (
+                <p className="rounded-xl border border-hairline bg-surface-soft px-3.5 py-3 text-[12px] text-ink-faint">
+                  No follow-ups scheduled. New deals auto-schedule one 2 weeks out.
+                </p>
+              ) : (
+                <div className="rounded-xl border border-hairline overflow-hidden">
+                  {sortedFollowUps.map((f) => (
+                    <div key={f.id} className="flex items-center gap-3 px-3.5 py-2.5 border-t border-hairline-soft first:border-t-0">
+                      <button
+                        onClick={() => onToggleFollowUpDone(f.id)}
+                        title={f.done ? 'Mark not done' : 'Mark done'}
+                        className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${
+                          f.done ? 'bg-brand border-brand text-white' : 'border-hairline-strong'
+                        }`}
+                      >
+                        {f.done && <Check size={11} strokeWidth={3} />}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-[12.5px] leading-snug ${f.done ? 'text-ink-muted line-through' : 'text-ink-secondary'}`}>
+                          {f.note || 'Follow up'}
+                        </p>
+                        <p className="text-[11px] text-ink-faint tabular-nums">
+                          {formatDateOnly(f.due_date)}{f.auto_generated ? ' · auto' : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => onRemoveFollowUp(f.id)}
+                        title="Delete follow-up"
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-ink-faint hover:text-rose-500 hover:bg-surface-soft transition-colors flex-shrink-0"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* ── Activity log ── */
+          <div>
+            {activityUnavailable ? (
+              <p className="rounded-xl border border-hairline bg-surface-soft px-3.5 py-4 text-[12px] text-amber-600 dark:text-amber-400 text-center">
+                Activity &amp; checklist need migration <span className="font-mono">047_deal_workflow.sql</span> — run it in the Supabase SQL editor.
+              </p>
+            ) : activities === null ? (
+              <p className="px-3.5 py-4 text-[12px] text-ink-faint text-center">Loading…</p>
+            ) : feedItems.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-hairline-strong px-4 py-8 text-center">
+                <span className="mx-auto mb-2.5 w-9 h-9 rounded-xl bg-surface-strong flex items-center justify-center text-ink-faint">
+                  <ClipboardList size={17} />
+                </span>
+                <p className="text-[13px] font-medium text-ink-secondary">No activity yet</p>
+                <p className="mt-0.5 text-[12px] text-ink-muted">Log a call or email from the Comments tab to start the trail.</p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-hairline bg-surface-soft overflow-hidden">
+                {feedItems.map((item) => (
+                  <div key={item.key} className="flex items-start gap-2.5 px-3.5 py-2.5 border-t border-hairline-soft first:border-t-0">
+                    <span className="mt-0.5 w-6 h-6 rounded-md bg-surface-strong flex items-center justify-center text-ink-muted flex-shrink-0">
+                      {item.kind === 'activity' ? (ACTIVITY_ICONS[item.a.kind] ?? ACTIVITY_ICONS.note) : <ArrowRight size={12} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {item.kind === 'activity' ? (
+                        <>
+                          <p className="text-[12.5px] text-ink-secondary leading-snug break-words">{item.a.summary}</p>
+                          <p className="text-[10.5px] text-ink-faint tabular-nums">
+                            {item.a.actor ? `${item.a.actor} · ` : ''}{timeAgo(item.a.created_at)} ago
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[12.5px] text-ink-secondary leading-snug break-words">
+                            {item.h.from_stage === null
+                              ? `Entered pipeline at ${stageInfo(item.h.to_stage).label}`
+                              : `Moved to ${stageInfo(item.h.to_stage).label} (from ${stageInfo(item.h.from_stage).label})`}
+                            {item.h.note ? ` — ${item.h.note}` : ''}
+                          </p>
+                          <p className="text-[10.5px] text-ink-faint tabular-nums">
+                            {item.h.actor && !item.h.actor.startsWith('migration') ? `${item.h.actor} · ` : ''}{timeAgo(item.h.changed_at)} ago
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </DrawerBody>
 
-        {/* ── Footer ── */}
-        <div className="sticky bottom-0 bg-surface border-t border-hairline-soft px-5 sm:px-6 py-3.5 flex items-center justify-between gap-2">
-          {!editing ? (
-            <>
-              <button
-                onClick={() => { if (confirm(`Delete the ${deal.customer} deal?`)) { onDelete(deal.id); onClose() } }}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] font-medium text-ink-faint hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-              >
-                <Trash2 size={13} /> Delete
+      {/* ── Footer ── */}
+      <DrawerFooter>
+        {!editing ? (
+          <>
+            <button
+              onClick={() => { if (confirm(`Delete the ${deal.customer} deal?`)) { onDelete(deal.id); onClose() } }}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12.5px] font-medium text-ink-faint hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+            <div className="flex items-center gap-2">
+              {openFollowUps > 0 && (
+                <span className="text-[11px] text-ink-faint tabular-nums mr-1">{openFollowUps} open follow-up{openFollowUps === 1 ? '' : 's'}</span>
+              )}
+              <button onClick={onClose} className="h-9 px-3.5 rounded-lg text-[13px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft transition-colors">
+                Close
               </button>
-              <div className="flex items-center gap-2">
-                <button onClick={onClose} className="h-9 px-3.5 rounded-lg text-[13px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft transition-colors">
-                  Close
-                </button>
-                <button
-                  onClick={() => setEditing(true)}
-                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white transition-colors"
-                  style={{ backgroundColor: 'var(--brand)' }}
-                >
-                  <Pencil size={13} /> Edit deal
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="text-[11px] text-ink-faint">Editing — changes apply when you save</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setForm(toForm(deal)); setEditing(false) }}
-                  className="h-9 px-3.5 rounded-lg text-[13px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={save}
-                  className="h-9 px-3.5 rounded-lg text-[13px] font-medium text-white transition-colors"
-                  style={{ backgroundColor: 'var(--brand)' }}
-                >
-                  Save changes
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+              <button
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-[13px] font-medium text-white bg-brand hover:bg-brand-hover active:scale-[.98] transition-all"
+              >
+                <Pencil size={13} /> Edit deal
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] text-ink-faint">Editing — changes apply when you save</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setForm(toForm(deal)); setEditing(false) }}
+                className="h-9 px-3.5 rounded-lg text-[13px] font-medium text-ink-secondary border border-hairline-strong bg-surface hover:bg-surface-soft transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={save}
+                className="h-9 px-3.5 rounded-lg text-[13px] font-medium text-white bg-brand hover:bg-brand-hover active:scale-[.98] transition-all"
+              >
+                Save changes
+              </button>
+            </div>
+          </>
+        )}
+      </DrawerFooter>
+    </Drawer>
   )
 }
 
@@ -842,7 +871,7 @@ function MoneyTile({ label, value, accent }: { label: string; value: string; acc
   return (
     <div className="rounded-xl border border-hairline bg-surface-soft px-3.5 py-2.5">
       <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-muted mb-1">{label}</p>
-      <p className={`text-[17px] font-semibold tabular-nums leading-none ${accent ? '' : 'text-ink'}`} style={accent ? { color: 'var(--brand-ink)' } : undefined}>
+      <p className={`text-[17px] font-semibold tabular-nums leading-none ${accent ? 'text-brand-ink' : 'text-ink'}`}>
         {value}
       </p>
     </div>
@@ -878,7 +907,7 @@ function Field({ icon, label, value, mono }: { icon: React.ReactNode; label: str
       <span className="mt-0.5 text-ink-faint flex-shrink-0">{icon}</span>
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-muted">{label}</p>
-        <p className={`text-[13px] text-ink mt-0.5 break-words ${mono ? 'font-mono text-[12px]' : ''} ${value ? '' : 'text-ink-faint'}`}>
+        <p className={`text-[13px] mt-0.5 break-words ${mono ? 'font-mono text-[12px]' : ''} ${value ? 'text-ink' : 'text-ink-faint'}`}>
           {value || '—'}
         </p>
       </div>
