@@ -240,7 +240,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   }
 
   const renderNav = (onClose?: () => void) => (
-    <nav className="flex-1 px-3 py-2 overflow-y-auto">
+    <nav className="flex-1 px-3 py-2 overflow-y-auto sidebar-scroll">
       {/* Company Home — the shared intranet landing, rendered in this admin shell.
           Ungated: every admin-surface role lands on /admin/home first (it's in
           OPEN_ADMIN_PREFIXES), so all of them can return to it. */}

@@ -2,6 +2,23 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-29 — Admin sidebar scrollbar matches the rail
+
+When enough nav groups are expanded the admin sidebar overflows and scrolls, and
+it was painting the default OS browser scrollbar — bright chrome against the dark
+pine/graphite rail. It now uses a thin (8px) rounded thumb tinted from the rail's
+own ink tokens: `--sidebar-ink-faint` at rest (a step below the nav-label ink, so
+it recedes behind the content) lifting to `--sidebar-ink-muted` on hover, over a
+transparent track with the increment/decrement arrows suppressed. The tokens
+resolve per theme, so it reads as a soft green on the light pine rail and neutral
+graphite in dark mode. Firefox gets the same via `scrollbar-width: thin` +
+`scrollbar-color`.
+
+Scoped to the admin rail — desktop `<aside>` and the mobile drawer share one
+`<nav>`, so both are covered; the `/learn` and customer navs are untouched.
+
+`app/globals.css` (`.sidebar-scroll`) · `components/admin/AdminSidebar.tsx`.
+
 ## 2026-07-29 — Performance rows link across to the CRM Board
 
 Expanding a project on **Performance** (`/admin/projected-sales`) now offers
