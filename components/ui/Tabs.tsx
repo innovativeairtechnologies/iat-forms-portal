@@ -27,7 +27,14 @@ export function Tabs<K extends string>({
   className?: string
 }) {
   return (
-    <div role="tablist" className={`flex-shrink-0 flex items-center gap-1 border-b border-hairline px-3 ${className}`}>
+    // overflow-x-auto: four labelled tabs don't fit a 380px panel (the
+    // territories rail). Let the strip scroll sideways rather than wrap into
+    // two rows or silently clip the last tab. `scrollbar-hide` is the house
+    // utility from globals.css, same as the admin list clients use.
+    <div
+      role="tablist"
+      className={`flex-shrink-0 flex items-center gap-1 border-b border-hairline px-3 overflow-x-auto scrollbar-hide ${className}`}
+    >
       {tabs.map((t) => {
         const on = t.key === active
         return (
@@ -36,7 +43,7 @@ export function Tabs<K extends string>({
             role="tab"
             aria-selected={on}
             onClick={() => onChange(t.key)}
-            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+            className={`-mb-px inline-flex flex-shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
               on
                 ? 'border-brand text-ink'
                 : 'border-transparent text-ink-muted hover:text-ink-secondary'

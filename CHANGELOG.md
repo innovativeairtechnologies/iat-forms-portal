@@ -2,6 +2,45 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-29 — Territories: the panel floats, and clicking a rep drills into it
+
+The rep panel was a docked column with a left border. It's now a **floating
+card** over a **full-bleed map** — inset from the edges, 16px radius, hairline
+border, Level-3 shadow in light / `ring-white/10` in dark — the same language as
+the deals drawer. The map is meaningfully bigger for it.
+
+**Clicking a rep now drills the panel into that rep**, the way clicking a firm
+already did: back-link, identity, then Overview / Territories / Locations /
+Notes. Deliberately *not* the overlay `Drawer` the deals board uses — this page
+is about the map, and a scrim over it hides the thing you're reading about. So
+`RepDrawer` is gone, replaced by `RepDetail` rendering inside the panel.
+
+Going full-bleed moved three things that used to sit safely beside the panel:
+
+- **Camera framing** — `fitBounds` had a flat 60px padding, so framing a firm
+  parked its territory *under* the panel. `MapCanvas` now takes an `insetRight`
+  (clamped to a third of the canvas so phones don't break).
+- **Attribution** — maplibre puts it bottom-right, exactly where the panel now
+  is; it measured ~9% visible with its "i" toggle unclickable, which ODbL
+  attribution can't be. Moved to bottom-left.
+- **The panel-toggle button** — it lived in the corner the panel now covers, so
+  it renders only while the panel is closed; the panel header carries the
+  collapse control.
+
+Caught in review: raising the paint/place banner to z-40 so it stays visible on
+phones made it **cover the panel-toggle button completely** — the banner is
+wider than a phone, and the button measured 0% clickable at 375/390/430px,
+stranding you in paint mode. Fixed by *positioning* it clear of that corner
+below sm rather than relying on z-index, verified by hit-testing every pixel of
+the button in headless Chromium (97.2% reachable at every width, 375→1440).
+`onStartPaint` also collapses the panel on phones, as `startPlace` already did.
+The map-failure banner moved to z-50 so the "screenshot this" diagnostic can't
+be half-covered, and the shared tab strip scrolls horizontally — four labelled
+tabs don't fit a 380px panel.
+
+`TerritoriesClient` · `RepPanel` · `RepDetail` (new) · `RepDrawer` (removed) ·
+`MapCanvas` · `components/ui/Tabs`.
+
 ## 2026-07-29 — Floating record drawer: the deal modal goes tabbed, and reps become clickable
 
 Clicking a kanban card used to throw a centre modal over the board and bury

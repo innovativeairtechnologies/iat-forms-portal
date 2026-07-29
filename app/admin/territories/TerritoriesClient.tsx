@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useTheme } from 'next-themes'
-import { Check, PanelRight, X } from 'lucide-react'
+import { Check, PanelRight } from 'lucide-react'
 import type { Company, Contact, CompanyLocation, CompanyTerritory } from '@/lib/supabase'
 import { SHARED_FILL, type TerritoryLevel } from '@/lib/territories'
 import type { HoverInfo, MapFocus, MapMode, PinDatum } from './MapCanvas'
@@ -349,6 +349,22 @@ export default function TerritoriesClient({
     ? { lng: placingLocation.lng, lat: placingLocation.lat }
     : null
 
+  // How much of the map's right edge the floating panel covers: 380px card +
+  // its 12px inset + a 12px breathing gap. Fed to MapCanvas so camera moves
+  // frame into the VISIBLE half, and used to re-centre the map's own floating
+  // banners so they don't slide under the panel on narrower screens.
+  const PANEL_INSET = 404
+  // Mode banner placement. z-40 puts it above the floating panel (z-30) so it
+  // stays visible on phones where the panel is full-bleed — but z-index alone
+  // was a trap: the banner is ~460px wide and at phone widths it covered the
+  // panel-toggle button at top-3 right-3 completely (measured 0% clickable),
+  // stranding the user in paint mode. So it is also POSITIONED clear of that
+  // corner below sm (`right-14` leaves the 32px toggle + a gap), and only
+  // centres from sm up, shifted left when the panel is open.
+  const bannerCx = `absolute top-3 z-40 left-3 right-14 sm:right-auto sm:-translate-x-1/2 ${
+    panelOpen ? 'sm:left-[calc(50%-202px)]' : 'sm:left-1/2'
+  }`
+
   const levelPillCx = (active: boolean) =>
     `px-2.5 h-6 rounded-md text-[11.5px] font-medium transition-colors ${
       active ? 'bg-brand text-white' : 'text-ink-muted hover:text-ink'
@@ -372,6 +388,7 @@ export default function TerritoriesClient({
             paintLevel={paintLevel}
             countiesVisible={countiesVisible}
             focus={focus}
+            insetRight={panelOpen ? PANEL_INSET : 0}
             placing={placing}
             lookup={lookup}
             onFeatureClick={onFeatureClick}
@@ -386,7 +403,7 @@ export default function TerritoriesClient({
 
         {/* Mode banner — the single floating control while painting / placing */}
         {mode === 'paint' && selected && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-xl border border-hairline bg-surface px-3 py-1.5">
+          <div className={`${bannerCx} flex flex-wrap items-center gap-2 rounded-xl border border-hairline bg-surface px-3 py-1.5`}>
             <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selected.map_color ?? SHARED_FILL }} />
             <span className="text-[12.5px] text-ink-secondary max-w-[240px] truncate">
               Painting <span className="font-semibold text-ink">{selected.name}</span> — click to toggle
@@ -404,7 +421,7 @@ export default function TerritoriesClient({
           </div>
         )}
         {mode === 'place' && placingLocation && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 rounded-xl border border-hairline bg-surface px-3 py-1.5">
+          <div className={`${bannerCx} flex flex-wrap items-center gap-2.5 rounded-xl border border-hairline bg-surface px-3 py-1.5`}>
             <span className="text-[12.5px] text-ink-secondary max-w-[300px] truncate">
               Click the map to place <span className="font-semibold text-ink">{placingLocation.label || placingLocation.city || 'this location'}</span>
               {placing && ' — drag the pin to fine-tune'}
@@ -425,27 +442,39 @@ export default function TerritoriesClient({
           </p>
         )}
 
-        {/* Panel toggle */}
-        <button
-          className="absolute top-3 right-3 z-30 flex items-center justify-center w-8 h-8 rounded-lg border border-hairline bg-surface text-ink-muted hover:text-ink transition-colors"
-          title={panelOpen ? 'Hide the list' : 'Show the list'}
-          onClick={() => setPanelOpen((o) => !o)}
-        >
-          {panelOpen ? <X size={15} /> : <PanelRight size={15} />}
-        </button>
+        {/* Panel toggle — only while the panel is CLOSED. When it's open this
+            button would sit underneath the floating panel (same top-3 right-3
+            corner), unreachable; the panel header carries its own collapse
+            control instead. */}
+        {!panelOpen && (
+          <button
+            className="absolute top-3 right-3 z-30 flex items-center justify-center w-8 h-8 rounded-lg border border-hairline bg-surface text-ink-muted hover:text-ink transition-colors"
+            title="Show the list"
+            onClick={() => setPanelOpen(true)}
+          >
+            <PanelRight size={15} />
+          </button>
+        )}
       </div>
 
-      {/* Side panel — overlays on small screens, docks from md up. It's a
-          POSITIONED box (absolute on mobile, relative on desktop) with RepPanel
-          filling it via `absolute inset-0`, so the panel's tall list is taken
-          out of flow and can't grow the page — exactly how the map canvas and
-          the org chart avoid growing their column. A plain flow panel here
-          grows the min-h-screen root past the viewport, and the whole page
-          scrolls instead of just the list (verified against the real
-          compiled CSS — see docs/territory-map.md "Panel scroll"). */}
+      {/* Side panel — a FLOATING card over a full-bleed map, matching the deals
+          drawer's language (inset from the edges, 16px radius, hairline border,
+          Level-3 shadow in light / ring-white/10 and no shadow in dark).
+
+          It is absolutely positioned with definite top/bottom, and RepPanel fills
+          it via `absolute inset-0` — so the tall roster is out of flow and can't
+          grow the page. That constraint is load-bearing, not cosmetic: a plain
+          flow panel here grows the min-h-screen root past the viewport and the
+          WHOLE PAGE scrolls instead of just the list (verified against the real
+          compiled CSS — see docs/territory-map.md "Panel scroll").
+
+          z-30 puts it level with the map's floating controls; the panel-toggle
+          button is suppressed while it's open (its collapse control lives in the
+          panel header instead) so the two can't overlap. */}
       {panelOpen && (
-        <aside className="absolute md:relative inset-y-0 right-0 z-20 w-full sm:w-[380px] md:w-[380px] flex-shrink-0 border-l border-hairline bg-surface">
+        <aside className="absolute z-30 top-3 bottom-3 left-3 right-3 sm:left-auto sm:w-[380px] overflow-hidden rounded-2xl border border-hairline bg-surface shadow-[0_8px_24px_rgba(31,30,27,.10),0_2px_6px_rgba(31,30,27,.05)] dark:shadow-none dark:ring-1 dark:ring-white/10">
           <RepPanel
+            onCollapse={() => setPanelOpen(false)}
             companies={companies}
             contacts={contacts}
             locations={locations}
@@ -466,7 +495,13 @@ export default function TerritoriesClient({
             onAddLocation={addLocation}
             onDeleteLocation={deleteLocation}
             onStartPlace={startPlace}
-            onStartPaint={() => setMode('paint')}
+            onStartPaint={() => {
+              setMode('paint')
+              // Below sm the panel is full-bleed, so it hides the very map you
+              // just asked to paint — and its collapse button sits under the
+              // mode banner. Get out of the way, like startPlace already does.
+              if (!window.matchMedia('(min-width: 640px)').matches) setPanelOpen(false)
+            }}
             onFitFirm={focusFirm}
             onRemoveTerritory={removeTerritory}
             onEditExclusivity={editExclusivity}

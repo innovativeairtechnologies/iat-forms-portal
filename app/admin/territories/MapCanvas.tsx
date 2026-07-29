@@ -82,6 +82,10 @@ type Props = {
   /** county layer shown when painting counties OR any county assignment exists */
   countiesVisible: boolean
   focus: MapFocus | null
+  /** Pixels of the map obscured on the right by the floating rep panel. The
+   *  canvas runs full-bleed underneath it, so camera moves have to account for
+   *  it or a framed footprint lands behind the panel. */
+  insetRight?: number
   /** the location being placed — rendered as a draggable marker */
   placing: { lng: number; lat: number } | null
   lookup: (level: TerritoryLevel, code: string) => HoverInfo | null
@@ -155,7 +159,11 @@ export default function MapCanvas(props: Props) {
         center: [-95.5, 39.5],
         zoom: 3.4,
         minZoom: 2.5,
-        attributionControl: { compact: true },
+        // Added manually below so it can sit bottom-LEFT. maplibre defaults it
+        // to bottom-right, which is exactly where the floating rep panel now
+        // lives — the OpenFreeMap/OSM credit was ~9% visible and its "i" toggle
+        // unclickable, which ODbL attribution can't be.
+        attributionControl: false,
       })
     } catch (e) {
       // Most likely WebGL unavailable (hardware acceleration off) — the
@@ -166,6 +174,7 @@ export default function MapCanvas(props: Props) {
     }
     mapRef.current = map
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left')
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left')
     map.on('error', (e) => {
       // Surface load-time failures (blocked tile host, dead style URL) instead
       // of a silent blank canvas; a later successful style.load clears this.
@@ -490,10 +499,20 @@ export default function MapCanvas(props: Props) {
     const map = mapRef.current
     const focus = props.focus
     if (!map || !focus || focus.token === 0) return
+    // Clamp to a third of the canvas: on a phone the panel covers the full
+    // width, and padding wider than the container makes fitBounds incoherent.
+    const inset = Math.max(0, Math.min(props.insetRight ?? 0, map.getContainer().clientWidth / 3))
     if (focus.kind === 'point') {
       // Never zoom OUT to reach a pin the user just clicked — max() keeps the
       // current zoom when they're already closer than the target.
-      map.easeTo({ center: focus.center, zoom: Math.max(map.getZoom(), focus.minZoom ?? 8), duration: 600 })
+      // The offset nudges the target left of the container centre by half the
+      // panel width, so it lands in the visible half rather than under the panel.
+      map.easeTo({
+        center: focus.center,
+        zoom: Math.max(map.getZoom(), focus.minZoom ?? 8),
+        offset: [-inset / 2, 0],
+        duration: 600,
+      })
       return
     }
     const bounds = new maplibregl.LngLatBounds()
@@ -509,7 +528,7 @@ export default function MapCanvas(props: Props) {
       }
     }
     for (const [lng, lat] of focus.pins) { bounds.extend([lng, lat]); any = true }
-    if (any) map.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 }, maxZoom: 7, duration: 600 })
+    if (any) map.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 + inset }, maxZoom: 7, duration: 600 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.focus?.token])
 
@@ -547,7 +566,9 @@ export default function MapCanvas(props: Props) {
           height (proven in the css-order harness). Inline style always wins. */}
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
       {mapError && (
-        <div className="pointer-events-none absolute inset-x-0 top-14 z-30 flex justify-center px-4">
+        // z-50: above the floating rep panel (z-30). This message IS the
+        // diagnosis ("screenshot this"), so it must never be half-covered.
+        <div className="pointer-events-none absolute inset-x-0 top-14 z-50 flex justify-center px-4">
           <p className="max-w-[480px] rounded-lg border border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 text-[12.5px] text-rose-600 dark:text-rose-400">
             {mapError} — try reloading; if it persists, screenshot this message.
           </p>

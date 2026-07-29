@@ -9,12 +9,13 @@
 import { useMemo, useState } from 'react'
 import {
   Plus, X, MapPin, Trash2, ChevronLeft, ChevronRight, Check, Building2, Crosshair, Loader2, Pencil,
+  PanelRightClose,
 } from 'lucide-react'
 import type { Company, Contact, CompanyLocation, CompanyTerritory } from '@/lib/supabase'
 import { ListSearch } from '@/components/admin/list-card'
 import { MAP_PALETTE, SHARED_FILL, territoryLabel } from '@/lib/territories'
 import { tabCx } from '@/components/admin/list'
-import RepDrawer from './RepDrawer'
+import RepDetail from './RepDetail'
 import type { MapMode } from './MapCanvas'
 
 const INPUT_CX =
@@ -52,6 +53,9 @@ type Props = {
   onFitFirm: (id: string) => void
   onRemoveTerritory: (t: CompanyTerritory) => void
   onEditExclusivity: (t: CompanyTerritory, value: string) => void
+  /** Collapse the floating panel. Lives in this header because the map's own
+   *  toggle button sits in the corner the panel now covers. */
+  onCollapse: () => void
 }
 
 export default function RepPanel(props: Props) {
@@ -124,13 +128,22 @@ export default function RepPanel(props: Props) {
             <p className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-faint">Sales</p>
             <h1 className="text-[17px] font-semibold text-ink tracking-tight">Territories</h1>
           </div>
-          {canEdit && !selected && (
-            <button className={BTN_PRIMARY} onClick={() => setAddingFirm(true)}>
-              <Plus size={14} /> Rep firm
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {canEdit && !selected && !openRep && (
+              <button className={BTN_PRIMARY} onClick={() => setAddingFirm(true)}>
+                <Plus size={14} /> Rep firm
+              </button>
+            )}
+            <button
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-faint hover:text-ink hover:bg-surface-soft transition-colors"
+              title="Hide the list"
+              onClick={props.onCollapse}
+            >
+              <PanelRightClose size={15} />
             </button>
-          )}
+          </div>
         </div>
-        {!selected && (
+        {!selected && !openRep && (
           <div className="flex items-center -mb-px">
             <button className={tabCx(tab === 'firms')} onClick={() => setTab('firms')}>
               Firms <span className="text-[11px] text-ink-faint tabular-nums">{companies.length}</span>
@@ -149,7 +162,25 @@ export default function RepPanel(props: Props) {
       )}
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {selected ? (
+        {openRep ? (
+          <RepDetail
+            key={openRep.id}
+            rep={openRep}
+            firm={companies.find((c) => c.id === openRep.company_id) ?? null}
+            territories={byCompany.territories.get(openRep.company_id) ?? []}
+            locations={byCompany.locations.get(openRep.company_id) ?? []}
+            firmRepCount={(byCompany.contacts.get(openRep.company_id) ?? []).length}
+            canEdit={canEdit}
+            /* Drilling in from a firm returns to that firm, not the roster —
+               `selected` survives underneath, so name where back actually goes. */
+            backLabel={selected ? selected.name : 'All reps'}
+            onBack={() => setRepId(null)}
+            onUpdateContact={props.onUpdateContact}
+            onDeleteContact={props.onDeleteContact}
+            onFitFirm={props.onFitFirm}
+            onSelectFirm={(id) => { setRepId(null); props.onSelect(id) }}
+          />
+        ) : selected ? (
           <FirmDetail
             key={selected.id}
             {...props}
@@ -245,26 +276,6 @@ export default function RepPanel(props: Props) {
         )}
       </div>
 
-      {/* Floating rep record — shared Drawer pattern (components/ui/Drawer).
-          Rendered here rather than in TerritoriesClient so the roster owns its
-          own selection; the panel is `absolute inset-0` but the Drawer is
-          `fixed`, so it floats over the whole page, not just this column. */}
-      {openRep && (
-        <RepDrawer
-          key={openRep.id}
-          rep={openRep}
-          firm={companies.find((c) => c.id === openRep.company_id) ?? null}
-          territories={byCompany.territories.get(openRep.company_id) ?? []}
-          locations={byCompany.locations.get(openRep.company_id) ?? []}
-          firmRepCount={(byCompany.contacts.get(openRep.company_id) ?? []).length}
-          canEdit={canEdit}
-          onClose={() => setRepId(null)}
-          onUpdateContact={props.onUpdateContact}
-          onDeleteContact={props.onDeleteContact}
-          onFitFirm={props.onFitFirm}
-          onSelectFirm={(id) => { setRepId(null); props.onSelect(id) }}
-        />
-      )}
     </div>
   )
 }

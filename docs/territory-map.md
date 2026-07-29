@@ -108,13 +108,59 @@ Its tall firm/rep list is out of flow, can't grow the page, and scrolls inside
 its own `overflow-y-auto` region. Do not "simplify" RepPanel back to a
 flow `h-full` container — that reintroduces the whole-page scroll.
 
-## Rep drawer (2026-07-29) — reps are clickable now
+## The panel FLOATS over a full-bleed map (2026-07-29)
+
+The rep panel used to be a docked flex sibling (`md:relative`, `border-l`), so the
+map column ended at its left edge. It is now a **floating card** — `absolute
+top-3 bottom-3 left-3 right-3 sm:left-auto sm:w-[380px]`, 16px radius, hairline
+border, Level-3 shadow in light / `ring-white/10` and no shadow in dark — and the
+map runs **full-bleed underneath it**. Same language as the deals drawer.
+
+Going full-bleed moved three things that used to be safely beside the panel.
+All three are load-bearing, not cosmetic:
+
+- **Camera framing.** `fitBounds` used a flat 60px padding, so a firm's footprint
+  would frame *under* the panel. `MapCanvas` takes an `insetRight` (404px = the
+  380 card + 12 inset + 12 gap) applied to `padding.right` and, for point focus,
+  as an `offset` of half that. Clamped to `containerWidth / 3` so a phone, where
+  the panel is full-width, can't get padding wider than the map.
+- **Attribution.** maplibre defaults its attribution control to bottom-right —
+  exactly where the panel now sits. Measured ~9% visible with the "i" toggle
+  unclickable, which **ODbL attribution cannot be**. The map is now built with
+  `attributionControl: false` and adds `new AttributionControl({compact:true})`
+  at **bottom-left**. Don't move it back.
+- **The panel-toggle button** at `top-3 right-3` is the corner the panel now
+  covers, so it renders **only while the panel is closed**; RepPanel's header
+  carries the collapse control instead.
+
+**Mode banners: z-index alone was a trap.** Raising the paint/place banner to
+z-40 (so it stays visible over the full-bleed panel on phones) made it cover the
+panel-toggle button completely — the banner is ~460px wide, wider than a phone,
+and measured **0% of the toggle clickable** at 375/390/430px, stranding the user
+in paint mode. The banner is therefore also *positioned* clear of that corner:
+`left-3 right-14` below sm (leaving the 32px toggle plus a gap), centred only
+from sm up. Verified by hit-testing every pixel of the button in headless
+Chromium: 97.2% reachable at every width from 375→1440 (97.2% is the
+rounded-corner baseline). `onStartPaint` also collapses the panel below sm, the
+way `startPlace` already did — you can't paint a map the panel is covering.
+
+The MapCanvas failure banner is **z-50**, above the panel: that message is the
+diagnosis ("screenshot this"), so it must never be half-covered.
+
+## Rep detail (2026-07-29) — reps are clickable now
 
 Reps used to be dead text: three lines in the roster, no click target, no way
-in. Only *firms* were selectable. Clicking a rep now opens
-`app/admin/territories/RepDrawer.tsx` — the same floating right-hand drawer the
-deals board uses (`components/ui/Drawer.tsx` + `Tabs.tsx`), so the two pages
-share one "click a record, it floats in" pattern.
+in. Only *firms* were selectable. Clicking a rep now drills the panel into
+`app/admin/territories/RepDetail.tsx`, exactly the way clicking a firm drills
+into `FirmDetail` — same back-link idiom, same card, **in place**.
+
+Deliberately NOT a `Drawer`: this page's whole point is the map, and throwing a
+scrim over it to read a rep's territories hides the thing you're reading about.
+The panel already floats, so the record inherits that treatment and the map
+stays live behind it. (The deals board still uses `components/ui/Drawer.tsx`,
+where a scrim is right — nothing behind it is worth keeping visible.) Both
+share `components/ui/Tabs.tsx`, whose strip scrolls horizontally because four
+labelled tabs don't fit a 380px panel.
 
 Both rep lists open it: the flat **Reps** tab and the **Reps** section inside a
 firm's detail view.
