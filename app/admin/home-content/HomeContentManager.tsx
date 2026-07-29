@@ -7,6 +7,7 @@ import { StatusPill, type Tone } from '@/components/admin/list'
 import {
   saveAnnouncement, saveEvent, saveOpening, saveSpotlight, deleteContent, type ContentTable,
 } from './actions'
+import { HomeSettings } from './HomeSettings'
 
 /* Admin editor for the company-home content. Schema-driven: each entity declares
    its fields once and shares the list + modal-form + delete machinery. Token-clean
@@ -128,9 +129,9 @@ const inputCls =
 const labelCls = 'block text-[12px] font-medium text-ink-secondary mb-1'
 
 export function HomeContentManager({
-  announcements, events, openings, spotlights, employees, tablesMissing,
+  announcements, events, openings, spotlights, employees, tablesMissing, safetySince,
 }: {
-  announcements: Row[]; events: Row[]; openings: Row[]; spotlights: Row[]; employees: Emp[]; tablesMissing: boolean
+  announcements: Row[]; events: Row[]; openings: Row[]; spotlights: Row[]; employees: Emp[]; tablesMissing: boolean; safetySince: string
 }) {
   const router = useRouter()
   const rowsByKey: Record<EntityKey, Row[]> = { announcements, events, openings, spotlights }
@@ -198,6 +199,8 @@ export function HomeContentManager({
             <Plus size={15} /> Add {entity.singular}
           </button>
         </div>
+
+        <HomeSettings current={safetySince} />
 
         {tablesMissing && (
           <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400">

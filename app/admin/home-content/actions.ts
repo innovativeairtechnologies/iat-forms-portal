@@ -114,6 +114,23 @@ export async function saveSpotlight(input: SpotlightInput): Promise<void> {
   revalidate()
 }
 
+// ── Company-home settings (single-value app_settings) ─────────────────────────
+const SAFETY_KEY = 'safety_incident_free_since'
+
+/** Set the shop-floor "days incident-free" streak start date (YYYY-MM-DD). Blank
+ *  clears it, so the home falls back to the lib/home-content SAFETY.since default. */
+export async function setSafetyStreakDate(date: string): Promise<void> {
+  const admin = await requireHomeContent()
+  const d = (date || '').trim()
+  if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error('Enter a valid date (YYYY-MM-DD).')
+  const { error } = await supabaseAdmin.from('app_settings').upsert(
+    { key: SAFETY_KEY, value: d || null, updated_at: new Date().toISOString(), updated_by: (admin as { id?: string }).id ?? null },
+    { onConflict: 'key' },
+  )
+  if (error) throw new Error(error.message)
+  revalidate()
+}
+
 // ── Delete (shared) ───────────────────────────────────────────────────────────
 const TABLES = {
   announcements: 'announcements',

@@ -44,6 +44,7 @@ export type Employee = {
   pto_accrual_rate: number
   sick_accrual_rate: number
   hire_date: string | null
+  birthday: string | null
   is_admin: boolean
   is_active: boolean
   created_at: string

@@ -6,7 +6,7 @@ import {
   CalendarClock, FileText, Network, Wrench, GraduationCap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { FUN_FACTS, REFERRAL, SAFETY, type CoreValue } from '@/lib/home-content'
+import { FUN_FACTS, REFERRAL, type CoreValue } from '@/lib/home-content'
 import type { HomeData } from '@/lib/home-data'
 import { StatusPill, type Tone } from '@/components/admin/list'
 import { PersonAvatar } from './home-ui'
@@ -174,7 +174,7 @@ export function HomeContent({
   name: string; profileHref: string; unreadCount?: number; ticketCount?: number
   coreValue: CoreValue; coreValueIndex: number; coreValueTotal: number
 }) {
-  const daysIncidentFree = Math.max(0, Math.floor((Date.now() - Date.parse(SAFETY.since + 'T00:00:00')) / 864e5))
+  const daysIncidentFree = Math.max(0, Math.floor((Date.now() - Date.parse(data.safetySince + 'T00:00:00')) / 864e5))
   const nh = data.nextHoliday
   const [lead, ...restNews] = data.news
   const outCount = data.whosOut.length

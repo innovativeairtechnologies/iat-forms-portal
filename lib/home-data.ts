@@ -4,7 +4,7 @@ import { getCustomerIds } from '@/lib/staff'
 import type { Employee } from '@/lib/supabase'
 import {
   DEFAULT_NEWS, DEFAULT_EVENTS, DEFAULT_OPENINGS, DEFAULT_SPOTLIGHT,
-  DEFAULT_NEW_HIRE, DEFAULT_PEOPLE_EVENTS,
+  DEFAULT_NEW_HIRE, DEFAULT_PEOPLE_EVENTS, SAFETY,
   type NewsItem, type EventItem, type EventKind, type Opening, type Person, type PersonEvent,
 } from '@/lib/home-content'
 
@@ -223,6 +223,9 @@ export type HomeData = {
   whosOut: WhosOut[]
   /** Active staff headcount (excludes customers) — shown on the home KPI row. */
   headcount: number
+  /** 'YYYY-MM-DD' the shop-floor incident-free streak counts up from (app_settings
+   *  → falls back to the lib/home-content SAFETY.since constant). */
+  safetySince: string
 }
 
 export async function getHomeData(now = new Date()): Promise<HomeData> {
@@ -234,13 +237,14 @@ export async function getHomeData(now = new Date()): Promise<HomeData> {
   })()
   const todayStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
-  const [newsRows, eventRows, openingRows, spotlightRows, employees, offRows] = await Promise.all([
+  const [newsRows, eventRows, openingRows, spotlightRows, employees, offRows, settingsRows] = await Promise.all([
     safeSelect('announcements', (q) => q.order('pinned', { ascending: false }).order('published_at', { ascending: false }).limit(6)),
     safeSelect('company_events', (q) => q),
     safeSelect('job_openings', (q) => q.eq('is_open', true).order('sort', { ascending: true }).order('created_at', { ascending: true }).limit(8)),
     safeSelect('employee_spotlights', (q) => q.eq('active', true).order('created_at', { ascending: false })),
     getStaffEmployees(),
     safeSelect('time_off_requests', (q) => q.eq('status', 'approved').gte('end_date', todayStr).lte('start_date', in14).order('start_date', { ascending: true }).limit(6)),
+    safeSelect('app_settings', (q) => q.eq('key', 'safety_incident_free_since')),
   ])
 
   // News — editorial: missing OR empty → default.
@@ -277,9 +281,11 @@ export async function getHomeData(now = new Date()): Promise<HomeData> {
     .map((r) => ({ name: nameById.get(r.employee_id) || 'Someone', startsOn: r.start_date, endsOn: r.end_date }))
     .filter((r) => r.name)
 
+  const safetySince = (settingsRows && (settingsRows[0]?.value as string | undefined)) || SAFETY.since
+
   return {
     news, events, nextHoliday: nextFederalHoliday(now), holidays: upcomingFederalHolidays(now), openings,
     spotlight, newHire, peopleEvents: finalPeople, whosOut,
-    headcount: employees.length,
+    headcount: employees.length, safetySince,
   }
 }

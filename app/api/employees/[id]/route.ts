@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
   // (This route used to sync profiles.role from an is_admin boolean, which wrote
   // the legacy 'employee' value and could clobber a scoped role — removed.)
   const allowed = ['name', 'email', 'job_title', 'department', 'phone', 'bio',
-                   'pto_balance', 'sick_balance', 'hire_date']
+                   'pto_balance', 'sick_balance', 'hire_date', 'birthday']
   const update: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) update[key] = body[key]

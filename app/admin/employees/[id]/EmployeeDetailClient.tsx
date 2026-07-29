@@ -44,6 +44,7 @@ export default function EmployeeDetailClient({
     pto_balance: String(employee.pto_balance),
     sick_balance: String(employee.sick_balance),
     hire_date:   employee.hire_date  || '',
+    birthday:    employee.birthday   || '',
   })
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
@@ -71,6 +72,7 @@ export default function EmployeeDetailClient({
         pto_balance:  parseFloat(form.pto_balance)  || 0,
         sick_balance: parseFloat(form.sick_balance) || 0,
         hire_date:    form.hire_date || null,
+        birthday:     form.birthday || null,
       }),
     })
     setSaving(false)
@@ -181,6 +183,7 @@ export default function EmployeeDetailClient({
                     { key: 'department',  label: 'Department',  type: 'text'  },
                     { key: 'phone',       label: 'Phone',       type: 'tel'   },
                     { key: 'hire_date',   label: 'Hire Date',   type: 'date'  },
+                    { key: 'birthday',    label: 'Birthday',    type: 'date'  },
                   ].map(({ key, label, type }) => (
                     <div key={key}>
                       <label className={lbl}>{label}</label>

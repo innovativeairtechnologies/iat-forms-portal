@@ -5,6 +5,7 @@ import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getCustomerIds } from '@/lib/staff'
 import { HomeContentManager } from './HomeContentManager'
+import { SAFETY } from '@/lib/home-content'
 
 /* /admin/home-content — manage the editorial content behind the company home
    (/home): news, calendar events, open positions, and spotlights. Gated by the
@@ -28,6 +29,13 @@ export default async function AdminHomeContentPage() {
   const staff = (emps.data || []).filter((e: any) => !customers.has(e.id))
   const tablesMissing = !!(ann.error || evt.error || job.error || spot.error)
 
+  // Safety-streak start date (app_settings; null-safe — the table may not exist yet).
+  let safetySince = SAFETY.since
+  try {
+    const { data } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'safety_incident_free_since').maybeSingle()
+    if (data?.value) safetySince = data.value as string
+  } catch { /* app_settings not present yet — fall back to the constant */ }
+
   return (
     <HomeContentManager
       announcements={ann.data || []}
@@ -36,6 +44,7 @@ export default async function AdminHomeContentPage() {
       spotlights={spot.data || []}
       employees={staff}
       tablesMissing={tablesMissing}
+      safetySince={safetySince}
     />
   )
 }
