@@ -2,6 +2,16 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-29 — Self-service group in the admin sidebar
+
+The `/admin/me/*` pages are now discoverable in the rail, not just from the Company Home hero.
+A new **Self-service** nav group (first, above Operations) holds Time Off, Submit a Form,
+Directory, and Internal Apps. Its children carry no `perm`, so they show for **every**
+admin-surface role — a real win for base `production`, which otherwise saw only "Company Home"
+in the sidebar. `NavChild.perm` is now optional (omit = open), plus a `hideIfPerm` flag hides the
+self-service "Internal Apps" from `tools` holders (who already have the top-level "Internal Apps"
+→ `/admin/tools` with Presentations), so the label never doubles.
+
 ## 2026-07-29 — Self-service ported into the admin shell (`/admin/me/*`)
 
 Follow-up to the Company Home feedback batch: employees are merged into the admin

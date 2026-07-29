@@ -123,7 +123,7 @@ hand it to a scoped role from `/admin/permissions` (which writes a `role_permiss
 - Top bar: `app/home/HomeTopBar.tsx` (Have-an-idea modal, Email IT, theme toggle, bell, profile) — reuses `TopBarBell`
 - Client bits: `FunFact.tsx` (the hero fun-fact); primitives in `home-ui.tsx`; suggestion action `app/home/actions.ts` (also drives the top-bar idea modal). `SuggestionBox.tsx` is now unused.
 - Redirect shim: `app/home/page.tsx` (`/home` → shell home)
-- Sidebar links: `components/admin/AdminSidebar.tsx` (Company Home, top of rail) + `app/employee/(protected)/EmployeeShell.tsx` (Menu)
+- Sidebar links: `components/admin/AdminSidebar.tsx` (Company Home, top of rail; plus the always-visible **Self-service** group → `/admin/me/*`) + `app/employee/(protected)/EmployeeShell.tsx` (Menu)
 - Admin content editor: `app/admin/home-content/page.tsx` + `HomeContentManager.tsx` + `actions.ts` (System → Company Home)
 - Data: `lib/home-data.ts` · Content/defaults: `lib/home-content.ts` · Migration: `supabase/migrations/058_company_home.sql`
 

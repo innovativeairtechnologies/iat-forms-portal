@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
-  Users, Bot, DollarSign, Sun, Moon, Wrench, Home,
+  Users, Bot, DollarSign, Sun, Moon, Wrench, Home, UserRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -25,7 +25,11 @@ type NavChild = {
   label: string
   badge?: BadgeKind
   hidden?: boolean
-  perm: Perm
+  /** Perm required to see this item; omit for items open to every admin-surface role. */
+  perm?: Perm
+  /** Hide this (open) item from users who already hold this perm — so a self-service
+   *  entry doesn't duplicate its perm-gated management counterpart. */
+  hideIfPerm?: Perm
 }
 
 type NavParent = {
@@ -54,6 +58,21 @@ const DASHBOARD = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, p
 const TOOLS = { href: '/admin/tools', label: 'Internal Apps', icon: Wrench, perm: 'tools' as Perm }
 
 const NAV_PARENTS: NavParent[] = [
+  // Self-service — the personal pages every employee needs, ported to /admin/me/*
+  // (OPEN_ADMIN_PREFIXES). No perm, so these show for EVERY admin-surface role,
+  // including base production which otherwise sees only Company Home in the rail.
+  {
+    label: 'Self-service',
+    icon: UserRound,
+    children: [
+      { href: '/admin/me/time-off', label: 'Time Off' },
+      { href: '/admin/me/forms', label: 'Submit a Form' },
+      { href: '/admin/me/directory', label: 'Directory' },
+      // Open apps launcher. Hidden for `tools` holders, who get the richer top-level
+      // "Internal Apps" (→ /admin/tools, with Presentations) — so the label never doubles.
+      { href: '/admin/me/apps', label: 'Internal Apps', hideIfPerm: 'tools' },
+    ],
+  },
   {
     label: 'Operations',
     icon: Inbox,
@@ -298,7 +317,11 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
       })()}
 
       {NAV_PARENTS.filter(p => !p.hidden).map(parent => {
-        const children = parent.children.filter(c => !c.hidden && hasPerm(c.perm))
+        const children = parent.children.filter(c =>
+          !c.hidden
+          && (c.perm === undefined || hasPerm(c.perm))
+          && !(c.hideIfPerm && hasPerm(c.hideIfPerm)),
+        )
         // System also hosts the admin-only "View as" row, so it stays visible for
         // a real admin even while previewing a role that can't see its pages.
         const isSystem = parent.label === 'System'
