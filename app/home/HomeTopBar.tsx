@@ -29,7 +29,7 @@ export function HomeTopBar({ name, profileHref, unreadCount = 0, ticketCount = 0
       {/* `relative z-40` lifts the whole bar (and the bell dropdown inside it)
           above the scroll region below, which is its own stacking context
           (`isolate`) and was otherwise painting over the dropdown. */}
-      <div className="relative z-40 hidden md:flex flex-shrink-0 items-center gap-1.5 px-5 h-14 border-b border-stone-200/80 bg-[#FAF6EF]/90 backdrop-blur dark:border-stone-800 dark:bg-[#0c0b0a]/90">
+      <div className="relative z-40 hidden md:flex flex-shrink-0 items-center gap-1.5 px-5 h-14 border-b border-stone-200/80 bg-[#FAF1E4]/90 backdrop-blur dark:border-stone-800 dark:bg-[#0d0b09]/90">
         <span className="text-[13px] font-semibold text-stone-900 dark:text-stone-100">Company Home</span>
         <div className="flex-1" />
 

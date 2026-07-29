@@ -189,7 +189,7 @@ export function HomeContent({
   }))
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-[#FAF6EF] text-stone-700 dark:bg-[#0c0b0a] dark:text-stone-300">
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-[#FAF1E4] text-stone-700 dark:bg-[#0d0b09] dark:text-stone-300">
 
       <HomeTopBar name={name} profileHref={profileHref} unreadCount={unreadCount} ticketCount={ticketCount} />
 
@@ -198,18 +198,18 @@ export function HomeContent({
 
         {/* Ambient emerald/sky glow — same soft orbs as the /admin dashboard. */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] overflow-hidden">
-          <div className="absolute -top-44 right-[-100px] h-[540px] w-[540px] rounded-full bg-gradient-to-br from-amber-300/25 via-amber-400/10 to-transparent blur-3xl dark:from-amber-500/14 dark:via-amber-600/6" />
+          <div className="absolute -top-44 right-[-100px] h-[540px] w-[540px] rounded-full bg-gradient-to-br from-amber-300/34 via-amber-400/16 to-transparent blur-3xl dark:from-amber-500/16 dark:via-amber-600/7" />
           <div className="absolute -top-24 right-[26%] h-[380px] w-[380px] rounded-full bg-gradient-to-br from-emerald-400/22 via-emerald-500/10 to-transparent blur-3xl dark:from-emerald-500/16 dark:via-emerald-600/7" />
-          <div className="absolute top-16 left-[-150px] h-[400px] w-[400px] rounded-full bg-gradient-to-tr from-orange-300/16 via-rose-300/8 to-transparent blur-3xl dark:from-orange-500/12 dark:via-rose-500/6" />
+          <div className="absolute top-16 left-[-150px] h-[400px] w-[400px] rounded-full bg-gradient-to-tr from-orange-300/24 via-rose-300/12 to-transparent blur-3xl dark:from-orange-500/13 dark:via-rose-500/7" />
         </div>
 
         <div className="mx-auto max-w-[1180px] space-y-4 p-4 sm:p-5">
 
           {/* ── Greeting hero — gradient + floating IAT logos ─────────────── */}
           <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 shadow-sm dark:from-emerald-700 dark:to-emerald-950 sm:p-7">
-            <div className="pointer-events-none absolute -right-10 -top-20 h-60 w-60 rounded-full bg-amber-300/30 blur-3xl" />
-            <div className="pointer-events-none absolute right-24 -top-14 h-40 w-40 rounded-full bg-amber-100/25 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-full bg-orange-400/15 blur-3xl" />
+            <div className="pointer-events-none absolute -right-10 -top-20 h-60 w-60 rounded-full bg-amber-300/40 blur-3xl" />
+            <div className="pointer-events-none absolute right-24 -top-14 h-40 w-40 rounded-full bg-amber-100/30 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-full bg-orange-400/22 blur-3xl" />
             {/* floating white-logo particles (right side, low opacity) */}
             <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
               {PARTICLES.map((p, i) => (
