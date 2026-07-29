@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Search, Star, X, Clock } from 'lucide-react'
+import { Search, Star, X, Clock, Users } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
 import { computeWeighted, STAGES, CLOSED_REASONS, stageAgeDays, type DealStage } from '@/lib/deals'
-import { filterPillCx } from '@/components/admin/list'
+import { FilterDropdown } from '@/components/admin/list-card'
 import { inp } from './form'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -153,14 +153,13 @@ export default function BoardView({
               className={`${inp} pl-8 w-[180px]`}
             />
           </div>
-          <div className="flex items-center gap-1 flex-wrap">
-            <button onClick={() => setRepFilter(null)} className={filterPillCx(repFilter === null)}>All</button>
-            {repOptions.map((g) => (
-              <button key={g} onClick={() => setRepFilter(repFilter === g ? null : g)} className={filterPillCx(repFilter === g)}>
-                {g}
-              </button>
-            ))}
-          </div>
+          <FilterDropdown
+            icon={Users}
+            allLabel="All reps"
+            value={repFilter ?? '__all'}
+            options={repOptions.map((g) => ({ value: g, label: g }))}
+            onChange={(v) => setRepFilter(v === '__all' ? null : v)}
+          />
         </div>
       </div>
 
