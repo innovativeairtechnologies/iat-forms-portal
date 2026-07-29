@@ -188,6 +188,16 @@ export function HomeContent({
     isNext: i === 0,
   }))
 
+  // Self-service hero targets are surface-aware. HomeContent is shared by both
+  // shell homes; the admin shell (/admin/home, every real staff role) links to the
+  // ported /admin/me/* pages, while the employee shell (/employee/home — only the
+  // null/unknown-role fallback lands there) keeps the /employee/* links it can
+  // actually reach. Derived from profileHref so no /admin page links into /employee.
+  const onEmployeeShell = profileHref.startsWith('/employee')
+  const self = onEmployeeShell
+    ? { timeOff: '/employee/requests', forms: '/employee/resources', directory: '/employee/directory', apps: '/employee/resources/tools' }
+    : { timeOff: '/admin/me/time-off', forms: '/admin/me/forms', directory: '/admin/me/directory', apps: '/admin/me/apps' }
+
   return (
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-[#FAF1E4] text-stone-700 dark:bg-[#0d0b09] dark:text-stone-300">
 
@@ -251,10 +261,10 @@ export function HomeContent({
                 {nh ? <>, and {nh.name} is {daysUntil(nh.date)}</> : null}.
               </p>
               <div className="mt-4 flex flex-wrap gap-2.5">
-                <HeroLink href="/admin/me/time-off" icon={CalendarClock} label="Request time off" primary />
-                <HeroLink href="/admin/me/forms" icon={FileText} label="Submit a form" />
-                <HeroLink href="/admin/me/directory" icon={Network} label="Team directory" />
-                <HeroLink href="/admin/me/apps" icon={Wrench} label="Tools & apps" />
+                <HeroLink href={self.timeOff} icon={CalendarClock} label="Request time off" primary />
+                <HeroLink href={self.forms} icon={FileText} label="Submit a form" />
+                <HeroLink href={self.directory} icon={Network} label="Team directory" />
+                <HeroLink href={self.apps} icon={Wrench} label="Tools & apps" />
                 <HeroLink href="/learn" icon={GraduationCap} label="Browse training" />
               </div>
               <div className="mt-4">

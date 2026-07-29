@@ -23,6 +23,11 @@ from the previous entry is reverted — admin-surface roles are fully funneled o
 `/employee/*` again, since everything they need now lives under `/admin/me`. Breadcrumbs
 added under a "Self-service" section.
 
+The hero links are **surface-aware** (derived from `profileHref`): the admin shell links to
+`/admin/me/*`, but the employee-shell home (`/employee/home` — only the null/unknown-role
+fallback lands there) keeps its `/employee/*` links, which that role can actually reach. Without
+this, a role-less account's four hero buttons dead-ended at `/employee/profile`.
+
 No DB / permission-key / migration changes (`OPEN_ADMIN_PREFIXES` is code-only).
 
 ## 2026-07-29 — Admin sidebar scrollbar matches the rail
