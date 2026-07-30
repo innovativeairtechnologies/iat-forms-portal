@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Clock, Play, ArrowRight, FileClock } from 'lucide-react'
 import { getModuleWithLessons } from '@/lib/learn'
-import Breadcrumb from '@/components/learn/Breadcrumb'
 import LearnPageShell from '../../LearnPageShell'
+import PageChrome from '@/app/admin/PageChrome'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,11 +26,14 @@ export default async function ModulePage(props: { params: Promise<{ category: st
   const base = `/admin/learn/${category.slug}/${module.slug}`
 
   return (
-    <LearnPageShell>
-      <Breadcrumb
-        items={[{ label: category.name, href: `/admin/learn/${category.slug}` }, { label: module.title }]}
-      />
-
+    <LearnPageShell
+      chrome={
+        <PageChrome record={[
+          { label: category.name, href: `/admin/learn/${category.slug}` },
+          { label: module.title },
+        ]} />
+      }
+    >
       <header className="mb-8">
         <h1 className="text-[27px] font-bold tracking-tight text-[#0a0a0b] dark:text-white">{module.title}</h1>
         {module.description && (

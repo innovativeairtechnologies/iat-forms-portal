@@ -3,10 +3,10 @@ import { Clock } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getLessonContext } from '@/lib/learn'
-import Breadcrumb from '@/components/learn/Breadcrumb'
 import LessonContent from '@/components/learn/LessonContent'
 import LessonFooterNav from '@/components/learn/LessonFooterNav'
 import LearnPageShell from '../../../LearnPageShell'
+import PageChrome from '@/app/admin/PageChrome'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,16 +38,16 @@ export default async function LessonPage(
   const pct = Math.round(((index + 1) / lessons.length) * 100)
 
   return (
-    <LearnPageShell>
-      <article className="mx-auto max-w-3xl">
-      <Breadcrumb
-        items={[
+    <LearnPageShell
+      chrome={
+        <PageChrome record={[
           { label: category.name, href: `/admin/learn/${category.slug}` },
           { label: module.title, href: base },
           { label: lesson.title },
-        ]}
-      />
-
+        ]} />
+      }
+    >
+      <article className="mx-auto max-w-3xl">
       {/* progress within the subject */}
       <div className="mb-6">
         <div className="mb-1.5 flex items-center justify-between text-[12px] font-medium text-gray-400 dark:text-zinc-500">

@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation'
 import { getCategoryWithModules } from '@/lib/learn'
 import { LearnIcon } from '@/components/learn/LearnIcon'
-import Breadcrumb from '@/components/learn/Breadcrumb'
 import ModuleCard from '@/components/learn/ModuleCard'
 import LearnPageShell from '../LearnPageShell'
+import PageChrome from '@/app/admin/PageChrome'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,9 +20,7 @@ export default async function CategoryPage(props: { params: Promise<{ category: 
   const { category, modules } = data
 
   return (
-    <LearnPageShell>
-      <Breadcrumb items={[{ label: category.name }]} />
-
+    <LearnPageShell chrome={<PageChrome record={category.name} />}>
       <header className="mb-8 flex items-start gap-4">
         <div className="grid h-14 w-14 flex-shrink-0 place-items-center rounded-2xl bg-[#f0faf4] text-[#089447] dark:bg-emerald-500/10 dark:text-emerald-400">
           <LearnIcon name={category.icon} size={26} />
