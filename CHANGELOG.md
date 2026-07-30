@@ -229,6 +229,37 @@ Two tidy-ups to the admin dashboard:
   dashboard page and sits with the rest of the top-bar chrome. Mobile keeps the toolbar inline above the
   grid (the top bar is hidden there). (`DashboardGrid.tsx`)
 
+## 2026-07-28 — Fix: SRV review audit log claimed customers were emailed when they weren't
+
+`resend.emails.send()` does **not throw** when the API rejects a send — it resolves with
+`{ data: null, error }`. `app/api/admin/srv-review/route.ts` wrapped the call in a
+`try/catch` and set `emailed = true` on any non-throwing call, so every API-level rejection
+was recorded as a success: `logAudit` dropped its `(customer email failed)` suffix and the
+response returned `emailed: true`. **The audit trail asserted a customer had been told what
+to fix before start-up when they never received anything.**
+
+Verified against the live Resend API rather than assumed — a rejected send returns
+`threw: false`, `data: null`, `error: { statusCode: 422, … }`. Old code recorded that as
+notified; new code records it as failed.
+
+The flag is now a three-state `emailStatus`, because "not sent" has two very different
+causes and the audit trail has to tell them apart:
+
+- `sent` — no suffix
+- `failed` — `(customer email failed)`, set only when the API returns an error or the call throws
+- `no_recipient` — `(no customer email on file)`, when the submission has no address
+
+Previously the no-recipient case also logged "customer email failed" despite nothing being
+attempted — misleading on its own, and a live trap because the address is read by field
+*label* (`submission.data['Email Address']`), so renaming that field in the form editor
+would silently produce "email failed" on every review. `emailStatus` is also written to the
+audit `metadata`, and the response keeps a backwards-compatible `emailed` boolean (now true
+only on a confirmed send). The try/catch is retained for genuine network faults, which do throw.
+
+This matters today: with no `RESEND_FROM_*` set in Vercel, mail goes out from the
+`onboarding@resend.dev` sandbox, which only delivers to the Resend account owner — so the
+rejection path is the common one, not the rare one.
+
 ## 2026-07-28 — resend 3.5.0 → 6.18.1
 
 Upgrades the email SDK three majors. This is the dependency behind every transactional

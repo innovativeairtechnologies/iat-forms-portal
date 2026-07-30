@@ -107,10 +107,22 @@ export async function POST(req: NextRequest) {
     const projectName = String(submission.data?.['Project Name'] || 'your project')
     const flagged = String(submission.data?.['Flagged items'] || '').split('\n').filter(Boolean)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    let emailed = false
+    // Three outcomes, not two: "not sent" has two very different causes and the
+    // audit trail has to tell them apart. Start pessimistic — only a confirmed
+    // send flips this to 'sent'.
+    //
+    // NB: resend.emails.send() does NOT throw when the API rejects a send; it
+    // resolves with { data: null, error }. This previously set emailed = true on
+    // any non-throwing call, so every API-level rejection was recorded as a
+    // success — the audit log could assert a customer had been told what to fix
+    // before start-up when they never received anything. That matters today:
+    // with no RESEND_FROM_* set, mail goes out from the onboarding@resend.dev
+    // sandbox, which only delivers to the Resend account owner. The try/catch
+    // stays for genuine network faults, which DO throw.
+    let emailStatus: 'sent' | 'failed' | 'no_recipient' = to ? 'failed' : 'no_recipient'
     if (to) {
       try {
-        await resend.emails.send({
+        const { error: sendError } = await resend.emails.send({
           from: EMAIL_FROM.FORMS,
           to,
           subject:
@@ -125,22 +137,30 @@ export async function POST(req: NextRequest) {
             resumeUrl: decision === 'return' ? `${appUrl}/customer/srv?resume=${submission_id}` : undefined,
           }),
         })
-        emailed = true
+        if (sendError) console.error('[srv-review] customer email rejected:', sendError)
+        else emailStatus = 'sent'
       } catch (err) {
         console.error('[srv-review] customer email failed:', err)
       }
     }
+
+    const emailNote =
+      emailStatus === 'sent'
+        ? ''
+        : emailStatus === 'failed'
+          ? ' (customer email failed)'
+          : ' (no customer email on file)'
 
     await logAudit({
       actor: { id: admin.user?.id, name: admin.displayName },
       action: `srv.${decision}`,
       entityType: 'submission',
       entityId: submission_id,
-      summary: `SRV ${decision === 'approve' ? 'approved' : 'returned'} — ${projectName}${emailed ? '' : ' (customer email failed)'}`,
-      metadata: { notes },
+      summary: `SRV ${decision === 'approve' ? 'approved' : 'returned'} — ${projectName}${emailNote}`,
+      metadata: { notes, emailStatus },
     })
 
-    return NextResponse.json({ ok: true, review, emailed })
+    return NextResponse.json({ ok: true, review, emailed: emailStatus === 'sent', emailStatus })
   } catch (err) {
     console.error('[srv-review] error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
