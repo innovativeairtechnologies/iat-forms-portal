@@ -27,17 +27,51 @@ black out the calendar you are scheduling against. Same reasoning as `RepDetail`
 column** instead of overlaying a map, so it carries no shadow (DESIGN.md §5 — cards are Level 1;
 promote the border, never a resting shadow).
 
-It is `lg:sticky lg:top-6` inside the page's scroll container. `top-6` matches the container's
-`sm:p-6`, so the panel sits still exactly where it started rather than jumping up against the
-scrollport edge on the first scroll.
+## Equal height, and why the panel has no scrollbar
+
+At `lg` **nothing on this page scrolls.** The viewport height (`100dvh` minus the `h-14`
+AdminTopBar) flows down unbroken to the calendar's week rows, which absorb the slack
+(`repeat(N, minmax(112px, 1fr))` instead of a fixed row height). The grid's default `stretch`
+then makes the panel column exactly as tall as the calendar column, and the panel takes
+`lg:h-full` against it.
+
+That definite height is the whole trick: because the panel knows how tall it is, it can drop its
+own scrollbar (`lg:overflow-hidden` on the body) and use a **tab strip** instead. Eight form
+fields do not fit a panel sized to a month grid — "Basics" (5) and "Details" (2) each do, on any
+viewport tall enough to show the calendar at all. Tabs come from `components/ui/Tabs`, so the
+strip matches the deals drawer.
+
+Measured at 1440×900: both columns 796px, panel body overflow **0px** on both tabs.
+
+**When something has to give, it's the calendar, not the panel.** Below the 112px row floor the
+grid body scrolls; the panel never does. 112px is a FULL cell — date row + three chips + the
+"+N more" line. Sizing the floor to the chips alone (96px) clips exactly that overflow hint,
+which is the one thing telling you the day has more on it than you can see.
+
+Two regions keep an `overflow-y-auto` as a safety valve — the day list and a record's notes —
+because their length is genuinely unbounded, and silently clipping an event or a paragraph is
+worse than a scrollbar. Both are sized so real use never reaches it (the day list fits ~14 rows
+at ~44px each).
+
+Every height constraint is `lg:`-prefixed. Below `lg` the columns stack, the page scrolls
+normally, and the panel is natural-height.
 
 ## The panel has three modes, and composing is the resting state
 
-| Mode | Entered by | Shows |
-|---|---|---|
-| `compose` | default, and after any add/delete | The new-event form |
-| `day` | clicking a day cell | Everything on that day + "Add to this day" |
-| `event` | clicking a chip | The record, inline edit, one-click status, delete |
+| Mode | Entered by | Shows | Tabs |
+|---|---|---|---|
+| `compose` | default, and after any add/delete | The new-event form | Basics · Details |
+| `day` | clicking a day cell | Everything on that day + "Add to this day" | — |
+| `event` | clicking a chip | The record, inline edit, one-click status, delete | Details · Notes |
+
+**Basics** is title, date, status, channel, platform and owner — the what/when/who. **Details**
+is link and notes, with the notes box absorbing whatever height is left so it's a real writing
+area rather than a stub. Owner sits on Basics deliberately: it's the "who's making it" half of
+the same question, and it evens out two panes that were otherwise badly lopsided. The tab shows
+a count of filled optional fields so they can't hide.
+
+Title lives on Basics, so submitting from the Details tab with no title **switches you back to
+Basics and focuses the field** rather than leaving a mysteriously disabled button.
 
 Compose is the **resting** state on purpose: "put something on the calendar" is the job this page
 exists for, so it is always already open — never behind a modal or a button. After a successful

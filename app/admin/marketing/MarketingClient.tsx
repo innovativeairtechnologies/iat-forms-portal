@@ -119,11 +119,15 @@ export default function MarketingClient({ initialEvents }: { initialEvents: Mark
 
   return (
     // Definite viewport height (100dvh minus the h-14 AdminTopBar, which equals
-    // the mobile pt-14 spacer) so the panel can stick against a real scrollport
-    // instead of the page growing under it — the DealsClient precedent.
+    // the mobile pt-14 spacer) — the DealsClient precedent. At `lg` NOTHING here
+    // scrolls: the height flows down unbroken to the calendar's week rows, which
+    // absorb the slack, and the grid's default `stretch` makes the panel column
+    // exactly as tall as the calendar column. That definite height is what lets
+    // the panel drop its own scrollbar and switch to tabs instead. Below `lg` the
+    // columns stack and this container scrolls normally.
     <div className="flex h-[calc(100dvh_-_3.5rem)] shrink-0 flex-col overflow-hidden bg-canvas">
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mx-auto grid max-w-[1280px] items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)]">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:overflow-hidden">
+        <div className="mx-auto grid max-w-[1280px] gap-5 lg:h-full lg:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)]">
           <CalendarGrid
             cursor={cursor}
             today={today}
@@ -139,10 +143,10 @@ export default function MarketingClient({ initialEvents }: { initialEvents: Mark
             onChannelFilter={setChannelFilter}
           />
 
-          {/* The floating quarter. `top-6` matches the scroll container's sm:p-6
-              so it sits still exactly where it started rather than jumping up
-              against the scrollport edge on first scroll. */}
-          <aside className="lg:sticky lg:top-6">
+          {/* The floating quarter. `min-h-0` lets it be shorter than its content
+              would ask for, so the panel's internal flex chain can constrain and
+              the tab panes size themselves to the space that's actually there. */}
+          <aside className="lg:min-h-0">
             <EventPanel
               mode={mode}
               events={events}

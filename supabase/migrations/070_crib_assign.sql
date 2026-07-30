@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────────────────────
--- 064_crib_assign.sql — admin "assign" custody action.
+-- 070_crib_assign.sql — admin "assign" custody action.
 --
 -- WHY: check-out records who SCANNED a tool. But some people don't scan — they
 -- just take tools and keep them. An admin needs to assign those tools to that

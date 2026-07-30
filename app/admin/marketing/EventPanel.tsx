@@ -6,8 +6,9 @@ import {
   ArrowLeft, CalendarPlus, ExternalLink, Pencil, Plus, Trash2, User, X,
 } from 'lucide-react'
 import type { MarketingEvent } from '@/lib/supabase'
+import { Tabs } from '@/components/ui/Tabs'
 import {
-  CHANNELS, PLATFORMS, STATUSES, TONE_WASH,
+  CHANNELS, PLATFORMS, STATUSES, TONE_WASH, TONE_DOT,
   DEFAULT_CHANNEL, DEFAULT_STATUS, LIMITS,
   channelMeta, statusMeta, platformLabel, parseDay,
 } from '@/lib/marketing'
@@ -28,6 +29,22 @@ import {
    modality — except that it sits in the grid as a real column rather than
    overlaying, so it needs no shadow to separate from what's behind it
    (DESIGN.md §5: cards are Level 1, promote the border, never a resting shadow).
+
+   NO SCROLLING BODY. The panel is exactly as tall as the calendar beside it
+   (`lg:h-full` against a grid row the calendar column makes definite), and the
+   body is `lg:overflow-hidden` — so content has to FIT, it can't spill. That is
+   what the tab strip is for: eight form fields do not fit a panel sized to a
+   month grid, but "Basics" (5) and "Details" (3) each do, on any viewport tall
+   enough to show the calendar at all. Tabs are the shared kit's, so the strip
+   matches the deals drawer.
+
+   Two regions keep an `overflow-y-auto` as a safety valve — the day list and a
+   record's notes — because their length is genuinely unbounded and silently
+   clipping an event or a paragraph is worse than a scrollbar. Both are sized so
+   that in real use they never reach it (the day list fits ~14 rows).
+
+   Below `lg` the grid stacks and the page scrolls, so every height constraint
+   here is `lg:`-prefixed and the panel is natural-height on mobile.
    ──────────────────────────────────────────────────────────────────────────── */
 
 export type PanelMode =
@@ -35,10 +52,12 @@ export type PanelMode =
   | { kind: 'day'; date: string }
   | { kind: 'event'; id: string }
 
+type FormTab = 'basics' | 'details'
+type ViewTab = 'details' | 'notes'
+
 const labelCx = 'mb-1.5 block text-[12px] font-medium text-ink-secondary'
 const inputCx =
   'h-9 w-full rounded-lg border border-hairline bg-surface px-3 text-[13px] text-ink placeholder:text-ink-faint transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
-const areaCx = `${inputCx} h-auto min-h-[72px] py-2 leading-[1.45]`
 
 const primaryCx =
   'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-brand px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-brand-hover active:scale-[0.98] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
@@ -94,16 +113,22 @@ export default function EventPanel({
   const [draft, setDraft] = useState<Draft>(() =>
     emptyDraft(mode.kind === 'event' ? '' : mode.date))
   const [editing, setEditing] = useState(false)
+  const [formTab, setFormTab] = useState<FormTab>('basics')
+  const [viewTab, setViewTab] = useState<ViewTab>('details')
+  const [formError, setFormError] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
 
   const event = mode.kind === 'event' ? events.find((e) => e.id === mode.id) ?? null : null
 
-  // Reset the form whenever the panel switches to a different subject. Keyed on
-  // the mode identity (not `mode` itself) so re-renders from an unrelated state
-  // change — a sibling event saving, say — don't wipe half-typed input.
+  // Reset whenever the panel switches subject. Keyed on the mode identity (not
+  // `mode` itself) so re-renders from an unrelated state change — a sibling save,
+  // say — don't wipe half-typed input or bounce the user off their tab.
   const modeKey = mode.kind === 'event' ? `event:${mode.id}` : `${mode.kind}:${mode.date}`
   useEffect(() => {
     setEditing(false)
+    setFormTab('basics')
+    setViewTab('details')
+    setFormError(null)
     if (mode.kind === 'compose') {
       setDraft(emptyDraft(mode.date))
       titleRef.current?.focus()
@@ -111,18 +136,35 @@ export default function EventPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modeKey])
 
-  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }))
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => {
+    setDraft((d) => ({ ...d, [k]: v }))
+    if (k === 'title' && formError) setFormError(null)
+  }
 
-  const startEdit = () => { if (event) { setDraft(draftOf(event)); setEditing(true) } }
+  const startEdit = () => {
+    if (!event) return
+    setDraft(draftOf(event))
+    setEditing(true)
+    setFormTab('basics')
+  }
 
   const submit = async () => {
-    if (!draft.title.trim() || saving) return
+    if (saving) return
+    // Title lives on Basics. Rather than leave a mysteriously disabled button
+    // when the user is on the Details tab, take them to the offending field.
+    if (!draft.title.trim()) {
+      setFormTab('basics')
+      setFormError('Give it a title.')
+      requestAnimationFrame(() => titleRef.current?.focus())
+      return
+    }
     if (editing && event) {
       if (await onUpdate(event.id, draft)) setEditing(false)
     } else if (await onCreate(draft)) {
       // Stay in compose on the same day — scheduling a week of posts is a run of
       // adds, not one-and-done; clearing the title is the whole reset needed.
       setDraft((d) => ({ ...emptyDraft(d.event_date), channel: d.channel, owner: d.owner }))
+      setFormTab('basics')
       titleRef.current?.focus()
     }
   }
@@ -131,8 +173,16 @@ export default function EventPanel({
     ? events.filter((e) => e.event_date === mode.date)
     : []
 
+  const showForm = mode.kind === 'compose' || (mode.kind === 'event' && !!event && editing)
+  const showDetail = mode.kind === 'event' && !!event && !editing
+  const shownError = formError ?? error
+
+  // Discoverability: the optional fields sit on a second tab, so surface how many
+  // are filled rather than letting them hide.
+  const filledExtras = [draft.link, draft.notes].filter((v) => v.trim()).length
+
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-hairline bg-surface lg:max-h-[calc(100vh-8.5rem)]">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-hairline bg-surface lg:h-full">
       {/* Header */}
       <div className="flex flex-shrink-0 items-center gap-2 border-b border-hairline-soft px-4 py-3">
         {mode.kind !== 'compose' && (
@@ -145,11 +195,11 @@ export default function EventPanel({
           </button>
         )}
         <h2 className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">
-          {mode.kind === 'compose' ? (editing ? 'Edit event' : 'New event')
+          {mode.kind === 'compose' ? 'New event'
             : mode.kind === 'day' ? format(parseDay(mode.date), 'EEEE, MMM d')
             : editing ? 'Edit event' : 'Event'}
         </h2>
-        {mode.kind === 'event' && event && !editing && (
+        {showDetail && (
           <button onClick={startEdit} aria-label="Edit"
             className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-strong hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
             <Pencil size={14} strokeWidth={1.75} />
@@ -157,44 +207,71 @@ export default function EventPanel({
         )}
       </div>
 
-      {/* Body */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        {error && (
-          <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
-            <span className="flex-1">{error}</span>
-            <button onClick={onDismissError} aria-label="Dismiss" className="text-rose-400 hover:text-rose-600">
+      {/* Tab strip — only where there's more than one pane of content. */}
+      {showForm && (
+        <Tabs<FormTab>
+          tabs={[
+            { key: 'basics', label: 'Basics' },
+            { key: 'details', label: 'Details', count: filledExtras || undefined },
+          ]}
+          active={formTab}
+          onChange={setFormTab}
+        />
+      )}
+      {showDetail && (
+        <Tabs<ViewTab>
+          tabs={[
+            { key: 'details', label: 'Details' },
+            { key: 'notes', label: 'Notes', count: event!.notes ? 1 : undefined },
+          ]}
+          active={viewTab}
+          onChange={setViewTab}
+        />
+      )}
+
+      {/* Body — no scrollbar of its own; each pane is sized to fit. */}
+      <div className="flex min-h-0 flex-1 flex-col px-4 py-4 lg:overflow-hidden">
+        {shownError && (
+          <div className="mb-3 flex flex-shrink-0 items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
+            <span className="flex-1">{shownError}</span>
+            <button
+              onClick={() => { setFormError(null); onDismissError() }}
+              aria-label="Dismiss"
+              className="text-rose-400 hover:text-rose-600"
+            >
               <X size={13} strokeWidth={1.75} />
             </button>
           </div>
         )}
 
-        {mode.kind === 'day' && !editing ? (
-          <DayList
-            events={dayEvents}
-            onSelect={(id) => onMode({ kind: 'event', id })}
-          />
-        ) : mode.kind === 'event' && event && !editing ? (
-          <EventDetail event={event} saving={saving} onStatus={(s) => onUpdate(event.id, { status: s })} />
+        {mode.kind === 'day' ? (
+          <DayList events={dayEvents} onSelect={(id) => onMode({ kind: 'event', id })} />
         ) : mode.kind === 'event' && !event ? (
           <p className="py-8 text-center text-[13px] text-ink-muted">That event was deleted.</p>
+        ) : showDetail ? (
+          viewTab === 'details'
+            ? <EventDetail event={event!} saving={saving} onStatus={(s) => onUpdate(event!.id, { status: s })} />
+            : <NotesPane text={event!.notes} />
+        ) : formTab === 'basics' ? (
+          <BasicsPane draft={draft} set={set} titleRef={titleRef} onSubmit={submit} />
         ) : (
-          <Form draft={draft} set={set} titleRef={titleRef} onSubmit={submit} />
+          <DetailsPane draft={draft} set={set} />
         )}
       </div>
 
       {/* Footer */}
       <div className="flex flex-shrink-0 items-center gap-2 border-t border-hairline-soft px-4 py-3">
-        {mode.kind === 'day' && !editing ? (
+        {mode.kind === 'day' ? (
           <button onClick={() => onMode({ kind: 'compose', date: mode.date })} className={`${primaryCx} w-full`}>
             <Plus size={15} strokeWidth={1.75} /> Add to this day
           </button>
-        ) : mode.kind === 'event' && event && !editing ? (
+        ) : showDetail ? (
           <>
-            <button onClick={() => onDelete(event.id)} className={`${ghostCx} hover:text-rose-600`}>
+            <button onClick={() => onDelete(event!.id)} className={`${ghostCx} hover:text-rose-600`}>
               <Trash2 size={15} strokeWidth={1.75} /> Delete
             </button>
             <button
-              onClick={() => onMode({ kind: 'compose', date: event.event_date })}
+              onClick={() => onMode({ kind: 'compose', date: event!.event_date })}
               className={`${secondaryCx} ml-auto`}
             >
               <CalendarPlus size={15} strokeWidth={1.75} /> New
@@ -206,14 +283,8 @@ export default function EventPanel({
           </button>
         ) : (
           <>
-            {editing && (
-              <button onClick={() => setEditing(false)} className={ghostCx}>Cancel</button>
-            )}
-            <button
-              onClick={submit}
-              disabled={!draft.title.trim() || saving}
-              className={`${primaryCx} ${editing ? 'ml-auto' : 'w-full'}`}
-            >
+            {editing && <button onClick={() => setEditing(false)} className={ghostCx}>Cancel</button>}
+            <button onClick={submit} disabled={saving} className={`${primaryCx} ${editing ? 'ml-auto' : 'w-full'}`}>
               {saving ? 'Saving…' : editing ? 'Save changes' : 'Add to calendar'}
             </button>
           </>
@@ -224,7 +295,6 @@ export default function EventPanel({
 }
 
 function headerDate(mode: PanelMode, event: MarketingEvent | null): string {
-  if (mode.kind === 'day') return mode.date
   if (mode.kind === 'event') return event?.event_date ?? todayKey()
   return mode.date
 }
@@ -234,9 +304,9 @@ function todayKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/* ── The shared compose / edit form ────────────────────────────────────────── */
+/* ── Compose / edit: pane 1, the fields that define the event ─────────────── */
 
-function Form({
+function BasicsPane({
   draft, set, titleRef, onSubmit,
 }: {
   draft: Draft
@@ -245,7 +315,7 @@ function Form({
   onSubmit: () => void
 }) {
   return (
-    <div className="space-y-3.5">
+    <div className="flex-shrink-0 space-y-3.5">
       <div>
         <label htmlFor="mk-title" className={labelCx}>Title</label>
         <input
@@ -260,15 +330,28 @@ function Form({
         />
       </div>
 
-      <div>
-        <label htmlFor="mk-date" className={labelCx}>Date</label>
-        <input
-          id="mk-date"
-          type="date"
-          value={draft.event_date}
-          onChange={(e) => set('event_date', e.target.value)}
-          className={inputCx}
-        />
+      <div className="grid grid-cols-2 gap-2.5">
+        <div>
+          <label htmlFor="mk-date" className={labelCx}>Date</label>
+          <input
+            id="mk-date"
+            type="date"
+            value={draft.event_date}
+            onChange={(e) => set('event_date', e.target.value)}
+            className={inputCx}
+          />
+        </div>
+        <div>
+          <label htmlFor="mk-status" className={labelCx}>Status</label>
+          <select
+            id="mk-status"
+            value={draft.status}
+            onChange={(e) => set('status', e.target.value)}
+            className={inputCx}
+          >
+            {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -297,9 +380,7 @@ function Form({
                   type="button"
                   onClick={() => set('platform', on ? '' : p.value)}
                   className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                    on
-                      ? 'bg-ink text-canvas'
-                      : 'bg-surface-strong text-ink-muted hover:text-ink'
+                    on ? 'bg-ink text-canvas' : 'bg-surface-strong text-ink-muted hover:text-ink'
                   }`}
                 >
                   {p.label}
@@ -310,18 +391,9 @@ function Form({
         </div>
       )}
 
-      <div>
-        <label htmlFor="mk-status" className={labelCx}>Status</label>
-        <select
-          id="mk-status"
-          value={draft.status}
-          onChange={(e) => set('status', e.target.value)}
-          className={inputCx}
-        >
-          {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
-      </div>
-
+      {/* Owner sits with the what/when rather than on the second tab: it's the
+          "who's making it" half of the same question, and keeping it here evens
+          out two panes that were badly lopsided. */}
       <div>
         <label htmlFor="mk-owner" className={labelCx}>Owner <span className="text-ink-faint">(optional)</span></label>
         <input
@@ -333,9 +405,24 @@ function Form({
           className={inputCx}
         />
       </div>
+    </div>
+  )
+}
 
-      <div>
-        <label htmlFor="mk-link" className={labelCx}>Link <span className="text-ink-faint">(optional)</span></label>
+/* ── Compose / edit: pane 2, the optional trimmings ───────────────────────── */
+
+function DetailsPane({
+  draft, set,
+}: {
+  draft: Draft
+  set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
+}) {
+  return (
+    // flex column so the notes box absorbs whatever height is left instead of
+    // the pane needing a scrollbar.
+    <div className="flex min-h-0 flex-1 flex-col gap-3.5">
+      <div className="flex-shrink-0">
+        <label htmlFor="mk-link" className={labelCx}>Link</label>
         <input
           id="mk-link"
           value={draft.link}
@@ -346,15 +433,15 @@ function Form({
         />
       </div>
 
-      <div>
-        <label htmlFor="mk-notes" className={labelCx}>Notes <span className="text-ink-faint">(optional)</span></label>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <label htmlFor="mk-notes" className={labelCx}>Notes</label>
         <textarea
           id="mk-notes"
           value={draft.notes}
           maxLength={LIMITS.notes}
           onChange={(e) => set('notes', e.target.value)}
           placeholder="Copy, hashtags, target list…"
-          className={areaCx}
+          className={`${inputCx} h-auto min-h-[96px] flex-1 resize-none py-2 leading-[1.45]`}
         />
       </div>
     </div>
@@ -375,7 +462,9 @@ function DayList({ events, onSelect }: { events: MarketingEvent[]; onSelect: (id
     )
   }
   return (
-    <div className="space-y-2">
+    // Compact rows (~44px) so a realistic day — even a busy one — fits without
+    // the safety-valve scroll ever engaging.
+    <div className="-mx-1 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-1">
       {events.map((e) => {
         const ch = channelMeta(e.channel)
         const st = statusMeta(e.status)
@@ -383,15 +472,13 @@ function DayList({ events, onSelect }: { events: MarketingEvent[]; onSelect: (id
           <button
             key={e.id}
             onClick={() => onSelect(e.id)}
-            className="block w-full rounded-xl border border-hairline px-3 py-2.5 text-left transition-colors hover:border-hairline-strong hover:bg-surface-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="flex w-full items-center gap-2 rounded-lg border border-hairline px-2.5 py-2 text-left transition-colors hover:border-hairline-strong hover:bg-surface-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
-            <p className={`truncate text-[13px] font-medium text-ink ${e.status === 'cancelled' ? 'line-through text-ink-muted' : ''}`}>
+            <span className={`h-2 w-2 flex-shrink-0 rounded-full ${TONE_DOT[ch.tone]}`} />
+            <span className={`min-w-0 flex-1 truncate text-[13px] font-medium text-ink ${e.status === 'cancelled' ? 'text-ink-muted line-through' : ''}`}>
               {e.title}
-            </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <Pill tone={ch.tone}>{ch.short}</Pill>
-              <Pill tone={st.tone}>{st.label}</Pill>
-            </div>
+            </span>
+            <Pill tone={st.tone}>{st.label}</Pill>
           </button>
         )
       })}
@@ -400,6 +487,17 @@ function DayList({ events, onSelect }: { events: MarketingEvent[]; onSelect: (id
 }
 
 /* ── Event mode ────────────────────────────────────────────────────────────── */
+
+function NotesPane({ text }: { text: string | null }) {
+  if (!text) {
+    return <p className="py-8 text-center text-[13px] text-ink-muted">No notes on this one.</p>
+  }
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <p className="whitespace-pre-wrap text-[13px] leading-[1.5] text-ink-secondary">{text}</p>
+    </div>
+  )
+}
 
 function EventDetail({
   event, saving, onStatus,
@@ -471,13 +569,6 @@ function EventDetail({
           <ExternalLink size={14} strokeWidth={1.75} className="flex-shrink-0 text-ink-muted" />
           <span className="truncate">{event.link.replace(/^https?:\/\//, '')}</span>
         </a>
-      )}
-
-      {event.notes && (
-        <div>
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Notes</span>
-          <p className="whitespace-pre-wrap text-[13px] leading-[1.5] text-ink-secondary">{event.notes}</p>
-        </div>
       )}
     </div>
   )

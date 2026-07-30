@@ -2,6 +2,31 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-30 — Marketing calendar: equal-height columns, tabbed panel + migration history repaired
+
+**Layout.** The calendar and the side panel now end on the same line, and the panel has no
+scrollbar. At `lg` nothing on the page scrolls: the viewport height flows down to the calendar's
+week rows, which absorb the slack (`repeat(N, minmax(112px,1fr))` instead of a fixed 104px), and
+the grid's `stretch` makes the panel column exactly as tall as the calendar. Because the panel
+now knows its height it can drop `overflow-y-auto` and use a **tab strip** instead — Basics
+(title/date/status/channel/platform/owner) and Details (link + notes, notes absorbing the
+leftover height). Tabs are the shared `components/ui/Tabs`. Measured 1440×900: both columns
+796px, panel body overflow 0px on both tabs.
+
+The 112px row floor is a FULL cell — date + three chips + the "+N more" line. Sizing it to the
+chips alone (96px) clipped exactly that overflow hint. Below the floor the *calendar* scrolls;
+the panel never does. Day list and record notes keep a safety-valve scroll since their length is
+unbounded and clipping an event would be worse.
+
+**Migration history repaired.** `supabase migration list` reported 068, 069, 070 and 072 as
+pending when all four were live in the database — a blind `db push` would have re-run them.
+Verified every object of each against production (tables, indexes, triggers, the
+`companies.map_color` column, RLS, plus 71 territory + 54 location rows) then
+`migration repair --status applied`. Also renumbered the duplicate `064_crib_assign.sql` to
+`070_crib_assign.sql`: two files claimed 064, so one could never be recorded and showed as
+permanently pending. It is idempotent (`DROP … IF EXISTS`, `CREATE OR REPLACE`), so the rename
+carries no re-run risk. The tracker is now clean — 72 migrations, zero pending, no duplicates.
+
 ## 2026-07-30 — Marketing calendar (migration 071)
 
 New `/admin/marketing` under a new **Marketing** nav group — the content calendar for social

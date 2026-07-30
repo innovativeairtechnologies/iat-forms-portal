@@ -24,6 +24,17 @@ import { CHANNELS, TONE_WASH, TONE_DOT, channelMeta, dayKey } from '@/lib/market
    above it as `pointer-events-none` so the chips can opt back in individually.
    Nesting a chip button inside a cell button is invalid HTML and breaks keyboard
    nav; this keeps both hit targets real.
+
+   HEIGHT: at `lg` this is a flex column that fills its grid cell, and the week
+   rows share the leftover space (`repeat(N, minmax(112px,1fr))`) rather than
+   being a fixed 104px each. That's what lets the calendar and the side panel end
+   on the same line — the panel is a definite height only because this column is.
+
+   112px is the floor because that is a FULL cell: date row + three chips + the
+   "+N more" line. Sizing it to the chips alone (96px) clips exactly that
+   overflow hint, which is the one thing telling you the day has more on it.
+   Below the floor — a genuinely short window — the grid body scrolls; the panel
+   never does, so the calendar is deliberately the side that absorbs the squeeze.
    ──────────────────────────────────────────────────────────────────────────── */
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -79,10 +90,12 @@ export default function CalendarGrid({
     [visible, cursor],
   )
 
+  const weeks = days.length / 7
+
   return (
-    <div>
+    <div className="flex flex-col lg:min-h-0">
       {/* Toolbar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
             onClick={onPrev}
@@ -128,15 +141,18 @@ export default function CalendarGrid({
       </div>
 
       {/* Grid */}
-      <div className="animate-fade-up overflow-hidden rounded-xl border border-hairline bg-surface motion-reduce:animate-none">
-        <div className="grid grid-cols-7 border-b border-hairline bg-surface-soft">
+      <div className="animate-fade-up flex flex-col overflow-hidden rounded-xl border border-hairline bg-surface motion-reduce:animate-none lg:min-h-0 lg:flex-1">
+        <div className="grid flex-shrink-0 grid-cols-7 border-b border-hairline bg-surface-soft">
           {WEEKDAYS.map((w) => (
             <div key={w} className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
               {w}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7">
+        <div
+          className="grid grid-cols-7 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          style={{ gridTemplateRows: `repeat(${weeks}, minmax(112px, 1fr))` }}
+        >
           {days.map((day) => {
             const key = dayKey(day)
             const items = byDay.get(key) ?? []
@@ -148,7 +164,7 @@ export default function CalendarGrid({
             return (
               <div
                 key={key}
-                className={`relative min-h-[104px] border-b border-r border-hairline-soft [&:nth-child(7n)]:border-r-0 ${
+                className={`relative min-h-0 overflow-hidden border-b border-r border-hairline-soft [&:nth-child(7n)]:border-r-0 ${
                   inMonth ? 'bg-surface' : 'bg-surface-soft'
                 } ${isSelected ? 'ring-2 ring-inset ring-brand' : ''}`}
               >
@@ -201,7 +217,7 @@ export default function CalendarGrid({
       </div>
 
       {/* Legend — channel is what the chip colour means. */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="mt-3 flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
         {CHANNELS.filter((c) => c.value !== 'other').map((c) => (
           <span key={c.value} className="flex items-center gap-1.5 text-[11px] text-ink-muted">
             <span className={`h-2.5 w-2.5 rounded-[3px] ${TONE_DOT[c.tone]}`} />
