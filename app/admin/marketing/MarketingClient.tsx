@@ -119,15 +119,21 @@ export default function MarketingClient({ initialEvents }: { initialEvents: Mark
 
   return (
     // Definite viewport height (100dvh minus the h-14 AdminTopBar, which equals
-    // the mobile pt-14 spacer) — the DealsClient precedent. At `lg` NOTHING here
-    // scrolls: the height flows down unbroken to the calendar's week rows, which
-    // absorb the slack, and the grid's default `stretch` makes the panel column
-    // exactly as tall as the calendar column. That definite height is what lets
-    // the panel drop its own scrollbar and switch to tabs instead. Below `lg` the
-    // columns stack and this container scrolls normally.
+    // the mobile pt-14 spacer) — the DealsClient precedent — but the CONTENT is
+    // sized to itself, not stretched to fill it. The calendar's week rows are a
+    // fixed height, so the block is as tall as a month needs and no taller; the
+    // grid's default `stretch` then makes the panel column exactly as tall as the
+    // calendar column, which is what lets the panel drop its own scrollbar and
+    // use tabs. Stretching the rows to the viewport instead made both columns
+    // full-screen tall, which read as an airy calendar dragging an airy card
+    // along with it.
+    //
+    // The container keeps `overflow-y-auto` at every width: a 6-week month on a
+    // short window has to scroll rather than clip, and below `lg` the columns
+    // stack and it scrolls normally anyway.
     <div className="flex h-[calc(100dvh_-_3.5rem)] shrink-0 flex-col overflow-hidden bg-canvas">
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:overflow-hidden">
-        <div className="mx-auto grid max-w-[1280px] gap-5 lg:h-full lg:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)]">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="mx-auto grid max-w-[1280px] gap-5 lg:grid-cols-[minmax(0,1fr)_288px]">
           <CalendarGrid
             cursor={cursor}
             today={today}

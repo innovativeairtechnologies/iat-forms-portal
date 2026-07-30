@@ -2,6 +2,25 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-30 — Marketing calendar: wider and shorter
+
+Calendar goes from 75% to **77%** of the width (the panel is now a fixed 288px, so the calendar
+takes every pixel a wider window offers), and the whole block gets **140px shorter** for a 6-week
+month and **230px shorter** for a 5-week one — 656px / 566px, down from a flat 796px.
+
+The height came from making week rows a fixed 90px instead of `1fr` of the viewport. Stretching
+them filled the screen, and since the side panel matches the calendar's height, an airy calendar
+was dragging an airy card along with it. Cell internals tightened to suit (`p-1`, `mb-0.5`,
+`space-y-[3px]`), and chip count is now **adaptive**: three chips fit only when three is all
+there is — a fourth item spends the last slot on the "+N more" line, since that hint matters more
+than one extra title.
+
+The composer condensed with it: single-column fields at a tighter rhythm, platform switched from
+a six-chip row (which wrapped to three lines at 288px) to a select, and owner moved back to the
+Details tab. Dead space in the Basics pane drops from 427px to 168px on a 6-week month and 78px
+on a 5-week one. Equal-height columns and the no-scrollbar panel both still hold — measured 0px
+body overflow on both tabs, light and dark.
+
 ## 2026-07-30 — Marketing calendar: equal-height columns, tabbed panel + migration history repaired
 
 **Layout.** The calendar and the side panel now end on the same line, and the panel has no

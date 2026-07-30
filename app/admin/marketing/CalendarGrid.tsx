@@ -25,19 +25,21 @@ import { CHANNELS, TONE_WASH, TONE_DOT, channelMeta, dayKey } from '@/lib/market
    Nesting a chip button inside a cell button is invalid HTML and breaks keyboard
    nav; this keeps both hit targets real.
 
-   HEIGHT: at `lg` this is a flex column that fills its grid cell, and the week
-   rows share the leftover space (`repeat(N, minmax(112px,1fr))`) rather than
-   being a fixed 104px each. That's what lets the calendar and the side panel end
-   on the same line — the panel is a definite height only because this column is.
+   HEIGHT: week rows are a FIXED 90px, not `1fr` of the viewport. Stretching them
+   to fill the window made the whole block as tall as the screen — and since the
+   side panel matches this column's height, an airy calendar dragged an airy card
+   along with it. Fixed rows mean the calendar is as tall as it needs to be and no
+   taller, and the card condenses with it. 90px is a full cell at the tightened
+   internal spacing below: date row + three chips, or two chips + "+N more".
 
-   112px is the floor because that is a FULL cell: date row + three chips + the
-   "+N more" line. Sizing it to the chips alone (96px) clips exactly that
-   overflow hint, which is the one thing telling you the day has more on it.
-   Below the floor — a genuinely short window — the grid body scrolls; the panel
-   never does, so the calendar is deliberately the side that absorbs the squeeze.
+   Chip count is adaptive: three fit only when three is ALL there is. The moment
+   a day has a fourth, the third slot goes to the "+N more" line instead — that
+   hint is the one thing telling you the day holds more than you can see, so it
+   outranks showing one extra title.
    ──────────────────────────────────────────────────────────────────────────── */
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const ROW_PX = 90
 const MAX_CHIPS = 3
 
 export default function CalendarGrid({
@@ -141,7 +143,7 @@ export default function CalendarGrid({
       </div>
 
       {/* Grid */}
-      <div className="animate-fade-up flex flex-col overflow-hidden rounded-xl border border-hairline bg-surface motion-reduce:animate-none lg:min-h-0 lg:flex-1">
+      <div className="animate-fade-up flex flex-col overflow-hidden rounded-xl border border-hairline bg-surface motion-reduce:animate-none">
         <div className="grid flex-shrink-0 grid-cols-7 border-b border-hairline bg-surface-soft">
           {WEEKDAYS.map((w) => (
             <div key={w} className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
@@ -150,8 +152,8 @@ export default function CalendarGrid({
           ))}
         </div>
         <div
-          className="grid grid-cols-7 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
-          style={{ gridTemplateRows: `repeat(${weeks}, minmax(112px, 1fr))` }}
+          className="grid grid-cols-7"
+          style={{ gridTemplateRows: `repeat(${weeks}, ${ROW_PX}px)` }}
         >
           {days.map((day) => {
             const key = dayKey(day)
@@ -159,7 +161,10 @@ export default function CalendarGrid({
             const inMonth = isSameMonth(day, cursor)
             const isToday = isSameDay(day, today)
             const isSelected = selectedDay === key
-            const hidden = items.length - MAX_CHIPS
+            // Three chips only when three is everything; a fourth item spends the
+            // last slot on the "+N more" line instead.
+            const shown = items.length > MAX_CHIPS ? items.slice(0, MAX_CHIPS - 1) : items
+            const hidden = items.length - shown.length
 
             return (
               <div
@@ -175,8 +180,8 @@ export default function CalendarGrid({
                   className="absolute inset-0 h-full w-full transition-colors hover:bg-surface-strong focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
                 />
 
-                <div className="pointer-events-none relative p-1.5">
-                  <div className="mb-1 flex items-center justify-between px-1">
+                <div className="pointer-events-none relative p-1">
+                  <div className="mb-0.5 flex items-center justify-between px-1">
                     <span
                       className={`text-[12px] font-semibold tabular-nums ${
                         isToday
@@ -188,8 +193,8 @@ export default function CalendarGrid({
                     </span>
                   </div>
 
-                  <div className="space-y-1">
-                    {items.slice(0, MAX_CHIPS).map((e) => {
+                  <div className="space-y-[3px]">
+                    {shown.map((e) => {
                       const meta = channelMeta(e.channel)
                       const active = selectedEventId === e.id
                       return (
@@ -206,7 +211,7 @@ export default function CalendarGrid({
                       )
                     })}
                     {hidden > 0 && (
-                      <div className="px-1.5 text-[10px] font-medium text-ink-muted">+{hidden} more</div>
+                      <div className="px-1.5 text-[10px] font-medium leading-[14px] text-ink-muted">+{hidden} more</div>
                     )}
                   </div>
                 </div>

@@ -55,7 +55,7 @@ export type PanelMode =
 type FormTab = 'basics' | 'details'
 type ViewTab = 'details' | 'notes'
 
-const labelCx = 'mb-1.5 block text-[12px] font-medium text-ink-secondary'
+const labelCx = 'mb-1 block text-[12px] font-medium text-ink-secondary'
 const inputCx =
   'h-9 w-full rounded-lg border border-hairline bg-surface px-3 text-[13px] text-ink placeholder:text-ink-faint transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
@@ -179,7 +179,7 @@ export default function EventPanel({
 
   // Discoverability: the optional fields sit on a second tab, so surface how many
   // are filled rather than letting them hide.
-  const filledExtras = [draft.link, draft.notes].filter((v) => v.trim()).length
+  const filledExtras = [draft.owner, draft.link, draft.notes].filter((v) => v.trim()).length
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-hairline bg-surface lg:h-full">
@@ -315,7 +315,7 @@ function BasicsPane({
   onSubmit: () => void
 }) {
   return (
-    <div className="flex-shrink-0 space-y-3.5">
+    <div className="flex-shrink-0 space-y-3">
       <div>
         <label htmlFor="mk-title" className={labelCx}>Title</label>
         <input
@@ -330,28 +330,15 @@ function BasicsPane({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
-        <div>
-          <label htmlFor="mk-date" className={labelCx}>Date</label>
-          <input
-            id="mk-date"
-            type="date"
-            value={draft.event_date}
-            onChange={(e) => set('event_date', e.target.value)}
-            className={inputCx}
-          />
-        </div>
-        <div>
-          <label htmlFor="mk-status" className={labelCx}>Status</label>
-          <select
-            id="mk-status"
-            value={draft.status}
-            onChange={(e) => set('status', e.target.value)}
-            className={inputCx}
-          >
-            {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </div>
+      <div>
+        <label htmlFor="mk-date" className={labelCx}>Date</label>
+        <input
+          id="mk-date"
+          type="date"
+          value={draft.event_date}
+          onChange={(e) => set('event_date', e.target.value)}
+          className={inputCx}
+        />
       </div>
 
       <div>
@@ -367,43 +354,34 @@ function BasicsPane({
       </div>
 
       {/* Platform only exists for a social post — the API drops it for every
-          other channel, so hiding it here keeps the form honest. */}
+          other channel, so hiding it here keeps the form honest. A select, not
+          the old chip row: six chips wrapped to three lines in a 288px panel,
+          which cost more height than the whole field is worth. */}
       {draft.channel === 'social' && (
         <div>
-          <span className={labelCx}>Platform</span>
-          <div className="flex flex-wrap gap-1.5">
-            {PLATFORMS.map((p) => {
-              const on = draft.platform === p.value
-              return (
-                <button
-                  key={p.value}
-                  type="button"
-                  onClick={() => set('platform', on ? '' : p.value)}
-                  className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                    on ? 'bg-ink text-canvas' : 'bg-surface-strong text-ink-muted hover:text-ink'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              )
-            })}
-          </div>
+          <label htmlFor="mk-platform" className={labelCx}>Platform</label>
+          <select
+            id="mk-platform"
+            value={draft.platform}
+            onChange={(e) => set('platform', e.target.value)}
+            className={inputCx}
+          >
+            <option value="">No platform</option>
+            {PLATFORMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
         </div>
       )}
 
-      {/* Owner sits with the what/when rather than on the second tab: it's the
-          "who's making it" half of the same question, and keeping it here evens
-          out two panes that were badly lopsided. */}
       <div>
-        <label htmlFor="mk-owner" className={labelCx}>Owner <span className="text-ink-faint">(optional)</span></label>
-        <input
-          id="mk-owner"
-          value={draft.owner}
-          maxLength={LIMITS.owner}
-          onChange={(e) => set('owner', e.target.value)}
-          placeholder="Who's making it?"
+        <label htmlFor="mk-status" className={labelCx}>Status</label>
+        <select
+          id="mk-status"
+          value={draft.status}
+          onChange={(e) => set('status', e.target.value)}
           className={inputCx}
-        />
+        >
+          {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
       </div>
     </div>
   )
@@ -420,7 +398,19 @@ function DetailsPane({
   return (
     // flex column so the notes box absorbs whatever height is left instead of
     // the pane needing a scrollbar.
-    <div className="flex min-h-0 flex-1 flex-col gap-3.5">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex-shrink-0">
+        <label htmlFor="mk-owner" className={labelCx}>Owner</label>
+        <input
+          id="mk-owner"
+          value={draft.owner}
+          maxLength={LIMITS.owner}
+          onChange={(e) => set('owner', e.target.value)}
+          placeholder="Who's making it?"
+          className={inputCx}
+        />
+      </div>
+
       <div className="flex-shrink-0">
         <label htmlFor="mk-link" className={labelCx}>Link</label>
         <input

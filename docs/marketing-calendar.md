@@ -14,10 +14,9 @@ ads** — what's going out, on what channel, on what day, and who owns it.
 
 ## The layout: three quarters grid, one quarter panel
 
-The page is a two-column grid — `lg:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)]`. At the 1280px
-content width that measures **exactly 75% / 25%**; below roughly 1200px the panel stops shrinking
-at its 300px floor and takes a slightly larger share rather than becoming an unusable form. Under
-`lg` the two stack, calendar first.
+The page is a two-column grid — `lg:grid-cols-[minmax(0,1fr)_288px]`. The panel is a fixed 288px
+so the calendar takes every pixel a wider window offers; at the 1280px content width that
+measures **972px / 288px, about 77% / 23%**. Under `lg` the two stack, calendar first.
 
 The right column is a **floating card, not a drawer.** It looks like `components/ui/Drawer` (inset
 `rounded-2xl` surface, hairline border) but it is deliberately none of the things that make a
@@ -29,32 +28,36 @@ promote the border, never a resting shadow).
 
 ## Equal height, and why the panel has no scrollbar
 
-At `lg` **nothing on this page scrolls.** The viewport height (`100dvh` minus the `h-14`
-AdminTopBar) flows down unbroken to the calendar's week rows, which absorb the slack
-(`repeat(N, minmax(112px, 1fr))` instead of a fixed row height). The grid's default `stretch`
-then makes the panel column exactly as tall as the calendar column, and the panel takes
-`lg:h-full` against it.
+The calendar's week rows are a **fixed 90px** (`repeat(N, 90px)`), so the block is as tall as a
+month needs and no taller. The grid's default `stretch` then makes the panel column exactly as
+tall as the calendar column, and the panel takes `lg:h-full` against it.
 
 That definite height is the whole trick: because the panel knows how tall it is, it can drop its
 own scrollbar (`lg:overflow-hidden` on the body) and use a **tab strip** instead. Eight form
-fields do not fit a panel sized to a month grid — "Basics" (5) and "Details" (2) each do, on any
-viewport tall enough to show the calendar at all. Tabs come from `components/ui/Tabs`, so the
-strip matches the deals drawer.
+fields do not fit a panel sized to a month grid — "Basics" (5) and "Details" (3) each do. Tabs
+come from `components/ui/Tabs`, so the strip matches the deals drawer.
 
-Measured at 1440×900: both columns 796px, panel body overflow **0px** on both tabs.
+Measured at 1440×900: **656px** both columns for a 6-week month, **566px** for a 5-week one,
+panel body overflow **0px** on both tabs, in light and dark.
 
-**When something has to give, it's the calendar, not the panel.** Below the 112px row floor the
-grid body scrolls; the panel never does. 112px is a FULL cell — date row + three chips + the
-"+N more" line. Sizing the floor to the chips alone (96px) clips exactly that overflow hint,
-which is the one thing telling you the day has more on it than you can see.
+**Rows are fixed, not `1fr`.** Stretching them to fill the viewport made the whole block as tall
+as the screen — and because the panel matches this column, an airy calendar dragged an airy card
+along with it. Fixed rows are what keep both condensed. It does mean a tall window leaves canvas
+below the block; that is the intended read, not an unfinished page.
+
+**90px is a full cell** at the tightened internal spacing (`p-1`, `mb-0.5`, `space-y-[3px]`):
+date row plus three chips, or two chips plus the "+N more" line. Chip count is therefore
+**adaptive** — three fit only when three is ALL there is, and the moment a day has a fourth the
+third slot goes to "+N more" instead. That hint is the one thing telling you a day holds more
+than you can see, so it outranks showing one extra title.
 
 Two regions keep an `overflow-y-auto` as a safety valve — the day list and a record's notes —
 because their length is genuinely unbounded, and silently clipping an event or a paragraph is
 worse than a scrollbar. Both are sized so real use never reaches it (the day list fits ~14 rows
 at ~44px each).
 
-Every height constraint is `lg:`-prefixed. Below `lg` the columns stack, the page scrolls
-normally, and the panel is natural-height.
+The page container keeps `overflow-y-auto` at every width: a 6-week month in a short window has
+to scroll rather than clip. Below `lg` the columns stack and it scrolls normally anyway.
 
 ## The panel has three modes, and composing is the resting state
 
@@ -64,11 +67,13 @@ normally, and the panel is natural-height.
 | `day` | clicking a day cell | Everything on that day + "Add to this day" | — |
 | `event` | clicking a chip | The record, inline edit, one-click status, delete | Details · Notes |
 
-**Basics** is title, date, status, channel, platform and owner — the what/when/who. **Details**
-is link and notes, with the notes box absorbing whatever height is left so it's a real writing
-area rather than a stub. Owner sits on Basics deliberately: it's the "who's making it" half of
-the same question, and it evens out two panes that were otherwise badly lopsided. The tab shows
-a count of filled optional fields so they can't hide.
+**Basics** is title, date, channel, platform and status — the what and when. **Details** is
+owner, link and notes, with the notes box absorbing whatever height is left so it's a real
+writing area rather than a stub. The Details tab shows a count of filled optional fields so they
+can't hide.
+
+Platform is a **select, not a chip row**. Six chips wrapped to three lines in a 288px panel,
+which cost more height than the whole field is worth.
 
 Title lives on Basics, so submitting from the Details tab with no title **switches you back to
 Basics and focuses the field** rather than leaving a mysteriously disabled button.
