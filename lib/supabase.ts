@@ -711,3 +711,25 @@ export type ProductionTaskEvent = {
   note: string | null
   created_at: string
 }
+
+// ─── Marketing calendar (marketing_events, migration 071) ────────────────────
+
+/** One dated item on the marketing content calendar: a social post, an email
+ *  campaign send, a blog article, a trade show, a paid-ad flight. `platform` is
+ *  only meaningful when channel = 'social'. The channel/status/platform value
+ *  sets live in lib/marketing.ts — the column is plain text with no CHECK, so
+ *  read them through channelMeta/statusMeta, which fall back for unknowns. */
+export type MarketingEvent = {
+  id: string
+  event_date: string // YYYY-MM-DD
+  title: string
+  channel: string
+  platform: string | null
+  status: string
+  owner: string | null
+  link: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}

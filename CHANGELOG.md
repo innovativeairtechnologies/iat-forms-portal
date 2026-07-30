@@ -2,7 +2,57 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
-## 2026-07-30 — Reverted: reactor sun is the plain plasma star again
+## 2026-07-30 — Marketing calendar (migration 071)
+
+New `/admin/marketing` under a new **Marketing** nav group — the content calendar for social
+posts, email campaigns, blog articles, trade shows and paid ads.
+
+Three quarters of the page is the month grid; the right quarter is a **floating card** that is
+both the composer and the record view. It looks like the CRM's detail drawer but is deliberately
+not modal — no scrim, no focus trap — because a drawer would black out the calendar you're
+scheduling against. Composing is its resting state, so adding something is never behind a modal
+or a button, and after each add the form keeps the date/channel/owner so a week of posts is one
+run. Clicking a day shows that day; clicking a chip shows the record with inline edit, one-click
+status, and delete.
+
+Chips are coloured by **channel** (social/email/blog/event/ad/pr), not status — that's the axis
+you scan a content calendar on; status only marks the chip when it changes the read (published ✓,
+cancelled struck through). Channel/status/platform lists live in `lib/marketing.ts` with no DB
+CHECK behind them, so adding "TikTok" is a one-line edit — `app/api/admin/marketing/validate.ts`
+is the enforcement.
+
+New perm `marketing_calendar` seeded to **marketing** by migration 071 (table `marketing_events`,
+RLS on, service-role only). Named `marketing_calendar` rather than `marketing` because that's
+already a StaffRole. Not built on `deal_follow_ups`: those rows CASCADE when DryWare prunes a
+deal, which would silently delete marketing work. See `docs/marketing-calendar.md`.
+
+## 2026-07-30 — Case Studies: AI-drafted, human-approved (migration 072)
+
+New `/admin/case-studies` (Sales nav group). Sales starts a study fresh from the list or from a
+customer detail page ("New case study" pre-seeds the customer + one snapshotted unit row per
+registered equipment record). Required inputs — per-unit model/application/entering/target/airflow,
+plus project context, the problem before, and the outcome after — then **Claude drafts the prose
+from those inputs and nothing else**:
+
+- The model receives ONE structured `FACTS` object (`lib/case-studies.ts:buildFacts`). Anonymized
+  studies (the default) omit the company name and serials **structurally** — Claude never sees them.
+- Server-side number check (`checkNumbers`): every digit-run in the draft must trace back to the
+  inputs; unmatched numbers become rose "unverified number" flags in the editor.
+- Facts the model wanted but wasn't given come back as amber **gaps**, not invented sentences.
+  Gaps + flags block approval until each is resolved/cleared by a human.
+- Claude's original draft stays immutable (and visible) under the human-edited working copy.
+
+Status ladder `draft → in_review → approved`; **approve is marketing/admin only**
+(`requireCaseStudiesAuth({ approve })`), same split for reopening or deleting an approved study.
+Approved studies lock and get a print/save-as-PDF sheet at `/print/case-study/[id]` (drafts print
+with a "DRAFT — not approved for distribution" banner; anonymized studies hide serials + name).
+
+New perm `case_studies` seeded to **sales + marketing** by migration 072 (tables `case_studies`,
+`case_study_units` — RLS on, service-role only). Deliberately NOT keyed on `deals`: content
+approval is a different trust boundary than pipeline access.
+
+No energy-savings %, ROI, payback, customer quotes, or competitor mentions can appear unless a
+human typed them into an input field — the prompt forbids them and the number check backstops it.
 
 `d172a55` themed the `/admin/knowledge` reactor as a desiccant rotor — face-on rotation plus a
 reactivation sector fixed in the housing, giving the two-sector rotor face. Shipped and reverted

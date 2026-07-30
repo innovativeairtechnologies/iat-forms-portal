@@ -106,6 +106,17 @@ export type Perm =
   // NB: keep the literal default-perms identifier out of this comment — the
   // check-perm-seed prebuild gate regexes for the first occurrence of it.
   | 'home_content'
+  // /admin/marketing — the content calendar (social posts, email campaigns,
+  // blog, trade shows, ads; migration 071). Named marketing_CALENDAR, not
+  // 'marketing': `marketing` is already a StaffRole, and a perm sharing that
+  // name would read as "the marketing role's perm" — the same collision
+  // 'production_board' and 'tool_crib' are named around above. Granted to the
+  // marketing role in the scoped-role defaults below + seeded by 071.
+  | 'marketing_calendar'
+  // /admin/case-studies — AI-drafted, human-approved customer case studies
+  // (migration 072). Sales drafts, marketing approves (the approve action is
+  // additionally role-gated to marketing/admin in requireCaseStudiesAuth).
+  | 'case_studies'
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -137,6 +148,8 @@ export const PERM_LABELS: Record<Perm, string> = {
   tool_crib: 'Tool Crib',
   production_board: 'Production Board',
   home_content: 'Company Home',
+  case_studies: 'Case Studies',
+  marketing_calendar: 'Marketing Calendar',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -156,9 +169,9 @@ export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
 // is the source of truth and this stays the seed + the fail-safe fallback used
 // whenever the DB matrix is unavailable (table missing / read error).
 export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
-  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools'],
+  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies'],
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools'],
-  marketing: ['dashboard', 'presentations', 'jerry', 'tools'],
+  marketing: ['dashboard', 'presentations', 'jerry', 'tools', 'case_studies', 'marketing_calendar'],
   engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools'],
   production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib', 'production_board'],
   production: [],
@@ -225,6 +238,7 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
   { perm: 'tickets', href: '/admin/tickets' },
   { perm: 'equipment', href: '/admin/equipment' },
   { perm: 'customers', href: '/admin/customers' },
+  { perm: 'case_studies', href: '/admin/case-studies' },
   { perm: 'deals', href: '/admin/deals' },
   { perm: 'gantt', href: '/admin/gantt' },
   { perm: 'org_chart', href: '/admin/org-chart' },
@@ -234,6 +248,7 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
   { perm: 'sick', href: '/admin/requests/sick' },
   { perm: 'scheduling', href: '/admin/schedule' },
   { perm: 'accrual', href: '/admin/accrual' },
+  { perm: 'marketing_calendar', href: '/admin/marketing' },
   { perm: 'presentations', href: '/admin/presentations' },
   { perm: 'employees', href: '/admin/employees' },
   { perm: 'audit', href: '/admin/audit' },
@@ -302,6 +317,14 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/troubleshooting', perm: 'tickets' },
   { prefix: '/admin/equipment', perm: 'equipment' },
   { prefix: '/admin/customers', perm: 'customers' },
+  // Case studies (070) — sales drafts, marketing approves. Own perm (seeded for
+  // both roles in the migration) so access can be tuned per-role later without
+  // touching the deals trust boundary.
+  { prefix: '/admin/case-studies', perm: 'case_studies' },
+  // Marketing content calendar (071). MUST be listed: an unmapped /admin/* path
+  // falls back to 'dashboard', which every scoped role holds — so omitting this
+  // would open the page to all of them rather than fail closed.
+  { prefix: '/admin/marketing', perm: 'marketing_calendar' },
   { prefix: '/admin/deals', perm: 'deals' },
   // Projected-sales mirror (059) — read-only Dryware snapshot. Shares the `deals`
   // perm (Sales + admin) so it needs no new permission key or role_permissions

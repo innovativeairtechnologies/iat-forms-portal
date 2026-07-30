@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
-  Users, Bot, DollarSign, Sun, Moon, Wrench, Home, UserRound,
+  Users, Bot, DollarSign, Sun, Moon, Wrench, Home, UserRound, Megaphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -112,8 +112,18 @@ const NAV_PARENTS: NavParent[] = [
       // map. Shares the `deals` perm like Performance above.
       { href: '/admin/territories', label: 'Territories', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
+      // Case studies (072) — AI-drafted from sales' inputs, marketing-approved.
+      { href: '/admin/case-studies', label: 'Case Studies', perm: 'case_studies' },
       // Presentations moved out of Sales — it now lives on the Internal Apps
       // launcher (/admin/tools), perm-gated by `presentations` there.
+    ],
+  },
+  {
+    label: 'Marketing',
+    icon: Megaphone,
+    children: [
+      // Content calendar (071) — social posts, email campaigns, blog, shows, ads.
+      { href: '/admin/marketing', label: 'Calendar', perm: 'marketing_calendar' },
     ],
   },
   {

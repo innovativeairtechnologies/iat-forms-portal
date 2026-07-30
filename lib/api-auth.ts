@@ -292,6 +292,72 @@ export async function requireCribActor(): Promise<{ actorId: string; actorName: 
 }
 
 /**
+ * Guard for the case-studies API (migration 072). Matrix-backed on
+ * `case_studies` — the same perm middleware gates /admin/case-studies on — so
+ * the page and the API can never disagree. Its own named guard, per
+ * requireDealsAuth's note.
+ *
+ * Approval ({ approve: true }) additionally requires the marketing or admin
+ * ROLE — the user decision for this feature is "sales drafts, marketing
+ * approves", so a scoped role that's merely been granted `case_studies` in
+ * /admin/permissions can draft and edit but not approve.
+ *
+ * Returns the actor's user id (needed to stamp generated_by / approved_by),
+ * or a NextResponse error to return directly.
+ */
+export async function requireCaseStudiesAuth(
+  opts: { approve?: boolean } = {}
+): Promise<{ userId: string } | NextResponse> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'case_studies', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (opts.approve && role !== 'admin' && role !== 'marketing') {
+    return NextResponse.json({ error: 'Only marketing or an admin can approve a case study.' }, { status: 403 })
+  }
+  return { userId: user.id }
+}
+
+/**
+ * Guard for the marketing-calendar API (/admin/marketing, migration 071).
+ * Matrix-backed on `marketing_calendar` — the same perm middleware gates the
+ * page on — so the page and the API can never disagree. Its own named guard,
+ * per requireDealsAuth's note above.
+ *
+ * Returns the actor's user id (stamped onto created_by), or a NextResponse
+ * error to return directly.
+ */
+export async function requireMarketingAuth(): Promise<{ userId: string } | NextResponse> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'marketing_calendar', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return { userId: user.id }
+}
+
+/**
  * Guard for super-admin-only actions (e.g. approving a form to go live).
  * Returns the authenticated user's id on success, or a NextResponse error to
  * return directly. Usage:

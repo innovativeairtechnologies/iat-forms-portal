@@ -29,7 +29,10 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/projected-sales', section: 'Sales',   label: 'Performance' },
   { prefix: '/admin/territories',     section: 'Sales',   label: 'Territories' },
   { prefix: '/admin/customers',       section: 'Sales',   label: 'Customers' },
+  { prefix: '/admin/case-studies',    section: 'Sales',   label: 'Case Studies' },
   { prefix: '/admin/presentations',   section: 'Sales',   label: 'Presentations' },
+  // Marketing
+  { prefix: '/admin/marketing',       section: 'Marketing', label: 'Calendar' },
   // People
   { prefix: '/admin/employees',       section: 'People',  label: 'Accounts' },
   { prefix: '/admin/org-chart',       section: 'People',  label: 'Org Chart' },

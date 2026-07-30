@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
-  MessageCircle, KeyRound, Wrench, Map as MapIcon,
+  MessageCircle, KeyRound, Wrench, Map as MapIcon, Megaphone,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -48,6 +48,7 @@ const STATIC: Item[] = [
   { id: 'nav-terr',    label: 'Territories',      group: 'Go to', icon: MapIcon,         href: '/admin/territories', keywords: 'map reps rep firms sales regions states counties territory mapline', perm: 'deals' },
   // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
   // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series', perm: 'us_rotors' },
+  { id: 'nav-mktg',    label: 'Marketing Calendar', group: 'Go to', icon: Megaphone,     href: '/admin/marketing', keywords: 'marketing calendar social media post linkedin facebook instagram email campaign newsletter blog trade show content schedule', perm: 'marketing_calendar' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },
   { id: 'nav-pto',     label: 'PTO Requests',     group: 'Go to', icon: Calendar,        href: '/admin/requests/pto', keywords: 'time off vacation', perm: 'pto' },
   { id: 'nav-sick',    label: 'Sick Time',        group: 'Go to', icon: CalendarClock,   href: '/admin/requests/sick', keywords: 'time off', perm: 'sick' },

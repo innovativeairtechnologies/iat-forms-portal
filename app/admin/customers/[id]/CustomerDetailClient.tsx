@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Building2, Boxes, Send, Trash2, ShieldCheck, ShieldOff, Copy, Check,
-  Loader2, CheckCircle2, AlertTriangle, ChevronRight,
+  Loader2, CheckCircle2, AlertTriangle, ChevronRight, BookOpenCheck,
 } from 'lucide-react'
 import { DetailShell, Card, CardHead, MetaRow } from '@/components/admin/detail-ui'
 import PageChrome from '@/app/admin/PageChrome'
@@ -73,6 +73,30 @@ export default function CustomerDetailClient({
     }
   }
 
+  const [creatingStudy, setCreatingStudy] = useState(false)
+  // Start a case study pre-seeded with this customer + a snapshotted unit row
+  // per registered equipment record (identity only — the required facts stay
+  // blank for sales to fill).
+  const createCaseStudy = async () => {
+    setCreatingStudy(true)
+    setActionError('')
+    try {
+      const res = await fetch('/api/admin/case-studies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: customer.id }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setActionError(json.error || 'Could not create the case study.')
+        return
+      }
+      router.push(`/admin/case-studies/${json.id}`)
+    } finally {
+      setCreatingStudy(false)
+    }
+  }
+
   const copy = async () => {
     if (!resendResult) return
     await navigator.clipboard.writeText(`${customer.contact_email} / ${resendResult.temp_password}`)
@@ -88,6 +112,15 @@ export default function CustomerDetailClient({
         ) : (
           <StatusPill tone="emerald">Active</StatusPill>
         )}
+        <button
+          type="button"
+          onClick={createCaseStudy}
+          disabled={creatingStudy}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-[12.5px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-60"
+        >
+          {creatingStudy ? <Loader2 size={14} className="animate-spin" /> : <BookOpenCheck size={14} />}
+          New case study
+        </button>
         <DeleteRecordButton
           endpoint={`/api/admin/customers/${customer.id}`}
           entityLabel="customer"
