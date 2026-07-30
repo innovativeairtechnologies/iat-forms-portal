@@ -205,80 +205,74 @@
 .kb-content pre { background: #f3f4f6; padding: 0.9em 1em; border-radius: 0.5rem; overflow-x: auto; margin: 0 0 1em; }
 .dark .kb-content pre { background: #18181b; }
 
-/* ── IAT Learn — lesson reading prose ──────────────────────────────────────── */
+/* ── IAT Learn — lesson reading prose ──────────────────────────────────────────
+   Written entirely on the semantic tokens, so the hand-rolled `.dark` mirror
+   this block used to carry (11 more rules of raw hex) is gone — the variables
+   already flip. Weight ceiling is 650; the old h2 was 700. */
 .learn-prose {
-  color: #27272a;
+  color: var(--ink-secondary);
   font-size: 15.5px;
   line-height: 1.75;
 }
 .learn-prose > :first-child { margin-top: 0; }
 .learn-prose h2 {
   font-size: 19px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: -0.01em;
-  color: #0a0a0b;
+  color: var(--ink);
   margin: 1.9em 0 0.6em;
 }
 .learn-prose h3 {
   font-size: 16px;
   font-weight: 650;
-  color: #0a0a0b;
+  color: var(--ink);
   margin: 1.5em 0 0.5em;
 }
 .learn-prose p { margin: 0 0 1.05em; }
-.learn-prose strong { font-weight: 650; color: #0a0a0b; }
+.learn-prose strong { font-weight: 650; color: var(--ink); }
 .learn-prose em { font-style: italic; }
 .learn-prose a {
-  color: #089447;
+  color: var(--brand-ink);
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.learn-prose a:hover { color: #077a3c; }
+.learn-prose a:hover { color: var(--brand); }
+.learn-prose a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 2px; }
 .learn-prose ul { list-style: disc; padding-left: 1.4em; margin: 0 0 1.05em; }
 .learn-prose ol { list-style: decimal; padding-left: 1.4em; margin: 0 0 1.05em; }
 .learn-prose li { margin-bottom: 0.4em; padding-left: 0.2em; }
-.learn-prose li::marker { color: #089447; }
+.learn-prose li::marker { color: var(--ink-faint); }
 .learn-prose blockquote {
-  border-left: 3px solid #44c07d;
-  background: #f0faf4;
+  border-left: 3px solid var(--brand);
+  background: var(--brand-soft);
   padding: 0.75em 1.1em;
   border-radius: 0 0.5rem 0.5rem 0;
   margin: 0 0 1.2em;
-  color: #3f4a44;
+  color: var(--ink-secondary);
 }
 .learn-prose blockquote p:last-child { margin-bottom: 0; }
-.learn-prose hr { border: 0; border-top: 1px solid #ececec; margin: 2em 0; }
+.learn-prose hr { border: 0; border-top: 1px solid var(--hairline); margin: 2em 0; }
 .learn-prose img { max-width: 100%; border-radius: 0.75rem; margin: 0.5em 0 1.2em; }
 
-/* Placeholder shown where a Trainual image/GIF couldn't be carried over. */
+/* Placeholder shown where a Trainual image/GIF couldn't be carried over.
+   133 of the 357 live lessons still contain one of these, so it is a real
+   surface, not an edge case — keep it quiet and legible rather than alarming. */
 .learn-prose figure.img-missing {
   display: flex;
   align-items: center;
   gap: 0.6em;
-  border: 1px dashed #d4d4d8;
-  background: #fafafa;
+  border: 1px dashed var(--hairline-strong);
+  background: var(--surface-soft);
   border-radius: 0.75rem;
   padding: 0.85em 1.1em;
   margin: 0 0 1.2em;
 }
 .learn-prose figure.img-missing figcaption {
   font-size: 12.5px;
-  color: #71717a;
+  color: var(--ink-muted);
   font-style: italic;
 }
-
-/* ── IAT Learn — lesson prose, dark mode ───────────────────────────────────── */
-.dark .learn-prose { color: #d4d4d8; }
-.dark .learn-prose h2, .dark .learn-prose h3 { color: #f4f4f5; }
-.dark .learn-prose strong { color: #ffffff; }
-.dark .learn-prose a { color: #34d399; }
-.dark .learn-prose a:hover { color: #6ee7b7; }
-.dark .learn-prose blockquote { border-left-color: #34d399; background: rgba(16,185,129,0.08); color: #a1a1aa; }
-.dark .learn-prose hr { border-top-color: #27272a; }
-.dark .learn-prose li::marker { color: #34d399; }
-.dark .learn-prose figure.img-missing { border-color: #3f3f46; background: #18181b; }
-.dark .learn-prose figure.img-missing figcaption { color: #a1a1aa; }
 
 /* ── Jerry — IAT's customer assistant "presence" orb ───────────────────────────
    At idle Jerry is calm: only the core gently breathes. The spinning ring, orbiting

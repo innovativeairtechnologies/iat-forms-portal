@@ -57,12 +57,12 @@ export default function LessonFooterNav({
   }
 
   return (
-    <div className="mt-10 border-t border-gray-100 pt-6 dark:border-zinc-800">
+    <div className="mt-10 border-t border-hairline pt-6">
       <div className="flex items-center justify-between gap-3">
         {prevHref ? (
           <Link
             href={prevHref}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-[13px] font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/60 dark:hover:text-white"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3.5 py-2.5 text-[13px] font-medium text-ink-secondary transition-colors hover:border-hairline-strong hover:text-ink"
           >
             <ChevronLeft size={15} /> Previous
           </Link>
@@ -76,8 +76,8 @@ export default function LessonFooterNav({
           className={[
             'inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all disabled:opacity-60',
             completed
-              ? 'border border-[#089447] bg-[#f0faf4] text-[#077a3c] dark:bg-emerald-500/10 dark:text-emerald-400'
-              : 'border border-gray-200 bg-white text-gray-600 hover:border-[#089447] hover:text-[#077a3c] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-[#089447] dark:hover:text-emerald-400',
+              ? 'border border-brand bg-brand-soft text-brand-ink'
+              : 'border border-hairline bg-surface text-ink-secondary hover:border-brand hover:text-brand',
           ].join(' ')}
         >
           {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
@@ -87,12 +87,12 @@ export default function LessonFooterNav({
         {nextHref ? (
           <Link
             href={nextHref}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#089447] px-4 py-2.5 text-[13px] font-semibold text-white shadow-card transition-all hover:-translate-y-0.5 hover:bg-[#077a3c] hover:shadow-card-hover"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
             Next <ChevronRight size={15} />
           </Link>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-[13px] font-medium text-gray-400 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-500">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-surface px-4 py-2.5 text-[13px] font-medium text-ink-muted">
             End of subject
           </span>
         )}
@@ -106,31 +106,31 @@ export default function LessonFooterNav({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-            className="fixed bottom-5 right-5 z-50 w-[300px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+            className="fixed bottom-5 right-5 z-50 w-[300px] overflow-hidden rounded-xl border border-hairline bg-surface shadow-[0_8px_24px_rgba(31,30,27,.10),0_2px_6px_rgba(31,30,27,.05)] dark:shadow-none dark:ring-1 dark:ring-white/10"
           >
             <div className="flex items-start gap-3 p-4">
-              <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-[#f0faf4] text-[#089447] dark:bg-emerald-500/10 dark:text-emerald-400">
+              <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-ink">
                 <Sparkles size={19} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-bold text-[#0a0a0b] dark:text-white">
+                <p className="text-[14px] font-[650] text-ink">
                   +{award.xpAwarded} XP
                 </p>
-                <p className="text-[12px] text-gray-500 dark:text-zinc-400">Lesson complete · {award.totalXp.toLocaleString()} XP total</p>
+                <p className="text-[12px] text-ink-secondary">Lesson complete · {award.totalXp.toLocaleString()} XP total</p>
                 {award.leveledUp && (
-                  <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-[#089447] px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                  <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-brand px-1.5 py-0.5 text-[11px] font-semibold text-white">
                     <ArrowUp size={11} /> Level {award.level} · {award.levelTitle}
                   </p>
                 )}
               </div>
-              <button onClick={() => setAward(null)} className="text-gray-300 transition-colors hover:text-gray-500 dark:text-zinc-500 dark:hover:text-zinc-300">
+              <button onClick={() => setAward(null)} className="text-ink-faint transition-colors hover:text-ink-secondary">
                 <X size={15} />
               </button>
             </div>
 
             {award.newBadges.length > 0 && (
-              <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-800/40">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-zinc-500">
+              <div className="border-t border-hairline bg-surface-soft px-4 py-3">
+                <p className="mb-2 text-[10px] font-[650] uppercase tracking-widest text-ink-muted">
                   {award.newBadges.length === 1 ? 'Badge unlocked' : 'Badges unlocked'}
                 </p>
                 <div className="space-y-1.5">
@@ -141,7 +141,7 @@ export default function LessonFooterNav({
                         <span className={`grid h-7 w-7 place-items-center rounded-lg ${t.bg} ${t.text} ring-1 ${t.ring}`}>
                           <BadgeIcon name={b.icon} size={15} />
                         </span>
-                        <span className="text-[12.5px] font-semibold text-gray-700 dark:text-zinc-300">{b.label}</span>
+                        <span className="text-[12.5px] font-semibold text-ink-secondary">{b.label}</span>
                       </div>
                     )
                   })}

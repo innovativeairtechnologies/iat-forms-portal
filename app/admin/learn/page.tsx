@@ -54,7 +54,7 @@ export default async function LearnHomePage() {
         title={`${greeting(hourET)}${firstName ? `, ${firstName}` : ''}`}
         subtitle={
           hasProgress
-            ? <>You&apos;ve completed <span className="font-semibold text-zinc-700 dark:text-zinc-200">{stats!.overallPct}%</span> of the library — {stats!.lessonsCompleted} of {stats!.totalLessons} lessons. Keep it up.</>
+            ? <>You&apos;ve completed <span className="font-semibold text-ink-secondary">{stats!.overallPct}%</span> of the library — {stats!.lessonsCompleted} of {stats!.totalLessons} lessons. Keep it up.</>
             : <>Welcome to IAT Learn — {totals.lessons} lessons across {categories.length} categories. Pick one to begin.</>
         }
         actions={
@@ -68,11 +68,11 @@ export default async function LearnHomePage() {
       {/* ── Browse ─────────────────────────────────────────────────── */}
       <section>
         <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 className="text-[18px] font-bold tracking-tight text-[#0a0a0b] dark:text-white">Browse the library</h2>
-          <div className="hidden items-center gap-5 text-[12.5px] text-gray-500 dark:text-zinc-400 sm:flex">
-            <span><span className="font-semibold text-[#089447] dark:text-emerald-400">{categories.length}</span> categories</span>
-            <span><span className="font-semibold text-[#089447] dark:text-emerald-400">{totals.modules}</span> subjects</span>
-            <span><span className="font-semibold text-[#089447] dark:text-emerald-400">{totals.lessons}</span> lessons</span>
+          <h2 className="text-[18px] font-[650] tracking-tight text-ink">Browse the library</h2>
+          <div className="hidden items-center gap-5 text-[12.5px] text-ink-secondary sm:flex">
+            <span><span className="font-semibold text-brand">{categories.length}</span> categories</span>
+            <span><span className="font-semibold text-brand">{totals.modules}</span> subjects</span>
+            <span><span className="font-semibold text-brand">{totals.lessons}</span> lessons</span>
           </div>
         </div>
         <CategoryGrid categories={categories} progress={progress} />

@@ -23,33 +23,34 @@ export default function CategoryCard({
   return (
     <Link
       href={`/admin/learn/${category.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-[#b9ebce] hover:shadow-card-hover dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none dark:hover:border-zinc-700"
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-hairline bg-surface p-5 transition-all duration-200 hover:border-hairline-strong"
     >
-      {/* hover accent bar */}
-      <span className="absolute inset-x-0 top-0 h-0.5 scale-x-0 bg-gradient-to-r from-[#089447] to-[#44c07d] transition-transform duration-300 group-hover:scale-x-100" />
-
+      {/* The scale-in brand accent bar that used to sit here is gone: DESIGN §2.3
+          reserves green for the single primary action, focus and active state —
+          never decoration. The border promoting to hairline-strong on hover is
+          the affordance now. */}
       <div className="mb-4 flex items-center justify-between">
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#f0faf4] text-[#089447] transition-colors group-hover:bg-[#089447] group-hover:text-white dark:bg-emerald-500/10 dark:text-emerald-400">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-soft text-brand transition-colors group-hover:bg-brand group-hover:text-white">
           <LearnIcon name={category.icon} size={21} />
         </div>
         {done ? (
-          <CheckCircle2 size={18} className="text-[#089447]" />
+          <CheckCircle2 size={18} className="text-brand" />
         ) : (
           <ArrowRight
             size={17}
-            className="text-gray-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#089447] dark:text-zinc-500"
+            className="text-ink-faint transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-brand"
           />
         )}
       </div>
 
-      <h3 className="text-[15.5px] font-semibold tracking-tight text-[#0a0a0b] dark:text-white">{category.name}</h3>
+      <h3 className="text-[15.5px] font-semibold tracking-tight text-ink">{category.name}</h3>
       {category.description && (
-        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-gray-500 dark:text-zinc-400">
+        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-ink-secondary">
           {category.description}
         </p>
       )}
 
-      <div className="mt-4 flex items-center gap-3.5 text-[12px] font-medium text-gray-400 dark:text-zinc-500">
+      <div className="mt-4 flex items-center gap-3.5 text-[12px] font-medium text-ink-muted">
         <span className="flex items-center gap-1">
           <Layers size={12.5} /> {category.moduleCount} {category.moduleCount === 1 ? 'subject' : 'subjects'}
         </span>
@@ -64,13 +65,13 @@ export default function CategoryCard({
       {showProgress && (
         <div className="mt-3.5">
           <div className="mb-1 flex items-center justify-between text-[11px] font-medium">
-            <span className={done ? 'text-[#089447] dark:text-emerald-400' : 'text-gray-400 dark:text-zinc-500'}>
+            <span className={done ? 'text-brand' : 'text-ink-muted'}>
               {done ? 'Completed' : `${progress!.completed}/${progress!.total} done`}
             </span>
-            <span className="tabular-nums text-gray-400 dark:text-zinc-500">{progress!.pct}%</span>
+            <span className="tabular-nums text-ink-muted">{progress!.pct}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-zinc-800">
-            <div className="h-full rounded-full bg-gradient-to-r from-[#089447] to-[#44c07d]" style={{ width: `${progress!.pct}%` }} />
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-strong">
+            <div className="h-full rounded-full bg-brand" style={{ width: `${progress!.pct}%` }} />
           </div>
         </div>
       )}
