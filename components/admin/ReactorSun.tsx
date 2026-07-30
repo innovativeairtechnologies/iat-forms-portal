@@ -7,13 +7,6 @@
 // document ("FEED ME" mode) the surface boils harder, faster, and brighter, and
 // an absorb flash blooms it out for a beat.
 //
-// It is also a DESICCANT ROTOR, not a generic star: it turns about the axis
-// facing you (a wheel, not a planet), and a reactivation sector fixed in the
-// housing burns white-gold while the matrix turns through it — the two-sector
-// rotor face IAT sells, with the sector widening as Jerry regenerates. The
-// geometry lives in ROTOR below; every term is scaled by ROTOR.regen, so
-// setting it to 0 renders the plain plasma star this started as.
-//
 // Rendered with react-three-fiber (already a dependency via the SRV 3D scene).
 // Import with next/dynamic ssr:false (r3f gotcha), give the wrapper an explicit
 // size (Canvas fills it), and pass a WebGL fallback via <Canvas fallback>.
@@ -28,20 +21,6 @@ type SunProps = {
   /** Bump this counter to trigger an absorb flash. */
   flash: number
 }
-
-// Rotor geometry, dialled in against the real wheels we sell. Set regen to 0 and
-// every term below drops out — the render is the plain plasma star again.
-const ROTOR = {
-  regen: 1.2,      // reactivation heat (0 = off)
-  centerDeg: 46,   // where the sector sits on the face
-  widthDeg: 84,    // idle sector width; widens with activity
-  trailDeg: 0,     // 0 = flat carry-over to the opposite seal (two-sector face)
-  softDeg: 19,     // seal softness
-  hub: 0,          // 0 = full sector to the centre
-  faceSpin: 0.4,   // rad/s about the view axis — the wheel turning
-  tumble: 0.1,     // residual off-axis drift, so it isn't a flat pinwheel
-}
-const D2R = Math.PI / 180
 
 // ── GLSL ─────────────────────────────────────────────────────────────────────
 // Ashima/IQ simplex 3D noise (public domain) + fbm helpers, shared by both shaders.
@@ -128,18 +107,10 @@ const SUN_FRAG = /* glsl */ `
 uniform float uTime;
 uniform float uActivity;
 uniform float uFlash;
-uniform float uRegen;
-uniform float uRegenCenter;
-uniform float uRegenWidth;
-uniform float uRegenTrail;
-uniform float uRegenSoft;
-uniform float uRegenHub;
 varying vec3 vPos;
 varying vec3 vWorldPos;
 varying vec3 vWorldNormal;
 ${NOISE_GLSL}
-#define PI 3.14159265359
-#define TWO_PI 6.28318530718
 void main() {
   float t = uTime * (0.42 + uActivity * 0.75);
   // Domain-warped fbm — the "molten convection" look.
@@ -155,33 +126,6 @@ void main() {
   temp = pow(temp, 1.35 - uActivity * 0.3);
   temp = clamp(temp + uActivity * 0.10 + uFlash * 0.22, 0.0, 1.0);
 
-  // ── Reactivation sector ──────────────────────────────────────────────────
-  // On a real desiccant wheel the hot sector is fixed in the HOUSING and the
-  // matrix turns through it, so this is computed in WORLD space: it stays put
-  // on screen while the plasma flows through it. Widens while Jerry reads.
-  float ang    = atan(vWorldPos.y, vWorldPos.x);
-  float dOff   = mod(ang - uRegenCenter + PI, TWO_PI) - PI;
-  float halfW  = uRegenWidth * (1.0 + uActivity * 0.55) * 0.5;
-  float inDuct = smoothstep(halfW + uRegenSoft, halfW - uRegenSoft * 0.5, abs(dOff));
-  // Carry-over past the exit seal. uRegenTrail = 0 means no falloff at all — a
-  // flat carry round to the opposite seal, which is what produces the
-  // two-sector rotor face. Both this and the hub below are branch-guarded:
-  // smoothstep() with equal edges divides by zero, which is UNDEFINED in GLSL
-  // (it happens to render correctly on some drivers and NaNs on others).
-  float past     = step(0.0, dOff - halfW);
-  float trailLen = uRegenTrail * (1.0 + uActivity * 0.6);
-  float trail    = trailLen > 0.0 ? smoothstep(trailLen, 0.0, dOff - halfW) * past : past;
-  // Hub cut — uRegenHub = 0 means a full sector right to the centre.
-  float rad  = length(vWorldPos.xy) / 1.06;   // 1.06 = the sun mesh scale
-  float band = uRegenHub > 0.0 ? smoothstep(uRegenHub * 0.35, uRegenHub, rad) : 1.0;
-  // A duct presses on the FACE, not the rim; and riding the convection keeps
-  // the heat reading as plasma instead of a decal pasted on the sphere.
-  float faceness = pow(clamp(normalize(vWorldNormal).z, 0.0, 1.0), 0.55);
-  float tex   = 0.40 + 0.60 * clamp(n * 0.5 + 0.5, 0.0, 1.0);
-  float regen = max(inDuct, trail * 0.5) * band * faceness * tex * uRegen;
-
-  temp = clamp(temp + regen * (0.6 + uActivity * 0.5), 0.0, 1.0);
-
   // Molten IAT ramp: deep teal → emerald → light green → white-gold at the peaks.
   vec3 cDeep  = vec3(0.012, 0.169, 0.145); // #043b2 deep teal
   vec3 cMid   = vec3(0.023, 0.478, 0.341); // #067a57 emerald
@@ -190,9 +134,6 @@ void main() {
   vec3 col = mix(cDeep, cMid, smoothstep(0.05, 0.45, temp));
   col = mix(col, cHot,  smoothstep(0.45, 0.74, temp));
   col = mix(col, cCore, smoothstep(0.74, 0.97, temp));
-
-  // Regen air runs gold — a touch of warmth inside the sector only.
-  col += vec3(0.26, 0.18, 0.04) * regen;
 
   // Crackle: thin white-hot filaments where the warp field pinches.
   float crack = smoothstep(0.62, 0.98, abs(fbm(p * 1.4 - warp + vec3(t * 0.2))));
@@ -255,12 +196,6 @@ function Sun({ charging, flash }: SunProps) {
       uTime: { value: Math.random() * 100 }, // random phase so every visit looks different
       uActivity: { value: 0 },
       uFlash: { value: 0 },
-      uRegen: { value: ROTOR.regen },
-      uRegenCenter: { value: ROTOR.centerDeg * D2R },
-      uRegenWidth: { value: ROTOR.widthDeg * D2R },
-      uRegenTrail: { value: ROTOR.trailDeg * D2R },
-      uRegenSoft: { value: ROTOR.softDeg * D2R },
-      uRegenHub: { value: ROTOR.hub },
     }),
     [],
   )
@@ -298,11 +233,8 @@ function Sun({ charging, flash }: SunProps) {
     if (!reduced) {
       uniforms.uTime.value += step
       if (sunRef.current) {
-        // Face-on: a wheel turning about the axis pointing at you, not a
-        // tumbling planet. The noise field is sampled in object space, so it
-        // sweeps around the face while the housing's hot sector stays put.
-        sunRef.current.rotation.z += step * ROTOR.faceSpin
-        sunRef.current.rotation.y += step * ROTOR.tumble
+        sunRef.current.rotation.y += step * 0.05
+        sunRef.current.rotation.x += step * 0.012
       }
     }
     // Ease activity toward its target; decay the flash.

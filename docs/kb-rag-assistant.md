@@ -128,28 +128,12 @@ approval:**
   Verified outside the auth wall via a throwaway shader harness: 0 GLSL compile
   errors; idle sampled deep emerald (textured), feed/flash states screenshot-
   confirmed.
-- **It reads as a desiccant rotor, not a generic star (2026-07-30).** Two additions,
-  both driven by the `ROTOR` constants block at the top of `ReactorSun.tsx` — set
-  `ROTOR.regen = 0` and the render is the plain plasma star again:
-  1. **Face-on rotation** — spins about `z` (the axis pointing at the viewer) with a
-     small residual `y` drift, so it turns like a wheel instead of tumbling like a
-     planet. The noise field is sampled in object space, so it sweeps around the face.
-  2. **A reactivation sector** fixed in **world** space, i.e. in the *housing* — the
-     way a real wheel works: the hot duct stays put on screen while the matrix turns
-     through it. Gives the two-sector rotor face (hot sector / carry-over / cool
-     process sector, divided by seal lines). Widens ~84°→108° and burns hotter with
-     `uActivity`, so the wheel visibly *regenerates* while Jerry reads.
-  The sector rides the convection noise (`tex`) and fades toward the limb
-  (`faceness`) so it reads as heat in the plasma rather than a decal on a sphere.
-  Values were dialled in against the real wheels IAT sells.
-  ⚠️ **`trailDeg` and `hub` are both 0, and both feed `smoothstep()`** — equal edges
-  divide by zero, which is **undefined in GLSL**. Both are branch-guarded
-  (`x > 0.0 ? smoothstep(...) : <explicit value>`); do not "simplify" the guards
-  away. Unguarded it renders correctly on some drivers and can NaN on others, and
-  the raw path was empirically shown to change behaviour under an unrelated
-  refactor. Verified by extracting the shipped GLSL and rendering it headlessly:
-  2 programs linked, 0 errors, and the guarded path is pixel-identical to the
-  unguarded one on the sphere.
+- **Themed as a desiccant rotor, then reverted (2026-07-30).** `d172a55` gave the
+  sun face-on rotation and a reactivation sector fixed in the housing (the
+  two-sector rotor face IAT sells); `d172a55`'s revert took it back out the same
+  day — **the plain sun is the preferred look.** Built, deployed, reviewed and
+  declined on taste, not on a defect, so don't re-propose it as new. `git show
+  d172a55` has the shader; the slider harness is in `claude-design/mockups/`.
 - **Bucket `kb-uploads`** was provisioned programmatically (private) — **no migration
   and no manual Storage step**. Verified end-to-end against the live pool: a
   synthesized policy doc was uploaded → transcribed → chunked → inserted →
