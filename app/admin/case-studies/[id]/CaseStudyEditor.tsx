@@ -128,6 +128,9 @@ export default function CaseStudyEditor({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [showClaims, setShowClaims] = useState(false)
+  // A refusal, not an error: the inputs can't support a study. Carries Claude's
+  // own reason so the fix is obvious instead of a shrug.
+  const [blocked, setBlocked] = useState<{ reason: string; fields: string[] } | null>(null)
 
   const locked = status === 'approved'
   const touch = () => { setDirty(true); setNotice('') }
@@ -184,6 +187,7 @@ export default function CaseStudyEditor({
 
   const generate = async () => {
     setError('')
+    setBlocked(null)
     if (missing.length) {
       setError(`Fill the required fields first: ${missing.slice(0, 4).join('; ')}${missing.length > 4 ? '…' : ''}`)
       return
@@ -195,6 +199,10 @@ export default function CaseStudyEditor({
       const res = await fetch(`/api/admin/case-studies/${initial.id}/generate`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) {
+        if (json.blocked?.reason) {
+          setBlocked({ reason: json.blocked.reason, fields: json.blocked.fields ?? [] })
+          return
+        }
         setError(json.error || 'Generation failed.')
         if (json.missing) setError(`Fill the required fields first: ${json.missing.slice(0, 4).join('; ')}`)
         return
@@ -517,6 +525,26 @@ export default function CaseStudyEditor({
 
             {/* ── RIGHT: the draft + review ────────────────────────────────── */}
             <div className="grid gap-5">
+              {blocked && (
+                <EditorCard
+                  tone="rose"
+                  title="Not enough to work from"
+                  caption="Claude declined to write this study rather than invent one — the inputs don't describe this customer's project."
+                >
+                  <p className="text-[13px] leading-relaxed text-ink whitespace-pre-wrap">{blocked.reason}</p>
+                  {blocked.fields.length > 0 && (
+                    <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[11.5px] text-ink-muted">
+                      Fields to fix:
+                      {blocked.fields.map((f) => (
+                        <code key={f} className="px-1.5 py-0.5 rounded bg-surface-soft border border-hairline-soft text-[10.5px] text-ink-secondary">{f}</code>
+                      ))}
+                    </p>
+                  )}
+                  <p className="mt-3 text-[11.5px] text-ink-faint">
+                    Retrying with the same inputs will land here again — edit the story fields on the left first.
+                  </p>
+                </EditorCard>
+              )}
               {!sections ? (
                 <EditorCard title="Draft">
                   <div className="py-10 text-center">

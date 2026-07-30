@@ -47,7 +47,21 @@ Return ONLY a valid JSON object. No markdown fences, no commentary. Exact struct
 
 "claims": every factual assertion in your prose, each with "source" naming the FACTS path it came from (e.g. "units[0].airflow", "project.outcome_after").
 "gaps": each place you wanted a fact FACTS doesn't contain. "section" is one of ${JSON.stringify([...SECTION_KEYS])}; "need" says what a human should add (e.g. "measured RH after startup", "project timeframe").
-Newlines inside section strings separate paragraphs.`
+Newlines inside section strings separate paragraphs.
+
+IF THE INPUTS ARE UNUSABLE, RETURN A BLOCK INSTEAD OF A STUDY.
+Sometimes FACTS can't support a case study at all — the project fields describe something other than this customer's project (internal process docs, boilerplate, placeholder text), they contradict the units, or they contain no project narrative. In that case do NOT write a study, do NOT invent one, and do NOT explain yourself in prose. Return exactly this shape instead:
+{ "blocked": { "reason": string, "fields": [string] } }
+- "reason": one or two plain sentences a salesperson can act on, naming what's wrong and what to put there instead. No preamble.
+- "fields": the FACTS paths at fault, e.g. ["project.context", "project.problem_before"].
+Use this ONLY for wholesale unusability. A single missing detail is a "gap", not a block.`
+
+/** First `{` to last `}` — rescues valid JSON that arrived wrapped in commentary. */
+function sliceOutermostObject(s: string): string | null {
+  const open = s.indexOf('{')
+  const close = s.lastIndexOf('}')
+  return open >= 0 && close > open ? s.slice(open, close + 1) : null
+}
 
 export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const auth = await requireCaseStudiesAuth()
@@ -85,7 +99,9 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
   try {
     const message = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 3000,
+      // Five sections + a claim per assertion + gaps runs long; 3000 truncated
+      // real studies mid-JSON, which surfaced as an unexplained parse failure.
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
@@ -94,18 +110,53 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
     })
 
     const raw = message.content[0]?.type === 'text' ? message.content[0].text : ''
-    const jsonStr = raw
+
+    // Truncation is its own failure — without this check a cut-off draft falls
+    // through to the prose branch below and shows the user half a sentence.
+    if (message.stop_reason === 'max_tokens') {
+      console.error('Case study generation hit max_tokens', { id, len: raw.length })
+      return NextResponse.json(
+        { error: 'The draft ran past its length limit. Trim the inputs (or the number of units) and try again.' },
+        { status: 502 }
+      )
+    }
+
+    let parsed: { sections?: Partial<Sections>; claims?: Claim[]; gaps?: Gap[]; blocked?: { reason?: string; fields?: string[] } } | null = null
+    const fenced = raw
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
       .replace(/```\s*$/i, '')
       .trim()
+    for (const candidate of [fenced, sliceOutermostObject(fenced)]) {
+      if (!candidate) continue
+      try { parsed = JSON.parse(candidate); break } catch { /* try the next shape */ }
+    }
 
-    let parsed: { sections?: Partial<Sections>; claims?: Claim[]; gaps?: Gap[] }
-    try {
-      parsed = JSON.parse(jsonStr)
-    } catch {
+    // Not JSON at all. Empirically this is what a refusal looks like when the
+    // model breaks format to explain itself — and its explanation is far more
+    // useful to the person than "malformed, try again" (which invites retrying
+    // identical bad inputs). Degrade into the blocked path, carrying its words.
+    if (!parsed) {
       console.error('Case study generation was not valid JSON:', raw.slice(0, 500))
+      const prose = raw.replace(/\s+/g, ' ').trim()
+      if (prose.length > 40) {
+        return NextResponse.json(
+          { error: "Claude wouldn't write a study from these inputs.", blocked: { reason: prose.slice(0, 600), fields: [] } },
+          { status: 422 }
+        )
+      }
       return NextResponse.json({ error: 'The draft came back malformed. Try again.' }, { status: 502 })
+    }
+
+    // The structured refusal — inputs that can't support a study at all.
+    if (parsed.blocked?.reason) {
+      return NextResponse.json(
+        {
+          error: "Claude wouldn't write a study from these inputs.",
+          blocked: { reason: String(parsed.blocked.reason), fields: Array.isArray(parsed.blocked.fields) ? parsed.blocked.fields.map(String).slice(0, 12) : [] },
+        },
+        { status: 422 }
+      )
     }
 
     // Normalize: every section present as a string, in order.

@@ -51,6 +51,32 @@ RLS on, service-role only). Named `marketing_calendar` rather than `marketing` b
 already a StaffRole. Not built on `deal_follow_ups`: those rows CASCADE when DryWare prunes a
 deal, which would silently delete marketing work. See `docs/marketing-calendar.md`.
 
+## 2026-07-30 — Case studies: a refusal is no longer reported as "malformed"
+
+First real click-through hit `The draft came back malformed. Try again.` — and that message was
+wrong in both halves. Claude hadn't malfunctioned: the study's context/problem/outcome fields held
+IAT's internal **fabrication-department** blurb while the unit described a cannabis facility, so it
+declined to weld those into a story. Having no JSON-shaped way to say "these inputs are unusable"
+(a `gap` covers a *missing* fact, not wholesale garbage), it broke format and explained in prose —
+which the route caught as a parse failure and replaced with a generic error. "Try again" was also
+actively wrong: retrying identical inputs fails identically (prod logs show 3 attempts in a minute).
+
+The anti-fabrication design worked exactly as intended; only the reporting was broken. Now:
+
+- **Refusal is a first-class outcome.** The prompt defines `{"blocked":{"reason","fields"}}` for
+  inputs that can't support a study; the route returns **422** with it and the editor renders a
+  rose "Not enough to work from" panel quoting Claude's reason, the offending FACTS paths, and a
+  note that retrying unchanged will land in the same place.
+- **The model's words are never swallowed.** If the response still isn't JSON, its prose is
+  surfaced *as* the blocked reason rather than discarded behind "malformed".
+- **JSON extraction hardened** — falls back to first `{` … last `}`, so commentary-wrapped JSON parses.
+- **Truncation is its own error.** `max_tokens` 3000 → 8000 (five sections + a claim per assertion
+  ran tight), and `stop_reason === 'max_tokens'` now reports a length problem instead of
+  masquerading as a parse failure.
+
+Verified against the exact prod inputs that failed: the model now returns a structured block naming
+`project.context`, `project.problem_before`, `project.outcome_after` and what to put there instead.
+
 ## 2026-07-30 — Case Studies: AI-drafted, human-approved (migration 072)
 
 New `/admin/case-studies` (Sales nav group). Sales starts a study fresh from the list or from a
