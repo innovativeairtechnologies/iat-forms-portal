@@ -53,6 +53,14 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/permissions',     section: 'System',  label: 'Permissions' },
   // US Rotors
   { prefix: '/admin/us-rotors',       section: 'US Rotors', label: 'Orders' },
+  // Training (/admin/learn/*) — IAT Learn, open to every admin-surface role.
+  // The dynamic category/module/lesson routes have no static prefix, so they
+  // fall back to the '/admin/learn' entry and append their record crumbs via
+  // <PageChrome record={[...]}>.
+  { prefix: '/admin/learn/me',          section: 'Training', label: 'My Learning' },
+  { prefix: '/admin/learn/leaderboard', section: 'Training', label: 'Leaderboard' },
+  { prefix: '/admin/learn-content',     section: 'Training', label: 'Manage content' },
+  { prefix: '/admin/learn',             section: 'Training', label: 'Browse' },
   // Self-service (/admin/me/*) — personal pages open to every admin-surface role
   { prefix: '/admin/me/time-off',     section: 'Self-service', label: 'Time Off' },
   { prefix: '/admin/me/forms',        section: 'Self-service', label: 'Submit a Form' },

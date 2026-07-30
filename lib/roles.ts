@@ -117,6 +117,17 @@ export type Perm =
   // (migration 072). Sales drafts, marketing approves (the approve action is
   // additionally role-gated to marketing/admin in requireCaseStudiesAuth).
   | 'case_studies'
+  // /admin/learn-content — IAT Learn authoring (the content tree + lesson
+  // editor). The LEARNER surface (/admin/learn) is open to every admin-surface
+  // role via OPEN_ADMIN_PREFIXES and needs no perm; this gates authoring only.
+  // Admin-only by omission from the scoped-role defaults below, so no migration
+  // or seed is needed. It is also on the non-delegatable list: the authoring
+  // layout and all four app/api/learn/** write routes use the strict
+  // getAdminUser(), so granting this to a scoped role would produce a broken
+  // half-grant (nav link shows, middleware passes, the layout bounces).
+  // Opening authoring to HR later means removing it from that list AND moving
+  // the layout + those API routes onto this perm.
+  | 'learn_admin'
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -150,14 +161,18 @@ export const PERM_LABELS: Record<Perm, string> = {
   home_content: 'Company Home',
   case_studies: 'Case Studies',
   marketing_calendar: 'Marketing Calendar',
+  learn_admin: 'Learn — manage content',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
 // The rest are privilege-sensitive and stay admin-only: 'permissions' (granting
 // it would let a scoped role edit access — a privilege-escalation hole),
 // 'customer_jerry' (exposes a customer's data) and 'knowledge' (edits the RAG
-// pool). They render locked (admin-only) in the matrix and are rejected server-side.
-export const NON_DELEGATABLE_PERMS: Perm[] = ['permissions', 'customer_jerry', 'knowledge']
+// pool). 'learn_admin' is here for a different reason — not privilege, but
+// consistency: its layout and API routes use the strict getAdminUser(), so a
+// grant would be a half-grant that dead-ends. See the Perm comment above.
+// They render locked (admin-only) in the matrix and are rejected server-side.
+export const NON_DELEGATABLE_PERMS: Perm[] = ['permissions', 'customer_jerry', 'knowledge', 'learn_admin']
 
 /** A role → granted-perms override, as stored in the DB (migration 045). */
 export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
@@ -299,7 +314,16 @@ export function landingForRole(role: Role | null): string {
 // admin shell. Open to any admin-surface role, like /admin/home. The perm-gated
 // management copies (/admin/requests, /admin/employee-forms, /admin/org-chart,
 // /admin/tools) are unaffected.
-const OPEN_ADMIN_PREFIXES = ['/admin/profile', '/admin/home', '/admin/me']
+// '/admin/learn' is the IAT Learn training portal, ported off '/learn'. Open to
+// every admin-surface role — training is for everyone, and it carried no perm on
+// its old path either.
+//
+// ⚠️ requiredPermForPath below checks THIS list first and returns null
+// unconditionally — it does not compete on prefix length with ADMIN_PATH_PERMS.
+// So a gated leaf can never live under an open prefix: any
+// { prefix: '/admin/learn/…', perm } entry would be silently dead code. That is
+// exactly why Learn AUTHORING sits at the sibling '/admin/learn-content'.
+const OPEN_ADMIN_PREFIXES = ['/admin/profile', '/admin/home', '/admin/me', '/admin/learn']
 
 // Longest matching prefix wins. The bare '/admin' catch-all maps to 'dashboard'
 // (admin-only), so ANY /admin/* route not explicitly listed here is fail-closed
@@ -359,6 +383,13 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // no-login surface the floor scans into. Adding /board here would break it.
   { prefix: '/admin/production', perm: 'production_board' },
   { prefix: '/admin/home-content', perm: 'home_content' },
+  // Learn authoring. MUST be listed: an unmapped /admin/* path falls back to
+  // 'dashboard', which every scoped role holds, so omitting this would OPEN the
+  // authoring surface rather than close it. Deliberately NOT nested under
+  // '/admin/learn' — see the OPEN_ADMIN_PREFIXES note above. matchesPrefix needs
+  // an exact hit or a trailing '/', so '/admin/learn' never swallows
+  // '/admin/learn-content' (same idiom as /admin/tools vs /admin/tool-crib).
+  { prefix: '/admin/learn-content', perm: 'learn_admin' },
 ]
 
 function matchesPrefix(pathname: string, prefix: string): boolean {

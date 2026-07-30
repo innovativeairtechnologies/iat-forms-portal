@@ -42,6 +42,17 @@ const nextConfig = {
       // /employee/login bookmarks working (query string, e.g. ?redirect=, is
       // forwarded automatically). Runs before middleware, so no route file needed.
       { source: '/employee/login', destination: '/login', permanent: true },
+      // IAT Learn moved into the admin shell. Platform-level like the rule above,
+      // so these run BEFORE middleware — no auth involved, and a login round-trip
+      // carrying ?redirect=/learn... still lands on the new path.
+      //
+      // ORDER IS LOAD-BEARING: Next matches top-down, and '/learn/:path*' also
+      // matches the authoring subtree, so the specific rules must come first and
+      // the catch-all must come last.
+      { source: '/learn/admin', destination: '/admin/learn-content', permanent: true },
+      { source: '/learn/admin/:path*', destination: '/admin/learn-content/:path*', permanent: true },
+      { source: '/learn', destination: '/admin/learn', permanent: true },
+      { source: '/learn/:path*', destination: '/admin/learn/:path*', permanent: true },
     ]
   },
   async headers() {

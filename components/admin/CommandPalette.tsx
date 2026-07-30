@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
-  MessageCircle, KeyRound, Wrench, Map as MapIcon, Megaphone,
+  MessageCircle, KeyRound, Wrench, Map as MapIcon, Megaphone, GraduationCap,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -57,6 +57,12 @@ const STATIC: Item[] = [
   { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability', perm: 'audit' },
   { id: 'nav-perms',   label: 'Permissions',      group: 'Go to', icon: KeyRound,        href: '/admin/permissions', keywords: 'roles access control matrix toggles', perm: 'permissions' },
   { id: 'nav-tools',   label: 'Internal Apps',    group: 'Go to', icon: Wrench,          href: '/admin/tools', keywords: 'tools apps launcher burner selection duct traverse calculator voltage field', perm: 'tools' },
+  // Training (IAT Learn). The three learner entries are ungated — '/admin/learn'
+  // is in OPEN_ADMIN_PREFIXES, so every admin-surface role can reach them.
+  { id: 'nav-learn',   label: 'Training',         group: 'Go to', icon: GraduationCap,   href: '/admin/learn', keywords: 'learn iat learn training courses lessons onboarding trainual library safety' },
+  { id: 'nav-learn-me', label: 'My Learning',     group: 'Go to', icon: GraduationCap,   href: '/admin/learn/me', keywords: 'learn progress xp level streak badges my training' },
+  { id: 'nav-learn-lb', label: 'Learn Leaderboard', group: 'Go to', icon: TrendingUp,    href: '/admin/learn/leaderboard', keywords: 'learn leaderboard ranking xp training' },
+  { id: 'nav-learn-admin', label: 'Manage course content', group: 'Go to', icon: GraduationCap, href: '/admin/learn-content', keywords: 'learn admin author lessons modules categories publish edit training content', perm: 'learn_admin' },
   { id: 'act-newform', label: 'Create a new form',           group: 'Actions', icon: Plus,       href: '/admin/forms/new', keywords: 'add build', perm: 'forms' },
   { id: 'act-aiform',  label: 'Build a form with AI',        group: 'Actions', icon: Sparkles,   href: '/admin/forms/ai', keywords: 'generate claude pdf import', perm: 'forms' },
   { id: 'act-unread',  label: 'Review unread submissions',   group: 'Actions', icon: Inbox,      href: '/admin/submissions?is_read=false', perm: 'submissions' },

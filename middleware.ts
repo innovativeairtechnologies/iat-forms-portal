@@ -116,12 +116,14 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // ── /learn/* (shared auth; admin-gating handled in the /learn/admin layout) ─
-  if (pathname.startsWith('/learn')) {
-    if (!user) return toLogin()
-    if (role === 'customer') return redirectTo(new URL('/customer', request.url))
-    return supabaseResponse
-  }
+  // NOTE: IAT Learn moved to /admin/learn (+ /admin/learn-content for authoring),
+  // so it is covered by the /admin block above — the learner pages via
+  // OPEN_ADMIN_PREFIXES, authoring via the 'learn_admin' entry in
+  // ADMIN_PATH_PERMS. Old /learn/* URLs are handled by next.config.js redirects,
+  // which run BEFORE middleware. The '/learn/:path*' matcher entry was removed
+  // with this block: keeping it without the block would let any /learn/* request
+  // that dodged the redirect fall through to the bare `return supabaseResponse`
+  // at the end of this function — i.e. ungated.
 
   // ── /employee/* (skip public entry points) ────────────────────────────────
   // Note: /employee/login is consolidated to /login via a next.config redirect
@@ -187,7 +189,6 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/employee/:path*',
-    '/learn/:path*',
     '/customer/:path*',
     '/tools/:path*',
     '/tool-crib',

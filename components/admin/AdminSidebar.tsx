@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
   Users, Bot, DollarSign, Sun, Moon, Wrench, Home, UserRound, Megaphone,
+  GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -71,6 +72,20 @@ const NAV_PARENTS: NavParent[] = [
       // Open apps launcher. Hidden for `tools` holders, who get the richer top-level
       // "Internal Apps" (→ /admin/tools, with Presentations) — so the label never doubles.
       { href: '/admin/me/apps', label: 'Internal Apps', hideIfPerm: 'tools' },
+    ],
+  },
+  // Training — IAT Learn, ported off /learn. Sits here next to Self-service
+  // because both are the OPEN, every-employee groups; everything below is
+  // perm-gated work. The three learner items carry no perm ('/admin/learn' is in
+  // OPEN_ADMIN_PREFIXES); only authoring is gated.
+  {
+    label: 'Training',
+    icon: GraduationCap,
+    children: [
+      { href: '/admin/learn', label: 'Browse' },
+      { href: '/admin/learn/me', label: 'My Learning' },
+      { href: '/admin/learn/leaderboard', label: 'Leaderboard' },
+      { href: '/admin/learn-content', label: 'Manage content', perm: 'learn_admin' },
     ],
   },
   {
@@ -238,8 +253,21 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders, drafts: draftCount }
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const isChildActive = (c: NavChild) => pathname.startsWith(c.href)
+  // An exact hit, or a real path segment below it — never a raw string prefix, so
+  // '/admin/learn' does not claim '/admin/learn-content'. Same rule as
+  // matchesPrefix in lib/roles.ts and crumbsFor in app/admin/crumbs.ts.
+  const matchesNav = (href: string) => pathname === href || pathname.startsWith(href + '/')
+  const isChildActive = (c: NavChild) => matchesNav(c.href)
   const activeParent = NAV_PARENTS.find(p => p.children.some(isChildActive))?.label ?? null
+
+  // Which ONE child is highlighted: longest match wins. So /admin/learn/me
+  // highlights "My Learning" rather than also lighting "Browse", while a lesson
+  // URL (/admin/learn/<cat>/<mod>/<lesson>) still highlights "Browse".
+  // NB: an `exact` flag on Browse would instead leave lesson pages matching NO
+  // child — which nulls activeParent, so the group loses its rail AND stops
+  // force-opening (see the effect below). Longest-match avoids both.
+  const selectedChildHref = (children: NavChild[]) =>
+    children.filter(isChildActive).sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null
 
   // Expanded parents: user toggles persist across reloads; the parent that owns
   // the current page is always forced open. localStorage is read in an effect
@@ -338,6 +366,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
         if (children.length === 0 && !(isSystem && canPreview)) return null
         const isOpen = open.includes(parent.label)
         const hasActive = parent.label === activeParent
+        const selectedHref = selectedChildHref(children)
         const collapsedCount = children.reduce((n, c) => n + (c.badge ? counts[c.badge] : 0), 0)
         return (
           <div key={parent.label} className="mt-0.5">
@@ -365,7 +394,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
             {isOpen && (
               <div className="pb-1">
                 {children.map(child => {
-                  const active = isChildActive(child)
+                  const active = child.href === selectedHref
                   return (
                     <Link
                       key={child.href}
