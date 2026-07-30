@@ -3,7 +3,7 @@ import { anthropic } from '@/lib/anthropic'
 import { requireCaseStudiesAuth } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
-  buildFacts, checkNumbers, missingForGenerate, SECTION_KEYS,
+  buildFacts, checkNumbers, findDisclosureLeaks, missingForGenerate, SECTION_KEYS,
   type CaseStudy, type CaseStudyUnit, type Claim, type Gap, type Sections,
 } from '@/lib/case-studies'
 
@@ -48,6 +48,12 @@ Return ONLY a valid JSON object. No markdown fences, no commentary. Exact struct
 "claims": every factual assertion in your prose, each with "source" naming the FACTS path it came from (e.g. "units[0].airflow", "project.outcome_after").
 "gaps": each place you wanted a fact FACTS doesn't contain. "section" is one of ${JSON.stringify([...SECTION_KEYS])}; "need" says what a human should add (e.g. "measured RH after startup", "project timeframe").
 Newlines inside section strings separate paragraphs.
+
+ANONYMITY (only when FACTS.customer.disclosure is "anonymized"):
+The identifying fields are already withheld from you, but the project text a person typed may still name things. Add a fourth key:
+"disclosure_risks": [ { "detail": string, "where": string } ]
+List any specific detail in FACTS.project or in your own draft that could identify this customer despite the anonymization — a city or street, a facility or brand name, a person's name, a licence number, or a circumstance distinctive enough to single them out. "detail" quotes or names the specific thing; "where" is the field or section it appears in.
+Do NOT remove these from your prose and do NOT soften them — write naturally and just list them. A human decides what to cut. Empty array when there is nothing identifying. Omit this key entirely when disclosure is "named".
 
 IF THE INPUTS ARE UNUSABLE, RETURN A BLOCK INSTEAD OF A STUDY.
 Sometimes FACTS can't support a case study at all — the project fields describe something other than this customer's project (internal process docs, boilerplate, placeholder text), they contradict the units, or they contain no project narrative. In that case do NOT write a study, do NOT invent one, and do NOT explain yourself in prose. Return exactly this shape instead:
@@ -121,7 +127,13 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
       )
     }
 
-    let parsed: { sections?: Partial<Sections>; claims?: Claim[]; gaps?: Gap[]; blocked?: { reason?: string; fields?: string[] } } | null = null
+    let parsed: {
+      sections?: Partial<Sections>
+      claims?: Claim[]
+      gaps?: Gap[]
+      disclosure_risks?: { detail?: string; where?: string }[]
+      blocked?: { reason?: string; fields?: string[] }
+    } | null = null
     const fenced = raw
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
@@ -175,9 +187,38 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
     const gaps: Gap[] = Array.isArray(parsed.gaps)
       ? parsed.gaps
           .filter((g): g is Gap => !!g && typeof g.need === 'string')
-          .map((g) => ({ section: String(g.section ?? ''), need: g.need, resolved: false }))
+          .map((g) => ({ section: String(g.section ?? ''), need: g.need, kind: 'input' as const, resolved: false }))
           .slice(0, 50)
       : []
+
+    // Anonymity risks, from two independent passes that catch different things:
+    //  • findDisclosureLeaks — exact matches on identifiers we HOLD (customer
+    //    name, site, serials). Mechanical, no false positives.
+    //  • disclosure_risks — what only a reader can spot: a city, a person, a
+    //    facility name someone typed into the story fields that we have no
+    //    record of. The model reads it anyway, so it may as well report it.
+    // Neither scrubs anything; both block approval until a human clears them.
+    const leaks = findDisclosureLeaks(study, units)
+    const reported: Gap[] = (study.customer_disclosure === 'anonymized' && Array.isArray(parsed.disclosure_risks))
+      ? parsed.disclosure_risks
+          .filter((r): r is { detail: string; where?: string } => !!r && typeof r.detail === 'string' && r.detail.trim().length > 0)
+          .map((r) => ({
+            section: String(r.where ?? 'Draft'),
+            kind: 'disclosure' as const,
+            need: `${r.detail.trim()} — identifying detail in an Anonymized study. Edit it out, or switch the study to Named.`,
+            resolved: false,
+          }))
+          .slice(0, 20)
+      : []
+    // Drop model reports that restate a leak we already caught exactly.
+    const leakValues = leaks.map((l) => l.need.toLowerCase())
+    const dedupedReported = reported.filter(
+      (r) => !leakValues.some((lv) => {
+        const quoted = r.need.match(/[“"']([^“”"']{3,})[”"']/)?.[1]?.toLowerCase()
+        return quoted ? lv.includes(quoted) : false
+      })
+    )
+    gaps.push(...leaks, ...dedupedReported)
 
     // The mechanical check the prompt can't fake: every number in the prose
     // must trace to the inputs. Unmatched ones block approval until cleared.

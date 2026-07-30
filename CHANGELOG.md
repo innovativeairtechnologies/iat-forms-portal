@@ -70,6 +70,31 @@ RLS on, service-role only). Named `marketing_calendar` rather than `marketing` b
 already a StaffRole. Not built on `deal_follow_ups`: those rows CASCADE when DryWare prunes a
 deal, which would silently delete marketing work. See `docs/marketing-calendar.md`.
 
+## 2026-07-30 — Case studies: anonymity risks are surfaced, not scrubbed
+
+Anonymized mode omits the customer name, serials and site from FACTS **structurally** — but it
+could never strip what a person typed into the free-text story fields. A test study set to
+Anonymized still produced "a licensed cannabis cultivator in Oxford, GA", because the city was in
+the context someone wrote. For a licensed operator, industry + city is effectively an ID.
+
+The toggle now flags rather than scrubs — silently deleting detail someone deliberately typed is
+its own failure mode, so the call stays with the human. Two independent passes, because they catch
+different things:
+
+- **`findDisclosureLeaks` (deterministic).** Exact matches on identifiers we *hold* — customer
+  name (including the suffix-stripped form, so "Acme Pharma Inc" also catches "Acme Pharma"),
+  customer location, unit serials, unit sites — scanned across context / problem / outcome /
+  application / notes. No false positives; a 4-char floor keeps generic tokens from matching, and
+  overlapping identifiers report once.
+- **`disclosure_risks` (model-reported).** What only a reader can spot: a city, person, or facility
+  name we have no record of. In testing it flagged the city *and* reasoned that cannabis + specific
+  city + facility type is identifiable through public licensing records.
+
+Both land as blocking `kind: 'disclosure'` gaps in a distinct rose **"Anonymity risks"** panel
+(separate from the amber input-gap panel, so "missing fact" and "this names the customer" never
+read as the same problem). Clearing one is an explicit **"Accept anyway"**. `Gap.kind` is optional,
+so pre-existing rows keep counting as input gaps — no migration.
+
 ## 2026-07-30 — Case studies: a refusal is no longer reported as "malformed"
 
 First real click-through hit `The draft came back malformed. Try again.` — and that message was

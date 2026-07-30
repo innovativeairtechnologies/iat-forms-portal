@@ -33,8 +33,18 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
 
 /** A factual claim the model made, pointing at the input field it came from. */
 export type Claim = { statement: string; source: string }
-/** Something the model wanted but was forbidden to invent. Blocks approval until resolved. */
-export type Gap = { section: string; need: string; resolved?: boolean }
+/**
+ * Something a human must look at before this goes out. Two kinds, both blocking:
+ *   'input'      — a fact the model wanted and was forbidden to invent (default;
+ *                  older rows have no `kind` and read as this).
+ *   'disclosure' — identifying detail present in an ANONYMIZED study. Anonymized
+ *                  mode omits the customer name/serials/site from FACTS
+ *                  structurally, but it cannot strip what a person typed into the
+ *                  free-text story fields. We flag those rather than scrubbing
+ *                  them: silently deleting detail someone deliberately wrote is
+ *                  its own failure mode, so the call stays with the human.
+ */
+export type Gap = { section: string; need: string; kind?: 'input' | 'disclosure'; resolved?: boolean }
 /** A number in the prose that doesn't trace to any input. Blocks approval until cleared. */
 export type NumberFlag = { token: string; section: string; snippet: string; cleared?: boolean }
 
@@ -196,6 +206,80 @@ export function buildFacts(study: CaseStudy, units: CaseStudyUnit[]): Facts {
   }
 }
 
+// ─── The disclosure check (anonymized studies only) ──────────────────────────
+
+/**
+ * The identifying strings we actually hold on this record — precisely the ones
+ * buildFacts omits in anonymized mode. Matching these in free text is exact and
+ * false-positive-free, unlike guessing at proper nouns generally (the model
+ * handles that half; see the generate route's disclosure_risks).
+ */
+function knownIdentifiers(study: CaseStudy, units: CaseStudyUnit[]): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = []
+  // 4-char floor keeps short/generic tokens ("Co", "IAT") from matching prose.
+  const push = (value: string | null | undefined, label: string) => {
+    const v = (value ?? '').trim()
+    if (v.length >= 4) out.push({ value: v, label })
+  }
+
+  const company = (study.customers?.company_name ?? '').trim()
+  push(company, 'the customer’s name')
+  // "Acme Pharmaceuticals Inc" also matches a bare "Acme Pharmaceuticals".
+  const bare = company
+    .replace(/[,.]?\s*\b(inc|llc|l\.l\.c|corp|corporation|co|ltd|limited|company|group|holdings)\b\.?/gi, '')
+    .trim()
+  if (bare && bare.toLowerCase() !== company.toLowerCase()) push(bare, 'the customer’s name')
+
+  push(study.customers?.location, 'the customer’s location')
+  for (const u of units) {
+    push(u.serial_number, `a unit serial number`)
+    push(u.location, 'a unit’s site location')
+  }
+  return out
+}
+
+/**
+ * Free-text story fields that name something anonymized mode is supposed to
+ * hide. Returns blocking `disclosure` gaps — never edits the text.
+ */
+export function findDisclosureLeaks(study: CaseStudy, units: CaseStudyUnit[]): Gap[] {
+  if (study.customer_disclosure !== 'anonymized') return []
+
+  const fields: { label: string; text: string }[] = [
+    { label: 'Project context', text: study.context_input },
+    { label: 'The problem before', text: study.problem_before },
+    { label: 'The outcome after', text: study.outcome_after },
+  ]
+  units.forEach((u, i) => {
+    fields.push({ label: `Unit ${i + 1} application`, text: u.application })
+    if (u.notes) fields.push({ label: `Unit ${i + 1} notes`, text: u.notes })
+  })
+
+  // Longest first, so "Acme Pharmaceuticals Inc" wins over its suffix-stripped
+  // twin and the same leak isn't reported twice with different quoting.
+  const ids = knownIdentifiers(study, units).sort((a, b) => b.value.length - a.value.length)
+  const gaps: Gap[] = []
+  for (const f of fields) {
+    const hay = (f.text ?? '').toLowerCase()
+    if (!hay) continue
+    const matched: string[] = []
+    for (const id of ids) {
+      const needle = id.value.toLowerCase()
+      if (!hay.includes(needle)) continue
+      // Already covered by a longer identifier matched in this same field.
+      if (matched.some((m) => m.includes(needle))) continue
+      matched.push(needle)
+      gaps.push({
+        section: f.label,
+        kind: 'disclosure',
+        need: `names ${id.label} (“${id.value}”), but this study is Anonymized. Remove it from the input and regenerate, edit it out of the draft, or switch the study to Named.`,
+        resolved: false,
+      })
+    }
+  }
+  return gaps
+}
+
 // ─── The number check ─────────────────────────────────────────────────────────
 
 /** All digit-runs in a string, comma/space-insensitive ("5,000" → "5000"). */
@@ -234,8 +318,11 @@ export function checkNumbers(sections: Sections, facts: Facts): NumberFlag[] {
 export function approvalBlockers(study: CaseStudy): string[] {
   const blockers: string[] = []
   if (!study.edited_sections) blockers.push('No draft has been generated yet.')
-  const openGaps = (study.gaps ?? []).filter((g) => !g.resolved)
-  if (openGaps.length) blockers.push(`${openGaps.length} unresolved gap${openGaps.length === 1 ? '' : 's'} (missing input the draft needs).`)
+  const open = (study.gaps ?? []).filter((g) => !g.resolved)
+  const openInput = open.filter((g) => g.kind !== 'disclosure')
+  const openDisclosure = open.filter((g) => g.kind === 'disclosure')
+  if (openInput.length) blockers.push(`${openInput.length} unresolved gap${openInput.length === 1 ? '' : 's'} (missing input the draft needs).`)
+  if (openDisclosure.length) blockers.push(`${openDisclosure.length} unresolved anonymity risk${openDisclosure.length === 1 ? '' : 's'}.`)
   const openFlags = (study.flags ?? []).filter((f) => !f.cleared)
   if (openFlags.length) blockers.push(`${openFlags.length} unverified number${openFlags.length === 1 ? '' : 's'} in the prose.`)
   return blockers

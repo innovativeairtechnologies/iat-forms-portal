@@ -139,13 +139,25 @@ export default function CaseStudyEditor({
     () => missingForGenerate({ context_input: context, problem_before: before, outcome_after: after }, units),
     [context, before, after, units]
   )
-  const openGaps = gaps.filter((g) => !g.resolved)
+  // Keep the original index alongside each gap: the resolve toggle writes back
+  // by index into `gaps`, so the two panels must not renumber their rows.
+  const gapEntries = gaps.map((g, i) => ({ g, i }))
+  const inputGaps = gapEntries.filter((e) => e.g.kind !== 'disclosure')
+  const disclosureGaps = gapEntries.filter((e) => e.g.kind === 'disclosure')
+  const openInput = inputGaps.filter((e) => !e.g.resolved)
+  const openDisclosure = disclosureGaps.filter((e) => !e.g.resolved)
   const openFlags = flags.filter((f) => !f.cleared)
   const blockers: string[] = [
     ...(!sections ? ['No draft has been generated yet.'] : []),
-    ...(openGaps.length ? [`${openGaps.length} unresolved gap${openGaps.length === 1 ? '' : 's'}`] : []),
+    ...(openInput.length ? [`${openInput.length} unresolved gap${openInput.length === 1 ? '' : 's'}`] : []),
+    ...(openDisclosure.length ? [`${openDisclosure.length} unresolved anonymity risk${openDisclosure.length === 1 ? '' : 's'}`] : []),
     ...(openFlags.length ? [`${openFlags.length} unverified number${openFlags.length === 1 ? '' : 's'}`] : []),
   ]
+
+  const toggleGap = (i: number) => {
+    setGaps((gs) => gs.map((x, xi) => (xi === i ? { ...x, resolved: !x.resolved } : x)))
+    touch()
+  }
 
   // ── Persistence ────────────────────────────────────────────────────────────
 
@@ -564,21 +576,41 @@ export default function CaseStudyEditor({
                 </EditorCard>
               ) : (
                 <>
-                  {openGaps.length > 0 && (
-                    <EditorCard tone="amber" title={`Gaps — input the draft needs (${openGaps.length})`} caption="Claude wanted these facts and was forbidden to invent them. Add the input and regenerate, or mark one resolved if the prose already reads right without it.">
+                  {openDisclosure.length > 0 && (
+                    <EditorCard
+                      tone="rose"
+                      title={`Anonymity risks (${openDisclosure.length})`}
+                      caption="This study is Anonymized, but these details could still identify the customer. Nothing was removed for you — decide what to cut."
+                    >
                       <ul className="grid gap-2">
-                        {gaps.map((g, i) => (
+                        {disclosureGaps.map(({ g, i }) => (
+                          <li key={i} className={cn('flex items-start gap-2.5 text-[12.5px]', g.resolved && 'opacity-50')}>
+                            <EyeOff size={14} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                            <span className="flex-1 text-ink-secondary">
+                              <b className="font-semibold text-ink">{g.section}</b> {g.need}
+                            </span>
+                            {!locked && (
+                              <button type="button" onClick={() => toggleGap(i)} className="text-[11.5px] font-medium text-brand-ink hover:underline flex-shrink-0">
+                                {g.resolved ? 'Reopen' : 'Accept anyway'}
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </EditorCard>
+                  )}
+
+                  {openInput.length > 0 && (
+                    <EditorCard tone="amber" title={`Gaps — input the draft needs (${openInput.length})`} caption="Claude wanted these facts and was forbidden to invent them. Add the input and regenerate, or mark one resolved if the prose already reads right without it.">
+                      <ul className="grid gap-2">
+                        {inputGaps.map(({ g, i }) => (
                           <li key={i} className={cn('flex items-start gap-2.5 text-[12.5px]', g.resolved && 'opacity-50')}>
                             <AlertTriangle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
                             <span className="flex-1 text-ink-secondary">
                               <b className="font-semibold text-ink">{SECTION_LABELS[g.section as keyof typeof SECTION_LABELS] ?? g.section}:</b> {g.need}
                             </span>
                             {!locked && (
-                              <button
-                                type="button"
-                                onClick={() => { setGaps((gs) => gs.map((x, xi) => (xi === i ? { ...x, resolved: !x.resolved } : x))); touch() }}
-                                className="text-[11.5px] font-medium text-brand-ink hover:underline flex-shrink-0"
-                              >
+                              <button type="button" onClick={() => toggleGap(i)} className="text-[11.5px] font-medium text-brand-ink hover:underline flex-shrink-0">
                                 {g.resolved ? 'Reopen' : 'Mark resolved'}
                               </button>
                             )}
