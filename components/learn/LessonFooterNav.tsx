@@ -74,7 +74,8 @@ export default function LessonFooterNav({
           onClick={toggleComplete}
           disabled={saving}
           className={[
-            'inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all disabled:opacity-60',
+            'inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
             completed
               ? 'border border-brand bg-brand-soft text-brand-ink'
               : 'border border-hairline bg-surface text-ink-secondary hover:border-brand hover:text-brand',
