@@ -218,9 +218,17 @@ export async function getUserLearnStats(userId: string): Promise<UserLearnStats>
   })
 }
 
-// Lightweight header chip (no badges/category work) — runs on every /learn page.
+// Lightweight per-user snapshot — no badge or per-category work, just two
+// queries. Feeds the "Your training" card on Company Home (/admin/home and
+// /employee/home), which is now the one place a person sees their own progress
+// without opening Learn.
 export type LearnHeaderStats = {
-  totalXp: number; level: number; levelTitle: string; currentStreak: number; lessonsCompleted: number
+  totalXp: number; level: number; levelTitle: string; currentStreak: number
+  lessonsCompleted: number
+  /** Published lessons in the whole library — the denominator for `pct`. */
+  totalLessons: number
+  /** 0–100, rounded. 0 when the library is empty. */
+  pct: number
 }
 export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderStats> {
   const [{ data: lessons }, { data: progress }] = await Promise.all([
@@ -232,7 +240,13 @@ export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderSt
   for (const p of progress ?? []) { if (!min.has(p.lesson_id)) continue; xp += lessonXp(min.get(p.lesson_id)); count++ }
   const streak = computeStreak((progress ?? []).map(p => p.completed_at as string).filter(Boolean))
   const lvl = levelInfo(xp)
-  return { totalXp: xp, level: lvl.level, levelTitle: lvl.title, currentStreak: streak.current, lessonsCompleted: count }
+  const totalLessons = min.size
+  return {
+    totalXp: xp, level: lvl.level, levelTitle: lvl.title, currentStreak: streak.current,
+    lessonsCompleted: count,
+    totalLessons,
+    pct: totalLessons ? Math.round((count / totalLessons) * 100) : 0,
+  }
 }
 
 // Per-completion award for the lesson "Mark complete" toast: XP gained + any

@@ -18,5 +18,5 @@ export default async function EmployeeHome() {
 
   // The home renders its own top bar; the employee shell suppresses its
   // PortalTopBar on this route so there's just one (see EmployeeShell).
-  return <HomePage name={(emp?.name || user.email || '').trim()} profileHref="/employee/profile/edit" />
+  return <HomePage name={(emp?.name || user.email || '').trim()} profileHref="/employee/profile/edit" userId={user.id} />
 }

@@ -24,6 +24,7 @@ export default async function AdminHome() {
     <HomePage
       name={admin.displayName}
       profileHref="/admin/profile"
+      userId={admin.user.id}
       unreadCount={unread ?? 0}
       ticketCount={openTickets ?? 0}
     />

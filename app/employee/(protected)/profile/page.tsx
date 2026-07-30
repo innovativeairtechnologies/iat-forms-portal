@@ -88,7 +88,7 @@ export default async function EmployeeHome() {
               <HeroAction href="/employee/resources" icon={FileText} label="Submit a form" />
               <HeroAction href="/employee/directory" icon={Users} label="Team directory" />
               <HeroAction href="/employee/resources/tools" icon={Wrench} label="Tools & apps" />
-              <HeroAction href="/learn" icon={GraduationCap} label="Browse training" />
+              <HeroAction href="/admin/learn" icon={GraduationCap} label="Browse training" />
               <HeroAction href="/employee/profile/edit" icon={UserCog} label="Edit profile" />
             </>
           }
@@ -152,7 +152,7 @@ export default async function EmployeeHome() {
             <CardHead icon={<GraduationCap size={14} />} title="My Learning"
               action={hasLearn && learn!.currentStreak > 0
                 ? <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-orange-500"><Flame size={13} /> {learn!.currentStreak}-day streak</span>
-                : <Link href="/learn" className="text-[12px] font-medium text-zinc-500 transition-colors hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400">Open</Link>} />
+                : <Link href="/admin/learn" className="text-[12px] font-medium text-zinc-500 transition-colors hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400">Open</Link>} />
             {hasLearn ? (
               <div className="p-5">
                 <div className="flex items-baseline gap-2">
@@ -166,14 +166,14 @@ export default async function EmployeeHome() {
                   <span className="tabular-nums">{learn!.totalXp.toLocaleString()} XP</span>
                   <span className="tabular-nums">{learn!.lessonsCompleted} / {learn!.totalLessons} lessons · {learn!.overallPct}%</span>
                 </div>
-                <Link href="/learn/me" className="mt-4 inline-flex items-center gap-1 text-[12px] font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400">
+                <Link href="/admin/learn/me" className="mt-4 inline-flex items-center gap-1 text-[12px] font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400">
                   View my progress <ArrowRight size={12} />
                 </Link>
               </div>
             ) : (
               <div className="p-5">
                 <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Start your first lesson to earn XP, build a streak, and unlock badges.</p>
-                <Link href="/learn" className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400">
+                <Link href="/admin/learn" className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400">
                   Explore IAT Learn <ArrowRight size={12} />
                 </Link>
               </div>

@@ -60,7 +60,7 @@ const ALL_NAV_ITEMS: NavItem[] = NAV_SECTIONS.filter(s => !s.hidden).flatMap(s =
 const SEARCH_ITEMS: SearchItem[] = [
   ...ALL_NAV_ITEMS.map(i => ({ label: i.label, href: i.href })),
   { label: 'Edit profile', href: '/employee/profile/edit', hint: 'Account' },
-  { label: 'IAT Learn',    href: '/learn',                 hint: 'Training' },
+  { label: 'IAT Learn',    href: '/admin/learn',                 hint: 'Training' },
 ]
 
 // Breadcrumb for the top bar, derived from the route.

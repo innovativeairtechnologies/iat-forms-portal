@@ -561,7 +561,7 @@ function FeatureBody({ id, cards, paper }: { id: BoardCardId; cards: BoardCardDa
       return (
         <div className="flex h-full flex-col">
           <p className="text-[12px]" style={{ color: accent }}>Start your first lesson to earn XP and build a streak.</p>
-          <CardLink href="/learn" accent={accent}>Explore IAT Learn</CardLink>
+          <CardLink href="/admin/learn" accent={accent}>Explore IAT Learn</CardLink>
         </div>
       )
     }
@@ -584,7 +584,7 @@ function FeatureBody({ id, cards, paper }: { id: BoardCardId; cards: BoardCardDa
           <span>{l.totalXp.toLocaleString()} XP</span>
           <span>{l.lessonsCompleted}/{l.totalLessons} lessons</span>
         </div>
-        <CardLink href="/learn/me" accent={accent}>View my progress</CardLink>
+        <CardLink href="/admin/learn/me" accent={accent}>View my progress</CardLink>
       </div>
     )
   }

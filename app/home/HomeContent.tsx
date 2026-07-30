@@ -8,6 +8,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { FUN_FACTS, REFERRAL, type CoreValue } from '@/lib/home-content'
 import type { HomeData } from '@/lib/home-data'
+import type { LearnHeaderStats } from '@/lib/learn'
 import { StatusPill, type Tone } from '@/components/admin/list'
 import { PersonAvatar } from './home-ui'
 import { FunFact } from './FunFact'
@@ -165,13 +166,83 @@ function HeroLink({ href, icon: Icon, label, primary = false }: {
 
 const overline = 'text-[11px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500'
 
+/* ── "Your training" — the one personal strip on Company Home ─────────────────
+   Full-width, between the core-values band and the KPI row. Deliberately NOT a
+   second Card stacked inside the Row-A grid column: the local Card helper is
+   `h-full overflow-hidden` inside an `items-stretch` grid, so two of them in one
+   column both demand the stretched height and silently clip.
+
+   Nobody in production has completed a lesson yet (learn_progress was empty when
+   this shipped), so the ZERO STATE is the state essentially everyone sees first.
+   It reads as an invitation, not an empty dashboard. */
+function TrainingStrip({ learn, href }: { learn: LearnHeaderStats; href: string }) {
+  const started = learn.lessonsCompleted > 0
+
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:gap-6 sm:p-5 dark:border-stone-800 dark:bg-stone-900/40 dark:shadow-none">
+      <div className="flex min-w-0 flex-1 items-center gap-3.5">
+        <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+          <GraduationCap size={20} />
+        </span>
+        <div className="min-w-0">
+          <p className={overline}>Your training</p>
+          {started ? (
+            <p className="mt-1 text-[13.5px] leading-snug text-stone-600 dark:text-stone-300">
+              <span className="font-semibold text-stone-900 dark:text-white">Level {learn.level} · {learn.levelTitle}</span>
+              {' — '}{learn.lessonsCompleted} of {learn.totalLessons} lessons done.
+            </p>
+          ) : (
+            <p className="mt-1 text-[13.5px] leading-snug text-stone-600 dark:text-stone-300">
+              <span className="font-semibold text-stone-900 dark:text-white">{learn.totalLessons} lessons</span>
+              {' are waiting. Start anywhere — your progress saves as you go.'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {started && (
+        <div className="flex items-center gap-4 sm:gap-5">
+          {learn.currentStreak > 0 && (
+            <div className="text-center">
+              <p className="text-[19px] font-bold leading-none tabular-nums text-stone-900 dark:text-white">{learn.currentStreak}</p>
+              <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">day streak</p>
+            </div>
+          )}
+          <div className="text-center">
+            <p className="text-[19px] font-bold leading-none tabular-nums text-stone-900 dark:text-white">{learn.totalXp.toLocaleString()}</p>
+            <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">XP</p>
+          </div>
+          <div className="hidden w-32 sm:block">
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <span className="text-[11px] text-stone-400 dark:text-stone-500">Library</span>
+              <span className="text-[11px] font-semibold tabular-nums text-stone-600 dark:text-stone-300">{learn.pct}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${learn.pct}%` }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Link
+        href={href}
+        className="inline-flex h-9 flex-shrink-0 items-center gap-1.5 self-start rounded-lg bg-emerald-600 px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-emerald-700 sm:self-auto"
+      >
+        {started ? 'Keep going' : 'Start learning'} <ArrowRight size={14} />
+      </Link>
+    </section>
+  )
+}
+
 export function HomeContent({
-  greeting, dateET, firstName, funIdx, data, name, profileHref,
+  greeting, dateET, firstName, funIdx, data, name, profileHref, learn = null,
   unreadCount = 0, ticketCount = 0,
   coreValue, coreValueIndex, coreValueTotal,
 }: {
   greeting: string; dateET: string; firstName: string; funIdx: number; data: HomeData
   name: string; profileHref: string; unreadCount?: number; ticketCount?: number
+  /** Per-user Learn snapshot; null when there's no signed-in user id. */
+  learn?: LearnHeaderStats | null
   coreValue: CoreValue; coreValueIndex: number; coreValueTotal: number
 }) {
   const daysIncidentFree = Math.max(0, Math.floor((Date.now() - Date.parse(data.safetySince + 'T00:00:00')) / 864e5))
@@ -197,6 +268,13 @@ export function HomeContent({
   const self = onEmployeeShell
     ? { timeOff: '/employee/requests', forms: '/employee/resources', directory: '/employee/directory', apps: '/employee/resources/tools' }
     : { timeOff: '/admin/me/time-off', forms: '/admin/me/forms', directory: '/admin/me/directory', apps: '/admin/me/apps' }
+
+  // Learn is the one destination that is NOT surface-aware: it now lives only at
+  // /admin/learn (the old /learn 301s there). Every staff role reaches it —
+  // '/admin/learn' is in OPEN_ADMIN_PREFIXES. /employee/home is only ever the
+  // landing for a null/unknown-role account, which cannot enter /admin at all;
+  // such an account would need a role assigned before Learn opens to it.
+  const learnHref = '/admin/learn'
 
   return (
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-[#FAF1E4] text-stone-700 dark:bg-[#0d0b09] dark:text-stone-300">
@@ -265,7 +343,7 @@ export function HomeContent({
                 <HeroLink href={self.forms} icon={FileText} label="Submit a form" />
                 <HeroLink href={self.directory} icon={Network} label="Team directory" />
                 <HeroLink href={self.apps} icon={Wrench} label="Tools & apps" />
-                <HeroLink href="/learn" icon={GraduationCap} label="Browse training" />
+                <HeroLink href={learnHref} icon={GraduationCap} label="Browse training" />
               </div>
               <div className="mt-4">
                 <FunFact facts={FUN_FACTS} initialIndex={funIdx} />
@@ -275,6 +353,9 @@ export function HomeContent({
 
           {/* ── Core value of the week — slim band, clickable → all values ──── */}
           <CoreValuesBand current={coreValue} index={coreValueIndex} total={coreValueTotal} />
+
+          {/* ── Your training ─────────────────────────────────────────────── */}
+          {learn && <TrainingStrip learn={learn} href={learnHref} />}
 
           {/* Shared "all holidays" modal — opened from the holiday boxes below. */}
           <HolidaysModal holidays={holidayRows} />
