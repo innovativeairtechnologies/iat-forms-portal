@@ -118,6 +118,26 @@ the seed. Run it after touching either list.
 > perm in `/admin/permissions` would be silently restored on the next read. The
 > `[]`-seeding is what makes the matrix genuinely editable.
 
+### The migration-free case: admin-only by omission
+
+A permission that only ever belongs to full `admin` needs **no migration at all**. Leave it out
+of `DEFAULT_ROLE_PERMS` entirely and it is fail-closed by omission — `check-perm-seed.mjs` only
+diffs perms that appear in that list, so it stays green. `srv`, `sizing`, `knowledge`,
+`home_content` and `learn_admin` all work this way.
+
+`learn_admin` (added 2026-07-30, gating `/admin/learn-content`) is additionally in
+`NON_DELEGATABLE_PERMS`, for a reason worth copying: its route layout and all four
+`app/api/learn/**` write routes use the strict `getAdminUser()`. If an admin could tick it on
+for a scoped role, that role would see the nav item and pass middleware, then get bounced by the
+layout — a half-grant that looks like a bug. Making it non-delegatable keeps every layer telling
+the same story. To genuinely open it later, all three must move together: the list, the layout
+gate, and the API routes.
+
+Note also that the **learner** side of Learn (`/admin/learn`) carries no perm at all — it is in
+`OPEN_ADMIN_PREFIXES`. Because `requiredPermForPath` short-circuits on an open prefix and returns
+`null`, a gated route can never be nested beneath one; that is why authoring is the sibling
+`/admin/learn-content` rather than `/admin/learn/admin`. See `docs/learn.md`.
+
 ## Two-layer enforcement
 
 Nav visibility alone is not access control. Two independent layers:

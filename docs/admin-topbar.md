@@ -60,6 +60,10 @@ pages are Server Components that pass client action children through).
 
 - The customer ticket page still uses `DetailTopBar` (`components/admin/detail-ui.tsx`);
   the customer surface has no shared top bar, so it never stacked.
-- The employee (`EmployeeShell`) and Learn (`LearnShell`) surfaces use their own
-  `PortalTopBar`. Learn still stacks a generic bar over an inline breadcrumb — a
-  follow-up, since it's a different top-bar mechanism.
+- The employee surface (`EmployeeShell`) uses its own `PortalTopBar`.
+- **Learn is done** (2026-07-30). It used to stack a generic `PortalTopBar` over an
+  inline `<Breadcrumb>`, and its crumb was hardcoded wrong ("Learn › Browse › Lesson"
+  on category and module pages too). The whole surface moved into the admin shell at
+  `/admin/learn`, `LearnShell` and `components/learn/Breadcrumb.tsx` are deleted, and
+  the category/module/lesson pages now feed their record crumbs up through
+  `<PageChrome record={[...]}>` like every other detail page. See `docs/learn.md`.

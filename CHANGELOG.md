@@ -2,6 +2,67 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-30 — IAT Learn moves into the admin portal (and gets re-skinned)
+
+IAT Learn is 357 published lessons that **nobody had ever opened**. A query against production
+found `learn_progress` completely empty — zero completions, zero users, since it went live on
+2026-06-15. Nothing was broken; it simply appeared in no sidebar. Its only doors were four links
+inside `/employee/*` — the surface the portal consolidation is retiring — and one hero link on
+Company Home.
+
+So it now lives in the admin shell, one click down the left nav:
+
+| Old | New |
+|---|---|
+| `/learn` | `/admin/learn` |
+| `/learn/me` · `/learn/leaderboard` | `/admin/learn/me` · `/admin/learn/leaderboard` |
+| `/learn/[category]/[module]/[lesson]` | `/admin/learn/[category]/[module]/[lesson]` |
+| `/learn/admin` | `/admin/learn-content` |
+
+A new **Training** group (Browse · My Learning · Leaderboard · Manage content) sits beside
+Self-service, since both are the groups every employee can see. Old URLs 308-redirect from
+`next.config.js`, which runs before middleware, so bookmarked lessons and `?redirect=/learn…`
+logins both still land.
+
+**Access.** Every staff role views; only full admins author. Authoring is deliberately the
+*sibling* `/admin/learn-content`, not a child route: `requiredPermForPath` short-circuits on
+`OPEN_ADMIN_PREFIXES` and returns `null`, so a permission on anything nested under the open
+`/admin/learn` would be silently dead code. The new `learn_admin` perm is in no
+`DEFAULT_ROLE_PERMS` list — admin-only by omission, **no migration**. Verified by compiling
+`lib/roles.ts` and asserting the gate directly: all 7 staff roles view, none but admin author,
+customer and null-role refused.
+
+**One breadcrumb bar.** Closes the follow-up the 2026-07-27 consolidation left open. Learn's
+category/module/lesson pages each rendered an inline `<Breadcrumb>` beneath the shell's own bar,
+and the shell's crumb was hardcoded wrong — it read "Learn › Browse › Lesson" on category and
+module pages too. Record crumbs now feed up through `PageChrome`, so a lesson reads
+`Training › Browse › Safety › Safety Procedures › Why Gloves Matter`. `LearnShell` (216 lines of
+duplicate sidebar/top-bar/search/sign-out) and `components/learn/Breadcrumb.tsx` are deleted.
+
+**Re-skin.** Learn was the last fully pre-token surface — ~367 raw `gray-*`/`zinc-*`, 110 hex
+literals, 25 `font-bold`, gradient buttons with hover-lift. Now entirely on the semantic tokens,
+with a grep as the acceptance gate rather than a hand-written checklist. Badge tiers and
+leaderboard podium chips move onto the Tone system; the four identical brand-green stat-tile
+chips and CategoryCard's scale-in green bar are gone (DESIGN §2.3 — green is not decoration);
+the search box's `focus:ring-2 focus:ring-[#089447]/10` was a live instance of the §2.5 trap
+where a token opacity modifier renders **blue**, and is now the outline recipe. `.learn-prose`
+is rewritten on CSS variables, which lets its 11-rule hand-rolled `.dark` mirror disappear.
+
+**"Your training" on Company Home.** Rather than putting XP chips in the operations top bar, a
+per-person strip sits between the core-values band and the KPI row: level, XP, day streak and
+library percentage. Its **zero state is the primary state** — with `learn_progress` empty, that
+is what everyone sees first, so it reads as an invitation, not an empty dashboard. It joins the
+existing `Promise.all`, so it costs no extra round trip.
+
+**A correction to the 2026-06-15 entry below:** it claims "81 of 357 lessons are heading-only
+stubs" and "154 image/video placeholders". Live numbers are **33 placeholder bodies** and **133
+lessons carrying ~180 missing images**. The concentration matters more than the total —
+**Safety Procedures is 20 of 23 placeholder text**, Testing Training 13 of 16, and both are
+published. Worth unpublishing those two before announcing Learn to staff. That entry also still
+says gamification is "deferred"; it shipped 2026-06-16.
+
+Docs: new `docs/learn.md`; `docs/admin-topbar.md` and `docs/roles-and-permissions.md` updated.
+
 ## 2026-07-30 — Marketing calendar: wider and shorter
 
 Calendar goes from 75% to **77%** of the width (the panel is now a fixed 288px, so the calendar
