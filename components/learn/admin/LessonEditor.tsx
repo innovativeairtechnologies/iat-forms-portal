@@ -111,7 +111,7 @@ export default function LessonEditor({
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between">
         <Link
-          href="/learn/admin"
+          href="/admin/learn-content"
           className="inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-500 dark:text-zinc-400 transition-colors hover:text-gray-900 dark:hover:text-white"
         >
           <ArrowLeft size={15} /> Back to admin

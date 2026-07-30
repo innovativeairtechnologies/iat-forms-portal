@@ -4,6 +4,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { getUserLearnStats } from '@/lib/learn'
 import { BadgeIcon, TIER_STYLE } from '@/components/learn/BadgeIcon'
 import { Flame, BookOpen, Medal, Clock, ArrowRight, Trophy, Lock } from 'lucide-react'
+import LearnPageShell from '../LearnPageShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,7 +70,7 @@ function LockedBadge({ badge: b }: { badge: { label: string; description: string
 export default async function MyLearningPage() {
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login?redirect=/learn/me')
+  if (!user) redirect('/login?redirect=/admin/learn/me')
 
   const stats = await getUserLearnStats(user.id)
   const earned = stats.badges.filter(b => b.earned)
@@ -79,7 +80,8 @@ export default async function MyLearningPage() {
   const level = stats.level
 
   return (
-    <div className="space-y-6">
+    <LearnPageShell>
+      <div className="space-y-6">
       {/* Hero */}
       <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 shadow-card dark:shadow-none">
         <div className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:p-7">
@@ -115,13 +117,13 @@ export default async function MyLearningPage() {
       <section className="rounded-2xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-5 shadow-card dark:shadow-none sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold tracking-tight text-[#0a0a0b] dark:text-white">Progress by category</h2>
-          <Link href="/learn" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[#089447] dark:text-emerald-400 hover:underline">
+          <Link href="/admin/learn" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[#089447] dark:text-emerald-400 hover:underline">
             Browse <ArrowRight size={13} />
           </Link>
         </div>
         <div className="space-y-3.5">
           {stats.categories.map(c => (
-            <Link key={c.id} href={`/learn/${c.slug}`} className="group block">
+            <Link key={c.id} href={`/admin/learn/${c.slug}`} className="group block">
               <div className="mb-1.5 flex items-baseline justify-between gap-3">
                 <span className="text-[13.5px] font-medium text-gray-700 dark:text-zinc-300 group-hover:text-[#0a0a0b] dark:group-hover:text-white">{c.name}</span>
                 <span className="text-[12px] tabular-nums text-gray-400 dark:text-zinc-500">
@@ -190,6 +192,7 @@ export default async function MyLearningPage() {
           </>
         )}
       </section>
-    </div>
+      </div>
+    </LearnPageShell>
   )
 }

@@ -17,7 +17,7 @@ export default function ModuleCard({
 
   return (
     <Link
-      href={`/learn/${categorySlug}/${module.slug}`}
+      href={`/admin/learn/${categorySlug}/${module.slug}`}
       className="group relative flex items-start gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-[#b9ebce] hover:shadow-card-hover dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none dark:hover:border-zinc-700"
     >
       <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg bg-gray-50 text-[13px] font-bold text-gray-400 transition-colors group-hover:bg-[#f0faf4] group-hover:text-[#089447] dark:bg-zinc-800 dark:text-zinc-500 dark:group-hover:bg-emerald-500/10 dark:group-hover:text-emerald-400">

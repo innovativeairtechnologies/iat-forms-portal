@@ -6,6 +6,7 @@ import { getLessonContext } from '@/lib/learn'
 import Breadcrumb from '@/components/learn/Breadcrumb'
 import LessonContent from '@/components/learn/LessonContent'
 import LessonFooterNav from '@/components/learn/LessonFooterNav'
+import LearnPageShell from '../../../LearnPageShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,16 +32,17 @@ export default async function LessonPage(
     completed = !!prog?.completed_at
   }
 
-  const base = `/learn/${category.slug}/${module.slug}`
+  const base = `/admin/learn/${category.slug}/${module.slug}`
   const prev = index > 0 ? lessons[index - 1] : null
   const next = index < lessons.length - 1 ? lessons[index + 1] : null
   const pct = Math.round(((index + 1) / lessons.length) * 100)
 
   return (
-    <article className="mx-auto max-w-3xl">
+    <LearnPageShell>
+      <article className="mx-auto max-w-3xl">
       <Breadcrumb
         items={[
-          { label: category.name, href: `/learn/${category.slug}` },
+          { label: category.name, href: `/admin/learn/${category.slug}` },
           { label: module.title, href: base },
           { label: lesson.title },
         ]}
@@ -77,6 +79,7 @@ export default async function LessonPage(
         prevHref={prev ? `${base}/${prev.slug}` : null}
         nextHref={next ? `${base}/${next.slug}` : null}
       />
-    </article>
+      </article>
+    </LearnPageShell>
   )
 }

@@ -22,7 +22,7 @@ export default function CategoryCard({
   const done = !!progress && progress.total > 0 && progress.completed >= progress.total
   return (
     <Link
-      href={`/learn/${category.slug}`}
+      href={`/admin/learn/${category.slug}`}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-[#b9ebce] hover:shadow-card-hover dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none dark:hover:border-zinc-700"
     >
       {/* hover accent bar */}

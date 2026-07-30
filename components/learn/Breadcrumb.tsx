@@ -6,7 +6,7 @@ export type Crumb = { label: string; href?: string }
 export default function Breadcrumb({ items }: { items: Crumb[] }) {
   return (
     <nav className="mb-5 flex flex-wrap items-center gap-1 text-[12.5px] text-gray-400 dark:text-zinc-500">
-      <Link href="/learn" className="font-medium transition-colors hover:text-[#089447] dark:hover:text-emerald-400">
+      <Link href="/admin/learn" className="font-medium transition-colors hover:text-[#089447] dark:hover:text-emerald-400">
         Learn
       </Link>
       {items.map((item, i) => (

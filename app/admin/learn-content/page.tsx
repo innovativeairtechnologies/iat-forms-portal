@@ -12,7 +12,7 @@ export default async function LearnAdminPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <Link
-        href="/learn"
+        href="/admin/learn"
         className="mb-5 inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-500 dark:text-zinc-400 transition-colors hover:text-gray-900 dark:hover:text-white"
       >
         <ArrowLeft size={15} /> Back to Learn

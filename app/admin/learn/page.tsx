@@ -2,6 +2,7 @@ import { getCategoriesWithStats, getUserLearnStats } from '@/lib/learn'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import CategoryGrid from '@/components/learn/CategoryGrid'
+import LearnPageShell from './LearnPageShell'
 import { PortalHero, HeroAction } from '@/components/PortalHero'
 import { Sparkles, Trophy } from 'lucide-react'
 
@@ -44,7 +45,8 @@ export default async function LearnHomePage() {
   const hasProgress = !!stats && stats.lessonsCompleted > 0
 
   return (
-    <div className="space-y-6">
+    <LearnPageShell>
+      <div className="space-y-6">
 
       {/* ── Greeting band ──────────────────────────────────────────── */}
       <PortalHero
@@ -57,8 +59,8 @@ export default async function LearnHomePage() {
         }
         actions={
           <>
-            <HeroAction href="/learn/me" icon={Sparkles} label="My learning" variant="primary" />
-            <HeroAction href="/learn/leaderboard" icon={Trophy} label="Leaderboard" />
+            <HeroAction href="/admin/learn/me" icon={Sparkles} label="My learning" variant="primary" />
+            <HeroAction href="/admin/learn/leaderboard" icon={Trophy} label="Leaderboard" />
           </>
         }
       />
@@ -74,7 +76,8 @@ export default async function LearnHomePage() {
           </div>
         </div>
         <CategoryGrid categories={categories} progress={progress} />
-      </section>
-    </div>
+        </section>
+      </div>
+    </LearnPageShell>
   )
 }

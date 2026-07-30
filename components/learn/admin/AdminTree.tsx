@@ -65,7 +65,7 @@ export default function AdminTree({
         body: JSON.stringify({ module_id: moduleId, title: title.trim() }),
       })
       const json = await res.json()
-      if (json.id) router.push(`/learn/admin/lessons/${json.id}/edit`)
+      if (json.id) router.push(`/admin/learn-content/lessons/${json.id}/edit`)
     } finally {
       setBusy(null)
     }
@@ -139,7 +139,7 @@ export default function AdminTree({
                               <span className="flex-1 truncate text-[13px] text-gray-700 dark:text-zinc-300">{lesson.title}</span>
                               <span className="text-[11px] text-gray-300 dark:text-zinc-500">{lesson.estimated_minutes}m</span>
                               <a
-                                href={`/learn/admin/lessons/${lesson.id}/edit`}
+                                href={`/admin/learn-content/lessons/${lesson.id}/edit`}
                                 className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11.5px] font-medium text-gray-400 dark:text-zinc-500 opacity-0 transition-opacity hover:text-[#089447] dark:hover:text-emerald-400 group-hover:opacity-100"
                               >
                                 <Pencil size={11} /> Edit

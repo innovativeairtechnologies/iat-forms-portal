@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { Clock, Play, ArrowRight, FileClock } from 'lucide-react'
 import { getModuleWithLessons } from '@/lib/learn'
 import Breadcrumb from '@/components/learn/Breadcrumb'
+import LearnPageShell from '../../LearnPageShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,12 +23,12 @@ export default async function ModulePage(props: { params: Promise<{ category: st
 
   const totalMinutes = lessons.reduce((s, l) => s + (l.estimated_minutes ?? 0), 0)
   const first = lessons[0]
-  const base = `/learn/${category.slug}/${module.slug}`
+  const base = `/admin/learn/${category.slug}/${module.slug}`
 
   return (
-    <div>
+    <LearnPageShell>
       <Breadcrumb
-        items={[{ label: category.name, href: `/learn/${category.slug}` }, { label: module.title }]}
+        items={[{ label: category.name, href: `/admin/learn/${category.slug}` }, { label: module.title }]}
       />
 
       <header className="mb-8">
@@ -94,6 +95,6 @@ export default async function ModulePage(props: { params: Promise<{ category: st
           ))}
         </ol>
       )}
-    </div>
+    </LearnPageShell>
   )
 }

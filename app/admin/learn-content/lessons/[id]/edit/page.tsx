@@ -16,7 +16,7 @@ export default async function EditLessonPage(props: { params: Promise<{ id: stri
   if (module) {
     const { data: category } = await supabaseAdmin
       .from('learn_categories').select('slug').eq('id', module.category_id).single()
-    if (category) viewHref = `/learn/${category.slug}/${module.slug}/${lesson.slug}`
+    if (category) viewHref = `/admin/learn/${category.slug}/${module.slug}/${lesson.slug}`
   }
 
   return (

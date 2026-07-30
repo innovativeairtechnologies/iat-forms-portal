@@ -3,8 +3,15 @@ import { getCategoryWithModules } from '@/lib/learn'
 import { LearnIcon } from '@/components/learn/LearnIcon'
 import Breadcrumb from '@/components/learn/Breadcrumb'
 import ModuleCard from '@/components/learn/ModuleCard'
+import LearnPageShell from '../LearnPageShell'
 
 export const dynamic = 'force-dynamic'
+
+/* NOTE: this dynamic segment sits beside the static `me/` and `leaderboard/`
+   routes. Next gives static segments precedence, and the live category slugs are
+   onboarding / company / safety / technical-training / products-tools, so there
+   is no collision today — but a future category slugged `me` or `leaderboard`
+   would be unreachable. */
 
 export default async function CategoryPage(props: { params: Promise<{ category: string }> }) {
   const params = await props.params;
@@ -13,7 +20,7 @@ export default async function CategoryPage(props: { params: Promise<{ category: 
   const { category, modules } = data
 
   return (
-    <div>
+    <LearnPageShell>
       <Breadcrumb items={[{ label: category.name }]} />
 
       <header className="mb-8 flex items-start gap-4">
@@ -41,6 +48,6 @@ export default async function CategoryPage(props: { params: Promise<{ category: 
           ))}
         </div>
       )}
-    </div>
+    </LearnPageShell>
   )
 }
