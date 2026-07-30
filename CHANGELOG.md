@@ -2,6 +2,37 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-30 — Jerry's Brain reactor now reads as a desiccant rotor
+
+The `/admin/knowledge` plasma sun (`components/admin/ReactorSun.tsx`) is themed to the
+machine IAT actually sells, without changing the look of the plasma itself. Two additions,
+both behind the new `ROTOR` constants block — set `ROTOR.regen = 0` and you get the previous
+plain star back, byte for byte:
+
+- **Face-on rotation.** Spins about `z` (the axis facing the viewer) plus a small residual `y`
+  drift, so it turns like a wheel rather than tumbling like a planet. Previously the roil was
+  isotropic and the spin was barely perceptible.
+- **A reactivation sector**, computed in **world** space so it's fixed in the *housing* while
+  the matrix turns through it — how a real desiccant wheel works. Produces the two-sector rotor
+  face (hot sector / carry-over / cool process sector, split by seal lines), and the sector
+  widens ~84°→108° and burns hotter while Jerry reads, so the wheel visibly regenerates during
+  an absorb. The heat rides the existing convection noise and fades toward the limb, so it reads
+  as plasma rather than a shape pasted on the sphere.
+
+Geometry values were dialled in against the real wheels, via a slider harness in
+`claude-design/mockups/` (untracked).
+
+⚠️ **Two of those constants are 0 (`trailDeg`, `hub`) and both feed `smoothstep()`.** Equal
+edges divide by zero — **undefined behaviour in GLSL**. Both are branch-guarded; do not
+simplify the guards away. Unguarded, this renders correctly on some drivers and can NaN on
+others, and the raw path was empirically observed changing behaviour under an unrelated
+refactor of neighbouring lines.
+
+Verified by extracting the shipped GLSL out of the component and rendering it headlessly
+(Playwright + swiftshader): 2 programs linked, 0 GLSL errors, idle/absorbing/flash and both
+themes screenshot-confirmed, and the guarded path pixel-identical to the unguarded one across
+the sphere. `prefers-reduced-motion` still freezes time, leaving the sector static but present.
+
 ## 2026-07-29 — Self-service group in the admin sidebar
 
 The `/admin/me/*` pages are now discoverable in the rail, not just from the Company Home hero.
