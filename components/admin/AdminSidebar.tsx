@@ -129,6 +129,9 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
       // Case studies (072) — AI-drafted from sales' inputs, marketing-approved.
       { href: '/admin/case-studies', label: 'Case Studies', perm: 'case_studies' },
+      // Application diagrams (073) — the proposal airflow figures. Sales builds
+      // them; engineering and marketing hold the perm too (see lib/roles.ts).
+      { href: '/admin/diagram-studio', label: 'Application Diagrams', perm: 'diagrams' },
       // Presentations moved out of Sales — it now lives on the Internal Apps
       // launcher (/admin/tools), perm-gated by `presentations` there.
     ],

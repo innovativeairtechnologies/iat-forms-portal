@@ -2,6 +2,49 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Application Diagram Studio
+
+`/admin/diagram-studio` — sales builds the airflow figure for a proposal instead of asking
+someone to redraw one. Pick the application, edit every condition on the drawing, drop in a photo
+of the space, export a PNG at 4000 × 2300 and paste it into the submittal.
+
+**The application dropdown changes the layout, not just the numbers.** Six templates ship, and
+they are genuinely different drawings: a hospital OR is a desiccant DOAS bolted onto an existing
+air handler, an ice arena is a recirculating loop with no air handler at all, a battery dry room
+is a three-stage precool → desiccant → post-cool train, and there are cold-storage dock,
+natatorium and pharmaceutical-coating figures too. Switching applications redraws the figure, so
+it asks before discarding edits.
+
+Everything on the drawing is editable in place. Click a value card, a label or a piece of
+equipment and the right-hand rail fills in with its settings — title, colour, rows of
+value + unit, card width, leader line on/off. Cards and labels drag to reposition, and a selected
+card's leader dot drags to re-point it. Cards and labels can be added and deleted. The figure
+header (figure number, title, eyebrow), the footer keys, the equipment labels and the AHU section
+names are all editable too.
+
+Exports: **PNG** (2× the artboard — the one for Word and PowerPoint), **SVG** for anyone who needs
+vector, and **Save file / Open** to hand a figure to a colleague as `.json`. The selection outline
+never appears in an export.
+
+Two things worth knowing before handing this to the team:
+
+- **The numbers are not calculated.** This is a drawing tool — it does no thermodynamics and
+  validates nothing. The values each template ships with are plausible design conditions so a rep
+  starts from a filled-in figure rather than a blank one; **they are placeholders**. Size the unit
+  in the Sizing Studio and type the results in here.
+- **Work is autosaved to the rep's own browser, not the server.** A figure survives a reload but
+  does not follow you to another machine, and only one is held at a time. Use **Save file** before
+  starting the next one. A server-side library is the natural next step and would slot straight in
+  — the scene is already plain JSON.
+
+The artboard deliberately ignores the portal's design tokens and dark mode: it is a customer-facing
+document that has to look identical whichever theme the rep is working in, so an exported PNG can
+never come out dark. Its palette is its own closed system.
+
+New `diagrams` perm, seeded for sales, engineering and marketing in migration 073 (no tables — the
+page is entirely client-side, like the Sizing Studio). Full write-up in
+[docs/diagram-studio.md](docs/diagram-studio.md).
+
 ## 2026-07-31 — Delete content in Learn
 
 `/admin/learn-content` can now delete a **category**, a **subject** or a **lesson**. Until now the

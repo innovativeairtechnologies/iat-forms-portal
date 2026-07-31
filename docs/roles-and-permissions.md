@@ -11,10 +11,10 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 | Role | Lands in | Sees |
 |------|----------|------|
 | `admin` | `/admin` (executive dashboard) | Everything |
-| `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Deals, Gantt, Jerry |
+| `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Deals, Gantt, Case Studies, Application Diagrams, Jerry |
 | `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, PTO, Sick Time, Scheduling, Accrual, Jerry |
-| `marketing` | `/admin` (department dashboard) | Presentations, Jerry |
-| `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Jerry |
+| `marketing` | `/admin` (department dashboard) | Presentations, Marketing Calendar, Case Studies, Application Diagrams, Jerry |
+| `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Application Diagrams, Jerry |
 | `production_manager` | `/admin` (department dashboard) | Tickets, Equipment, Gantt, Scheduling, Jerry |
 | `production` | `/admin` (Company Home) | The always-open `/admin/home`, `/admin/profile`, and the `/admin/me/*` self-service pages (time off, forms, directory, apps); My Board + US Rotors still under `/employee` |
 | `customer` | `/customer` | External customer portal |

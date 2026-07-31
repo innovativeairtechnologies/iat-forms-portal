@@ -30,6 +30,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/territories',     section: 'Sales',   label: 'Territories' },
   { prefix: '/admin/customers',       section: 'Sales',   label: 'Customers' },
   { prefix: '/admin/case-studies',    section: 'Sales',   label: 'Case Studies' },
+  { prefix: '/admin/diagram-studio',  section: 'Sales',   label: 'Application Diagrams' },
   { prefix: '/admin/presentations',   section: 'Sales',   label: 'Presentations' },
   // Marketing
   { prefix: '/admin/marketing',       section: 'Marketing', label: 'Calendar' },
