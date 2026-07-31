@@ -26,6 +26,7 @@ const FILTERS: { key: string; label: string; prefix?: boolean }[] = [
   { key: 'request.review', label: 'Time off' },
   { key: 'employee.', label: 'Employees', prefix: true },
   { key: 'accrual.', label: 'Accrual', prefix: true },
+  { key: 'learn.', label: 'Training', prefix: true },
 ]
 
 export default async function AuditLogPage(

@@ -160,17 +160,113 @@ export async function getLessonContext(
 }
 
 // ── Admin: full tree (includes unpublished) ─────────────────────────────────
+// `completionsByLesson` is what makes the delete confirmations honest: every FK
+// in this taxonomy is ON DELETE CASCADE (category → modules → lessons →
+// learn_progress), so removing a category can silently erase completion records
+// several levels down. The tree ships the counts so the UI can name the exact
+// blast radius before anything is destroyed, without a second round trip.
 export async function getAdminTree() {
-  const [{ data: categories }, { data: modules }, { data: lessons }] = await Promise.all([
+  const [cats, mods, less, prog] = await Promise.all([
     supabaseAdmin.from('learn_categories').select('*').order('display_order'),
     supabaseAdmin.from('learn_modules').select('*').order('display_order'),
     supabaseAdmin.from('learn_lessons').select('id, module_id, title, slug, display_order, is_published, estimated_minutes').order('display_order'),
+    supabaseAdmin.from('learn_progress').select('lesson_id').not('completed_at', 'is', null),
   ])
-  return {
-    categories: (categories ?? []) as LearnCategory[],
-    modules: (modules ?? []) as LearnModule[],
-    lessons: (lessons ?? []) as Omit<LearnLesson, 'content'>[],
+
+  // NULL means "we could not read the progress table", which is NOT the same as
+  // "nobody has completed anything". Collapsing the two would let the delete
+  // confirmation print a confident "no progress is lost" over data it is about
+  // to destroy, so the failure is propagated and the UI says it doesn't know.
+  let completionsByLesson: Record<string, number> | null = null
+  if (!prog.error) {
+    completionsByLesson = {}
+    for (const p of prog.data ?? []) {
+      completionsByLesson[p.lesson_id] = (completionsByLesson[p.lesson_id] ?? 0) + 1
+    }
+  } else {
+    console.error('[learn] completion counts unavailable:', prog.error.message)
   }
+
+  return {
+    categories: (cats.data ?? []) as LearnCategory[],
+    modules: (mods.data ?? []) as LearnModule[],
+    lessons: (less.data ?? []) as Omit<LearnLesson, 'content'>[],
+    completionsByLesson,
+  }
+}
+
+// Rows that a cascade delete would take with it. Counted BEFORE the delete so
+// the audit entry can record what was actually destroyed — afterwards the rows
+// are gone and unrecoverable.
+//
+// `completions` and `progressRows` differ on purpose. POST /api/learn/progress
+// writes a row with completed_at = NULL when someone UN-marks a lesson, so a
+// learn_progress row is not necessarily a completion. The cascade destroys both
+// kinds, but only completions carry XP/badge meaning — so `completions` is what
+// the confirmation warns about, and `progressRows` is what the audit records.
+export type LearnDeleteImpact = {
+  modules: number
+  lessons: number
+  /** completed_at IS NOT NULL — the ones that count toward XP, levels, badges. */
+  completions: number
+  /** every learn_progress row destroyed, including un-marked (completed_at NULL). */
+  progressRows: number
+}
+
+// THROWS if any count cannot be established. That is deliberate: this is the only
+// pre-image of rows that are about to be destroyed forever, and supabase-js
+// reports failure as `data: null` / `count: null` rather than throwing — so
+// swallowing an error here would let a delete proceed while the permanent audit
+// record claims nothing was destroyed. Callers must let the failure abort the
+// delete, not default to zero.
+export async function getDeleteImpact(
+  scope: 'category' | 'module' | 'lesson',
+  id: string,
+): Promise<LearnDeleteImpact> {
+  let moduleIds: string[] = []
+  let lessonIds: string[] = []
+
+  if (scope === 'category') {
+    const { data: mods, error: modErr } = await supabaseAdmin
+      .from('learn_modules').select('id').eq('category_id', id)
+    if (modErr) throw new Error(`Could not count subjects: ${modErr.message}`)
+    moduleIds = (mods ?? []).map(m => m.id)
+    if (moduleIds.length) {
+      const { data: ls, error: lErr } = await supabaseAdmin
+        .from('learn_lessons').select('id').in('module_id', moduleIds)
+      if (lErr) throw new Error(`Could not count lessons: ${lErr.message}`)
+      lessonIds = (ls ?? []).map(l => l.id)
+    }
+  } else if (scope === 'module') {
+    // The module itself is one of the rows the cascade removes — without this the
+    // audit entry for a subject deletion would record `modules: 0`.
+    moduleIds = [id]
+    const { data: ls, error: lErr } = await supabaseAdmin
+      .from('learn_lessons').select('id').eq('module_id', id)
+    if (lErr) throw new Error(`Could not count lessons: ${lErr.message}`)
+    lessonIds = (ls ?? []).map(l => l.id)
+  } else {
+    lessonIds = [id]
+  }
+
+  let completions = 0
+  let progressRows = 0
+  // Guarded: `.in(col, [])` is not a safe no-op to rely on, and an empty category
+  // or subject is a normal case here.
+  if (lessonIds.length) {
+    const [done, all] = await Promise.all([
+      supabaseAdmin.from('learn_progress').select('*', { count: 'exact', head: true })
+        .in('lesson_id', lessonIds).not('completed_at', 'is', null),
+      supabaseAdmin.from('learn_progress').select('*', { count: 'exact', head: true })
+        .in('lesson_id', lessonIds),
+    ])
+    if (done.error) throw new Error(`Could not count completions: ${done.error.message}`)
+    if (all.error) throw new Error(`Could not count progress rows: ${all.error.message}`)
+    if (done.count == null || all.count == null) throw new Error('Progress counts unavailable')
+    completions = done.count
+    progressRows = all.count
+  }
+  return { modules: moduleIds.length, lessons: lessonIds.length, completions, progressRows }
 }
 
 // ── Admin: single lesson for editing ────────────────────────────────────────

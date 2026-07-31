@@ -115,6 +115,11 @@ const ACTION_META: Record<string, { label: string; icon: LucideIcon; tone: Tone 
   'employee.reactivate': { label: 'Reactivated',     icon: UserCheck,      tone: 'emerald' },
   'accrual.adjust':      { label: 'Balance change',  icon: Wallet,         tone: 'sky' },
   'accrual.run':         { label: 'Accrual run',     icon: RefreshCw,      tone: 'sky' },
+  // IAT Learn content deletions. All three cascade and are irreversible, so they
+  // are rose and spelled out — the summary carries the lesson/completion counts.
+  'learn.category.delete': { label: 'Category deleted', icon: Trash2,      tone: 'rose' },
+  'learn.module.delete':   { label: 'Subject deleted',  icon: Trash2,      tone: 'rose' },
+  'learn.lesson.delete':   { label: 'Lesson deleted',   icon: Trash2,      tone: 'rose' },
 }
 const FALLBACK_META = { label: 'Action', icon: History, tone: 'slate' as Tone }
 

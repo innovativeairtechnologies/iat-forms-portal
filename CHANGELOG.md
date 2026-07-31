@@ -2,6 +2,45 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Delete content in Learn
+
+`/admin/learn-content` can now delete a **category**, a **subject** or a **lesson**. Until now the
+only way to remove anything was to hide it, and adding a category or subject still needs SQL.
+
+Every level cascades — category → subjects → lessons → `learn_progress` — and none of it is
+recoverable. Because XP, levels, streaks and badges are *derived from `learn_progress` on read*,
+erasing progress rows lowers people's totals retroactively and can revoke earned badges. So the
+tree names the blast radius before you commit: clicking the trash icon swaps the row for an inline
+confirmation reading e.g. *"Delete 'How we Use Trainual at IAT' and 5 lessons?"*, calling out
+completion records separately when there are any, and pointing at **Hidden** as the non-destructive
+alternative. Lesson rows show a ✓N completion count so you can see what is at stake before clicking.
+
+Every deletion writes an audit entry — `learn.category.delete` / `learn.module.delete` /
+`learn.lesson.delete`, under a new **Training** filter on `/admin/audit`, with the lesson and
+completion counts in the summary.
+
+Hardened after an adversarial review, which found real defects in the first cut:
+
+- **The count must succeed or the delete must not run.** `supabase-js` reports failure as
+  `data: null` / `count: null` rather than throwing, so the original code would have deleted a
+  category while writing an audit record claiming nothing was destroyed. `getDeleteImpact()` now
+  throws on any failed count and each route returns 500 without touching the data.
+- **"No progress is lost" can no longer be a guess.** A failed read of `learn_progress` used to be
+  indistinguishable from zero completions, which would have rendered a confident all-clear over
+  data about to be erased. Unknown is now its own state, with its own warning.
+- **Lesson confirmations said "and 1 lesson"** — appending the count of the very lesson already
+  named in the headline, implying a second one.
+- The audit entry for a subject deletion recorded `modules: 0` when it had removed one.
+- The lesson trash button was keyboard-focusable but invisible (`opacity-0` with no
+  `focus-visible` counterpart, which also swallowed its own focus ring). Confirmations now take
+  focus, announce as an `alertdialog`, and errors are live regions.
+- `busy` was a single shared slot, so an in-flight publish toggle could re-enable the delete button
+  mid-request and invite a second DELETE. Publish/create failures were also silently swallowed.
+
+A category **rename** endpoint was written and then removed before shipping: nothing called it, and
+an admin-only endpoint no UI exercises never gets smoke-tested. Renaming and reordering stay on the
+roadmap in `docs/learn.md`.
+
 ## 2026-07-30 — IAT Learn moves into the admin portal (and gets re-skinned)
 
 IAT Learn is 357 published lessons that **nobody had ever opened**. A query against production

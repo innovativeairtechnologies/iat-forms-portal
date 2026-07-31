@@ -52,6 +52,45 @@ move the layout gate and those four API routes onto the perm, and add a migratio
 from the session, never the body) and is open to any signed-in account. `/api` is deliberately
 outside middleware's matcher.
 
+## Deleting content
+
+`/admin/learn-content` can delete a **category**, a **subject** or a **lesson**. Every level
+cascades, and none of it is recoverable.
+
+| Delete | Also destroys |
+|---|---|
+| Lesson | its `learn_progress` rows |
+| Subject | all its lessons → all their progress |
+| Category | all its subjects → all their lessons → all their progress |
+
+Because XP, levels, streaks and badges are **derived from `learn_progress` on read**, erasing
+progress rows retroactively lowers people's totals and can revoke badges they had earned. There is
+no soft-delete and no undo.
+
+So the tree shows the blast radius *before* you commit: clicking the trash icon swaps the row for
+an inline confirmation naming the exact counts ("Delete *How we Use Trainual at IAT* and 5
+lessons?"), and calls out completion records separately when there are any. Counts come from
+`getAdminTree()`'s `completionsByLesson`, so the strip is instant; the server independently
+recounts via `getDeleteImpact()` **before** deleting, because afterwards the rows are gone and
+uncountable.
+
+**Prefer Hidden over Delete.** Setting a subject or lesson to *Hidden* (`is_published: false`)
+takes it out of the library and out of every XP denominator without destroying anything. Delete is
+for content that should never come back.
+
+Every deletion writes an audit entry — `learn.category.delete` / `learn.module.delete` /
+`learn.lesson.delete`, visible under the **Training** filter on `/admin/audit`. The metadata
+records `modules`, `lessons`, `completions` and `progressRows`.
+
+> `completions` counts `completed_at IS NOT NULL`; `progressRows` counts every row destroyed.
+> They differ because `POST /api/learn/progress` writes a row with `completed_at = NULL` when
+> someone *un-marks* a lesson. Only completions carry XP meaning, so that is the number the
+> confirmation warns about — but the audit records both.
+
+Renaming a category (`PATCH /api/learn/categories/[id]`) changes `name` and `description` only.
+The `slug` is deliberately immutable: it is the public URL segment, so changing it would break
+every existing link and bookmark.
+
 ## Data model
 
 Four tables, all from `supabase/migrations/014_learn_system.sql`; the seed is `015`/`015a–f`.
@@ -137,7 +176,8 @@ In the order Jacob prioritised them (2026-07-30):
 2. **Quizzes** — nothing exists: no table, no route, no UI, and nothing gates lesson completion.
 3. **Content backfill** — the 33 placeholder bodies and ~180 missing images. Blocked on image
    upload existing first.
-4. **Authoring CRUD + image upload** — today an admin can create/edit/publish *lessons* only.
-   Categories and modules are **seed-only** (no create, rename, reorder or delete from the UI),
-   there is no reordering anywhere, and the TipTap editor inserts images **by URL only**.
-   `DELETE /api/learn/lessons/[id]` is implemented but has no caller.
+4. **The rest of authoring CRUD + image upload** — **delete is done** (see above), and lessons can
+   be created and edited. Still missing: **creating** categories and subjects (seed-only —
+   an admin cannot add a new subject without SQL), **renaming** subjects and lessons from the
+   tree, **reordering** anything (`display_order` has no write path), and **image upload** (the
+   TipTap editor inserts images by URL only, which is what blocks the content backfill).
