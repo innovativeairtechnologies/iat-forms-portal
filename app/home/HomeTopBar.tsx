@@ -30,7 +30,7 @@ export function HomeTopBar({ name, profileHref, unreadCount = 0, ticketCount = 0
           above the scroll region below, which is its own stacking context
           (`isolate`) and was otherwise painting over the dropdown. */}
       <div className="relative z-40 hidden md:flex flex-shrink-0 items-center gap-1.5 px-5 h-14 border-b border-stone-200/80 bg-[#FAF1E4]/90 backdrop-blur dark:border-stone-800 dark:bg-[#0d0b09]/90">
-        <span className="text-[13px] font-semibold text-stone-900 dark:text-stone-100">Company Home</span>
+        <span className="text-[13px] font-semibold text-stone-900 dark:text-stone-100">The Hub</span>
         <div className="flex-1" />
 
         {/* Brand-tinted so it stands out from the plain ghost icons beside it —

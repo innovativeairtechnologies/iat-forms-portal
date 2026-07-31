@@ -23,8 +23,11 @@ Groups now **unfurl** instead of snapping: the panel animates its grid track `0f
 mount, so restoring remembered-open groups on a reload doesn't animate — only your own toggles
 do. Collapsed children stay mounted but drop out of the tab order.
 
-One loose end: the rail's home link is relabelled **"The Hub"**, but the top bar, breadcrumbs and
-the pages themselves still say "Company Home". Finishing that rename is a follow-up.
+The landing itself is now **"The Hub"** to match the rail: the shared `HomeTopBar` title (rendered
+by `HomeContent` in the admin, `/home`, and employee shells, so all three landings change at once),
+the employee shell's nav link, and the production-staff note on `/admin/dashboard`. **System →
+Company Home** is deliberately left as-is — it's the *content editor* for that page, and giving it
+the same "The Hub" label would put two identically-named entries in the nav.
 
 ## 2026-07-31 — Application Diagram Studio
 

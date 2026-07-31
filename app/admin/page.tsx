@@ -41,7 +41,7 @@ export default async function AdminDashboard() {
           <div className="max-w-sm text-center">
             <p className="text-[14px] font-semibold text-ink">Production staff</p>
             <p className="mt-1.5 text-[13px] text-ink-secondary leading-relaxed">
-              Base production staff land on the Company Home and use the employee tools — they don&apos;t have an operations dashboard.
+              Base production staff land on The Hub and use the employee tools — they don&apos;t have an operations dashboard.
             </p>
           </div>
         </div>
