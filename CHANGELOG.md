@@ -2,6 +2,29 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Admin sidebar: regrouped, Self-service pinned to the footer, groups unfurl
+
+The rail is reorganised around where people actually look for things:
+
+- **Operations** keeps the day-to-day queues and gains **Internal Apps**, which was a top-level
+  item of its own. **Prod Board** is the shorter label. **SRV Form** comes off the rail entirely
+  (the route stays live — it is slated to surface inside the Forms page instead).
+- **Sales** gains **Sizing Studio** and **Gantt** from Operations, alongside Application Diagrams.
+- **Marketing** gains **Case Studies** from Sales, next to the Calendar.
+- **Training** moves down next to the other work groups; **People** renames Accounts →
+  **Employees** and Scheduling → **Schedule**.
+- **Self-service** is no longer the first group in the scrolling list — it is pinned to the
+  **footer**, above theme + log out, where personal pages belong. It highlights and auto-opens on
+  its own `/admin/me/*` pages like any other group.
+
+Groups now **unfurl** instead of snapping: the panel animates its grid track `0fr → 1fr` over
+240ms, clipped by `overflow-hidden`. The animation is gated behind a flag armed one frame after
+mount, so restoring remembered-open groups on a reload doesn't animate — only your own toggles
+do. Collapsed children stay mounted but drop out of the tab order.
+
+One loose end: the rail's home link is relabelled **"The Hub"**, but the top bar, breadcrumbs and
+the pages themselves still say "Company Home". Finishing that rename is a follow-up.
+
 ## 2026-07-31 — Application Diagram Studio
 
 `/admin/diagram-studio` — sales builds the airflow figure for a proposal instead of asking

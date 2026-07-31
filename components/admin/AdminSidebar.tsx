@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
-  Users, Bot, DollarSign, Sun, Moon, Wrench, Home, UserRound, Megaphone,
+  Users, Bot, DollarSign, Sun, Moon, Home, UserRound, Megaphone,
   GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -53,41 +53,7 @@ type Counts = {
 // ─── Nav structure — parents with expandable children ─────────────────────────
 
 const DASHBOARD = { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, perm: 'dashboard' as Perm }
-// "Internal Apps" — the self-contained HTML app launcher (lib/tools.ts). Renamed
-// from "Tools" so the team doesn't confuse it with the Tool Crib check-out
-// registry in Operations. Route/perm stay `tools` to avoid perm-path drift.
-const TOOLS = { href: '/admin/tools', label: 'Internal Apps', icon: Wrench, perm: 'tools' as Perm }
-
 const NAV_PARENTS: NavParent[] = [
-  // Self-service — the personal pages every employee needs, ported to /admin/me/*
-  // (OPEN_ADMIN_PREFIXES). No perm, so these show for EVERY admin-surface role,
-  // including base production which otherwise sees only Company Home in the rail.
-  {
-    label: 'Self-service',
-    icon: UserRound,
-    children: [
-      { href: '/admin/me/time-off', label: 'Time Off' },
-      { href: '/admin/me/forms', label: 'Submit a Form' },
-      { href: '/admin/me/directory', label: 'Directory' },
-      // Open apps launcher. Hidden for `tools` holders, who get the richer top-level
-      // "Internal Apps" (→ /admin/tools, with Presentations) — so the label never doubles.
-      { href: '/admin/me/apps', label: 'Internal Apps', hideIfPerm: 'tools' },
-    ],
-  },
-  // Training — IAT Learn, ported off /learn. Sits here next to Self-service
-  // because both are the OPEN, every-employee groups; everything below is
-  // perm-gated work. The three learner items carry no perm ('/admin/learn' is in
-  // OPEN_ADMIN_PREFIXES); only authoring is gated.
-  {
-    label: 'Training',
-    icon: GraduationCap,
-    children: [
-      { href: '/admin/learn', label: 'Browse' },
-      { href: '/admin/learn/me', label: 'My Learning' },
-      { href: '/admin/learn/leaderboard', label: 'Leaderboard' },
-      { href: '/admin/learn-content', label: 'Manage content', perm: 'learn_admin' },
-    ],
-  },
   {
     label: 'Operations',
     icon: Inbox,
@@ -100,17 +66,16 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/forms', label: 'Forms', perm: 'forms' },
       { href: '/admin/equipment', label: 'Equipment', perm: 'equipment' },
       // Tool Crib — the warehouse tool check-out registry. NOT the `tools`
-      // launcher (that's the standalone Tools item; different feature, same word).
+      // launcher (that's the Internal Apps item below; different feature, same word).
       { href: '/admin/tool-crib', label: 'Tool Crib', perm: 'tool_crib' },
       // Production Board — manages the PUBLIC no-login shop boards the floor
       // scans into at /board/<token> (migration 055).
-      { href: '/admin/production', label: 'Production Board', perm: 'production_board' },
-      { href: '/admin/srv', label: 'SRV Form', perm: 'srv' },
-      // Sizing Studio — psychrometric unit selection (lib/sizing.ts). Admin-only
-      // by omission from DEFAULT_ROLE_PERMS, like SRV above.
-      { href: '/admin/sizing-studio', label: 'Sizing Studio', perm: 'sizing' },
-      // Gantt kept visible to demo despite leadership concerns; pause with `hidden: true`.
-      { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
+      { href: '/admin/production', label: 'Prod Board', perm: 'production_board' },
+      // Internal Apps — the self-contained HTML app launcher (lib/tools.ts), moved
+      // off the top-level rail into Operations. Route/perm stay `tools`.
+      { href: '/admin/tools', label: 'Internal Apps', perm: 'tools' },
+      // SRV Form (/admin/srv) pulled from the rail — slated to surface inside the
+      // Forms page instead. Route stays live. Sizing Studio + Gantt moved to Sales.
     ],
   },
   {
@@ -127,13 +92,15 @@ const NAV_PARENTS: NavParent[] = [
       // map. Shares the `deals` perm like Performance above.
       { href: '/admin/territories', label: 'Territories', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
-      // Case studies (072) — AI-drafted from sales' inputs, marketing-approved.
-      { href: '/admin/case-studies', label: 'Case Studies', perm: 'case_studies' },
+      // Sizing Studio — psychrometric unit selection (lib/sizing.ts), moved from
+      // Operations. Admin-only by omission from DEFAULT_ROLE_PERMS.
+      { href: '/admin/sizing-studio', label: 'Sizing Studio', perm: 'sizing' },
+      // Gantt — moved from Operations.
+      { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
       // Application diagrams (073) — the proposal airflow figures. Sales builds
       // them; engineering and marketing hold the perm too (see lib/roles.ts).
+      // NB: "Graphic Generator" (in progress) will slot in here once its route lands.
       { href: '/admin/diagram-studio', label: 'Application Diagrams', perm: 'diagrams' },
-      // Presentations moved out of Sales — it now lives on the Internal Apps
-      // launcher (/admin/tools), perm-gated by `presentations` there.
     ],
   },
   {
@@ -142,21 +109,36 @@ const NAV_PARENTS: NavParent[] = [
     children: [
       // Content calendar (071) — social posts, email campaigns, blog, shows, ads.
       { href: '/admin/marketing', label: 'Calendar', perm: 'marketing_calendar' },
+      // Case studies (072) — AI-drafted from sales' inputs, marketing-approved.
+      // Moved from Sales.
+      { href: '/admin/case-studies', label: 'Case Studies', perm: 'case_studies' },
     ],
   },
   {
     label: 'People',
     icon: Users,
     children: [
-      { href: '/admin/employees', label: 'Accounts', perm: 'employees' },
+      { href: '/admin/employees', label: 'Employees', perm: 'employees' },
       { href: '/admin/org-chart', label: 'Org Chart', perm: 'org_chart' },
       // Employee Forms merged into Forms (route + employee portal stay live). Re-enable
       // by removing `hidden: true`.
       { href: '/admin/employee-forms', label: 'Employee Forms', badge: 'drafts', hidden: true, perm: 'employee_forms' },
       { href: '/admin/requests/pto', label: 'PTO', badge: 'pto', perm: 'pto' },
       { href: '/admin/requests/sick', label: 'Sick Time', badge: 'sick', perm: 'sick' },
-      { href: '/admin/schedule', label: 'Scheduling', perm: 'scheduling' },
+      { href: '/admin/schedule', label: 'Schedule', perm: 'scheduling' },
       { href: '/admin/accrual', label: 'Accrual', perm: 'accrual' },
+    ],
+  },
+  // Training — IAT Learn, ported off /learn. Learner items carry no perm
+  // ('/admin/learn' is in OPEN_ADMIN_PREFIXES); only authoring is gated.
+  {
+    label: 'Training',
+    icon: GraduationCap,
+    children: [
+      { href: '/admin/learn', label: 'Browse' },
+      { href: '/admin/learn/me', label: 'My Learning' },
+      { href: '/admin/learn/leaderboard', label: 'Leaderboard' },
+      { href: '/admin/learn-content', label: 'Manage content', perm: 'learn_admin' },
     ],
   },
   {
@@ -187,6 +169,23 @@ const NAV_PARENTS: NavParent[] = [
     ],
   },
 ]
+
+// Self-service — the personal pages every employee needs (ported to /admin/me/*,
+// all in OPEN_ADMIN_PREFIXES, no perm, so shown to EVERY admin-surface role).
+// Rendered pinned at the BOTTOM of the rail, above the theme / log-out footer —
+// deliberately outside the scrolling group list.
+const SELF_SERVICE: NavParent = {
+  label: 'Self-service',
+  icon: UserRound,
+  children: [
+    { href: '/admin/me/time-off', label: 'Time Off' },
+    { href: '/admin/me/forms', label: 'Submit a Form' },
+    { href: '/admin/me/directory', label: 'Directory' },
+    // Open apps launcher. Hidden for `tools` holders, who get the richer Internal
+    // Apps in Operations — so the label never doubles.
+    { href: '/admin/me/apps', label: 'Internal Apps', hideIfPerm: 'tools' },
+  ],
+}
 
 const OPEN_KEY = 'admin-nav-open'
 
@@ -261,7 +260,9 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   // matchesPrefix in lib/roles.ts and crumbsFor in app/admin/crumbs.ts.
   const matchesNav = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const isChildActive = (c: NavChild) => matchesNav(c.href)
-  const activeParent = NAV_PARENTS.find(p => p.children.some(isChildActive))?.label ?? null
+  // Include the footer-pinned Self-service group so it highlights + auto-opens on
+  // its own /admin/me/* pages just like the scrolling groups.
+  const activeParent = [...NAV_PARENTS, SELF_SERVICE].find(p => p.children.some(isChildActive))?.label ?? null
 
   // Which ONE child is highlighted: longest match wins. So /admin/learn/me
   // highlights "My Learning" rather than also lighting "Browse", while a lesson
@@ -276,10 +277,16 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   // the current page is always forced open. localStorage is read in an effect
   // (not the initializer) so server and client render the same initial HTML.
   const [open, setOpen] = useState<string[]>([])
+  // Gates the expand/collapse rollout. Off through the initial paint so restoring
+  // remembered-open groups (and the active group) doesn't animate on load — armed
+  // one frame later, so only user toggles unfurl.
+  const [animateExpand, setAnimateExpand] = useState(false)
   useEffect(() => {
     let stored: string[] = []
     try { stored = JSON.parse(localStorage.getItem(OPEN_KEY) || '[]') } catch { /* private mode */ }
     setOpen(prev => Array.from(new Set([...prev, ...stored])))
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setAnimateExpand(true)))
+    return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => {
@@ -299,9 +306,90 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
     router.refresh()
   }
 
+  // One expandable group — the parent button + its rollout panel of children.
+  // Shared by the scrolling nav and the pinned Self-service footer group.
+  const renderGroup = (parent: NavParent, onClose?: () => void) => {
+    const children = parent.children.filter(c =>
+      !c.hidden
+      && (c.perm === undefined || hasPerm(c.perm))
+      && !(c.hideIfPerm && hasPerm(c.hideIfPerm)),
+    )
+    // System also hosts the admin-only "View as" row, so it stays visible for a
+    // real admin even while previewing a role that can't see its pages.
+    const isSystem = parent.label === 'System'
+    if (children.length === 0 && !(isSystem && canPreview)) return null
+    const isOpen = open.includes(parent.label)
+    const hasActive = parent.label === activeParent
+    const selectedHref = selectedChildHref(children)
+    const collapsedCount = children.reduce((n, c) => n + (c.badge ? counts[c.badge] : 0), 0)
+    return (
+      <div key={parent.label} className="mt-0.5">
+        <button
+          onClick={() => toggle(parent.label)}
+          aria-expanded={isOpen}
+          className={cn(
+            'relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors text-left',
+            hasActive ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
+          )}
+        >
+          {hasActive && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
+          <parent.icon size={15} className={cn('flex-shrink-0', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
+          <span className="flex-1">{parent.label}</span>
+          {!isOpen && collapsedCount > 0 && (
+            <span className="text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500/15 text-amber-400">
+              {collapsedCount > 99 ? '99+' : collapsedCount}
+            </span>
+          )}
+          <ChevronDown
+            size={12}
+            className={cn('flex-shrink-0 text-sidebar-ink-faint transition-transform duration-200', isOpen && 'rotate-180')}
+          />
+        </button>
+        {/* Rollout — animate the grid track 0fr→1fr so the subitems unfurl instead
+            of snapping in. `overflow-hidden` clips them mid-roll; `animateExpand`
+            gates the transition so a reload doesn't animate remembered-open groups.
+            Children stay mounted but drop out of the tab order while collapsed. */}
+        <div
+          className={cn(
+            'grid',
+            animateExpand && 'transition-[grid-template-rows] duration-[240ms] ease-out',
+            isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+          )}
+        >
+          <div className="overflow-hidden" aria-hidden={!isOpen}>
+            <div className="pb-1">
+              {children.map(child => {
+                const active = child.href === selectedHref
+                return (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    onClick={onClose}
+                    tabIndex={isOpen ? undefined : -1}
+                    className={cn(
+                      'flex items-center gap-2 py-1.5 pl-[34px] pr-2.5 rounded-md text-[12px] transition-colors',
+                      active
+                        ? 'bg-sidebar-strong font-medium text-sidebar-ink'
+                        : 'text-sidebar-ink-muted hover:bg-sidebar-strong hover:text-sidebar-ink',
+                    )}
+                  >
+                    <span className="flex-1">{child.label}</span>
+                    {child.badge && <Badge kind={child.badge} count={counts[child.badge]} />}
+                  </Link>
+                )
+              })}
+              {/* Admin-only role preview, housed with the other admin meta-tools. */}
+              {isSystem && <ViewAsControl variant="nav" />}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderNav = (onClose?: () => void) => (
     <nav className="flex-1 px-3 py-2 overflow-y-auto sidebar-scroll">
-      {/* Company Home — the shared intranet landing, rendered in this admin shell.
+      {/* The Hub — the shared intranet landing, rendered in this admin shell.
           Ungated: every admin-surface role lands on /admin/home first (it's in
           OPEN_ADMIN_PREFIXES), so all of them can return to it. */}
       {(() => {
@@ -317,7 +405,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
           >
             {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
             <Home size={15} className={cn('flex-shrink-0', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
-            Company Home
+            The Hub
           </Link>
         )
       })()}
@@ -339,95 +427,15 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
         </Link>
       )}
 
-      {hasPerm(TOOLS.perm) && (() => {
-        const active = pathname === TOOLS.href || pathname.startsWith(TOOLS.href + '/')
-        return (
-          <Link
-            href={TOOLS.href}
-            onClick={onClose}
-            className={cn(
-              'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
-              active ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
-            )}
-          >
-            {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
-            <TOOLS.icon size={15} className={cn('flex-shrink-0', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
-            {TOOLS.label}
-          </Link>
-        )
-      })()}
-
-      {NAV_PARENTS.filter(p => !p.hidden).map(parent => {
-        const children = parent.children.filter(c =>
-          !c.hidden
-          && (c.perm === undefined || hasPerm(c.perm))
-          && !(c.hideIfPerm && hasPerm(c.hideIfPerm)),
-        )
-        // System also hosts the admin-only "View as" row, so it stays visible for
-        // a real admin even while previewing a role that can't see its pages.
-        const isSystem = parent.label === 'System'
-        if (children.length === 0 && !(isSystem && canPreview)) return null
-        const isOpen = open.includes(parent.label)
-        const hasActive = parent.label === activeParent
-        const selectedHref = selectedChildHref(children)
-        const collapsedCount = children.reduce((n, c) => n + (c.badge ? counts[c.badge] : 0), 0)
-        return (
-          <div key={parent.label} className="mt-0.5">
-            <button
-              onClick={() => toggle(parent.label)}
-              aria-expanded={isOpen}
-              className={cn(
-                'relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors text-left',
-                hasActive ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
-              )}
-            >
-              {hasActive && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
-              <parent.icon size={15} className={cn('flex-shrink-0', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
-              <span className="flex-1">{parent.label}</span>
-              {!isOpen && collapsedCount > 0 && (
-                <span className="text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500/15 text-amber-400">
-                  {collapsedCount > 99 ? '99+' : collapsedCount}
-                </span>
-              )}
-              <ChevronDown
-                size={12}
-                className={cn('flex-shrink-0 text-sidebar-ink-faint transition-transform duration-150', isOpen && 'rotate-180')}
-              />
-            </button>
-            {isOpen && (
-              <div className="pb-1">
-                {children.map(child => {
-                  const active = child.href === selectedHref
-                  return (
-                    <Link
-                      key={child.href}
-                      href={child.href}
-                      onClick={onClose}
-                      className={cn(
-                        'flex items-center gap-2 py-1.5 pl-[34px] pr-2.5 rounded-md text-[12px] transition-colors',
-                        active
-                          ? 'bg-sidebar-strong font-medium text-sidebar-ink'
-                          : 'text-sidebar-ink-muted hover:bg-sidebar-strong hover:text-sidebar-ink',
-                      )}
-                    >
-                      <span className="flex-1">{child.label}</span>
-                      {child.badge && <Badge kind={child.badge} count={counts[child.badge]} />}
-                    </Link>
-                  )
-                })}
-                {/* Admin-only role preview, housed with the other admin meta-tools. */}
-                {isSystem && <ViewAsControl variant="nav" />}
-              </div>
-            )}
-          </div>
-        )
-      })}
+      {NAV_PARENTS.filter(p => !p.hidden).map(parent => renderGroup(parent, onClose))}
     </nav>
   )
 
-  // Profile lives in the top bar avatar now; the footer is just theme + log out.
-  const renderFooter = () => (
+  // Footer — Self-service (personal pages) pinned above the theme + log-out row.
+  // Profile lives in the top-bar avatar now.
+  const renderFooter = (onClose?: () => void) => (
     <div className="px-3 pb-3 pt-2 border-t border-sidebar-hairline">
+      {renderGroup(SELF_SERVICE, onClose)}
       <ThemeRow />
       <button
         onClick={logout}
@@ -491,7 +499,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               </button>
             </div>
             {renderNav(() => setMobileOpen(false))}
-            {renderFooter()}
+            {renderFooter(() => setMobileOpen(false))}
           </div>
         </div>
       )}
