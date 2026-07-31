@@ -1,9 +1,9 @@
 ﻿export const dynamic = 'force-dynamic'
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import Link from 'next/link'
-import { Plus, ExternalLink, Sparkles, FolderOpen } from 'lucide-react'
+import { Plus, ExternalLink, Sparkles, FolderOpen, ClipboardCheck } from 'lucide-react'
 import FormsListClient from './FormsListClient'
 import DuplicateButton from './DuplicateButton'
 import QRModal from './QRModal'
@@ -36,8 +36,10 @@ async function getData() {
 
 export default async function FormsListPage(props: { searchParams: Promise<SearchParams> }) {
   const searchParams = await props.searchParams;
-  const [{ forms, countByForm, categories }, me] = await Promise.all([getData(), getAdminUser()])
+  const [{ forms, countByForm, categories }, me] = await Promise.all([getData(), getAdminSurfaceUser()])
   const isSuperAdmin = me?.isSuperAdmin ?? false
+  // SRV is a custom-coded form (no DB row); surface it here for holders of its perm.
+  const canSrv = me?.can('srv') ?? false
   const pendingCount = forms.filter((f) => f.approval_status !== 'approved').length
 
   const activeCategory = searchParams.category || 'all'
@@ -155,6 +157,30 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
         </div>
       </div>
       <div className="p-4 sm:p-8 space-y-6">
+        {/* Specialized forms — custom-coded tools that aren't DB form rows. SRV
+            (Start-Up Readiness Verification) used to sit in the sidebar; it now
+            surfaces here, in the default view, for holders of the `srv` perm. */}
+        {canSrv && activeCategory === 'all' && (
+          <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
+            <div className="flex items-center gap-2.5 px-5 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60">
+              <ClipboardCheck size={14} className="text-zinc-400 dark:text-zinc-500" />
+              <span className="text-[13px] font-bold text-zinc-800 dark:text-zinc-100">Specialized forms</span>
+              <span className="text-[11px] font-semibold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">1</span>
+            </div>
+            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              <li className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 h-[52px] hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">SRV Form</p>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">Start-Up Readiness Verification · custom-built</p>
+                </div>
+                <Link href="/admin/srv"
+                  className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-500 px-2 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all">
+                  Open
+                </Link>
+              </li>
+            </ul>
+          </div>
+        )}
         {categoryFiltered.length === 0 ? (
           <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none py-20 text-center">
             <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4">

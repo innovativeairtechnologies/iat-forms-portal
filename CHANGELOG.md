@@ -8,7 +8,8 @@ The rail is reorganised around where people actually look for things:
 
 - **Operations** keeps the day-to-day queues and gains **Internal Apps**, which was a top-level
   item of its own. **Prod Board** is the shorter label. **SRV Form** comes off the rail entirely
-  (the route stays live — it is slated to surface inside the Forms page instead).
+  (the route stays live — it now surfaces inside the **Forms** page as a *Specialized forms* card,
+  shown only to holders of the `srv` perm).
 - **Sales** gains **Sizing Studio** and **Gantt** from Operations, alongside Application Diagrams.
 - **Marketing** gains **Case Studies** from Sales, next to the Calendar.
 - **Training** moves down next to the other work groups; **People** renames Accounts →
