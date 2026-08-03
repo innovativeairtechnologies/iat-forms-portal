@@ -337,7 +337,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
             hasActive ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
           )}
         >
-          <parent.icon size={15} className={cn('flex-shrink-0 motion-safe:group-hover:animate-nav-icon', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
+          <parent.icon size={15} className={cn('flex-shrink-0 transition-transform duration-200 ease-out motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
           <span className="flex-1">{parent.label}</span>
           {!isOpen && collapsedCount > 0 && (
             <span className="text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500/15 text-amber-400">
@@ -407,7 +407,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               active ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
             )}
           >
-            <Home size={15} className={cn('flex-shrink-0 motion-safe:group-hover:animate-nav-icon', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
+            <Home size={15} className={cn('flex-shrink-0 transition-transform duration-200 ease-out motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
             The Hub
           </Link>
         )
@@ -424,7 +424,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
           )}
         >
-          <DASHBOARD.icon size={15} className="flex-shrink-0 motion-safe:group-hover:animate-nav-icon text-sidebar-ink-muted" />
+          <DASHBOARD.icon size={15} className="flex-shrink-0 transition-transform duration-200 ease-out motion-safe:group-hover:-rotate-6 motion-safe:group-hover:scale-110 text-sidebar-ink-muted" />
           Dashboard
         </Link>
       )}

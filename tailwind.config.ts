@@ -74,9 +74,6 @@ const config: Config = {
         // DESIGN.md §7; slides in from the right edge rather than rising.
         'drawer-in': 'drawerIn 0.2s cubic-bezier(0.22, 0.61, 0.36, 1)',
         'scrim-in': 'scrimIn 0.16s ease-out',
-        // Nav icon flourish — one 360° turn with a slight mid-spin pop, on hover.
-        // Applied via `motion-safe:group-hover:animate-nav-icon` in AdminSidebar.
-        'nav-icon': 'navIcon 0.5s ease-out',
       },
       keyframes: {
         fadeUp: {
@@ -90,11 +87,6 @@ const config: Config = {
         scrimIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
-        },
-        navIcon: {
-          '0%':   { transform: 'rotate(0deg) scale(1)' },
-          '50%':  { transform: 'rotate(180deg) scale(1.12)' },
-          '100%': { transform: 'rotate(360deg) scale(1)' },
         },
       },
     },
