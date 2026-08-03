@@ -52,6 +52,29 @@ use `fieldset`/`legend` so the prompt is announced, results are a live region, a
 expander exposes `aria-expanded`. And stale copy claiming due dates, mandatory flags and quizzes
 don't exist has been rewritten — that page renders all three.
 
+## 2026-08-03 — Equipment Support listed in the Forms tab, beside SRV
+
+`/admin/forms` already had a **Specialized forms** card for custom-coded forms that aren't rows in
+the `forms` table — SRV was its only entry. Equipment Support now sits beside it, linking to
+`/admin/support-content`. So the Forms tab finally shows the whole catalogue rather than just the
+builder-backed part of it.
+
+- Entries are a data list filtered by perm rather than hand-written markup: SRV needs `srv`,
+  Equipment Support needs `tickets`. The card renders only what the viewer can actually open, and
+  disappears entirely when that's nothing — previously it was gated on `canSrv` alone.
+- **The section count was hardcoded to `1`.** It's `specialForms.length` now; adding a second row
+  without that fix would have shipped a card headed "Specialized forms · 1" listing two forms.
+- The row subtitle says responses arrive in **Tickets**, because Equipment Support writes to
+  `tickets` rather than `submissions` — otherwise the natural next click is the Submissions inbox,
+  where nothing will ever appear.
+
+**Only half of the SRV pattern applies here, deliberately.** SRV *also* keeps a real `forms` row +
+`form_fields` synced from code (`lib/srv-form.ts` `ensureSrvForm`), because SRV submissions land in
+`submissions` and the generic admin renderer iterates a form's fields to display them. Equipment
+Support has its own table, queue, statuses, notes, attachments and AI recommendations, so giving it
+a `forms` row would create a permanently-empty form reading "0 submissions" next to a real ticket
+queue. It gets the listing, not the projection.
+
 ## 2026-08-03 — Support form reference photos are staff-managed (/admin/support-content)
 
 The Wheel & Seals step of the public support form has always had two reference-photo frames —

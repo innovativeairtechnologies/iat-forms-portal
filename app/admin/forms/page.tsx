@@ -38,9 +38,29 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
   const searchParams = await props.searchParams;
   const [{ forms, countByForm, categories }, me] = await Promise.all([getData(), getAdminSurfaceUser()])
   const isSuperAdmin = me?.isSuperAdmin ?? false
-  // SRV is a custom-coded form (no DB row); surface it here for holders of its perm.
-  const canSrv = me?.can('srv') ?? false
   const pendingCount = forms.filter((f) => f.approval_status !== 'approved').length
+
+  // Custom-coded forms — real forms customers fill in that aren't rows in the
+  // `forms` table, so the builder list above can never show them. Each is gated
+  // by its own perm and links to the surface where you manage it, so the section
+  // only ever lists what this viewer can actually open. Add new entries here.
+  const specialForms = [
+    {
+      title: 'SRV Form',
+      sub: 'Start-Up Readiness Verification · custom-built',
+      href: '/admin/srv',
+      show: me?.can('srv') ?? false,
+    },
+    {
+      // Submissions deliberately land in Tickets, not Submissions — it writes to
+      // `tickets`, so the subtitle says where to look rather than leaving someone
+      // hunting the Submissions inbox for responses that will never appear there.
+      title: 'Equipment Support',
+      sub: 'Public support request · custom-built · responses arrive in Tickets',
+      href: '/admin/support-content',
+      show: me?.can('tickets') ?? false,
+    },
+  ].filter((f) => f.show)
 
   const activeCategory = searchParams.category || 'all'
   const activeStatus   = searchParams.status   || 'all'
@@ -158,26 +178,29 @@ export default async function FormsListPage(props: { searchParams: Promise<Searc
       </div>
       <div className="p-4 sm:p-8 space-y-6">
         {/* Specialized forms — custom-coded tools that aren't DB form rows. SRV
-            (Start-Up Readiness Verification) used to sit in the sidebar; it now
-            surfaces here, in the default view, for holders of the `srv` perm. */}
-        {canSrv && activeCategory === 'all' && (
+            used to sit in the sidebar and surfaces here instead; Equipment
+            Support joined it 2026-08-03. Shown in the default view only, and
+            only when this viewer holds the perm for at least one of them. */}
+        {specialForms.length > 0 && activeCategory === 'all' && (
           <div className="bg-white dark:bg-zinc-900/40 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm dark:shadow-none overflow-hidden">
             <div className="flex items-center gap-2.5 px-5 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60">
               <ClipboardCheck size={14} className="text-zinc-400 dark:text-zinc-500" />
               <span className="text-[13px] font-bold text-zinc-800 dark:text-zinc-100">Specialized forms</span>
-              <span className="text-[11px] font-semibold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">1</span>
+              <span className="text-[11px] font-semibold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{specialForms.length}</span>
             </div>
             <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              <li className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 h-[52px] hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">SRV Form</p>
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">Start-Up Readiness Verification · custom-built</p>
-                </div>
-                <Link href="/admin/srv"
-                  className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-500 px-2 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all">
-                  Open
-                </Link>
-              </li>
+              {specialForms.map((f) => (
+                <li key={f.href} className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 h-[52px] hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{f.title}</p>
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">{f.sub}</p>
+                  </div>
+                  <Link href={f.href}
+                    className="text-[12px] font-semibold text-emerald-600 hover:text-emerald-500 px-2 py-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all">
+                    Open
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         )}
