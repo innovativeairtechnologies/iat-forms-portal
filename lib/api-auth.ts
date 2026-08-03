@@ -146,6 +146,40 @@ export async function requireTerritoryAuth(opts: { write?: boolean } = {}): Prom
 }
 
 /**
+ * Guard for the rep-scorecard API (rep_scorecards + the rep roster it scores,
+ * migration 075). Keyed on the SAME `deals` permission as the CRM, Performance
+ * and Territory pages — same trust boundary and audience (Sales + admin), so
+ * there's no new permission to seed; its own named guard per requireDealsAuth's
+ * note, so it can be split onto a dedicated `rep_scorecard` perm later by
+ * changing one line here plus the ADMIN_PATH_PERMS entry.
+ *
+ * Writes ({ write: true }) additionally require the admin or sales ROLE, exactly
+ * like requireTerritoryAuth: the scorecard is Sales' own review of its channel,
+ * so another scoped role granted `deals` can read the board but not score on it.
+ */
+export async function requireRepScorecardAuth(opts: { write?: boolean } = {}): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'deals', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (opts.write && role !== 'admin' && role !== 'sales') {
+    return NextResponse.json({ error: 'Only admin and sales can score reps.' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * Manage guard for the Tool Crib admin routes (registry writes, force check-in,
  * custody transfer, labels). Matrix-backed like requireDealsAuth — that one's
  * doc comment says to add a similarly-scoped, similarly-named guard rather than

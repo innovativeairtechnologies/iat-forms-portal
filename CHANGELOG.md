@@ -2,6 +2,47 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-03 — Rep Scorecard (`/admin/rep-scorecard`)
+
+Sales' rep-health review, ported from the `IAT_Rep_Scorecard` workbook they were
+keeping by hand. Ten 0/1/2 signals per rep → a Total out of 20 → a Tier and a Grade,
+rolled up per firm and across the channel. Migration **075**. Docs:
+[`docs/rep-scorecard.md`](docs/rep-scorecard.md).
+
+**The scoring model is unchanged from the workbook** — same ten signals, same wording,
+same Inside Sales Playbook bands (15–20 Platinum/Gold · 8–14 Silver · 0–7
+Developing/At-risk; A 17+ / B 13+ / C 9+ / D 5+ / F) — so the numbers Sales already
+trusts don't move. What the portal adds:
+
+- **Scores are kept per period** (`?period=2026-Q3`, linkable). The workbook was a
+  snapshot that got overwritten; each rep now has a **Trend** tab showing every
+  quarter scored with the delta between them.
+- **Reps are the real CRM roster** — `contacts` at a `kind='rep_firm'` company, the
+  *same* roster the territory map uses. A rep added on either surface appears on the
+  other instead of drifting into a second list. Adds `contacts.territory` and
+  `contacts.rep_status`.
+- **Open pipeline and RFQs (60d) can come from DryWare** instead of being typed. IAT
+  sells *through* reps, so the rep is the person on `deals.rep_contact` (~305 of 372
+  live deals carry one). The Numbers tab shows the live figures with a "use these"
+  button, and the Add-rep name field autocompletes from them. ⚠️ It's matched on the
+  **name**, so it's a suggestion, never an authority — nothing is stored until a human
+  accepts it.
+- **Firm rollup and channel summary are computed**, not re-linked.
+- **Every save is audit-logged** (`rep_scorecard.*`), with who scored and when on the record.
+
+One deliberate fidelity note: the workbook's Total is the sum of whatever is filled in,
+always out of 20 — so a rep judged on three signals reads the same as one judged on ten.
+That behaviour is kept (changing it would move every number), but the scored count now
+shows beside the total (`4/10`) and the drawer header says so, since a low score that
+just means "we haven't looked yet" was previously indistinguishable from a bad one.
+
+Access shares the existing `deals` permission (Sales + admin), like Performance and
+Territories — **no new permission to seed**. Scoring is further restricted to the admin
+and sales roles server-side; other `deals` holders see the board read-only.
+
+The roster starts empty: the source workbook was a blank template (only its EXAMPLE row
+was filled), so there was nothing to import.
+
 ## 2026-08-03 — Infrastructure cleanup: retired the three folded-in apps
 
 Housekeeping, no portal code changed. Three sub-apps that had already been consolidated into the

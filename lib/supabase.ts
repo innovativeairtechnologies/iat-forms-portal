@@ -481,6 +481,13 @@ export type Contact = {
   phone: string | null
   is_primary: boolean
   notes: string | null
+  /** Rep scorecard (075): the person's territory/region as free text ("Ohio
+   *  Valley") — the patch a REP covers, distinct from the painted state/county
+   *  set a FIRM owns in company_territories. */
+  territory: string | null
+  /** Rep scorecard (075): Active | Developing | Dormant | House/Direct. Named
+   *  rep_status, not `status`, because `contacts` is the shared CRM table. */
+  rep_status: string | null
   created_at: string
   updated_at: string
 }

@@ -369,6 +369,10 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // projected-sales above (same Sales + admin audience, no new perm to seed);
   // writes are further restricted to admin/sales in requireTerritoryAuth.
   { prefix: '/admin/territories', perm: 'deals' },
+  // Rep scorecard (075) — rep-health review over the same rep roster the
+  // territory map uses. Shares `deals` for the same reason as the two above;
+  // scoring is further restricted to admin/sales in requireRepScorecardAuth.
+  { prefix: '/admin/rep-scorecard', perm: 'deals' },
   { prefix: '/admin/gantt', perm: 'gantt' },
   { prefix: '/admin/org-chart', perm: 'org_chart' },
   { prefix: '/admin/forms', perm: 'forms' },

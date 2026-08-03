@@ -91,6 +91,9 @@ const NAV_PARENTS: NavParent[] = [
       // Territory map (068) — which rep firm owns which state/county, on a live
       // map. Shares the `deals` perm like Performance above.
       { href: '/admin/territories', label: 'Territories', perm: 'deals' },
+      // Rep scorecard (075) — the ten health signals per rep, rolled up per
+      // firm. Sits next to Territories: same rep roster, `deals` perm again.
+      { href: '/admin/rep-scorecard', label: 'Rep Scorecard', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
       // Sizing Studio — psychrometric unit selection (lib/sizing.ts), moved from
       // Operations. Admin-only by omission from DEFAULT_ROLE_PERMS.
