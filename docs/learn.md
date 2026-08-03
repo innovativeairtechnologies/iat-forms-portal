@@ -91,6 +91,45 @@ move the layout gate and those four API routes onto the perm, and add a migratio
 from the session, never the body) and is open to any signed-in account. `/api` is deliberately
 outside middleware's matcher.
 
+## Required training + reporting (migration 076)
+
+`/admin/learn-content/assignments`. Assign a **subject** or a **category** to an audience, with an
+optional due date, and see who has actually finished it.
+
+**Two polymorphic axes** on `learn_assignments`:
+
+| | |
+|---|---|
+| WHAT | `scope_type` = `module` \| `category` |
+| WHO | `audience_type` = `user` \| `role` \| `department` \| `everyone` |
+
+**The audience is a RULE, not a list.** It is resolved on read, never materialised, so a new hire
+inherits every `role` / `department` / `everyone` assignment the day their account exists. That is
+the whole reason to assign by group.
+
+**There is no `completed` column.** Completion is derived from `learn_progress` (+ a passed quiz
+where one is published) through the same `subjectIsComplete()` the library pages use — so a
+manager's report can never drift from what the learner sees.
+
+⚠️ **`department` is free text and blank for 5 of 9 staff.** A department assignment can resolve to
+nobody. Both halves of the guard matter: the admin form shows the resolved head-count *before*
+saving and warns how many staff have no department, and `POST /api/learn/assignments` refuses a
+zero-person audience with a 422. Don't remove either.
+
+**Learner surfaces.** Required subjects sort to the front of the browse deck, carry a due pill
+(`Due in 5d` / `3d overdue`, rose when late) in place of the category label, and get a **Required**
+filter tab — the reference design's "Mandatory" tab, made real rather than faked. The tab hides
+itself when nothing is required. Company Home's training strip leads with outstanding/overdue
+counts when anything is due.
+
+> Company Home's rollup checks lessons only, not the quiz gate — it's a "you have N things due"
+> nudge, and the precise state is one click away. `getLearnDashboard` does apply the full rule.
+
+Deleting an assignment removes the **requirement**, never any progress.
+
+Still no `is_mandatory` column and no "Recommended" signal — Required comes from an assignment, and
+there is no Recommended tab.
+
 ## Quizzes (migration 074)
 
 A quiz attaches to a **subject** or a **category** (`learn_quizzes.scope_type` + `scope_id` —
@@ -271,14 +310,13 @@ Source Trainual PDFs are still on disk at `iat-learn/trainual-existing/`, and
 
 ## Not built yet
 
-In the order Jacob prioritised them (2026-07-30):
+Jacob's 2026-07-30 priority list, with the first two now shipped:
 
-1. **Assignments + completion reporting** — assign required training to people/roles with due
-   dates, plus a manager view of who has completed what. The real Trainual-parity feature and
-   the compliance story for Safety. Needs new tables.
-2. **Quizzes** — nothing exists: no table, no route, no UI, and nothing gates lesson completion.
+1. ~~**Assignments + completion reporting**~~ — **done**, migration 076. See above.
+2. ~~**Quizzes**~~ — **done**, migration 074. See above.
 3. **Content backfill** — the 33 placeholder bodies and ~180 missing images. Blocked on image
-   upload existing first.
+   upload existing first, and now the thing blocking quizzes for Safety Procedures, Testing
+   Training and Our Products too.
 4. **The rest of authoring CRUD + image upload** — **delete is done** (see above), and lessons can
    be created and edited. Still missing: **creating** categories and subjects (seed-only —
    an admin cannot add a new subject without SQL), **renaming** subjects and lessons from the

@@ -2,6 +2,42 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Required training + completion reporting (migration 076)
+
+The last item on the IAT Learn roadmap. Assign a subject or a category to people with a due date at
+**/admin/learn-content/assignments**, and see who has actually done it.
+
+Four audiences: **one person**, **by role**, **by department**, or **everyone on staff**. The
+audience is stored as a *rule* and resolved on read, never materialised — so a new hire inherits
+every role/department/everyone assignment the day their account exists, without anyone remembering
+to add them.
+
+**There is no `completed` column.** Completion is derived through the same `subjectIsComplete()` the
+library pages use — lessons read, plus the quiz passed where one is published — so a manager's
+report can't drift from what the learner sees on their own dashboard.
+
+⚠️ **Department assignments can reach nobody, and that shaped the design.** Department is free text
+on the employee record and blank for 5 of the 9 active staff, so "assign to Dept · Warehouse" could
+look like it worked while reaching zero people. The form shows the resolved head-count before you
+save and says how many staff have no department; the API independently refuses a zero-person
+audience with a 422. Assigning **by role** always resolves — every account has one.
+
+**Learner side.** Required subjects sort to the front of the browse deck and swap their category
+label for a due pill (`Due in 5d`, or `3d overdue` in rose), and a **Required** filter tab appears —
+the reference design's "Mandatory" tab, finally real rather than faked, and hidden when nothing is
+required. Company Home's training strip now leads with outstanding and overdue counts.
+
+Verified with a 21-assertion harness against the live schema: audience resolution for all four
+kinds, customer exclusion, blank-department normalisation, category fan-out, earliest-due-date-wins
+on overlapping assignments, overdue only counting when someone is actually behind, least-done-first
+ordering, and cascade cleanup. One assertion failed first time and it was the *test* that was wrong:
+it assumed customer profiles still existed here. The Phase-2 split moved them to their own project,
+so this database now holds 9 staff and 0 customers — the exclusion filter is a correct no-op rather
+than dead code, and the comment now says so.
+
+Numbering note: this landed as **076**. A parallel session had already taken 075 for the Rep
+Scorecard, so both files briefly existed; migration history was repaired and both are recorded.
+
 ## 2026-08-03 — Rep Scorecard (`/admin/rep-scorecard`)
 
 Sales' rep-health review, ported from the `IAT_Rep_Scorecard` workbook they were

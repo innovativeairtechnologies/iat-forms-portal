@@ -2,37 +2,65 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, BookOpen, Clock, Check } from 'lucide-react'
+import { ArrowRight, BookOpen, Clock, Check, CalendarClock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SubjectCard, SubjectStatus } from '@/lib/learn'
 import { LEARN_TONE, fmtMins } from './learn-tones'
 
 /* The library as a horizontal deck of subject cards.
 
-   Filters are only the ones the data can actually answer. The reference design
-   this is modelled on had "Mandatory" and "Recommended" tabs and a due-date
-   pill; neither exists in the schema (no is_mandatory, no due_date), so rather
-   than fake them the pill carries the CATEGORY and the filters carry real
-   progress state. Due dates arrive with the assignments feature. */
+   Filters only ever say things the data can answer. The reference design had
+   "Mandatory" and "Recommended" tabs and a due-date pill; when this was first
+   built none of that existed, so the pill carried the category instead.
+   Assignments (migration 076) made two of the three real: a REQUIRED tab and a
+   genuine due date, both driven by what an admin actually assigned. There is
+   still no "Recommended" signal, so there is still no Recommended tab. */
 
-const FILTERS: { key: 'all' | SubjectStatus; label: string }[] = [
+type FilterKey = 'all' | 'required' | SubjectStatus
+
+const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'All' },
+  // "Required" is the reference design's Mandatory tab, made real by assignments
+  // (migration 076) rather than faked. It only appears when something IS required.
+  { key: 'required', label: 'Required' },
   { key: 'in-progress', label: 'In progress' },
   { key: 'not-started', label: 'Not started' },
   { key: 'completed', label: 'Completed' },
 ]
 
+/** "in 5 days" / "today" / "3 days overdue" */
+function dueLabel(days: number | null): string {
+  if (days == null) return 'Required'
+  if (days < 0) return `${Math.abs(days)}d overdue`
+  if (days === 0) return 'Due today'
+  if (days === 1) return 'Due tomorrow'
+  return `Due in ${days}d`
+}
+
 export default function SubjectScroller({ subjects }: { subjects: SubjectCard[] }) {
-  const [filter, setFilter] = useState<'all' | SubjectStatus>('all')
+  const [filter, setFilter] = useState<FilterKey>('all')
 
   const counts = useMemo(() => ({
     all: subjects.length,
+    required: subjects.filter(s => s.required).length,
     'not-started': subjects.filter(s => s.status === 'not-started').length,
     'in-progress': subjects.filter(s => s.status === 'in-progress').length,
     completed: subjects.filter(s => s.status === 'completed').length,
   }), [subjects])
 
-  const shown = filter === 'all' ? subjects : subjects.filter(s => s.status === filter)
+  // Required first when anything is — a due date outranks browsing order.
+  const ordered = useMemo(() => {
+    if (!counts.required) return subjects
+    const rank = (s: SubjectCard) =>
+      !s.required ? 2 : s.status === 'completed' ? 1 : 0
+    return [...subjects].sort((a, b) =>
+      rank(a) - rank(b)
+      || (a.required?.daysUntilDue ?? 9e9) - (b.required?.daysUntilDue ?? 9e9))
+  }, [subjects, counts.required])
+
+  const shown = filter === 'all' ? ordered
+    : filter === 'required' ? ordered.filter(s => s.required)
+      : ordered.filter(s => s.status === filter)
 
   return (
     <section className="rounded-xl border border-hairline bg-surface">
@@ -43,6 +71,9 @@ export default function SubjectScroller({ subjects }: { subjects: SubjectCard[] 
           {FILTERS.map(f => {
             const active = filter === f.key
             const n = counts[f.key]
+            // Don't show a Required tab when nothing is required — an empty tab
+            // reads as a broken feature rather than an empty state.
+            if (f.key === 'required' && n === 0) return null
             return (
               <button
                 key={f.key}
@@ -91,10 +122,23 @@ export default function SubjectScroller({ subjects }: { subjects: SubjectCard[] 
                   t.card,
                 )}
               >
-                <div className="mb-3 flex items-center gap-2">
-                  <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold', t.pill)}>
-                    <BookOpen size={11} /> {s.categoryName}
-                  </span>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  {/* Required outranks the category label — it's the reason to
+                      open this card. Overdue is the one place rose appears here. */}
+                  {s.required && !done ? (
+                    <span className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                      s.required.overdue
+                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
+                        : 'bg-white/75 text-ink dark:bg-white/10',
+                    )}>
+                      <CalendarClock size={11} /> {dueLabel(s.required.daysUntilDue)}
+                    </span>
+                  ) : (
+                    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold', t.pill)}>
+                      <BookOpen size={11} /> {s.categoryName}
+                    </span>
+                  )}
                   {done && (
                     <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold', t.pill)}>
                       <Check size={11} /> Done

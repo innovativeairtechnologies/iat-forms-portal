@@ -186,7 +186,19 @@ function TrainingStrip({ learn, href }: { learn: LearnHeaderStats; href: string 
         </span>
         <div className="min-w-0">
           <p className={overline}>Your training</p>
-          {started ? (
+          {learn.requiredOutstanding > 0 ? (
+            /* Required training outranks the progress line — if something is due,
+               that is the one thing this strip should say. */
+            <p className="mt-1 text-[13.5px] leading-snug text-stone-600 dark:text-stone-300">
+              <span className={learn.requiredOverdue > 0
+                ? 'font-semibold text-rose-700 dark:text-rose-400'
+                : 'font-semibold text-stone-900 dark:text-white'}>
+                {learn.requiredOutstanding} required {learn.requiredOutstanding === 1 ? 'subject' : 'subjects'}
+                {learn.requiredOverdue > 0 ? ` · ${learn.requiredOverdue} overdue` : ''}
+              </span>
+              {' '}still to finish.
+            </p>
+          ) : started ? (
             <p className="mt-1 text-[13.5px] leading-snug text-stone-600 dark:text-stone-300">
               <span className="font-semibold text-stone-900 dark:text-white">Level {learn.level} · {learn.levelTitle}</span>
               {' — '}{learn.lessonsCompleted} of {learn.totalLessons} lessons done.

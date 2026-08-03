@@ -8,6 +8,7 @@ import {
   getPublishedModuleQuizzes, getAttemptSummaries, subjectIsComplete,
   quizXpFrom, quizStatsFrom,
 } from '@/lib/learn-quiz'
+import { getMyAssignedModules } from '@/lib/learn-assignments'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IAT Learn data layer
@@ -275,10 +276,11 @@ export async function getDeleteImpact(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Browse dashboard (/admin/learn) — everything the gamified library page needs,
-// from FOUR queries. Deliberately built only from signals that actually exist:
-// there is no due date, no "mandatory" flag, no quiz score, and
-// learn_progress.time_spent_seconds is never written — so "time" here is always
-// the estimated_minutes of lessons COMPLETED, never a measured duration.
+// Built only from signals that actually exist. Due dates and "required" are
+// real now (assignments, migration 076) and quiz scores are real (074); there is
+// still no "recommended" signal, and learn_progress.time_spent_seconds is still
+// never written — so "time" here is always the estimated_minutes of lessons
+// COMPLETED, never a measured duration.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Category → Tone. Subjects inherit their category's tone, so colour means
@@ -311,6 +313,8 @@ export type SubjectCard = {
   status: SubjectStatus
   /** Set when this subject has a PUBLISHED quiz. `passed` gates completion. */
   quiz?: { id: string; passed: boolean; bestPct: number | null }
+  /** Set when this subject is REQUIRED of this person (migration 076). */
+  required?: { dueOn: string | null; daysUntilDue: number | null; overdue: boolean }
 }
 
 export type WeekDay = {
@@ -362,13 +366,17 @@ export type LearnDashboard = {
     quizzesTaken: number
     quizzesPassed: number
     avgQuizPct: number
+    /** Required training (migration 076). */
+    requiredTotal: number
+    requiredDone: number
+    requiredOverdue: number
   }
 }
 
 const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
 export async function getLearnDashboard(userId: string): Promise<LearnDashboard> {
-  const [cats, mods, less, prog, moduleQuizzes, attempts] = await Promise.all([
+  const [cats, mods, less, prog, moduleQuizzes, attempts, assigned] = await Promise.all([
     supabaseAdmin.from('learn_categories').select('id, name, slug, display_order').order('display_order'),
     supabaseAdmin.from('learn_modules').select('id, category_id, title, slug, description, display_order')
       .eq('is_published', true).order('display_order'),
@@ -378,6 +386,7 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
       .eq('user_id', userId).not('completed_at', 'is', null),
     getPublishedModuleQuizzes(),
     getAttemptSummaries(userId),
+    getMyAssignedModules(userId),
   ])
 
   const categories = cats.data ?? []
@@ -405,6 +414,7 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
     const done = ls.filter(l => doneIds.has(l.id)).length
     const pct = ls.length ? Math.round((done / ls.length) * 100) : 0
     const quiz = moduleQuizzes.get(m.id)
+    const req = assigned.get(m.id)
     const attempt = quiz ? attempts.get(quiz.id) : undefined
     // Reading everything is no longer enough once a quiz is published — see
     // subjectIsComplete. Subjects WITHOUT a published quiz are unaffected, so
@@ -423,6 +433,7 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
       pct,
       status: complete ? 'completed' : done === 0 ? 'not-started' : 'in-progress',
       ...(quiz ? { quiz: { id: quiz.id, passed: attempt?.passed === true, bestPct: attempt?.bestPct ?? null } } : {}),
+      ...(req ? { required: { dueOn: req.dueOn, daysUntilDue: req.daysUntilDue, overdue: req.overdue } } : {}),
     }
   })
 
@@ -497,6 +508,14 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
   const lvl = levelInfo(totalXp)
   const streak = computeStreak(completed.map(p => p.completed_at))
   const quizzes = quizStatsFrom(attempts)
+  // Required-training rollup. Counted from the SUBJECT CARDS, so 'done' uses the
+  // same completion rule (lessons + quiz) the cards and the admin report use.
+  const requiredCards = subjects.filter(s => s.required)
+  const required = {
+    total: requiredCards.length,
+    done: requiredCards.filter(s => s.status === 'completed').length,
+    overdue: requiredCards.filter(s => s.required!.overdue && s.status !== 'completed').length,
+  }
 
   return {
     subjects,
@@ -520,6 +539,9 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
       levelProgressPct: lvl.progressPct,
       nextLevelTitle: lvl.nextTitle,
       xpToNext: lvl.xpForNextLevel != null ? lvl.xpForNextLevel - lvl.xpIntoLevel : null,
+      requiredTotal: required.total,
+      requiredDone: required.done,
+      requiredOverdue: required.overdue,
       quizzesTaken: quizzes.taken,
       quizzesPassed: quizzes.passed,
       avgQuizPct: quizzes.avgPct,
@@ -583,12 +605,16 @@ export type LearnHeaderStats = {
   totalLessons: number
   /** 0–100, rounded. 0 when the library is empty. */
   pct: number
+  /** Required training still outstanding, and how much of it is past due. */
+  requiredOutstanding: number
+  requiredOverdue: number
 }
 export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderStats> {
-  const [{ data: lessons }, { data: progress }, attempts] = await Promise.all([
+  const [{ data: lessons }, { data: progress }, attempts, assigned] = await Promise.all([
     supabaseAdmin.from('learn_lessons').select('id, estimated_minutes').eq('is_published', true),
     supabaseAdmin.from('learn_progress').select('lesson_id, completed_at').eq('user_id', userId).not('completed_at', 'is', null),
     getAttemptSummaries(userId),
+    getMyAssignedModules(userId),
   ])
   const min = new Map((lessons ?? []).map(l => [l.id, l.estimated_minutes ?? 0]))
   let xp = 0, count = 0
@@ -599,11 +625,41 @@ export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderSt
   const streak = computeStreak((progress ?? []).map(p => p.completed_at as string).filter(Boolean))
   const lvl = levelInfo(xp)
   const totalLessons = min.size
+
+  // Required-training rollup for the Company Home strip. Deliberately cheap: a
+  // required subject counts as outstanding unless every one of its published
+  // lessons is done. It does NOT re-check the quiz gate — that would cost a
+  // per-subject pass here, and the strip's job is "you have N things due", with
+  // the precise state one click away on /admin/learn.
+  const doneLessonIds = new Set((progress ?? []).map(p => p.lesson_id as string))
+  let requiredOutstanding = 0
+  let requiredOverdue = 0
+  if (assigned.size) {
+    const { data: reqLessons } = await supabaseAdmin
+      .from('learn_lessons').select('id, module_id')
+      .in('module_id', [...assigned.keys()]).eq('is_published', true)
+    const byModule = new Map<string, string[]>()
+    for (const l of reqLessons ?? []) {
+      const arr = byModule.get(l.module_id) ?? []
+      arr.push(l.id)
+      byModule.set(l.module_id, arr)
+    }
+    for (const [moduleId, req] of assigned) {
+      const ls = byModule.get(moduleId) ?? []
+      const finished = ls.length > 0 && ls.every(id => doneLessonIds.has(id))
+      if (finished) continue
+      requiredOutstanding++
+      if (req.overdue) requiredOverdue++
+    }
+  }
+
   return {
     totalXp: xp, level: lvl.level, levelTitle: lvl.title, currentStreak: streak.current,
     lessonsCompleted: count,
     totalLessons,
     pct: totalLessons ? Math.round((count / totalLessons) * 100) : 0,
+    requiredOutstanding,
+    requiredOverdue,
   }
 }
 

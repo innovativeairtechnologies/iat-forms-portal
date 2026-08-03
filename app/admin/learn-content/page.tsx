@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowLeft, Layers, BookOpen, FileClock } from 'lucide-react'
+import { ArrowLeft, Layers, BookOpen, FileClock, ClipboardCheck } from 'lucide-react'
 import { getAdminTree } from '@/lib/learn'
 import { listQuizzes } from '@/lib/learn-quiz'
 import AdminTree, { type QuizIndex } from '@/components/learn/admin/AdminTree'
@@ -20,12 +20,20 @@ export default async function LearnAdminPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <Link
-        href="/admin/learn"
-        className="mb-5 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={15} /> Back to Learn
-      </Link>
+      <div className="mb-5 flex items-center gap-4">
+        <Link
+          href="/admin/learn"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={15} /> Back to Learn
+        </Link>
+        <Link
+          href="/admin/learn-content/assignments"
+          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 text-[12.5px] font-medium text-ink-secondary transition-colors hover:border-brand hover:text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <ClipboardCheck size={14} /> Required training
+        </Link>
+      </div>
 
       <header className="mb-7">
         <h1 className="text-[26px] font-[650] tracking-tight text-ink">Learn Admin</h1>
