@@ -51,38 +51,11 @@ function aiRecsBlock(recs: string[] | null) {
     <p style="margin:0;color:#999;font-size:12px;">These are AI-generated suggestions — if you're unsure, wait for your service technician.</p>`
 }
 
-// ── Customer confirmation on ticket creation ──────────────────────────────────
-export async function sendTicketConfirmationToCustomer(ticket: Ticket) {
-  const statusUrl = `${APP_URL}/support/status?ticket=${encodeURIComponent(ticket.ticket_number)}`
-
-  const body = `
-    <p style="margin:0 0 16px;color:#333;font-size:15px;">Hi ${esc(ticket.customer_name)},</p>
-    <p style="margin:0 0 20px;color:#333;font-size:15px;">
-      We've received your support ticket. An IAT engineer will review your details and reach out within <strong>1 business day</strong>.
-    </p>
-    ${ticketChip(ticket.ticket_number)}
-    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:4px;">
-      ${row('Serial #', esc(ticket.serial_number))}
-      ${row('Model #', esc(ticket.model_number))}
-      ${row('Reported issue', esc(ticket.problem_description))}
-    </table>
-    ${aiRecsBlock(ticket.ai_recommendations)}
-    <a href="${esc(statusUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;margin-top:20px;">Check Ticket Status</a>
-    <p style="margin:10px 0 0;color:#999;font-size:12px;">You'll need this email address (${esc(ticket.customer_email)}) to look up your ticket.</p>
-    <p style="margin:14px 0 0;color:#666;font-size:13px;line-height:1.5;">Want to track all your equipment and requests in one place? Check your ticket status above, then look for <strong>&ldquo;Request portal access&rdquo;</strong> once you've confirmed your details.</p>`
-
-  const result = await resend.emails.send({
-    from: FROM,
-    to: ticket.customer_email,
-    subject: `IAT Support — Ticket ${ticket.ticket_number} received`,
-    html: shell('#1a1a2e', 'Ticket Received', body),
-  })
-  if (result.error) console.error(`[resend] ticket confirmation failed to ${ticket.customer_email}:`, result.error)
-  else console.log(`[resend] ticket confirmation sent to ${ticket.customer_email}: id=${result.data?.id}`)
-}
-
-// ── Staff notification on new ticket ──────────────────────────────────────────
-export async function sendTicketNotificationToAdmins(ticket: Ticket, adminEmails: string[]) {
+// ── Support-desk notification on new ticket ───────────────────────────────────
+// The ONLY email a support submission sends. A customer confirmation used to go
+// out alongside this one; it was removed 2026-08-03 — customers are contacted by
+// the desk, not by the app.
+export async function sendTicketNotificationToSupportDesk(ticket: Ticket, recipients: string[]) {
   const ticketUrl = `${APP_URL}/admin/tickets/${ticket.id}`
 
   const body = `
@@ -103,12 +76,12 @@ export async function sendTicketNotificationToAdmins(ticket: Ticket, adminEmails
   const subject = `New Support Ticket ${ticket.ticket_number} — ${ticket.customer_name}${ticket.customer_company ? ` (${ticket.customer_company})` : ''}`
 
   const results = await Promise.all(
-    adminEmails.map((to) =>
+    recipients.map((to) =>
       resend.emails.send({ from: FROM, to, subject, html: shell('#1a1a2e', 'New Support Ticket', body) })
     )
   )
   results.forEach((r, i) => {
-    if (r.error) console.error(`[resend] ticket notification failed to ${adminEmails[i]}:`, r.error)
-    else console.log(`[resend] ticket notification sent to ${adminEmails[i]}: id=${r.data?.id}`)
+    if (r.error) console.error(`[resend] ticket notification failed to ${recipients[i]}:`, r.error)
+    else console.log(`[resend] ticket notification sent to ${recipients[i]}: id=${r.data?.id}`)
   })
 }

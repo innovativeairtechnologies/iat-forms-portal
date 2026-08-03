@@ -5,8 +5,15 @@ import type { ViewedKbArticle } from '@/lib/supabase'
 import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
-import { sendTicketConfirmationToCustomer, sendTicketNotificationToAdmins } from '@/lib/resend-tickets'
-import { getAdminRecipients } from '@/lib/staff'
+import { sendTicketNotificationToSupportDesk } from '@/lib/resend-tickets'
+
+// A support submission sends exactly ONE email: a heads-up to the support desk
+// so they know a ticket came through (decision 2026-08-03). There is deliberately
+// NO customer confirmation, and the admin roster is deliberately NOT mailed —
+// don't re-plumb getAdminRecipients()/ADMIN_NOTIFICATION_EMAIL back in here.
+// SUPPORT_NOTIFICATION_EMAIL (comma-separated) redirects or widens the list from
+// Vercel without a deploy.
+const SUPPORT_DESK_EMAIL = 'crystal@dehumidifiers.com'
 
 // ── Merged-field validation (the unified support form carries the old
 // Troubleshooting Checklist fields too). Mirrors app/api/troubleshooting/route.ts.
@@ -45,7 +52,7 @@ function validPhotoUrls(v: unknown): string[] {
 }
 
 export async function POST(req: NextRequest) {
-  // Tight window: each ticket is a DB insert + a Claude call + two emails.
+  // Tight window: each ticket is a DB insert + a Claude call + an email.
   const limited = await rateLimit(req, { name: 'tickets', max: 5, windowSeconds: 600 })
   if (limited) return limited
 
@@ -177,39 +184,21 @@ export async function POST(req: NextRequest) {
         .eq('id', ticket.id)
     }
 
-    // Email loop — customer confirmation + staff notification. Awaited so
-    // Vercel doesn't kill the function before Resend fires; failures are
-    // logged but never fail the ticket.
+    // The one email: a support-desk heads-up. Awaited so Vercel doesn't kill the
+    // function before Resend fires; a failure is logged but never fails the
+    // ticket, which is already committed above.
     const fullTicket = { ...ticket, ai_recommendations: ai_recommendations.length ? ai_recommendations : null }
 
-    // Recipients resolve from profiles.role (lib/staff.ts), never employees.is_admin.
-    // Degrade instead of throwing: the ticket is already committed above, so a failed
-    // recipient lookup must not 500 the customer who just filed it — the env fallback
-    // below is the backstop for exactly this.
-    const admins = await getAdminRecipients().catch(err => {
-      console.error('[tickets] admin recipients unavailable, falling back to env:', err)
-      return []
-    })
-    const adminEmails = admins.map(a => a.email)
-    const fallback = process.env.ADMIN_NOTIFICATION_EMAIL
-    if (fallback && !adminEmails.includes(fallback)) adminEmails.push(fallback)
-
-    // Support-desk recipients (e.g. the PM). Comma-separated so more people can
-    // be added later without a code change; deduped against the admin list.
-    const supportRecipients = (process.env.SUPPORT_NOTIFICATION_EMAIL || '')
+    const supportRecipients = (process.env.SUPPORT_NOTIFICATION_EMAIL || SUPPORT_DESK_EMAIL)
       .split(',')
       .map(s => s.trim())
       .filter(Boolean)
-    for (const r of supportRecipients) {
-      if (!adminEmails.includes(r)) adminEmails.push(r)
-    }
 
-    await Promise.all([
-      sendTicketConfirmationToCustomer(fullTicket).catch(console.error),
-      adminEmails.length
-        ? sendTicketNotificationToAdmins(fullTicket, adminEmails).catch(console.error)
-        : Promise.resolve(console.log('[tickets] no admin recipients configured — staff notification skipped')),
-    ])
+    if (supportRecipients.length) {
+      await sendTicketNotificationToSupportDesk(fullTicket, supportRecipients).catch(console.error)
+    } else {
+      console.log('[tickets] no support recipient configured — notification skipped')
+    }
 
     return NextResponse.json({ success: true, ticket_number, ai_recommendations })
   } catch (err) {

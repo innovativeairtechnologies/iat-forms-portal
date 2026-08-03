@@ -2,6 +2,34 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-03 — Support form sends one email, to the support desk
+
+A support submission used to fire **two** emails: a confirmation to the customer, and a
+notification fanned out to every admin employee plus `ADMIN_NOTIFICATION_EMAIL` plus
+`SUPPORT_NOTIFICATION_EMAIL`. It now sends **exactly one** — a heads-up to
+`crystal@dehumidifiers.com` so the desk knows a ticket came through.
+
+- **No customer confirmation.** `sendTicketConfirmationToCustomer()` is deleted, not just
+  unwired. The customer still gets their ticket number, the "we'll reach out to *you@…*" line,
+  and the AI suggestions **on screen** at submit, so nothing they need lives only in that email.
+- **No admin fan-out.** `getAdminRecipients()` / `ADMIN_NOTIFICATION_EMAIL` are gone from
+  `app/api/tickets/route.ts`; those still drive PTO/digest mail, just not tickets.
+- **Recipient is `SUPPORT_NOTIFICATION_EMAIL` (comma-separated), defaulting in code to Crystal.**
+  Unset in prod today, so the default applies. Note the semantics changed: the env var now
+  *replaces* the recipient list rather than CC-ing on top of the admin roster.
+- `sendTicketNotificationToAdmins()` → `sendTicketNotificationToSupportDesk()`, so the name can't
+  invite the roster back in.
+- The retired `/api/troubleshooting` endpoint (checklist merged into tickets 2026-06-24, but still
+  a live public POST) got the same treatment — no customer confirmation, same Crystal default,
+  replacing the old `CS_NOTIFICATION_EMAIL` → Jacob fallback.
+- `/support/status` no longer says "Reply to your confirmation email" — there isn't one.
+
+⚠️ **This does not yet reach Crystal's inbox, for reasons outside this change.** Production has no
+`RESEND_FROM_SUPPORT`, so every support email still sends from the `onboarding@resend.dev` sandbox,
+which Resend only delivers to the Resend account owner — and `dehumidifiers.com` currently reads
+`status=failed` in Resend. Verify the domain and set `RESEND_FROM_SUPPORT` (see
+`docs/email-domain-setup-guide.md`) and this notification starts landing with no code change.
+
 ## 2026-07-31 — Required training + completion reporting (migration 076)
 
 The last item on the IAT Learn roadmap. Assign a subject or a category to people with a due date at

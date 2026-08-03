@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
-import { sendTroubleshootingConfirmationToCustomer, sendTroubleshootingCsAlert } from '@/lib/resend-troubleshooting'
+import { sendTroubleshootingCsAlert } from '@/lib/resend-troubleshooting'
+
+// Retired path — the checklist merged into the Equipment Support ticket, so this
+// endpoint only fires if something POSTs it directly. Kept in step with
+// app/api/tickets/route.ts: one email, to the support desk, none to the customer.
+const SUPPORT_DESK_EMAIL = 'crystal@dehumidifiers.com'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -126,13 +131,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to submit. Please try again.' }, { status: 500 })
     }
 
-    // Email loop — customer confirmation + CS alert. Awaited so Vercel doesn't
-    // kill the function before Resend fires; failures log but never fail the case.
-    const csRecipients = [process.env.CS_NOTIFICATION_EMAIL || 'jacob.younker@dehumidifiers.com']
-    await Promise.all([
-      sendTroubleshootingConfirmationToCustomer(intake).catch(console.error),
-      sendTroubleshootingCsAlert(intake, csRecipients).catch(console.error),
-    ])
+    // The one email: a support-desk heads-up. Awaited so Vercel doesn't kill the
+    // function before Resend fires; failures log but never fail the case.
+    const csRecipients = (process.env.SUPPORT_NOTIFICATION_EMAIL || SUPPORT_DESK_EMAIL)
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+    await sendTroubleshootingCsAlert(intake, csRecipients).catch(console.error)
 
     return NextResponse.json({ success: true, reference_number, ai_recommendations })
   } catch (err) {

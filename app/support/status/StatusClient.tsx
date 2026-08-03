@@ -373,7 +373,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
 
               {/* Footer actions */}
               <div className="flex items-center justify-between gap-4 pt-1">
-                <p className="text-[12px] text-gray-400">Need more help? Reply to your confirmation email.</p>
+                <p className="text-[12px] text-gray-400">Need more help? Your IAT engineer will reach out directly.</p>
                 <Link href="/support" className="flex items-center gap-1.5 text-[13px] font-semibold text-[#089447] hover:text-[#077a3c] transition-colors">
                   Back to support <ArrowRight size={14} />
                 </Link>

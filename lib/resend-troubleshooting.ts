@@ -85,36 +85,9 @@ function photosBlock(urls: string[] | null) {
   return `<p style="margin:18px 0 0;color:#555;font-size:14px;"><strong style="color:#333;">Photos:</strong> ${links}</p>`
 }
 
-// ── Customer confirmation ─────────────────────────────────────────────────────
-export async function sendTroubleshootingConfirmationToCustomer(t: TroubleshootingIntake) {
-  const statusUrl = `${APP_URL}/support/status?ticket=${encodeURIComponent(t.reference_number)}`
-
-  const body = `
-    <p style="margin:0 0 16px;color:#333;font-size:15px;">Hi ${esc(t.customer_name)},</p>
-    <p style="margin:0 0 20px;color:#333;font-size:15px;">
-      Thanks for completing the troubleshooting checklist. An IAT engineer will review your answers and reach out within <strong>1 business day</strong>.
-    </p>
-    ${refChip(t.reference_number)}
-    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:4px;">
-      ${row('Serial #', esc(t.serial_number))}
-      ${t.model_number ? row('Model #', esc(t.model_number)) : ''}
-      ${row('Reported issue', esc(t.problem_description))}
-    </table>
-    ${aiRecsBlock(t.ai_recommendations)}
-    <a href="${esc(statusUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;margin-top:20px;">Check Status</a>
-    <p style="margin:10px 0 0;color:#999;font-size:12px;">You'll need this email address (${esc(t.customer_email)}) to look up your reference.</p>`
-
-  const result = await resend.emails.send({
-    from: FROM,
-    to: t.customer_email,
-    subject: `IAT Support — Checklist ${t.reference_number} received`,
-    html: shell('#1a1a2e', 'Checklist Received', body),
-  })
-  if (result.error) console.error(`[resend] troubleshooting confirmation failed to ${t.customer_email}:`, result.error)
-  else console.log(`[resend] troubleshooting confirmation sent to ${t.customer_email}: id=${result.data?.id}`)
-}
-
 // ── CS team alert (email carries the full case — no admin detail page yet) ─────
+// The only email this path sends; the customer confirmation that used to
+// accompany it was removed 2026-08-03.
 export async function sendTroubleshootingCsAlert(t: TroubleshootingIntake, recipients: string[]) {
   if (!recipients.length) {
     console.log('[resend] no CS recipients configured — troubleshooting alert skipped')
