@@ -155,6 +155,25 @@
   }
   .sidebar-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--sidebar-ink-muted); }
 
+  /* Horizontal subject deck on /admin/learn. Same thin-pill treatment as the
+     sidebar rail, but on the content tokens and on the X axis. The bar stays
+     visible (rather than hidden) because it is the only affordance telling you
+     there are more subjects off to the right. */
+  .learn-deck {
+    scrollbar-width: thin;
+    scrollbar-color: var(--hairline-strong) transparent;
+  }
+  .learn-deck::-webkit-scrollbar { height: 8px; }
+  .learn-deck::-webkit-scrollbar-button { width: 0; height: 0; display: none; }
+  .learn-deck::-webkit-scrollbar-track { background: transparent; }
+  .learn-deck::-webkit-scrollbar-thumb {
+    background-color: var(--hairline-strong);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .learn-deck::-webkit-scrollbar-thumb:hover { background-color: var(--ink-faint); }
+
   .text-balance { text-wrap: balance; }
 }
 

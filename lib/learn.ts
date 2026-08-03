@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getCustomerIds } from '@/lib/staff'
 import {
-  computeUserStats, computeStreak, lessonXp, levelInfo,
+  computeUserStats, computeStreak, lessonXp, levelInfo, dateKey, keyToDayNum,
   type UserLearnStats,
 } from '@/lib/learn-gamification'
 
@@ -267,6 +267,240 @@ export async function getDeleteImpact(
     progressRows = all.count
   }
   return { modules: moduleIds.length, lessons: lessonIds.length, completions, progressRows }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Browse dashboard (/admin/learn) — everything the gamified library page needs,
+// from FOUR queries. Deliberately built only from signals that actually exist:
+// there is no due date, no "mandatory" flag, no quiz score, and
+// learn_progress.time_spent_seconds is never written — so "time" here is always
+// the estimated_minutes of lessons COMPLETED, never a measured duration.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Category → Tone. Subjects inherit their category's tone, so colour means
+ *  "same part of the library" rather than decoration. Falls back by index so a
+ *  newly-created category still gets a stable colour. */
+const CATEGORY_TONES = ['emerald', 'sky', 'amber', 'violet', 'rose', 'slate'] as const
+export type LearnTone = (typeof CATEGORY_TONES)[number]
+
+const TONE_BY_SLUG: Record<string, LearnTone> = {
+  onboarding: 'emerald',
+  company: 'sky',
+  safety: 'amber',
+  'technical-training': 'violet',
+  'products-tools': 'rose',
+}
+
+export type SubjectStatus = 'not-started' | 'in-progress' | 'completed'
+
+export type SubjectCard = {
+  id: string
+  title: string
+  description: string | null
+  href: string
+  categoryName: string
+  tone: LearnTone
+  lessonCount: number
+  minutes: number
+  completed: number
+  pct: number
+  status: SubjectStatus
+}
+
+export type WeekDay = {
+  key: string
+  /** MON, TUE, … */
+  label: string
+  dayOfMonth: number
+  minutes: number
+  lessons: number
+  isToday: boolean
+}
+
+export type UpNextLesson = {
+  id: string
+  title: string
+  href: string
+  moduleTitle: string
+  categoryName: string
+  tone: LearnTone
+  minutes: number
+  /** true when the subject is already underway — those are offered first. */
+  resuming: boolean
+}
+
+export type LearnDashboard = {
+  subjects: SubjectCard[]
+  week: WeekDay[]
+  weekMinutes: number
+  lastWeekMinutes: number
+  /** null when last week was zero — a percentage against zero is meaningless. */
+  deltaPct: number | null
+  upNext: UpNextLesson[]
+  stats: {
+    lessonsCompleted: number
+    totalLessons: number
+    libraryPct: number
+    subjectsInProgress: number
+    subjectsCompleted: number
+    totalSubjects: number
+    streak: number
+    longestStreak: number
+    totalXp: number
+    level: number
+    levelTitle: string
+    levelProgressPct: number
+    nextLevelTitle: string | null
+    xpToNext: number | null
+  }
+}
+
+const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+
+export async function getLearnDashboard(userId: string): Promise<LearnDashboard> {
+  const [cats, mods, less, prog] = await Promise.all([
+    supabaseAdmin.from('learn_categories').select('id, name, slug, display_order').order('display_order'),
+    supabaseAdmin.from('learn_modules').select('id, category_id, title, slug, description, display_order')
+      .eq('is_published', true).order('display_order'),
+    supabaseAdmin.from('learn_lessons').select('id, module_id, title, slug, estimated_minutes, display_order')
+      .eq('is_published', true).order('display_order'),
+    supabaseAdmin.from('learn_progress').select('lesson_id, completed_at')
+      .eq('user_id', userId).not('completed_at', 'is', null),
+  ])
+
+  const categories = cats.data ?? []
+  const modules = mods.data ?? []
+  const lessons = less.data ?? []
+  const completed = (prog.data ?? []) as { lesson_id: string; completed_at: string }[]
+
+  const toneFor = (slug: string, i: number): LearnTone =>
+    TONE_BY_SLUG[slug] ?? CATEGORY_TONES[i % CATEGORY_TONES.length]
+
+  const catById = new Map(categories.map((c, i) => [c.id, { ...c, tone: toneFor(c.slug, i) }]))
+  const doneIds = new Set(completed.map(p => p.lesson_id))
+
+  const lessonsByModule = new Map<string, typeof lessons>()
+  for (const l of lessons) {
+    const arr = lessonsByModule.get(l.module_id) ?? []
+    arr.push(l)
+    lessonsByModule.set(l.module_id, arr)
+  }
+
+  // ── Subject cards ──
+  const subjects: SubjectCard[] = modules.map(m => {
+    const ls = lessonsByModule.get(m.id) ?? []
+    const cat = catById.get(m.category_id)
+    const done = ls.filter(l => doneIds.has(l.id)).length
+    const pct = ls.length ? Math.round((done / ls.length) * 100) : 0
+    return {
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      href: `/admin/learn/${cat?.slug ?? ''}/${m.slug}`,
+      categoryName: cat?.name ?? '',
+      tone: cat?.tone ?? 'slate',
+      lessonCount: ls.length,
+      minutes: ls.reduce((n, l) => n + (l.estimated_minutes ?? 0), 0),
+      completed: done,
+      pct,
+      status: done === 0 ? 'not-started' : done >= ls.length ? 'completed' : 'in-progress',
+    }
+  })
+
+  // ── Week chart: minutes of content COMPLETED per day, in the house timezone ──
+  const minutesByLesson = new Map(lessons.map(l => [l.id, l.estimated_minutes ?? 0]))
+  const perDay = new Map<string, { minutes: number; lessons: number }>()
+  for (const p of completed) {
+    const k = dateKey(new Date(p.completed_at))
+    const cur = perDay.get(k) ?? { minutes: 0, lessons: 0 }
+    cur.minutes += minutesByLesson.get(p.lesson_id) ?? 0
+    cur.lessons += 1
+    perDay.set(k, cur)
+  }
+
+  const todayKey = dateKey(new Date())
+  const todayNum = keyToDayNum(todayKey)
+  const keyFor = (dayNum: number) => new Date(dayNum * 86_400_000).toISOString().slice(0, 10)
+
+  // Last 7 days ending today, oldest first.
+  const week: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
+    const dayNum = todayNum - (6 - i)
+    const key = keyFor(dayNum)
+    const hit = perDay.get(key) ?? { minutes: 0, lessons: 0 }
+    const d = new Date(dayNum * 86_400_000)
+    return {
+      key,
+      label: DAY_LABELS[d.getUTCDay()],
+      dayOfMonth: d.getUTCDate(),
+      minutes: hit.minutes,
+      lessons: hit.lessons,
+      isToday: key === todayKey,
+    }
+  })
+
+  const weekMinutes = week.reduce((n, d) => n + d.minutes, 0)
+  let lastWeekMinutes = 0
+  for (let i = 7; i < 14; i++) {
+    lastWeekMinutes += perDay.get(keyFor(todayNum - i))?.minutes ?? 0
+  }
+  const deltaPct = lastWeekMinutes > 0
+    ? Math.round(((weekMinutes - lastWeekMinutes) / lastWeekMinutes) * 100)
+    : null
+
+  // ── Up next: resume a started subject first, then start a fresh one ──
+  const upNext: UpNextLesson[] = []
+  const ordered = [...subjects]
+    .map((s, idx) => ({ s, idx }))
+    .sort((a, b) => {
+      const rank = (st: SubjectStatus) => (st === 'in-progress' ? 0 : st === 'not-started' ? 1 : 2)
+      return rank(a.s.status) - rank(b.s.status) || a.idx - b.idx
+    })
+  for (const { s } of ordered) {
+    if (upNext.length >= 5) break
+    if (s.status === 'completed') continue
+    const next = (lessonsByModule.get(s.id) ?? []).find(l => !doneIds.has(l.id))
+    if (!next) continue
+    upNext.push({
+      id: next.id,
+      title: next.title,
+      href: `${s.href}/${next.slug}`,
+      moduleTitle: s.title,
+      categoryName: s.categoryName,
+      tone: s.tone,
+      minutes: next.estimated_minutes ?? 0,
+      resuming: s.status === 'in-progress',
+    })
+  }
+
+  // ── Headline stats ──
+  const totalXp = completed.reduce((n, p) => n + lessonXp(minutesByLesson.get(p.lesson_id) ?? 0), 0)
+  const lvl = levelInfo(totalXp)
+  const streak = computeStreak(completed.map(p => p.completed_at))
+
+  return {
+    subjects,
+    week,
+    weekMinutes,
+    lastWeekMinutes,
+    deltaPct,
+    upNext,
+    stats: {
+      lessonsCompleted: doneIds.size,
+      totalLessons: lessons.length,
+      libraryPct: lessons.length ? Math.round((doneIds.size / lessons.length) * 100) : 0,
+      subjectsInProgress: subjects.filter(s => s.status === 'in-progress').length,
+      subjectsCompleted: subjects.filter(s => s.status === 'completed').length,
+      totalSubjects: subjects.length,
+      streak: streak.current,
+      longestStreak: streak.longest,
+      totalXp,
+      level: lvl.level,
+      levelTitle: lvl.title,
+      levelProgressPct: lvl.progressPct,
+      nextLevelTitle: lvl.nextTitle,
+      xpToNext: lvl.xpForNextLevel != null ? lvl.xpForNextLevel - lvl.xpIntoLevel : null,
+    },
+  }
 }
 
 // ── Admin: single lesson for editing ────────────────────────────────────────

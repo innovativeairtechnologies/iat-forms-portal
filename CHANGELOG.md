@@ -2,6 +2,37 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Learn's library page, rebuilt as a gamified dashboard
+
+`/admin/learn` was a greeting band over five category tiles. It's now a proper library dashboard,
+built from a reference design Jacob supplied: a **level band** (ring, title, XP, XP-to-next,
+streak), a horizontal **deck of the 14 subjects** washed in their category's colour with lesson
+count, run time and progress, a **week chart** of content completed per day with a vs-last-week
+delta and four stat tiles, and an **Up next** panel — a 7-day activity strip plus the actual next
+lessons to open, resuming a started subject before offering a fresh one.
+
+The gamification was always there — XP, ten levels, streaks, nine badge types — it was just
+rendered quietly. This surfaces it.
+
+**Colour is the DESIGN.md §2.4 dashboard exception, not a fork.** Every wash is a Tone from the
+sanctioned table (emerald / sky / amber / violet / rose / slate); no off-system pastels were
+introduced. A subject inherits its *category's* tone, so colour means "this part of the library"
+rather than decoration — Onboarding is emerald, Safety amber, Technical violet, and so on.
+
+**Nothing on the page is invented.** The reference leaned on due dates, a Mandatory filter, "hours
+studied" and test scores. Learn has no `due_date`, no `is_mandatory`, no quizzes, and
+`learn_progress.time_spent_seconds` — despite existing since migration 014 — **is never written by
+anything**, so a real "hours studied" figure would have been fabricated. Rather than fake them:
+the date pill carries the category, filters use real progress state, and the chart plots
+`estimated_minutes` of lessons *completed* per day under the label "Content completed". Due dates
+land with assignments; scores with quizzes.
+
+Caught while verifying against a static render of the real compiled CSS: the first cut sized bars
+with percentage heights inside `items-end` columns, which have no definite height — so the chart
+rendered completely empty. Heights are explicit pixels now. Days are bucketed with the same
+`dateKey()` helper streaks use, so a late-evening completion can't extend a streak while landing
+on the previous bar.
+
 ## 2026-07-31 — Admin sidebar: drop the active-row green indicator
 
 The 2px brand-green bar on the left edge of active nav items is gone (all three spots: the two

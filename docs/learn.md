@@ -23,6 +23,45 @@ Learn login.
 Old `/learn/*` URLs 308 to these via `next.config.js` redirects, which run *before* middleware,
 so a `?redirect=/learn...` login round-trip still lands correctly.
 
+## The browse page (`/admin/learn`)
+
+A gamified library dashboard, rebuilt 2026-07-31 from a reference design Jacob supplied:
+
+- **Level band** — level ring, title, XP, progress to the next level, streak.
+- **My courses** — a horizontal deck of the 14 **subjects**, each washed in its *category's* Tone,
+  with lesson count, estimated time and a progress bar. Filters: All / In progress / Not started /
+  Completed.
+- **This week** — a bar chart of content completed per day, with a vs-last-week delta and four
+  stat tiles.
+- **Up next** — a 7-day activity strip plus the next lessons to open (subjects already underway
+  first, then fresh ones).
+
+**Colour is the DESIGN.md §2.4 dashboard exception, not a departure.** Every wash is a Tone from
+the sanctioned table (emerald / sky / amber / violet / rose / slate) — no off-system pastels — and
+a subject inherits its *category's* tone, so the colour means "this part of the library" rather
+than decoration. The map lives in `components/learn/learn-tones.ts`.
+
+**What the reference had that we deliberately did not build**, because the data does not exist:
+
+| Reference element | Why not |
+|---|---|
+| "Due Jun 25" date pills | No `due_date` column. The pill carries the category instead. |
+| Mandatory / Recommended filters | No `is_mandatory` and no recommendation signal. Filters use real progress state. |
+| "32 Hours Studied" | `learn_progress.time_spent_seconds` exists but **is never written**. The chart shows `estimated_minutes` of lessons *completed* per day, and the card says "Content completed" so it is not read as measured time. |
+| Tests Passed · Average Test Score | Quizzes do not exist at all. |
+| Next Lessons w/ instructor + scheduled time | Lessons have no instructor and no schedule. "Up next" answers the same question from real ordering. |
+
+Due dates and mandatory flags arrive with the assignments feature; test scores with quizzes.
+
+Two implementation notes worth keeping:
+
+- Bar heights are explicit **pixels**. The columns are `items-end`, so they size to their content —
+  a percentage height resolves against an auto-height parent and collapses to nothing. The first
+  cut did exactly that and rendered an empty chart.
+- Days are bucketed with `dateKey()` from `lib/learn-gamification.ts`, the same helper streaks use.
+  Using a different rule would let a late-evening completion extend a streak but land on the
+  previous bar.
+
 ## Access model — and why authoring is a *sibling* route
 
 `'/admin/learn'` is in `OPEN_ADMIN_PREFIXES` (`lib/roles.ts`), so every admin-surface role

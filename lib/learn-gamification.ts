@@ -64,14 +64,19 @@ export function levelInfo(totalXp: number): LevelInfo {
 }
 
 // ── Streaks ──────────────────────────────────────────────────────────────────
-function dateKey(d: Date, tz: string): string {
+/** The house timezone. Exported so the Learn dashboard's week chart buckets days
+ *  exactly the way streaks do — otherwise a late-evening completion could count
+ *  toward a streak but land on the previous bar. */
+export const LEARN_TZ = STREAK_TZ
+
+export function dateKey(d: Date, tz: string = STREAK_TZ): string {
   // en-CA formats as YYYY-MM-DD; with a timeZone this gives the local calendar day.
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(d)
 }
 
-function keyToDayNum(key: string): number {
+export function keyToDayNum(key: string): number {
   const [y, m, d] = key.split('-').map(Number)
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000)
 }
