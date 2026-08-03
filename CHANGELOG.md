@@ -52,6 +52,40 @@ use `fieldset`/`legend` so the prompt is announced, results are a live region, a
 expander exposes `aria-expanded`. And stale copy claiming due dates, mandatory flags and quizzes
 don't exist has been rewritten — that page renders all three.
 
+## 2026-08-03 — Support form reference photos are staff-managed (/admin/support-content)
+
+The Wheel & Seals step of the public support form has always had two reference-photo frames —
+"Desiccant wheel" and "Wheel seals" — sitting on a `ReferencePhoto` component that renders a
+"Photo coming soon" placeholder until given a `src`. Filling them used to mean committing files to
+`public/support/` and deploying. Now they're uploaded from **`/admin/support-content`**.
+
+- Images go straight from the browser to the public `ticket-photos` bucket under a
+  `support-reference/` prefix (direct-to-Storage, because a phone photo would blow the ~4.5MB
+  Vercel function body limit on any route-handler upload). Only the resulting URL passes through
+  the server action.
+- The URL is stored in `app_settings` (migration 069's key/value store) — **no new migration.**
+- Empty is a first-class state: no row, a null row, or a row that fails the URL allow-list all
+  render the existing placeholder. The form is correct with nothing configured.
+- **The stored URL is re-validated on read as well as on write**, and must be an `https` URL inside
+  our own public bucket — the same allow-list `validPhotoUrls` applies to customer ticket photos.
+  It ends up in an `<img src>` on a page anonymous customers reach, and a server action's arguments
+  are attacker-controlled regardless of what the UI submits.
+- Gated on the existing **`tickets`** perm — same audience as the support queue, so no new `Perm`
+  key and no `role_permissions` seed. It's listed in `ADMIN_PATH_PERMS` as a **sibling** of
+  `/admin/tickets`: an unmapped `/admin/*` path falls back to `dashboard`, which every scoped role
+  holds, so omitting it would have opened the page rather than failing closed.
+
+⚠️ **`lib/support-reference.ts` is deliberately DB-free** so the `'use client'` support form can
+import its types; the read lives in `lib/support-reference-server.ts`. `lib/supabase-admin.ts` has
+no `server-only` guard, so nothing would have errored if that import crossed into the client bundle.
+
+Verified: the permission gate asserted directly against compiled `lib/roles.ts` (support-content
+matches the tickets queue for all 7 staff roles; customer and null-role refused); and the read path
+driven end-to-end in a real browser — seeded row → server read → RSC prop → `<img>` rendered on the
+Wheel & Seals step, image anonymously fetchable (HTTP 200), placeholder correctly restored after the
+seed was cleared. The admin UI itself is compile- and gate-verified but not human-clicked (signing
+in isn't something I can do).
+
 ## 2026-08-03 — Support form sends one email, to the support desk
 
 A support submission used to fire **two** emails: a confirmation to the customer, and a

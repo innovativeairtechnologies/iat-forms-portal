@@ -63,6 +63,8 @@ const NAV_PARENTS: NavParent[] = [
       // Troubleshooting merged into Tickets (route stays live by URL). Re-enable by
       // removing `hidden: true`.
       { href: '/admin/troubleshooting', label: 'Troubleshooting', badge: 'troubleshooting', hidden: true, perm: 'tickets' },
+      // Reference photos shown to customers on the public support form.
+      { href: '/admin/support-content', label: 'Support form', perm: 'tickets' },
       { href: '/admin/forms', label: 'Forms', perm: 'forms' },
       { href: '/admin/equipment', label: 'Equipment', perm: 'equipment' },
       // Tool Crib — the warehouse tool check-out registry. NOT the `tools`

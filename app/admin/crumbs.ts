@@ -16,6 +16,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   // Operations
   { prefix: '/admin/submissions',     section: 'Operations', label: 'Submissions' },
   { prefix: '/admin/tickets',         section: 'Operations', label: 'Tickets' },
+  { prefix: '/admin/support-content', section: 'Operations', label: 'Support form' },
   { prefix: '/admin/troubleshooting', section: 'Operations', label: 'Troubleshooting' },
   { prefix: '/admin/forms',           section: 'Operations', label: 'Forms' },
   { prefix: '/admin/equipment',       section: 'Operations', label: 'Equipment' },

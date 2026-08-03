@@ -15,6 +15,9 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
 import { getRecaptchaToken } from '@/components/use-recaptcha'
 import { SampleLabelThumb } from './SampleLabelThumb'
+// Type-only — lib/support-reference.ts is deliberately DB-free so this client
+// component can import from it. Don't switch this to support-reference-server.
+import type { SupportReferencePhotos } from '@/lib/support-reference'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 // This is the UNIFIED support form — the former "Equipment Support Ticket" and
@@ -558,7 +561,15 @@ function CustomerEquipmentCard({
 
 type Stage = 'form' | 'loading' | 'success'
 
-export default function EquipmentTicketForm({ customerContext = null }: { customerContext?: SupportCustomerContext | null }) {
+export default function EquipmentTicketForm({
+  customerContext = null,
+  referencePhotos = {},
+}: {
+  customerContext?: SupportCustomerContext | null
+  // Staff-managed at /admin/support-content. Defaults to {} so every slot falls
+  // back to the "Photo coming soon" placeholder — the form is correct with none set.
+  referencePhotos?: SupportReferencePhotos
+}) {
   // The logo + top-right "Home" link always return to the /support landing. (The
   // customer portal is on the back burner and isn't part of this release, so we
   // never route back to /customer from here.)
@@ -968,7 +979,7 @@ export default function EquipmentTicketForm({ customerContext = null }: { custom
               {stepKey === 'status'    && <StepStatus form={form} set={set} />}
               {stepKey === 'cooling'   && <StepCooling form={form} set={set} />}
               {stepKey === 'airflow'   && <StepAirflow form={form} set={set} />}
-              {stepKey === 'seals'     && <StepSeals form={form} set={set} />}
+              {stepKey === 'seals'     && <StepSeals form={form} set={set} photos={referencePhotos} />}
               {stepKey === 'factors'   && <StepFactors form={form} set={set} />}
               {stepKey === 'photos'    && <StepPhotos photos={photos} setPhotos={setPhotos} fileInputRef={fileInputRef} handleFiles={handleFiles} />}
               {stepKey === 'analysis'  && <StepAiAnalysis recommendations={recommendations} analyzing={analyzing} analyzed={analyzed} error={analyzeError} onRetry={analyze} />}
@@ -1301,8 +1312,9 @@ function StepAirflow({ form, set }: { form: FormData; set: SetFn }) {
   )
 }
 
-// Reference photo for a diagnostic step. Until IAT supplies the real images, drop
-// them into /public/support/ and pass `src` — otherwise it shows a labeled placeholder.
+// Reference photo for a diagnostic step. Images are uploaded by staff at
+// /admin/support-content (stored in app_settings, no deploy needed); a slot with
+// nothing uploaded yet shows a labeled placeholder.
 function ReferencePhoto({ src, caption }: { src?: string; caption: string }) {
   return (
     <figure className="min-w-0 flex-1 text-center">
@@ -1322,18 +1334,19 @@ function ReferencePhoto({ src, caption }: { src?: string; caption: string }) {
   )
 }
 
-function StepSeals({ form, set }: { form: FormData; set: SetFn }) {
+function StepSeals({ form, set, photos }: { form: FormData; set: SetFn; photos: SupportReferencePhotos }) {
   return (
     <div className="space-y-5">
       <StepHeader title="Wheel & Seals" sub="A quick visual check of the desiccant wheel and its seals." />
 
       {/* Reference photos so the customer knows exactly what they're looking at.
-          Swap `src` in once IAT provides the real wheel/seal images. */}
+          Uploaded by staff at /admin/support-content — each falls back to a
+          "Photo coming soon" placeholder until one is set. */}
       <div className="rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/20 p-3.5">
         <p className="mb-2.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300">What to look for</p>
         <div className="flex gap-3">
-          <ReferencePhoto caption="Desiccant wheel" />
-          <ReferencePhoto caption="Wheel seals" />
+          <ReferencePhoto src={photos.wheel} caption="Desiccant wheel" />
+          <ReferencePhoto src={photos.seals} caption="Wheel seals" />
         </div>
       </div>
       <ChoiceField

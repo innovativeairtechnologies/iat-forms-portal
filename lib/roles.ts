@@ -346,6 +346,13 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/submissions', perm: 'submissions' },
   { prefix: '/admin/tickets', perm: 'tickets' },
   { prefix: '/admin/troubleshooting', perm: 'tickets' },
+  // Support-form content (reference photos for the public /support form). MUST be
+  // listed: an unmapped /admin/* path falls back to 'dashboard', which every
+  // scoped role holds, so omitting this would open it to all of them rather than
+  // fail closed. Shares `tickets` — same audience as the support queue, so no new
+  // perm key and no role_permissions seed. Sibling of /admin/tickets, not a child,
+  // so it can't be swallowed by that prefix.
+  { prefix: '/admin/support-content', perm: 'tickets' },
   { prefix: '/admin/equipment', perm: 'equipment' },
   { prefix: '/admin/customers', perm: 'customers' },
   // Case studies (070) — sales drafts, marketing approves. Own perm (seeded for

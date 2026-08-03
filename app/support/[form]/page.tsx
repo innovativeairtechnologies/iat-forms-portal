@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import EquipmentTicketForm from '@/components/support/EquipmentTicketForm'
 import { getSupportCustomerContext } from '@/lib/support-context'
+import { getSupportReferencePhotos } from '@/lib/support-reference-server'
 
 // The Troubleshooting Checklist was merged into the Equipment Support Ticket
 // (2026-06-24) — there's now ONE unified support form.
@@ -22,6 +23,12 @@ export default async function SupportFormPage(props: { params: Promise<{ form: s
   if (dest) redirect(dest)
   if (!SUPPORT_FORMS.has(params.form)) notFound()
 
-  const customerContext = await getSupportCustomerContext()
-  return <EquipmentTicketForm customerContext={customerContext} />
+  // Reference photos are staff-managed (/admin/support-content) rather than
+  // bundled assets, so they're read per-request alongside the customer context.
+  // Both degrade to their existing empty states, so neither can break the form.
+  const [customerContext, referencePhotos] = await Promise.all([
+    getSupportCustomerContext(),
+    getSupportReferencePhotos(),
+  ])
+  return <EquipmentTicketForm customerContext={customerContext} referencePhotos={referencePhotos} />
 }
