@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Clock, Play, ArrowRight, FileClock } from 'lucide-react'
+import { Clock, Play, ArrowRight, FileClock, ClipboardList, Trophy } from 'lucide-react'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { getModuleWithLessons } from '@/lib/learn'
+import { getQuizForLearner, getAttemptSummaries } from '@/lib/learn-quiz'
 import LearnPageShell from '../../LearnPageShell'
 import PageChrome from '@/app/admin/PageChrome'
 
@@ -24,6 +26,16 @@ export default async function ModulePage(props: { params: Promise<{ category: st
   const totalMinutes = lessons.reduce((s, l) => s + (l.estimated_minutes ?? 0), 0)
   const first = lessons[0]
   const base = `/admin/learn/${category.slug}/${module.slug}`
+
+  // A published quiz turns this subject's completion into "read it AND pass it".
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  const [quizData, attempts] = await Promise.all([
+    getQuizForLearner('module', module.id),
+    user ? getAttemptSummaries(user.id) : Promise.resolve(new Map()),
+  ])
+  const quizSummary = quizData ? attempts.get(quizData.quiz.id) : undefined
+  const quizPassed = quizSummary?.passed === true
 
   return (
     <LearnPageShell
@@ -97,6 +109,46 @@ export default async function ModulePage(props: { params: Promise<{ category: st
             </li>
           ))}
         </ol>
+      )}
+
+      {/* ── Knowledge check ───────────────────────────────────────────── */}
+      {quizData && (
+        <section className={
+          quizPassed
+            ? 'mt-8 rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 dark:border-emerald-500/30 dark:bg-emerald-500/10'
+            : 'mt-8 rounded-xl border border-hairline bg-surface-soft p-5'
+        }>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <span className={
+              quizPassed
+                ? 'grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg bg-emerald-600 text-white'
+                : 'grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-ink'
+            }>
+              {quizPassed ? <Trophy size={18} /> : <ClipboardList size={18} />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-[650] text-ink">{quizData.quiz.title}</p>
+              <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">
+                {quizPassed ? (
+                  <>Passed at {quizSummary?.bestPct}%. This subject is complete — retake it any time to improve your score.</>
+                ) : (
+                  <>
+                    {quizData.questions.length} questions · {quizData.quiz.passPct}% to pass.
+                    {quizSummary
+                      ? <> Your best so far is {quizSummary.bestPct}% — this subject counts as complete once you pass.</>
+                      : <> Finishing the lessons isn&apos;t enough on its own: this subject counts as complete once you pass.</>}
+                  </>
+                )}
+              </p>
+            </div>
+            <Link
+              href={`${base}/quiz`}
+              className="inline-flex h-9 flex-shrink-0 items-center gap-1.5 self-start rounded-lg bg-brand px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:self-auto"
+            >
+              {quizSummary ? 'Retake' : 'Take the quiz'} <ArrowRight size={13} />
+            </Link>
+          </div>
+        </section>
       )}
     </LearnPageShell>
   )

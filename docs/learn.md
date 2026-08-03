@@ -91,6 +91,70 @@ move the layout gate and those four API routes onto the perm, and add a migratio
 from the session, never the body) and is open to any signed-in account. `/api` is deliberately
 outside middleware's matcher.
 
+## Quizzes (migration 074)
+
+A quiz attaches to a **subject** or a **category** (`learn_quizzes.scope_type` + `scope_id` —
+polymorphic, so one set of tables serves both). Postgres can't FK one column at two tables, so
+integrity and delete-cascade are enforced by triggers; a partial unique index gives one quiz per scope.
+
+**Gating.** A subject with a **published** quiz is complete only when the lessons are read *and* the
+quiz is passed. A subject with no published quiz completes on lessons alone — so publishing a quiz
+later can never retroactively un-complete someone. Category quizzes are capstones and gate nothing.
+The rule lives in one place, `subjectIsComplete()` in `lib/learn-quiz.ts`.
+
+**Scoring.** 80% to pass (stored per quiz as `pass_pct`, not a constant), unlimited retakes, **best
+score kept**, and `passed` is sticky — a bad retake can't un-pass you. Attempts store the `passed`
+they were graded against, so raising the bar later doesn't retroactively fail history. Passing
+awards `QUIZ_PASS_XP` (150) **once**, on the first pass, so retaking can't farm XP.
+
+### Build with AI
+
+`POST /api/learn/quizzes/generate { scopeType, scopeId, questionCount }` reads the lesson text for
+the scope and drafts questions with four options, a correct answer, an explanation, and the
+`source_lesson_id` it came from — that last one is the reviewer's hook for checking the key.
+
+It produces a **draft**. Nothing reaches a learner until a human publishes it, and publishing is
+refused server-side unless every question has exactly one correct option.
+
+**Two layers stop it inventing questions:**
+
+1. **A deterministic pre-flight, before any API call.** 33 lessons are the literal placeholder
+   "Content for this lesson is maintained in Trainual", and they cluster badly. Measured against
+   production:
+
+   | Subject | Lessons | Usable | Usable chars | 10-question quiz? |
+   |---|---:|---:|---:|---|
+   | Safety Procedures | 23 | 2 | 1,485 | **refused** |
+   | Our Products | 4 | 3 | 666 | **refused** |
+   | Testing Training | 16 | 3 | 4,082 | **refused** (too few lessons) |
+   | Using DryWare | 10 | 9 | 6,408 | yes |
+   | Welcome to IAT | 6 | 6 | 16,705 | yes |
+
+   The bar scales with the request: `questionCount × 300` characters and `max(3, ceil(n/3))` usable
+   lessons. A refusal costs nothing and names the lessons that need writing.
+
+2. **The model's own block.** Content can be long enough and still unquizzable (an index page, a
+   list of links). The contract gives Claude a `{ "blocked": { reason, lessons } }` shape, and a
+   prose reply degrades into that same path carrying its words — never a generic "malformed",
+   which is the lesson the case-studies tool taught.
+
+Generation also refuses (409) when a **published** quiz already exists — unpublish first, so
+rebuilding can't silently swap a quiz people are being graded on.
+
+### The answer key never leaves the server
+
+- `learn_quiz_options` holds `is_correct` and has **no learner read policy at all** — one
+  admin-only policy, service-role otherwise. Verify with:
+  `SELECT tablename, COUNT(*) FROM pg_policies WHERE tablename LIKE 'learn_quiz%' GROUP BY 1;`
+  — `learn_quiz_options` must be **1**.
+- `getQuizForLearner()` doesn't even *select* `is_correct`, so it can't leak through a later
+  refactor that spreads the row.
+- The client posts option ids only. `gradeAttempt()` re-reads the key server-side, and an option id
+  belonging to a different question is treated as unanswered rather than credited (regression-tested).
+
+Model: `claude-sonnet-5`. Note the older AI features (case studies, Jerry, form builder) are still
+on `claude-sonnet-4-6`.
+
 ## Deleting content
 
 `/admin/learn-content` can delete a **category**, a **subject** or a **lesson**. Every level

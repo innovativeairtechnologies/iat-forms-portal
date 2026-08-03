@@ -1,13 +1,22 @@
 import Link from 'next/link'
 import { ArrowLeft, Layers, BookOpen, FileClock } from 'lucide-react'
 import { getAdminTree } from '@/lib/learn'
-import AdminTree from '@/components/learn/admin/AdminTree'
+import { listQuizzes } from '@/lib/learn-quiz'
+import AdminTree, { type QuizIndex } from '@/components/learn/admin/AdminTree'
 
 export const dynamic = 'force-dynamic'
 
 export default async function LearnAdminPage() {
-  const { categories, modules, lessons, completionsByLesson } = await getAdminTree()
+  const [{ categories, modules, lessons, completionsByLesson }, quizRows] = await Promise.all([
+    getAdminTree(),
+    listQuizzes(),
+  ])
   const pendingCount = modules.filter(m => m.import_status === 'pending').length
+  const quizzes: QuizIndex = Object.fromEntries(
+    quizRows.map(q => [`${q.scopeType}:${q.scopeId}`, {
+      id: q.id, isPublished: q.isPublished, questionCount: q.questionCount,
+    }]),
+  )
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -45,6 +54,7 @@ export default async function LearnAdminPage() {
         modules={modules}
         lessons={lessons}
         completionsByLesson={completionsByLesson}
+        quizzes={quizzes}
       />
     </div>
   )

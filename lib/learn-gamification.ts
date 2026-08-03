@@ -12,6 +12,11 @@
 export const XP_BASE = 50
 export const XP_PER_MINUTE = 10
 
+/** XP for passing a quiz (migration 074). Awarded ONCE per quiz, on the first
+ *  pass — retaking to improve a score doesn't farm XP. Deliberately worth more
+ *  than a typical lesson (~80 XP): a quiz is the harder thing to do. */
+export const QUIZ_PASS_XP = 150
+
 export function lessonXp(estimatedMinutes: number | null | undefined): number {
   return XP_BASE + XP_PER_MINUTE * Math.max(0, estimatedMinutes ?? 0)
 }

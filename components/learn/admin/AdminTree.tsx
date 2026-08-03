@@ -4,10 +4,17 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronDown, ChevronRight, Plus, Pencil, FileClock, CheckCircle2, Circle, Loader2,
-  Trash2, AlertTriangle, X,
+  Trash2, AlertTriangle, X, Sparkles, ClipboardList,
 } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type { LearnCategory, LearnModule, LearnLesson } from '@/lib/learn'
+
+/** `${scopeType}:${scopeId}` → the quiz sitting on that subject/category. */
+export type QuizIndex = Record<string, { id: string; isPublished: boolean; questionCount: number }>
+
+/** What the generator refused with — reason plus the lessons needing content. */
+type Blocked = { scopeKey: string; reason: string; lessons: string[] }
 
 type LessonRow = Omit<LearnLesson, 'content'>
 
@@ -153,13 +160,14 @@ function ConfirmStrip({
 }
 
 export default function AdminTree({
-  categories, modules, lessons, completionsByLesson,
+  categories, modules, lessons, completionsByLesson, quizzes = {},
 }: {
   categories: LearnCategory[]
   modules: LearnModule[]
   lessons: LessonRow[]
   /** null = the progress table could not be read; do NOT treat as zero. */
   completionsByLesson: Record<string, number> | null
+  quizzes?: QuizIndex
 }) {
   const router = useRouter()
   const [open, setOpen] = useState<Record<string, boolean>>(
@@ -170,6 +178,7 @@ export default function AdminTree({
   const [error, setError] = useState<string | null>(null)
   /** Banner for things that happen outside the confirm strip. */
   const [notice, setNotice] = useState<{ tone: 'rose' | 'amber'; text: string } | null>(null)
+  const [blocked, setBlocked] = useState<Blocked | null>(null)
 
   const lessonsByModule = new Map<string, LessonRow[]>()
   for (const l of lessons) {
@@ -281,6 +290,99 @@ export default function AdminTree({
     }
   }
 
+  /* ── Build with AI ────────────────────────────────────────────────────────
+     Generation is refused server-side when the source lessons are too thin —
+     Safety Procedures has 23 lessons but only ~1,900 usable characters, so the
+     honest answer there is "write these lessons first", not ten invented
+     questions. That refusal is rendered in place, naming the lessons. */
+  async function generateQuiz(scopeType: 'module' | 'category', scopeId: string, label: string) {
+    const key = `${scopeType}:${scopeId}`
+    setBusy(key); setNotice(null); setBlocked(null)
+    try {
+      const res = await fetch('/api/learn/quizzes/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scopeType, scopeId, questionCount: 10 }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (data.blocked?.reason) {
+          setBlocked({ scopeKey: key, reason: String(data.blocked.reason), lessons: (data.blocked.lessons ?? []).map(String) })
+        } else {
+          setNotice({ tone: 'rose', text: String(data.error ?? 'Could not build a quiz.') })
+        }
+        return
+      }
+      setNotice({ tone: 'amber', text: `Drafted ${data.questions} questions for “${label}”. Review and publish it.` })
+      router.refresh()
+    } catch {
+      setNotice({ tone: 'rose', text: 'Could not reach the generator — check your connection.' })
+    } finally {
+      release(key)
+    }
+  }
+
+  const QuizControl = ({ scopeType, scopeId, label }: { scopeType: 'module' | 'category'; scopeId: string; label: string }) => {
+    const key = `${scopeType}:${scopeId}`
+    const quiz = quizzes[key]
+    if (quiz) {
+      return (
+        <Link
+          href={`/admin/learn-content/quizzes/${quiz.id}`}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11.5px] font-semibold transition-colors',
+            quiz.isPublished
+              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400'
+              : 'bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-400',
+            FOCUS_RING,
+          )}
+        >
+          <ClipboardList size={12} /> Quiz · {quiz.isPublished ? 'Live' : 'Draft'}
+          <span className="tabular-nums opacity-70">{quiz.questionCount}</span>
+        </Link>
+      )
+    }
+    return (
+      <button
+        onClick={() => generateQuiz(scopeType, scopeId, label)}
+        disabled={busy === key}
+        title="Draft a 10-question quiz from these lessons"
+        className={cn(
+          'inline-flex items-center gap-1 rounded-lg border border-hairline px-2.5 py-1 text-[11.5px] font-medium text-ink-secondary',
+          'transition-colors hover:border-brand hover:text-brand disabled:opacity-60', FOCUS_RING,
+        )}
+      >
+        {busy === key ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Build with AI
+      </button>
+    )
+  }
+
+  const BlockedNote = ({ scopeKey }: { scopeKey: string }) =>
+    blocked?.scopeKey !== scopeKey ? null : (
+      <div role="alert" className="mt-2.5 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <div className="flex items-start gap-2.5">
+          <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[12.5px] font-semibold text-ink">Not enough written content yet</p>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">{blocked.reason}</p>
+            {blocked.lessons.length > 0 && (
+              <details className="mt-1.5">
+                <summary className={cn('cursor-pointer text-[11.5px] font-medium text-ink-muted', FOCUS_RING)}>
+                  {blocked.lessons.length} lesson{blocked.lessons.length === 1 ? '' : 's'} need content
+                </summary>
+                <ul className="mt-1.5 space-y-0.5 pl-3">
+                  {blocked.lessons.map(t => <li key={t} className="text-[11.5px] text-ink-muted">· {t}</li>)}
+                </ul>
+              </details>
+            )}
+          </div>
+          <button onClick={() => setBlocked(null)} aria-label="Dismiss" className={cn('rounded p-0.5 text-ink-faint', FOCUS_RING)}>
+            <X size={13} />
+          </button>
+        </div>
+      </div>
+    )
+
   const pick = (t: Target) => { setTarget(t); setError(null); setNotice(null) }
   const cancel = () => { setTarget(null); setError(null) }
   const isTarget = (scope: Target['scope'], id: string) => target?.scope === scope && target.id === id
@@ -340,8 +442,13 @@ export default function AdminTree({
                   <span className="text-[14px] font-semibold text-ink">{category.name}</span>
                   <span className="text-[12px] font-medium text-ink-muted">{mods.length} subjects</span>
                 </button>
+                <QuizControl scopeType="category" scopeId={category.id} label={category.name} />
                 <DeleteButton t={{ scope: 'category', id: category.id, label: category.name }} onPick={pick} />
               </div>
+            )}
+
+            {blocked?.scopeKey === `category:${category.id}` && (
+              <div className="px-5 pb-4"><BlockedNote scopeKey={`category:${category.id}`} /></div>
             )}
 
             {open[category.id] && !isTarget('category', category.id) && (
@@ -389,9 +496,12 @@ export default function AdminTree({
                           >
                             <Plus size={12} /> Lesson
                           </button>
+                          <QuizControl scopeType="module" scopeId={module.id} label={module.title} />
                           <DeleteButton t={{ scope: 'module', id: module.id, label: module.title }} onPick={pick} />
                         </div>
                       </div>
+
+                      <BlockedNote scopeKey={`module:${module.id}`} />
 
                       {ls.length > 0 && (
                         <ul className="mt-2.5 space-y-0.5 pl-1">

@@ -4,6 +4,10 @@ import {
   computeUserStats, computeStreak, lessonXp, levelInfo, dateKey, keyToDayNum,
   type UserLearnStats,
 } from '@/lib/learn-gamification'
+import {
+  getPublishedModuleQuizzes, getAttemptSummaries, subjectIsComplete,
+  quizXpFrom, quizStatsFrom,
+} from '@/lib/learn-quiz'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IAT Learn data layer
@@ -305,6 +309,8 @@ export type SubjectCard = {
   completed: number
   pct: number
   status: SubjectStatus
+  /** Set when this subject has a PUBLISHED quiz. `passed` gates completion. */
+  quiz?: { id: string; passed: boolean; bestPct: number | null }
 }
 
 export type WeekDay = {
@@ -352,13 +358,17 @@ export type LearnDashboard = {
     levelProgressPct: number
     nextLevelTitle: string | null
     xpToNext: number | null
+    /** Quiz tiles (migration 074). avgQuizPct is over BEST attempts. */
+    quizzesTaken: number
+    quizzesPassed: number
+    avgQuizPct: number
   }
 }
 
 const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
 export async function getLearnDashboard(userId: string): Promise<LearnDashboard> {
-  const [cats, mods, less, prog] = await Promise.all([
+  const [cats, mods, less, prog, moduleQuizzes, attempts] = await Promise.all([
     supabaseAdmin.from('learn_categories').select('id, name, slug, display_order').order('display_order'),
     supabaseAdmin.from('learn_modules').select('id, category_id, title, slug, description, display_order')
       .eq('is_published', true).order('display_order'),
@@ -366,6 +376,8 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
       .eq('is_published', true).order('display_order'),
     supabaseAdmin.from('learn_progress').select('lesson_id, completed_at')
       .eq('user_id', userId).not('completed_at', 'is', null),
+    getPublishedModuleQuizzes(),
+    getAttemptSummaries(userId),
   ])
 
   const categories = cats.data ?? []
@@ -392,6 +404,12 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
     const cat = catById.get(m.category_id)
     const done = ls.filter(l => doneIds.has(l.id)).length
     const pct = ls.length ? Math.round((done / ls.length) * 100) : 0
+    const quiz = moduleQuizzes.get(m.id)
+    const attempt = quiz ? attempts.get(quiz.id) : undefined
+    // Reading everything is no longer enough once a quiz is published — see
+    // subjectIsComplete. Subjects WITHOUT a published quiz are unaffected, so
+    // publishing one later can't un-complete anyone retroactively.
+    const complete = subjectIsComplete(done, ls.length, quiz, attempts)
     return {
       id: m.id,
       title: m.title,
@@ -403,7 +421,8 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
       minutes: ls.reduce((n, l) => n + (l.estimated_minutes ?? 0), 0),
       completed: done,
       pct,
-      status: done === 0 ? 'not-started' : done >= ls.length ? 'completed' : 'in-progress',
+      status: complete ? 'completed' : done === 0 ? 'not-started' : 'in-progress',
+      ...(quiz ? { quiz: { id: quiz.id, passed: attempt?.passed === true, bestPct: attempt?.bestPct ?? null } } : {}),
     }
   })
 
@@ -473,9 +492,11 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
   }
 
   // ── Headline stats ──
-  const totalXp = completed.reduce((n, p) => n + lessonXp(minutesByLesson.get(p.lesson_id) ?? 0), 0)
+  const lessonXpTotal = completed.reduce((n, p) => n + lessonXp(minutesByLesson.get(p.lesson_id) ?? 0), 0)
+  const totalXp = lessonXpTotal + quizXpFrom(attempts)
   const lvl = levelInfo(totalXp)
   const streak = computeStreak(completed.map(p => p.completed_at))
+  const quizzes = quizStatsFrom(attempts)
 
   return {
     subjects,
@@ -499,6 +520,9 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
       levelProgressPct: lvl.progressPct,
       nextLevelTitle: lvl.nextTitle,
       xpToNext: lvl.xpForNextLevel != null ? lvl.xpForNextLevel - lvl.xpIntoLevel : null,
+      quizzesTaken: quizzes.taken,
+      quizzesPassed: quizzes.passed,
+      avgQuizPct: quizzes.avgPct,
     },
   }
 }
@@ -561,13 +585,17 @@ export type LearnHeaderStats = {
   pct: number
 }
 export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderStats> {
-  const [{ data: lessons }, { data: progress }] = await Promise.all([
+  const [{ data: lessons }, { data: progress }, attempts] = await Promise.all([
     supabaseAdmin.from('learn_lessons').select('id, estimated_minutes').eq('is_published', true),
     supabaseAdmin.from('learn_progress').select('lesson_id, completed_at').eq('user_id', userId).not('completed_at', 'is', null),
+    getAttemptSummaries(userId),
   ])
   const min = new Map((lessons ?? []).map(l => [l.id, l.estimated_minutes ?? 0]))
   let xp = 0, count = 0
   for (const p of progress ?? []) { if (!min.has(p.lesson_id)) continue; xp += lessonXp(min.get(p.lesson_id)); count++ }
+  // Quiz XP counts here too, or Company Home would quote a different total from
+  // the Learn pages for the same person.
+  xp += quizXpFrom(attempts)
   const streak = computeStreak((progress ?? []).map(p => p.completed_at as string).filter(Boolean))
   const lvl = levelInfo(xp)
   const totalLessons = min.size

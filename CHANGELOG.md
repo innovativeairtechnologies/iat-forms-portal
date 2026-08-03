@@ -2,6 +2,45 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Learn quizzes, drafted by AI (migration 074)
+
+The last unbuilt Phase-2 gamification piece, and the Trainual feature Jacob wanted carried over:
+a **Build with AI** button on any subject or category that reads the lesson text and drafts a
+10-question quiz.
+
+**It drafts; you publish.** Same posture as case studies and Jerry's ticket replies — nothing
+AI-written reaches a learner unreviewed. The review screen shows each question with its four
+options, the answer key, the explanation, and **the lesson it was drawn from**, so checking the key
+is a click rather than a hunt. Publishing is refused server-side unless every question has exactly
+one correct option, so a reviewer who deletes the right answer can't ship an unpassable quiz.
+
+**It refuses rather than invents.** 33 lessons are still the literal "maintained in Trainual"
+placeholder, and they cluster — Safety Procedures has 23 lessons but only ~1,500 usable characters
+across 2 of them. Asking any model for ten questions about that guarantees fabrication. So the
+source is measured *before* any API call: Safety Procedures, Testing Training and Our Products are
+all refused today, each naming the lessons that need writing, at zero token cost. Content that is
+long but still unquizzable gets caught by a second layer — Claude's own `blocked` reply, carried
+through in its own words rather than shown as "malformed".
+
+**Passing a subject quiz now completes the subject** (Jacob's call). Reading every lesson is no
+longer enough once a quiz is published — but a subject with *no* published quiz completes on
+lessons alone, so adding a quiz later never retroactively un-completes anyone. 80% to pass,
+unlimited retakes, best score kept, `passed` sticky, and the 150 XP lands **once** on the first
+pass so retaking can't farm it. Attempts store the bar they were graded against, so raising
+`pass_pct` later doesn't re-grade history.
+
+**The answer key never leaves the server.** `learn_quiz_options` has exactly one RLS policy —
+admin — and no learner read path at all; the learner query doesn't even *select* `is_correct`; and
+the client posts option ids while the server grades. An option id belonging to a different question
+is treated as unanswered rather than credited.
+
+Verified against the live schema with a 17-assertion harness covering scoring, blank answers,
+cross-question ids, first-pass detection, best-score-kept, sticky pass, gating and cascade cleanup.
+The AI path was run end-to-end against real lesson text before any UI existed: 10 grounded
+questions from "Using DryWare", 0 bad source ids, 0 malformed options.
+
+Model: `claude-sonnet-5`. The older AI features are still on `claude-sonnet-4-6`.
+
 ## 2026-07-31 — Five invisible backgrounds: the token-opacity trap, swept
 
 Semantic colour tokens are registered as bare `var(--x)` strings, so an opacity modifier on one
