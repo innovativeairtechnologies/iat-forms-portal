@@ -458,9 +458,9 @@ export default function FormBuilder({ categories, initialForm }: Props) {
                             <div className="flex-1 min-w-0">
                               {field.field_type === 'section_header' ? (
                                 <div className="flex items-center gap-2">
-                                  <div className="h-px flex-1 bg-brand/30" />
+                                  <div className="h-px flex-1 bg-hairline" />
                                   <p className="text-xs font-semibold text-brand-ink uppercase tracking-widest truncate">{field.label}</p>
-                                  <div className="h-px flex-1 bg-brand/30" />
+                                  <div className="h-px flex-1 bg-hairline" />
                                 </div>
                               ) : (
                                 <>

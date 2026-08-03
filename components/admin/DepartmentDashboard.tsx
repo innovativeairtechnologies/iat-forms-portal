@@ -83,7 +83,7 @@ export default async function DepartmentDashboard({ role, displayName, userId, p
           {/* Today's briefing — the AI summary folded in under the greeting as a
               quiet line of context (admin only), not its own card. */}
           {role === 'admin' && (
-            <div className="relative mt-5 border-t border-hairline/70 pt-4">
+            <div className="relative mt-5 border-t border-hairline-soft pt-4">
               <ExecutiveBriefing />
             </div>
           )}

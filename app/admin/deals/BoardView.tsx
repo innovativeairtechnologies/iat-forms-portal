@@ -182,7 +182,7 @@ export default function BoardView({
                       className={`flex-shrink-0 w-[46px] self-stretch min-h-[340px] rounded-xl border transition-colors duration-150 flex flex-col items-center pt-3 ${
                         snapshot.isDraggingOver
                           ? 'border-rose-300 dark:border-rose-500/40 bg-rose-50/60 dark:bg-rose-500/10'
-                          : 'border-hairline bg-surface-soft hover:bg-surface-strong/60'
+                          : 'border-hairline bg-surface-soft hover:bg-surface-strong'
                       }`}
                     >
                       <button
@@ -224,7 +224,10 @@ export default function BoardView({
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={`flex-1 min-h-0 overflow-y-auto p-2 flex flex-col gap-2 transition-colors duration-150 ${
-                        snapshot.isDraggingOver ? 'bg-surface-strong/50' : ''
+                        // Drop target. Was bg-surface-strong/50, which compiled to
+                        // NOTHING (DESIGN §2.5) — so dragging a card highlighted no
+                        // lane at all. bg-brand-soft is the sanctioned active wash.
+                        snapshot.isDraggingOver ? 'bg-brand-soft' : ''
                       } ${list.length === 0 ? 'items-center justify-center' : ''}`}
                     >
                       {capped.map((d, i) => {

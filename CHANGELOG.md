@@ -2,6 +2,26 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Five invisible backgrounds: the token-opacity trap, swept
+
+Semantic colour tokens are registered as bare `var(--x)` strings, so an opacity modifier on one
+(`bg-surface-strong/50`) produces **no CSS rule at all** — the element silently has no background.
+DESIGN.md §2.5 documents this and two files already carried warning comments about it, but five
+live instances had slipped in. Verified by grepping the compiled stylesheet, not the source:
+all four class variants were absent from `.next/static/css/*.css`; the plain tokens were present.
+
+- **CRM board drag-over highlight** (`BoardView.tsx:227`) — the real one. `bg-surface-strong/50`
+  meant dragging a deal card highlighted **no drop target whatsoever**. Now `bg-brand-soft`, the
+  sanctioned active wash, which is also more legible than the original intent.
+- CRM collapsed "Lost" rail hover (`BoardView.tsx:185`) → `hover:bg-surface-strong`.
+- Department-dashboard briefing divider (`DepartmentDashboard.tsx:86`) → `border-hairline-soft`.
+- Form-builder section-header rules (`FormBuilder.tsx:461,463`) — the two 1px lines flanking a
+  section label rendered as empty gaps. Now `bg-hairline`; the `text-brand-ink` label still carries
+  the colour signal, and a decorative brand-tinted rule would have been §2.3 misuse anyway.
+
+Re-verified after the fix: each replacement emits a real rule, and the four broken variants appear
+zero times.
+
 ## 2026-07-31 — Learn's library page, rebuilt as a gamified dashboard
 
 `/admin/learn` was a greeting band over five category tiles. It's now a proper library dashboard,
