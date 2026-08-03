@@ -2,6 +2,38 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-03 — Infrastructure cleanup: retired the three folded-in apps
+
+Housekeeping, no portal code changed. Three sub-apps that had already been consolidated into the
+portal were still occupying Vercel projects and live repos; they're now cleaned up.
+
+**Deleted (Vercel projects):**
+
+- **`iatlearn`** — was already serving a 404 (no production deployment existed). Learn lives at
+  `/admin/learn`, verified holding all 14 modules and 357 lessons.
+- **`iat-home`** — was still serving the old static landing page. Its two cards already pointed at
+  `iatportal.vercel.app` and `/support`, so nothing was lost. The front-door job belongs to the
+  portal's `/home` intranet page.
+
+**Kept deliberately:** the **`iat-ticketing`** Vercel project. It is *not* a dead app — since
+2026-07-22 it serves a 307 redirect to `iatportal.vercel.app/support`, catching pre-consolidation
+customer bookmarks. That redirect was only 12 days old at cleanup time, and Web Analytics was never
+enabled on it, so there's no data showing the long tail has aged out. It costs nothing (~14 KB) and
+runs no application code. Revisit later.
+
+**Archived (GitHub, read-only):** `iat-home`, `iat-learn`, `iat-ticketing`. Archived rather than
+deleted — reversible, preserves history, and silences the Dependabot noise (`iat-learn` had three
+open bot PRs). All three were public; archiving makes them immutable.
+
+**Verified before deleting:** no code anywhere in the workspace references the retired URLs (only
+docs prose), and the old `/support` → `iat-ticketing.vercel.app` rewrite is already gone from
+`next.config.js` — the portal serves `/support` natively. Post-cleanup checks confirm
+`iatportal.vercel.app` (307 → `/login`) and the ticketing redirect both still work.
+
+Docs updated: `07-sitemap.md`, `00-ecosystem-overview.md`, `02-iat-ticketing.md`,
+`04-accounts-and-access.md`, and security item **8.7** — "legacy standalone app still live" — is now
+closed. — J.Y. + Claude
+
 ## 2026-07-31 — Learn quizzes, drafted by AI (migration 074)
 
 The last unbuilt Phase-2 gamification piece, and the Trainual feature Jacob wanted carried over:
