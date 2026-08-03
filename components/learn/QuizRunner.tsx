@@ -9,15 +9,20 @@ import type { Quiz, QuizQuestion, GradeResult } from '@/lib/learn-quiz'
 
 /* Take a quiz.
 
-   The answer key is NOT in this component's props — `questions` comes from
-   getQuizForLearner, which never selects is_correct. Submitting posts option
-   ids and the server grades. That means "view source" tells you nothing, and
-   the result below is the server's, not a local calculation. */
+   The key is not in `questions` — that comes from getQuizForLearner, which never
+   selects is_correct. Submitting posts option ids and the server grades, so the
+   result below is the server's, not a local calculation.
+
+   The grade response DOES carry correctOptionId, but only on a PASSING attempt.
+   Returning it unconditionally was a real hole: an empty submission handed back
+   the whole key, and replaying it scored 100%. See GradedQuestion in
+   lib/learn-quiz.ts. */
 
 const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
 export default function QuizRunner({
   quiz, questions, backHref, backLabel, previousBestPct, alreadyPassed,
+  gatesSubject = false, lessonsLeft = 0,
 }: {
   quiz: Quiz
   questions: QuizQuestion[]
@@ -25,6 +30,10 @@ export default function QuizRunner({
   backLabel: string
   previousBestPct: number | null
   alreadyPassed: boolean
+  /** Only a MODULE quiz gates completion; a category quiz is an optional capstone. */
+  gatesSubject?: boolean
+  /** Lessons still unread in the gated subject, so the pass copy can be honest. */
+  lessonsLeft?: number
 }) {
   const router = useRouter()
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -80,7 +89,7 @@ export default function QuizRunner({
 
       {/* ── Result banner ─────────────────────────────────────────────── */}
       {result && (
-        <section className={cn(
+        <section role="status" aria-live="polite" className={cn(
           'mb-6 rounded-xl border p-5',
           result.passed
             ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-500/30 dark:bg-emerald-500/10'
@@ -99,9 +108,16 @@ export default function QuizRunner({
               </p>
               <p className="mt-0.5 text-[13px] leading-relaxed text-ink-secondary">
                 {result.passed ? (
-                  result.firstPass
-                    ? <>Passed. This subject now counts as complete, and you&apos;ve earned XP for it.</>
-                    : <>Passed again — your best score stands.</>
+                  !result.firstPass
+                    ? <>Passed again — your best score stands.</>
+                    /* Only a module quiz gates a subject, and only once every
+                       lesson is read. Claiming completion otherwise contradicts
+                       the browse deck and the compliance report. */
+                    : !gatesSubject
+                      ? <>Passed, and you&apos;ve earned XP for it. This is an optional capstone — it doesn&apos;t gate any subject.</>
+                      : lessonsLeft > 0
+                        ? <>Passed, and you&apos;ve earned XP for it. {lessonsLeft} lesson{lessonsLeft === 1 ? '' : 's'} still to read before this subject counts as complete.</>
+                        : <>Passed. This subject now counts as complete, and you&apos;ve earned XP for it.</>
                 ) : (
                   <>You need {quiz.passPct}% to pass. Read the explanations below, then try again — retakes are unlimited and your best score is the one that counts.</>
                 )}
@@ -128,12 +144,15 @@ export default function QuizRunner({
           const graded = byQuestion.get(q.id)
           return (
             <li key={q.id} className="rounded-xl border border-hairline bg-surface p-4">
-              <div className="flex items-start gap-3">
+              {/* fieldset/legend so a screen reader announces the question when
+                  focus lands on its first option, instead of four bare labels. */}
+              <fieldset>
+              <legend className="flex w-full items-start gap-3">
                 <span className="mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-full bg-surface-strong text-[11.5px] font-semibold tabular-nums text-ink-secondary">
                   {i + 1}
                 </span>
-                <p className="flex-1 text-[14px] font-medium leading-snug text-ink">{q.prompt}</p>
-              </div>
+                <span className="flex-1 text-[14px] font-medium leading-snug text-ink">{q.prompt}</span>
+              </legend>
 
               <div className="mt-3 space-y-1.5 pl-9">
                 {q.options.map(o => {
@@ -145,6 +164,11 @@ export default function QuizRunner({
                       key={o.id}
                       className={cn(
                         'flex items-center gap-2.5 rounded-lg border px-3 py-2 text-[13px] transition-colors',
+                        // The radio is sr-only, so without this a keyboard user
+                        // moving through the options gets NO visible indication
+                        // of where they are — the primary interaction of the
+                        // whole feature.
+                        'focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand',
                         result ? 'cursor-default' : 'cursor-pointer hover:bg-surface-soft',
                         isCorrect && 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-500/40 dark:bg-emerald-500/10',
                         isWrongPick && 'border-rose-300 bg-rose-50/60 dark:border-rose-500/40 dark:bg-rose-500/10',
@@ -174,6 +198,8 @@ export default function QuizRunner({
                   )
                 })}
               </div>
+
+              </fieldset>
 
               {graded?.explanation && (
                 <p className="mt-2.5 pl-9 text-[12.5px] leading-relaxed text-ink-muted">

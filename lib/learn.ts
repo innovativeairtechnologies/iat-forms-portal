@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getCustomerIds } from '@/lib/staff'
 import {
-  computeUserStats, computeStreak, lessonXp, levelInfo, dateKey, keyToDayNum,
+  computeUserStats, computeStreak, lessonXp, levelInfo, dateKey, keyToDayNum, QUIZ_PASS_XP,
   type UserLearnStats,
 } from '@/lib/learn-gamification'
 import {
@@ -503,7 +503,11 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
   }
 
   // ── Headline stats ──
-  const lessonXpTotal = completed.reduce((n, p) => n + lessonXp(minutesByLesson.get(p.lesson_id) ?? 0), 0)
+  // Skip completions whose lesson is no longer published — `?? 0` would have
+  // scored them lessonXp(0) = XP_BASE, i.e. phantom XP, and the other two XP
+  // sites (getLearnHeaderStats, computeUserStats) both drop them instead.
+  const lessonXpTotal = completed.reduce(
+    (n, p) => n + (minutesByLesson.has(p.lesson_id) ? lessonXp(minutesByLesson.get(p.lesson_id)!) : 0), 0)
   const totalXp = lessonXpTotal + quizXpFrom(attempts)
   const lvl = levelInfo(totalXp)
   const streak = computeStreak(completed.map(p => p.completed_at))
@@ -584,13 +588,17 @@ async function fetchStatsRaw(userId: string) {
 }
 
 export async function getUserLearnStats(userId: string): Promise<UserLearnStats> {
-  const raw = await fetchStatsRaw(userId)
+  // Quiz XP must be included here too. /admin/learn/me renders this object's
+  // totalXp and level; the browse page and Company Home both add quizXpFrom, so
+  // omitting it made the same person's XP differ between pages one click apart.
+  const [raw, attempts] = await Promise.all([fetchStatsRaw(userId), getAttemptSummaries(userId)])
   return computeUserStats({
     categories: raw.categories,
     moduleCategory: raw.moduleCategory,
     lessons: raw.lessons,
     completedLessonIds: new Set(raw.completed.map(p => p.lesson_id)),
     completedDates: raw.completed.map(p => p.completed_at),
+    extraXp: quizXpFrom(attempts),
   })
 }
 
@@ -626,18 +634,22 @@ export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderSt
   const lvl = levelInfo(xp)
   const totalLessons = min.size
 
-  // Required-training rollup for the Company Home strip. Deliberately cheap: a
-  // required subject counts as outstanding unless every one of its published
-  // lessons is done. It does NOT re-check the quiz gate — that would cost a
-  // per-subject pass here, and the strip's job is "you have N things due", with
-  // the precise state one click away on /admin/learn.
+  // Required-training rollup for the Company Home strip.
+  //
+  // This applies the FULL rule (lessons + quiz), not a lesson-only shortcut. The
+  // first cut skipped the quiz gate to save a query, which meant someone who had
+  // read every lesson but never passed a published quiz was told nothing was due
+  // here while the compliance report showed them incomplete and overdue. One
+  // extra query is worth the three surfaces agreeing.
   const doneLessonIds = new Set((progress ?? []).map(p => p.lesson_id as string))
   let requiredOutstanding = 0
   let requiredOverdue = 0
   if (assigned.size) {
-    const { data: reqLessons } = await supabaseAdmin
-      .from('learn_lessons').select('id, module_id')
-      .in('module_id', [...assigned.keys()]).eq('is_published', true)
+    const [{ data: reqLessons }, moduleQuizzes] = await Promise.all([
+      supabaseAdmin.from('learn_lessons').select('id, module_id')
+        .in('module_id', [...assigned.keys()]).eq('is_published', true),
+      getPublishedModuleQuizzes(),
+    ])
     const byModule = new Map<string, string[]>()
     for (const l of reqLessons ?? []) {
       const arr = byModule.get(l.module_id) ?? []
@@ -646,8 +658,8 @@ export async function getLearnHeaderStats(userId: string): Promise<LearnHeaderSt
     }
     for (const [moduleId, req] of assigned) {
       const ls = byModule.get(moduleId) ?? []
-      const finished = ls.length > 0 && ls.every(id => doneLessonIds.has(id))
-      if (finished) continue
+      const read = ls.filter(id => doneLessonIds.has(id)).length
+      if (subjectIsComplete(read, ls.length, moduleQuizzes.get(moduleId), attempts)) continue
       requiredOutstanding++
       if (req.overdue) requiredOverdue++
     }
@@ -674,8 +686,16 @@ export type ProgressAward = {
   newBadges: { key: string; label: string; icon: string; tier: string }[]
 }
 export async function computeAwardForCompletion(userId: string, lessonId: string): Promise<ProgressAward> {
-  const raw = await fetchStatsRaw(userId)
-  const base = { categories: raw.categories, moduleCategory: raw.moduleCategory, lessons: raw.lessons }
+  const [raw, attempts] = await Promise.all([fetchStatsRaw(userId), getAttemptSummaries(userId)])
+  // Quiz XP is added to BOTH sides. The delta (xpAwarded) is unaffected — it is
+  // still just this lesson's XP — but the toast's "N XP total" and its level /
+  // leveledUp check are now computed on the real total. Without it, someone who
+  // had passed a quiz would see an understated total and could miss the
+  // level-up celebration entirely.
+  const extraXp = quizXpFrom(attempts)
+  const base = {
+    categories: raw.categories, moduleCategory: raw.moduleCategory, lessons: raw.lessons, extraXp,
+  }
 
   const allIds = new Set(raw.completed.map(p => p.lesson_id))
   const allDates = raw.completed.map(p => p.completed_at)
@@ -707,11 +727,15 @@ export type LeaderboardRow = {
 export async function getLeaderboard(): Promise<LeaderboardRow[]> {
   // Customers hold an employees row too (see lib/staff.ts); without the filter
   // they'd sit on the team leaderboard forever at 0 XP.
-  const [{ data: allEmployees }, { data: lessons }, { data: progress }, customers] = await Promise.all([
+  const [{ data: allEmployees }, { data: lessons }, { data: progress }, customers, { data: passes }] = await Promise.all([
     supabaseAdmin.from('employees').select('id, name, email, avatar_url, department, is_active').eq('is_active', true),
     supabaseAdmin.from('learn_lessons').select('id, estimated_minutes').eq('is_published', true),
     supabaseAdmin.from('learn_progress').select('user_id, lesson_id, completed_at').not('completed_at', 'is', null),
     getCustomerIds(),
+    // Quiz XP counts on the leaderboard too — otherwise it ranks quiz-passers
+    // below their real XP and shows a different total from /admin/learn, which
+    // links straight here.
+    supabaseAdmin.from('learn_quiz_attempts').select('user_id, quiz_id').eq('passed', true),
   ])
   const employees = (allEmployees ?? []).filter(e => !customers.has(e.id))
   const lessonMin = new Map((lessons ?? []).map(l => [l.id, l.estimated_minutes ?? 0]))
@@ -721,6 +745,16 @@ export async function getLeaderboard(): Promise<LeaderboardRow[]> {
     const u = perUser.get(p.user_id) ?? { xp: 0, count: 0 }
     u.xp += lessonXp(lessonMin.get(p.lesson_id)); u.count++
     perUser.set(p.user_id, u)
+  }
+  // Once per (user, quiz) — a retake after passing must not pay again.
+  const paid = new Set<string>()
+  for (const a of passes ?? []) {
+    const key = `${a.user_id}:${a.quiz_id}`
+    if (paid.has(key)) continue
+    paid.add(key)
+    const u = perUser.get(a.user_id) ?? { xp: 0, count: 0 }
+    u.xp += QUIZ_PASS_XP
+    perUser.set(a.user_id, u)
   }
   const rows: LeaderboardRow[] = (employees ?? []).map(e => {
     const u = perUser.get(e.id) ?? { xp: 0, count: 0 }

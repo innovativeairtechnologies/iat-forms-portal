@@ -233,6 +233,13 @@ export type RawStatsInput = {
   lessons: { id: string; module_id: string; estimated_minutes: number }[]
   completedLessonIds: Set<string>
   completedDates: string[]
+  /**
+   * XP from passed quizzes (migration 074). Lives outside learn_progress, so it
+   * has to be handed in — without it /admin/learn/me would quote a LOWER total
+   * (and possibly a lower level) than /admin/learn and Company Home for the same
+   * person, one click apart.
+   */
+  extraXp?: number
 }
 
 /** Single source of truth: turn raw rows into a full stats object. */
@@ -282,6 +289,11 @@ export function computeUserStats(input: RawStatsInput): UserLearnStats {
     currentStreak: streak.current, longestStreak: streak.longest,
     categories: categories.map(c => ({ id: c.id, name: c.name, completed: c.completed, total: c.total })),
   })
+
+  // Quiz XP is added AFTER the per-category split on purpose: a quiz belongs to
+  // a subject, but the category bars here count LESSONS read, and folding quiz
+  // XP into one category's bar would make the bars stop summing to the total.
+  totalXp += input.extraXp ?? 0
 
   return {
     totalXp,

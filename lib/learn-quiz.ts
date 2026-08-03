@@ -5,10 +5,15 @@ import { QUIZ_PASS_XP } from '@/lib/learn-gamification'
 
    Two hard rules the rest of the feature depends on:
 
-   1. THE ANSWER KEY NEVER LEAVES THE SERVER. `learn_quiz_options.is_correct`
-      has no learner-facing read policy, and `getQuizForLearner` strips it.
-      Grading happens in `gradeAttempt` against a fresh server read — the client
-      posts option ids only, never a claimed score.
+   1. THE ANSWER KEY IS NEVER READABLE BEFORE YOU PASS.
+      `learn_quiz_options.is_correct` has no learner-facing RLS read policy, and
+      `getQuizForLearner` does not select it. Grading happens in `gradeAttempt`
+      against a fresh server read — the client posts option ids only, never a
+      claimed score — and the graded response withholds `correctOptionId` unless
+      the attempt passed. That last clause matters: the first cut returned the
+      key on every attempt, so `{"answers":{}}` leaked the lot and a replay
+      scored 100%, which made the gate (and the compliance report built on it)
+      unenforceable.
 
    2. A QUIZ ONLY GATES ONCE PUBLISHED. `subjectIsComplete` treats a subject
       with no published quiz exactly as before (all lessons = done), so adding a
@@ -162,10 +167,14 @@ export async function getQuizForLearner(
 
 /** Best attempt per quiz for one user. Best score wins (Jacob's call). */
 export async function getAttemptSummaries(userId: string): Promise<Map<string, QuizAttemptSummary>> {
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('learn_quiz_attempts')
     .select('quiz_id, score, total, passed, submitted_at')
     .eq('user_id', userId)
+  // Same reasoning as getPublishedModuleQuizzes: "no attempts" is what an empty
+  // result means, and it un-completes gated subjects rather than over-completing
+  // them — but it would also silently zero someone's quiz XP and level. Throw.
+  if (error) throw new Error(`Could not load quiz attempts: ${error.message}`)
 
   const out = new Map<string, QuizAttemptSummary>()
   for (const a of data ?? []) {
@@ -190,11 +199,21 @@ export async function getAttemptSummaries(userId: string): Promise<Map<string, Q
   return out
 }
 
-/** Published module-scoped quizzes, keyed by module id. Drives subject gating. */
+/**
+ * Published module-scoped quizzes, keyed by module id. Drives subject gating.
+ *
+ * THROWS on a read failure rather than returning an empty map. subjectIsComplete
+ * treats "no quiz" as "lessons alone are enough", so an empty map silently
+ * removes the gate from every subject at once and reports learners who never
+ * passed as complete — on their own dashboard AND on the compliance report.
+ * Failing open is the one outcome that must not happen here; an error page is
+ * the correct alternative.
+ */
 export async function getPublishedModuleQuizzes(): Promise<Map<string, { id: string; passPct: number }>> {
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('learn_quizzes').select('id, scope_id, pass_pct')
     .eq('scope_type', 'module').eq('is_published', true)
+  if (error) throw new Error(`Could not load quiz gating: ${error.message}`)
   return new Map((data ?? []).map(q => [q.scope_id as string, { id: q.id as string, passPct: q.pass_pct as number }]))
 }
 
@@ -237,6 +256,18 @@ export function quizStatsFrom(attempts: Map<string, QuizAttemptSummary>) {
 export type GradedQuestion = {
   questionId: string
   chosenOptionId: string | null
+  /**
+   * ⚠️ Only populated on a PASSING attempt. On a fail this is null, deliberately.
+   *
+   * The first cut returned it always, which meant POSTing `{"answers":{}}`
+   * handed back the entire answer key; replaying it scored 100%. With unlimited
+   * retakes and a sticky `passed`, that made the 80% gate — and every
+   * "complete" in the compliance report built on it — unenforceable.
+   *
+   * Once someone has actually passed, revealing the key is harmless (they've
+   * already earned the completion) and makes the review screen useful. Guessing
+   * to a pass is not a route in: 80% of ten 4-option questions is ~1 in 10^5.
+   */
   correctOptionId: string | null
   isCorrect: boolean
   explanation: string | null
@@ -307,6 +338,9 @@ export async function gradeAttempt(
   const total = graded.length
   const pct = Math.round((score / total) * 100)
   const passed = pct >= quiz.pass_pct
+
+  // Withhold the key unless they passed. See GradedQuestion.correctOptionId.
+  if (!passed) for (const g of graded) g.correctOptionId = null
 
   const priorSummaries = await getAttemptSummaries(userId)
   const firstPass = passed && priorSummaries.get(quizId)?.passed !== true

@@ -102,15 +102,26 @@ export default function WeekChart({ data }: { data: LearnDashboard }) {
       <div className="mt-auto grid grid-cols-2 divide-x divide-hairline-soft border-t border-hairline px-5 sm:grid-cols-4">
         <Stat label="Lessons" value={`${stats.lessonsCompleted}`} sub={`of ${stats.totalLessons}`} />
         <Stat label="Subjects" value={`${stats.subjectsCompleted}`} sub={`${stats.subjectsInProgress} in progress`} />
-        {/* Quizzes replace the streak tile once there are any — the streak is
-            already a chip in the Up next panel, and a real test score is the
-            more informative number. */}
+        {/* Quizzes replace the streak tile once there are any. NOTE the CURRENT
+            streak is still shown as a chip in Up next; the LONGEST streak has no
+            other home, so it only appears while this tile does. */}
         {stats.quizzesTaken > 0 ? (
           <Stat label="Quizzes" value={`${stats.quizzesPassed}`} sub={`passed · avg ${stats.avgQuizPct}%`} />
         ) : (
           <Stat label="Streak" value={`${stats.streak}`} sub={stats.longestStreak > stats.streak ? `best ${stats.longestStreak}` : 'days'} />
         )}
-        <Stat label="Library" value={`${stats.libraryPct}%`} sub="complete" />
+        {/* Required outranks library % — a deadline beats a completion rate. This
+            is also the accurate, quiz-aware count; Company Home's strip uses the
+            same rule, so the two agree. */}
+        {stats.requiredTotal > 0 ? (
+          <Stat
+            label="Required"
+            value={`${stats.requiredDone}/${stats.requiredTotal}`}
+            sub={stats.requiredOverdue > 0 ? `${stats.requiredOverdue} overdue` : 'done'}
+          />
+        ) : (
+          <Stat label="Library" value={`${stats.libraryPct}%`} sub="complete" />
+        )}
       </div>
     </section>
   )

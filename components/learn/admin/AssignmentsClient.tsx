@@ -229,6 +229,8 @@ export default function AssignmentsClient({
                 <div className="flex flex-wrap items-center gap-3 px-5 py-4">
                   <button
                     onClick={() => setExpanded(isOpen ? null : r.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={`people-${r.id}`}
                     className={cn('min-w-0 flex-1 text-left', FOCUS)}
                   >
                     <p className="text-[14px] font-[650] text-ink">{r.scopeLabel}</p>
@@ -274,7 +276,7 @@ export default function AssignmentsClient({
                 </div>
 
                 {isOpen && (
-                  <ul className="divide-y divide-hairline-soft border-t border-hairline">
+                  <ul id={`people-${r.id}`} className="divide-y divide-hairline-soft border-t border-hairline">
                     {r.people.map(p => (
                       <li key={p.userId} className="flex items-center gap-3 px-5 py-2.5">
                         <span className={cn(

@@ -72,10 +72,17 @@ export type AssignmentReport = Assignment & {
  * which fails closed.
  */
 export async function getAssignableStaff(): Promise<StaffMember[]> {
-  const [{ data: emps }, { data: profs }] = await Promise.all([
+  const [empRes, profRes] = await Promise.all([
     supabaseAdmin.from('employees').select('id, name, email, department').eq('is_active', true),
     supabaseAdmin.from('profiles').select('id, role'),
   ])
+  // An empty roster from a failed read would make every assignment silently
+  // resolve to nobody — including the zero-audience guard, which would then
+  // reject valid assignments and report existing ones as covering 0 people.
+  if (empRes.error) throw new Error(`Could not load staff: ${empRes.error.message}`)
+  if (profRes.error) throw new Error(`Could not load roles: ${profRes.error.message}`)
+  const emps = empRes.data
+  const profs = profRes.data
   const roleById = new Map((profs ?? []).map(p => [p.id, p.role as string | null]))
   return (emps ?? [])
     .filter(e => roleById.get(e.id) !== 'customer')
@@ -148,11 +155,18 @@ function audienceLabel(type: AudienceType, value: string | null, names: Map<stri
 
 // ── Completion ───────────────────────────────────────────────────────────────
 
-/** The module ids an assignment covers: itself, or every published module in a category. */
-async function modulesForScope(scopeType: AssignmentScope, scopeId: string): Promise<string[]> {
-  if (scopeType === 'module') return [scopeId]
-  const { data } = await supabaseAdmin
-    .from('learn_modules').select('id').eq('category_id', scopeId).eq('is_published', true)
+/**
+ * The module ids an assignment covers: itself, or every module in a category.
+ *
+ * PUBLISHED ONLY, on both branches. Unpublishing a subject used to leave its
+ * assignment live, so a learner was nagged ("1 required · overdue") about a
+ * subject the library no longer shows them anywhere — nothing they could act on.
+ */
+export async function modulesForScope(scopeType: AssignmentScope, scopeId: string): Promise<string[]> {
+  const q = supabaseAdmin.from('learn_modules').select('id').eq('is_published', true)
+  const { data } = scopeType === 'module'
+    ? await q.eq('id', scopeId)
+    : await q.eq('category_id', scopeId)
   return (data ?? []).map(m => m.id)
 }
 
@@ -177,10 +191,14 @@ export async function getAssignmentReports(): Promise<AssignmentReport[]> {
   }
   const allModuleIds = [...new Set([...modulesByAssignment.values()].flat())]
 
-  const { data: lessons } = allModuleIds.length
+  const lessonRes = allModuleIds.length
     ? await supabaseAdmin.from('learn_lessons').select('id, module_id')
         .in('module_id', allModuleIds).eq('is_published', true)
-    : { data: [] as { id: string; module_id: string }[] }
+    : { data: [] as { id: string; module_id: string }[], error: null }
+  // A swallowed error here renders every person 0% and flags every past-due
+  // assignment red — an admin chasing nine people who have actually finished.
+  if (lessonRes.error) throw new Error(`Could not load lessons for reporting: ${lessonRes.error.message}`)
+  const lessons = lessonRes.data
 
   const lessonsByModule = new Map<string, string[]>()
   for (const l of lessons ?? []) {
@@ -195,10 +213,12 @@ export async function getAssignmentReports(): Promise<AssignmentReport[]> {
     for (const p of resolveAudience(staff, a.audienceType, a.audienceValue)) involved.add(p.id)
   }
 
-  const { data: progress } = involved.size
+  const progRes = involved.size
     ? await supabaseAdmin.from('learn_progress').select('user_id, lesson_id')
         .in('user_id', [...involved]).not('completed_at', 'is', null)
-    : { data: [] as { user_id: string; lesson_id: string }[] }
+    : { data: [] as { user_id: string; lesson_id: string }[], error: null }
+  if (progRes.error) throw new Error(`Could not load progress for reporting: ${progRes.error.message}`)
+  const progress = progRes.data
 
   const doneByUser = new Map<string, Set<string>>()
   for (const p of progress ?? []) {

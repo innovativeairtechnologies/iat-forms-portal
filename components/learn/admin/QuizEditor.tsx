@@ -141,7 +141,15 @@ export default function QuizEditor({ quiz, questions: initial, scopeLabel, lesso
       {!quiz.isPublished && (
         <p className="mb-4 rounded-lg border border-hairline bg-surface-soft p-3 text-[12.5px] leading-relaxed text-ink-secondary">
           Check the answer key before publishing — every question names the lesson it came from.
-          Once published, this subject only counts as complete when someone passes at {quiz.passPct}%.
+          {quiz.scopeType === 'module' ? (
+            <> Once published, this subject only counts as complete when someone has read every
+            lesson <em>and</em> passed at {quiz.passPct}%.</>
+          ) : (
+            /* Only module quizzes gate completion — getPublishedModuleQuizzes
+               filters on scope_type='module'. A category quiz is a capstone. */
+            <> This is a category capstone: it earns XP and appears on the leaderboard, but it
+            doesn&apos;t gate any subject&apos;s completion.</>
+          )}
         </p>
       )}
 

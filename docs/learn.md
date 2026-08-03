@@ -41,17 +41,19 @@ the sanctioned table (emerald / sky / amber / violet / rose / slate) — no off-
 a subject inherits its *category's* tone, so the colour means "this part of the library" rather
 than decoration. The map lives in `components/learn/learn-tones.ts`.
 
-**What the reference had that we deliberately did not build**, because the data does not exist:
+**How the page tracks the reference design.** Three of the five gaps closed the same day:
 
-| Reference element | Why not |
+| Reference element | Status |
 |---|---|
-| "Due Jun 25" date pills | No `due_date` column. The pill carries the category instead. |
-| Mandatory / Recommended filters | No `is_mandatory` and no recommendation signal. Filters use real progress state. |
-| "32 Hours Studied" | `learn_progress.time_spent_seconds` exists but **is never written**. The chart shows `estimated_minutes` of lessons *completed* per day, and the card says "Content completed" so it is not read as measured time. |
-| Tests Passed · Average Test Score | Quizzes do not exist at all. |
-| Next Lessons w/ instructor + scheduled time | Lessons have no instructor and no schedule. "Up next" answers the same question from real ordering. |
+| "Due Jun 25" date pills | ✅ **Real** — from an assignment (076). No assignment → the pill carries the category. |
+| Mandatory filter | ✅ **Real** as the **Required** tab (076). Hidden when nothing is required. |
+| Tests Passed · Average Test Score | ✅ **Real** — the Quizzes stat tile (074), shown once any attempt exists. |
+| Recommended filter | ❌ No recommendation signal exists, so there is no tab. |
+| "32 Hours Studied" | ❌ `learn_progress.time_spent_seconds` exists but **is never written**. The chart shows `estimated_minutes` of lessons *completed* per day, labelled "Content completed" so it can't be read as measured time. |
+| Next Lessons w/ instructor + scheduled time | ❌ Lessons have no instructor and no schedule. "Up next" answers the same question from real ordering. |
 
-Due dates and mandatory flags arrive with the assignments feature; test scores with quizzes.
+The four stat tiles adapt: Streak gives way to **Quizzes** once any quiz has been taken, and Library %
+gives way to **Required** once anything is assigned — a deadline outranks a completion rate.
 
 Two implementation notes worth keeping:
 
@@ -122,8 +124,10 @@ filter tab — the reference design's "Mandatory" tab, made real rather than fak
 itself when nothing is required. Company Home's training strip leads with outstanding/overdue
 counts when anything is due.
 
-> Company Home's rollup checks lessons only, not the quiz gate — it's a "you have N things due"
-> nudge, and the precise state is one click away. `getLearnDashboard` does apply the full rule.
+All four surfaces — the browse deck, the Required stat tile, Company Home's strip and the admin
+report — apply the **same** rule, including the quiz gate. An earlier cut had Company Home skip the
+quiz check to save a query, which meant someone who had read every lesson but never passed was told
+nothing was due while the report showed them overdue. One extra query is worth the agreement.
 
 Deleting an assignment removes the **requirement**, never any progress.
 
@@ -180,7 +184,7 @@ refused server-side unless every question has exactly one correct option.
 Generation also refuses (409) when a **published** quiz already exists — unpublish first, so
 rebuilding can't silently swap a quiz people are being graded on.
 
-### The answer key never leaves the server
+### The answer key is never readable before you pass
 
 - `learn_quiz_options` holds `is_correct` and has **no learner read policy at all** — one
   admin-only policy, service-role otherwise. Verify with:
@@ -188,6 +192,12 @@ rebuilding can't silently swap a quiz people are being graded on.
   — `learn_quiz_options` must be **1**.
 - `getQuizForLearner()` doesn't even *select* `is_correct`, so it can't leak through a later
   refactor that spreads the row.
+- ⚠️ The GRADE response carries `correctOptionId` **only on a passing attempt**. Returning it
+  unconditionally was a real hole: `POST {"answers":{}}` handed back the whole key and a replay
+  scored 100%, defeating the gate and the compliance report built on it.
+- `getPublishedModuleQuizzes()` and `getAttemptSummaries()` **throw** on a read error rather than
+  returning empty. `subjectIsComplete` treats "no quiz" as "lessons are enough", so an empty map
+  would silently un-gate every subject — the one failure mode that must not be quiet.
 - The client posts option ids only. `gradeAttempt()` re-reads the key server-side, and an option id
   belonging to a different question is treated as unanswered rather than credited (regression-tested).
 

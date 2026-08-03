@@ -2,6 +2,56 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Quiz answer-key leak, and eight other completion bugs
+
+An adversarial review of the two features shipped today (quizzes 074, assignments 076) found a
+**blocker and five majors**. All fixed here.
+
+**The blocker: the grade response leaked the answer key.** `gradeAttempt` returned
+`correctOptionId` for every question and the attempt route spread it straight to the browser, so
+`POST {"answers":{}}` handed back the complete key; replaying it scored 100%. With unlimited
+retakes and a sticky `passed`, that made the 80% gate — and every "complete" in the compliance
+report built on it — unenforceable without opening a single lesson. The key is now withheld unless
+the attempt **passed**, where revealing it is harmless (the completion is already earned) and makes
+the review screen useful. Guessing to a pass is not a way in: 80% of ten four-option questions is
+roughly 1 in 10⁵. The claim in the previous entry that "the answer key never leaves the server" was
+wrong, and the code comments asserting it have been corrected rather than quietly deleted.
+
+**The gate failed open.** `getPublishedModuleQuizzes` swallowed its error and returned an empty map,
+and `subjectIsComplete` reads "no quiz" as "lessons are enough" — so one failed read silently
+removed the quiz requirement from every subject at once and reported learners who never passed as
+complete. It throws now, as do `getAttemptSummaries` and the two reads behind the assignment report
+(a swallowed error there rendered the whole roster 0% and every past-due assignment red).
+
+**Three surfaces disagreed about completion, and one lied.**
+- The subject-page banner said "This subject is complete" on the strength of the quiz alone — no
+  lesson check at all. Reachable, because the quiz is linked straight from that banner. It now uses
+  `subjectIsComplete` and says what's outstanding: "Quiz passed — 4 lessons still to read."
+- The quiz result said "This subject now counts as complete" even for a **category** capstone,
+  which gates nothing, and for a module quiz passed before the lessons were read.
+- Company Home's required count skipped the quiz gate, so someone who'd read everything but never
+  passed was told nothing was due while the admin report showed them overdue. It applies the full
+  rule now — one extra query for three surfaces agreeing.
+
+**XP was inconsistent in four places.** `/admin/learn/me` and the mark-complete toast used a
+lesson-only total, so the same person saw a different XP — and possibly a different level — one
+click from the browse page, and could miss a level-up celebration entirely. The leaderboard ranked
+quiz-passers below their real XP. Unpublished-lesson completions also scored a phantom 50 XP on the
+dashboard (`?? 0` → `lessonXp(0)` = `XP_BASE`) while the other two sites correctly dropped them.
+
+**Assignments that could never be completed.** A module assignment ignored publication, so
+unpublishing a subject left people nagged about something the library no longer showed them; and a
+scope with no published modules — or none with published lessons — was accepted and then sat at 0%
+and overdue forever with no action available. Both refused now, with a hint naming the cause.
+
+**Also:** the quiz-aware `requiredTotal/requiredDone/requiredOverdue` had **no consumer at all** —
+computed and thrown away — so the "precise state one click away" that Company Home promised didn't
+exist. It's a stat tile now. Plus accessibility on the new surfaces: quiz options had no visible
+keyboard focus (the radio is `sr-only`, and nothing supplied a `focus-within` ring), questions now
+use `fieldset`/`legend` so the prompt is announced, results are a live region, and the report's
+expander exposes `aria-expanded`. And stale copy claiming due dates, mandatory flags and quizzes
+don't exist has been rewritten — that page renders all three.
+
 ## 2026-08-03 — Support form sends one email, to the support desk
 
 A support submission used to fire **two** emails: a confirmation to the customer, and a

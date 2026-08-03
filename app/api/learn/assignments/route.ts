@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
-import { getAssignableStaff, resolveAudience, type AudienceType, type AssignmentScope } from '@/lib/learn-assignments'
+import {
+  getAssignableStaff, resolveAudience, modulesForScope,
+  type AudienceType, type AssignmentScope,
+} from '@/lib/learn-assignments'
 
 /* POST /api/learn/assignments
      { scopeType, scopeId, audienceType, audienceValue?, dueOn?, note? }
@@ -52,6 +55,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'dueOn must be YYYY-MM-DD' }, { status: 400 })
     }
     dueOn = body.dueOn.trim()
+  }
+
+  // An assignment covering nothing completable is a permanent red row nobody can
+  // clear: subjectIsComplete needs at least one published lesson, so a scope with
+  // no published modules (or whose modules have no published lessons) would sit
+  // at 0% and go overdue forever with no action available to anyone.
+  const moduleIds = await modulesForScope(scopeType, scopeId)
+  const { count: lessonCount } = moduleIds.length
+    ? await supabaseAdmin.from('learn_lessons').select('*', { count: 'exact', head: true })
+        .in('module_id', moduleIds).eq('is_published', true)
+    : { count: 0 }
+  if (!moduleIds.length || !lessonCount) {
+    return NextResponse.json({
+      error: 'Nothing here can be completed yet',
+      hint: !moduleIds.length
+        ? 'That scope has no published subjects, so nobody could ever finish it. Publish the content first.'
+        : 'Those subjects have no published lessons yet, so the assignment could never be completed.',
+    }, { status: 422 })
   }
 
   const staff = await getAssignableStaff()

@@ -24,9 +24,12 @@ function greeting(hour: number) {
    from the sanctioned table, and the wash means "this part of the library"
    rather than decoration.
 
-   Everything on this page comes from data that exists. There are no due dates,
-   no "mandatory" flag, no quiz scores and no measured study time in the schema,
-   so none of those appear. See docs/learn.md. */
+   Everything on this page comes from data that exists — and more of it exists
+   now than when this was first built. Due dates and the Required filter are real
+   (assignments, migration 076); quiz scores are real (074). Still absent from the
+   schema: any "recommended" signal, and measured study time — the week chart
+   plots the estimated_minutes of lessons COMPLETED, never a tracked duration.
+   See docs/learn.md. */
 
 export default async function LearnHomePage() {
   const supabase = await createSupabaseServer()

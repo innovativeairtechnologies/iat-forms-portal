@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import { Clock, Play, ArrowRight, FileClock, ClipboardList, Trophy } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { getModuleWithLessons } from '@/lib/learn'
-import { getQuizForLearner, getAttemptSummaries } from '@/lib/learn-quiz'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getQuizForLearner, getAttemptSummaries, subjectIsComplete } from '@/lib/learn-quiz'
 import LearnPageShell from '../../LearnPageShell'
 import PageChrome from '@/app/admin/PageChrome'
 
@@ -28,14 +29,30 @@ export default async function ModulePage(props: { params: Promise<{ category: st
   const base = `/admin/learn/${category.slug}/${module.slug}`
 
   // A published quiz turns this subject's completion into "read it AND pass it".
+  // Both halves are needed here: the banner used to claim "this subject is
+  // complete" off the quiz alone, which contradicted the browse deck and the
+  // compliance report for anyone who took the quiz before reading the lessons —
+  // reachable, since the quiz page is linked straight from this banner.
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
-  const [quizData, attempts] = await Promise.all([
+  const [quizData, attempts, progressRes] = await Promise.all([
     getQuizForLearner('module', module.id),
     user ? getAttemptSummaries(user.id) : Promise.resolve(new Map()),
+    user
+      ? supabaseAdmin.from('learn_progress').select('lesson_id')
+          .eq('user_id', user.id).not('completed_at', 'is', null)
+      : Promise.resolve({ data: [] as { lesson_id: string }[] }),
   ])
+  const doneIds = new Set((progressRes.data ?? []).map(p => p.lesson_id))
+  const lessonsDone = lessons.filter(l => doneIds.has(l.id)).length
+  const lessonsLeft = lessons.length - lessonsDone
   const quizSummary = quizData ? attempts.get(quizData.quiz.id) : undefined
   const quizPassed = quizSummary?.passed === true
+  const subjectComplete = subjectIsComplete(
+    lessonsDone, lessons.length,
+    quizData ? { id: quizData.quiz.id } : undefined,
+    attempts,
+  )
 
   return (
     <LearnPageShell
@@ -114,29 +131,33 @@ export default async function ModulePage(props: { params: Promise<{ category: st
       {/* ── Knowledge check ───────────────────────────────────────────── */}
       {quizData && (
         <section className={
-          quizPassed
+          subjectComplete
             ? 'mt-8 rounded-xl border border-emerald-200 bg-emerald-50/60 p-5 dark:border-emerald-500/30 dark:bg-emerald-500/10'
             : 'mt-8 rounded-xl border border-hairline bg-surface-soft p-5'
         }>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <span className={
-              quizPassed
+              subjectComplete
                 ? 'grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg bg-emerald-600 text-white'
                 : 'grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-ink'
             }>
-              {quizPassed ? <Trophy size={18} /> : <ClipboardList size={18} />}
+              {subjectComplete ? <Trophy size={18} /> : <ClipboardList size={18} />}
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-[650] text-ink">{quizData.quiz.title}</p>
               <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">
-                {quizPassed ? (
-                  <>Passed at {quizSummary?.bestPct}%. This subject is complete — retake it any time to improve your score.</>
+                {subjectComplete ? (
+                  <>Passed at {quizSummary?.bestPct}%. This subject is complete — retake the quiz any time to improve your score.</>
+                ) : quizPassed ? (
+                  /* Passed the quiz but hasn't read everything. Say exactly what
+                     is outstanding rather than claiming completion. */
+                  <>Quiz passed at {quizSummary?.bestPct}% — {lessonsLeft} lesson{lessonsLeft === 1 ? '' : 's'} still to read before this subject counts as complete.</>
                 ) : (
                   <>
                     {quizData.questions.length} questions · {quizData.quiz.passPct}% to pass.
                     {quizSummary
-                      ? <> Your best so far is {quizSummary.bestPct}% — this subject counts as complete once you pass.</>
-                      : <> Finishing the lessons isn&apos;t enough on its own: this subject counts as complete once you pass.</>}
+                      ? <> Your best so far is {quizSummary.bestPct}% — this subject counts as complete once you pass and have read every lesson.</>
+                      : <> Finishing the lessons isn&apos;t enough on its own: this subject counts as complete once you also pass.</>}
                   </>
                 )}
               </p>
