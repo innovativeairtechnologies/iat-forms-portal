@@ -2,6 +2,13 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Admin sidebar: drop the active-row green indicator
+
+The 2px brand-green bar on the left edge of active nav items is gone (all three spots: the two
+top-level links and the group headers). Active state now reads from the `--sidebar-strong` wash +
+brighter `--sidebar-ink` alone. Removed on preference — the accent bar wasn't wanted. `--sidebar-brand`
+is now unused on the rail; the token stays defined. DESIGN.md §2.2/§6 updated so it isn't re-added.
+
 ## 2026-07-31 — Admin sidebar: regrouped, Self-service pinned to the footer, groups unfurl
 
 The rail is reorganised around where people actually look for things:

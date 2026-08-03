@@ -332,7 +332,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
             hasActive ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
           )}
         >
-          {hasActive && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
           <parent.icon size={15} className={cn('flex-shrink-0', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
           <span className="flex-1">{parent.label}</span>
           {!isOpen && collapsedCount > 0 && (
@@ -403,7 +402,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               active ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
             )}
           >
-            {active && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
             <Home size={15} className={cn('flex-shrink-0', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
             The Hub
           </Link>
@@ -421,7 +419,6 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
           )}
         >
-          {pathname === DASHBOARD.href && <span className="absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-sidebar-brand" />}
           <DASHBOARD.icon size={15} className="flex-shrink-0 text-sidebar-ink-muted" />
           Dashboard
         </Link>
