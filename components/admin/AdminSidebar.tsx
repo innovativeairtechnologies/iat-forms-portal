@@ -168,7 +168,7 @@ const NAV_PARENTS: NavParent[] = [
     label: 'System',
     icon: ShieldCheck,
     children: [
-      { href: '/admin/home-content', label: 'Company Home', perm: 'home_content' },
+      { href: '/admin/home-content', label: 'Hub Content', perm: 'home_content' },
       { href: '/admin/audit', label: 'Audit Log', perm: 'audit' },
       { href: '/admin/permissions', label: 'Permissions', perm: 'permissions' },
     ],
@@ -333,11 +333,11 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
           onClick={() => toggle(parent.label)}
           aria-expanded={isOpen}
           className={cn(
-            'relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors text-left',
+            'group relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors text-left',
             hasActive ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
           )}
         >
-          <parent.icon size={15} className={cn('flex-shrink-0', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
+          <parent.icon size={15} className={cn('flex-shrink-0 motion-safe:group-hover:animate-nav-icon', hasActive ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
           <span className="flex-1">{parent.label}</span>
           {!isOpen && collapsedCount > 0 && (
             <span className="text-[10px] font-semibold min-w-[18px] h-[18px] flex items-center justify-center px-1.5 rounded-full bg-amber-500/15 text-amber-400">
@@ -403,11 +403,11 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
             href="/admin/home"
             onClick={onClose}
             className={cn(
-              'relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
+              'group relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium transition-colors',
               active ? 'bg-sidebar-strong text-sidebar-ink' : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
             )}
           >
-            <Home size={15} className={cn('flex-shrink-0', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
+            <Home size={15} className={cn('flex-shrink-0 motion-safe:group-hover:animate-nav-icon', active ? 'text-sidebar-ink' : 'text-sidebar-ink-muted')} />
             The Hub
           </Link>
         )
@@ -424,7 +424,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
               : 'text-sidebar-ink-secondary hover:bg-sidebar-strong hover:text-sidebar-ink',
           )}
         >
-          <DASHBOARD.icon size={15} className="flex-shrink-0 text-sidebar-ink-muted" />
+          <DASHBOARD.icon size={15} className="flex-shrink-0 motion-safe:group-hover:animate-nav-icon text-sidebar-ink-muted" />
           Dashboard
         </Link>
       )}

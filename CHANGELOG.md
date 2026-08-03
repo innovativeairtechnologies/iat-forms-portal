@@ -2,6 +2,17 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-07-31 — Sidebar: home-content editor becomes "Hub Content"; nav icons spin on hover
+
+Two small follow-ups to the rail work. **System → Company Home** (the editor for the landing page)
+is now **Hub Content** — nav item, breadcrumb, page heading, and permission label. With the landing
+already "The Hub", this clears the last "Company Home" from the UI without giving two nav entries the
+same name.
+
+Section icons now **spin once on hover** — a single 360° turn with a slight mid-turn scale pop
+(`navIcon` keyframe, 500ms ease-out), on the two top-level links and every group header. Applied as
+`motion-safe:group-hover:animate-nav-icon`, so it honours `prefers-reduced-motion` and never loops.
+
 ## 2026-07-31 — Quiz answer-key leak, and eight other completion bugs
 
 An adversarial review of the two features shipped today (quizzes 074, assignments 076) found a

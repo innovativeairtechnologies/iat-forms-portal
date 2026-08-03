@@ -187,7 +187,7 @@ export function HomeContentManager({
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted">System</p>
-            <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.02em] text-ink">Company Home</h1>
+            <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.02em] text-ink">Hub Content</h1>
             <p className="mt-0.5 text-[13px] text-ink-muted">
               Edit the content on the <a href="/home" className="text-ink-secondary underline-offset-2 hover:text-brand-ink hover:underline">company home</a>. An empty section falls back to sensible defaults.
             </p>

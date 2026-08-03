@@ -163,7 +163,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   tools: 'Internal Apps',
   tool_crib: 'Tool Crib',
   production_board: 'Production Board',
-  home_content: 'Company Home',
+  home_content: 'Hub Content',
   case_studies: 'Case Studies',
   diagrams: 'Application Diagrams',
   marketing_calendar: 'Marketing Calendar',

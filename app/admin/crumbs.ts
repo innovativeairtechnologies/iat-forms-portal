@@ -50,7 +50,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/jerry',           section: 'Jerry',   label: 'Ask Jerry' },
   { prefix: '/admin/knowledge',       section: 'Jerry',   label: "Jerry's Brain" },
   // System
-  { prefix: '/admin/home-content',    section: 'System',  label: 'Company Home' },
+  { prefix: '/admin/home-content',    section: 'System',  label: 'Hub Content' },
   { prefix: '/admin/audit',           section: 'System',  label: 'Audit Log' },
   { prefix: '/admin/permissions',     section: 'System',  label: 'Permissions' },
   // US Rotors
