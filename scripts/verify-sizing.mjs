@@ -25,6 +25,7 @@ import {
   MAX_DESIGN_FACE_VELOCITY_FPM,
 } from '../lib/sizing-catalog.ts'
 import { airStateFromRH, pressureAtAltitude } from '../lib/psychro.ts'
+import { toCatalogSizes } from '../lib/dryware-sizing.ts'
 
 let passed = 0
 let failed = 0
@@ -314,6 +315,47 @@ const afterBump = calculateSizing(inputs())
 ok('reactivation still lands in 1,500–2,500 BTU/lb after the 285 °F bump',
   afterBump.reactivation.btuPerLbWater > 1500 && afterBump.reactivation.btuPerLbWater < 2500,
   `got ${round(afterBump.reactivation.btuPerLbWater)}`)
+
+// ─── 13. Live-catalog plumbing (step 2) ──────────────────────────────────────
+// calculateSizing now takes an optional catalog so the page can pass Dryware's live
+// one. These prove the parameter is actually USED, not just accepted — and that the
+// Dryware→CatalogSize mapping collapses the duplicate 600 SKU correctly.
+section('13. Live catalog parameter and Dryware mapping')
+
+// A deliberately tiny catalog: if the parameter is ignored, selection would still
+// find a 3,000 and this fails.
+const TINY = [
+  { model: 'TEST-1000', nominalCfm: 1000, wheelDiameterMm: 550, wheelDepthMm: 200, effectiveAreaFt2: 2.504, series: ['rotor', 'idp'] },
+  { model: 'TEST-9000', nominalCfm: 9000, wheelDiameterMm: 1730, wheelDepthMm: 200, effectiveAreaFt2: 23.328, series: ['rotor', 'idp'] },
+]
+const tiny = calculateSizing(inputs({ processCfm: 2000 }), TINY)
+ok('a passed catalog is actually used', tiny.selection.nominalCfm === 9000, `got ${tiny.selection.nominalCfm}`)
+ok('  and its geometry comes through', tiny.selection.effectiveAreaFt2 === 23.328)
+ok('default (no catalog arg) still uses the built-in', calculateSizing(inputs({ processCfm: 2000 })).selection.nominalCfm === 3000)
+
+// Beyond the largest size in the PASSED catalog → multi-unit off that catalog, not the built-in.
+const tinyBig = calculateSizing(inputs({ processCfm: 20000 }), TINY)
+ok('multi-unit uses the passed catalog max (9,000, not 30,000)',
+  tinyBig.selection.nominalCfm === 9000 && tinyBig.selection.unitsRequired === 3,
+  `${tinyBig.selection.unitsRequired} × ${tinyBig.selection.nominalCfm}`)
+
+// The Dryware → CatalogSize mapping.
+const mapped = toCatalogSizes([
+  { drywareId: 1, model: 'IAT-600', nominalCfm: 600, wheelDiameterMm: 440, wheelDepthMm: 200, effectiveAreaFt2: 1.591, optimizeRph: true, active: true },
+  { drywareId: 2, model: 'IAT-600REC', nominalCfm: 600, wheelDiameterMm: 440, wheelDepthMm: 200, effectiveAreaFt2: 1.591, optimizeRph: true, active: true },
+  { drywareId: 3, model: 'IAT-150REC', nominalCfm: 150, wheelDiameterMm: 320, wheelDepthMm: 100, effectiveAreaFt2: 0.828, optimizeRph: true, active: true },
+  { drywareId: 4, model: 'IAT-3000', nominalCfm: 3000, wheelDiameterMm: 965, wheelDepthMm: 200, effectiveAreaFt2: 7.298, optimizeRph: true, active: true },
+])
+ok('the duplicate 600 SKU collapses to one size', mapped.filter((s) => s.nominalCfm === 600).length === 1)
+ok('  keeping the non-REC model name', mapped.find((s) => s.nominalCfm === 600)?.model === 'IAT-600')
+ok('  and unioning both series', (() => {
+  const s = mapped.find((x) => x.nominalCfm === 600)
+  return s.series.includes('compact') && s.series.includes('rotor')
+})())
+ok('REC models are tagged compact', mapped.find((s) => s.nominalCfm === 150)?.series.includes('compact') === true)
+ok('non-REC models are tagged rotor', mapped.find((s) => s.nominalCfm === 3000)?.series.includes('rotor') === true)
+ok('output is sorted ascending', mapped.every((s, i, a) => i === 0 || s.nominalCfm > a[i - 1].nominalCfm))
+ok('rows without geometry would be dropped upstream', mapped.every((s) => s.effectiveAreaFt2 > 0))
 
 function allFinite(r) {
   const nums = [

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback, type ReactNode } from 'react'
-import { AlertTriangle, Check, Copy, Info, RotateCcw, TriangleAlert } from 'lucide-react'
+import { AlertTriangle, Check, Copy, Info, MapPin, RotateCcw, TriangleAlert } from 'lucide-react'
 import PageChrome from '../PageChrome'
 import PsychroChart from './PsychroChart'
 import {
@@ -12,7 +12,12 @@ import {
   type SizingInputs,
   type SizingResult,
 } from '@/lib/sizing'
-import { REACTIVATION_TYPES, WHEEL_SPECS, describeModel } from '@/lib/sizing-catalog'
+import {
+  REACTIVATION_TYPES,
+  WHEEL_SPECS,
+  describeModel,
+  type CatalogSize,
+} from '@/lib/sizing-catalog'
 import type { AirState } from '@/lib/psychro'
 
 /* Sizing Studio — enter a job's design conditions, get a recommended IAT unit.
@@ -25,11 +30,19 @@ import type { AirState } from '@/lib/psychro'
  * graduate into components/ui/ when the shared kit lands (DESIGN.md Phase 1).
  */
 
-export default function SizingStudio() {
+export default function SizingStudio({
+  catalog,
+  catalogSource,
+  catalogError,
+}: {
+  catalog: CatalogSize[]
+  catalogSource: 'dryware' | 'fallback'
+  catalogError?: string
+}) {
   const [inputs, setInputs] = useState<SizingInputs>(DEFAULT_SIZING_INPUTS)
   const [copied, setCopied] = useState(false)
 
-  const result = useMemo(() => calculateSizing(sanitize(inputs)), [inputs])
+  const result = useMemo(() => calculateSizing(sanitize(inputs), catalog), [inputs, catalog])
 
   const set = useCallback(<K extends keyof SizingInputs>(key: K, value: SizingInputs[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
@@ -81,6 +94,16 @@ export default function SizingStudio() {
             <p className="mt-1 text-[13px] text-ink-secondary">
               Size a desiccant dehumidifier from the job&rsquo;s design conditions — moisture
               load, unit selection, leaving-air condition and reactivation duty.
+            </p>
+            <p className="mt-1.5 text-[12px] text-ink-muted">
+              {catalogSource === 'dryware' ? (
+                <>Catalog live from DryWare — {catalog.length} sizes.</>
+              ) : (
+                <span className="text-amber-600 dark:text-amber-400">
+                  DryWare unreachable — sizing against the built-in catalog ({catalog.length}{' '}
+                  sizes){catalogError ? `. ${catalogError}` : '.'}
+                </span>
+              )}
             </p>
           </header>
 
@@ -179,6 +202,15 @@ function ConditionsForm({
             min={0}
             max={100}
           />
+          <WeatherLookup
+            onApply={(d, elevationFt) => {
+              // ASHRAE gives the design condition as mean-coincident dry bulb plus a
+              // humidity ratio in grains — exactly the Studio's grains input mode, so
+              // no conversion and no precision lost.
+              set('outsideAir', { tempF: d.tempF, mode: 'grains', grains: d.grains })
+              set('altitudeFt', elevationFt)
+            }}
+          />
           <ConditionField
             legend="Outdoor design condition"
             value={inputs.outsideAir}
@@ -269,6 +301,139 @@ function ConditionsForm({
         </div>
       </Card>
     </div>
+  )
+}
+
+type DesignPoint = { tempF: number; grains: number; dewPointF: number }
+
+/**
+ * Look up a city's ASHRAE design conditions and drop them straight into the outdoor
+ * inputs. This is the single biggest time-saver in the form: reps otherwise copy
+ * these out of the ASHRAE tables or DryWare's weather app by hand, and a transposed
+ * grain value silently mis-sizes the whole job.
+ *
+ * Defaults to the **1% dehumidification** column, not a cooling column — a
+ * dehumidifier is sized for the peak-MOISTURE hour, which is a different hour of the
+ * year than peak temperature.
+ */
+function WeatherLookup({
+  onApply,
+}: {
+  onApply: (design: DesignPoint, elevationFt: number) => void
+}) {
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<{
+    stationName: string
+    elevation: number
+    design: Record<'p1' | 'p2' | 'p4', DesignPoint | null>
+  } | null>(null)
+  const [pct, setPct] = useState<'p1' | 'p2' | 'p4'>('p1')
+
+  const lookup = useCallback(async () => {
+    if (!city.trim() || !state.trim()) {
+      setError('Enter a city and a two-letter state.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    setResult(null)
+    try {
+      const qs = new URLSearchParams({ city: city.trim(), state: state.trim() })
+      const res = await fetch(`/api/admin/sizing/weather?${qs}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Lookup failed')
+      setResult({
+        stationName: data.station.stationName ?? 'Unknown station',
+        elevation: data.station.elevation ?? 0,
+        design: data.design,
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Lookup failed')
+    } finally {
+      setBusy(false)
+    }
+  }, [city, state])
+
+  const chosen = result?.design[pct] ?? null
+
+  return (
+    <fieldset className="min-w-0 rounded-lg border border-hairline bg-surface-soft p-3">
+      <legend className="px-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+        ASHRAE design conditions
+      </legend>
+      <div className="flex gap-2">
+        <input
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && lookup()}
+          placeholder="City"
+          aria-label="City"
+          className="h-9 min-w-0 flex-1 rounded-lg border border-hairline bg-surface px-2.5 text-[13px] text-ink transition-colors placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        />
+        <input
+          value={state}
+          onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+          onKeyDown={(e) => e.key === 'Enter' && lookup()}
+          placeholder="ST"
+          aria-label="State"
+          className="h-9 w-14 rounded-lg border border-hairline bg-surface px-2.5 text-[13px] uppercase text-ink transition-colors placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        />
+        <button
+          type="button"
+          onClick={lookup}
+          disabled={busy}
+          className="inline-flex h-9 flex-shrink-0 items-center gap-1.5 rounded-lg border border-hairline-strong bg-surface px-3 text-[13px] font-medium text-ink-secondary transition-colors hover:bg-surface-soft hover:text-ink disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <MapPin size={15} strokeWidth={1.75} />
+          {busy ? 'Looking…' : 'Find'}
+        </button>
+      </div>
+
+      {error && <p className="mt-2 text-[12px] text-rose-600 dark:text-rose-400">{error}</p>}
+
+      {result && (
+        <div className="mt-3 space-y-2">
+          <p className="text-[12px] text-ink-secondary">
+            {result.stationName} · {result.elevation.toLocaleString()} ft
+          </p>
+          <Segmented
+            value={pct}
+            onChange={(v) => setPct(v as 'p1' | 'p2' | 'p4')}
+            options={[
+              { value: 'p1', label: '1%' },
+              { value: 'p2', label: '2%' },
+              { value: 'p4', label: '4%' },
+            ]}
+            small
+          />
+          {chosen ? (
+            <>
+              <p className="text-[12px] tabular-nums text-ink-secondary">
+                {fmt(chosen.tempF, 1)} °F · {fmt(chosen.grains, 1)} gr/lb ·{' '}
+                {fmt(chosen.dewPointF, 1)} °F DP
+              </p>
+              <button
+                type="button"
+                onClick={() => onApply(chosen, result.elevation)}
+                className="h-8 w-full rounded-lg border border-brand bg-brand-soft text-[13px] font-medium text-brand-ink transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                Use these conditions + elevation
+              </button>
+            </>
+          ) : (
+            <p className="text-[12px] text-ink-muted">
+              No dehumidification data at this percentile for this station.
+            </p>
+          )}
+          <p className="text-[12px] text-ink-muted">
+            Dehumidification design — the peak-moisture hour, not peak temperature.
+          </p>
+        </div>
+      )}
+    </fieldset>
   )
 }
 

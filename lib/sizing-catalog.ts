@@ -213,14 +213,25 @@ export const MAX_DESIGN_FACE_VELOCITY_FPM = 600
 /**
  * Smallest catalog size that covers `requiredCfm`, or null if the requirement
  * exceeds the largest single unit (the caller then proposes multiple units).
+ *
+ * `catalog` defaults to the baked-in copy; the Studio passes Dryware's live catalog
+ * when it has one (see lib/dryware-sizing.ts `getSizingCatalog`).
  */
-export function selectNominalSize(requiredCfm: number): CatalogSize | null {
-  return CATALOG_SIZES.find((s) => s.nominalCfm >= requiredCfm) ?? null
+export function selectNominalSize(
+  requiredCfm: number,
+  catalog: CatalogSize[] = CATALOG_SIZES,
+): CatalogSize | null {
+  return catalog.find((s) => s.nominalCfm >= requiredCfm) ?? null
 }
 
 /** Compacts are the 75–600 CFM packaged units. */
-export function isCompactSize(nominalCfm: number): boolean {
-  return CATALOG_SIZES.some((s) => s.nominalCfm === nominalCfm && s.series.includes('compact'))
+export function isCompactSize(nominalCfm: number, catalog: CatalogSize[] = CATALOG_SIZES): boolean {
+  return catalog.some((s) => s.nominalCfm === nominalCfm && s.series.includes('compact'))
+}
+
+/** Largest nominal CFM in a catalog (the baked-in one by default). */
+export function maxCatalogCfm(catalog: CatalogSize[] = CATALOG_SIZES): number {
+  return catalog.length ? catalog[catalog.length - 1].nominalCfm : MAX_CATALOG_CFM
 }
 
 // ─── Model-number builder & parser ───────────────────────────────────────────

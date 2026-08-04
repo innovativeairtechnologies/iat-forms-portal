@@ -36,8 +36,9 @@ import {
   type WheelType,
   WHEEL_SPECS,
   CATALOG_SIZES,
-  MAX_CATALOG_CFM,
   MAX_DESIGN_FACE_VELOCITY_FPM,
+  maxCatalogCfm,
+  type CatalogSize,
   buildModelNumber,
   faceVelocityFpm,
   isCompactSize,
@@ -293,8 +294,12 @@ function achievableGrains(
 
 // ─── The engine ──────────────────────────────────────────────────────────────
 
-export function calculateSizing(inputs: SizingInputs): SizingResult {
+export function calculateSizing(
+  inputs: SizingInputs,
+  catalog: CatalogSize[] = CATALOG_SIZES,
+): SizingResult {
   const warnings: SizingWarning[] = []
+  const maxCfm = maxCatalogCfm(catalog)
   const p = pressureAtAltitude(Math.max(inputs.altitudeFt, 0))
 
   // 1. Resolve the three given conditions.
@@ -385,21 +390,21 @@ export function calculateSizing(inputs: SizingInputs): SizingResult {
   }
 
   // 8. Select the unit.
-  const size = selectNominalSize(requiredCfm)
+  const size = selectNominalSize(requiredCfm, catalog)
   let nominalCfm: number
   let unitsRequired = 1
   if (size) {
     nominalCfm = size.nominalCfm
   } else {
-    nominalCfm = MAX_CATALOG_CFM
-    unitsRequired = Math.max(Math.ceil(requiredCfm / MAX_CATALOG_CFM), 1)
+    nominalCfm = maxCfm
+    unitsRequired = Math.max(Math.ceil(requiredCfm / maxCfm), 1)
     warnings.push({
       severity: 'warning',
-      message: `${fmt(requiredCfm, 0)} CFM exceeds the largest single unit (${MAX_CATALOG_CFM.toLocaleString()} CFM). Shown as ${unitsRequired} × ${MAX_CATALOG_CFM.toLocaleString()} CFM — confirm the arrangement with engineering.`,
+      message: `${fmt(requiredCfm, 0)} CFM exceeds the largest single unit (${maxCfm.toLocaleString()} CFM). Shown as ${unitsRequired} × ${maxCfm.toLocaleString()} CFM — confirm the arrangement with engineering.`,
     })
   }
 
-  const sizeEntry = CATALOG_SIZES.find((s) => s.nominalCfm === nominalCfm)
+  const sizeEntry = catalog.find((s) => s.nominalCfm === nominalCfm)
 
   // Face velocity through the process sector — the constraint that really governs the
   // wheel diameter. Checked against the airflow ONE unit actually sees.
@@ -412,7 +417,7 @@ export function calculateSizing(inputs: SizingInputs): SizingResult {
     })
   }
 
-  const compact = isCompactSize(nominalCfm) && nominalCfm <= 600 && !inputs.idp
+  const compact = isCompactSize(nominalCfm, catalog) && nominalCfm <= 600 && !inputs.idp
   const spec: ModelSpec = {
     nominalCfm,
     system: 'R',
