@@ -2,6 +2,51 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-04 — Image upload in the lesson editor (and the placeholder trap it uncovered)
+
+The Learn lesson editor could only insert an image by **typing a URL into a `window.prompt`**,
+which is why `docs/learn.md` listed content backfill as "blocked on image upload existing first".
+Authors can now get an image in three ways — the toolbar button, **drag-and-drop**, and
+**pasting a screenshot** — and each one uploads the file to Storage. External URLs are no longer
+insertable: every image in a lesson is now one we host.
+
+Bytes go **straight from the browser to Supabase Storage** via a one-shot signed URL from
+`/api/upload` (the same path every form file field already uses), because Vercel's ~4.5MB
+function body limit is well under a phone photo or a full-window screenshot. JPG/PNG/GIF/WebP,
+10MB — the cap is the `form-uploads` bucket's own `file_size_limit`, so it holds whatever the
+browser claims. SVG is refused by name (an active-content type we deliberately don't store) and
+so is HEIC, both with a message that says what to do instead. Save is disabled mid-upload, since
+saving with bytes still in flight reads as "it saved and my picture vanished".
+
+**The part that mattered more.** 133 of the 357 lessons carry a marker the Trainual import left
+behind — `<figure class="img-missing">` wrapping a figcaption describing the image that couldn't
+be carried over, ending "— re-upload via admin editor". StarterKit has **no `figure` node**, so
+ProseMirror was parsing the marker as unknown, discarding the wrapper, and re-serializing the
+caption as a bare `<p>`. Merely opening one of those lessons and pressing Save silently
+downgraded the placeholder to body text — and the whole point of this feature is to go open
+exactly those 133 lessons. Verified by round-tripping all 133 production rows through the real
+schema: **without the fix, 133 of 133 lose their placeholder.**
+
+So the marker is now a real node. It round-trips (133/133 preserved, captions identical), and its
+node view turns the placeholder into the upload target itself: a dashed card showing what the
+image was, with **Add image** and a remove button for the markers that never stood in for a still
+image in the first place (one is an embedded YouTube video). Replacing one inherits the Trainual
+description as **alt text**, so the backfill produces accessible images for free rather than 133
+empty `alt=""`. The only drift is cosmetic: 12 of the 133 captions contain HTML entities, and
+`&quot;` re-serializes as a literal `"` — identical rendering, identical text.
+
+**Also fixed while in here:** the editor registered Link twice. StarterKit v3 bundles it, and
+`@tiptap/extension-link` was being added on top — TipTap warns "Duplicate extension names found:
+`['link']`" and which config wins is undefined. Now configured through StarterKit. And lessons
+had never contained an image at all, so this is the first time a block node is selectable or
+reachable here: selected images get a brand outline, and the **gap cursor is styled**, without
+which an image at the end of a lesson leaves you no visible way to put the caret after it
+(TipTap ships the behaviour but no CSS).
+
+Not covered: pasting rich HTML from a web page still brings that page's `<img>` tags in as
+external hotlinks. Unchanged from before, but worth knowing given everything else here is
+upload-only.
+
 ## 2026-07-31 — Sidebar: home-content editor becomes "Hub Content"; nav icons tilt on hover
 
 Two small follow-ups to the rail work. **System → Company Home** (the editor for the landing page)

@@ -324,11 +324,48 @@ Jacob's 2026-07-30 priority list, with the first two now shipped:
 
 1. ~~**Assignments + completion reporting**~~ — **done**, migration 076. See above.
 2. ~~**Quizzes**~~ — **done**, migration 074. See above.
-3. **Content backfill** — the 33 placeholder bodies and ~180 missing images. Blocked on image
-   upload existing first, and now the thing blocking quizzes for Safety Procedures, Testing
-   Training and Our Products too.
-4. **The rest of authoring CRUD + image upload** — **delete is done** (see above), and lessons can
-   be created and edited. Still missing: **creating** categories and subjects (seed-only —
-   an admin cannot add a new subject without SQL), **renaming** subjects and lessons from the
-   tree, **reordering** anything (`display_order` has no write path), and **image upload** (the
-   TipTap editor inserts images by URL only, which is what blocks the content backfill).
+3. **Content backfill** — the 33 placeholder bodies and ~180 missing images. **No longer blocked**
+   — image upload shipped 2026-08-04 (see below) — but still the thing blocking quizzes for
+   Safety Procedures, Testing Training and Our Products.
+4. **The rest of authoring CRUD** — **delete is done** (see above), lessons can be created and
+   edited, and **image upload is done** (see below). Still missing: **creating** categories and
+   subjects (seed-only — an admin cannot add a new subject without SQL), **renaming** subjects
+   and lessons from the tree, and **reordering** anything (`display_order` has no write path).
+
+## Images in the lesson editor (2026-08-04)
+
+`components/learn/admin/LessonEditor.tsx`. Three ways in — the toolbar button, drag-and-drop,
+and pasting a screenshot — all of which upload. **There is no way to insert an external image
+URL**, so every image in a lesson is one we host.
+
+Uploads go **browser → Supabase Storage directly**, using a one-shot signed URL from
+`/api/upload` (`lib/lesson-images.ts`); the bytes never touch a route handler, because Vercel's
+~4.5MB function body limit is under a typical phone photo. Public `form-uploads` bucket, 10MB
+(the bucket's own `file_size_limit`, migration 021), JPG/PNG/GIF/WebP. SVG and HEIC are refused
+by name with a message saying what to do instead. Save is disabled while an upload is in flight.
+
+### ⚠️ `figure.img-missing` is a real node — do not remove it
+
+The 133 lessons in the table above carry `<figure class="img-missing">` markers from the Trainual
+import, each with a figcaption naming the image that couldn't be carried over.
+
+**StarterKit has no `figure` node.** Before `components/learn/admin/ImagePlaceholder.tsx` existed,
+ProseMirror parsed the marker as unknown, dropped the wrapper, and re-serialized the caption as a
+bare `<p>` — so opening one of those lessons and pressing Save destroyed the placeholder.
+Confirmed against all 133 production rows: without the node, 133/133 lose it; with it, 133/133
+survive with identical captions.
+
+The node view renders the marker as the upload target — a dashed card with **Add image** and a
+remove button (some markers stood in for things that were never a still image; one is an embedded
+YouTube video). Replacing one carries the Trainual description over as **alt text**.
+
+`renderHTML` must keep emitting `<figure class="img-missing"><figcaption>…</figcaption></figure>`
+verbatim: the read-side styling in `app/globals.css` keys off that exact selector, and any change
+rewrites all 133 rows. (12 of the 133 captions contain HTML entities; `&quot;` re-serializes as a
+literal `"`. Same rendering, same text — cosmetic only.)
+
+### Known gap
+
+Pasting rich HTML copied from a web page still brings that page's `<img>` tags in as **external
+hotlinks**, which will rot when the source moves. Pre-existing TipTap behaviour, not introduced
+by the upload work, but it's the one hole in "every image is one we host".

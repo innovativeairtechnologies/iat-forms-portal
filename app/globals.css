@@ -293,6 +293,37 @@
   font-style: italic;
 }
 
+/* ── Lesson editor only (TipTap) ───────────────────────────────────────────────
+   Lessons carried no images at all until upload landed, so these three rules are
+   the first time a block node is selectable or reachable in this editor. */
+
+/* Which image you're about to replace or delete. */
+.learn-prose img.ProseMirror-selectednode {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* An image at the very end of a lesson leaves nowhere to put the caret; the gap
+   cursor is how you get past it. TipTap ships the behaviour but no styling, so
+   without this it works while being completely invisible. Held static rather
+   than blinking — DESIGN.md §7, nothing loops. */
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+.ProseMirror-gapcursor::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 22px;
+  border-top: 1.5px solid var(--brand);
+}
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
 /* ── Jerry — IAT's customer assistant "presence" orb ───────────────────────────
    At idle Jerry is calm: only the core gently breathes. The spinning ring, orbiting
    sparks, twinkle, and halo pulse are held still and reserved for the .is-thinking
