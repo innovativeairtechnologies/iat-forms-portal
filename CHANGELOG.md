@@ -979,14 +979,14 @@ Two tidy-ups to the admin dashboard:
 
 Two of the four gaps between the Studio and DryWare, closed.
 
-**The catalog is now live.** The page fetches DryWare`s product data at request time
-(15-minute cache) instead of relying on the copy baked into , so
+**The catalog is now live.** The page fetches DryWare's product data at request time
+(15-minute cache) instead of relying on the copy baked into `lib/sizing-catalog.ts`, so
 it cannot drift when engineering adds or retires a product. Deliberately NOT a database
 mirror: the endpoint needs no credential and the baked-in catalog is a complete current
 copy, so a sync table would add a migration, a cron slot and a staleness question to buy
 nothing. If DryWare is unreachable the Studio falls back to the built-in catalog **and
 says so on the page** — a silent fallback to stale data is the exact failure mode this
-codebase keeps getting bitten by.  now takes the catalog as an
+codebase keeps getting bitten by. `calculateSizing()` now takes the catalog as an
 argument rather than importing the constant.
 
 **ASHRAE design conditions by city.** A city/state lookup pulls the nearest weather
@@ -994,10 +994,10 @@ station from DryWare and drops the design condition straight into the outdoor-ai
 along with the station elevation. It defaults to the **1% dehumidification** column, not a
 cooling column — a dehumidifier is sized for the peak-MOISTURE hour, which is a different
 hour of the year than peak temperature, and getting that wrong undersizes the job. ASHRAE
-publishes the humidity ratio in grains, which is already one of the Studio`s input modes,
+publishes the humidity ratio in grains, which is already one of the Studio's input modes,
 so nothing is converted and no precision is lost. 1/2/4% percentiles are selectable.
 
-Proxied through  (same  perm) rather than called from
+Proxied through `/api/admin/sizing/weather` (same `sizing` perm) rather than called from
 the browser, so the Studio never talks to DryWare directly.
 
 Suite 86 → 97. The new checks prove the catalog argument is actually *used* (a deliberately
