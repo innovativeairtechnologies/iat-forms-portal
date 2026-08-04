@@ -975,6 +975,42 @@ Two tidy-ups to the admin dashboard:
   dashboard page and sits with the rest of the top-bar chrome. Mobile keeps the toolbar inline above the
   grid (the top bar is hidden there). (`DashboardGrid.tsx`)
 
+## 2026-07-28 — Sizing Studio: the standalone calculators from DryWare
+
+Ports the formula half of DryWare's calculator suite into `lib/hvac-calcs.ts`, surfaced as
+a tabbed Calculators panel under the sizing result. Reference tools a rep reaches for
+mid-job, deliberately separate from the inputs that drive the selection.
+
+- **Duct** — one solver behind DryWare's three duct calculators, which are the same
+  relationship entered from different corners. Give it any two of {CFM, diameter, velocity,
+  friction} and it returns all four plus total loss over the run. The velocity+friction case
+  (neither flow nor diameter known) has a closed-form solution, so no iteration.
+- **Velocity / CFM**, **RPH ⇄ time**, **Bypass CFM**, **Coil widths**, **BTU ⇄ kW**.
+
+Two of those carry the reasoning that makes them worth having:
+
+**RPH is about dwell.** The calculator reports how long a point on the wheel spends in each
+sector, because that is why rotation speed has an *optimum* rather than "faster is better" —
+too fast and the desiccant never saturates or never fully regenerates, too slow and it
+saturates and rides through into the process stream.
+
+**Bypass exists because a wheel over-dries.** It dries well below most targets, so pushing
+the whole airstream through wastes reactivation heat. Bypassing part and remixing hits the
+target with a smaller wheel. The target must sit between the wheel outlet and the untreated
+inlet; outside that the calculator says *unreachable* rather than silently clamping.
+
+Duct friction uses the standard Wright/ASHRAE fit, verified against the sizing rules every
+estimator knows — 400 CFM ≈ 10 in, 1,000 ≈ 14 in, 2,000 ≈ 18 in at 0.1 in.wg/100 ft, with
+velocities landing in the normal commercial band. (My first two test references were wrong,
+not the formula: a 12 in duct at 1,000 CFM is simply undersized at 1,273 fpm. Checking the
+diameter at a *standard friction rate* is the better test and is what the suite now asserts.)
+
+57 new checks in `scripts/verify-hvac-calcs.mjs`, each against a hand-computable case or a
+published reference rather than against the implementation.
+
+Not ported: DryWare's Desiccant Wheel Calculator (table-driven off performance curves we
+don't have) and Ship Date (belongs with the CRM, not sizing).
+
 ## 2026-07-28 — Sizing Studio: live DryWare catalog + ASHRAE weather lookup
 
 Two of the four gaps between the Studio and DryWare, closed.

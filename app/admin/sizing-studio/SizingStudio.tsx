@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, type ReactNode } from 'react'
 import { AlertTriangle, Check, Copy, Info, MapPin, RotateCcw, TriangleAlert } from 'lucide-react'
 import PageChrome from '../PageChrome'
 import PsychroChart from './PsychroChart'
+import Calculators from './Calculators'
 import {
   calculateSizing,
   DEFAULT_SIZING_INPUTS,
@@ -114,6 +115,7 @@ export default function SizingStudio({
               <ChartCard result={result} />
               <StatesCard result={result} />
               <WarningsCard result={result} />
+              <Calculators />
             </div>
           </div>
         </div>
