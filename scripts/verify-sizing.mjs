@@ -9,12 +9,20 @@
  * Run:  node --import ./scripts/ts-resolve.mjs scripts/verify-sizing.mjs
  */
 
-import { calculateSizing, DEFAULT_SIZING_INPUTS, predictLeavingState } from '../lib/sizing.ts'
+import {
+  calculateSizing,
+  DEFAULT_SIZING_INPUTS,
+  predictLeavingState,
+  REACTIVATION_PERFORMANCE,
+} from '../lib/sizing.ts'
 import {
   buildModelNumber,
   parseModelNumber,
   selectNominalSize,
+  faceVelocityFpm,
   CATALOG_SIZES,
+  WHEEL_SPECS,
+  MAX_DESIGN_FACE_VELOCITY_FPM,
 } from '../lib/sizing-catalog.ts'
 import { airStateFromRH, pressureAtAltitude } from '../lib/psychro.ts'
 
@@ -246,6 +254,66 @@ for (let t = 40; t <= 120; t += 10) {
   }
 }
 ok('wheel never adds moisture, never cools, never returns NaN (648 cases)', violations === 0, `${violations} violations`)
+
+// ─── 10. Catalog integrity vs the real DryWare product data ──────────────────
+// Added after a full catalog rewrite passed every existing check — the suite was
+// testing the ENGINE but never the DATA it selects from. These lock the product
+// facts so a future edit can't silently reintroduce a unit that doesn't exist.
+section('10. Catalog matches DryWare product data')
+
+ok('no 25,000 CFM product exists', !CATALOG_SIZES.some((s) => s.nominalCfm === 25000),
+  'it was on the 2022 nomenclature sheet but is not a shipping product')
+ok('13 catalog sizes', CATALOG_SIZES.length === 13, `got ${CATALOG_SIZES.length}`)
+ok('22,000 CFM selects the 30,000 unit (not a phantom 25,000)',
+  selectNominalSize(22000)?.nominalCfm === 30000, `got ${selectNominalSize(22000)?.nominalCfm}`)
+
+ok('every size carries real wheel geometry',
+  CATALOG_SIZES.every((s) => s.wheelDiameterMm > 0 && s.wheelDepthMm > 0 && s.effectiveAreaFt2 > 0))
+ok('every size carries its DryWare model number',
+  CATALOG_SIZES.every((s) => /^IAT-\d+/.test(s.model)))
+
+// Spot-check three rows against the API payload verbatim.
+const byCfm = (c) => CATALOG_SIZES.find((s) => s.nominalCfm === c)
+ok('IAT-3000 = 965 mm / 7.298 ft²',
+  byCfm(3000)?.wheelDiameterMm === 965 && byCfm(3000)?.effectiveAreaFt2 === 7.298)
+ok('IAT-30000 = 3050 mm / 73.531 ft²',
+  byCfm(30000)?.wheelDiameterMm === 3050 && byCfm(30000)?.effectiveAreaFt2 === 73.531)
+ok('IAT-75REC = 220 mm / 0.38 ft², 100 mm deep',
+  byCfm(75)?.wheelDiameterMm === 220 && byCfm(75)?.effectiveAreaFt2 === 0.38 && byCfm(75)?.wheelDepthMm === 100)
+
+// The design rule derived FROM this data: the rotor line runs a tight face-velocity band
+// at nominal airflow. If a future catalog edit breaks that, the selection logic is wrong.
+section('11. Face velocity — the constraint that picks a wheel diameter')
+let outOfBand = []
+for (const s of CATALOG_SIZES.filter((x) => x.nominalCfm >= 1000)) {
+  const v = faceVelocityFpm(s.nominalCfm, s)
+  if (v < 525 || v > 585) outOfBand.push(`${s.model}=${v.toFixed(0)}`)
+}
+ok('every rotor ≥1,000 CFM sits in 525–585 fpm at nominal', outOfBand.length === 0, outOfBand.join(' '))
+ok('compacts deliberately run slower', faceVelocityFpm(150, byCfm(150)) < 300,
+  `IAT-150REC = ${faceVelocityFpm(150, byCfm(150)).toFixed(0)} fpm`)
+ok('no nominal selection exceeds the design ceiling',
+  CATALOG_SIZES.every((s) => faceVelocityFpm(s.nominalCfm, s) <= MAX_DESIGN_FACE_VELOCITY_FPM))
+
+// Over-velocity has to be caught: force a job that fills a unit past its rating.
+const fast = calculateSizing(inputs({ processCfm: 2900 }))
+const fastV = fast.selection.faceVelocityFpm
+ok('a 2,900 CFM job on the 3,000 unit reports its real face velocity', fastV > 400 && fastV < 600, `${fastV.toFixed(0)} fpm`)
+ok('  geometry is surfaced on the result', fast.selection.wheelDiameterMm === 965 && fast.selection.effectiveAreaFt2 === 7.298)
+
+section('12. Wheel depth and reactivation temperature')
+ok('standard wheel = 200 mm', WHEEL_SPECS.standard.depthMm === 200)
+ok('high-capacity wheel = 400 mm', WHEEL_SPECS['high-capacity'].depthMm === 400)
+ok('an HC selection reports the 400 mm rotor',
+  calculateSizing(inputs({ wheelPreference: 'high-capacity' })).selection.wheelDepthMm === 400)
+ok('electric reactivation is 285 °F (DryWare default, was 270)', REACTIVATION_PERFORMANCE.E.tempF === 285)
+ok('gas reactivation is 285 °F', REACTIVATION_PERFORMANCE.G.tempF === 285)
+ok('hot water still derates hardest', REACTIVATION_PERFORMANCE.HW.removalFactor < REACTIVATION_PERFORMANCE.S.removalFactor)
+// The BTU/lb sanity band must still hold after the temperature bump.
+const afterBump = calculateSizing(inputs())
+ok('reactivation still lands in 1,500–2,500 BTU/lb after the 285 °F bump',
+  afterBump.reactivation.btuPerLbWater > 1500 && afterBump.reactivation.btuPerLbWater < 2500,
+  `got ${round(afterBump.reactivation.btuPerLbWater)}`)
 
 function allFinite(r) {
   const nums = [

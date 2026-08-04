@@ -37,7 +37,9 @@ import {
   WHEEL_SPECS,
   CATALOG_SIZES,
   MAX_CATALOG_CFM,
+  MAX_DESIGN_FACE_VELOCITY_FPM,
   buildModelNumber,
+  faceVelocityFpm,
   isCompactSize,
   selectNominalSize,
   reactivationLabel,
@@ -64,8 +66,14 @@ export const REACTIVATION_PERFORMANCE: Record<
   ReactivationCode,
   { tempF: number; removalFactor: number }
 > = {
-  E: { tempF: 270, removalFactor: 1.0 },
-  G: { tempF: 270, removalFactor: 1.0 },
+  // 285 °F is DryWare's own default reactivation temperature in the wheel calculator,
+  // and the figure the training material teaches ("typically set at 285 degrees"). This
+  // previously said 270.
+  E: { tempF: 285, removalFactor: 1.0 },
+  G: { tempF: 285, removalFactor: 1.0 },
+  // ⚠️ Steam and hot water are NOT confirmed against DryWare — these remain planning
+  // figures. Hot water genuinely tops out far below a fired/electric heater, which is
+  // why it derates hardest.
   S: { tempF: 250, removalFactor: 0.95 },
   HW: { tempF: 190, removalFactor: 0.7 },
 }
@@ -195,7 +203,12 @@ export type SizingResult = {
     /** More than one when the requirement exceeds the largest single unit. */
     unitsRequired: number
     wheel: WheelType
-    standardLineup: boolean
+    /** Real wheel geometry for the selected unit, from DryWare's product catalog. */
+    wheelDiameterMm: number
+    wheelDepthMm: number
+    effectiveAreaFt2: number
+    /** Process-sector face velocity at the airflow ONE unit sees, ft/min. */
+    faceVelocityFpm: number
     /** Plain-English reasons this unit was chosen — shown in the UI and by Jerry. */
     rationale: string[]
   }
@@ -387,10 +400,15 @@ export function calculateSizing(inputs: SizingInputs): SizingResult {
   }
 
   const sizeEntry = CATALOG_SIZES.find((s) => s.nominalCfm === nominalCfm)
-  if (sizeEntry && !sizeEntry.standardLineup) {
+
+  // Face velocity through the process sector — the constraint that really governs the
+  // wheel diameter. Checked against the airflow ONE unit actually sees.
+  const cfmPerUnit = requiredCfm / unitsRequired
+  const faceVelocity = sizeEntry ? faceVelocityFpm(cfmPerUnit, sizeEntry) : 0
+  if (sizeEntry && faceVelocity > MAX_DESIGN_FACE_VELOCITY_FPM) {
     warnings.push({
-      severity: 'info',
-      message: `${nominalCfm.toLocaleString()} CFM is a valid catalog size but is not in the current standard lineup — treat as build-to-order.`,
+      severity: 'warning',
+      message: `Process face velocity is ${fmt(faceVelocity, 0)} fpm on the ${sizeEntry.model} (${fmt(sizeEntry.effectiveAreaFt2, 3)} ft² wheel). IAT rates this line at 530–580 fpm and the design ceiling is ${MAX_DESIGN_FACE_VELOCITY_FPM} fpm — too fast leaves the air too little residence time in the desiccant and raises pressure drop. Step up a size.`,
     })
   }
 
@@ -487,7 +505,11 @@ export function calculateSizing(inputs: SizingInputs): SizingResult {
       nominalCfm,
       unitsRequired,
       wheel,
-      standardLineup: sizeEntry?.standardLineup ?? false,
+      wheelDiameterMm: sizeEntry?.wheelDiameterMm ?? 0,
+      // An HC build swaps the standard 200 mm rotor for a 400 mm one.
+      wheelDepthMm: WHEEL_SPECS[wheel].depthMm,
+      effectiveAreaFt2: sizeEntry?.effectiveAreaFt2 ?? 0,
+      faceVelocityFpm: faceVelocity,
       rationale,
     },
     reactivation: {

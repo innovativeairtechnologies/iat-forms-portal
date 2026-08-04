@@ -18,24 +18,27 @@ in IP units: saturation vapour pressure over water *and* ice, humidity ratio, gr
 wet bulb, enthalpy, specific volume, barometric pressure vs. altitude, and adiabatic mixing.
 It is verified against published table values (see *Verification* below).
 
-**Preliminary — the desiccant-wheel performance.** IAT's real rotor curves (grain depression vs.
-entering condition vs. reactivation temperature vs. wheel RPM) live in the external **DryWare**
-calculator and engineering's wheel-selection charts. They are not in this repo. Until they are,
+**Exact — the wheel geometry.** Since the DryWare port, unit sizes, wheel diameters, depths and
+effective face areas are the real product data, not estimates (see *The product catalog*).
+
+**Preliminary — the desiccant-wheel performance.** DryWare's product API gives geometry but *not*
+performance curves. Grain depression vs. entering condition vs. reactivation temperature vs. RPH
+still lives in the DryWare wheel calculator and engineering's selection charts. Until those land,
 the Studio uses planning coefficients:
 
-| Wheel | Moisture removed | Floor |
-|---|---|---|
-| Standard | 80% of entering grains | 3 gr/lb |
-| High-capacity (`HC`) | 90% of entering grains | 1.5 gr/lb |
+| Wheel | Depth | Moisture removed | Floor |
+|---|---|---|---|
+| Standard | 200 mm | 80% of entering grains | 3 gr/lb |
+| High-capacity (`HC`) | 400 mm | 90% of entering grains | 1.5 gr/lb |
 
 …derated by the reactivation heat source, because a lower regeneration temperature genuinely
 cannot drive the wheel as dry:
 
-| Reactivation | Temp | Removal factor |
-|---|---|---|
-| Electric / Gas | 270 °F | 1.00 |
-| Steam | 250 °F | 0.95 |
-| Hot Water | 190 °F | 0.70 |
+| Reactivation | Temp | Removal factor | Source |
+|---|---|---|---|
+| Electric / Gas | 285 °F | 1.00 | DryWare default |
+| Steam | 250 °F | 0.95 | planning figure, unconfirmed |
+| Hot Water | 190 °F | 0.70 | planning figure, unconfirmed |
 
 Every result is stamped **Preliminary** in the UI and in the copied summary. Engineering confirms
 rotor performance before anything goes on a submittal.
@@ -79,12 +82,38 @@ from the same physics at the same pressure.
 
 ## The product catalog
 
-`lib/sizing-catalog.ts` is the machine-readable form of
-`scripts/kb-reference/iat-unit-nomenclature.md` (the 2022 nomenclature sheet). **Keep the two in
-sync** — the `.md` so Jerry answers correctly, this file so sizing selects correctly.
+`lib/sizing-catalog.ts` is transcribed from **DryWare's own product API** —
+`/api/Product/getProductsForProductType?id=4` — the same catalog DryWare's wheel calculator
+matches against. Each entry carries the real `wheelDiameterMm`, `wheelDepthMm` and
+`effectiveAreaFt2`, not derived values.
 
-It holds the 14 nominal CFM sizes, the series (Compact / Rotor / IDP), reactivation letters
-(`E`/`S`/`G`/`HW`), the `HC` wheel flag, and a model-number **builder and parser**:
+> ⚠️ **There is no 25,000 CFM product.** An earlier version of this file carried one, taken
+> from the size list on the 2022 nomenclature sheet, flagged "build to order". The product
+> data has **13 CFM values / 14 SKUs** (600 ships as both `IAT-600` and `IAT-600REC`, same
+> geometry) and 25,000 is not among them — a ~22,000 CFM job correctly selects the 30,000 unit.
+> Where the nomenclature sheet and the API disagree, **trust the API**: the sheet lists
+> *nomenclature* sizes, not shipping products.
+
+Keep this in sync with `scripts/kb-reference/iat-unit-nomenclature.md` (prose, so Jerry answers
+correctly) — but the API is the authority for what actually ships.
+
+### Face velocity picks the wheel
+
+The catalog makes a design rule measurable instead of assumed: every rotor from 1,000 CFM up sits
+in a tight **530–580 fpm** band through the 270° process sector at its nominal airflow (the
+compacts deliberately run slower, 240–500). `MAX_DESIGN_FACE_VELOCITY_FPM = 600` is the top of
+that observed band, and the Studio warns when a job pushes a unit past it — too fast leaves the
+air too little residence time in the desiccant and raises pressure drop.
+
+### HC is a 400 mm rotor
+
+DryWare's rotor catalog (`productTypeId=19`, 24 rotors) offers **100 / 200 / 400 mm** depths, and
+every standard IAT unit ships a 200 mm rotor. So a high-capacity wheel is physically a **400 mm
+rotor** — double the depth, roughly double the air-to-desiccant contact time. That is why HC dries
+deeper; it was previously modelled here as an abstract efficiency bump.
+
+The file also holds the series (Compact / Rotor / IDP), reactivation letters (`E`/`S`/`G`/`HW`),
+the `HC` wheel flag, and a model-number **builder and parser**:
 
 ```
 IAT-<nominalCFM><system><reactivation>[HC][C][-IDP][-<actualCFM>]
@@ -93,9 +122,6 @@ IAT-<nominalCFM><system><reactivation>[HC][C][-IDP][-<actualCFM>]
 `parseModelNumber()` decodes any IAT model number and returns `valid: false` rather than throwing
 on a mistyped one — useful beyond this page, since the equipment registry stores `model_number`
 as free text.
-
-> **Note:** 25,000 CFM is a valid size on the nomenclature sheet but is absent from the standard
-> rotor lineup, so the Studio flags it as build-to-order.
 
 ---
 
@@ -114,13 +140,19 @@ node --import ./scripts/ts-resolve.mjs scripts/verify-sizing.mjs
   (including the boiling point at 212 °F, which must return exactly 1 atm), chart points,
   ice/water branch continuity at 32 °F, round-trip identities across all three input modes, and
   guard rails on bad input.
-- **`verify-sizing.mjs` — 66 checks** on the engineering logic: every worked model-number example
-  from the nomenclature sheet, all 224 build→parse combinations, size-selection boundaries,
-  directional sensitivity (more outside air → bigger unit; deeper target → HC wheel; altitude →
-  more airflow), multi-unit selection, and a 648-case sweep asserting the wheel never adds
-  moisture, never cools, and never returns NaN.
+- **`verify-sizing.mjs` — 86 checks** on the engineering logic AND the catalog data: every worked
+  model-number example, all 224 build→parse combinations, size-selection boundaries, directional
+  sensitivity (more outside air → bigger unit; deeper target → HC wheel; altitude → more airflow),
+  multi-unit selection, a 648-case sweep asserting the wheel never adds moisture / never cools /
+  never returns NaN, and — since the DryWare port — the catalog itself: no phantom 25,000 unit,
+  real geometry on every row, the 525–585 fpm face-velocity band, HC = 400 mm, react = 285 °F.
 
-A useful independent signal: reactivation works out to **~2,068 BTU per lb of water removed** on
+  > The catalog checks exist because a **full catalog rewrite once passed all 66 earlier checks**.
+  > The suite was testing the engine and never the data it selects from. They are mutation-tested:
+  > reintroducing a 25,000 unit, reverting HC depth, or corrupting an effective area each trip
+  > multiple failures.
+
+A useful independent signal: reactivation works out to **~2,246 BTU per lb of water removed** on
 the baseline job — mid-band of the 1,500–2,500 that desiccant systems typically run, a figure the
 engine has no knowledge of. The engine warns if a job falls outside that band.
 

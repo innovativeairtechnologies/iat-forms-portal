@@ -975,6 +975,41 @@ Two tidy-ups to the admin dashboard:
   dashboard page and sits with the rest of the top-bar chrome. Mobile keeps the toolbar inline above the
   grid (the top bar is hidden there). (`DashboardGrid.tsx`)
 
+## 2026-07-28 — Sizing Studio: real product data from DryWare
+
+The Studio's catalog was hand-transcribed from the 2022 nomenclature sheet. DryWare — the
+system engineering actually sizes in — exposes the real thing over an API
+(`/api/Product/getProductsForProductType?id=4`), which is the same catalog its own wheel
+calculator matches against. Ported it, and it corrected three things the Studio was
+stating wrongly.
+
+- **There is no 25,000 CFM product.** The nomenclature sheet lists it as a *size*; it is not
+  a shipping *product*. The real line is 13 CFM values / 14 SKUs (600 ships as both
+  `IAT-600` and `IAT-600REC`). A ~22,000 CFM job now correctly selects the 30,000 unit.
+- **HC is a 400 mm rotor**, not an abstract efficiency bump. DryWare's rotor catalog offers
+  100/200/400 mm depths and every standard unit ships 200 mm — so high-capacity is double
+  the depth, i.e. roughly double the air-to-desiccant contact time.
+- **Reactivation is 285 °F**, DryWare's own default and what the training material teaches.
+  This said 270. Steam and hot water remain unconfirmed planning figures and are now
+  labelled as such.
+
+Every unit now carries its real `wheelDiameterMm`, `wheelDepthMm` and `effectiveAreaFt2`,
+which makes a design rule measurable instead of assumed: **face velocity**. Every rotor from
+1,000 CFM up sits in a tight 530–580 fpm band through the 270° process sector at nominal
+airflow (compacts deliberately run slower). The Studio now computes the actual face velocity
+for the selected unit, shows it, and warns past 600 fpm — too fast leaves the air too little
+residence time in the desiccant and raises pressure drop.
+
+**The test suite grew 66 → 86, and the reason is the point.** The full catalog rewrite above
+passed all 66 existing checks unchanged — the suite was testing the *engine* and never the
+*data* it selects from. The new checks lock the product facts, and they are mutation-tested:
+reintroducing a 25,000 unit, reverting HC depth to 200 mm, or corrupting an effective area
+each trip several failures. Reactivation now lands at ~2,246 BTU/lb (was ~2,068), still
+mid-band of the 1,500–2,500 that desiccant systems run.
+
+Still preliminary: the API gives geometry, not performance curves, so `predictLeavingState()`
+remains the one place wheel behaviour is approximated. See `docs/sizing-studio.md`.
+
 ## 2026-07-28 — Fix: SRV review audit log claimed customers were emailed when they weren't
 
 `resend.emails.send()` does **not throw** when the API rejects a send — it resolves with

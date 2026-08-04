@@ -55,20 +55,28 @@ export const SYSTEM_TYPES: { code: SystemTypeCode; label: string; obsolete?: boo
 export type WheelType = 'standard' | 'high-capacity'
 
 /**
- * Preliminary desiccant-wheel performance coefficients.
+ * Desiccant-wheel types.
  *
- * ⚠️ These are PLANNING figures, not published rotor curves. IAT's real performance
- * data (grain depression vs. entering condition vs. reactivation temperature vs. wheel
- * RPM) lives in the DryWare calculator and engineering's wheel selection charts, and
- * is not yet in this repo. Every Sizing Studio output is therefore stamped
- * "Preliminary — engineering confirms rotor performance" (see lib/sizing.ts).
+ * `depthMm` is REAL, taken from DryWare's rotor catalog: it offers 100 / 200 / 400 mm
+ * depths, and every standard IAT unit ships a 200 mm rotor. A "high-capacity" wheel is
+ * therefore a **400 mm rotor** — double the depth, so roughly double the air-to-desiccant
+ * contact time. That is the physical reason HC dries deeper; it was previously modelled
+ * here as an abstract efficiency bump.
  *
- * When engineering supplies the real curves, replace `removalFraction` / `floorGrains`
- * with a proper lookup and the rest of the engine keeps working unchanged.
+ * ⚠️ `removalFraction` / `floorGrains` are still PLANNING figures. DryWare's product API
+ * gives geometry (diameter, depth, effective area) but NOT performance curves — grain
+ * depression vs. entering condition vs. reactivation temperature vs. RPH still lives in
+ * the wheel calculator and engineering's selection charts. Every Sizing Studio output is
+ * therefore still stamped "Preliminary" (see lib/sizing.ts).
+ *
+ * When the real curves land, replace these two numbers with a proper lookup; the rest of
+ * the engine keeps working unchanged.
  */
 export type WheelSpec = {
   type: WheelType
   label: string
+  /** Rotor depth, mm — real, from the DryWare rotor catalog. */
+  depthMm: number
   /** Fraction of entering moisture a wheel of this type removes at design reactivation. */
   removalFraction: number
   /** Practical floor on leaving-air grains, regardless of how wet the entering air is. */
@@ -80,14 +88,16 @@ export type WheelSpec = {
 export const WHEEL_SPECS: Record<WheelType, WheelSpec> = {
   standard: {
     type: 'standard',
-    label: 'Standard wheel',
+    label: 'Standard wheel (200 mm)',
+    depthMm: 200,
     removalFraction: 0.8,
     floorGrains: 3,
     segment: '',
   },
   'high-capacity': {
     type: 'high-capacity',
-    label: 'High-capacity wheel (HC)',
+    label: 'High-capacity wheel (400 mm, HC)',
+    depthMm: 400,
     removalFraction: 0.9,
     floorGrains: 1.5,
     segment: 'HC',
@@ -118,41 +128,87 @@ export const SERIES: { key: SeriesKey; label: string; blurb: string }[] = [
 ]
 
 export type CatalogSize = {
-  /** Nominal (catalog) airflow in CFM — the number that appears in the model number. */
+  /** Base model number as it appears in DryWare, e.g. `IAT-3000`. */
+  model: string
+  /** Nominal (catalog) airflow in CFM — DryWare's `numericQualifier`. */
   nominalCfm: number
+  /** Desiccant wheel diameter, mm. */
+  wheelDiameterMm: number
+  /** Wheel depth, mm. 200 on every standard unit; an HC build swaps in a 400 mm rotor. */
+  wheelDepthMm: number
+  /** Effective wheel face area, ft² — DryWare's own figure, NOT derived from diameter. */
+  effectiveAreaFt2: number
   /** Series this size is offered in. Compacts top out at 600; rotors start there. */
   series: SeriesKey[]
-  /**
-   * Whether this size appears in the current standard rotor lineup. 25,000 CFM is a
-   * valid nominal size on the nomenclature sheet but is NOT in the lineup IAT
-   * leadership listed, so the Studio flags it as a build-to-order size.
-   */
-  standardLineup: boolean
 }
 
-/** Nominal CFM catalog sizes, per the nomenclature sheet. Ascending — selection relies on it. */
+/**
+ * The real IAT product line, transcribed from DryWare's product API
+ * (`/api/Product/getProductsForProductType?id=4`) on 2026-07-28 — the same catalog the
+ * DryWare wheel calculator matches against. Ascending by CFM; selection relies on it.
+ *
+ * ⚠️ There is **no 25,000 CFM product**. An earlier version of this file carried one,
+ * taken from the size list on the 2022 nomenclature sheet, and flagged it "build to
+ * order". The product data has 13 CFM values / 14 SKUs (600 ships as both `IAT-600` and
+ * `IAT-600REC`, same geometry), and 25,000 is not among them. A ~22,000 CFM job
+ * correctly selects the 30,000 unit.
+ *
+ * Keep this in sync with `scripts/kb-reference/iat-unit-nomenclature.md` (prose, for
+ * Jerry) — and prefer the API over the nomenclature sheet where they disagree, because
+ * the sheet lists *nomenclature* sizes, not shipping products.
+ */
 export const CATALOG_SIZES: CatalogSize[] = [
-  { nominalCfm: 75, series: ['compact', 'idp'], standardLineup: true },
-  { nominalCfm: 150, series: ['compact', 'idp'], standardLineup: true },
-  { nominalCfm: 300, series: ['compact', 'idp'], standardLineup: true },
-  { nominalCfm: 600, series: ['compact', 'rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 1000, series: ['rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 1500, series: ['rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 3000, series: ['rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 5000, series: ['rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 7500, series: ['rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 10000, series: ['rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 15000, series: ['rotor', 'idp'], standardLineup: true },
-  { nominalCfm: 20000, series: ['rotor', 'idp'], standardLineup: true },
-  // On the nomenclature sheet's size list, but absent from the standard rotor lineup.
-  { nominalCfm: 25000, series: ['rotor', 'idp'], standardLineup: false },
-  { nominalCfm: 30000, series: ['rotor', 'idp'], standardLineup: true },
+  { model: 'IAT-75REC', nominalCfm: 75, wheelDiameterMm: 220, wheelDepthMm: 100, effectiveAreaFt2: 0.38, series: ['compact', 'idp'] },
+  { model: 'IAT-150REC', nominalCfm: 150, wheelDiameterMm: 320, wheelDepthMm: 100, effectiveAreaFt2: 0.828, series: ['compact', 'idp'] },
+  { model: 'IAT-300REC', nominalCfm: 300, wheelDiameterMm: 320, wheelDepthMm: 200, effectiveAreaFt2: 0.828, series: ['compact', 'idp'] },
+  { model: 'IAT-600', nominalCfm: 600, wheelDiameterMm: 440, wheelDepthMm: 200, effectiveAreaFt2: 1.591, series: ['compact', 'rotor', 'idp'] },
+  { model: 'IAT-1000', nominalCfm: 1000, wheelDiameterMm: 550, wheelDepthMm: 200, effectiveAreaFt2: 2.504, series: ['rotor', 'idp'] },
+  { model: 'IAT-1500', nominalCfm: 1500, wheelDiameterMm: 660, wheelDepthMm: 200, effectiveAreaFt2: 3.623, series: ['rotor', 'idp'] },
+  { model: 'IAT-3000', nominalCfm: 3000, wheelDiameterMm: 965, wheelDepthMm: 200, effectiveAreaFt2: 7.298, series: ['rotor', 'idp'] },
+  { model: 'IAT-5000', nominalCfm: 5000, wheelDiameterMm: 1220, wheelDepthMm: 200, effectiveAreaFt2: 11.866, series: ['rotor', 'idp'] },
+  { model: 'IAT-7500', nominalCfm: 7500, wheelDiameterMm: 1525, wheelDepthMm: 200, effectiveAreaFt2: 18.717, series: ['rotor', 'idp'] },
+  { model: 'IAT-10000', nominalCfm: 10000, wheelDiameterMm: 1730, wheelDepthMm: 200, effectiveAreaFt2: 23.328, series: ['rotor', 'idp'] },
+  { model: 'IAT-15000', nominalCfm: 15000, wheelDiameterMm: 2190, wheelDepthMm: 200, effectiveAreaFt2: 36.938, series: ['rotor', 'idp'] },
+  { model: 'IAT-20000', nominalCfm: 20000, wheelDiameterMm: 2438, wheelDepthMm: 200, effectiveAreaFt2: 46.179, series: ['rotor', 'idp'] },
+  { model: 'IAT-30000', nominalCfm: 30000, wheelDiameterMm: 3050, wheelDepthMm: 200, effectiveAreaFt2: 73.531, series: ['rotor', 'idp'] },
 ]
 
 export const NOMINAL_CFM_SIZES: number[] = CATALOG_SIZES.map((s) => s.nominalCfm)
 
 export const MIN_CATALOG_CFM = NOMINAL_CFM_SIZES[0]
 export const MAX_CATALOG_CFM = NOMINAL_CFM_SIZES[NOMINAL_CFM_SIZES.length - 1]
+
+// ─── Wheel face velocity ─────────────────────────────────────────────────────
+
+/**
+ * Fraction of the wheel face given to the process airstream. DryWare's wheel calculator
+ * defaults to a 270° process / 90° reactivation split, i.e. three quarters of the face.
+ */
+export const PROCESS_SECTOR_FRACTION = 270 / 360
+
+/**
+ * Face velocity through the process sector, ft/min.
+ *
+ * This is the constraint that actually picks a wheel diameter: too fast and the air has
+ * too little residence time in the desiccant (poor removal, high pressure drop).
+ */
+export function faceVelocityFpm(
+  cfm: number,
+  size: Pick<CatalogSize, 'effectiveAreaFt2'>,
+  sectorFraction: number = PROCESS_SECTOR_FRACTION,
+): number {
+  const area = size.effectiveAreaFt2 * sectorFraction
+  return area > 0 ? cfm / area : 0
+}
+
+/**
+ * Design ceiling on process face velocity, ft/min — DERIVED from the catalog above
+ * rather than assumed: every unit from 1,000 CFM up sits in a tight 530–580 fpm band at
+ * its nominal airflow (the compacts deliberately run slower, 240–500). 600 fpm is the
+ * top of that observed band, so exceeding it means the job is pushing a unit past how
+ * IAT actually rates it.
+ */
+export const MAX_DESIGN_FACE_VELOCITY_FPM = 600
 
 /**
  * Smallest catalog size that covers `requiredCfm`, or null if the requirement

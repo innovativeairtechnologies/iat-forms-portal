@@ -356,10 +356,14 @@ function SelectionCard({ result, blocked }: { result: SizingResult; blocked: boo
             <p className="mt-1 text-[12px] text-ink-muted">
               {describeModel(selection.spec).join(' · ')}
             </p>
+            <p className="mt-1 text-[12px] tabular-nums text-ink-muted">
+              {selection.wheelDiameterMm} × {selection.wheelDepthMm} mm rotor ·{' '}
+              {fmt(selection.effectiveAreaFt2, 3)} ft² face ·{' '}
+              {fmt(selection.faceVelocityFpm, 0)} fpm
+            </p>
           </div>
           <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
             <Pill tone="amber">Preliminary</Pill>
-            {!selection.standardLineup && <Pill tone="violet">Build to order</Pill>}
             {selection.wheel === 'high-capacity' && <Pill tone="sky">HC wheel</Pill>}
           </div>
         </div>
