@@ -238,21 +238,32 @@ portal were still occupying Vercel projects and live repos; they're now cleaned 
 - **`iat-home`** — was still serving the old static landing page. Its two cards already pointed at
   `iatportal.vercel.app` and `/support`, so nothing was lost. The front-door job belongs to the
   portal's `/home` intranet page.
+- **`iat-ticketing`** — the last standalone deploy. Since 2026-07-22 it had served only a 307
+  redirect to `iatportal.vercel.app/support`, catching pre-consolidation customer bookmarks. It was
+  initially kept for exactly that reason, then **deleted the same day** on Jacob's call.
 
-**Kept deliberately:** the **`iat-ticketing`** Vercel project. It is *not* a dead app — since
-2026-07-22 it serves a 307 redirect to `iatportal.vercel.app/support`, catching pre-consolidation
-customer bookmarks. That redirect was only 12 days old at cleanup time, and Web Analytics was never
-enabled on it, so there's no data showing the long tail has aged out. It costs nothing (~14 KB) and
-runs no application code. Revisit later.
+  ⚠️ **Known side effect:** `iat-ticketing.vercel.app` now returns a 404, so any pre-2026-07-22
+  bookmark, saved link, or old ticket-confirmation email pointing there is a dead end rather than a
+  redirect. If a customer reports the support site "not working," that's the first thing to check —
+  the live address is `iatportal.vercel.app/support`. Web Analytics was never enabled on the
+  project, so there's no measurement of how much traffic this affected.
+
+**Vercel is now down to two projects: `iatportal` and `iat-customer`.** Neither has a custom domain.
 
 **Archived (GitHub, read-only):** `iat-home`, `iat-learn`, `iat-ticketing`. Archived rather than
 deleted — reversible, preserves history, and silences the Dependabot noise (`iat-learn` had three
 open bot PRs). All three were public; archiving makes them immutable.
 
+**Deleted (Supabase):** the **`iat-learn`** project (`lhrakeyfiniiftszrtuz`) — a leftover from the
+standalone Learn prototype, which had its own database separate from the shared `iat-forms` one. It
+was already paused (`INACTIVE`, DNS torn down). Safe to drop because the content was verified live
+in the main DB first: 14 modules matching the 14 files in `_archive-iat-learn-import/`, 357 lessons.
+
 **Verified before deleting:** no code anywhere in the workspace references the retired URLs (only
 docs prose), and the old `/support` → `iat-ticketing.vercel.app` rewrite is already gone from
 `next.config.js` — the portal serves `/support` natively. Post-cleanup checks confirm
-`iatportal.vercel.app` (307 → `/login`) and the ticketing redirect both still work.
+`iatportal.vercel.app` still 307s to `/login` and **`/support` still returns 200** — the canonical
+customer flow is unaffected by any of the deletions.
 
 Docs updated: `07-sitemap.md`, `00-ecosystem-overview.md`, `02-iat-ticketing.md`,
 `04-accounts-and-access.md`, and security item **8.7** — "legacy standalone app still live" — is now
