@@ -8,7 +8,9 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
-  MessageCircle, KeyRound, Wrench, Map as MapIcon, Megaphone, GraduationCap,
+  // NB: Megaphone + GraduationCap dropped with the parked Marketing/Training
+  // entries below — restore them here when those are re-listed.
+  MessageCircle, KeyRound, Wrench, Map as MapIcon,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -48,7 +50,10 @@ const STATIC: Item[] = [
   { id: 'nav-terr',    label: 'Territories',      group: 'Go to', icon: MapIcon,         href: '/admin/territories', keywords: 'map reps rep firms sales regions states counties territory mapline', perm: 'deals' },
   // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
   // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series', perm: 'us_rotors' },
-  { id: 'nav-mktg',    label: 'Marketing Calendar', group: 'Go to', icon: Megaphone,     href: '/admin/marketing', keywords: 'marketing calendar social media post linkedin facebook instagram email campaign newsletter blog trade show content schedule', perm: 'marketing_calendar' },
+  // Marketing Calendar delisted while its nav group is parked in AdminSidebar —
+  // leaving it here would make ⌘K a back door into a tab we just greyed out.
+  // Route stays live. Re-add alongside removing `parked` from the nav group:
+  // { id: 'nav-mktg',    label: 'Marketing Calendar', group: 'Go to', icon: Megaphone,     href: '/admin/marketing', keywords: 'marketing calendar social media post linkedin facebook instagram email campaign newsletter blog trade show content schedule', perm: 'marketing_calendar' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },
   { id: 'nav-pto',     label: 'PTO Requests',     group: 'Go to', icon: Calendar,        href: '/admin/requests/pto', keywords: 'time off vacation', perm: 'pto' },
   { id: 'nav-sick',    label: 'Sick Time',        group: 'Go to', icon: CalendarClock,   href: '/admin/requests/sick', keywords: 'time off', perm: 'sick' },
@@ -57,12 +62,13 @@ const STATIC: Item[] = [
   { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability', perm: 'audit' },
   { id: 'nav-perms',   label: 'Permissions',      group: 'Go to', icon: KeyRound,        href: '/admin/permissions', keywords: 'roles access control matrix toggles', perm: 'permissions' },
   { id: 'nav-tools',   label: 'Internal Apps',    group: 'Go to', icon: Wrench,          href: '/admin/tools', keywords: 'tools apps launcher burner selection duct traverse calculator voltage field', perm: 'tools' },
-  // Training (IAT Learn). The three learner entries are ungated — '/admin/learn'
-  // is in OPEN_ADMIN_PREFIXES, so every admin-surface role can reach them.
-  { id: 'nav-learn',   label: 'Training',         group: 'Go to', icon: GraduationCap,   href: '/admin/learn', keywords: 'learn iat learn training courses lessons onboarding trainual library safety' },
-  { id: 'nav-learn-me', label: 'My Learning',     group: 'Go to', icon: GraduationCap,   href: '/admin/learn/me', keywords: 'learn progress xp level streak badges my training' },
-  { id: 'nav-learn-lb', label: 'Learn Leaderboard', group: 'Go to', icon: TrendingUp,    href: '/admin/learn/leaderboard', keywords: 'learn leaderboard ranking xp training' },
-  { id: 'nav-learn-admin', label: 'Manage course content', group: 'Go to', icon: GraduationCap, href: '/admin/learn-content', keywords: 'learn admin author lessons modules categories publish edit training content', perm: 'learn_admin' },
+  // Training (IAT Learn) delisted while its nav group is parked in AdminSidebar,
+  // same reasoning as Marketing Calendar above. Routes stay live by URL; re-add
+  // these four alongside removing `parked` from the Training nav group.
+  // { id: 'nav-learn',   label: 'Training',         group: 'Go to', icon: GraduationCap,   href: '/admin/learn', keywords: 'learn iat learn training courses lessons onboarding trainual library safety' },
+  // { id: 'nav-learn-me', label: 'My Learning',     group: 'Go to', icon: GraduationCap,   href: '/admin/learn/me', keywords: 'learn progress xp level streak badges my training' },
+  // { id: 'nav-learn-lb', label: 'Learn Leaderboard', group: 'Go to', icon: TrendingUp,    href: '/admin/learn/leaderboard', keywords: 'learn leaderboard ranking xp training' },
+  // { id: 'nav-learn-admin', label: 'Manage course content', group: 'Go to', icon: GraduationCap, href: '/admin/learn-content', keywords: 'learn admin author lessons modules categories publish edit training content', perm: 'learn_admin' },
   { id: 'act-newform', label: 'Create a new form',           group: 'Actions', icon: Plus,       href: '/admin/forms/new', keywords: 'add build', perm: 'forms' },
   { id: 'act-aiform',  label: 'Build a form with AI',        group: 'Actions', icon: Sparkles,   href: '/admin/forms/ai', keywords: 'generate claude pdf import', perm: 'forms' },
   { id: 'act-unread',  label: 'Review unread submissions',   group: 'Actions', icon: Inbox,      href: '/admin/submissions?is_read=false', perm: 'submissions' },

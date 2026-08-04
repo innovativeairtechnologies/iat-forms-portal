@@ -37,6 +37,14 @@ type NavParent = {
   label: string
   icon: LucideIcon
   hidden?: boolean
+  /**
+   * "Coming later" — the group renders greyed, non-interactive and un-expandable,
+   * with a "Soon" chip. Distinct from `hidden` (gone entirely): parked groups stay
+   * on the rail so the roadmap is visible, they just can't be opened. The routes
+   * themselves are NOT gated — this is a nav affordance only, so anyone with the
+   * URL (or a bookmark) still gets the page.
+   */
+  parked?: boolean
   children: NavChild[]
 }
 
@@ -106,17 +114,22 @@ const NAV_PARENTS: NavParent[] = [
       // them; engineering and marketing hold the perm too (see lib/roles.ts).
       // NB: "Graphic Generator" (in progress) will slot in here once its route lands.
       { href: '/admin/diagram-studio', label: 'Application Diagrams', perm: 'diagrams' },
+      // Case studies (072) — AI-drafted from sales' inputs, marketing-approved.
+      // Lives under Sales: sales starts one from a customer page and writes the
+      // inputs; marketing only approves. (Briefly sat under Marketing.)
+      { href: '/admin/case-studies', label: 'Case Studies', perm: 'case_studies' },
     ],
   },
   {
     label: 'Marketing',
     icon: Megaphone,
+    // PARKED — a "nice to have one day". The calendar is built and its route
+    // still works by URL; only the nav affordance is switched off. Un-park by
+    // deleting `parked` here and restoring the palette entry in CommandPalette.
+    parked: true,
     children: [
       // Content calendar (071) — social posts, email campaigns, blog, shows, ads.
       { href: '/admin/marketing', label: 'Calendar', perm: 'marketing_calendar' },
-      // Case studies (072) — AI-drafted from sales' inputs, marketing-approved.
-      // Moved from Sales.
-      { href: '/admin/case-studies', label: 'Case Studies', perm: 'case_studies' },
     ],
   },
   {
@@ -136,9 +149,11 @@ const NAV_PARENTS: NavParent[] = [
   },
   // Training — IAT Learn, ported off /learn. Learner items carry no perm
   // ('/admin/learn' is in OPEN_ADMIN_PREFIXES); only authoring is gated.
+  // PARKED alongside Marketing — see the note there. Routes stay live by URL.
   {
     label: 'Training',
     icon: GraduationCap,
+    parked: true,
     children: [
       { href: '/admin/learn', label: 'Browse' },
       { href: '/admin/learn/me', label: 'My Learning' },
@@ -267,7 +282,12 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   const isChildActive = (c: NavChild) => matchesNav(c.href)
   // Include the footer-pinned Self-service group so it highlights + auto-opens on
   // its own /admin/me/* pages just like the scrolling groups.
-  const activeParent = [...NAV_PARENTS, SELF_SERVICE].find(p => p.children.some(isChildActive))?.label ?? null
+  // Parked groups are excluded: their route is still reachable by URL, but they
+  // render as a dead label with no rollout, so letting one become the active
+  // parent would only make the auto-open effect below toggle a group that can
+  // never open.
+  const activeParent = [...NAV_PARENTS, SELF_SERVICE]
+    .find(p => !p.parked && p.children.some(isChildActive))?.label ?? null
 
   // Which ONE child is highlighted: longest match wins. So /admin/learn/me
   // highlights "My Learning" rather than also lighting "Browse", while a lesson
@@ -323,6 +343,28 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
     // real admin even while previewing a role that can't see its pages.
     const isSystem = parent.label === 'System'
     if (children.length === 0 && !(isSystem && canPreview)) return null
+
+    // Parked: a dead label, not a button — no expander, no hover, no children in
+    // the tab order at all. Perm visibility above still applies, so parking never
+    // reveals a group to someone who couldn't see it before.
+    if (parent.parked) {
+      return (
+        <div key={parent.label} className="mt-0.5">
+          <div
+            aria-disabled="true"
+            title="Coming later"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12.5px] font-medium text-left cursor-default select-none text-sidebar-ink-faint"
+          >
+            <parent.icon size={15} className="flex-shrink-0 text-sidebar-ink-faint" />
+            <span className="flex-1">{parent.label}</span>
+            <span className="text-[9.5px] font-semibold uppercase tracking-wider px-1.5 py-[2px] rounded bg-sidebar-strong text-sidebar-ink-faint">
+              Soon
+            </span>
+          </div>
+        </div>
+      )
+    }
+
     const isOpen = open.includes(parent.label)
     const hasActive = parent.label === activeParent
     const selectedHref = selectedChildHref(children)

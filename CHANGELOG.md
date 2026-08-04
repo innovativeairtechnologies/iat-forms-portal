@@ -649,6 +649,28 @@ RLS on, service-role only). Named `marketing_calendar` rather than `marketing` b
 already a StaffRole. Not built on `deal_follow_ups`: those rows CASCADE when DryWare prunes a
 deal, which would silently delete marketing work. See `docs/marketing-calendar.md`.
 
+## 2026-07-30 — Case Studies back under Sales; Marketing + Training parked
+
+**Case Studies moved Marketing → Sales.** Sales is who actually uses it: they start one from a
+customer page and write every grounding input. Marketing only approves, which the status ladder
+already enforces (`requireCaseStudiesAuth({ approve })` is marketing/admin) — it never needed to
+be a Marketing nav item to be a marketing responsibility.
+
+**Marketing and Training are parked** — "nice to haves one day". New `NavParent.parked` renders a
+group greyed, non-interactive and un-expandable with a "Soon" chip, distinct from `hidden` (gone
+entirely): the roadmap stays visible on the rail, it just can't be opened. Parked groups are also
+excluded from `activeParent`, so reaching one by URL can't force-open a group with no rollout.
+
+The ⌘K palette entries went with them (Marketing Calendar + the four Training ones, commented out
+in place with restore instructions) — leaving them would have made the palette a back door into a
+tab we just greyed out. Their `Megaphone`/`GraduationCap` imports were dropped alongside.
+
+**Routes are NOT gated** — this is a nav affordance only. `/admin/marketing`, `/admin/learn` and
+friends still serve anyone with the URL or a bookmark, which keeps parking cheap and reversible
+(delete `parked`, uncomment the palette rows). Note the Hub (`/home`) still carries a "Browse
+training" hero link and the `TrainingStrip` progress card; those were left alone as a separate
+surface, so Training is parked in the rail but not on the landing page.
+
 ## 2026-07-30 — Case studies: anonymity risks are surfaced, not scrubbed
 
 Anonymized mode omits the customer name, serials and site from FACTS **structurally** — but it
