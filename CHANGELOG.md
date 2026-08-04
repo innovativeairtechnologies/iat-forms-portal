@@ -975,6 +975,36 @@ Two tidy-ups to the admin dashboard:
   dashboard page and sits with the rest of the top-bar chrome. Mobile keeps the toolbar inline above the
   grid (the top bar is hidden there). (`DashboardGrid.tsx`)
 
+## 2026-07-28 — Sizing Studio: wheel sectors, purge and rotation
+
+The engine described the wheel as a fixed ⅓ process:reactivation *airflow ratio*. DryWare
+describes it the way the machine is actually built — as **sectors in degrees**, defaulting
+to 270°/90°. Same 3:1, stated properly, and the difference matters as soon as a purge
+sector exists.
+
+- **Sectors are now degrees.** Airflow through each sector is proportional to its angle at
+  a common face velocity, so 270/90 reproduces the previous behaviour *exactly* (asserted,
+  so no existing job silently re-sizes) while any other split works correctly. Sectors must
+  cover the face: anything not totalling 360° is scaled proportionally and the scaling is
+  disclosed rather than quietly producing airflow ratios no real machine has.
+- **Purge.** A purge sector draws its angular share of air, and — because it shrinks the
+  process sector — correctly *raises* the process face velocity, which is the constraint
+  that governs wheel diameter. Routing the purge outlet into the reactivation inlet
+  (DryWare's "autofill") recovers the heat the purge air picked up off the just-reactivated
+  wheel, lowering the reactivation duty.
+- **Rotation.** RPH now drives reported **dwell** — how long a point on the wheel spends in
+  each sector — which is why rotation has an optimum rather than "faster is better".
+
+Two honesty constraints held throughout. The purge heat-recovery credit is a **planning
+estimate** (the true purge outlet temperature depends on wheel thermal mass and rotation,
+which is exactly what DryWare's calculator models), so the un-credited duty is reported
+alongside it and can be discounted. And an unset RPH falls back to a typical mid-range
+value **flagged as suggested, not optimised** — DryWare optimises RPH against wheel
+performance curves this Studio does not have. Rotation never touches the moisture maths;
+a test asserts that changing RPH cannot change the selection.
+
+Sizing suite 97 → 120.
+
 ## 2026-07-28 — Sizing Studio: the standalone calculators from DryWare
 
 Ports the formula half of DryWare's calculator suite into `lib/hvac-calcs.ts`, surfaced as

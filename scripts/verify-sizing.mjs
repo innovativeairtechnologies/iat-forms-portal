@@ -357,6 +357,58 @@ ok('non-REC models are tagged rotor', mapped.find((s) => s.nominalCfm === 3000)?
 ok('output is sorted ascending', mapped.every((s, i, a) => i === 0 || s.nominalCfm > a[i - 1].nominalCfm))
 ok('rows without geometry would be dropped upstream', mapped.every((s) => s.effectiveAreaFt2 > 0))
 
+// ─── 14. Wheel sectors, purge and rotation (step 4) ──────────────────────────
+section('14. Wheel sectors, purge and rotation')
+
+// Regression guard: the old model used a fixed 1/3 reactivation airflow ratio. The
+// angular model must reproduce it EXACTLY at the 270/90 default, or every existing
+// job silently re-sizes.
+const base14 = calculateSizing(inputs())
+near('270°/90° reproduces the old ⅓ react airflow', base14.reactivation.airflowCfm, base14.selection.nominalCfm / 3, 0.001)
+near('  process sector is 270°', base14.wheel.processDeg, 270, 1e-9)
+near('  react sector is 90°', base14.wheel.reactDeg, 90, 1e-9)
+ok('  no purge by default', base14.wheel.purgeDeg === 0 && base14.wheel.purgeAirflowCfm === 0)
+
+// Angles drive airflow: a 180/180 wheel is a 1:1 split.
+const even = calculateSizing(inputs({ processDegrees: 180, reactDegrees: 180 }))
+near('180°/180° → react airflow equals process', even.reactivation.airflowCfm, even.selection.nominalCfm, 0.001)
+ok('more react angle → more react airflow', even.reactivation.airflowCfm > base14.reactivation.airflowCfm)
+
+// Purge takes its angular share, and shrinks the process sector → higher face velocity.
+const purged = calculateSizing(inputs({ processDegrees: 240, reactDegrees: 90, purgeDegrees: 30 }))
+ok('purge draws airflow', purged.wheel.purgeAirflowCfm > 0)
+near('  purge airflow follows its angle', purged.wheel.purgeAirflowCfm, purged.selection.nominalCfm * (30 / 240), 0.001)
+ok('a smaller process sector raises face velocity',
+  purged.selection.faceVelocityFpm > base14.selection.faceVelocityFpm,
+  `${round(base14.selection.faceVelocityFpm)} → ${round(purged.selection.faceVelocityFpm)} fpm`)
+
+// Purge → react heat recovery only ever REDUCES the duty, and the uncredited figure
+// is reported so it can be discounted.
+ok('purge-to-react raises the reactivation inlet above ambient',
+  purged.reactivation.inletTempF > purged.outsideAir.tempF)
+ok('  which lowers the reactivation duty', purged.reactivation.heatBtuh < purged.reactivation.heatBtuhWithoutPurge)
+const noRecovery = calculateSizing(inputs({ processDegrees: 240, reactDegrees: 90, purgeDegrees: 30, purgeToReact: false }))
+near('  without the routing, inlet is ambient', noRecovery.reactivation.inletTempF, noRecovery.outsideAir.tempF, 1e-9)
+near('  and duty equals the uncredited figure', noRecovery.reactivation.heatBtuh, noRecovery.reactivation.heatBtuhWithoutPurge, 1e-6)
+ok('no purge → no credit', Math.abs(base14.reactivation.heatBtuh - base14.reactivation.heatBtuhWithoutPurge) < 1e-9)
+
+// Sectors must cover the face exactly; anything else is scaled and flagged.
+const odd = calculateSizing(inputs({ processDegrees: 300, reactDegrees: 120 }))
+near('sectors that overflow 360° are normalised', odd.wheel.processDeg + odd.wheel.reactDeg + odd.wheel.purgeDeg, 360, 1e-6)
+ok('  and the scaling is disclosed', odd.warnings.some((w) => w.message.includes('360')))
+ok('  ratio is preserved through scaling', Math.abs(odd.wheel.processDeg / odd.wheel.reactDeg - 300 / 120) < 1e-9)
+
+// Rotation drives dwell only — never the moisture maths.
+near('dwell sums to one revolution at 20 RPH',
+  base14.wheel.processDwellSec + base14.wheel.reactDwellSec + base14.wheel.purgeDwellSec, 180, 1e-6)
+ok('unset RPH is flagged as suggested, not authoritative', base14.wheel.rphSuggested === true)
+ok('  and disclosed in the warnings', base14.warnings.some((w) => w.message.includes('RPH')))
+const setRph = calculateSizing(inputs({ rph: 30 }))
+ok('a stated RPH is used as-is', setRph.wheel.rph === 30 && setRph.wheel.rphSuggested === false)
+near('  30 RPH → 120 s per revolution', setRph.wheel.processDwellSec + setRph.wheel.reactDwellSec, 120, 1e-6)
+ok('changing RPH does NOT change the moisture result',
+  setRph.leaving.grains === base14.leaving.grains && setRph.selection.nominalCfm === base14.selection.nominalCfm)
+
 function allFinite(r) {
   const nums = [
     r.pressure,

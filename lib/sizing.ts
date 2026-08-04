@@ -30,6 +30,7 @@ import {
   pressureAtAltitude,
   GRAINS_PER_LB,
 } from './psychro'
+import { sectorDwellSeconds } from './hvac-calcs'
 import {
   type ReactivationCode,
   type ModelSpec,
@@ -53,6 +54,61 @@ import {
  * run 3:1 process:reactivation; that's the planning default until a job says otherwise.
  */
 export const REACTIVATION_AIRFLOW_RATIO = 1 / 3
+
+/**
+ * Fraction of the available reactivation temperature rise recovered by routing the
+ * purge outlet into the reactivation inlet.
+ *
+ * ⚠️ PLANNING ESTIMATE — the real figure depends on wheel thermal mass and rotation
+ * speed, which is what DryWare's calculator models. It only ever reduces the
+ * reactivation duty, and the un-credited figure is reported alongside it.
+ */
+export const PURGE_HEAT_RECOVERY = 0.35
+
+/** Rotation used for dwell reporting when the job doesn't state one. */
+export const DEFAULT_RPH = 20
+
+/** Normalised wheel sector split, in degrees, plus the derived area fractions. */
+export type WheelSectors = {
+  processDeg: number
+  reactDeg: number
+  purgeDeg: number
+  processFraction: number
+  reactFraction: number
+  purgeFraction: number
+  /** True when the entered degrees did not total 360 and were scaled to fit. */
+  normalised: boolean
+}
+
+/**
+ * Resolve the wheel split. The three sectors must cover the face exactly, so if the
+ * entered degrees don't total 360 they are scaled proportionally rather than silently
+ * producing airflow ratios that don't correspond to a real machine.
+ */
+export function resolveWheelSectors(
+  processDeg: number,
+  reactDeg: number,
+  purgeDeg: number,
+): WheelSectors {
+  const p = Math.max(processDeg, 0)
+  const r = Math.max(reactDeg, 0)
+  const g = Math.max(purgeDeg, 0)
+  const total = p + r + g
+  if (total <= 0) {
+    return { processDeg: 270, reactDeg: 90, purgeDeg: 0, processFraction: 0.75, reactFraction: 0.25, purgeFraction: 0, normalised: true }
+  }
+  const k = 360 / total
+  const normalised = Math.abs(total - 360) > 0.01
+  return {
+    processDeg: p * k,
+    reactDeg: r * k,
+    purgeDeg: g * k,
+    processFraction: (p * k) / 360,
+    reactFraction: (r * k) / 360,
+    purgeFraction: (g * k) / 360,
+    normalised,
+  }
+}
 
 /**
  * Reactivation temperature and its effect on achievable dryness, per heat source.
@@ -134,6 +190,26 @@ export type SizingInputs = {
   /** 'auto' upgrades to a high-capacity wheel only when the target demands it. */
   wheelPreference: 'auto' | WheelType
   idp: boolean
+
+  /**
+   * How the wheel face is divided, in DEGREES — the way DryWare expresses it, and the
+   * way the machine is actually built. Airflow through each sector is proportional to
+   * its angle at a common face velocity, so this replaces the old fixed ⅓
+   * process:reactivation airflow ratio (270/90 is the same 3:1, stated properly).
+   */
+  processDegrees: number
+  reactDegrees: number
+  /** Purge sector, degrees. 0 disables purge. */
+  purgeDegrees: number
+  /**
+   * Route the purge outlet into the reactivation inlet. Purge air leaves the
+   * just-reactivated wheel hot, so feeding it to reactivation recovers that heat
+   * instead of dumping it — DryWare's "Autofill Purge Outlet to React Inlet".
+   */
+  purgeToReact: boolean
+
+  /** Wheel rotation, rotations per hour. 0 = let the Studio suggest one. */
+  rph: number
 }
 
 export const DEFAULT_SIZING_INPUTS: SizingInputs = {
@@ -148,6 +224,12 @@ export const DEFAULT_SIZING_INPUTS: SizingInputs = {
   reactivation: 'E',
   wheelPreference: 'auto',
   idp: false,
+  // DryWare's own defaults.
+  processDegrees: 270,
+  reactDegrees: 90,
+  purgeDegrees: 0,
+  purgeToReact: true,
+  rph: 0,
 }
 
 // ─── Outputs ─────────────────────────────────────────────────────────────────
@@ -214,12 +296,32 @@ export type SizingResult = {
     rationale: string[]
   }
 
+  /** How the wheel face is divided, and what that implies for rotation. */
+  wheel: {
+    processDeg: number
+    reactDeg: number
+    purgeDeg: number
+    /** Airflow through the purge sector, CFM. Zero when purge is off. */
+    purgeAirflowCfm: number
+    /** Rotation used for the dwell figures, RPH (the suggested value when not set). */
+    rph: number
+    rphSuggested: boolean
+    /** Seconds a point on the wheel spends in each sector at that rotation. */
+    processDwellSec: number
+    reactDwellSec: number
+    purgeDwellSec: number
+  }
+
   reactivation: {
     code: ReactivationCode
     label: string
     airflowCfm: number
     tempF: number
+    /** Reactivation inlet temperature — raised above ambient when purge feeds it. */
+    inletTempF: number
     heatBtuh: number
+    /** What the duty would be without the purge heat-recovery credit. */
+    heatBtuhWithoutPurge: number
     electricKw: number
     gasCfh: number
     steamLbPerHour: number
@@ -300,6 +402,16 @@ export function calculateSizing(
 ): SizingResult {
   const warnings: SizingWarning[] = []
   const maxCfm = maxCatalogCfm(catalog)
+
+  // Wheel sector split, resolved up front — it governs reactivation airflow, purge
+  // airflow and the process face velocity.
+  const wheel3 = resolveWheelSectors(inputs.processDegrees, inputs.reactDegrees, inputs.purgeDegrees)
+  if (wheel3.normalised) {
+    warnings.push({
+      severity: 'info',
+      message: `Wheel sectors totalled ${fmt(inputs.processDegrees + inputs.reactDegrees + inputs.purgeDegrees, 0)}°, not 360° — scaled proportionally to ${fmt(wheel3.processDeg, 0)}° / ${fmt(wheel3.reactDeg, 0)}°${wheel3.purgeDeg > 0 ? ` / ${fmt(wheel3.purgeDeg, 0)}° purge` : ''}.`,
+    })
+  }
   const p = pressureAtAltitude(Math.max(inputs.altitudeFt, 0))
 
   // 1. Resolve the three given conditions.
@@ -407,9 +519,10 @@ export function calculateSizing(
   const sizeEntry = catalog.find((s) => s.nominalCfm === nominalCfm)
 
   // Face velocity through the process sector — the constraint that really governs the
-  // wheel diameter. Checked against the airflow ONE unit actually sees.
+  // wheel diameter. Checked against the airflow ONE unit actually sees, and against
+  // the ACTUAL process sector, which shrinks when a purge sector is carved out.
   const cfmPerUnit = requiredCfm / unitsRequired
-  const faceVelocity = sizeEntry ? faceVelocityFpm(cfmPerUnit, sizeEntry) : 0
+  const faceVelocity = sizeEntry ? faceVelocityFpm(cfmPerUnit, sizeEntry, wheel3.processFraction) : 0
   if (sizeEntry && faceVelocity > MAX_DESIGN_FACE_VELOCITY_FPM) {
     warnings.push({
       severity: 'warning',
@@ -430,11 +543,45 @@ export function calculateSizing(
 
   // 9. Reactivation duty. Heat the reactivation airstream from the outdoor condition
   //    up to the wheel's regeneration temperature.
+  //
+  //    Reactivation airflow now follows the ANGULAR split rather than a fixed ⅓: at a
+  //    common face velocity the flow through each sector is proportional to its angle,
+  //    so 270°/90° reproduces the old 3:1 exactly while a purge sector correctly takes
+  //    its share.
   const reactPerf = REACTIVATION_PERFORMANCE[inputs.reactivation]
-  const reactAirflowCfm = (nominalCfm * unitsRequired) * REACTIVATION_AIRFLOW_RATIO
+  const totalProcessCfm = nominalCfm * unitsRequired
+  const reactAirflowCfm = totalProcessCfm * (wheel3.reactDeg / Math.max(wheel3.processDeg, 1))
+  const purgeAirflowCfm = totalProcessCfm * (wheel3.purgeDeg / Math.max(wheel3.processDeg, 1))
+
+  // Purge air enters from the dried process stream and leaves hot, having cooled the
+  // just-reactivated wheel. Routing it to the reactivation inlet recovers that heat.
+  //
+  // ⚠️ PLANNING ESTIMATE. The true purge outlet temperature depends on wheel thermal
+  // mass and rotation speed — DryWare computes it; we approximate the recovered
+  // preheat as a fraction of the available temperature rise. It only ever REDUCES the
+  // reactivation duty, and is reported separately so it can be discounted.
+  const purgeActive = wheel3.purgeDeg > 0
+  const reactInletTempF =
+    purgeActive && inputs.purgeToReact
+      ? outsideAir.tempF + PURGE_HEAT_RECOVERY * Math.max(reactPerf.tempF - outsideAir.tempF, 0)
+      : outsideAir.tempF
+
   const reactMassFlow = massFlowFromCFM(reactAirflowCfm, outsideAir)
-  const reactDeltaT = Math.max(reactPerf.tempF - outsideAir.tempF, 0)
+  const reactDeltaT = Math.max(reactPerf.tempF - reactInletTempF, 0)
   const heatBtuh = reactMassFlow * CP_AIR * reactDeltaT
+  // What it would have cost without the purge credit, so the saving is visible.
+  const heatBtuhNoPurge = reactMassFlow * CP_AIR * Math.max(reactPerf.tempF - outsideAir.tempF, 0)
+
+  // Rotation. DryWare optimises RPH against its wheel curves; we don't have those, so
+  // an unset value falls back to a mid-range default rather than pretending to optimise.
+  // It only drives the reported dwell times, never the moisture maths.
+  const effectiveRph = inputs.rph > 0 ? inputs.rph : DEFAULT_RPH
+  if (!(inputs.rph > 0)) {
+    warnings.push({
+      severity: 'info',
+      message: `Rotation shown at ${DEFAULT_RPH} RPH (a typical mid-range value) — DryWare optimises RPH against its wheel performance curves, which this Studio does not have. Dwell times below are indicative.`,
+    })
+  }
 
   const removedLbPerHour = Math.max(airstreamDuty.lbPerHour, 0)
   const btuPerLbWater = removedLbPerHour > 0 ? heatBtuh / removedLbPerHour : 0
@@ -517,12 +664,25 @@ export function calculateSizing(
       faceVelocityFpm: faceVelocity,
       rationale,
     },
+    wheel: {
+      processDeg: wheel3.processDeg,
+      reactDeg: wheel3.reactDeg,
+      purgeDeg: wheel3.purgeDeg,
+      purgeAirflowCfm: purgeAirflowCfm,
+      rph: effectiveRph,
+      rphSuggested: !(inputs.rph > 0),
+      processDwellSec: sectorDwellSeconds(effectiveRph, wheel3.processDeg),
+      reactDwellSec: sectorDwellSeconds(effectiveRph, wheel3.reactDeg),
+      purgeDwellSec: sectorDwellSeconds(effectiveRph, wheel3.purgeDeg),
+    },
     reactivation: {
       code: inputs.reactivation,
       label: reactivationLabel(inputs.reactivation),
       airflowCfm: reactAirflowCfm,
       tempF: reactPerf.tempF,
+      inletTempF: reactInletTempF,
       heatBtuh,
+      heatBtuhWithoutPurge: heatBtuhNoPurge,
       electricKw: heatBtuh / BTU_PER_KWH,
       gasCfh: heatBtuh / NATURAL_GAS_BTU_PER_CF,
       steamLbPerHour: heatBtuh / STEAM_BTU_PER_LB,
