@@ -243,18 +243,22 @@ export default function KnowledgeReactorClient() {
     if (spAutoRead) { spStopRef.current = true; return } // click again = stop
     spStopRef.current = false
     setSpAutoRead(true)
+    // Every iteration re-reads the queue FROM THE SERVER. Picking the next
+    // document out of `spQueue` would read a stale closure — the just-read
+    // document would still look unread and be transcribed again, forever.
+    // `attempted` is the belt-and-braces stop: a row that somehow never flips to
+    // read (a failed update, say) is tried once, not endlessly.
+    const attempted = new Set<string>()
     try {
       for (;;) {
         if (spStopRef.current) break
-        const next = spQueue.find((it) => !it.analyzed_at && !it.analyze_error)
-          ?? (await (async () => {
-            const r = await fetch('/api/admin/kb/queue')
-            const j = await r.json().catch(() => ({}))
-            const rows: SharePointQueueItem[] = Array.isArray(j.pending) ? j.pending : []
-            setSpQueue(rows)
-            return rows.find((it) => !it.analyzed_at && !it.analyze_error)
-          })())
+        const r = await fetch('/api/admin/kb/queue')
+        const j = await r.json().catch(() => ({}))
+        const rows: SharePointQueueItem[] = Array.isArray(j.pending) ? j.pending : []
+        setSpQueue(rows)
+        const next = rows.find((it) => !it.analyzed_at && !it.analyze_error && !attempted.has(it.id))
         if (!next) break
+        attempted.add(next.id)
         await readOne(next.id)
       }
     } finally {
@@ -380,7 +384,19 @@ export default function KnowledgeReactorClient() {
       setReviewVisibility('internal') // reset the safe default for the next review
       refresh()
     } catch (e) {
-      updateItem(currentReview.key, { status: 'error', message: e instanceof Error ? e.message : 'Something went wrong.' })
+      const message = e instanceof Error ? e.message : 'Something went wrong.'
+      if (currentReview.queueId) {
+        // A SharePoint review has no entry in `queue` (that list is fed by the
+        // upload path), so updateItem is a no-op for it and the Activity list
+        // never renders it — the card would just close as if the approval had
+        // worked. Report through the SharePoint surfaces instead, and leave the
+        // row in the queue so it can be retried.
+        const qid = currentReview.queueId
+        setSpNote(`${currentReview.title}: ${message}`)
+        setSpQueue((q) => q.map((it) => (it.id === qid ? { ...it, analyze_error: message } : it)))
+      } else {
+        updateItem(currentReview.key, { status: 'error', message })
+      }
       setReviews((r) => r.slice(1))
     } finally {
       setSaving(false)

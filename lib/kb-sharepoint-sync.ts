@@ -89,16 +89,38 @@ export async function discoverSharePointDocuments(): Promise<DiscoverResult> {
       findings: {},
       status: 'pending',
     }))
-    // onConflict matches the partial unique index on (source, external_id) for
-    // pending rows — a concurrent discover can't create duplicates.
+    // A PLAIN INSERT, deliberately — not an upsert. The unique index that guards
+    // this table is PARTIAL (`(source, external_id) WHERE status = 'pending'`),
+    // and Postgres can't infer a partial index for ON CONFLICT unless the
+    // statement repeats the predicate, which PostgREST has no way to express.
+    // Asking for onConflict here fails every insert with 42P10. Duplicates are
+    // already excluded by the `seen` check above; the index stays as the backstop.
     const { error, count } = await supabaseAdmin
       .from('kb_review_queue')
-      .upsert(rows, { onConflict: 'source,external_id', ignoreDuplicates: true, count: 'exact' })
+      .insert(rows, { count: 'exact' })
+
     if (error) {
-      console.error('[kb-sharepoint-sync] discover insert:', error.message)
-      throw new Error('Found the documents but could not save them to the review queue.')
+      if (error.code === '23505') {
+        // Lost a race with a concurrent discovery. Retry per row so the rest
+        // still land, skipping the ones that were queued in the meantime.
+        let saved = 0
+        for (const row of rows) {
+          const { error: rowErr } = await supabaseAdmin.from('kb_review_queue').insert(row)
+          if (!rowErr) saved++
+          else if (rowErr.code !== '23505') {
+            console.error('[kb-sharepoint-sync] discover row insert:', rowErr.code, rowErr.message)
+          }
+        }
+        discovered = saved
+      } else {
+        console.error('[kb-sharepoint-sync] discover insert:', error.code, error.message, error.details ?? '')
+        // Carry the real reason to the caller — a generic message here cost two
+        // debugging round trips on this feature already.
+        throw new Error(`Found the documents but could not save them: ${error.message}`)
+      }
+    } else {
+      discovered = count ?? rows.length
     }
-    discovered = count ?? rows.length
   }
 
   // The cursor advances here because discovery genuinely finished the delta —
@@ -140,6 +162,15 @@ export async function analyzeQueuedDocument(id: string): Promise<AnalyzeQueuedRe
       .update({ analyze_error: message }).eq('id', id)
     return { ok: false, id, error: message }
   }
+
+  // Stamp the failure BEFORE the risky work, not after. If the platform kills
+  // this invocation mid-transcription (the 300s ceiling), no catch block runs and
+  // nothing would be written — leaving the row byte-identical to "never
+  // attempted", so the next sweep picks it up and dies on it again, forever. The
+  // success path clears this; a real failure overwrites it with the real reason.
+  await supabaseAdmin.from('kb_review_queue')
+    .update({ analyze_error: 'Reading was interrupted — it may be too large to read in one pass. Click to retry.' })
+    .eq('id', id)
 
   try {
     const bytes = await downloadItem(row.external_id as string)

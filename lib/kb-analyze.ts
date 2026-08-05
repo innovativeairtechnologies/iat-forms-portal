@@ -76,12 +76,35 @@ export async function analyzeDocument(bytes: Buffer, mediaType: string, filename
     const block: Anthropic.ContentBlockParam = isPdf
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
       : { type: 'image', source: { type: 'base64', media_type: mediaType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp', data: base64 } }
+    // The timeout is explicit and retries are off ON PURPOSE. The SDK defaults to
+    // a 10-minute timeout — scaled up to 60 minutes for large max_tokens on a
+    // non-streaming request — plus 2 automatic retries. Inside a 300s function
+    // that means the SDK never aborts first: the platform kills the invocation,
+    // no exception is ever thrown, and the caller's error handling never runs
+    // (the row is left looking like it was never attempted). Budgeting under
+    // maxDuration is what lets a failure be *recorded* instead of vanishing.
     const tMsg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 16000,
       system: TRANSCRIBE_SYSTEM,
       messages: [{ role: 'user', content: [block, { type: 'text', text: 'Transcribe this document in full, page by page.' }] }],
-    })
+    }, { timeout: 180_000, maxRetries: 0 })
+
+    // TRUNCATION IS ITS OWN ERROR — never a silent success. max_tokens is a hard
+    // output cap, so a long manual comes back cut off mid-document. Everything
+    // downstream is derived from the transcript itself (page count, chunk count),
+    // so a partial document looks perfectly self-consistent: the reviewer sees a
+    // plausible "N pages · M passages", approves it, and half a manual becomes the
+    // authoritative copy Jerry answers from — permanently, because the anti-loop
+    // stamp then stops it ever being re-read. Fail loudly instead.
+    if (tMsg.stop_reason === 'max_tokens') {
+      return {
+        ok: false,
+        code: 'error',
+        message: 'That document is too long to read in one pass — only part of it came back, so it was not saved. Split it into smaller files.',
+      }
+    }
+
     const transcript = tMsg.content[0]?.type === 'text' ? tMsg.content[0].text : ''
     const pages = pagesFromTranscript(transcript)
     const chunkCount = buildChunks(pages).length
@@ -104,7 +127,7 @@ export async function analyzeDocument(bytes: Buffer, mediaType: string, filename
         max_tokens: 900,
         system: ANALYZE_SYSTEM,
         messages: [{ role: 'user', content: `TRANSCRIPT (review only):\n\n${transcript.slice(0, 60000)}` }],
-      })
+      }, { timeout: 45_000, maxRetries: 0 })
       const raw = aMsg.content[0]?.type === 'text' ? aMsg.content[0].text : ''
       const parsed = JSON.parse(raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim())
       findings = {

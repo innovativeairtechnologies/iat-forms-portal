@@ -45,20 +45,43 @@ export async function ingestTranscript(
     return { ok: false, status: 422, error: 'No readable text to store.' }
   }
 
-  // Idempotent by filename: replace a prior same-named doc (chunks cascade).
   const title = titleFromFilename(filename)
-  await supabaseAdmin.from('kb_documents').delete().eq('source_filename', filename)
+
+  // WHAT COUNTS AS "THE SAME DOCUMENT" DEPENDS ON WHERE IT CAME FROM.
+  //
+  // A portal upload is identified by its filename — re-uploading `IOM.pdf`
+  // replaces the previous `IOM.pdf`, which is the behavior people expect.
+  //
+  // A SharePoint file is NOT. The library is folder-structured and only the leaf
+  // name is available, so `IOM.pdf` under two product folders are two different
+  // documents that collide on filename. Keying on the name would mean approving
+  // the second one DELETES the first (chunks cascade) — silently, and
+  // unrecoverably, since discovery skips anything already in the queue, so the
+  // victim can never be re-pulled. Key on the immutable SharePoint item id
+  // instead, and qualify source_filename so it cannot collide with a portal
+  // upload of the same name. (Citations are unaffected — Jerry cites `title`.)
+  const spItemId = provenance.sharepointItemId ?? null
+  const storedFilename = spItemId ? `sharepoint:${spItemId}/${filename}` : filename
+
+  if (spItemId) {
+    await supabaseAdmin.from('kb_documents').delete().eq('sharepoint_item_id', spItemId)
+  } else {
+    // Never let a portal upload delete a SharePoint-sourced document that merely
+    // shares its name.
+    await supabaseAdmin.from('kb_documents').delete()
+      .eq('source_filename', filename).is('sharepoint_item_id', null)
+  }
 
   const { data: doc, error: docErr } = await supabaseAdmin
     .from('kb_documents')
     .insert({
       title,
-      source_filename: filename,
+      source_filename: storedFilename,
       category: null,
       is_internal: isInternal,
       page_count: pages.length,
       source: provenance.source ?? null,
-      sharepoint_item_id: provenance.sharepointItemId ?? null,
+      sharepoint_item_id: spItemId,
       sharepoint_etag: provenance.sharepointEtag ?? null,
     })
     .select('id')
