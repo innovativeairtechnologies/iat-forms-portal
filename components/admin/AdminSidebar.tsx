@@ -19,7 +19,7 @@ import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'usrotors' | 'drafts'
+type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'timeoff' | 'usrotors' | 'drafts'
 
 type NavChild = {
   href: string
@@ -54,6 +54,7 @@ type Counts = {
   troubleshooting: number
   pto: number
   sick: number
+  timeoff: number
   usrotors: number
   drafts: number
 }
@@ -71,8 +72,6 @@ const NAV_PARENTS: NavParent[] = [
       // Troubleshooting merged into Tickets (route stays live by URL). Re-enable by
       // removing `hidden: true`.
       { href: '/admin/troubleshooting', label: 'Troubleshooting', badge: 'troubleshooting', hidden: true, perm: 'tickets' },
-      // Reference photos shown to customers on the public support form.
-      { href: '/admin/support-content', label: 'Support form', perm: 'tickets' },
       { href: '/admin/forms', label: 'Forms', perm: 'forms' },
       { href: '/admin/equipment', label: 'Equipment', perm: 'equipment' },
       // Tool Crib — the warehouse tool check-out registry. NOT the `tools`
@@ -135,12 +134,12 @@ const NAV_PARENTS: NavParent[] = [
     icon: Users,
     children: [
       { href: '/admin/employees', label: 'Employees', perm: 'employees' },
-      { href: '/admin/org-chart', label: 'Org Chart', perm: 'org_chart' },
       // Employee Forms merged into Forms (route + employee portal stay live). Re-enable
       // by removing `hidden: true`.
       { href: '/admin/employee-forms', label: 'Employee Forms', badge: 'drafts', hidden: true, perm: 'employee_forms' },
-      { href: '/admin/requests/pto', label: 'PTO', badge: 'pto', perm: 'pto' },
-      { href: '/admin/requests/sick', label: 'Sick Time', badge: 'sick', perm: 'sick' },
+      // PTO + Sick share one queue at /admin/requests — it loads both types (gated
+      // by `pto`) and has an All / PTO / Sick filter. Badge = pto + sick pending.
+      { href: '/admin/requests', label: 'Time Off', badge: 'timeoff', perm: 'pto' },
       { href: '/admin/schedule', label: 'Schedule', perm: 'scheduling' },
       { href: '/admin/accrual', label: 'Accrual', perm: 'accrual' },
     ],
@@ -217,6 +216,7 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   troubleshooting: 'bg-sky-500/15 text-sky-400',
   pto:         'bg-amber-500/15 text-amber-400',
   sick:        'bg-amber-500/15 text-amber-400',
+  timeoff:     'bg-amber-500/15 text-amber-400',
   usrotors:    'bg-sky-500/15 text-sky-400',
   drafts:      'bg-amber-500/15 text-amber-400',
 }
@@ -270,7 +270,7 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   const pathname = usePathname()
   const router = useRouter()
   const { hasPerm, home, canPreview } = useViewAs()
-  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, usrotors: usRotorsOrders, drafts: draftCount }
+  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, timeoff: ptoPending + sickPending, usrotors: usRotorsOrders, drafts: draftCount }
   const [mobileOpen, setMobileOpen] = useState(false)
 
   // An exact hit, or a real path segment below it — never a raw string prefix, so

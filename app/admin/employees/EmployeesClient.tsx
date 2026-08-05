@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { UserPlus, X, Search, Shield, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
+import { UserPlus, X, Search, Shield, ChevronRight, Eye, EyeOff, Copy, Check, Network } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Employee } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -42,7 +43,7 @@ const TABS: { value: Tab; label: string }[] = [
 
 type EmployeeWithRole = Employee & { role?: StaffRole }
 
-export default function EmployeesClient({ employees }: { employees: EmployeeWithRole[] }) {
+export default function EmployeesClient({ employees, canOrgChart = false }: { employees: EmployeeWithRole[]; canOrgChart?: boolean }) {
   const router = useRouter()
   const sel = useBulkSelect()
   const [search, setSearch]     = useState('')
@@ -131,13 +132,24 @@ export default function EmployeesClient({ employees }: { employees: EmployeeWith
             title="Employees"
             count={`${employees.length} ${employees.length === 1 ? 'employee' : 'employees'}`}
             actions={
-              <button
-                onClick={openModal}
-                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-medium transition-colors"
-              >
-                <UserPlus size={15} />
-                Add Employee
-              </button>
+              <div className="flex items-center gap-2">
+                {canOrgChart && (
+                  <Link
+                    href="/admin/org-chart"
+                    className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-hairline text-ink-secondary hover:bg-surface-strong hover:text-ink text-[13px] font-medium transition-colors"
+                  >
+                    <Network size={15} />
+                    Org Chart
+                  </Link>
+                )}
+                <button
+                  onClick={openModal}
+                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-brand hover:bg-brand-hover text-white text-[13px] font-medium transition-colors"
+                >
+                  <UserPlus size={15} />
+                  Add Employee
+                </button>
+              </div>
             }
           />
 

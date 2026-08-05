@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Search, CornerDownLeft, ArrowUp, ArrowDown,
-  LayoutDashboard, Inbox, Ticket, Boxes, Users, CalendarClock,
+  LayoutDashboard, Inbox, Ticket, Boxes, Users,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
   // NB: Megaphone + GraduationCap dropped with the parked Marketing/Training
@@ -55,8 +55,7 @@ const STATIC: Item[] = [
   // Route stays live. Re-add alongside removing `parked` from the nav group:
   // { id: 'nav-mktg',    label: 'Marketing Calendar', group: 'Go to', icon: Megaphone,     href: '/admin/marketing', keywords: 'marketing calendar social media post linkedin facebook instagram email campaign newsletter blog trade show content schedule', perm: 'marketing_calendar' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },
-  { id: 'nav-pto',     label: 'PTO Requests',     group: 'Go to', icon: Calendar,        href: '/admin/requests/pto', keywords: 'time off vacation', perm: 'pto' },
-  { id: 'nav-sick',    label: 'Sick Time',        group: 'Go to', icon: CalendarClock,   href: '/admin/requests/sick', keywords: 'time off', perm: 'sick' },
+  { id: 'nav-timeoff', label: 'Time Off Requests', group: 'Go to', icon: Calendar,        href: '/admin/requests', keywords: 'pto sick time off vacation leave', perm: 'pto' },
   { id: 'nav-sched',   label: 'Scheduling',       group: 'Go to', icon: Calendar,        href: '/admin/schedule', keywords: 'calendar', perm: 'scheduling' },
   { id: 'nav-accrual', label: 'Accrual',          group: 'Go to', icon: TrendingUp,      href: '/admin/accrual', keywords: 'balances hours', perm: 'accrual' },
   { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability', perm: 'audit' },

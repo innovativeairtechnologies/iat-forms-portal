@@ -1,14 +1,17 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import EmployeesClient from './EmployeesClient'
 import { normalizeRole, type StaffRole } from '@/lib/roles'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EmployeesPage() {
-  const [{ data: employees }, { data: profiles }] = await Promise.all([
+  const [{ data: employees }, { data: profiles }, me] = await Promise.all([
     supabaseAdmin.from('employees').select('*').order('name'),
     supabaseAdmin.from('profiles').select('id, role'),
+    getAdminSurfaceUser(),
   ])
+  const canOrgChart = me?.can('org_chart') ?? false
 
   // Customers ARE in the employees table — handle_new_user() (migration 001)
   // fires for every auth user, including the ones the customer-invite route
@@ -33,5 +36,5 @@ export default async function EmployeesPage() {
       role: roleMap[e.id] ?? ('production' as StaffRole),
     }))
 
-  return <EmployeesClient employees={employeesWithRole} />
+  return <EmployeesClient employees={employeesWithRole} canOrgChart={canOrgChart} />
 }

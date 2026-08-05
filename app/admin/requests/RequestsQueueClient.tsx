@@ -7,7 +7,7 @@ import type { TimeOffRequest, Employee } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
 import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
-import { StatusPill, tabCx, tabCountCx, type Tone } from '@/components/admin/list'
+import { StatusPill, tabCx, tabCountCx, filterPillCx, type Tone } from '@/components/admin/list'
 import {
   ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar, CardTable, Row,
   EmptyRow, Pagination, usePagedList, ToneAvatar, ListSearch,
@@ -34,21 +34,29 @@ function formatDate(d: string) {
 export default function RequestsQueueClient({
   requests,
   title = 'Time Off Requests',
+  showTypeFilter = false,
 }: {
   requests: RequestWithEmployee[]
   title?: string
+  /** Show the All / PTO / Sick type toggle. Set on the combined /admin/requests
+      queue; the pre-scoped /admin/requests/[type] routes leave it off. */
+  showTypeFilter?: boolean
 }) {
   const router = useRouter()
   const sel = useBulkSelect()
   const [isPending, startTransition] = useTransition()
+  const [type, setType] = useState<'all' | 'pto' | 'sick'>('all')
   const [filter, setFilter] = useState<Filter>('pending')
   const [query, setQuery] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  // Queue summary over the full dataset for this page. The /requests/[type]
-  // routes are pre-scoped server-side, so these read PTO-only / sick-only there.
-  const pendingReqs = requests.filter(r => r.status === 'pending')
+  // The type toggle narrows first. The /requests/[type] routes are pre-scoped
+  // server-side (showTypeFilter off), so `scoped` is the whole dataset there.
+  const scoped = (showTypeFilter && type !== 'all') ? requests.filter(r => r.type === type) : requests
+
+  // Queue summary over the scoped set.
+  const pendingReqs = scoped.filter(r => r.status === 'pending')
   const pendingCount = pendingReqs.length
   const hoursPending = pendingReqs.reduce((a, r) => a + (r.hours_requested || 0), 0)
   const overBalance = pendingReqs.filter(r => {
@@ -58,7 +66,7 @@ export default function RequestsQueueClient({
 
   // Tab filter + search → the working view (before pagination).
   const q = query.trim().toLowerCase()
-  const filtered = requests.filter(r => {
+  const filtered = scoped.filter(r => {
     if (filter !== 'all' && r.status !== filter) return false
     if (q) {
       const hay = [r.employees?.name, r.employees?.email, r.notes].filter(Boolean).join(' ').toLowerCase()
@@ -71,9 +79,9 @@ export default function RequestsQueueClient({
 
   // Clear the selection when the view changes so a bulk delete can never touch
   // requests outside what's on screen.
-  useEffect(() => { sel.clear() }, [filter, query]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { sel.clear() }, [filter, query, type]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const paged = usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${filter}|${query}` })
+  const paged = usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${type}|${filter}|${query}` })
   const pageRows = filtered.slice(paged.start, paged.end)
 
   const review = async (id: string, decision: 'approved' | 'denied') => {
@@ -114,7 +122,7 @@ export default function RequestsQueueClient({
         <Toolbar>
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {(['pending', 'approved', 'denied', 'all'] as Filter[]).map(f => {
-              const count = f === 'all' ? requests.length : requests.filter(r => r.status === f).length
+              const count = f === 'all' ? scoped.length : scoped.filter(r => r.status === f).length
               const active = filter === f
               return (
                 <button key={f} onClick={() => setFilter(f)} className={cn(tabCx(active), 'capitalize')}>
@@ -124,6 +132,20 @@ export default function RequestsQueueClient({
               )
             })}
           </div>
+          {/* Type toggle — the combined queue's "choose one of the two" (PTO/Sick). */}
+          {showTypeFilter && (
+            <div className="flex items-center gap-1">
+              {(['all', 'pto', 'sick'] as const).map(t => {
+                const count = t === 'all' ? requests.length : requests.filter(r => r.type === t).length
+                return (
+                  <button key={t} onClick={() => setType(t)} className={filterPillCx(type === t)}>
+                    {t === 'all' ? 'All' : t === 'pto' ? 'PTO' : 'Sick'}
+                    <span className="text-[10px] tabular-nums opacity-60">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <div className="flex-1" />
           {query && (
             <span className="text-[12px] text-ink-muted tabular-nums whitespace-nowrap">

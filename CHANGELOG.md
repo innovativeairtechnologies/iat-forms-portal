@@ -2,6 +2,24 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-05 — Condense the admin rail: fewer People / Operations items
+
+Trimming nav clutter without dropping any capability:
+
+- **Operations** loses the standalone **Support form** item. It pointed at `/admin/support-content`,
+  which the **Forms** tab already lists as **Equipment Support** in its Specialized-forms card — a
+  duplicate. Route stays live.
+- **People › Org Chart** is no longer its own rail entry; it's an **Org Chart** link in the header of
+  the **Employees** page (perm-gated on `org_chart`). Route stays live.
+- **People › PTO** and **Sick Time** merge into one **Time Off** item → `/admin/requests`. That queue
+  already loads both types; it now has an **All / PTO / Sick** filter so the reviewer picks one of the
+  two on the page, and the stat strip + status counts follow the selection. The rail badge is the
+  combined pto + sick pending count. The `/admin/requests/pto|sick` routes still work by URL (they
+  stay pre-scoped, no toggle).
+
+The ⌘K palette's separate PTO / Sick entries collapse into one **Time Off Requests** (keywords cover
+both terms).
+
 ## 2026-08-05 — Washdown Load Calculator, and Internal Apps becomes the one home for tools
 
 Two things, both about **Operations → Internal Apps**.
