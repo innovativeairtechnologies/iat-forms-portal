@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Wind, Image as ImageIcon, Zap, Calculator, Flame, PartyPopper } from 'lucide-react'
+import { Wind, Image as ImageIcon, Zap, Calculator, Flame, PartyPopper, Droplets } from 'lucide-react'
 
 /* Single source of truth for the internal-apps launcher ("Internal Apps" in the
    nav — renamed from "Tools" so it isn't confused with the Tool Crib check-out
@@ -19,12 +19,19 @@ export type ToolApp = {
 
 export const TOOL_APPS: ToolApp[] = [
   {
+    title: 'Washdown Load Calculator',
+    desc: 'Estimate the moisture (grains/hr) a daily washdown adds to a space — residual-film average and Carrier peak — and roll it into the total the desiccant unit must remove.',
+    href: '/tools/washdown-load-calculator.html',
+    icon: Droplets,
+    external: true,
+    tag: 'New',
+  },
+  {
     title: 'Gas Burner Selection Guide',
     desc: 'Size the AH-MA gas burner length, plenum height, profile-plate gap, and gas pressure-tap differential from the desiccant wheel and reactivation duty on your flow diagram — packaged as a submittal-ready PDF.',
     href: '/tools/burner-selection-guide.html',
     icon: Flame,
     external: true,
-    tag: 'New',
   },
   {
     title: 'Duct Traverse Report',

@@ -10,7 +10,7 @@ import {
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
   // NB: Megaphone + GraduationCap dropped with the parked Marketing/Training
   // entries below — restore them here when those are re-listed.
-  MessageCircle, KeyRound, Wrench, Map as MapIcon,
+  MessageCircle, KeyRound, Wrench, Map as MapIcon, Gauge, Workflow,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -61,7 +61,12 @@ const STATIC: Item[] = [
   { id: 'nav-accrual', label: 'Accrual',          group: 'Go to', icon: TrendingUp,      href: '/admin/accrual', keywords: 'balances hours', perm: 'accrual' },
   { id: 'nav-audit',   label: 'Audit Log',        group: 'Go to', icon: ShieldCheck,     href: '/admin/audit', keywords: 'history activity accountability', perm: 'audit' },
   { id: 'nav-perms',   label: 'Permissions',      group: 'Go to', icon: KeyRound,        href: '/admin/permissions', keywords: 'roles access control matrix toggles', perm: 'permissions' },
-  { id: 'nav-tools',   label: 'Internal Apps',    group: 'Go to', icon: Wrench,          href: '/admin/tools', keywords: 'tools apps launcher burner selection duct traverse calculator voltage field', perm: 'tools' },
+  { id: 'nav-tools',   label: 'Internal Apps',    group: 'Go to', icon: Wrench,          href: '/admin/tools', keywords: 'tools apps launcher washdown load burner selection duct traverse calculator voltage field', perm: 'tools' },
+  // Sizing Studio + Application Diagrams lost their sidebar entries when they moved
+  // onto Internal Apps, so ⌘K is now their only shortcut — listed on their OWN perm,
+  // not `tools`, to match the gating on that page.
+  { id: 'nav-sizing',  label: 'Sizing Studio',    group: 'Go to', icon: Gauge,           href: '/admin/sizing-studio', keywords: 'psychrometric sizing selection unit dehumidifier grains load chart', perm: 'sizing' },
+  { id: 'nav-diagram', label: 'Application Diagrams', group: 'Go to', icon: Workflow,    href: '/admin/diagram-studio', keywords: 'airflow figure drawing proposal submittal schematic diagram studio', perm: 'diagrams' },
   // Training (IAT Learn) delisted while its nav group is parked in AdminSidebar,
   // same reasoning as Marketing Calendar above. Routes stay live by URL; re-add
   // these four alongside removing `parked` from the Training nav group.

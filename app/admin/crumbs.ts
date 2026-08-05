@@ -23,7 +23,10 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/tool-crib',       section: 'Operations', label: 'Tool Crib' },
   { prefix: '/admin/production',      section: 'Operations', label: 'Production Board' },
   { prefix: '/admin/srv',             section: 'Operations', label: 'SRV Form' },
+  // Sizing Studio + Application Diagrams hang off Operations › Internal Apps
+  // (they were pulled out of the Sales rail group), so they crumb as Operations.
   { prefix: '/admin/sizing-studio',   section: 'Operations', label: 'Sizing Studio' },
+  { prefix: '/admin/diagram-studio',  section: 'Operations', label: 'Application Diagrams' },
   { prefix: '/admin/gantt',           section: 'Operations', label: 'Gantt' },
   // Sales
   { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },
@@ -31,7 +34,6 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/territories',     section: 'Sales',   label: 'Territories' },
   { prefix: '/admin/customers',       section: 'Sales',   label: 'Customers' },
   { prefix: '/admin/case-studies',    section: 'Sales',   label: 'Case Studies' },
-  { prefix: '/admin/diagram-studio',  section: 'Sales',   label: 'Application Diagrams' },
   { prefix: '/admin/presentations',   section: 'Sales',   label: 'Presentations' },
   // Marketing
   { prefix: '/admin/marketing',       section: 'Marketing', label: 'Calendar' },

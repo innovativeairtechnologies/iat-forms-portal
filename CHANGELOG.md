@@ -2,6 +2,48 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-05 — Washdown Load Calculator, and Internal Apps becomes the one home for tools
+
+Two things, both about **Operations → Internal Apps**.
+
+**The Washdown Moisture Load Calculator** (`/tools/washdown-load-calculator.html`) is a 1:1 port
+of the *IAT Washdown Load Calculator* workbook into a portal app. It estimates the moisture a
+daily washdown adds to a space, in grains/hr — the number that feeds desiccant unit selection.
+
+The premise that makes it right: **the load is not the water you spray**, most of which drains
+away. It is only the water that *evaporates* into the room air. The tool estimates that two
+ways and rolls each into the total space load. **Method 1 (residual film)** takes the thin film
+left clinging after drainage, converts it to pounds over the wetted area, and averages it across
+the drydown — the **recovery basis**. **Method 2 (Carrier)** gives the instantaneous peak while
+surfaces are fully wet, driven by warm water, airflow and dry target air — the **hold-RH basis**.
+
+**The caveat is built into the page, not buried in a note.** The peak only lasts until the film
+is gone. With the workbook's own defaults that is **13 minutes**, and the peak basis is **9.1×**
+the recovery basis — sizing on the raw peak would badly oversize the unit. Under 30 minutes the
+page raises an amber callout saying exactly that, and the recommendation line defaults to the
+recovery basis unless a brief RH excursion is unacceptable for the product. The same caveat
+prints on the PDF.
+
+Film thickness is the single biggest driver, so it gets preset chips (0.003″ squeegeed →
+0.020″ poorly drained) and the page says plainly that drainage and squeegee practice shrink the
+load more than any unit upsize. That is a sales lever, not a footnote.
+
+Water colder than the room's vapor pressure now reads *"No evaporation"* instead of a negative
+load; blank or zero inputs render `—`, never `NaN`. All twelve outputs were checked against the
+values the xlsx has cached in its own cells and match to floating-point exactness — the density,
+grains, gallons, latent-heat and Magnus constants are the workbook's, so **don't change one
+without the other**; sales quotes off both. **Download PDF** produces a one-page submittal sheet.
+
+**Sizing Studio and Application Diagrams moved onto the Internal Apps page**, out of the
+sidebar's Sales group. Every internal tool now has one home rather than being scattered across
+nav groups, joining Presentations (which already sat there). Only the rail entry moved — routes,
+perms and middleware gating are untouched, so bookmarks still work and `ADMIN_PATH_PERMS` still
+enforces `sizing` / `diagrams`. Each is listed on the page under **its own** perm, so a `tools`
+holder without `sizing` doesn't get a dead link. Since neither has a rail entry any more, both
+were added to the ⌘K palette on those same perms — that's now their keyboard shortcut.
+
+New doc: [docs/internal-apps.md](docs/internal-apps.md).
+
 ## 2026-08-05 — SharePoint → Jerry's Brain goes live (pull half, human-gated)
 
 The read-only SharePoint pull has been sitting inert since 2026-07-21, waiting on IT's Entra app

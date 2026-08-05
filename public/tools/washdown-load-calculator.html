@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IAT · Washdown Moisture Load Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<style>
+  /* ── Quiet Precision tokens (DESIGN.md §2.2 light ladder) ─────────────────── */
+  :root{
+    --canvas:#F7F6F3; --surface:#FFFFFF; --surface-soft:#FBFAF8; --surface-strong:#EFEDE8;
+    --hairline:#E8E6E1; --hairline-soft:#F0EEE9; --hairline-strong:#D6D3CC;
+    --ink:#1F1E1B; --ink-secondary:#57544D; --ink-muted:#8A867C; --ink-faint:#B3AFA5;
+    --brand:#089447; --brand-hover:#077A3C; --brand-soft:#E9F6EE; --brand-ink:#0B6B36;
+    --amber:#92400e; --amber-soft:#FEF6E7;
+    --sky:#0369a1; --sky-soft:#EFF6FF;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--canvas); color:var(--ink);
+    font-feature-settings:'cv02','cv03','cv04','cv11';
+    -webkit-font-smoothing:antialiased;
+  }
+  .tnum{font-feature-settings:'tnum';font-variant-numeric:tabular-nums;}
+
+  /* ── App header ───────────────────────────────────────────────────────────── */
+  .appbar{
+    display:flex;align-items:center;gap:16px;
+    padding:14px 28px;background:var(--surface);
+    border-bottom:1px solid var(--hairline);
+  }
+  .appbar img{height:34px;width:auto;display:block;flex-shrink:0;}
+  .appbar .wm{border-left:1px solid var(--hairline);padding-left:16px;}
+  .appbar .wm .over{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted);}
+  .appbar .wm .name{font-size:13px;font-weight:600;color:var(--ink);margin-top:1px;letter-spacing:-.006em;}
+
+  /* ── Page title row ───────────────────────────────────────────────────────── */
+  .titlebar{
+    max-width:1200px;margin:0 auto;padding:28px 28px 8px;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .titlebar .over{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:4px;}
+  .titlebar h1{font-size:24px;font-weight:600;letter-spacing:-.02em;margin:0;color:var(--ink);}
+  .titlebar .sub{font-size:13px;color:var(--ink-muted);margin-top:4px;max-width:62ch;line-height:1.5;}
+  .actions{display:flex;gap:8px;flex-shrink:0;}
+
+  /* ── Layout ───────────────────────────────────────────────────────────────── */
+  .wrap{max-width:1200px;margin:0 auto;padding:14px 28px 56px;}
+  .grid{display:grid;grid-template-columns:minmax(320px,380px) 1fr;gap:20px;align-items:start;}
+  @media (max-width:880px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius);
+    padding:20px;
+  }
+  .card + .card{margin-top:16px;}
+  .card h2{
+    font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-muted);margin:0 0 14px;
+  }
+  .card h2.tight{margin-bottom:10px;}
+  .card h2 .eq{text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink-faint);}
+
+  /* ── Fields ───────────────────────────────────────────────────────────────── */
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:12px;font-weight:500;color:var(--ink-secondary);margin-bottom:6px;}
+  .field .hint{font-size:11px;color:var(--ink-faint);font-weight:400;}
+  /* font-size:16px is deliberate — it stops iOS Safari from auto-zooming the
+     whole page every time a field gets focus (it zooms any input < 16px). */
+  input[type=text],input[type=number]{
+    width:100%;height:40px;padding:0 12px;font-family:inherit;font-size:16px;font-weight:500;
+    color:var(--ink);background:var(--surface);border:1px solid var(--hairline);border-radius:8px;
+    -webkit-appearance:none;appearance:none;transition:border-color .12s ease;
+  }
+  input::placeholder{color:var(--ink-faint);font-weight:400;}
+  input:hover{border-color:var(--hairline-strong);}
+  input:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  /* Read-only derived value shown inline under a pair of inputs */
+  .derived{
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--surface-soft);
+    border:1px solid var(--hairline-soft);
+  }
+  .derived .k{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-muted);}
+  .derived .v{font-size:15px;font-weight:600;color:var(--ink);}
+  .derived .v small{font-size:11px;font-weight:500;color:var(--ink-muted);margin-left:3px;}
+
+  /* ── Preset chips (film thickness) ────────────────────────────────────────── */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .chip{
+    border:1px solid var(--hairline-strong);background:var(--surface);color:var(--ink-secondary);
+    font-family:inherit;font-size:12px;font-weight:500;padding:6px 10px;border-radius:8px;cursor:pointer;
+    transition:all .12s ease;text-align:left;line-height:1.25;
+  }
+  .chip:hover{border-color:var(--ink-faint);}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600;}
+  .chip .cap{display:block;font-size:10px;font-weight:500;opacity:.72;margin-top:1px;}
+
+  /* ── Headline stats ───────────────────────────────────────────────────────── */
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--hairline);border-radius:10px;overflow:hidden;border:1px solid var(--hairline);}
+  .stat{background:var(--surface);padding:14px 16px;}
+  .stat .k{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-muted);}
+  .stat .v{font-size:22px;font-weight:600;color:var(--ink);margin-top:4px;letter-spacing:-.02em;line-height:1.1;}
+  .stat .v small{font-size:12px;font-weight:500;color:var(--ink-muted);letter-spacing:0;margin-left:3px;}
+  .stat .sub{font-size:11px;color:var(--ink-faint);margin-top:4px;line-height:1.4;}
+  .stat.brand .v{color:var(--brand-ink);}
+  @media (max-width:520px){ .stats{grid-template-columns:1fr;} }
+
+  /* ── Detail rows (the spreadsheet's calc chain) ───────────────────────────── */
+  .rows{border-top:1px solid var(--hairline-soft);}
+  .r{
+    display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;
+    padding:9px 0;border-bottom:1px solid var(--hairline-soft);
+  }
+  .r .lbl{font-size:12.5px;color:var(--ink-secondary);font-weight:500;}
+  .r .lbl .why{display:block;font-size:11px;color:var(--ink-faint);font-weight:400;margin-top:2px;line-height:1.45;}
+  .r .val{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;}
+  .r .val small{font-size:11px;font-weight:500;color:var(--ink-muted);margin-left:3px;}
+  .r.head .lbl{font-weight:600;color:var(--ink);}
+  .r.head .val{font-size:17px;color:var(--brand-ink);}
+  .r:last-child{border-bottom:none;}
+
+  /* ── Tone pills + callouts ────────────────────────────────────────────────── */
+  .pill{
+    display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+    padding:3px 9px;border-radius:999px;letter-spacing:.01em;
+  }
+  .pill.amber{background:var(--amber-soft);color:var(--amber);}
+  .pill.slate{background:var(--surface-strong);color:var(--ink-secondary);}
+  .callout{
+    margin-top:14px;padding:12px 14px;border-radius:10px;background:var(--surface-soft);
+    border:1px solid var(--hairline);font-size:12px;line-height:1.6;color:var(--ink-secondary);
+  }
+  .callout.warn{background:var(--amber-soft);border-color:#F5E3C4;color:var(--amber);}
+  .callout b{font-weight:600;}
+  .callout .ct{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+
+  /* ── Guidance ─────────────────────────────────────────────────────────────── */
+  .guide h3{font-size:12.5px;font-weight:600;color:var(--ink);margin:16px 0 5px;}
+  .guide h3:first-child{margin-top:0;}
+  .guide p{font-size:12px;line-height:1.65;color:var(--ink-secondary);margin:0 0 8px;}
+  .guide ul{margin:0 0 8px;padding-left:18px;}
+  .guide li{font-size:12px;line-height:1.65;color:var(--ink-secondary);margin-bottom:2px;}
+  .guide li b{font-weight:600;color:var(--ink);}
+  .guide .fx{
+    font-size:12px;color:var(--ink);background:var(--surface-soft);border:1px solid var(--hairline-soft);
+    border-radius:8px;padding:9px 12px;margin:6px 0 10px;line-height:1.55;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────────────────────── */
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:500;
+    height:36px;padding:0 14px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:all .12s ease;
+    white-space:nowrap;
+  }
+  .btn svg{width:15px;height:15px;stroke-width:1.75;}
+  .btn.primary{background:var(--brand);color:#fff;font-weight:600;}
+  .btn.primary:hover{background:var(--brand-hover);}
+  .btn.primary:active{transform:scale(.98);}
+  .btn.secondary{background:var(--surface);border-color:var(--hairline-strong);color:var(--ink-secondary);}
+  .btn.secondary:hover{background:var(--surface-soft);color:var(--ink);}
+
+  .note{font-size:11px;color:var(--ink-faint);line-height:1.6;margin-top:14px;}
+  .note b{color:var(--ink-muted);font-weight:600;}
+
+  @media print{
+    .appbar,.actions,.no-print{display:none!important;}
+    body{background:#fff;}
+    .grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <img id="logo" alt="Innovative Air Technologies">
+  <div class="wm">
+    <div class="over">IAT</div>
+    <div class="name">Innovative Air Technologies</div>
+  </div>
+</header>
+
+<div class="titlebar">
+  <div>
+    <div class="over">Field Tool</div>
+    <h1>Washdown Moisture Load Calculator</h1>
+    <div class="sub">
+      Estimates the moisture a daily washdown adds to a space, in grains/hr — the number that feeds
+      desiccant unit selection. The load is <em>not</em> the water you spray; it is only the water
+      that evaporates into the room air.
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn secondary" id="btnReset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      Reset
+    </button>
+    <button class="btn primary" id="btnPdf">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Download PDF
+    </button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- ── Left: inputs ─────────────────────────────────────────── -->
+    <div>
+      <div class="card">
+        <h2>Project</h2>
+        <div class="row2">
+          <div class="field"><label>Project name</label><input type="text" id="projName" placeholder="e.g. Riverside Foods"></div>
+          <div class="field"><label>Project number</label><input type="text" id="projNum" placeholder="e.g. 24-1183"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Prepared by</label><input type="text" id="tech" placeholder="Your name"></div>
+          <div class="field"><label>Date</label><input type="text" id="date" placeholder="MM/DD/YYYY"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Wetted Area</h2>
+        <div class="field">
+          <label>Floor wetted area <span class="hint">ft² — floor that gets wet during washdown</span></label>
+          <input type="number" id="floorArea" min="0" step="10" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Walls / equipment wetted area <span class="hint">ft² — vertical or equipment surfaces left wet; 0 if none</span></label>
+          <input type="number" id="wallArea" min="0" step="10" placeholder="0">
+        </div>
+        <div class="derived">
+          <span class="k">Total wetted area</span>
+          <span class="v tnum" id="dTotalArea">—</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Residual Film</h2>
+        <div class="field">
+          <label>Film thickness left after draining <span class="hint">in — the single biggest driver of the load</span></label>
+          <input type="number" id="film" min="0" step="0.001" placeholder="0.005">
+          <div class="chips" id="filmChips"></div>
+        </div>
+        <p class="note" style="margin-top:12px;">
+          <b>Drainage and squeegeeing are the biggest levers.</b> Pushing the customer on slope, drains
+          and squeegee practice directly shrinks the load — often more than any unit upsize.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Conditions</h2>
+        <div class="row2">
+          <div class="field"><label>Wash water temp <span class="hint">°F</span></label><input type="number" id="waterT" step="1" placeholder="90"></div>
+          <div class="field"><label>Room air temp <span class="hint">°F</span></label><input type="number" id="roomT" step="1" placeholder="70"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Target RH <span class="hint">%</span></label><input type="number" id="rh" min="0" max="100" step="1" placeholder="70"></div>
+          <div class="field"><label>Air velocity <span class="hint">ft/min</span></label><input type="number" id="vel" min="0" step="5" placeholder="100"></div>
+        </div>
+        <p class="note">
+          <b>Velocity.</b> ~50 still air, ~100 typical, 150+ with strong supply air sweeping the floor.
+          Warm water and dry target air both push the peak rate up.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Schedule</h2>
+        <div class="row2">
+          <div class="field"><label>Drydown time <span class="hint">hr</span></label><input type="number" id="dry" min="0" step="0.25" placeholder="2"></div>
+          <div class="field"><label>Washdowns / day <span class="hint">per 24 hr</span></label><input type="number" id="perDay" min="0" step="1" placeholder="1"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Other Space Loads</h2>
+        <div class="field">
+          <label>All non-washdown loads <span class="hint">grains/hr</span></label>
+          <input type="number" id="other" min="0" step="1000" placeholder="0">
+        </div>
+        <p class="note">
+          Sum of permeation through walls, infiltration and door openings, fresh-air makeup, people, and
+          product/process moisture — from your standard space calc.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Right: results ───────────────────────────────────────── -->
+    <div>
+      <!-- Design point roll-up -->
+      <div class="card">
+        <h2 class="tight">Design Point <span class="eq">— washdown + other space loads</span></h2>
+        <div class="stats">
+          <div class="stat brand">
+            <div class="k">Recovery basis</div>
+            <div class="v tnum" id="rTotalAvg">—<small>gr/hr</small></div>
+            <div class="sub">Method 1 average + other loads. Sizes the unit to recover the space after each washdown.</div>
+          </div>
+          <div class="stat">
+            <div class="k">Hold-RH basis</div>
+            <div class="v tnum" id="rTotalPeak">—<small>gr/hr</small></div>
+            <div class="sub">Method 2 peak + other loads. Sizes to hold RH straight through the wash.</div>
+          </div>
+        </div>
+        <div class="callout" id="recommend">
+          <div class="ct"><span class="pill slate" id="recPill">Enter inputs</span></div>
+          <span id="recText">Fill in wetted area, film thickness and drydown time to see a recommendation.</span>
+        </div>
+      </div>
+
+      <!-- Method 1 -->
+      <div class="card">
+        <h2 class="tight">Method 1 — Residual Film <span class="eq">(average across drydown)</span></h2>
+        <div class="rows">
+          <div class="r">
+            <span class="lbl">Residual water loading
+              <span class="why">film (ft) × 62.4 lb/ft³, the density of water</span></span>
+            <span class="val tnum" id="m1Loading">—<small>lb/ft²</small></span>
+          </div>
+          <div class="r">
+            <span class="lbl">Water left per washdown
+              <span class="why">total water that evaporates into the space per event</span></span>
+            <span class="val tnum" id="m1Water">—<small>lb</small></span>
+          </div>
+          <div class="r">
+            <span class="lbl">Average evaporation rate
+              <span class="why">water ÷ drydown time</span></span>
+            <span class="val tnum" id="m1Rate">—<small>lb/hr</small></span>
+          </div>
+          <div class="r head">
+            <span class="lbl">Moisture load (average)
+              <span class="why">size on this to RECOVER the space after washdown</span></span>
+            <span class="val tnum" id="m1Load">—<small>gr/hr</small></span>
+          </div>
+          <div class="r">
+            <span class="lbl">Water per washdown</span>
+            <span class="val tnum" id="m1Gal">—<small>gal</small></span>
+          </div>
+          <div class="r">
+            <span class="lbl">Water per day
+              <span class="why">evaporated water only, not total spray</span></span>
+            <span class="val tnum" id="m1GalDay">—<small>gal/day</small></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Method 2 -->
+      <div class="card">
+        <h2 class="tight">Method 2 — Peak Evaporation <span class="eq">(Carrier, surfaces fully wet)</span></h2>
+        <div class="rows">
+          <div class="r">
+            <span class="lbl">P<sub>w</sub> — vapor pressure at water surface
+              <span class="why">saturation pressure at the wash water temperature (Magnus equation)</span></span>
+            <span class="val tnum" id="m2Pw">—<small>in. Hg</small></span>
+          </div>
+          <div class="r">
+            <span class="lbl">P<sub>a</sub> — vapor pressure of room air
+              <span class="why">saturation pressure at room temp × target RH</span></span>
+            <span class="val tnum" id="m2Pa">—<small>in. Hg</small></span>
+          </div>
+          <div class="r">
+            <span class="lbl">Peak evaporation rate
+              <span class="why">A × (95 + 0.425 V) × (P<sub>w</sub> − P<sub>a</sub>) ÷ 1050</span></span>
+            <span class="val tnum" id="m2Rate">—<small>lb/hr</small></span>
+          </div>
+          <div class="r head">
+            <span class="lbl">Moisture load (peak)
+              <span class="why">size on this to HOLD RH during washdown — brief, see below</span></span>
+            <span class="val tnum" id="m2Load">—<small>gr/hr</small></span>
+          </div>
+          <div class="r">
+            <span class="lbl">Time surfaces stay fully wet at the peak rate</span>
+            <span class="val tnum" id="m2Window">—<small>min</small></span>
+          </div>
+        </div>
+        <div class="callout" id="peakNote">
+          <div class="ct"><span class="pill slate" id="peakPill">Reality check</span></div>
+          <span id="peakText">The peak only lasts until the residual film is gone.</span>
+        </div>
+      </div>
+
+      <!-- Guidance -->
+      <div class="card guide">
+        <h2 class="tight">Guidance &amp; References</h2>
+
+        <h3>Method 1 — Residual Film (average)</h3>
+        <p>
+          After washdown, a thin film of water clings to surfaces and evaporates over the drydown period.
+          Estimate the film thickness left after it stops draining, multiply by wetted area to get pounds of
+          water, and divide by drydown time for the average rate. Use this to size for <b>recovering</b> the
+          space after each washdown.
+        </p>
+
+        <h3>Method 2 — Peak Evaporation Rate (Carrier)</h3>
+        <p>
+          While surfaces are fully wet, evaporation runs at its peak. The Carrier equation gives that
+          instantaneous rate, driven by warm water, high airflow, and dry target air. Use it when RH must be
+          <b>held</b> during and immediately after the washdown — it is the more conservative number.
+        </p>
+        <div class="fx tnum">E = A × (95 + 0.425 V) × (P<sub>w</sub> − P<sub>a</sub>) ÷ 1050 &nbsp;&nbsp;·&nbsp;&nbsp; Y = 1050 Btu/lb latent heat</div>
+        <p>
+          <b>Important:</b> the peak rate only lasts until the residual film evaporates (shown above in
+          minutes). Because there is only a small, finite amount of water, that window is usually short.
+          Sizing on the raw peak can badly oversize the unit — many designs size on the Method 1 recovery
+          basis and accept a brief RH excursion during the wash. Use the peak when a short excursion is
+          unacceptable for a sensitive product or process.
+        </p>
+
+        <h3>Typical residual film thickness</h3>
+        <ul>
+          <li><b>0.003 in</b> — smooth sealed floor, good slope, squeegeed</li>
+          <li><b>0.005 in</b> — sealed floor, fair drainage <em>(good default)</em></li>
+          <li><b>0.010 in</b> — textured surface, average drainage</li>
+          <li><b>0.015–0.020 in</b> — rough, porous, or poorly drained surfaces</li>
+        </ul>
+
+        <h3>Key conversions (IAT framework)</h3>
+        <div class="fx tnum">grains/hr = lb/hr × 7,000 &nbsp;&nbsp;|&nbsp;&nbsp; gallons = lb ÷ 8.34 &nbsp;&nbsp;|&nbsp;&nbsp; sea-level barometric pressure = 29.921 in. Hg</div>
+
+        <h3>Applying the result</h3>
+        <p>
+          Add the washdown load to the space's other loads — vapor permeation, infiltration and door
+          openings, fresh-air makeup, people, and product — to get the total the desiccant unit must remove.
+          The Design Point above does this once you enter your other-loads total.
+        </p>
+
+        <p class="note">
+          Source: IAT Compact Series Performance Curves &amp; Compact Series IOM. This tool provides
+          engineering estimates for unit selection — confirm final sizing with IAT, 770-788-6744.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const LOGO = "data:image/png;base64,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";
+document.getElementById('logo').src = LOGO;
+</script>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ── Model ───────────────────────────────────────────────────────────────────
+   A 1:1 port of "IAT Washdown Load Calculator.xlsx" (Washdown Calculator sheet).
+   Every constant below is the spreadsheet's — 62.4 lb/ft³ water density, 7,000
+   grains per pound, 8.34 lb/gal, the Magnus saturation-pressure coefficients,
+   and Carrier's 1050 Btu/lb latent heat. Do not "improve" them without a matching
+   change to the workbook; sales quotes off both.                              */
+
+const WATER_DENSITY = 62.4;   // lb/ft³
+const GRAINS_PER_LB = 7000;
+const LB_PER_GAL    = 8.34;
+const LATENT_HEAT   = 1050;   // Btu/lb — Carrier's Y
+const MMHG_TO_INHG  = 0.2953; // the workbook's kPa → in. Hg factor
+
+const FILM_PRESETS = [
+  { v: 0.003, cap: 'smooth, squeegeed' },
+  { v: 0.005, cap: 'fair drainage' },
+  { v: 0.010, cap: 'textured / average' },
+  { v: 0.015, cap: 'rough / porous' },
+  { v: 0.020, cap: 'poorly drained' },
+];
+
+const DEFAULTS = {
+  floorArea: 2640, wallArea: 1030, film: 0.005,
+  waterT: 90, roomT: 70, rh: 70, vel: 100,
+  dry: 2, perDay: 1, other: 0,
+};
+
+const num = id => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : NaN; };
+
+// Saturation vapor pressure over water, in. Hg (Magnus, °C in).
+function satPressure(tC){
+  return 0.61094 * Math.exp(17.625 * tC / (tC + 243.04)) * MMHG_TO_INHG;
+}
+const fToC = f => (f - 32) * 5 / 9;
+
+function model(){
+  const floorArea = num('floorArea'), wallArea = num('wallArea'), film = num('film');
+  const waterT = num('waterT'), roomT = num('roomT'), rh = num('rh'), vel = num('vel');
+  const dry = num('dry'), perDay = num('perDay'), other = num('other');
+
+  const area = (Number.isFinite(floorArea) ? floorArea : 0) + (Number.isFinite(wallArea) ? wallArea : 0);
+  const hasArea = Number.isFinite(floorArea) || Number.isFinite(wallArea);
+
+  const out = { area: hasArea ? area : null, other: Number.isFinite(other) ? other : 0 };
+
+  // ── Method 1 — residual film, averaged across the drydown ──────────────────
+  if (Number.isFinite(film)) out.loading = film / 12 * WATER_DENSITY;      // lb/ft²
+  if (out.loading != null && out.area != null) out.water = out.area * out.loading;
+  if (out.water != null && Number.isFinite(dry) && dry > 0) {
+    out.avgRate = out.water / dry;                                          // lb/hr
+    out.avgLoad = out.avgRate * GRAINS_PER_LB;                              // grains/hr
+  }
+  if (out.water != null) {
+    out.gal = out.water / LB_PER_GAL;
+    if (Number.isFinite(perDay)) out.galDay = out.gal * perDay;
+  }
+
+  // ── Method 2 — Carrier peak while surfaces are fully wet ───────────────────
+  if (Number.isFinite(waterT)) out.pw = satPressure(fToC(waterT));
+  if (Number.isFinite(roomT) && Number.isFinite(rh)) out.pa = satPressure(fToC(roomT)) * (rh / 100);
+  if (out.pw != null && out.pa != null && out.area != null && Number.isFinite(vel)) {
+    // A room colder than the water is the normal case. If the water is at or below
+    // the room's vapor pressure nothing evaporates — the surface would collect
+    // condensate instead, which is not a load this tool models.
+    out.driving = out.pw - out.pa;
+    out.peakRate = Math.max(0, out.area * (95 + 0.425 * vel) * out.driving / LATENT_HEAT);
+    out.peakLoad = out.peakRate * GRAINS_PER_LB;
+    if (out.water != null && out.peakRate > 0) out.peakWindow = out.water / out.peakRate * 60; // min
+  }
+
+  // ── Roll-up ────────────────────────────────────────────────────────────────
+  if (out.avgLoad  != null) out.totalAvg  = out.avgLoad  + out.other;
+  if (out.peakLoad != null) out.totalPeak = out.peakLoad + out.other;
+  return out;
+}
+
+// number formatting -----------------------------------------------------------
+const fmt = (v, dp = 0) => v == null || !Number.isFinite(v)
+  ? '—'
+  : v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const unit = (v, u, dp = 0) => v == null || !Number.isFinite(v) ? '—' : `${fmt(v, dp)}<small>${u}</small>`;
+
+function render(){
+  const d = model();
+
+  $('dTotalArea').innerHTML = unit(d.area, 'ft²');
+
+  // Method 1
+  $('m1Loading').innerHTML = unit(d.loading, 'lb/ft²', 4);
+  $('m1Water').innerHTML   = unit(d.water, 'lb', 1);
+  $('m1Rate').innerHTML    = unit(d.avgRate, 'lb/hr', 1);
+  $('m1Load').innerHTML    = unit(d.avgLoad, 'gr/hr');
+  $('m1Gal').innerHTML     = unit(d.gal, 'gal', 1);
+  $('m1GalDay').innerHTML  = unit(d.galDay, 'gal/day', 1);
+
+  // Method 2
+  $('m2Pw').innerHTML     = unit(d.pw, 'in. Hg', 3);
+  $('m2Pa').innerHTML     = unit(d.pa, 'in. Hg', 3);
+  $('m2Rate').innerHTML   = unit(d.peakRate, 'lb/hr', 1);
+  $('m2Load').innerHTML   = unit(d.peakLoad, 'gr/hr');
+  $('m2Window').innerHTML = unit(d.peakWindow, 'min', 1);
+
+  // Roll-up
+  $('rTotalAvg').innerHTML  = unit(d.totalAvg, 'gr/hr');
+  $('rTotalPeak').innerHTML = unit(d.totalPeak, 'gr/hr');
+
+  renderPeakNote(d);
+  renderRecommendation(d);
+}
+
+function renderPeakNote(d){
+  const pill = $('peakPill'), text = $('peakText'), box = $('peakNote');
+  box.className = 'callout';
+  pill.className = 'pill slate';
+
+  if (d.driving != null && d.driving <= 0){
+    pill.className = 'pill amber';
+    box.className = 'callout warn';
+    pill.textContent = 'No evaporation';
+    text.innerHTML = 'At this wash water temperature the surface vapor pressure is at or below the room air\'s — '
+      + 'water would condense rather than evaporate. Check the wash water temp and target RH.';
+    return;
+  }
+  if (d.peakWindow == null){
+    pill.textContent = 'Reality check';
+    text.textContent = 'The peak only lasts until the residual film is gone.';
+    return;
+  }
+  if (d.peakWindow < 30){
+    pill.className = 'pill amber';
+    box.className = 'callout warn';
+    pill.textContent = 'Brief peak — ' + fmt(d.peakWindow, 0) + ' min';
+    text.innerHTML = 'There is only a finite amount of water on the floor, and at the peak rate it is gone in '
+      + '<b>' + fmt(d.peakWindow, 1) + ' minutes</b>. Sizing on the raw peak here would greatly oversize the unit. '
+      + 'Most designs size on the Method 1 recovery basis and accept a brief RH excursion during the wash.';
+  } else {
+    pill.textContent = 'Peak holds ' + fmt(d.peakWindow, 0) + ' min';
+    text.innerHTML = 'Surfaces stay fully wet for <b>' + fmt(d.peakWindow, 1) + ' minutes</b> at the peak rate — '
+      + 'long enough that the peak is worth taking seriously if RH must hold through the wash.';
+  }
+}
+
+function renderRecommendation(d){
+  const pill = $('recPill'), text = $('recText');
+  if (d.totalAvg == null){
+    pill.className = 'pill slate';
+    pill.textContent = 'Enter inputs';
+    text.textContent = 'Fill in wetted area, film thickness and drydown time to see a recommendation.';
+    return;
+  }
+  const ratio = (d.totalPeak != null && d.totalAvg > 0) ? d.totalPeak / d.totalAvg : null;
+  pill.className = 'pill slate';
+  pill.textContent = 'Recommendation';
+  let msg = 'Size on the <b>recovery basis</b> — ' + fmt(d.totalAvg) + ' grains/hr — unless a brief RH '
+          + 'excursion during the wash is unacceptable for this product or process.';
+  if (ratio != null && ratio > 1)
+    msg += ' The hold-RH basis is <b>' + fmt(ratio, 1) + '×</b> larger; that is the cost of holding RH straight through the washdown.';
+  text.innerHTML = msg;
+}
+
+/* ── Film thickness presets ─────────────────────────────────────────────────── */
+function renderChips(){
+  const box = $('filmChips');
+  box.innerHTML = '';
+  const cur = parseFloat($('film').value);
+  FILM_PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (Math.abs(cur - p.v) < 1e-9 ? ' on' : '');
+    b.innerHTML = `${p.v.toFixed(3)}″<span class="cap">${p.cap}</span>`;
+    b.addEventListener('click', () => { $('film').value = p.v; renderChips(); render(); });
+    box.appendChild(b);
+  });
+}
+
+/* ── Wiring ─────────────────────────────────────────────────────────────────── */
+const INPUT_IDS = ['floorArea','wallArea','film','waterT','roomT','rh','vel','dry','perDay','other'];
+const META_IDS  = ['projName','projNum','tech','date'];
+
+INPUT_IDS.forEach(id => $(id).addEventListener('input', () => {
+  if (id === 'film') renderChips();
+  render();
+}));
+
+function applyDefaults(){
+  Object.entries(DEFAULTS).forEach(([id, v]) => { $(id).value = v; });
+  renderChips();
+  render();
+}
+
+$('btnReset').addEventListener('click', () => {
+  META_IDS.forEach(id => { if (id !== 'date') $(id).value = ''; });
+  applyDefaults();
+  $('date').value = today();
+});
+
+function today(){
+  const t = new Date();
+  return `${t.getMonth() + 1}/${t.getDate()}/${t.getFullYear()}`;
+}
+
+/* ── PDF (jsPDF) ────────────────────────────────────────────────────────────── */
+function buildPdf(){
+  if (!window.jspdf || !window.jspdf.jsPDF) return null;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  const d = model();
+  const pageW = doc.internal.pageSize.getWidth();
+  const M = 16;
+  let y = M;
+
+  const INK = [31,30,27], MUTED = [138,134,124], FAINT = [179,175,165], BRAND = [11,107,54];
+  const setF = (style, size, color) => { doc.setFont('helvetica', style); doc.setFontSize(size); doc.setTextColor(color[0], color[1], color[2]); };
+
+  // header band — the logo is a portrait mark (w/h ≈ 0.783); size by height
+  try { const lh = 13, lw = lh * (3020/3857); doc.addImage(LOGO, 'PNG', M, y + 1, lw, lh); } catch(e){}
+  doc.setDrawColor(232,230,225); doc.setLineWidth(0.3);
+  doc.line(M, y+16, pageW-M, y+16);
+  setF('bold', 15, INK);
+  doc.text('Washdown Moisture Load', pageW-M, y+7, { align:'right' });
+  setF('normal', 9, MUTED);
+  doc.text('Innovative Air Technologies', pageW-M, y+12.5, { align:'right' });
+  y += 24;
+
+  // meta grid
+  const meta = [['Project', $('projName').value || '—'], ['Project #', $('projNum').value || '—'],
+                ['Prepared by', $('tech').value || '—'], ['Date', $('date').value || '—']];
+  const colW = (pageW-2*M)/4;
+  meta.forEach((m,i) => {
+    const x = M + colW*i;
+    setF('bold', 7.5, MUTED); doc.text(m[0].toUpperCase(), x, y);
+    setF('normal', 10.5, INK); doc.text(String(m[1]), x, y+5.5);
+  });
+  y += 13;
+  doc.setDrawColor(240,238,233); doc.line(M, y, pageW-M, y); y += 8;
+
+  // headline design point
+  const heads = [
+    ['Recovery basis (Method 1 + other)', pdfNum(d.totalAvg) + ' gr/hr'],
+    ['Hold-RH basis (Method 2 + other)',  pdfNum(d.totalPeak) + ' gr/hr'],
+  ];
+  const hw = (pageW-2*M)/2;
+  heads.forEach((h,i) => {
+    const x = M + hw*i + (i ? 2 : 0);
+    doc.setDrawColor(232,230,225); doc.setFillColor(251,250,248);
+    doc.roundedRect(x, y, hw-2, 19, 2, 2, 'FD');
+    setF('bold', 7, MUTED); doc.text(h[0].toUpperCase(), x+4, y+6.5);
+    setF('bold', 14, i === 0 ? BRAND : INK); doc.text(h[1], x+4, y+14.5);
+  });
+  y += 27;
+
+  // inputs
+  y = pdfSection(doc, 'INPUTS', M, y, pageW);
+  y = pdfPairs(doc, [
+    ['Floor wetted area', pdfNum(numOrNull('floorArea')) + ' ft²'],
+    ['Walls / equipment', pdfNum(numOrNull('wallArea')) + ' ft²'],
+    ['Total wetted area', pdfNum(d.area) + ' ft²'],
+    ['Residual film', pdfNum(numOrNull('film'), 3) + ' in'],
+    ['Wash water temp', pdfNum(numOrNull('waterT')) + ' °F'],
+    ['Room air temp', pdfNum(numOrNull('roomT')) + ' °F'],
+    ['Target RH', pdfNum(numOrNull('rh')) + ' %'],
+    ['Air velocity', pdfNum(numOrNull('vel')) + ' ft/min'],
+    ['Drydown time', pdfNum(numOrNull('dry'), 2) + ' hr'],
+    ['Washdowns / day', pdfNum(numOrNull('perDay')) ],
+    ['Other space loads', pdfNum(d.other) + ' gr/hr'],
+  ], M, y, pageW);
+
+  // method 1
+  y = pdfSection(doc, 'METHOD 1 — RESIDUAL FILM (AVERAGE ACROSS DRYDOWN)', M, y+4, pageW);
+  y = pdfPairs(doc, [
+    ['Residual water loading', pdfNum(d.loading, 4) + ' lb/ft²'],
+    ['Water left per washdown', pdfNum(d.water, 1) + ' lb'],
+    ['Average evaporation rate', pdfNum(d.avgRate, 1) + ' lb/hr'],
+    ['Moisture load (average)', pdfNum(d.avgLoad) + ' gr/hr'],
+    ['Water per washdown', pdfNum(d.gal, 1) + ' gal'],
+    ['Water per day', pdfNum(d.galDay, 1) + ' gal/day'],
+  ], M, y, pageW, 'Moisture load (average)');
+
+  // method 2
+  y = pdfSection(doc, 'METHOD 2 — PEAK EVAPORATION RATE (CARRIER)', M, y+4, pageW);
+  y = pdfPairs(doc, [
+    ['Pw at water surface', pdfNum(d.pw, 3) + ' in. Hg'],
+    ['Pa of room air', pdfNum(d.pa, 3) + ' in. Hg'],
+    ['Peak evaporation rate', pdfNum(d.peakRate, 1) + ' lb/hr'],
+    ['Moisture load (peak)', pdfNum(d.peakLoad) + ' gr/hr'],
+    ['Time at peak rate', pdfNum(d.peakWindow, 1) + ' min'],
+  ], M, y, pageW, 'Moisture load (peak)');
+
+  // caveat
+  y += 6;
+  const caveat = d.peakWindow != null && d.peakWindow < 30
+    ? `At the peak rate the residual film is gone in ${pdfNum(d.peakWindow,1)} minutes. Sizing on the raw peak `
+      + 'would greatly oversize the unit — most designs size on the Method 1 recovery basis and accept a brief '
+      + 'RH excursion during the wash.'
+    : 'The peak rate only lasts until the residual film evaporates. Size on the peak when a brief RH excursion '
+      + 'is unacceptable for the product or process; otherwise the Method 1 recovery basis governs.';
+  doc.setDrawColor(232,230,225); doc.setFillColor(251,250,248);
+  const cl = doc.splitTextToSize(caveat, pageW-2*M-8);
+  doc.roundedRect(M, y, pageW-2*M, cl.length*4 + 8, 2, 2, 'FD');
+  setF('normal', 8.5, [87,84,77]);
+  doc.text(cl, M+4, y+6);
+  y += cl.length*4 + 14;
+
+  // footer
+  setF('normal', 7.5, FAINT);
+  const fy = doc.internal.pageSize.getHeight()-10;
+  doc.text('IAT Portal · Washdown Moisture Load Calculator · grains/hr = lb/hr × 7,000', M, fy);
+  doc.text('Engineering estimate — confirm final sizing with IAT, 770-788-6744.', pageW-M, fy, { align:'right' });
+  return doc;
+}
+
+function numOrNull(id){ const v = parseFloat($(id).value); return Number.isFinite(v) ? v : null; }
+function pdfNum(v, dp = 0){
+  return v == null || !Number.isFinite(v) ? '—'
+    : v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+function pdfSection(doc, label, M, y, pageW){
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(138,134,124);
+  doc.text(label, M, y);
+  doc.setDrawColor(240,238,233); doc.setLineWidth(0.3);
+  doc.line(M, y+2.5, pageW-M, y+2.5);
+  return y + 7;
+}
+function pdfPairs(doc, pairs, M, y, pageW, emphasize){
+  const perRow = 2, cellW = (pageW-2*M)/perRow;
+  pairs.forEach((p,i) => {
+    const col = i % perRow, row = Math.floor(i / perRow);
+    const x = M + col*cellW, yy = y + row*6;
+    const hot = emphasize && p[0] === emphasize;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(138,134,124);
+    doc.text(p[0], x, yy);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+    if (hot) doc.setTextColor(11,107,54); else doc.setTextColor(31,30,27);
+    doc.text(String(p[1]), x + cellW - 4, yy, { align:'right' });
+  });
+  return y + Math.ceil(pairs.length/perRow)*6 + 2;
+}
+
+function fileName(){
+  const base = ($('projNum').value || $('projName').value || 'washdown-load').replace(/[^\w.-]+/g,'-');
+  return `Washdown-Load-${base}.pdf`;
+}
+$('btnPdf').addEventListener('click', () => {
+  const doc = buildPdf();
+  if (!doc) { window.print(); return; }   // graceful fallback if jsPDF didn't load
+  doc.save(fileName());
+});
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+$('date').value = today();
+applyDefaults();
+</script>
+
+</body>
+</html>

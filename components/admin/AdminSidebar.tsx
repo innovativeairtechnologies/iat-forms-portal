@@ -105,15 +105,13 @@ const NAV_PARENTS: NavParent[] = [
       // firm. Sits next to Territories: same rep roster, `deals` perm again.
       { href: '/admin/rep-scorecard', label: 'Rep Scorecard', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
-      // Sizing Studio — psychrometric unit selection (lib/sizing.ts), moved from
-      // Operations. Admin-only by omission from DEFAULT_ROLE_PERMS.
-      { href: '/admin/sizing-studio', label: 'Sizing Studio', perm: 'sizing' },
       // Gantt — moved from Operations.
       { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
-      // Application diagrams (073) — the proposal airflow figures. Sales builds
-      // them; engineering and marketing hold the perm too (see lib/roles.ts).
-      // NB: "Graphic Generator" (in progress) will slot in here once its route lands.
-      { href: '/admin/diagram-studio', label: 'Application Diagrams', perm: 'diagrams' },
+      // Sizing Studio and Application Diagrams left this group — they now hang off
+      // Operations › Internal Apps with Presentations, so every internal tool has
+      // one home. Routes and perms are unchanged (`sizing` / `diagrams`), so
+      // bookmarks and the middleware gate still work; only the rail entry moved.
+      // NB: "Graphic Generator" (in progress) belongs on that page too when it lands.
       // Case studies (072) — AI-drafted from sales' inputs, marketing-approved.
       // Lives under Sales: sales starts one from a customer page and writes the
       // inputs; marketing only approves. (Briefly sat under Marketing.)
