@@ -180,6 +180,53 @@ export async function requireRepScorecardAuth(opts: { write?: boolean } = {}): P
 }
 
 /**
+ * Guard for the compensation-review API routes (migration 078) — the annual
+ * merit-increase sheet, i.e. every employee's pay.
+ *
+ * Its own `compensation` perm rather than reusing 'employees': HR holds that one
+ * for account management, and pay is a strictly narrower trust boundary that has
+ * to be revocable without taking account management away with it. Matrix-backed
+ * (045) so revoking it in /admin/permissions actually blocks the API rather than
+ * merely hiding the page.
+ *
+ * Three tiers, because the blast radius differs:
+ *   • read           — anyone holding `compensation` (admin + hr today)
+ *   • write          — admin or hr; editing one person's line
+ *   • adminOnly      — the cycle constants and finalize. Changing the raise pool
+ *                      or the divisor silently re-prices EVERY row at once, and
+ *                      finalize freezes the year, so both stay with admin.
+ */
+export async function requireCompReviewAuth(
+  opts: { write?: boolean; adminOnly?: boolean } = {},
+): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'compensation', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (opts.adminOnly && role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Only an admin can change cycle settings or finalize a review.' },
+      { status: 403 },
+    )
+  }
+  if (opts.write && role !== 'admin' && role !== 'hr') {
+    return NextResponse.json({ error: 'Only admin and HR can edit compensation.' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * Manage guard for the Tool Crib admin routes (registry writes, force check-in,
  * custody transfer, labels). Matrix-backed like requireDealsAuth — that one's
  * doc comment says to add a similarly-scoped, similarly-named guard rather than

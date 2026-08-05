@@ -133,6 +133,19 @@ export type Perm =
   // Opening authoring to HR later means removing it from that list AND moving
   // the layout + those API routes onto this perm.
   | 'learn_admin'
+  // /admin/comp-review — the annual compensation review (migration 078): every
+  // employee's pay rate, score and merit increase. Its OWN perm rather than
+  // sharing 'employees' (HR account management) or 'accrual': those are HR's
+  // day-to-day, and pay is a strictly narrower trust boundary that should be
+  // revocable on its own. Granted to hr in the scoped-role defaults below AND
+  // seeded by migration 078 — both are required, see the note under those
+  // defaults. (NB: as with 'home_content' above, keep the literal default-perms
+  // identifier out of this comment — the check-perm-seed prebuild gate regexes
+  // for its first occurrence and will parse this comment instead.)
+  // The route MUST stay mapped in ADMIN_PATH_PERMS; an unmapped /admin/* path
+  // falls back to 'dashboard', which five scoped roles hold, so omitting it
+  // would open payroll to all of them rather than fail closed.
+  | 'compensation'
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -168,6 +181,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   diagrams: 'Application Diagrams',
   marketing_calendar: 'Marketing Calendar',
   learn_admin: 'Learn — manage content',
+  compensation: 'Compensation Review',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -191,7 +205,7 @@ export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
 // whenever the DB matrix is unavailable (table missing / read error).
 export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
   sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies', 'diagrams'],
-  hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools'],
+  hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools', 'compensation'],
   marketing: ['dashboard', 'presentations', 'jerry', 'tools', 'case_studies', 'marketing_calendar', 'diagrams'],
   engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools', 'diagrams'],
   production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib', 'production_board'],
@@ -274,6 +288,10 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
   { perm: 'presentations', href: '/admin/presentations' },
   { perm: 'employees', href: '/admin/employees' },
   { perm: 'audit', href: '/admin/audit' },
+  // Appended LAST on purpose. This list's order decides a scoped role's default
+  // landing page (its first permitted section), and HR holds 'compensation' —
+  // slotting it any earlier would drop HR onto payroll every time they sign in.
+  { perm: 'compensation', href: '/admin/comp-review' },
 ]
 
 /**
@@ -393,6 +411,15 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/presentations', perm: 'presentations' },
   { prefix: '/admin/audit', perm: 'audit' },
   { prefix: '/admin/employees', perm: 'employees' },
+  // Annual compensation review (078) — everyone's pay. MUST be listed: an
+  // unmapped /admin/* path falls back to 'dashboard', which sales, hr, marketing,
+  // engineering and production_manager all hold, so omitting this entry would
+  // open payroll to every scoped role instead of failing closed. Its own perm,
+  // NOT 'employees' — HR account management is a wider, older grant, and pay
+  // should be revocable without taking account management away with it. Writes
+  // are further restricted in requireCompReviewAuth (lines: admin/hr; cycle
+  // constants and finalize: admin only).
+  { prefix: '/admin/comp-review', perm: 'compensation' },
   { prefix: '/admin/us-rotors', perm: 'us_rotors' },
   { prefix: '/admin/tools', perm: 'tools' },
   // Distinct from /admin/tools above — matchesPrefix requires an exact match or a

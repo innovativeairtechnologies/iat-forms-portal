@@ -12,7 +12,7 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 |------|----------|------|
 | `admin` | `/admin` (executive dashboard) | Everything |
 | `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Deals, Gantt, Case Studies, Application Diagrams, Jerry |
-| `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, PTO, Sick Time, Scheduling, Accrual, Jerry |
+| `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, PTO, Sick Time, Scheduling, Accrual, Compensation Review, Jerry |
 | `marketing` | `/admin` (department dashboard) | Presentations, Marketing Calendar, Case Studies, Application Diagrams, Jerry |
 | `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Application Diagrams, Jerry |
 | `production_manager` | `/admin` (department dashboard) | Tickets, Equipment, Gantt, Scheduling, Jerry |
@@ -124,6 +124,29 @@ A permission that only ever belongs to full `admin` needs **no migration at all*
 of `DEFAULT_ROLE_PERMS` entirely and it is fail-closed by omission — `check-perm-seed.mjs` only
 diffs perms that appear in that list, so it stays green. `srv`, `sizing`, `knowledge`,
 `home_content` and `learn_admin` all work this way.
+
+### `compensation` — the narrowest grant in the app
+
+`compensation` (added 2026-08-05, migration `078`, gating `/admin/comp-review`) holds every
+employee's pay rate, review score and merit increase. It is granted to **`admin` and `hr` only**,
+and is worth studying as the reference example of a genuinely sensitive perm:
+
+- **It is its own key, not a reuse of `employees`.** HR holds `employees` for account management;
+  pay is a strictly narrower trust boundary that has to be revocable on its own, without taking
+  account management away with it.
+- **It is seeded by a migration** (`INSERT INTO role_permissions ('hr','compensation')`), because
+  the code list alone grants nothing once the table has rows — the usual trap.
+- **It is appended LAST in `ADMIN_SECTIONS`.** That list's order decides a scoped role's default
+  landing page, and HR holds this perm — slotting it earlier would drop HR onto payroll at sign-in.
+- **Writes are tiered inside the guard**, not just at the door: `requireCompReviewAuth` lets HR
+  edit a person's line but reserves the cycle constants and finalize for `admin`, because those
+  re-price the entire payroll in one action.
+
+⚠️ Its `ADMIN_PATH_PERMS` entry is **load-bearing and must never be removed**. An unmapped
+`/admin/*` path falls back to `dashboard`, which sales, HR, marketing, engineering and
+production_manager all hold — so deleting that one line would open payroll to every scoped role
+rather than failing closed. This is the inverse of the admin-only-by-omission case above: omission
+is safe in `DEFAULT_ROLE_PERMS`, and *unsafe* in `ADMIN_PATH_PERMS`.
 
 `learn_admin` (added 2026-07-30, gating `/admin/learn-content`) is additionally in
 `NON_DELEGATABLE_PERMS`, for a reason worth copying: its route layout and all four

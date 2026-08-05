@@ -2,6 +2,50 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-05 — Compensation Review: the annual merit-increase sheet, in the portal
+
+The **Sample Annual Review Spreadsheet** — the workbook the annual review has run on from a
+desktop copy — is now `/admin/comp-review` (migration `078`). It reads as a list of people, not a
+grid of cells: one row each, edited in a record panel rather than in the table, because you review
+a person, not a row of columns.
+
+Every formula was ported 1:1 and is verified against the workbook by
+`scripts/verify-comp-review.mjs` (57 assertions). See [docs/comp-review.md](docs/comp-review.md).
+
+- **Four editable fields** per person — per hour, gross annual, bonus, score. Neither pay field is
+  required: employees are hourly *or* salaried, and forcing a fake hourly rate onto salaried staff
+  would corrupt the payroll total. Salaried people get the same percentage applied straight to
+  their annual figure.
+- **The record panel shows its work.** `$25.00 × 8.54% = $2.14`, `$25.00 + $2.14 = $27.14`, and so
+  on down the chain — the thing a spreadsheet could compute but never explain.
+- **The raise divisor is now live.** The workbook divided every score by a hardcoded `3.5` (its own
+  header reads "% of Avg score **()**", parentheses left empty) with a one-row override at `N7`.
+  It is now the mean of the scores actually recorded. Because that denominator is the mean of the
+  column it divides, **any consistent scale works** — 1–5, 1–10 or 0–100 all behave identically.
+- **Finalizing freezes the year.** While a cycle is a draft, scoring one person moves everyone
+  else's raise; the panel previews that shift and says who it affects. Finalizing snapshots the
+  average so a signed-off year stops moving, enforced by a DB CHECK and computed server-side only.
+- **The budget total is right now.** `I40 =SUM(I3:I17)` had been totalling 15 of the 34 people on
+  the sheet.
+
+⚠️ **Three workbook quirks were reviewed and deliberately KEPT**, so the portal reproduces the
+numbers the spreadsheet produces today. Read the docs before "fixing" any of them:
+
+1. `H = C*(G/48)` divides by **48, not 100** — every raise is ~2.08× what the pool figure implies
+   (an average performer receives **8.54%**, not 4.1%).
+2. `G = N*O` applies the relative score **twice**, squaring the spread between scorers.
+3. The pool multiplier is `4.1` while its own column header says `3.4%`; the cited benchmarks
+   average ~3.46%.
+
+All three are now cycle **columns**, not literals, so revisiting them is a row update rather than a
+deploy — and a past cycle always recomputes with its own constants.
+
+🔒 **Admin and HR only**, behind a new `compensation` permission. The `ADMIN_PATH_PERMS` entry is
+load-bearing: an unmapped `/admin/*` path falls back to `dashboard`, which five scoped roles hold,
+so omitting it would have opened payroll to all of them rather than failing closed. Tables are
+RLS-on with no policies; cycle constants and finalize are admin-only even for HR; every line edit
+is audited with before → after values.
+
 ## 2026-08-05 — Sizing Studio: verify a selection against DryWare's real wheel model
 
 The Studio's wheel performance has always been a planning approximation — 80% moisture removal for

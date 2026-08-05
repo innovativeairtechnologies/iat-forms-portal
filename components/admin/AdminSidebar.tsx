@@ -142,6 +142,10 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/requests', label: 'Time Off', badge: 'timeoff', perm: 'pto' },
       { href: '/admin/schedule', label: 'Schedule', perm: 'scheduling' },
       { href: '/admin/accrual', label: 'Accrual', perm: 'accrual' },
+      // Annual compensation review (078). Its own `compensation` perm, held by
+      // admin + hr only — narrower than the 'employees' grant beside it, so this
+      // link stays hidden from every other scoped role.
+      { href: '/admin/comp-review', label: 'Compensation', perm: 'compensation' },
     ],
   },
   // Training — IAT Learn, ported off /learn. Learner items carry no perm
