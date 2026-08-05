@@ -37,6 +37,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (row.status !== 'pending') {
     return NextResponse.json({ error: `That document was already ${row.status}.` }, { status: 409 })
   }
+  // A discovered-but-unread row has no transcript yet — there is nothing to
+  // approve, and nothing was ever shown to a human to approve.
+  if (!row.transcript) {
+    return NextResponse.json(
+      { error: 'That document hasn’t been read yet — read it first, then review.' },
+      { status: 409 },
+    )
+  }
 
   const result = await ingestTranscript(row.transcript as string, row.filename as string, internal, {
     source: (row.source as string) || 'sharepoint',

@@ -76,7 +76,9 @@ type ReviewItem = {
   detectedBy?: string | null
 }
 
-// A document the SharePoint pull has read + scrubbed, waiting for a human.
+// A document the SharePoint pull has found. Discovery records it with metadata
+// only (analyzed_at null); reading fills in the transcript + findings later, one
+// document per request.
 type SharePointQueueItem = {
   id: string
   filename: string
@@ -87,6 +89,9 @@ type SharePointQueueItem = {
   page_count: number | null
   chunk_estimate: number | null
   created_at: string
+  analyzed_at: string | null
+  analyze_error: string | null
+  size_bytes: number | null
 }
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.gif,.webp'
@@ -152,6 +157,9 @@ export default function KnowledgeReactorClient() {
   const [spQueue, setSpQueue] = useState<SharePointQueueItem[]>([])
   const [spPulling, setSpPulling] = useState(false)
   const [spNote, setSpNote] = useState<string | null>(null)
+  const [spReadingId, setSpReadingId] = useState<string | null>(null) // which doc is being read
+  const [spAutoRead, setSpAutoRead] = useState(false)                 // walking the unread list
+  const spStopRef = useRef(false)                                     // cooperative stop for that walk
   const fileRef = useRef<HTMLInputElement>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
 
@@ -182,8 +190,8 @@ export default function KnowledgeReactorClient() {
   const updateItem = (key: string, patch: Partial<QueueItem>) =>
     setQueue((q) => q.map((it) => (it.key === key ? { ...it, ...patch } : it)))
 
-  // Pull one batch from SharePoint. Read-only on their side; everything found
-  // lands in the queue as pending, never published.
+  // Phase 1 — DISCOVER. Metadata only (no downloads, no AI), so this returns
+  // quickly even across a whole library. Read-only on SharePoint's side.
   const pullFromSharePoint = async () => {
     if (spPulling) return
     setSpPulling(true)
@@ -193,9 +201,8 @@ export default function KnowledgeReactorClient() {
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || 'Could not reach SharePoint.')
       const parts: string[] = []
-      if (json.queued) parts.push(`${json.queued} new document${json.queued === 1 ? '' : 's'} to review`)
-      if (json.remaining) parts.push(`${json.remaining} more waiting — pull again`)
-      if (json.failed) parts.push(`${json.failed} couldn’t be read`)
+      if (json.discovered) parts.push(`found ${json.discovered} new document${json.discovered === 1 ? '' : 's'}`)
+      if (json.alreadyKnown) parts.push(`${json.alreadyKnown} already known`)
       if (json.skipped) parts.push(`${json.skipped} unsupported (Office files)`)
       setSpNote(parts.length ? parts.join(' · ') : 'Nothing new in SharePoint.')
       await refreshQueue()
@@ -206,20 +213,78 @@ export default function KnowledgeReactorClient() {
     }
   }
 
+  // Phase 2 — READ one document (download + transcribe + scrub). One request per
+  // document: a batch of multi-megabyte PDFs can't finish inside the function
+  // limit. Returns the freshly-read row so the caller can open it.
+  const readOne = useCallback(async (id: string): Promise<SharePointQueueItem | null> => {
+    setSpReadingId(id)
+    try {
+      const res = await fetch(`/api/admin/kb/queue/${id}/analyze`, { method: 'POST' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        // The failure is recorded on the row — reflect it in place so the doc
+        // stays visible and retryable rather than silently vanishing.
+        setSpQueue((q) => q.map((it) => (it.id === id ? { ...it, analyze_error: json.error || 'Could not read it.' } : it)))
+        return null
+      }
+      const listRes = await fetch('/api/admin/kb/queue')
+      const listJson = await listRes.json().catch(() => ({}))
+      const rows: SharePointQueueItem[] = Array.isArray(listJson.pending) ? listJson.pending : []
+      setSpQueue(rows)
+      return rows.find((r) => r.id === id) ?? null
+    } finally {
+      setSpReadingId(null)
+    }
+  }, [])
+
+  // Walk the unread documents one at a time. Sequential by necessity (each is its
+  // own request) and stoppable, so a long backlog stays under the user's control.
+  const readAllUnread = async () => {
+    if (spAutoRead) { spStopRef.current = true; return } // click again = stop
+    spStopRef.current = false
+    setSpAutoRead(true)
+    try {
+      for (;;) {
+        if (spStopRef.current) break
+        const next = spQueue.find((it) => !it.analyzed_at && !it.analyze_error)
+          ?? (await (async () => {
+            const r = await fetch('/api/admin/kb/queue')
+            const j = await r.json().catch(() => ({}))
+            const rows: SharePointQueueItem[] = Array.isArray(j.pending) ? j.pending : []
+            setSpQueue(rows)
+            return rows.find((it) => !it.analyzed_at && !it.analyze_error)
+          })())
+        if (!next) break
+        await readOne(next.id)
+      }
+    } finally {
+      setSpAutoRead(false)
+      spStopRef.current = false
+      refreshQueue()
+    }
+  }
+
   // Open a queued SharePoint doc in the same scrub-review card used for uploads.
-  const openQueued = (item: SharePointQueueItem) => {
+  // An unread document is read first — there's nothing to review until then.
+  const openQueued = async (item: SharePointQueueItem) => {
     if (reviews.some((r) => r.queueId === item.id)) return
+    let row = item
+    if (!item.analyzed_at) {
+      const read = await readOne(item.id)
+      if (!read) return
+      row = read
+    }
     setReviews((r) => [...r, {
-      key: `sp-${item.id}`,
-      filename: item.filename,
-      title: item.title,
+      key: `sp-${row.id}`,
+      filename: row.filename,
+      title: row.title,
       transcript: '', // stays server-side; the approve route reads it from the queue row
-      pageCount: item.page_count ?? 0,
-      chunkCount: item.chunk_estimate ?? 0,
-      findings: item.findings || { summary: '', competitors: [], customers: [], people: [], emails: [], phones: [] },
-      queueId: item.id,
-      webUrl: item.web_url,
-      detectedBy: item.detected_by,
+      pageCount: row.page_count ?? 0,
+      chunkCount: row.chunk_estimate ?? 0,
+      findings: row.findings || { summary: '', competitors: [], customers: [], people: [], emails: [], phones: [] },
+      queueId: row.id,
+      webUrl: row.web_url,
+      detectedBy: row.detected_by,
     }])
   }
 
@@ -357,6 +422,8 @@ export default function KnowledgeReactorClient() {
     setTilt({ x: nx * 14, y: ny * -14 })
   }
 
+  const spUnread = spQueue.filter((it) => !it.analyzed_at && !it.analyze_error).length
+  const spReady = spQueue.filter((it) => !!it.analyzed_at).length
   const size = wheelSize(totalChunks)
   const internalCount = docs.filter((d) => d.is_internal).length
   const publicCount = docs.length - internalCount
@@ -448,12 +515,12 @@ export default function KnowledgeReactorClient() {
             <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
               {docs.length}
             </span>
-            {spQueue.length > 0 && (
+            {spReady > 0 && (
               <span
-                title={`${spQueue.length} document${spQueue.length === 1 ? '' : 's'} from SharePoint awaiting review`}
+                title={`${spReady} document${spReady === 1 ? '' : 's'} from SharePoint ready to review`}
                 className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
               >
-                <ShieldCheck size={9} /> {spQueue.length}
+                <ShieldCheck size={9} /> {spReady}
               </span>
             )}
           </button>
@@ -527,9 +594,14 @@ export default function KnowledgeReactorClient() {
               <div className="border-b border-zinc-100 px-4 py-2.5 dark:border-zinc-800">
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <p className="text-[10.5px] font-semibold uppercase tracking-wide text-zinc-400">From SharePoint</p>
-                  {spQueue.length > 0 && (
-                    <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-                      {spQueue.length}
+                  {spReady > 0 && (
+                    <span title={`${spReady} ready to review`} className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                      {spReady}
+                    </span>
+                  )}
+                  {spUnread > 0 && (
+                    <span title={`${spUnread} found but not read yet`} className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                      {spUnread}
                     </span>
                   )}
                   <button
@@ -542,36 +614,67 @@ export default function KnowledgeReactorClient() {
                   </button>
                 </div>
 
+                {spUnread > 0 && (
+                  <button
+                    onClick={readAllUnread}
+                    disabled={spPulling}
+                    className={`mb-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11.5px] font-medium transition-colors disabled:opacity-50 ${
+                      spAutoRead
+                        ? 'border-amber-300 text-amber-700 hover:border-amber-400 dark:border-amber-500/40 dark:text-amber-400'
+                        : 'border-emerald-300 text-emerald-700 hover:border-emerald-400 dark:border-emerald-500/40 dark:text-emerald-400'
+                    }`}
+                  >
+                    {spAutoRead ? <><X size={11} /> Stop reading ({spUnread} left)</> : <><Brain size={11} /> Read all {spUnread} — one at a time</>}
+                  </button>
+                )}
+
                 {spQueue.length === 0 ? (
                   <p className="py-2 text-center text-[11.5px] text-zinc-400">
                     Nothing waiting. Pull to check SharePoint for new documents.
                   </p>
                 ) : (
-                  <ul className="space-y-0.5">
-                    {spQueue.map((it) => (
-                      <li key={it.id} className="group flex items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
-                        <ShieldCheck size={13} className="flex-shrink-0 text-amber-500" />
-                        <button
-                          onClick={() => openQueued(it)}
-                          className="min-w-0 flex-1 truncate text-left text-[12px] text-zinc-700 hover:text-emerald-700 dark:text-zinc-200 dark:hover:text-emerald-400"
-                          title={`Review “${it.title}”`}
-                        >
-                          {it.title}
-                        </button>
-                        {it.web_url && (
-                          <a
-                            href={it.web_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Open ${it.title} in SharePoint`}
-                            title="Open in SharePoint"
-                            className="flex-shrink-0 rounded p-0.5 text-zinc-300 opacity-0 transition-all hover:text-emerald-600 group-hover:opacity-100 dark:text-zinc-600"
+                  <ul className="max-h-64 space-y-0.5 overflow-y-auto">
+                    {spQueue.map((it) => {
+                      const reading = spReadingId === it.id
+                      const ready = !!it.analyzed_at
+                      return (
+                        <li key={it.id} className="group flex items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
+                          <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
+                            {reading ? <Loader2 size={12} className="animate-spin text-emerald-500" />
+                              : it.analyze_error ? <AlertCircle size={12} className="text-rose-500" />
+                              : ready ? <ShieldCheck size={12} className="text-amber-500" />
+                              : <FileText size={12} className="text-zinc-300 dark:text-zinc-600" />}
+                          </span>
+                          <button
+                            onClick={() => openQueued(it)}
+                            disabled={reading || spAutoRead}
+                            className={`min-w-0 flex-1 truncate text-left text-[12px] disabled:opacity-60 ${
+                              ready ? 'text-zinc-700 hover:text-emerald-700 dark:text-zinc-200 dark:hover:text-emerald-400'
+                                    : 'text-zinc-400 hover:text-emerald-700 dark:text-zinc-500 dark:hover:text-emerald-400'
+                            }`}
+                            title={it.analyze_error ? `Couldn’t read it: ${it.analyze_error} — click to retry`
+                              : ready ? `Review “${it.title}”` : `Read “${it.title}”`}
                           >
-                            <ExternalLink size={11} />
-                          </a>
-                        )}
-                      </li>
-                    ))}
+                            {it.title}
+                          </button>
+                          <span className="flex-shrink-0 text-[10px] text-zinc-400">
+                            {reading ? 'Reading…' : it.analyze_error ? 'Failed' : ready ? 'Ready' : 'Not read'}
+                          </span>
+                          {it.web_url && (
+                            <a
+                              href={it.web_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Open ${it.title} in SharePoint`}
+                              title="Open in SharePoint"
+                              className="flex-shrink-0 rounded p-0.5 text-zinc-300 opacity-0 transition-all hover:text-emerald-600 group-hover:opacity-100 dark:text-zinc-600"
+                            >
+                              <ExternalLink size={11} />
+                            </a>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
 

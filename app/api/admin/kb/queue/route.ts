@@ -17,10 +17,10 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from('kb_review_queue')
-    .select('id, source, external_id, filename, title, web_url, detected_by, findings, page_count, chunk_estimate, created_at')
+    .select('id, source, external_id, filename, title, web_url, detected_by, findings, page_count, chunk_estimate, created_at, analyzed_at, analyze_error, size_bytes')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
-    .limit(200)
+    .limit(500)
 
   if (error) {
     console.error('[kb/queue] list error:', error)
@@ -33,8 +33,14 @@ export async function GET() {
     .eq('source', 'sharepoint')
     .maybeSingle()
 
+  const pending = data ?? []
   return NextResponse.json({
-    pending: data ?? [],
+    pending,
+    // Split out so the UI can drive the "read the next one" loop without
+    // re-deriving it: unread = discovered but not yet transcribed.
+    unreadCount: pending.filter((r) => !r.analyzed_at && !r.analyze_error).length,
+    readyCount: pending.filter((r) => !!r.analyzed_at).length,
+    failedCount: pending.filter((r) => !r.analyzed_at && !!r.analyze_error).length,
     lastSyncedAt: state?.last_synced_at ?? null,
     lastResult: state?.last_result ?? null,
   })

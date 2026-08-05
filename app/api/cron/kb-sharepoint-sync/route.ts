@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { graphConfigured } from '@/lib/graph'
-import { runSharePointSync } from '@/lib/kb-sharepoint-sync'
+import { discoverSharePointDocuments, analyzeQueuedDocument, nextUnreadQueued } from '@/lib/kb-sharepoint-sync'
 
 // Scheduled PULL: SharePoint → Jerry's Brain review queue.
 //
@@ -32,8 +32,23 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await runSharePointSync()
-    return NextResponse.json(result)
+    const discovery = await discoverSharePointDocuments()
+
+    // Then read what fits in the time left. One document per iteration, with a
+    // wall-clock budget checked BEFORE each one — transcription time varies with
+    // document size, so the guard has to be time-based, not a fixed count. The
+    // rest stay queued as unread and the next run continues from there.
+    const started = Date.now()
+    const BUDGET_MS = 210_000 // leave comfortable headroom under maxDuration
+    let read = 0, failed = 0
+    while (Date.now() - started < BUDGET_MS) {
+      const next = await nextUnreadQueued()
+      if (!next) break
+      const res = await analyzeQueuedDocument(next.id)
+      if (res.ok) read++; else failed++
+    }
+
+    return NextResponse.json({ ...discovery, read, failed })
   } catch (e) {
     console.error('[cron/kb-sharepoint-sync] error:', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })

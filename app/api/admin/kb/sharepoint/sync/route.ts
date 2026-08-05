@@ -1,22 +1,24 @@
 import { NextResponse } from 'next/server'
 import { requireAdminAuth } from '@/lib/api-auth'
 import { graphConfigured } from '@/lib/graph'
-import { runSharePointSync } from '@/lib/kb-sharepoint-sync'
+import { discoverSharePointDocuments } from '@/lib/kb-sharepoint-sync'
 
-// "Pull from SharePoint now" — the admin-triggered half of the pull, so a human
-// can fetch on demand instead of waiting for (or depending on) a schedule. Runs
-// the SAME engine as the cron; the only difference is who authenticates.
+// "Pull from SharePoint now" — phase 1, DISCOVERY.
 //
-// Admin-only. READ ONLY against SharePoint, and it never publishes to Jerry —
-// everything it finds lands in kb_review_queue as pending, awaiting approval.
+// Asks SharePoint what's changed and records every new supported file in the
+// review queue as pending-but-unread. Metadata only: no downloads, no AI, so it
+// finishes quickly even across a whole library.
 //
-// One batch per click by design: a large library shouldn't dump hundreds of
-// review cards (or hundreds of AI transcriptions) in a single request. The
-// response reports what's left so the UI can invite another click.
+// Reading each document happens one at a time afterwards, via
+// /api/admin/kb/queue/{id}/analyze — that split exists because transcribing a
+// batch of multi-megabyte PDFs in one request blows the 300s function limit (it
+// did, on the first live run, saving nothing).
+//
+// Admin-only. READ ONLY against SharePoint; nothing is published to Jerry here.
 //
 //   POST /api/admin/kb/sharepoint/sync
 
-export const maxDuration = 300
+export const maxDuration = 120
 
 export async function POST() {
   const err = await requireAdminAuth(); if (err) return err
@@ -29,12 +31,12 @@ export async function POST() {
   }
 
   try {
-    const result = await runSharePointSync()
+    const result = await discoverSharePointDocuments()
     return NextResponse.json(result)
   } catch (e) {
     console.error('[kb/sharepoint/sync] error:', e)
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Something went wrong pulling from SharePoint.' },
+      { error: e instanceof Error ? e.message : 'Something went wrong reaching SharePoint.' },
       { status: 502 },
     )
   }
