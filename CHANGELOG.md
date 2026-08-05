@@ -2,6 +2,36 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-05 — TipTap 3.29.2, with the 133 lesson placeholders re-verified first
+
+Dependabot's minor-and-patch group (PR #35, 20 packages) carried `@tiptap/*` from 3.27.3 to
+3.29.2. Normally a group bump like this merges on a green build, but yesterday's lesson-editor
+work made TipTap a load-bearing dependency in a way it wasn't before: `ImagePlaceholder.tsx` is a
+custom node whose whole job is to re-serialize `<figure class="img-missing">` **byte for byte**,
+and 133 of the 357 lessons depend on it. A serialization regression wouldn't throw or fail a
+build — it would quietly flatten a placeholder to a bare `<p>` the next time someone opened one of
+those lessons and pressed Save.
+
+So the bump was checked before merging, not after: the real `ImagePlaceholder.tsx` bundled into a
+jsdom harness, the extension list mirrored from `LessonEditor.tsx`, and all 133 production rows
+round-tripped through both the old and the new tree. **Result: 0 differences.** Not merely
+"markers survived" — 3.29.2 emits output byte-identical to 3.27.3 for every one of the 133 rows.
+Also confirmed StarterKit v3.29 still bundles Link, so configuring it through
+`StarterKit.configure({ link: … })` still applies and the duplicate-name warning stays gone, and
+that all three TipTap-consuming components type-check against 3.29.2's declarations.
+
+Worth recording for the next bump, because the obvious version of this check lies: a round trip is
+**already** lossy at the byte level on 124 of the 133 rows even on a known-good build, because
+ProseMirror wraps `<li>text` as `<li><p>text` and strips the whitespace between block tags. Both
+preserve content — nothing is dropped, the visible words are identical — but comparing input to
+output makes a safe bump look catastrophic. The comparison that means anything is old version
+against new version. `docs/learn.md` now carries the full recipe.
+
+**Found while in here, not fixed:** `components/shared/RichTextEditor.tsx` (ticket notes) still
+registers bare `StarterKit` *plus* a separate `TiptapLink` — the exact duplicate-`link` pattern
+removed from the lesson editor yesterday. It warns at both 3.27.3 and 3.29.2, so it is live now,
+and which config wins is undefined, meaning `openOnClick: false` may not be applying there.
+
 ## 2026-08-04 — Image upload in the lesson editor (and the placeholder trap it uncovered)
 
 The Learn lesson editor could only insert an image by **typing a URL into a `window.prompt`**,

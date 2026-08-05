@@ -364,6 +364,22 @@ verbatim: the read-side styling in `app/globals.css` keys off that exact selecto
 rewrites all 133 rows. (12 of the 133 captions contain HTML entities; `&quot;` re-serializes as a
 literal `"`. Same rendering, same text — cosmetic only.)
 
+**Re-verify this on every TipTap bump.** The check is a jsdom harness that esbuild-bundles the
+real `ImagePlaceholder.tsx` and round-trips all 133 rows — no dev server, no auth. Two things to
+get right, both of which will otherwise mislead you:
+
+- **Diff old-version output against new-version output, not input against output.** A round trip
+  is already lossy at the byte level on 124 of the 133 rows on a known-good build: ProseMirror
+  wraps `<li>text` as `<li><p>text` and drops the whitespace between block tags. Both preserve
+  content — no tag is ever removed and the visible words are identical — but an input-vs-output
+  byte check looks like total failure on a perfectly safe bump.
+- **Pin the scratch install to the PR lockfile's `prosemirror-model` / `prosemirror-view`**, which
+  is where parse and serialize actually live. Dependabot's table lists only the `@tiptap/*`
+  packages; the lockfile moved 32 entries.
+
+Verified clean through **@tiptap 3.29.2 / prosemirror-model 1.25.11** (PR #35, 2026-08-05):
+0 differences across all 133 rows.
+
 ### Known gap
 
 Pasting rich HTML copied from a web page still brings that page's `<img>` tags in as **external
