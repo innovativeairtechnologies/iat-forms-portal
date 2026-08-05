@@ -2,6 +2,47 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-05 — SharePoint → Jerry's Brain goes live (pull half, human-gated)
+
+The read-only SharePoint pull has been sitting inert since 2026-07-21, waiting on IT's Entra app
+registration. The credentials landed, the smoke test returned the real library (**IAT Documentation
+/ Documents**), and this ships the half that was never built: **the human gate**.
+
+A document added to the SharePoint library can now be pulled into Jerry's Brain, where it waits in a
+**"From SharePoint"** review queue until an admin approves it. It uses the *same* transcribe-and-scrub
+engine and the *same* review card as a manual upload — competitor names struck through, PII flagged,
+Staff-only vs Customer-facing chosen per document. **Nothing auto-publishes.**
+
+**The bug this closes before it could happen.** `/api/admin/kb/ingest` never set `kb_documents.source`
+or `sharepoint_item_id`, and the pull's anti-duplicate check asks `kb_documents` which SharePoint items
+are already published. Approving a pulled document through the old path would have re-queued that same
+document on **every subsequent pull, forever**. Approval now goes through
+`/api/admin/kb/queue/{id}/approve`, which stamps the source and item id. Rejection marks the row
+`rejected` rather than deleting it, for the same reason — the delta will offer that file again, and a
+rejected row is a durable "a human said no". The approve route reads the transcript from the **queue
+row**, never the request body: the browser was shown a scrub preview of a specific document, so that is
+what must be stored.
+
+**It pulls on a button, not a timer.** `vercel.json` already holds two cron jobs and `admin-digest`
+documents a 2-cron account cap, so a third would not register; `CRON_SECRET` is also unset, and setting
+it would silently reactivate the two dormant jobs (including `accrue-pto` and its known accrual bug).
+So Phase 1 pulls on demand via an admin-gated **Pull now** button — which also lets the ~80-PDF first
+backlog be drained deliberately, a batch at a time, instead of dumping 80 review cards and 80 AI
+transcriptions at once. The cron route remains, unscheduled, sharing one engine for when scheduling is
+decided.
+
+**Read-only, and separate from SSO.** The Graph app holds `Sites.Selected` with **read** on one site —
+not tenant-wide, not write — and is a *different* Entra app from the staff "Sign in with Microsoft"
+login (whose credentials live in Supabase, not Vercel). The Push half (Jerry → SharePoint) stays
+deliberately unbuilt; that is what keeps the credential read-only.
+
+**Known limitation:** PDFs and images only — `.docx`/`.xlsx`/`.pptx` are skipped in v1 (80 of the
+library's 95 files are PDFs). The pull counts what it skipped, so "nothing appeared" is explainable.
+
+Also pinned `SHAREPOINT_SITE_ID`/`SHAREPOINT_DRIVE_ID`, so a future SharePoint rename or URL change
+needs no changes on our side. Extracted `lib/kb-sharepoint-sync.ts` and `lib/kb-ingest.ts` so the
+button and the cron — and the upload and queue approvals — are one implementation, not copies.
+
 ## 2026-08-05 — TipTap 3.29.2, with the 133 lesson placeholders re-verified first
 
 Dependabot's minor-and-patch group (PR #35, 20 packages) carried `@tiptap/*` from 3.27.3 to

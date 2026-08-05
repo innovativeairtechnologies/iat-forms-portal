@@ -143,6 +143,75 @@ approval:**
   competitor scrub; chunking logic is duplicated in the script (kept working) but
   centralized in `lib/kb-chunking.mjs` for the serverless path.
 
+## SharePoint → Jerry pull (LIVE 2026-08-05, commit `2e5409e`)
+
+A **read-only, one-library, human-gated** pull that brings documents from the
+SharePoint **IAT Documentation** library into Jerry's Brain. Scaffolded inert in
+`995618c`/`7a2f92f` (2026-07-21); went live once IT's Entra app registration
+landed. **This is the PULL half only** — Jerry → SharePoint (Push) is Phase 2 and
+deliberately unbuilt, which is what keeps the Graph credential read-only.
+
+**Security posture:** app-only (client-credentials) Graph app, Graph
+**Application** permission `Sites.Selected` with **read** granted on **one** site
+— not tenant-wide, not write. Separate Entra app from the staff SSO/MFA login
+(whose credentials live in Supabase Auth, not Vercel). `lib/graph.ts` has no
+write methods. **Nothing auto-publishes**: every pulled document waits for a human.
+
+**Env** (Vercel Production): `MS_GRAPH_TENANT_ID`, `MS_GRAPH_CLIENT_ID`,
+`MS_GRAPH_CLIENT_SECRET`, `SHAREPOINT_SITE_URL`, plus the pinned immutable ids
+`SHAREPOINT_SITE_ID` / `SHAREPOINT_DRIVE_ID` (SharePoint ids don't change on a
+site rename, so pinning them makes a future URL change a no-op).
+`SHAREPOINT_LIBRARY_NAME` is optional — unset means the site's default library.
+`GET /api/admin/kb/sharepoint/test` is the connection smoke test and returns
+`siteId`/`driveId`. Note it lists the library ROOT only, so `fileCount: 0` with
+`connected: true` is a PASS when documents live in subfolders — the sync's delta
+walks the whole drive.
+
+**Flow** (`lib/kb-sharepoint-sync.ts`, shared by both entry points):
+1. `driveDelta()` asks Graph what changed since the stored cursor.
+2. Candidates = supported files not already pending **and** not already published.
+   The published check reads `kb_documents.sharepoint_item_id` — **this is the
+   anti-loop mechanism**.
+3. Up to `SYNC_BATCH` (12) per run are downloaded and put through
+   `analyzeDocument` — the **same** transcribe + scrub engine as a manual upload.
+4. Each lands in `kb_review_queue` as `pending`, never in the pool.
+5. The delta cursor advances **only when every candidate is drained**, so a
+   backlog is processed a batch at a time without losing the place.
+
+**Triggered by a button, not a cron.** `POST /api/admin/kb/sharepoint/sync`
+(admin-gated) pulls one batch on demand. Three reasons this is not scheduled:
+`vercel.json` already holds two crons and `admin-digest` documents a **2-cron
+account cap**; `CRON_SECRET` is **unset**, and setting it would reactivate the two
+dormant jobs (`accrue-pto` carries a known accrual bug); and on-demand lets the
+~80-PDF first backlog be drained deliberately rather than dumping 80 review cards
+and 80 transcriptions at once. `/api/cron/kb-sharepoint-sync` still exists,
+unscheduled, sharing the same engine for whenever scheduling is decided.
+
+**Review + approve** — the queue appears as a **"From SharePoint"** section in the
+knowledge panel (with a pending count on the collapsed button). Clicking one opens
+the **existing scrub-review card**, badged `SharePoint` with a link back to the file.
+- `POST /api/admin/kb/queue/{id}/approve` — reads the transcript **from the queue
+  row** (never the request body: the browser was shown a preview of a specific
+  document, so that's what must be stored), commits via `lib/kb-ingest.ts` stamping
+  **`source='sharepoint'` + `sharepoint_item_id` + etag**, then flips the row to
+  `approved`. **Without that stamp the doc would be re-queued on every pull forever.**
+  The queue row is resolved only after a successful commit, so a failure leaves it
+  pending and retryable rather than vanishing.
+- `POST /api/admin/kb/queue/{id}/reject` — marks the row `rejected` rather than
+  deleting it; the delta would otherwise hand us the file again, and a rejected row
+  is a durable record that a human said no.
+
+**Known v1 limitations:**
+- **PDFs and images only.** `.docx`/`.xlsx`/`.pptx`/`.msg` are skipped (they'd need
+  text extraction first). Of the library's 95 files, **80 are PDFs**. The sync counts
+  what it skipped so "nothing appeared" is explainable rather than mysterious.
+- Approval is idempotent **per filename** (`lib/kb-ingest.ts` deletes a same-named
+  doc first), so a pulled doc that overlaps the earlier CLI backfill replaces it
+  rather than duplicating.
+
+`lib/kb-ingest.ts` is shared by the portal-upload approval (`source='portal'`) and
+the queue approval, so provenance is the only thing that differs between them.
+
 ## Attachments — photo/PDF diagnosis (internal Jerry, 2026-07-08)
 The **internal** Jerrys (the standalone `/admin/jerry` page and the per-ticket
 assistant) let a staff member **attach a photo or PDF for Jerry to look at and help
