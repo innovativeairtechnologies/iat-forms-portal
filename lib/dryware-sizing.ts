@@ -100,6 +100,71 @@ async function getJson(path: string): Promise<unknown> {
   }
 }
 
+/**
+ * POST sibling of getJson, for the DesiccantCalculator.
+ *
+ * Returns the parsed body, or the empty string when DesMod answers 200 with a
+ * zero-length body — which is how it signals "I could not bind that payload at
+ * all". That case is NOT an error here: it is handed to readDesmodResponse(),
+ * which owns every "success-shaped failure" decision in one place.
+ */
+async function postJson(path: string, body: unknown): Promise<unknown> {
+  const auth = process.env.DRYWARE_AUTH_HEADER
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(auth ? { Authorization: auth } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+      cache: 'no-store',
+      redirect: 'manual',
+    })
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error(`Dryware did not respond within ${TIMEOUT_MS / 1000}s.`)
+    }
+    throw new Error(`Could not reach Dryware: ${e instanceof Error ? e.message : String(e)}`)
+  } finally {
+    clearTimeout(timer)
+  }
+
+  // Kept for completeness, but note it never fires on the calculate endpoint:
+  // DesMod answers 200 for every outcome including total failure.
+  if (!res.ok) throw new Error(`Dryware returned HTTP ${res.status} for ${path}.`)
+
+  const text = await res.text()
+  if (text.trim() === '') return ''
+  if (text.trimStart().startsWith('<')) {
+    throw new Error(`Dryware returned HTML for ${path} — the endpoint does not exist.`)
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error(`Dryware returned a non-JSON body for ${path}.`)
+  }
+}
+
+/**
+ * Run one wheel performance calculation against DryWare's DesMod engine.
+ *
+ * ⚠️ ~1.9 s per call and the upstream is SINGLE-THREADED — concurrent calls
+ * queue behind each other at roughly 1.5 s apiece. Call this once per explicit
+ * user action. Never map it over a catalog.
+ *
+ * The caller is expected to pass the result straight to readDesmodResponse();
+ * every failure mode of this endpoint arrives as a well-formed HTTP 200.
+ */
+export async function calculateDesiccantPerformance(request: unknown): Promise<unknown> {
+  return postJson('/api/DesiccantCalculator/calculate', request)
+}
+
 function normalise(p: DrywareProduct): DrywareUnitSpec | null {
   const nav = p.dehumidifierProductIdNavigation
   const model = (p.productDescription ?? '').trim()

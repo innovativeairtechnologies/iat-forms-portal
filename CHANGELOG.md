@@ -2,6 +2,62 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-05 — Sizing Studio: verify a selection against DryWare's real wheel model
+
+The Studio's wheel performance has always been a planning approximation — 80% moisture removal for
+a standard wheel, 90% for high-capacity — because DryWare's product API gives geometry but not
+performance curves. It turns out DryWare exposes the curves after all, through the engine behind
+its own wheel calculator. **Verify with DryWare** (now the primary action on the page) runs the
+current selection through that engine and returns real numbers.
+
+- **New: pressure drop.** Process and reactivation, in. w.g. The Studio had no way to compute this
+  at all.
+- **New: a genuinely optimised RPH.** The local engine only ever reported a mid-range placeholder
+  and said so.
+- The verified leaving condition sits **next to** the Studio's estimate rather than replacing it,
+  with the delta called out — the gap is the useful part. The selection card flips from
+  **Preliminary** to **Verified**, and the copied summary changes with it, because that text goes
+  out to customers.
+- When the two disagree about whether the target is met, the page says so explicitly in both
+  directions.
+
+⚠️ **The planning coefficients were materially conservative.** On the default 2,000 CFM case the
+local engine predicts 15.56 gr/lb leaving; DryWare returns **7.58**. The Studio has therefore been
+**over-sizing** — and may have recommended a high-capacity wheel (a real cost adder) on jobs a
+standard wheel would meet, or flagged a reachable target as unreachable. Verify before quoting.
+
+Implementation notes, all of which are load-bearing:
+
+- **Every failure from that endpoint is HTTP 200**, including a zero-byte body and the DTO echoed
+  back with `passwordOk:false`. A `res.ok` check would report success on total failure — same class
+  as the middleware-swallows-`/api` trap. `readDesmodResponse()` in `lib/desmod.ts` is the single
+  place that decides whether a calculation actually happened.
+- **The upstream is single-threaded**, ~1.9 s per call, strictly serialised. Hence one call per
+  click (never as-you-type, never a catalog sweep), a per-user rate limit, and a deterministic
+  cache. `predictLeavingState()` was deliberately **not** replaced — the local engine has to stay
+  instant.
+- **It validates nothing** upstream, so the portal owns the sanity envelope.
+- The client posts **inputs only**; the selection is recomputed server-side, so a forged unit or
+  airflow can't come back looking authoritative.
+- **No local fallback exists for the physics.** If DryWare locks the endpoint down, verification
+  fails and the page reverts to the preliminary estimate. It stays an internal `/admin` action for
+  that reason.
+
+**Fixed along the way: the rotor depth was a constant, not the real one.**
+`selection.wheelDepthMm` returned `WHEEL_SPECS[wheel].depthMm` — a flat 200 mm standard / 400 mm
+HC — discarding the catalog row's own depth. Most of the line genuinely is 200 mm, but
+**IAT-75REC and IAT-150REC ship a 100 mm rotor**. That mislabelled both compacts on screen
+(`320 × 200 mm rotor` for a 100 mm machine), and it would have fed DryWare a rotor IAT does not
+build: a 100 CFM job verified ~2 gr/lb drier than the unit can reach, at double the true pressure
+drop and half the correct commissioning RPH — under a green **Verified** pill. It now reads the
+catalog row, and HC doubles that depth (200→400 mainline, 100→200 compacts).
+
+`scripts/verify-desmod.mjs` (69 checks) pins the live response for a known payload so upstream
+drift fails loudly, and mutation-tests the response guard by corrupting a known-good payload seven
+ways and asserting each is rejected. Rotor depths are asserted as **literals per size** — the
+original check compared the payload against the field it was copied from, which is tautological and
+could never have caught the bug above. No migration, no schema change, no writes.
+
 ## 2026-08-05 — Condense the admin rail: fewer People / Operations items
 
 Trimming nav clutter without dropping any capability:

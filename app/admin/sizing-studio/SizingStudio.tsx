@@ -1,7 +1,16 @@
 'use client'
 
-import { useMemo, useState, useCallback, type ReactNode } from 'react'
-import { AlertTriangle, Check, Copy, Info, MapPin, RotateCcw, TriangleAlert } from 'lucide-react'
+import { useMemo, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
+import {
+  AlertTriangle,
+  Check,
+  Copy,
+  Info,
+  MapPin,
+  RotateCcw,
+  ShieldCheck,
+  TriangleAlert,
+} from 'lucide-react'
 import PageChrome from '../PageChrome'
 import PsychroChart from './PsychroChart'
 import Calculators from './Calculators'
@@ -20,6 +29,9 @@ import {
   type CatalogSize,
 } from '@/lib/sizing-catalog'
 import type { AirState } from '@/lib/psychro'
+// Type-only: lib/desmod.ts is pure (no fetch, no server-only imports), but the
+// network call it describes lives behind /api/admin/sizing/verify.
+import type { SizingVerification } from '@/lib/desmod'
 
 /* Sizing Studio — enter a job's design conditions, get a recommended IAT unit.
  *
@@ -43,22 +55,66 @@ export default function SizingStudio({
   const [inputs, setInputs] = useState<SizingInputs>(DEFAULT_SIZING_INPUTS)
   const [copied, setCopied] = useState(false)
 
+  // DryWare verification state. The local engine still drives everything on screen;
+  // this is the authoritative second opinion, fetched only when asked for.
+  const [verification, setVerification] = useState<SizingVerification | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+  const verifySeq = useRef(0)
+
   const result = useMemo(() => calculateSizing(sanitize(inputs), catalog), [inputs, catalog])
 
   const set = useCallback(<K extends keyof SizingInputs>(key: K, value: SizingInputs[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  // A verification belongs to the exact run that produced it. Any input change
+  // invalidates it, and bumping the sequence discards an in-flight response —
+  // DryWare's numbers sitting next to conditions they were not calculated from
+  // would be far worse than showing none.
+  useEffect(() => {
+    verifySeq.current += 1
+    setVerification(null)
+    setVerifyError(null)
+  }, [inputs])
+
+  const verify = useCallback(async () => {
+    const seq = verifySeq.current
+    setVerifying(true)
+    setVerifyError(null)
+    try {
+      const res = await fetch('/api/admin/sizing/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: sanitize(inputs) }),
+      })
+      const json = await res.json().catch(() => null)
+      // Superseded by a newer edit — drop it on the floor.
+      if (verifySeq.current !== seq) return
+      if (!res.ok || !json?.verification) {
+        setVerifyError(json?.error || 'DryWare could not verify this selection.')
+        return
+      }
+      setVerification(json.verification as SizingVerification)
+    } catch {
+      if (verifySeq.current === seq) {
+        setVerifyError('Could not reach the verification service.')
+      }
+    } finally {
+      setVerifying(false)
+    }
+  }, [inputs])
+
   const copySummary = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(summaryText(inputs, result))
+      await navigator.clipboard.writeText(summaryText(inputs, result, verification))
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
       // Clipboard can be blocked by permissions policy; failing quietly is fine
       // because the same numbers are all on screen.
     }
-  }, [inputs, result])
+  }, [inputs, result, verification])
 
   const errors = result.warnings.filter((w) => w.severity === 'error')
 
@@ -76,10 +132,27 @@ export default function SizingStudio({
         <button
           type="button"
           onClick={copySummary}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-brand-hover active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-hairline-strong bg-surface px-3 text-[13px] font-medium text-ink-secondary transition-colors hover:bg-surface-soft hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {copied ? <Check size={15} strokeWidth={1.75} /> : <Copy size={15} strokeWidth={1.75} />}
           {copied ? 'Copied' : 'Copy summary'}
+        </button>
+        {/* The primary action of this view: the local engine is a planning estimate,
+            so confirming it against DryWare's real wheel model is the thing worth
+            doing. Copy summary demotes to secondary. */}
+        <button
+          type="button"
+          onClick={verify}
+          disabled={verifying || errors.length > 0}
+          title={
+            errors.length > 0
+              ? 'Fix the errors below before verifying.'
+              : 'Run this selection through DryWare’s wheel performance model'
+          }
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-brand-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <ShieldCheck size={15} strokeWidth={1.75} />
+          {verifying ? 'Verifying…' : verification ? 'Re-verify' : 'Verify with DryWare'}
         </button>
       </PageChrome>
 
@@ -111,10 +184,20 @@ export default function SizingStudio({
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
             <ConditionsForm inputs={inputs} set={set} />
             <div className="min-w-0 space-y-6">
-              <SelectionCard result={result} blocked={errors.length > 0} />
+              <SelectionCard
+                result={result}
+                blocked={errors.length > 0}
+                verification={verification}
+              />
+              <VerificationCard
+                result={result}
+                verification={verification}
+                verifying={verifying}
+                error={verifyError}
+              />
               <ChartCard result={result} />
               <StatesCard result={result} />
-              <WarningsCard result={result} />
+              <WarningsCard result={result} verification={verification} />
               <Calculators />
             </div>
           </div>
@@ -499,7 +582,15 @@ function ConditionField({
 
 // ─── Right column: the results ───────────────────────────────────────────────
 
-function SelectionCard({ result, blocked }: { result: SizingResult; blocked: boolean }) {
+function SelectionCard({
+  result,
+  blocked,
+  verification,
+}: {
+  result: SizingResult
+  blocked: boolean
+  verification: SizingVerification | null
+}) {
   const { selection, airflow, load, reactivation } = result
 
   return (
@@ -530,7 +621,11 @@ function SelectionCard({ result, blocked }: { result: SizingResult; blocked: boo
             </p>
           </div>
           <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
-            <Pill tone="amber">Preliminary</Pill>
+            {verification ? (
+              <Pill tone="emerald">Verified</Pill>
+            ) : (
+              <Pill tone="amber">Preliminary</Pill>
+            )}
             {selection.wheel === 'high-capacity' && <Pill tone="sky">HC wheel</Pill>}
           </div>
         </div>
@@ -593,6 +688,210 @@ function SelectionCard({ result, blocked }: { result: SizingResult; blocked: boo
             </li>
           ))}
         </ul>
+      </div>
+    </Card>
+  )
+}
+
+/**
+ * DryWare's answer, next to ours.
+ *
+ * Deliberately does NOT overwrite the Studio's numbers elsewhere on the page. The
+ * gap between the planning estimate and the real wheel model is itself the useful
+ * information — it tells an engineer how much margin the local coefficients were
+ * carrying on this particular job.
+ */
+function VerificationCard({
+  result,
+  verification,
+  verifying,
+  error,
+}: {
+  result: SizingResult
+  verification: SizingVerification | null
+  verifying: boolean
+  error: string | null
+}) {
+  if (verifying) {
+    return (
+      <Card>
+        <CardHead title="DryWare verification" caption="Running…" />
+        <div className="px-5 py-4">
+          <p className="text-[13px] text-ink-secondary">
+            Waiting on DryWare&rsquo;s wheel model — this normally takes about two seconds.
+          </p>
+        </div>
+      </Card>
+    )
+  }
+
+  if (!verification && error) {
+    return (
+      <Card className="border-rose-200 dark:border-rose-500/30">
+        <CardHead title="DryWare verification" caption="Could not verify" />
+        <div className="px-5 py-4">
+          <p className="text-[13px] text-ink-secondary">{error}</p>
+          <p className="mt-2 text-[12px] text-ink-muted">
+            The selection above still stands as a preliminary estimate — it just has
+            not been confirmed against DryWare.
+          </p>
+        </div>
+      </Card>
+    )
+  }
+
+  if (!verification) {
+    return (
+      <Card>
+        <CardHead
+          title="DryWare verification"
+          caption="Not yet verified"
+        />
+        <div className="px-5 py-4">
+          <p className="text-[13px] text-ink-secondary">
+            The selection above uses planning coefficients for wheel performance —
+            80% moisture removal for a standard wheel, 90% for high-capacity.{' '}
+            <span className="text-ink">Verify with DryWare</span> runs this exact
+            selection through DryWare&rsquo;s real wheel model and returns the actual
+            leaving condition, the optimised rotation speed, and the pressure drop.
+          </p>
+          <p className="mt-2 text-[12px] text-ink-muted">
+            One call takes about two seconds. Nothing is saved.
+          </p>
+        </div>
+      </Card>
+    )
+  }
+
+  const { response, delta, leaving, meetsTarget, balanced } = verification
+  // The local engine's own verdict, so a disagreement can be called out explicitly.
+  const studioMetTarget = result.leaving.grains <= result.target.grains + 0.01
+  const disagreesOnTarget = studioMetTarget !== meetsTarget
+
+  return (
+    <Card className="animate-fade-up">
+      <CardHead
+        title="DryWare verification"
+        caption={`DryWare wheel model · ${fmt(response.rphOut, 1)} RPH${
+          verification.request.optimizeRPH ? ' (optimised)' : ''
+        }`}
+      />
+
+      <div className="grid grid-cols-2 divide-hairline sm:grid-cols-4 sm:divide-x">
+        <Stat
+          label="Leaving (verified)"
+          value={fmt(leaving.grains, 2)}
+          unit="gr/lb"
+          sub={`${fmt(leaving.dewPointF, 1)} °F dew point`}
+        />
+        <Stat
+          label="Leaving temp"
+          value={fmt(leaving.tempF, 1)}
+          unit="°F"
+          sub={`${delta.tempF >= 0 ? '+' : ''}${fmt(delta.tempF, 1)} °F vs estimate`}
+        />
+        <Stat
+          label="Pressure drop"
+          value={fmt(response.processDeltaP, 2)}
+          unit="in. w.g."
+          sub={`${fmt(response.reactDeltaP, 2)} reactivation`}
+        />
+        {/* DesMod models ONE wheel, so its figure is per unit. The Selection card
+            above reports the whole-job duty — showing the two under the same label
+            without scaling would invite a direct comparison of different things. */}
+        <Stat
+          label="Moisture removed"
+          value={fmt(response.moistureRemovalLbsHr * result.selection.unitsRequired, 1)}
+          unit="lb/hr"
+          sub={
+            result.selection.unitsRequired > 1
+              ? `${fmt(response.moistureRemovalLbsHr, 1)} lb/hr × ${result.selection.unitsRequired} units`
+              : 'DryWare’s own figure'
+          }
+        />
+      </div>
+
+      {error && (
+        <div className="border-t border-hairline bg-surface-soft px-5 py-3">
+          <p className="text-[12px] text-ink-secondary">
+            <span className="font-medium">The latest re-verify failed.</span> {error} The
+            figures above are from the previous successful run against these same inputs.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2.5 border-t border-hairline bg-surface-soft px-5 py-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+          Against the Studio&rsquo;s estimate
+        </p>
+
+        <p className="text-[13px] text-ink-secondary">
+          The Studio predicted{' '}
+          <span className="tabular-nums text-ink">{fmt(result.leaving.grains, 2)} gr/lb</span>{' '}
+          leaving; DryWare says{' '}
+          <span className="tabular-nums text-ink">{fmt(leaving.grains, 2)} gr/lb</span> —{' '}
+          {Math.abs(delta.grains) < 0.05 ? (
+            <>essentially the same answer.</>
+          ) : delta.grains < 0 ? (
+            <>
+              <span className="text-ink">{fmt(Math.abs(delta.grains), 2)} gr/lb drier</span> than
+              the planning coefficients assumed, so the estimate was conservative.
+            </>
+          ) : (
+            <>
+              <span className="text-ink">{fmt(delta.grains, 2)} gr/lb wetter</span> than the
+              planning coefficients assumed, so the estimate was optimistic.
+            </>
+          )}
+        </p>
+
+        {disagreesOnTarget && (
+          <p className="text-[13px] text-ink-secondary">
+            {meetsTarget ? (
+              <>
+                <span className="text-ink">
+                  The Studio flagged this target as out of reach; DryWare says it is met.
+                </span>{' '}
+                A smaller unit or a standard wheel may be enough — worth re-running before
+                quoting.
+              </>
+            ) : (
+              <>
+                <span className="text-ink">
+                  The Studio expected this target to be met; DryWare says it is not.
+                </span>{' '}
+                Do not quote this selection without engineering.
+              </>
+            )}
+          </p>
+        )}
+
+        {verification.request.reactTemperature !== result.reactivation.tempF && (
+          <p className="text-[13px] text-ink-secondary">
+            Verified at{' '}
+            <span className="tabular-nums text-ink">
+              {fmt(verification.request.reactTemperature, 0)} °F
+            </span>{' '}
+            reactivation, not the {fmt(result.reactivation.tempF, 0)} °F shown above — DryWare
+            runs this compact at its own setpoint, and matching it is what makes the result
+            reproducible in their tool.
+          </p>
+        )}
+
+        {!balanced && (
+          <p className="text-[13px] text-ink-secondary">
+            DryWare reported non-zero energy/mass residuals (
+            <span className="tabular-nums">{fmt(response.temperatureBalance, 2)}</span> /{' '}
+            <span className="tabular-nums">{fmt(response.moistureBalance, 2)}</span>) — the run
+            did not fully converge. Treat these numbers with caution.
+          </p>
+        )}
+
+        <p className="text-[12px] text-ink-muted">
+          Wheel performance and pressure drop are now DryWare&rsquo;s. The airflow, moisture
+          load and reactivation duty above are still the Studio&rsquo;s own psychrometrics.
+          Engineering confirms before a submittal goes out.
+        </p>
       </div>
     </Card>
   )
@@ -665,7 +964,13 @@ function StatesCard({ result }: { result: SizingResult }) {
   )
 }
 
-function WarningsCard({ result }: { result: SizingResult }) {
+function WarningsCard({
+  result,
+  verification,
+}: {
+  result: SizingResult
+  verification: SizingVerification | null
+}) {
   const order = { error: 0, warning: 1, info: 2 } as const
   const items = [...result.warnings].sort((a, b) => order[a.severity] - order[b.severity])
 
@@ -696,14 +1001,24 @@ function WarningsCard({ result }: { result: SizingResult }) {
         })}
 
         <div className="mt-4 border-t border-hairline pt-3">
-          <p className="text-[12px] text-ink-muted">
-            <span className="font-medium text-ink-secondary">Preliminary selection.</span>{' '}
-            Psychrometrics are exact (ASHRAE), but desiccant-wheel performance uses planning
-            coefficients — {WHEEL_SPECS.standard.removalFraction * 100}% moisture removal for a
-            standard wheel, {WHEEL_SPECS['high-capacity'].removalFraction * 100}% for
-            high-capacity, derated by reactivation temperature. Engineering confirms rotor
-            performance before this goes on a submittal.
-          </p>
+          {verification ? (
+            <p className="text-[12px] text-ink-muted">
+              <span className="font-medium text-ink-secondary">Verified against DryWare.</span>{' '}
+              Psychrometrics are exact (ASHRAE) and wheel performance now comes from
+              DryWare&rsquo;s own model rather than planning coefficients. The warnings above
+              were raised by the Studio&rsquo;s estimate — re-read them against the verified
+              figures. Engineering still confirms before this goes on a submittal.
+            </p>
+          ) : (
+            <p className="text-[12px] text-ink-muted">
+              <span className="font-medium text-ink-secondary">Preliminary selection.</span>{' '}
+              Psychrometrics are exact (ASHRAE), but desiccant-wheel performance uses planning
+              coefficients — {WHEEL_SPECS.standard.removalFraction * 100}% moisture removal for a
+              standard wheel, {WHEEL_SPECS['high-capacity'].removalFraction * 100}% for
+              high-capacity, derated by reactivation temperature. Engineering confirms rotor
+              performance before this goes on a submittal.
+            </p>
+          )}
         </div>
       </div>
     </Card>
@@ -850,13 +1165,15 @@ function Segmented({
   )
 }
 
-type Tone = 'amber' | 'sky' | 'violet'
+type Tone = 'amber' | 'sky' | 'violet' | 'emerald' | 'rose'
 
 function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
   const cx: Record<Tone, string> = {
     amber: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
     sky: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400',
     violet: 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400',
+    emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
+    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',
   }
   return (
     <span
@@ -915,11 +1232,23 @@ function fmt(n: number, digits: number): string {
   })
 }
 
-/** Plain-text summary for the clipboard — pasteable into an email or a deal note. */
-function summaryText(inputs: SizingInputs, r: SizingResult): string {
+/**
+ * Plain-text summary for the clipboard — pasteable into an email or a deal note.
+ *
+ * The verification status is load-bearing here: this text leaves the building, so
+ * a summary that says PRELIMINARY when the numbers were verified (or, far worse,
+ * one that reads as verified when it wasn't) misrepresents the selection.
+ */
+function summaryText(
+  inputs: SizingInputs,
+  r: SizingResult,
+  v: SizingVerification | null,
+): string {
   const line = (label: string, value: string) => `${label.padEnd(24)}${value}`
   return [
-    'IAT SIZING STUDIO — PRELIMINARY SELECTION',
+    v
+      ? 'IAT SIZING STUDIO — SELECTION VERIFIED AGAINST DRYWARE'
+      : 'IAT SIZING STUDIO — PRELIMINARY SELECTION',
     '',
     line('Recommended unit', `${r.selection.unitsRequired > 1 ? `${r.selection.unitsRequired} × ` : ''}${r.selection.model}`),
     line('Nominal airflow', `${r.selection.nominalCfm.toLocaleString()} CFM`),
@@ -929,7 +1258,14 @@ function summaryText(inputs: SizingInputs, r: SizingResult): string {
     '',
     'CONDITIONS',
     line('Entering wheel', stateLine(r.entering)),
-    line('Leaving unit', stateLine(r.leaving)),
+    // When verified, DryWare's leaving condition is the one that matters — but the
+    // estimate stays alongside it rather than being quietly dropped.
+    ...(v
+      ? [
+          line('Leaving unit (DryWare)', stateLine(v.leaving)),
+          line('  Studio estimate', stateLine(r.leaving)),
+        ]
+      : [line('Leaving unit', stateLine(r.leaving))]),
     line('Target', stateLine(r.target)),
     line('Outside air', `${fmt(inputs.freshAirPercent, 0)} % — ${stateLine(r.outsideAir)}`),
     line('Altitude', `${fmt(inputs.altitudeFt, 0)} ft (${fmt(r.pressure, 2)} psia)`),
@@ -942,11 +1278,37 @@ function summaryText(inputs: SizingInputs, r: SizingResult): string {
     '',
     'WHY THIS UNIT',
     ...r.selection.rationale.map((x) => `  - ${x}`),
+    ...(v
+      ? [
+          '',
+          'DRYWARE VERIFICATION',
+          line('Rotor modelled', `${v.request.rotorDiameter} × ${v.request.rotorDepth} mm`),
+          // The verification may run at a different reactivation setpoint than the
+          // one quoted above (DryWare runs its compacts at 275 °F), so state the
+          // temperature these numbers were actually computed at.
+          line('Reactivation', `${fmt(v.request.reactTemperature, 0)} °F (as verified)`),
+          line('Rotation', `${fmt(v.response.rphOut, 1)} RPH${v.request.optimizeRPH ? ' (optimised)' : ''}`),
+          line('Pressure drop', `${fmt(v.response.processDeltaP, 2)} in. w.g. process / ${fmt(v.response.reactDeltaP, 2)} reactivation`),
+          line(
+            'Moisture removed',
+            `${fmt(v.response.moistureRemovalLbsHr * r.selection.unitsRequired, 1)} lb/hr${
+              r.selection.unitsRequired > 1
+                ? ` (${fmt(v.response.moistureRemovalLbsHr, 1)} × ${r.selection.unitsRequired} units)`
+                : ''
+            }`,
+          ),
+          line('Meets target', v.meetsTarget ? 'Yes' : 'NO'),
+          ...(v.balanced ? [] : [line('⚠ Convergence', 'DryWare reported non-zero residuals')]),
+          line('Verified', v.verifiedAt),
+        ]
+      : []),
     ...(r.warnings.length
       ? ['', 'CHECKS', ...r.warnings.map((w) => `  [${w.severity.toUpperCase()}] ${w.message}`)]
       : []),
     '',
-    'Preliminary — engineering confirms rotor performance before submittal.',
+    v
+      ? 'Wheel performance verified against DryWare. Engineering confirms before submittal.'
+      : 'Preliminary — engineering confirms rotor performance before submittal.',
   ].join('\n')
 }
 

@@ -232,6 +232,59 @@ export const DEFAULT_SIZING_INPUTS: SizingInputs = {
   rph: 0,
 }
 
+/**
+ * Coerce untrusted JSON into a usable SizingInputs.
+ *
+ * The Studio itself never needs this — its state is already typed. It exists for
+ * the server side, where a client POSTs a run to be verified against DryWare and
+ * every field has to be re-derived rather than trusted. Anything missing, wrongly
+ * typed or non-finite falls back to the corresponding DEFAULT_SIZING_INPUTS value,
+ * so this never throws and never yields NaN.
+ */
+export function parseSizingInputs(raw: unknown): SizingInputs {
+  const d = DEFAULT_SIZING_INPUTS
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+
+  const num = (v: unknown, fallback: number): number =>
+    typeof v === 'number' && Number.isFinite(v) ? v : fallback
+  const bool = (v: unknown, fallback: boolean): boolean => (typeof v === 'boolean' ? v : fallback)
+  const oneOf = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
+    typeof v === 'string' && (allowed as readonly string[]).includes(v) ? (v as T) : fallback
+
+  const cond = (v: unknown, fallback: HumidityInput): HumidityInput => {
+    const c = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+    return {
+      tempF: num(c.tempF, fallback.tempF),
+      mode: oneOf<HumidityMode>(c.mode, ['rh', 'dewpoint', 'grains'], fallback.mode),
+      rh: num(c.rh, fallback.rh ?? 0),
+      dewPointF: num(c.dewPointF, fallback.dewPointF ?? 0),
+      grains: num(c.grains, fallback.grains ?? 0),
+    }
+  }
+
+  return {
+    projectName: typeof o.projectName === 'string' ? o.projectName.slice(0, 200) : undefined,
+    airflowMode: oneOf(o.airflowMode, ['direct', 'room'] as const, d.airflowMode),
+    processCfm: num(o.processCfm, d.processCfm ?? 0),
+    roomVolumeFt3: num(o.roomVolumeFt3, d.roomVolumeFt3 ?? 0),
+    airChangesPerHour: num(o.airChangesPerHour, d.airChangesPerHour ?? 0),
+    entering: cond(o.entering, d.entering),
+    target: cond(o.target, d.target),
+    freshAirPercent: num(o.freshAirPercent, d.freshAirPercent),
+    outsideAir: cond(o.outsideAir, d.outsideAir),
+    altitudeFt: num(o.altitudeFt, d.altitudeFt),
+    internalLoadLbPerHour: num(o.internalLoadLbPerHour, d.internalLoadLbPerHour ?? 0),
+    reactivation: oneOf<ReactivationCode>(o.reactivation, ['E', 'S', 'G', 'HW'], d.reactivation),
+    wheelPreference: oneOf(o.wheelPreference, ['auto', 'standard', 'high-capacity'] as const, d.wheelPreference),
+    idp: bool(o.idp, d.idp),
+    processDegrees: num(o.processDegrees, d.processDegrees),
+    reactDegrees: num(o.reactDegrees, d.reactDegrees),
+    purgeDegrees: num(o.purgeDegrees, d.purgeDegrees),
+    purgeToReact: bool(o.purgeToReact, d.purgeToReact),
+    rph: num(o.rph, d.rph),
+  }
+}
+
 // ─── Outputs ─────────────────────────────────────────────────────────────────
 
 export type SizingWarning = {
@@ -530,6 +583,24 @@ export function calculateSizing(
     })
   }
 
+  // The rotor actually fitted to the selected size.
+  //
+  // ⚠️ This is the catalog row's own depth, NOT a per-wheel-type constant. The
+  // mainline units are all 200 mm, but the 75 and 150 CFM compacts ship a 100 mm
+  // rotor — reading WHEEL_SPECS[wheel].depthMm here modelled a machine IAT does
+  // not build, and once that value started feeding DryWare's performance engine it
+  // produced confidently wrong numbers (a 100 CFM job verified ~2 gr/lb drier than
+  // reachable, at double the true pressure drop, under a "Verified" stamp).
+  //
+  // An HC build swaps in a rotor of twice the depth — 200→400 on the mainline
+  // (which is what WHEEL_SPECS describes), 100→200 on the compacts. Both depths
+  // exist in DryWare's rotor catalog.
+  const baseRotorDepthMm = sizeEntry?.wheelDepthMm ?? WHEEL_SPECS.standard.depthMm
+  const HC_DEPTH_MULTIPLE =
+    WHEEL_SPECS['high-capacity'].depthMm / WHEEL_SPECS.standard.depthMm
+  const rotorDepthMm =
+    wheel === 'high-capacity' ? baseRotorDepthMm * HC_DEPTH_MULTIPLE : baseRotorDepthMm
+
   const compact = isCompactSize(nominalCfm, catalog) && nominalCfm <= 600 && !inputs.idp
   const spec: ModelSpec = {
     nominalCfm,
@@ -658,8 +729,7 @@ export function calculateSizing(
       unitsRequired,
       wheel,
       wheelDiameterMm: sizeEntry?.wheelDiameterMm ?? 0,
-      // An HC build swaps the standard 200 mm rotor for a 400 mm one.
-      wheelDepthMm: WHEEL_SPECS[wheel].depthMm,
+      wheelDepthMm: rotorDepthMm,
       effectiveAreaFt2: sizeEntry?.effectiveAreaFt2 ?? 0,
       faceVelocityFpm: faceVelocity,
       rationale,
