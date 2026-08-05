@@ -115,6 +115,9 @@ const NAV_PARENTS: NavParent[] = [
       // Lives under Sales: sales starts one from a customer page and writes the
       // inputs; marketing only approves. (Briefly sat under Marketing.)
       { href: '/admin/case-studies', label: 'Case Studies', perm: 'case_studies' },
+      // Proposals (079) — a Sizing Studio selection + a Deal become a
+      // submittal-ready PDF. Sales drafts; admin approves.
+      { href: '/admin/proposals', label: 'Proposals', perm: 'proposals' },
     ],
   },
   {

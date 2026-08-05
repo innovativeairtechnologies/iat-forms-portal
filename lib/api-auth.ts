@@ -411,6 +411,48 @@ export async function requireCaseStudiesAuth(
 }
 
 /**
+ * Guard for the proposals API (/admin/proposals, migration 079).
+ * Matrix-backed on `proposals` — the same perm middleware gates the page on —
+ * so the page and the API can never disagree.
+ *
+ * Approval ({ approve: true }) additionally requires the ADMIN role, and is
+ * deliberately narrower than the case-study gate. An approved proposal lifts the
+ * DRAFT watermark and becomes a document a customer may read as a commitment on
+ * price-adjacent scope, so approval is not delegatable through the perm matrix:
+ * a scoped role granted `proposals` in /admin/permissions can draft, edit and
+ * produce a watermarked draft, but cannot clear the watermark.
+ *
+ * Returns the actor's user id (needed to stamp generated_by / approved_by),
+ * or a NextResponse error to return directly.
+ */
+export async function requireProposalsAuth(
+  opts: { approve?: boolean } = {}
+): Promise<{ userId: string } | NextResponse> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'proposals', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (opts.approve && role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Only an admin can approve a proposal for distribution.' },
+      { status: 403 },
+    )
+  }
+  return { userId: user.id }
+}
+
+/**
  * Guard for the marketing-calendar API (/admin/marketing, migration 071).
  * Matrix-backed on `marketing_calendar` — the same perm middleware gates the
  * page on — so the page and the API can never disagree. Its own named guard,

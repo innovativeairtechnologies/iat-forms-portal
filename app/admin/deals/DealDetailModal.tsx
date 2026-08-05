@@ -53,7 +53,17 @@ type EditForm = {
   expected_close: string; next_step: string; next_step_due: string
 }
 
-type TabKey = 'overview' | 'comments' | 'checklist' | 'activity'
+type TabKey = 'overview' | 'comments' | 'checklist' | 'activity' | 'proposals'
+
+/** A proposal row as the drawer lists it (migration 079). */
+type DealProposal = {
+  id: string
+  title: string
+  status: 'draft' | 'in_review' | 'approved'
+  updated_at: string
+  verification: unknown | null
+  sizing_result: { selection?: { model?: string } } | null
+}
 
 const toForm = (d: Deal): EditForm => ({
   customer: d.customer,
@@ -160,6 +170,8 @@ export default function DealDetailModal({
   const [form, setForm] = useState<EditForm>(() => toForm(deal))
   const [update, setUpdate] = useState('')
   const [tab, setTab] = useState<TabKey>('overview')
+  const [proposals, setProposals] = useState<DealProposal[] | null>(null)
+  const [creatingProposal, setCreatingProposal] = useState(false)
 
   // Activity log + quick-action composer
   const [activities, setActivities] = useState<DealActivity[] | null>(null) // null = loading
@@ -218,6 +230,34 @@ export default function DealDetailModal({
       .catch(() => { if (alive) setActivities([]) })
     return () => { alive = false }
   }, [deal.id])
+
+  // Proposals written against this deal (migration 079). Same alive-guard as the
+  // activity load: ←/→ can swap `deal` mid-flight and would otherwise show one
+  // deal's proposals under another.
+  useEffect(() => {
+    let alive = true
+    setProposals(null)
+    fetch(`/api/admin/proposals?deal_id=${deal.id}`)
+      .then((r) => (r.ok ? r.json() : { proposals: [] }))
+      .then((j) => { if (alive) setProposals(Array.isArray(j.proposals) ? j.proposals : []) })
+      .catch(() => { if (alive) setProposals([]) })
+    return () => { alive = false }
+  }, [deal.id])
+
+  const startProposal = async () => {
+    setCreatingProposal(true)
+    try {
+      const res = await fetch('/api/admin/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deal_id: deal.id }),
+      })
+      const json = await res.json()
+      if (res.ok) window.location.href = `/admin/proposals/${json.id}`
+    } finally {
+      setCreatingProposal(false)
+    }
+  }
 
   const logActivity = async (kind: DealActivityKind, summary: string) => {
     // Pin the deal this POST belongs to. ←/→ can swap `deal` while the request
@@ -325,6 +365,7 @@ export default function DealDetailModal({
     { key: 'comments', label: 'Comments', count: noteLines || undefined },
     { key: 'checklist', label: 'Checklist', count: `${progress.done}/${progress.total}` },
     { key: 'activity', label: 'Activity', count: activities === null ? undefined : feedItems.length },
+    { key: 'proposals', label: 'Proposals', count: proposals === null ? undefined : proposals.length },
   ]
 
   return (
@@ -763,6 +804,54 @@ export default function DealDetailModal({
                 </div>
               )}
             </div>
+          </div>
+        ) : tab === 'proposals' ? (
+          /* ── Proposals (079) ── */
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[12px] text-ink-muted">
+                Built from a Sizing Studio selection, approved before it leaves the building.
+              </p>
+              <button
+                type="button"
+                onClick={startProposal}
+                disabled={creatingProposal}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-brand px-3 text-[12.5px] font-medium text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
+              >
+                {creatingProposal ? 'Starting…' : 'New proposal'}
+              </button>
+            </div>
+
+            {proposals === null ? (
+              <p className="px-3.5 py-4 text-center text-[12px] text-ink-faint">Loading…</p>
+            ) : proposals.length === 0 ? (
+              <p className="rounded-xl border border-hairline bg-surface-soft px-3.5 py-4 text-center text-[12px] text-ink-muted">
+                No proposals for this deal yet.
+              </p>
+            ) : (
+              proposals.map((pr) => (
+                <a
+                  key={pr.id}
+                  href={`/admin/proposals/${pr.id}`}
+                  className="block rounded-xl border border-hairline bg-surface px-3.5 py-3 transition-colors hover:bg-surface-soft"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-[13px] font-medium text-ink">
+                      {pr.title || 'Untitled proposal'}
+                    </span>
+                    <StatusPill
+                      tone={pr.status === 'approved' ? 'emerald' : pr.status === 'in_review' ? 'amber' : 'slate'}
+                    >
+                      {pr.status === 'in_review' ? 'In review' : pr.status === 'approved' ? 'Approved' : 'Draft'}
+                    </StatusPill>
+                  </div>
+                  <p className="mt-1 text-[11.5px] text-ink-muted">
+                    {pr.sizing_result?.selection?.model ?? 'No selection'}
+                    {pr.verification ? ' · verified' : ' · preliminary'}
+                  </p>
+                </a>
+              ))
+            )}
           </div>
         ) : (
           /* ── Activity log ── */

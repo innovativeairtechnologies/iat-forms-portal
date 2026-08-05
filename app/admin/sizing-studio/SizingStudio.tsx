@@ -1,10 +1,12 @@
 'use client'
 
 import { useMemo, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
   Check,
   Copy,
+  FileText,
   Info,
   MapPin,
   RotateCcw,
@@ -60,7 +62,9 @@ export default function SizingStudio({
   const [verification, setVerification] = useState<SizingVerification | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState<string | null>(null)
+  const [proposing, setProposing] = useState(false)
   const verifySeq = useRef(0)
+  const router = useRouter()
 
   const result = useMemo(() => calculateSizing(sanitize(inputs), catalog), [inputs, catalog])
 
@@ -77,6 +81,32 @@ export default function SizingStudio({
     setVerification(null)
     setVerifyError(null)
   }, [inputs])
+
+  // "Start a proposal" — the only way a run leaves this page other than the
+  // clipboard. The Studio persists nothing, so creating a proposal is the moment
+  // a selection first becomes durable. Only the INPUTS travel; the server
+  // recomputes the selection against the live catalog, because a proposal is a
+  // customer-facing document and nothing on it may originate from a request body.
+  const startProposal = useCallback(async () => {
+    setProposing(true)
+    try {
+      const res = await fetch('/api/admin/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sizing_inputs: sanitize(inputs) }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setVerifyError(json.error || 'Could not start a proposal.')
+        return
+      }
+      router.push(`/admin/proposals/${json.id}`)
+    } catch {
+      setVerifyError('Could not start a proposal.')
+    } finally {
+      setProposing(false)
+    }
+  }, [inputs, router])
 
   const verify = useCallback(async () => {
     const seq = verifySeq.current
@@ -153,6 +183,20 @@ export default function SizingStudio({
         >
           <ShieldCheck size={15} strokeWidth={1.75} />
           {verifying ? 'Verifying…' : verification ? 'Re-verify' : 'Verify with DryWare'}
+        </button>
+        <button
+          type="button"
+          onClick={startProposal}
+          disabled={proposing || errors.length > 0}
+          title={
+            errors.length > 0
+              ? 'Fix the errors below first.'
+              : 'Save this selection as a proposal — the only way it leaves this page'
+          }
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-hairline-strong bg-surface px-3 text-[13px] font-medium text-ink-secondary transition-colors hover:bg-surface-soft hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <FileText size={15} strokeWidth={1.75} />
+          {proposing ? 'Starting…' : 'Start a proposal'}
         </button>
       </PageChrome>
 

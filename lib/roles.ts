@@ -117,6 +117,11 @@ export type Perm =
   // (migration 072). Sales drafts, marketing approves (the approve action is
   // additionally role-gated to marketing/admin in requireCaseStudiesAuth).
   | 'case_studies'
+  // /admin/proposals — AI-drafted, human-approved equipment proposals built from
+  // a Sizing Studio selection (migration 079). Sales drafts them; APPROVAL is
+  // additionally role-gated to admin in requireProposalsAuth, because an
+  // approved proposal is a document a customer may read as a commitment.
+  | 'proposals'
   // /admin/diagram-studio — the application airflow figures that go into
   // proposals (migration 073). Named DIAGRAMS rather than reusing 'presentations'
   // because the audience is different: sales builds them, engineering checks the
@@ -178,6 +183,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   production_board: 'Production Board',
   home_content: 'Hub Content',
   case_studies: 'Case Studies',
+  proposals: 'Proposals',
   diagrams: 'Application Diagrams',
   marketing_calendar: 'Marketing Calendar',
   learn_admin: 'Learn — manage content',
@@ -204,7 +210,7 @@ export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
 // is the source of truth and this stays the seed + the fail-safe fallback used
 // whenever the DB matrix is unavailable (table missing / read error).
 export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
-  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies', 'diagrams'],
+  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies', 'diagrams', 'proposals'],
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools', 'compensation'],
   marketing: ['dashboard', 'presentations', 'jerry', 'tools', 'case_studies', 'marketing_calendar', 'diagrams'],
   engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools', 'diagrams'],
@@ -274,6 +280,7 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
   { perm: 'equipment', href: '/admin/equipment' },
   { perm: 'customers', href: '/admin/customers' },
   { perm: 'case_studies', href: '/admin/case-studies' },
+  { perm: 'proposals', href: '/admin/proposals' },
   { perm: 'diagrams', href: '/admin/diagram-studio' },
   { perm: 'deals', href: '/admin/deals' },
   { perm: 'gantt', href: '/admin/gantt' },
@@ -377,6 +384,7 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // both roles in the migration) so access can be tuned per-role later without
   // touching the deals trust boundary.
   { prefix: '/admin/case-studies', perm: 'case_studies' },
+  { prefix: '/admin/proposals', perm: 'proposals' },
   // Application diagram studio (073). MUST be listed: an unmapped /admin/* path
   // falls back to 'dashboard', which every scoped role holds — so omitting this
   // would open the page to all of them rather than fail closed.

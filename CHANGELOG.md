@@ -2,6 +2,58 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-05 — Proposals: a sizing selection becomes a submittal-ready PDF (migration 079)
+
+`/admin/proposals` turns a Deal plus a Sizing Studio selection into a branded proposal PDF that a
+human approves before it goes anywhere. Perm `proposals`, seeded for sales. **Draft, human sends** —
+nothing is emailed; the portal produces a file.
+
+**Claude is never shown a number.** It writes only the cover letter and the scope of work, from a
+FACTS object carrying qualitative descriptors alone — "a high-capacity desiccant wheel", "electric
+reactivation" — never a figure. Every number on the document is templated directly from the frozen
+sizing snapshot, and the PDF generator never reads the prose.
+
+That inversion is what makes the guard sound. The case-study tool lets the model write figures and
+checks them afterwards, and that check has real holes: a decimal splits into two runs that both
+pass, single digits are permanently whitelisted by `unit: 1..N` in the corpus, a model number
+donates its digits so a fabricated `$5000` passes next to `IAT-5000`, and it only runs at generate
+time so anything a human types in later is never checked. Here the rule is simply **any digit
+Claude writes is a flag**, cleared by a human before approval, re-derived on every save. The
+allowlist is the model number and the customer names, matched as whole tokens — so `IAT-3000RE-2000`
+passes while a bare `$3000` still flags. The one remaining hole, a number spelled as a word, is
+asserted in the test suite *as a known hole* so it cannot be mistaken for coverage.
+
+**A watermarked draft PDF can be produced at any stage; approval lifts the watermark.** Blocking
+the PDF outright would just be routed around with screenshots — the `DRAFT — NOT FOR DISTRIBUTION`
+stamp is the control that travels with the document. Approval needs the **admin** role and is not
+delegatable through the perm matrix. Reopening an approved proposal deletes its archived PDF.
+
+**The Sizing Studio persists nothing**, so creating a proposal is the moment a selection first
+becomes durable. Both the inputs and the computed result are frozen: the inputs alone would replay
+the run today, but the engine is changing and the catalog is fetched live, and an approved proposal
+has to render the same numbers in a year. An unverified proposal is marked preliminary on the page
+*and* on the PDF — and, given the planning coefficients measured conservative, is likely to name a
+larger unit than the job needs.
+
+**Nothing customer-facing originates in a request body.** The client may post sizing *inputs*; it
+may never post a result or a verification. The selection is recomputed server-side against the live
+catalog, and `verification` is only ever written by the server calling DryWare itself.
+
+Entry points: the list, a **Proposals** tab on the deal drawer, and **Start a proposal** on a
+Sizing Studio run. The customer name is snapshotted rather than read live, because `deals.customer`
+is DryWare-owned and rewritten on every sync.
+
+`lib/proposal-pdf.ts` is new: letter, running header, hand-rolled column tables, page x-of-y.
+`lib/pdf.ts` was not a usable base (A4, no tables, no running header, no logo); the precedent is
+`public/tools/washdown-load-calculator.html`. Only an approved PDF is archived, to the private
+`proposal-docs` bucket via the signed-upload idiom.
+
+`scripts/verify-proposals.mjs` — 54 checks. It masks the allowlist out of the FACTS object and
+asserts no digit remains, reproduces each case-study checker hole as a test that this checker does
+not share it, and **actually renders the PDF**: the draft must be measurably larger than the
+approved copy, long prose must paginate, and a proposal with no selection must still produce a
+document.
+
 ## 2026-08-05 — Compensation Review: the annual merit-increase sheet, in the portal
 
 The **Sample Annual Review Spreadsheet** — the workbook the annual review has run on from a
