@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Brain, UploadCloud, FileText, Trash2, Loader2, Check, AlertCircle, Lock, Globe,
-  X, ChevronRight, ShieldCheck, Mail, Phone, Building2, User, EyeOff,
+  X, ChevronRight, ShieldCheck, Mail, Phone, Building2, User, EyeOff, FolderSync, ExternalLink,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -68,6 +68,25 @@ type ReviewItem = {
   pageCount: number
   chunkCount: number
   findings: Findings
+  // Set when this review came from the SharePoint pull rather than an upload:
+  // approving posts to the queue route (which stamps provenance) instead of the
+  // plain ingest route, and the transcript stays server-side.
+  queueId?: string
+  webUrl?: string | null
+  detectedBy?: string | null
+}
+
+// A document the SharePoint pull has read + scrubbed, waiting for a human.
+type SharePointQueueItem = {
+  id: string
+  filename: string
+  title: string
+  web_url: string | null
+  detected_by: string | null
+  findings: Findings | null
+  page_count: number | null
+  chunk_estimate: number | null
+  created_at: string
 }
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.gif,.webp'
@@ -130,6 +149,9 @@ export default function KnowledgeReactorClient() {
   const [busy, setBusy] = useState(false) // a file is uploading / being read
   const [saving, setSaving] = useState(false) // a review is being committed
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
+  const [spQueue, setSpQueue] = useState<SharePointQueueItem[]>([])
+  const [spPulling, setSpPulling] = useState(false)
+  const [spNote, setSpNote] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
 
@@ -146,10 +168,60 @@ export default function KnowledgeReactorClient() {
     }
   }, [])
 
-  useEffect(() => { refresh() }, [refresh])
+  // ── the SharePoint review queue ──────────────────────────────────────────────
+  const refreshQueue = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/kb/queue')
+      const json = await res.json().catch(() => ({}))
+      if (res.ok) setSpQueue(Array.isArray(json.pending) ? json.pending : [])
+    } catch { /* the queue is additive — a failure here must not break the page */ }
+  }, [])
+
+  useEffect(() => { refresh(); refreshQueue() }, [refresh, refreshQueue])
 
   const updateItem = (key: string, patch: Partial<QueueItem>) =>
     setQueue((q) => q.map((it) => (it.key === key ? { ...it, ...patch } : it)))
+
+  // Pull one batch from SharePoint. Read-only on their side; everything found
+  // lands in the queue as pending, never published.
+  const pullFromSharePoint = async () => {
+    if (spPulling) return
+    setSpPulling(true)
+    setSpNote(null)
+    try {
+      const res = await fetch('/api/admin/kb/sharepoint/sync', { method: 'POST' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Could not reach SharePoint.')
+      const parts: string[] = []
+      if (json.queued) parts.push(`${json.queued} new document${json.queued === 1 ? '' : 's'} to review`)
+      if (json.remaining) parts.push(`${json.remaining} more waiting — pull again`)
+      if (json.failed) parts.push(`${json.failed} couldn’t be read`)
+      if (json.skipped) parts.push(`${json.skipped} unsupported (Office files)`)
+      setSpNote(parts.length ? parts.join(' · ') : 'Nothing new in SharePoint.')
+      await refreshQueue()
+    } catch (e) {
+      setSpNote(e instanceof Error ? e.message : 'Something went wrong.')
+    } finally {
+      setSpPulling(false)
+    }
+  }
+
+  // Open a queued SharePoint doc in the same scrub-review card used for uploads.
+  const openQueued = (item: SharePointQueueItem) => {
+    if (reviews.some((r) => r.queueId === item.id)) return
+    setReviews((r) => [...r, {
+      key: `sp-${item.id}`,
+      filename: item.filename,
+      title: item.title,
+      transcript: '', // stays server-side; the approve route reads it from the queue row
+      pageCount: item.page_count ?? 0,
+      chunkCount: item.chunk_estimate ?? 0,
+      findings: item.findings || { summary: '', competitors: [], customers: [], people: [], emails: [], phones: [] },
+      queueId: item.id,
+      webUrl: item.web_url,
+      detectedBy: item.detected_by,
+    }])
+  }
 
   // ── phase 1: upload + analyze (scrub preview) ────────────────────────────────
   const analyzeOne = async (file: File) => {
@@ -215,20 +287,30 @@ export default function KnowledgeReactorClient() {
     setSaving(true)
     updateItem(currentReview.key, { status: 'saving' })
     try {
-      const res = await fetch('/api/admin/kb/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript: currentReview.transcript,
-          filename: currentReview.filename,
-          is_internal: reviewVisibility === 'internal',
-        }),
-      })
+      // A SharePoint doc approves through the queue route — it reads the
+      // transcript from the queue row and stamps source + item id on the stored
+      // document, which is what stops the next pull re-queueing it forever.
+      const res = currentReview.queueId
+        ? await fetch(`/api/admin/kb/queue/${currentReview.queueId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_internal: reviewVisibility === 'internal' }),
+          })
+        : await fetch('/api/admin/kb/ingest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transcript: currentReview.transcript,
+              filename: currentReview.filename,
+              is_internal: reviewVisibility === 'internal',
+            }),
+          })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || 'Jerry couldn’t absorb that one.')
       updateItem(currentReview.key, { status: 'done', chunks: Number(json.chunks) || 0 })
       setTotalChunks((c) => c + (Number(json.chunks) || 0)) // the wheel grows immediately
       setAbsorb((n) => n + 1)
+      if (currentReview.queueId) setSpQueue((q) => q.filter((it) => it.id !== currentReview.queueId))
       setReviews((r) => r.slice(1))
       setReviewVisibility('internal') // reset the safe default for the next review
       refresh()
@@ -240,11 +322,21 @@ export default function KnowledgeReactorClient() {
     }
   }
 
-  const discardReview = () => {
+  const discardReview = async () => {
     if (!currentReview || saving) return
+    const { queueId } = currentReview
     updateItem(currentReview.key, { status: 'discarded' })
     setReviews((r) => r.slice(1))
     setReviewVisibility('internal')
+    // A SharePoint doc must be marked rejected server-side — otherwise the next
+    // pull sees it as new again and re-queues it.
+    if (queueId) {
+      setSpQueue((q) => q.filter((it) => it.id !== queueId))
+      try {
+        await fetch(`/api/admin/kb/queue/${queueId}/reject`, { method: 'POST' })
+      } catch { /* the row stays pending and simply reappears — safe to retry */ }
+      refreshQueue()
+    }
   }
 
   const removeDoc = async (id: string) => {
@@ -356,6 +448,14 @@ export default function KnowledgeReactorClient() {
             <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
               {docs.length}
             </span>
+            {spQueue.length > 0 && (
+              <span
+                title={`${spQueue.length} document${spQueue.length === 1 ? '' : 's'} from SharePoint awaiting review`}
+                className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+              >
+                <ShieldCheck size={9} /> {spQueue.length}
+              </span>
+            )}
           </button>
         ) : (
           <div className="flex max-h-[calc(100vh-8rem)] w-[340px] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white/95 shadow-xl backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
@@ -423,6 +523,63 @@ export default function KnowledgeReactorClient() {
                 </div>
               )}
 
+              {/* From SharePoint — pulled, scrubbed, awaiting your call */}
+              <div className="border-b border-zinc-100 px-4 py-2.5 dark:border-zinc-800">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-wide text-zinc-400">From SharePoint</p>
+                  {spQueue.length > 0 && (
+                    <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                      {spQueue.length}
+                    </span>
+                  )}
+                  <button
+                    onClick={pullFromSharePoint}
+                    disabled={spPulling}
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-600 transition-colors hover:border-emerald-400 hover:text-emerald-700 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-emerald-400"
+                  >
+                    {spPulling ? <Loader2 size={11} className="animate-spin" /> : <FolderSync size={11} />}
+                    {spPulling ? 'Pulling…' : 'Pull now'}
+                  </button>
+                </div>
+
+                {spQueue.length === 0 ? (
+                  <p className="py-2 text-center text-[11.5px] text-zinc-400">
+                    Nothing waiting. Pull to check SharePoint for new documents.
+                  </p>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {spQueue.map((it) => (
+                      <li key={it.id} className="group flex items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
+                        <ShieldCheck size={13} className="flex-shrink-0 text-amber-500" />
+                        <button
+                          onClick={() => openQueued(it)}
+                          className="min-w-0 flex-1 truncate text-left text-[12px] text-zinc-700 hover:text-emerald-700 dark:text-zinc-200 dark:hover:text-emerald-400"
+                          title={`Review “${it.title}”`}
+                        >
+                          {it.title}
+                        </button>
+                        {it.web_url && (
+                          <a
+                            href={it.web_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open ${it.title} in SharePoint`}
+                            title="Open in SharePoint"
+                            className="flex-shrink-0 rounded p-0.5 text-zinc-300 opacity-0 transition-all hover:text-emerald-600 group-hover:opacity-100 dark:text-zinc-600"
+                          >
+                            <ExternalLink size={11} />
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {spNote && (
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">{spNote}</p>
+                )}
+              </div>
+
               {/* Document inventory */}
               <div className="px-4 py-2.5">
                 <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-zinc-400">In memory</p>
@@ -474,7 +631,25 @@ export default function KnowledgeReactorClient() {
               <ShieldCheck size={17} className="text-emerald-600 dark:text-emerald-400" />
               <div className="leading-tight">
                 <h3 className="text-[14px] font-bold text-zinc-900 dark:text-white">Review before Jerry learns it</h3>
-                <p className="text-[11px] text-zinc-400">{currentReview.filename}</p>
+                <p className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                  {currentReview.queueId && (
+                    <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">
+                      <FolderSync size={9} /> SharePoint
+                    </span>
+                  )}
+                  <span className="truncate">{currentReview.filename}</span>
+                  {currentReview.webUrl && (
+                    <a
+                      href={currentReview.webUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 text-zinc-400 hover:text-emerald-600"
+                      title="Open in SharePoint"
+                    >
+                      <ExternalLink size={10} />
+                    </a>
+                  )}
+                </p>
               </div>
               {reviews.length > 1 && (
                 <span className="ml-auto rounded-full bg-zinc-100 px-2 py-0.5 text-[10.5px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
