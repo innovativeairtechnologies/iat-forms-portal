@@ -2,6 +2,27 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-06 — Internal Apps: Desiccant Dehumidification HMI (live process-flow diagram)
+
+A new self-contained tool at `/tools/desiccant-wheel-hmi.html`, surfaced in the **Internal Apps**
+launcher (`TOOL_APPS` in `lib/tools.ts`, wearing the `New` chip; moved off the Washdown calculator).
+It's a clickable HMI of a desiccant unit (model IAT-3000RE-IDP-6000, 6,000 CFM): both airstreams —
+process left-to-right, reactivation counter-flow right-to-left — routed through filters, pre-cool
+coil, the shared desiccant wheel, bypass damper, electric reactivation heater, and supply/exhaust
+fans. Click any component for live readings, its control signal, and setpoint sliders; toggle
+power per-component or Start/Stop all; the header stats (supply/exhaust CFM, moisture removed,
+power draw) and a high-limit alarm respond in real time, and animated ducts show active flow.
+
+Rebuilt from an external prototype into **Quiet Precision**: warm canvas, white hairline cards, no
+resting shadows, Inter + JetBrains Mono, brand green reserved for the active/primary/focus states,
+Tone pills for status, `tabular-nums` on every figure. **Two deliberate divergences from the
+light-only static-tool convention**, because this is a live display and not a print/PDF surface:
+it keeps a **light/dark toggle** (full surface-ladder dark mode per DESIGN.md), and the schematic
+artboard keeps two functional flow hues (process / reactivation) the way the Application Diagram
+Studio artboard does — those encode airflow direction, not decoration. Equipment-icon fills are
+CSS-token-driven so they retheme live on toggle. No new permission or migration — the existing
+`/tools/*` middleware gates it to signed-in staff.
+
 ## 2026-08-06 — Sidebar nav is now an accordion (one group open at a time)
 
 Expanding a rail group used to leave others open, so the list could get long. The nav is now an

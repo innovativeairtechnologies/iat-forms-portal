@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IAT · Desiccant Dehumidification HMI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   Quiet Precision tokens (DESIGN.md §2). Light = warm canvas; dark = cool
+   graphite surface ladder. This is a live HMI display, not a print surface, so
+   it keeps the dark toggle — both themes are fully tokenised.
+   The schematic artboard keeps two functional flow colors (process / react),
+   the way the Application Diagram Studio artboard deliberately does — those hues
+   encode airflow direction (meaning), not decoration.
+   ───────────────────────────────────────────────────────────────────────────── */
+:root{
+  --canvas:#F7F6F3; --surface:#FFFFFF; --surface-soft:#FBFAF8; --surface-strong:#EFEDE8;
+  --hairline:#E8E6E1; --hairline-soft:#F0EEE9; --hairline-strong:#D6D3CC;
+  --ink:#1F1E1B; --ink-secondary:#57544D; --ink-muted:#8A867C; --ink-faint:#B3AFA5;
+  --brand:#089447; --brand-hover:#077A3C; --brand-soft:#E9F6EE; --brand-ink:#0B6B36;
+  --amber:#92400E; --amber-soft:#FEF6E7; --amber-line:#F1D9A6;
+  --rose:#B4231C; --rose-soft:#FBECEA;
+  --sky:#0369A1; --sky-soft:#EFF6FF;
+
+  /* functional artboard hues */
+  --process:#0F8FB5; --react:#B4551F; --heater:#C0431F;
+  --duct-off:#D6D3CC; --junction-off:#C7C2B8;
+  --grid-line:rgba(31,30,27,0.032);
+
+  /* equipment icon fills */
+  --icon-body:#FBFAF8; --icon-body-warm:#FBF2EE; --icon-hub:#EFEDE8;
+  --icon-spoke:#B3AFA5; --icon-neutral:#CFCBC2; --icon-vane:#8A867C;
+  --wheel-p:rgba(15,143,181,0.16); --wheel-r:rgba(180,85,31,0.18);
+
+  --shadow-3: 0 8px 24px rgba(31,30,27,0.10), 0 2px 6px rgba(31,30,27,0.05);
+  --radius:12px;
+}
+body.dark{
+  --canvas:#101215; --surface:#1C2026; --surface-soft:#16191E; --surface-strong:#262B32;
+  --hairline:#2A2F37; --hairline-soft:#21252C; --hairline-strong:#3A404A;
+  --ink:#F1F3F7; --ink-secondary:#AEB4BD; --ink-muted:#7F858F; --ink-faint:#565C66;
+  --brand:#1FB668; --brand-hover:#2BC474; --brand-soft:rgba(31,182,104,0.14); --brand-ink:#4ED292;
+  --amber:#F5B454; --amber-soft:rgba(245,166,35,0.12); --amber-line:rgba(245,166,35,0.3);
+  --rose:#F08A82; --rose-soft:rgba(239,68,68,0.12);
+  --sky:#6FC3E8; --sky-soft:rgba(79,195,232,0.12);
+
+  --process:#4FC3E8; --react:#FF8A5C; --heater:#FF5A36;
+  --duct-off:#2A2F37; --junction-off:#3A4356;
+  --grid-line:rgba(255,255,255,0.028);
+
+  --icon-body:#12161B; --icon-body-warm:#1B1210; --icon-hub:#0B1220;
+  --icon-spoke:#0B1220; --icon-neutral:#3A4356; --icon-vane:#6C89B8;
+  --wheel-p:#46618C; --wheel-r:#9C7A50;
+
+  --shadow-3:none;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--canvas); color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  transition:background .2s ease, color .2s ease;
+}
+.tnum{font-variant-numeric:tabular-nums; font-feature-settings:'tnum';}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;}
+
+/* ── App bar ─────────────────────────────────────────────────────────────── */
+.appbar{
+  display:flex; align-items:center; gap:16px;
+  padding:14px 28px; background:var(--surface); border-bottom:1px solid var(--hairline);
+}
+.appbar img{height:32px; width:auto; display:block; flex-shrink:0;}
+.appbar .wm{border-left:1px solid var(--hairline); padding-left:16px;}
+.appbar .wm .over{font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted);}
+.appbar .wm .name{font-size:13px; font-weight:600; color:var(--ink); margin-top:1px; letter-spacing:-.006em;}
+.appbar-spacer{flex:1;}
+
+.icon-btn{
+  width:36px; height:36px; border-radius:8px; background:var(--surface); border:1px solid var(--hairline-strong);
+  color:var(--ink-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background .12s ease, border-color .12s ease, color .12s ease;
+}
+.icon-btn:hover{background:var(--surface-soft); color:var(--ink);}
+.icon-btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+.icon-btn svg{width:17px; height:17px;}
+
+/* ── Title bar ───────────────────────────────────────────────────────────── */
+.titlebar{
+  max-width:1360px; margin:0 auto; padding:26px 28px 6px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;
+}
+.titlebar .over{font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:5px;}
+.titlebar h1{font-size:24px; font-weight:600; letter-spacing:-.02em; margin:0; color:var(--ink);}
+.titlebar .sub{font-size:13px; color:var(--ink-muted); margin-top:5px; max-width:70ch; line-height:1.5;}
+.titlebar .sub b{color:var(--ink-secondary); font-weight:500;}
+.actions{display:flex; align-items:center; gap:8px; flex-shrink:0; flex-wrap:wrap;}
+
+.mode-pill{
+  font-size:12px; font-weight:500; color:var(--ink-secondary);
+  background:var(--surface); border:1px solid var(--hairline); padding:6px 12px; border-radius:999px;
+  display:flex; align-items:center; gap:7px;
+}
+.mode-pill .dot{width:6px; height:6px; border-radius:50%; background:var(--sky);}
+
+.btn{
+  font-family:inherit; font-size:13px; font-weight:500; color:var(--ink-secondary);
+  background:var(--surface); border:1px solid var(--hairline-strong); padding:0 13px; height:36px; border-radius:8px;
+  cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:background .12s ease, border-color .12s ease, color .12s ease;
+}
+.btn:hover{background:var(--surface-soft); color:var(--ink);}
+.btn:active{transform:scale(.985);}
+.btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+.btn .lead{width:6px; height:6px; border-radius:50%; flex-shrink:0;}
+.btn.start{color:var(--brand-ink);}
+.btn.start .lead{background:var(--brand);}
+.btn.stop{color:var(--rose);}
+.btn.stop .lead{background:var(--rose);}
+
+.wrap{max-width:1360px; margin:0 auto; padding:8px 28px 60px;}
+.instructions{font-size:13px; color:var(--ink-muted); margin:12px 0 18px; line-height:1.5;}
+.instructions b{color:var(--ink-secondary); font-weight:500;}
+
+/* ── Stat strip ──────────────────────────────────────────────────────────── */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:22px;}
+.stat-card{background:var(--surface); border:1px solid var(--hairline); border-radius:var(--radius); padding:14px 16px;}
+.stat-label{font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:8px;}
+.stat-value{font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums;}
+.stat-value span{font-size:11px; color:var(--ink-muted); font-weight:400; margin-left:3px; font-family:'Inter',sans-serif;}
+.stat-pill{
+  display:inline-block; font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:999px; line-height:1.3;
+}
+.stat-pill.ok{background:var(--brand-soft); color:var(--brand-ink);}
+.stat-pill.warn{background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber-line);}
+
+/* ── Stage card ──────────────────────────────────────────────────────────── */
+.stage-shell{background:var(--surface); border:1px solid var(--hairline); border-radius:16px; padding:18px 18px 8px;}
+.stage-wrap{max-width:1320px; margin:0 auto;}
+.stage{
+  position:relative; width:100%; aspect-ratio:1440/840; border-radius:12px; overflow:hidden;
+  background:
+    repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 40px),
+    var(--surface-soft);
+  border:1px solid var(--hairline-soft);
+}
+svg.ducts{position:absolute; inset:0; width:100%; height:100%; overflow:visible;}
+
+.duct{fill:none; stroke:var(--duct-off); stroke-width:6.5; stroke-linecap:round; stroke-linejoin:round; transition:stroke .4s ease;}
+.duct.active.stream-process{stroke:var(--process); stroke-dasharray:13 10; animation:flow 1.05s linear infinite;}
+.duct.active.stream-react{stroke:var(--react); stroke-dasharray:13 10; animation:flow-rev 1.05s linear infinite;}
+@keyframes flow{to{stroke-dashoffset:-23;}}
+@keyframes flow-rev{to{stroke-dashoffset:23;}}
+.junction-dot{fill:var(--junction-off); transition:fill .4s ease;}
+.junction-dot.active-process{fill:var(--process);}
+.mk-fill-process{fill:var(--process);}
+.mk-fill-react{fill:var(--react);}
+.mk-fill-off{fill:var(--junction-off);}
+
+.duct-label{
+  position:absolute; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-muted);
+  text-align:center; line-height:1.5; white-space:nowrap; transform:translate(-50%,-50%); pointer-events:none;
+  font-variant-numeric:tabular-nums;
+}
+.duct-label .t1{color:var(--ink-secondary); font-size:11px; font-weight:600;}
+.duct-label.end-label{text-align:left; transform:translate(0,-50%);}
+
+.node{position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;}
+.node.static{cursor:default;}
+.node:focus-visible .icon-box{outline:2px solid var(--brand); outline-offset:4px; border-radius:8px;}
+
+.status-pill{font-size:10.5px; font-weight:600; letter-spacing:.04em; padding:2px 9px; border-radius:999px; white-space:nowrap;}
+.status-pill.on{color:var(--brand-ink); background:var(--brand-soft);}
+.status-pill.off{color:var(--ink-muted); background:var(--surface-strong);}
+
+.icon-box{position:relative; transition:filter .35s ease, opacity .35s ease, transform .15s ease;}
+.icon-box.off{filter:grayscale(1) brightness(.98); opacity:.42;}
+.icon-box.on{filter:none; opacity:1;}
+.node:hover .icon-box.on{transform:scale(1.05);}
+.icon-box.glow-on{filter:drop-shadow(0 0 9px color-mix(in srgb, var(--heater) 55%, transparent));}
+.icon-box.off.glow-on{filter:grayscale(1) brightness(.98);}
+
+.node-label{font-size:12.5px; color:var(--ink); font-weight:500; text-align:center; line-height:1.25; white-space:nowrap;}
+.node-tag{font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-muted); text-align:center; letter-spacing:.02em;}
+
+.signal-pill{
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.02em; font-weight:500;
+  padding:2px 8px; border-radius:6px; white-space:nowrap; background:var(--surface-soft); border:1px solid var(--hairline); color:var(--ink-muted);
+}
+.signal-pill.live{color:var(--process); border-color:color-mix(in srgb, var(--process) 40%, var(--hairline));}
+
+/* equipment icon fills — theme-aware via tokens; stream class sets the accent */
+.ic-body{fill:var(--icon-body);}
+.ic-body-warm{fill:var(--icon-body-warm);}
+.ic-hub{fill:var(--icon-hub);}
+.ic-spoke-stroke{stroke:var(--icon-spoke);}
+.ic-neutral-stroke{stroke:var(--icon-neutral);}
+.ic-vane-stroke{stroke:var(--icon-vane);}
+.ic-wheel-p{fill:var(--wheel-p);}
+.ic-wheel-r{fill:var(--wheel-r);}
+.ic-heater-stroke{stroke:var(--heater);}
+.ib-process .ic-accent-stroke{stroke:var(--process);}
+.ib-process .ic-accent-fill{fill:var(--process);}
+.ib-react .ic-accent-stroke{stroke:var(--react);}
+.ib-react .ic-accent-fill{fill:var(--react);}
+.ib-both .ic-accent-stroke{stroke:var(--ink-muted);}
+
+.wheel-spokes{transform-origin:100px 100px;}
+.icon-box.on .wheel-spokes{animation:spin 28s linear infinite;}
+.fan-blades{transform-origin:100px 100px;}
+.icon-box.on .fan-blades{animation:spin 1.6s linear infinite;}
+@keyframes spin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
+
+/* ── Legend ──────────────────────────────────────────────────────────────── */
+.legend{display:flex; flex-wrap:wrap; gap:20px; justify-content:center; padding:16px 0 4px; font-size:12px; color:var(--ink-muted);}
+.legend-item{display:flex; align-items:center; gap:8px;}
+.legend-swatch{width:16px; height:4px; border-radius:2px;}
+
+/* ── Drawer overlay + panel (Level 3 modal) ─────────────────────────────── */
+#overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.4); backdrop-filter:blur(2px);
+  opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:40;
+}
+#overlay.show{opacity:1; pointer-events:auto;}
+#panel{
+  position:fixed; top:0; right:0; height:100%; width:min(420px,92vw);
+  background:var(--surface); border-left:1px solid var(--hairline);
+  transform:translateX(100%); transition:transform .2s ease; z-index:50;
+  overflow-y:auto; padding:22px 22px 40px; box-shadow:var(--shadow-3);
+}
+body.dark #panel{box-shadow:none; border-left-color:var(--hairline-strong);}
+#panel.open{transform:translateX(0);}
+
+.panel-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+.panel-tag{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-muted); letter-spacing:.06em;}
+#panel-title{font-size:20px; margin:3px 0 0; font-weight:600; letter-spacing:-.015em; color:var(--ink);}
+#panel-close{
+  background:var(--surface); border:1px solid var(--hairline-strong); color:var(--ink-muted); width:30px; height:30px;
+  border-radius:8px; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+}
+#panel-close:hover{color:var(--ink); background:var(--surface-soft);}
+#panel-close:focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+.panel-desc{font-size:13px; color:var(--ink-muted); line-height:1.55; margin:12px 0 18px;}
+
+.power-row{
+  display:flex; align-items:center; gap:12px; background:var(--surface-soft); border:1px solid var(--hairline);
+  border-radius:10px; padding:12px 14px; margin-bottom:14px;
+}
+.power-row .power-label{font-size:13px; font-weight:500; flex:1; color:var(--ink-secondary);}
+.toggle-switch{
+  width:44px; height:24px; border-radius:999px; background:var(--surface-strong); border:1px solid var(--hairline-strong);
+  position:relative; cursor:pointer; flex-shrink:0; padding:0; transition:background .18s ease, border-color .18s ease;
+}
+.toggle-switch:focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+.toggle-switch .knob{
+  position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--ink-faint);
+  transition:transform .18s ease, background .18s ease;
+}
+.toggle-switch.on{background:var(--brand-soft); border-color:color-mix(in srgb, var(--brand) 45%, var(--hairline));}
+.toggle-switch.on .knob{transform:translateX(20px); background:var(--brand);}
+#panel-state-text{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; width:34px;}
+#panel-state-text.on{color:var(--brand-ink);}
+#panel-state-text.off{color:var(--ink-muted);}
+
+.signal-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--surface-soft);
+  border:1px solid var(--hairline); border-radius:10px; padding:12px 14px; margin-bottom:22px;
+}
+.signal-row .signal-name{font-size:12px; color:var(--ink-muted);}
+.signal-row .signal-readout{font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600; color:var(--process); font-variant-numeric:tabular-nums;}
+.signal-row.standby .signal-readout{color:var(--ink-muted); font-size:13px; font-weight:500;}
+
+.section-title{
+  font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:600;
+  color:var(--ink-muted); margin:0 0 10px; padding-top:6px;
+}
+.readings-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px;}
+.reading-card{background:var(--surface-soft); border:1px solid var(--hairline); border-radius:9px; padding:10px 12px;}
+.reading-label{font-size:11px; color:var(--ink-muted); margin-bottom:5px;}
+.reading-value{font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums;}
+.reading-value span{font-size:10.5px; color:var(--ink-muted); font-weight:400; margin-left:2px; font-family:'Inter',sans-serif;}
+.reading-value.dash{color:var(--ink-faint); font-weight:400;}
+
+.setpoints-list{margin-top:8px;}
+.setpoint-item{margin-bottom:18px;}
+.setpoint-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:9px;}
+.setpoint-label{font-size:13px; font-weight:500; color:var(--ink-secondary);}
+.setpoint-val{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--brand-ink); font-variant-numeric:tabular-nums;}
+input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:4px; background:var(--surface-strong); outline:none;}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:17px; height:17px; border-radius:50%; background:var(--brand);
+  border:3px solid var(--surface); cursor:pointer; box-shadow:0 0 0 1px var(--brand);
+}
+input[type=range]::-moz-range-thumb{
+  width:17px; height:17px; border-radius:50%; background:var(--brand); border:3px solid var(--surface); cursor:pointer;
+}
+input[type=range]:focus-visible{outline:2px solid var(--brand); outline-offset:3px;}
+input[type=range]:disabled{opacity:.35;}
+input[type=range]:disabled::-webkit-slider-thumb{background:var(--ink-muted); box-shadow:none;}
+
+@media (max-width:720px){
+  .duct-label{display:none;}
+  .titlebar{align-items:flex-start;}
+}
+@media (prefers-reduced-motion:reduce){
+  .duct.active, .icon-box.on .wheel-spokes, .icon-box.on .fan-blades{animation:none !important;}
+}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <img id="logo" src="/iat-logo.png" alt="Innovative Air Technologies">
+  <div class="wm">
+    <div class="over">IAT</div>
+    <div class="name">Innovative Air Technologies</div>
+  </div>
+  <div class="appbar-spacer"></div>
+  <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark mode" title="Toggle light / dark mode"></button>
+</header>
+
+<div class="titlebar">
+  <div>
+    <div class="over">Internal Apps · Live HMI</div>
+    <h1>Desiccant Dehumidification Monitor</h1>
+    <div class="sub">Process Systems — Pittsburgh, PA &nbsp;·&nbsp; Model <b>IAT-3000RE-IDP-6000</b> &nbsp;·&nbsp; 6,000&nbsp;CFM &nbsp;·&nbsp; summer design conditions</div>
+  </div>
+  <div class="actions">
+    <div class="mode-pill"><span class="dot"></span>Summer Conditions</div>
+    <button class="btn start" id="btn-start-all"><span class="lead"></span>Start all</button>
+    <button class="btn stop" id="btn-stop-all"><span class="lead"></span>Stop all</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <p class="instructions"><b>Click any piece of equipment</b> to view its live readings, control signal, and setpoints. Reactivation air flows right to left, counter to the process airstream, through the shared desiccant wheel.</p>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Supply Airflow</div>
+      <div class="stat-value" id="stat-supply">— <span>CFM</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Exhaust Airflow</div>
+      <div class="stat-value" id="stat-exhaust">— <span>CFM</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Moisture Removed</div>
+      <div class="stat-value" id="stat-moisture">— <span>lbs/hr</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Power Draw</div>
+      <div class="stat-value" id="stat-power">— <span>kW</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Alarms</div>
+      <div style="margin-top:2px;"><span class="stat-pill ok" id="stat-alarm">No active alarms</span></div>
+    </div>
+  </div>
+
+  <div class="stage-shell">
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <svg class="ducts" viewBox="0 0 1440 840" preserveAspectRatio="xMidYMid meet" id="ductSvg">
+          <defs>
+            <marker id="mk-process" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" class="mk-fill-process"/>
+            </marker>
+            <marker id="mk-react" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" class="mk-fill-react"/>
+            </marker>
+            <marker id="mk-off" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" class="mk-fill-off"/>
+            </marker>
+          </defs>
+        </svg>
+        <!-- nodes injected by JS -->
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--process);"></span>Process air (left to right)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--react);"></span>Reactivation air (right to left)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--duct-off);"></span>Component off / no flow</div>
+    </div>
+  </div>
+</div>
+
+<div id="overlay"></div>
+<aside id="panel" aria-hidden="true">
+  <div class="panel-head">
+    <div>
+      <div class="panel-tag" id="panel-tag">TAG</div>
+      <h2 id="panel-title">Component</h2>
+    </div>
+    <button id="panel-close" aria-label="Close">✕</button>
+  </div>
+  <p class="panel-desc" id="panel-desc"></p>
+
+  <div class="power-row">
+    <span class="power-label">Power</span>
+    <button class="toggle-switch" id="panel-toggle" aria-label="Toggle component power"><span class="knob"></span></button>
+    <span id="panel-state-text">ON</span>
+  </div>
+
+  <div class="signal-row" id="panel-signal-row" style="display:none;">
+    <span class="signal-name" id="panel-signal-name">Control signal</span>
+    <span class="signal-readout" id="panel-signal-readout">—</span>
+  </div>
+
+  <div class="section-title">Live readings</div>
+  <div class="readings-grid" id="panel-readings"></div>
+
+  <div class="section-title" id="setpoints-title">Setpoints</div>
+  <div class="setpoints-list" id="panel-setpoints"></div>
+</aside>
+
+<script>
+/* ============================= ICON BUILDERS =============================
+   Shapes carry semantic classes; fills/strokes resolve from CSS tokens so the
+   icons retheme live on toggle. The stream class on the icon-box (.ib-process /
+   .ib-react / .ib-both) drives the .ic-accent-* color. */
+function svgFilter(){
+  var lines='';
+  for(var i=0;i<5;i++){ var x=26+i*10; lines+='<line x1="'+(x+6)+'" y1="20" x2="'+x+'" y2="80" class="ic-accent-stroke" stroke-width="3" opacity="0.85" stroke-linecap="round"/>'; }
+  return '<svg viewBox="0 0 100 100" width="100%" height="100%"><rect x="14" y="12" width="72" height="76" rx="8" class="ic-body ic-accent-stroke" stroke-width="4"/>'+lines+'</svg>';
+}
+function svgCoil(){
+  var fins='';
+  for(var i=0;i<6;i++){ var x=20+i*10; fins+='<line x1="'+x+'" y1="18" x2="'+x+'" y2="82" class="ic-accent-stroke" stroke-width="3" opacity="0.8"/>'; }
+  return '<svg viewBox="0 0 100 100" width="100%" height="100%"><rect x="10" y="12" width="80" height="76" rx="8" class="ic-body ic-accent-stroke" stroke-width="4"/>'+fins+'<path d="M80 22 Q88 30 80 40 Q72 30 80 22 Z" class="ic-accent-fill"/></svg>';
+}
+function svgWheel(){
+  var spokes='';
+  for(var i=0;i<8;i++){
+    var a=i*45*Math.PI/180;
+    var x2=100+84*Math.cos(a), y2=100+84*Math.sin(a);
+    spokes+='<line x1="100" y1="100" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" class="ic-spoke-stroke" stroke-width="3" opacity="0.55"/>';
+  }
+  return '<svg viewBox="0 0 200 200" width="100%" height="100%">'+
+    '<circle cx="100" cy="100" r="92" class="ic-body ic-neutral-stroke" stroke-width="4"/>'+
+    '<path d="M100 14 A86 86 0 0 1 186 100 L100 100 Z" class="ic-wheel-p"/>'+
+    '<path d="M186 100 A86 86 0 0 1 100 186 L100 100 Z" class="ic-wheel-p"/>'+
+    '<path d="M100 186 A86 86 0 0 1 14 100 L100 100 Z" class="ic-wheel-r"/>'+
+    '<path d="M14 100 A86 86 0 0 1 100 14 L100 100 Z" class="ic-wheel-r"/>'+
+    '<g class="wheel-spokes">'+spokes+'</g>'+
+    '<circle cx="100" cy="100" r="17" class="ic-hub ic-vane-stroke" stroke-width="3"/>'+
+    '</svg>';
+}
+function svgFan(){
+  var blades='';
+  for(var i=0;i<4;i++){ blades+='<ellipse cx="100" cy="58" rx="15" ry="34" class="ic-accent-fill" opacity="0.9" transform="rotate('+(i*90)+' 100 100)"/>'; }
+  return '<svg viewBox="0 0 200 200" width="100%" height="100%">'+
+    '<circle cx="100" cy="100" r="92" class="ic-body ic-accent-stroke" stroke-width="5"/>'+
+    '<g class="fan-blades">'+blades+'</g>'+
+    '<circle cx="100" cy="100" r="18" class="ic-hub ic-accent-stroke" stroke-width="4"/>'+
+    '</svg>';
+}
+function svgHeater(){
+  return '<svg viewBox="0 0 100 100" width="100%" height="100%">'+
+    '<rect x="22" y="8" width="56" height="84" rx="8" class="ic-body-warm ic-heater-stroke" stroke-width="4"/>'+
+    '<polyline points="34,18 50,28 34,38 50,48 34,58 50,68 34,78" fill="none" class="ic-heater-stroke" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '</svg>';
+}
+function svgDamper(angle){
+  return '<svg viewBox="0 0 100 100" width="100%" height="100%">'+
+    '<rect x="6" y="34" width="88" height="32" rx="4" class="ic-body ic-neutral-stroke" stroke-width="3"/>'+
+    '<line x1="50" y1="34" x2="50" y2="66" class="ic-vane-stroke" stroke-width="7" stroke-linecap="round" style="transform-origin:50px 50px; transform:rotate('+angle+'deg);"/>'+
+    '</svg>';
+}
+
+/* ============================= COMPONENT DATA ============================= */
+var CANVAS_W=1440, CANVAS_H=840;
+
+var COMP = {
+  'process-filter': {
+    name:'Process Filter', tag:'FLT-01', stream:'process', type:'filter',
+    x:300, y:660, size:90, on:true,
+    desc:'MERV-13 panel filter that protects the pre-cooling coil and desiccant wheel from particulate in the outdoor air stream.',
+    readings:[
+      {key:'flow', label:'Airflow', base:6000, jitter:0.008, unit:'CFM', dec:0},
+      {key:'dp', label:'Pressure Drop', base:0.38, jitter:0.06, unit:'in. w.g.', dec:2},
+      {key:'temp', label:'Entering Air Temp', base:79.4, jitter:0.006, unit:'°F', dec:1, always:true}
+    ],
+    setpoints:[{key:'alarm', label:'High-pressure alarm', min:0.5, max:1.5, step:0.05, value:1.0, unit:'in. w.g.'}]
+  },
+  'precool-coil': {
+    name:'Pre-Cooling Coil', tag:'CC-01', stream:'process', type:'coil',
+    x:520, y:660, size:100, on:true,
+    desc:'Chilled-water coil that cools incoming outdoor air ahead of the desiccant wheel. A modulating valve throttles water flow to hold leaving air temperature at setpoint.',
+    signal:{name:'Chilled water valve', fn:'coilValvePct'},
+    readings:[
+      {key:'leaving', label:'Leaving Air Temp', unit:'°F', dec:1, jitter:0.01, deriveFrom:'leavingSetpoint'},
+      {key:'ewt', label:'Entering Water Temp', base:44, jitter:0.01, unit:'°F', dec:0},
+      {key:'lwt', label:'Leaving Water Temp', base:54, jitter:0.01, unit:'°F', dec:0},
+      {key:'gpm', label:'Chilled Water Flow', base:97.5, jitter:0.01, unit:'GPM', dec:1},
+      {key:'cap', label:'Total Capacity', unit:'Btuh', dec:0, jitter:0.01, derive:'coilCapacity'},
+      {key:'moist', label:'Moisture Removed', base:248, jitter:0.02, unit:'lbs/hr', dec:0}
+    ],
+    setpoints:[{key:'leavingSetpoint', label:'Leaving air temperature', min:45, max:60, step:0.5, value:50, unit:'°F'}]
+  },
+  'desiccant-wheel': {
+    name:'Desiccant Wheel', tag:'DHW-01', stream:'both', type:'wheel',
+    x:900, y:420, size:220, on:true,
+    desc:'Slow-turning rotor coated in desiccant media, driven by a gearmotor VFD. Process air gives up moisture to the wheel; hot reactivation air on the opposite face drives that moisture back out to atmosphere.',
+    signal:{name:'Gearmotor VFD', fn:'wheelVfdPct'},
+    readings:[
+      {key:'moist', label:'Moisture Removal', unit:'lbs/hr', dec:1, jitter:0.01, derive:'wheelMoisture'},
+      {key:'proc-lvg', label:'Process Leaving Temp', base:99.5, jitter:0.006, unit:'°F', dec:1},
+      {key:'react-lvg', label:'Reactivation Leaving Temp', base:156.4, jitter:0.006, unit:'°F', dec:1},
+      {key:'dp-p', label:'Process Side ΔP', base:0.92, jitter:0.02, unit:'in. w.g.', dec:2},
+      {key:'dp-r', label:'React Side ΔP', base:1.27, jitter:0.02, unit:'in. w.g.', dec:2}
+    ],
+    setpoints:[{key:'rph', label:'Wheel speed', min:6, max:20, step:1, value:12, unit:'RPH'}]
+  },
+  'bypass-damper': {
+    name:'Bypass Damper', tag:'BPD-01', stream:'process', type:'damper',
+    x:890, y:780, size:100, on:true,
+    desc:'Modulating damper, driven by an electric actuator, that routes a portion of cooled air around the desiccant wheel and blends back in to hit the supply-air setpoint.',
+    signal:{name:'Damper actuator', fn:'damperPct'},
+    readings:[
+      {key:'flow', label:'Bypass Airflow', unit:'CFM', dec:0, jitter:0.01, derive:'bypassFlow'},
+      {key:'temp', label:'Leaving Air Temp', base:50, jitter:0.01, unit:'°F', dec:1}
+    ],
+    setpoints:[{key:'position', label:'Damper position', min:0, max:100, step:5, value:50, unit:'% open'}]
+  },
+  'process-fan': {
+    name:'Process Supply Fan', tag:'SF-01', stream:'process', type:'fan',
+    x:1220, y:660, size:110, on:true,
+    desc:'Variable-frequency-drive fan that draws conditioned air through the train and delivers it to the occupied space.',
+    signal:{name:'Supply fan VFD', fn:'processFanPct'},
+    readings:[
+      {key:'flow', label:'Supply Airflow', unit:'CFM', dec:0, jitter:0.006, derive:'fanFlowProcess'},
+      {key:'sp', label:'Static Pressure', unit:'in. w.g.', dec:2, jitter:0.02, derive:'fanSPprocess'},
+      {key:'temp', label:'Discharge Temp', base:74.8, jitter:0.008, unit:'°F', dec:1},
+      {key:'kw', label:'Motor Power', unit:'kW', dec:2, jitter:0.01, derive:'fanPowerProcess'}
+    ],
+    setpoints:[{key:'speed', label:'Fan speed', min:40, max:100, step:5, value:100, unit:'%'}]
+  },
+  'react-filter': {
+    name:'Reactivation Filter', tag:'FLT-02', stream:'react', type:'filter',
+    x:1300, y:160, size:90, on:true,
+    desc:'Pre-filter that protects the reactivation heater and wheel face from particulate in the air drawn for regeneration.',
+    readings:[
+      {key:'flow', label:'Airflow', base:1000, jitter:0.008, unit:'CFM', dec:0},
+      {key:'dp', label:'Pressure Drop', base:0.30, jitter:0.06, unit:'in. w.g.', dec:2},
+      {key:'temp', label:'Entering Air Temp', base:79.4, jitter:0.006, unit:'°F', dec:1, always:true}
+    ],
+    setpoints:[{key:'alarm', label:'High-pressure alarm', min:0.5, max:1.5, step:0.05, value:1.0, unit:'in. w.g.'}]
+  },
+  'electric-heater': {
+    name:'Electric Reactivation Heater', tag:'EH-01', stream:'react', type:'heater',
+    x:1080, y:160, size:100, on:true,
+    desc:'Electric resistance heater with an SCR controller that raises reactivation air to a high enough temperature to drive moisture out of the desiccant wheel.',
+    signal:{name:'SCR output', fn:'heaterPct'},
+    readings:[
+      {key:'temp', label:'Discharge Air Temp', unit:'°F', dec:1, jitter:0.005, deriveFrom:'setpoint'},
+      {key:'btuh', label:'Heat Output', unit:'Btuh', dec:0, jitter:0.01, derive:'heaterBtuh'},
+      {key:'kw', label:'Power Draw', unit:'kW', dec:1, jitter:0.01, derive:'heaterKw'},
+      {key:'entering', label:'Entering Air Temp', base:79.4, jitter:0.006, unit:'°F', dec:1, always:true}
+    ],
+    setpoints:[{key:'setpoint', label:'Discharge temperature', min:250, max:320, step:5, value:305, unit:'°F'}]
+  },
+  'react-fan': {
+    name:'Reactivation Exhaust Fan', tag:'RF-01', stream:'react', type:'fan',
+    x:620, y:160, size:110, on:true,
+    desc:'Variable-frequency-drive fan that pulls humid reactivation air through the wheel and exhausts it to atmosphere.',
+    signal:{name:'Exhaust fan VFD', fn:'reactFanPct'},
+    readings:[
+      {key:'flow', label:'Exhaust Airflow', unit:'CFM', dec:0, jitter:0.006, derive:'fanFlowReact'},
+      {key:'sp', label:'Static Pressure', unit:'in. w.g.', dec:2, jitter:0.02, derive:'fanSPreact'},
+      {key:'temp', label:'Discharge Temp', base:156.4, jitter:0.008, unit:'°F', dec:1},
+      {key:'kw', label:'Motor Power', unit:'kW', dec:2, jitter:0.01, derive:'fanPowerReact'}
+    ],
+    setpoints:[{key:'speed', label:'Fan speed', min:40, max:100, step:5, value:100, unit:'%'}]
+  }
+};
+
+/* duct segments */
+function ductPaths(){
+  return [
+    {id:'d1', d:'M215,660 L255,660', stream:'process'},
+    {id:'d2', d:'M345,660 L470,660', stream:'process'},
+    {id:'d3', d:'M570,660 L700,660', stream:'process'},
+    {id:'d4', d:'M700,660 L800,660 L800,540', stream:'process'},
+    {id:'d5', d:'M1000,540 L1000,660 L1080,660', stream:'process'},
+    {id:'d6', d:'M700,660 L700,780 L840,780', stream:'process', bypass:true},
+    {id:'d7', d:'M940,780 L1080,780 L1080,660', stream:'process', bypass:true},
+    {id:'d8', d:'M1080,660 L1165,660', stream:'process'},
+    {id:'d9', d:'M1275,660 L1330,660', stream:'process'},
+
+    {id:'d10', d:'M1400,160 L1345,160', stream:'react'},
+    {id:'d11', d:'M1255,160 L1130,160', stream:'react'},
+    {id:'d12', d:'M1030,160 L1000,160 L1000,300', stream:'react'},
+    {id:'d13', d:'M800,300 L800,160 L670,160', stream:'react'},
+    {id:'d14', d:'M570,160 L420,160', stream:'react'}
+  ];
+}
+
+var STATIC_LABELS = [
+  {x:1345, y:660, text:'<div class="t1">Supply to Space</div>', end:true, id:'lbl-supply'},
+  {x:395, y:160, text:'<div class="t1">Exhaust to Atmosphere</div>', end:true, id:'lbl-exhaust'}
+];
+
+/* ============================= DERIVED READING LOGIC ============================= */
+function getSetpoint(id,key){ return COMP[id].setpoints.filter(function(s){return s.key===key;})[0].value; }
+
+var DERIVE = {
+  coilCapacity: function(){
+    var sp = getSetpoint('precool-coil','leavingSetpoint');
+    var frac = Math.max(0,(79.4 - sp) / (79.4-50));
+    return 487620 * frac;
+  },
+  wheelMoisture: function(){
+    var rph = getSetpoint('desiccant-wheel','rph');
+    return 92.7 * (rph/12);
+  },
+  bypassFlow: function(){
+    var pos = getSetpoint('bypass-damper','position');
+    return 6000 * (pos/100);
+  },
+  fanFlowProcess: function(){
+    var sp = getSetpoint('process-fan','speed');
+    return 6000 * (sp/100);
+  },
+  fanSPprocess: function(){
+    var sp = getSetpoint('process-fan','speed');
+    return 0.92 * Math.pow(sp/100,2);
+  },
+  fanPowerProcess: function(){
+    var sp = getSetpoint('process-fan','speed');
+    return 7.5 * Math.pow(sp/100,3);
+  },
+  fanFlowReact: function(){
+    var sp = getSetpoint('react-fan','speed');
+    return 1000 * (sp/100);
+  },
+  fanSPreact: function(){
+    var sp = getSetpoint('react-fan','speed');
+    return 1.27 * Math.pow(sp/100,2);
+  },
+  fanPowerReact: function(){
+    var sp = getSetpoint('react-fan','speed');
+    return 3 * Math.pow(sp/100,3);
+  },
+  heaterBtuh: function(){
+    var sp = getSetpoint('electric-heater','setpoint');
+    var frac = Math.max(0,(sp-79.4)/(305-79.4));
+    return 243648 * frac;
+  },
+  heaterKw: function(){
+    var sp = getSetpoint('electric-heater','setpoint');
+    var frac = Math.max(0,(sp-79.4)/(305-79.4));
+    return 71 * frac;
+  }
+};
+
+/* ---- control-signal feedback (per component "output signal") ---- */
+var SIGNAL = {
+  coilValvePct: function(){
+    var sp = getSetpoint('precool-coil','leavingSetpoint');
+    return clampPct((79.4-sp)/(79.4-45)*100);
+  },
+  wheelVfdPct: function(){
+    var rph = getSetpoint('desiccant-wheel','rph');
+    return clampPct((rph-6)/(20-6)*100);
+  },
+  damperPct: function(){ return clampPct(getSetpoint('bypass-damper','position')); },
+  processFanPct: function(){ return clampPct(getSetpoint('process-fan','speed')); },
+  reactFanPct: function(){ return clampPct(getSetpoint('react-fan','speed')); },
+  heaterPct: function(){
+    var sp = getSetpoint('electric-heater','setpoint');
+    return clampPct((sp-250)/(320-250)*100);
+  }
+};
+function clampPct(v){ return Math.max(0, Math.min(100, v)); }
+
+/* ---- live psychrometric points along the ductwork ---- */
+function jitterVal(base, pct){ return base + (Math.random()-0.5)*2*pct*base; }
+
+var AIR = {
+  oa: function(){ return {t:79.4, g:125.2}; },
+  afterCoil: function(){
+    if(!COMP['precool-coil'].on) return AIR.oa();
+    return {t:getSetpoint('precool-coil','leavingSetpoint'), g:55.55};
+  },
+  wheelProcessOut: function(){
+    var entering = AIR.afterCoil();
+    if(!COMP['desiccant-wheel'].on) return entering;
+    var rph = getSetpoint('desiccant-wheel','rph');
+    var gDrop = (55.55-6.71)*(rph/12);
+    return {t:99.5, g:Math.max(1, 55.55-gDrop)};
+  },
+  bypass: function(){ return AIR.afterCoil(); },
+  mixedProcess: function(){
+    var totalFlow = COMP['process-fan'].on ? DERIVE.fanFlowProcess() : 0;
+    var bypassFlow = COMP['bypass-damper'].on ? Math.min(DERIVE.bypassFlow(), totalFlow) : 0;
+    var wheelFlow = Math.max(0, totalFlow-bypassFlow);
+    if(totalFlow<=0) return {t:0,g:0,cfm:0,off:true};
+    var w=AIR.wheelProcessOut(), b=AIR.bypass();
+    return {t:(wheelFlow*w.t+bypassFlow*b.t)/totalFlow, g:(wheelFlow*w.g+bypassFlow*b.g)/totalFlow, cfm:totalFlow};
+  },
+  heaterOut: function(){
+    if(!COMP['electric-heater'].on) return AIR.oa();
+    return {t:getSetpoint('electric-heater','setpoint'), g:125.2};
+  },
+  wheelReactOut: function(){
+    var entering = AIR.heaterOut();
+    if(!COMP['desiccant-wheel'].on) return entering;
+    var rph = getSetpoint('desiccant-wheel','rph');
+    var gAdd = (271.12-125.2)*(rph/12);
+    return {t:156.4, g:125.2+gAdd};
+  }
+};
+
+/* ============================= AGGREGATE POWER / FLOW ============================= */
+function systemAggregates(){
+  var supply = COMP['process-fan'].on ? DERIVE.fanFlowProcess() : 0;
+  var exhaust = COMP['react-fan'].on ? DERIVE.fanFlowReact() : 0;
+  var moist = (COMP['precool-coil'].on ? jitterVal(248,0.01) : 0) + (COMP['desiccant-wheel'].on ? DERIVE.wheelMoisture() : 0);
+  var power = 0;
+  if(COMP['precool-coil'].on) power += 2.2;
+  if(COMP['desiccant-wheel'].on) power += 0.75;
+  if(COMP['process-fan'].on) power += DERIVE.fanPowerProcess();
+  if(COMP['react-fan'].on) power += DERIVE.fanPowerReact();
+  if(COMP['electric-heater'].on) power += DERIVE.heaterKw();
+  return {supply:supply, exhaust:exhaust, moist:moist, power:power};
+}
+
+/* ============================= RENDER: NODES ============================= */
+var stage = document.getElementById('stage');
+var currentPanelId = null;
+
+function pct(v, total){ return (v/total*100)+'%'; }
+
+function iconMarkup(id){
+  var c = COMP[id];
+  if(c.type==='filter') return svgFilter();
+  if(c.type==='coil') return svgCoil();
+  if(c.type==='wheel') return svgWheel();
+  if(c.type==='fan') return svgFan();
+  if(c.type==='heater') return svgHeater();
+  if(c.type==='damper') return svgDamper(80 - getSetpoint(id,'position')*0.7);
+  return '';
+}
+
+function signalText(id){
+  var c = COMP[id];
+  if(!c.signal) return null;
+  if(!c.on) return 'STANDBY';
+  var v = SIGNAL[c.signal.fn]();
+  return Math.round(v)+'%';
+}
+
+function buildNodes(){
+  Object.keys(COMP).forEach(function(id){
+    var c = COMP[id];
+    var node = document.createElement('div');
+    node.className = 'node';
+    node.id = 'node-'+id;
+    node.style.left = pct(c.x, CANVAS_W);
+    node.style.top = pct(c.y, CANVAS_H);
+    node.tabIndex = 0;
+    node.setAttribute('role','button');
+    node.setAttribute('aria-label', c.name);
+
+    var pill = document.createElement('div');
+    pill.className = 'status-pill';
+    pill.id = 'pill-'+id;
+
+    var box = document.createElement('div');
+    box.className = 'icon-box ib-'+c.stream;
+    box.id = 'icon-'+id;
+    box.style.width = c.size+'px';
+    box.style.height = c.size+'px';
+    box.innerHTML = iconMarkup(id);
+
+    var label = document.createElement('div');
+    label.className = 'node-label';
+    label.textContent = c.name;
+
+    var tag = document.createElement('div');
+    tag.className = 'node-tag';
+    tag.textContent = c.tag;
+
+    node.appendChild(pill);
+    node.appendChild(box);
+    node.appendChild(label);
+    node.appendChild(tag);
+
+    if(c.signal){
+      var sig = document.createElement('div');
+      sig.className = 'signal-pill';
+      sig.id = 'signal-'+id;
+      node.appendChild(sig);
+    }
+
+    node.addEventListener('click', function(){ openPanel(id); });
+    node.addEventListener('keydown', function(e){ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openPanel(id); } });
+    stage.appendChild(node);
+  });
+
+  STATIC_LABELS.forEach(function(s){
+    var lbl = document.createElement('div');
+    lbl.className = 'duct-label'+(s.end?' end-label':'');
+    lbl.id = s.id;
+    lbl.style.left = pct(s.x, CANVAS_W);
+    lbl.style.top = pct(s.y, CANVAS_H);
+    lbl.innerHTML = s.text;
+    stage.appendChild(lbl);
+  });
+
+  var airLabelDefs = [
+    {id:'air-oa-process', x:235, y:660, dy:-58},
+    {id:'air-leaving-coil', x:635, y:660, dy:-58},
+    {id:'air-wheel-process', x:1040, y:520, dx:8},
+    {id:'air-bypass', x:970, y:780},
+    {id:'air-supply', x:1345, y:660, dy:24},
+    {id:'air-oa-react', x:1370, y:160, dy:-58},
+    {id:'air-heater', x:1055, y:160, dy:-58},
+    {id:'air-exhaust', x:395, y:160, dy:24}
+  ];
+  airLabelDefs.forEach(function(d){
+    var lbl = document.createElement('div');
+    lbl.className = 'duct-label';
+    lbl.id = d.id;
+    lbl.style.left = pct(d.x, CANVAS_W);
+    lbl.style.top = pct(d.y, CANVAS_H);
+    var tx = d.dx||0, ty = d.dy||0;
+    lbl.style.transform = 'translate(calc(-50% + '+tx+'px), calc(-50% + '+ty+'px))';
+    if(tx && !ty){ lbl.style.textAlign='left'; lbl.style.transform='translate('+tx+'px,-50%)'; }
+    stage.appendChild(lbl);
+  });
+}
+
+/* ============================= RENDER: DUCTS ============================= */
+var ductSvg = document.getElementById('ductSvg');
+function buildDucts(){
+  var junctions = [{x:700, y:660},{x:1080, y:660}];
+  ductPaths().forEach(function(seg){
+    var path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', seg.d);
+    path.setAttribute('class','duct');
+    path.dataset.stream = seg.stream;
+    path.dataset.bypass = seg.bypass ? '1':'0';
+    path.id = 'duct-'+seg.id;
+    ductSvg.appendChild(path);
+  });
+  junctions.forEach(function(j, i){
+    var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', j.x); dot.setAttribute('cy', j.y); dot.setAttribute('r', 6);
+    dot.setAttribute('class','junction-dot');
+    dot.id = 'junction-'+i;
+    ductSvg.appendChild(dot);
+  });
+}
+
+function updateDucts(){
+  var processOn = COMP['process-fan'].on;
+  var reactOn = COMP['react-fan'].on;
+  var bypassOn = processOn && COMP['bypass-damper'].on;
+  var paths = ductSvg.querySelectorAll('.duct');
+  paths.forEach(function(p){
+    var stream = p.dataset.stream;
+    var isBypass = p.dataset.bypass==='1';
+    var active = stream==='react' ? reactOn : (isBypass ? bypassOn : processOn);
+    p.classList.toggle('active', active);
+    p.classList.toggle('stream-process', stream==='process');
+    p.classList.toggle('stream-react', stream==='react');
+    var marker = active ? (stream==='react' ? 'url(#mk-react)' : 'url(#mk-process)') : 'url(#mk-off)';
+    p.setAttribute('marker-end', marker);
+  });
+  document.getElementById('junction-0').setAttribute('class','junction-dot'+(processOn?' active-process':''));
+  document.getElementById('junction-1').setAttribute('class','junction-dot'+(processOn?' active-process':''));
+}
+
+/* ============================= NODE VISUAL STATE ============================= */
+function updateNodeVisual(id){
+  var c = COMP[id];
+  var pill = document.getElementById('pill-'+id);
+  var box = document.getElementById('icon-'+id);
+  pill.textContent = c.on ? 'ON' : 'OFF';
+  pill.className = 'status-pill '+(c.on?'on':'off');
+  box.className = 'icon-box ib-'+c.stream+' '+(c.on?'on':'off')+(c.type==='heater' && c.on ? ' glow-on':'');
+  if(c.type==='damper'){ box.innerHTML = svgDamper(80 - getSetpoint(id,'position')*0.7); }
+  if(c.signal){
+    var sigEl = document.getElementById('signal-'+id);
+    var txt = signalText(id);
+    sigEl.textContent = c.signal.name.toUpperCase()+' '+txt;
+    sigEl.className = 'signal-pill'+(c.on?' live':'');
+  }
+}
+function updateAllNodeVisuals(){
+  Object.keys(COMP).forEach(updateNodeVisual);
+  updateDucts();
+}
+
+function fmtAir(a, cfmOverride){
+  if(a.off) return 'No flow';
+  var cfm = cfmOverride!==undefined ? cfmOverride : a.cfm;
+  var line1 = a.t.toFixed(1)+'°F @ '+a.g.toFixed(1)+' gr.';
+  var line2 = cfm!==undefined ? Math.round(cfm).toLocaleString()+' CFM' : '';
+  return '<div class="t1">'+line1+'</div>'+line2;
+}
+
+function updateAirLabels(){
+  var processFlow = COMP['process-fan'].on ? DERIVE.fanFlowProcess() : 0;
+  var reactFlow = COMP['react-fan'].on ? DERIVE.fanFlowReact() : 0;
+  var bypassFlow = COMP['bypass-damper'].on ? Math.min(DERIVE.bypassFlow(), processFlow) : 0;
+
+  document.getElementById('air-oa-process').innerHTML = fmtAir(AIR.oa(), processFlow);
+  document.getElementById('air-leaving-coil').innerHTML = fmtAir(AIR.afterCoil(), processFlow);
+  document.getElementById('air-wheel-process').innerHTML = fmtAir(AIR.wheelProcessOut(), Math.max(0,processFlow-bypassFlow));
+  document.getElementById('air-bypass').innerHTML = fmtAir(AIR.bypass(), bypassFlow);
+  document.getElementById('air-supply').innerHTML = fmtAir(AIR.mixedProcess());
+
+  document.getElementById('air-oa-react').innerHTML = fmtAir(AIR.oa(), reactFlow);
+  document.getElementById('air-heater').innerHTML = fmtAir(AIR.heaterOut(), reactFlow);
+  document.getElementById('air-exhaust').innerHTML = fmtAir(AIR.wheelReactOut(), reactFlow);
+}
+
+/* ============================= HEADER STATS ============================= */
+function updateStats(){
+  var agg = systemAggregates();
+  document.getElementById('stat-supply').innerHTML = (agg.supply>0? Math.round(agg.supply).toLocaleString():'0') + ' <span>CFM</span>';
+  document.getElementById('stat-exhaust').innerHTML = (agg.exhaust>0? Math.round(agg.exhaust).toLocaleString():'0') + ' <span>CFM</span>';
+  document.getElementById('stat-moisture').innerHTML = agg.moist.toFixed(1) + ' <span>lbs/hr</span>';
+  document.getElementById('stat-power').innerHTML = agg.power.toFixed(1) + ' <span>kW</span>';
+
+  var alarmVal = document.getElementById('stat-alarm');
+  var heaterSp = getSetpoint('electric-heater','setpoint');
+  if(COMP['electric-heater'].on && heaterSp>=315){
+    alarmVal.textContent = 'Reactivation temp near high limit';
+    alarmVal.className = 'stat-pill warn';
+  } else {
+    alarmVal.textContent = 'No active alarms';
+    alarmVal.className = 'stat-pill ok';
+  }
+  updateAirLabels();
+}
+
+/* ============================= PANEL ============================= */
+var overlay = document.getElementById('overlay');
+var panel = document.getElementById('panel');
+
+function fmtVal(v, dec){
+  return Number(v).toLocaleString(undefined, {minimumFractionDigits:dec, maximumFractionDigits:dec});
+}
+
+function computeReadingValue(compId, r){
+  var base;
+  if(r.derive){ base = DERIVE[r.derive](); }
+  else if(r.deriveFrom){ base = getSetpoint(compId, r.deriveFrom); }
+  else { base = r.base; }
+  return jitterVal(base, r.jitter||0);
+}
+
+function renderPanelReadings(id){
+  var c = COMP[id];
+  var wrap = document.getElementById('panel-readings');
+  wrap.innerHTML='';
+  c.readings.forEach(function(r){
+    var card = document.createElement('div');
+    card.className = 'reading-card';
+    var show = c.on || r.always;
+    card.innerHTML = '<div class="reading-label">'+r.label+'</div>'+
+      '<div class="reading-value'+(show?'':' dash')+'" id="rv-'+id+'-'+r.key+'">'+
+      (show ? fmtVal(computeReadingValue(id,r), r.dec)+' <span>'+r.unit+'</span>' : '—') +
+      '</div>';
+    wrap.appendChild(card);
+  });
+}
+
+function refreshPanelReadingsLive(id){
+  var c = COMP[id];
+  c.readings.forEach(function(r){
+    var el = document.getElementById('rv-'+id+'-'+r.key);
+    if(!el) return;
+    var show = c.on || r.always;
+    if(show){
+      el.classList.remove('dash');
+      el.innerHTML = fmtVal(computeReadingValue(id,r), r.dec)+' <span>'+r.unit+'</span>';
+    } else {
+      el.classList.add('dash');
+      el.textContent = '—';
+    }
+  });
+  if(c.signal){
+    var row = document.getElementById('panel-signal-row');
+    var readout = document.getElementById('panel-signal-readout');
+    if(c.on){
+      row.classList.remove('standby');
+      readout.textContent = Math.round(SIGNAL[c.signal.fn]())+'%';
+    } else {
+      row.classList.add('standby');
+      readout.textContent = 'Standby';
+    }
+  }
+}
+
+function renderPanelSetpoints(id){
+  var c = COMP[id];
+  var wrap = document.getElementById('panel-setpoints');
+  wrap.innerHTML='';
+  document.getElementById('setpoints-title').style.display = c.setpoints.length ? '' : 'none';
+  c.setpoints.forEach(function(sp){
+    var item = document.createElement('div');
+    item.className='setpoint-item';
+    item.innerHTML = '<div class="setpoint-top"><span class="setpoint-label">'+sp.label+'</span>'+
+      '<span class="setpoint-val" id="spval-'+id+'-'+sp.key+'">'+sp.value+' '+sp.unit+'</span></div>'+
+      '<input type="range" id="sprange-'+id+'-'+sp.key+'" min="'+sp.min+'" max="'+sp.max+'" step="'+sp.step+'" value="'+sp.value+'" '+(c.on?'':'disabled')+'>';
+    wrap.appendChild(item);
+  });
+  c.setpoints.forEach(function(sp){
+    var input = document.getElementById('sprange-'+id+'-'+sp.key);
+    input.addEventListener('input', function(){
+      sp.value = parseFloat(input.value);
+      document.getElementById('spval-'+id+'-'+sp.key).textContent = sp.value+' '+sp.unit;
+      refreshPanelReadingsLive(id);
+      updateNodeVisual(id);
+      updateStats();
+    });
+  });
+}
+
+function openPanel(id){
+  currentPanelId = id;
+  var c = COMP[id];
+  document.getElementById('panel-tag').textContent = c.tag;
+  document.getElementById('panel-title').textContent = c.name;
+  document.getElementById('panel-desc').textContent = c.desc;
+
+  var toggle = document.getElementById('panel-toggle');
+  var stateText = document.getElementById('panel-state-text');
+  toggle.className = 'toggle-switch'+(c.on?' on':'');
+  stateText.textContent = c.on ? 'ON':'OFF';
+  stateText.className = c.on?'on':'off';
+
+  var sigRow = document.getElementById('panel-signal-row');
+  if(c.signal){
+    sigRow.style.display='';
+    document.getElementById('panel-signal-name').textContent = c.signal.name;
+    sigRow.classList.toggle('standby', !c.on);
+    document.getElementById('panel-signal-readout').textContent = c.on ? Math.round(SIGNAL[c.signal.fn]())+'%' : 'Standby';
+  } else {
+    sigRow.style.display='none';
+  }
+
+  renderPanelReadings(id);
+  renderPanelSetpoints(id);
+
+  overlay.classList.add('show');
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden','false');
+}
+function closePanel(){
+  panel.classList.remove('open');
+  overlay.classList.remove('show');
+  panel.setAttribute('aria-hidden','true');
+  currentPanelId = null;
+}
+document.getElementById('panel-close').addEventListener('click', closePanel);
+overlay.addEventListener('click', closePanel);
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closePanel(); });
+
+document.getElementById('panel-toggle').addEventListener('click', function(){
+  if(!currentPanelId) return;
+  var c = COMP[currentPanelId];
+  c.on = !c.on;
+  updateNodeVisual(currentPanelId);
+  updateDucts();
+  updateStats();
+  openPanel(currentPanelId);
+});
+
+/* ============================= GLOBAL START / STOP ============================= */
+document.getElementById('btn-start-all').addEventListener('click', function(){
+  Object.keys(COMP).forEach(function(id){ COMP[id].on = true; });
+  updateAllNodeVisuals();
+  updateStats();
+  if(currentPanelId) openPanel(currentPanelId);
+});
+document.getElementById('btn-stop-all').addEventListener('click', function(){
+  Object.keys(COMP).forEach(function(id){ COMP[id].on = false; });
+  updateAllNodeVisuals();
+  updateStats();
+  if(currentPanelId) openPanel(currentPanelId);
+});
+
+/* ============================= THEME TOGGLE ============================= */
+var sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>';
+var moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>';
+var themeBtn = document.getElementById('theme-toggle');
+var logoImg = document.getElementById('logo');
+function setTheme(dark){
+  document.body.classList.toggle('dark', dark);
+  themeBtn.innerHTML = dark ? sunIcon : moonIcon;
+  logoImg.src = dark ? '/iat-logo-white.png' : '/iat-logo.png';
+}
+setTheme(false);
+themeBtn.addEventListener('click', function(){ setTheme(!document.body.classList.contains('dark')); });
+
+/* ============================= INIT ============================= */
+buildDucts();
+buildNodes();
+updateAllNodeVisuals();
+updateStats();
+
+setInterval(function(){
+  updateStats();
+  if(currentPanelId) refreshPanelReadingsLive(currentPanelId);
+}, 2200);
+</script>
+</body>
+</html>

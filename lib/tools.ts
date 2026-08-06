@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Wind, Image as ImageIcon, Zap, Calculator, Flame, PartyPopper, Droplets } from 'lucide-react'
+import { Wind, Image as ImageIcon, Zap, Calculator, Flame, PartyPopper, Droplets, Fan } from 'lucide-react'
 
 /* Single source of truth for the internal-apps launcher ("Internal Apps" in the
    nav — renamed from "Tools" so it isn't confused with the Tool Crib check-out
@@ -19,12 +19,19 @@ export type ToolApp = {
 
 export const TOOL_APPS: ToolApp[] = [
   {
+    title: 'Desiccant Dehumidification HMI',
+    desc: 'A live, clickable process-flow diagram of a desiccant dehumidification unit — walk the process and reactivation airstreams through filter, coil, wheel, heater, and fans, toggle any component, adjust setpoints, and watch airflow, moisture removal, and power respond in real time.',
+    href: '/tools/desiccant-wheel-hmi.html',
+    icon: Fan,
+    external: true,
+    tag: 'New',
+  },
+  {
     title: 'Washdown Load Calculator',
     desc: 'Estimate the moisture (grains/hr) a daily washdown adds to a space — residual-film average and Carrier peak — and roll it into the total the desiccant unit must remove.',
     href: '/tools/washdown-load-calculator.html',
     icon: Droplets,
     external: true,
-    tag: 'New',
   },
   {
     title: 'Gas Burner Selection Guide',

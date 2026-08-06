@@ -52,7 +52,9 @@ palette (on their own perms, matching this page) — that's now their keyboard s
 3. Match the **Quiet Precision** tokens (`DESIGN.md`, workspace root; see also
    [design-language.md](design-language.md)). Every existing tool declares the light ladder as
    CSS variables at the top of the file — copy that block rather than inventing colors. These
-   pages are light-only by design; they are print and PDF surfaces, not portal chrome.
+   pages are light-only by design; they are print and PDF surfaces, not portal chrome. (One
+   documented exception — the [Desiccant Dehumidification HMI](#desiccant-dehumidification-hmi) is a
+   live screen, not a print surface, so it keeps a full light/dark toggle. See its section below.)
 
 The IAT logo is a ~41 KB base64 PNG. Define it **once** as a `const LOGO` and set the header
 `<img>` src from JS — the older tools inline the same string twice (markup + PDF), which is
@@ -141,3 +143,39 @@ cached in its cells (2,640 + 1,030 ft², 0.005″ film, 90 °F water, 70 °F roo
 design-point figures, the inputs, both method chains, the peak caveat, and the
 *confirm final sizing with IAT — 770-788-6744* footer. If jsPDF hasn't loaded it falls back to
 `window.print()`.
+
+---
+
+## Desiccant Dehumidification HMI
+
+`/tools/desiccant-wheel-hmi.html` — added 2026-08-06.
+
+A live, clickable process-flow diagram of a desiccant unit (model IAT-3000RE-IDP-6000, 6,000 CFM),
+rebuilt from an external prototype into Quiet Precision. Both airstreams run on a fixed 1440×840
+schematic — **process** left-to-right through filter → pre-cool coil → wheel → bypass damper → supply
+fan, and **reactivation** counter-flow right-to-left through filter → electric heater → the shared
+wheel → exhaust fan. Click any component for a right-hand drawer with live readings, its control
+signal (valve %, VFD %, SCR %…), and setpoint sliders; toggle power per-component or Start/Stop all.
+Header stats (supply/exhaust CFM, moisture removed, power draw) and a reactivation high-limit alarm
+recompute live, and active ducts animate flow. All values come from a small in-file physics model
+(`DERIVE` / `AIR` / `SIGNAL`) — it is a demonstration/training HMI, not wired to a real panel.
+
+### Two deliberate exceptions to the static-tool convention
+
+Unlike the calculators, this is a **live screen, not a print/PDF surface**, so it intentionally
+departs from "light-only" in two places — don't "fix" either:
+
+1. **It keeps a light/dark toggle.** Both themes are the DESIGN.md ladders in full (light warm
+   canvas; dark cool-graphite surface ladder). Default is light so it lands looking native. The
+   header logo swaps `/iat-logo.png` ⇄ `/iat-logo-white.png` on toggle (these tools are always
+   portal-served under `/tools/*`, so the absolute asset paths resolve — this one does **not** inline
+   a `const LOGO` base64, and is not meant to be opened standalone via `file://`).
+2. **The schematic artboard keeps two functional flow hues** (process teal / reactivation warm),
+   the same deliberate token exception the [Application Diagram Studio](diagram-studio.md) artboard
+   makes — the colors encode airflow direction, which is meaning, not decoration. Everything else
+   (chrome, cards, drawer, pills, type) is strict Quiet Precision. Equipment-icon fills are driven
+   by CSS tokens (`.ic-body`, `.ic-accent-*`, `.ic-wheel-*`, …) so the icons retheme live on toggle
+   instead of being rebuilt in JS.
+
+No jsPDF, no CDN dependencies, no `window` globals beyond the sim. No new perm or migration — the
+`/tools/*` middleware already gates it to signed-in staff.
