@@ -2,6 +2,54 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-06 — Learn: Control Panel Crash Course — a working c.pCO simulator (migrations 081+082)
+
+Sales asked for panel training that isn't a digital textbook. The centerpiece is a **faithful
+simulator of the pGD terminal** (`lib/cpco/`): a 22×8 character-grid LCD in the panel's real
+colours, the six buttons, and the editing grammar taken keystroke-for-keystroke from IAT's own
+"How to setup the BACnet instance" procedure — Enter walks the cursor field to field and digit by
+digit, Up/Down edit under it, a protocol change forces the reboot prompt, and Alarm+Enter held
+three seconds drops into the CAREL system menu. Trainees are **graded on doing the task** (set the
+protocol, take the reboot, key in device instance 2749001), never on multiple choice. Five graded
+scenarios ship; keystroke counts are feedback, not a gate.
+
+**Both menu trees are data, not code** (`lib/cpco/trees/`). A screen captured off a real panel
+becomes a record with no code change — which is the plan for the pending screen-capture pass and
+SOO. Entries the source procedure proves exist but never shows are carried as `—` so the pager
+counts stay honest; nothing is invented. `scripts/verify-cpco.mjs` (38 checks) asserts the literal
+screen text of the whole documented walk against strings typed from the PDF — if a tree drifts
+from the panel, it goes red.
+
+**Lessons can now embed interactive exercises.** A `data-interactive` marker in a lesson body
+splits into HTML runs and real components (`lib/learn-interactive.ts` + a registry behind the
+client boundary). A body with no marker returns the **byte-identical** single-injection path, so
+the 357 existing lessons render exactly as before (`scripts/verify-learn-interactive.mjs`). The
+`InteractiveBlock` TipTap node keeps markers alive through editor open/save — round-tripped
+against the live @tiptap versions including 47 real `img-missing` seed bodies, per the PR #35
+method (old-output vs new-output, never input vs output).
+
+**Grading rides the existing rails.** `learn_sim_attempts` (081) keeps one row per user+scenario,
+best run kept, `passed` sticky — mirroring quiz attempts. `POST /api/learn/sim-attempt` is
+session-scoped exactly like `/api/learn/progress`, and a passed scenario completes its lesson
+through that same progress route, so XP, streaks, badges and the assignments compliance report
+needed zero changes.
+
+**082 seeds the course**: 10 published lessons under Technical Training — driving the pGD, two
+read-a-value tasks, the BACnet setup, the point explorer (all 38 objects; only 6 writable; the
+unitless-export caveat), the fault-injection alarm lab (panel and BACnet Summary Alarm reacting
+together), remote access (web pGD / tERA / BAS), and two service tasks (pLAN address, static IP).
+Facts trace to the CAREL manual, IAT's BACnet procedure, and the point-list export. Three
+**defects found in that export** are surfaced in the explorer rather than hidden (instances 25/26
+labelled "Pre" instead of "Post"; 14/15 descriptions swapped) — flagged to engineering.
+
+The LCD's hex colours are a deliberate token-system exception (a physical part, not a themed
+surface) — documented in the one `globals.css` block the design grep excludes. Also live at
+`/admin/tools/panel` as an untracked workbench behind the `tools` perm; the tracked course is the
+front door, so the workbench is deliberately not in the launchers.
+
+Not yet in the course (blocked on the SOO + captures): the unit schematic with real sensor
+positions, setpoint behaviour, the full IAT menu tree, and the capstone quiz.
+
 ## 2026-08-05 — Proposals: a sizing selection becomes a submittal-ready PDF (migration 079)
 
 `/admin/proposals` turns a Deal plus a Sizing Studio selection into a branded proposal PDF that a

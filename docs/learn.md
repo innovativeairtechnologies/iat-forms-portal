@@ -332,6 +332,60 @@ Jacob's 2026-07-30 priority list, with the first two now shipped:
    subjects (seed-only — an admin cannot add a new subject without SQL), **renaming** subjects
    and lessons from the tree, and **reordering** anything (`display_order` has no write path).
 
+## Interactive lessons + the Control Panel Crash Course (2026-08-06)
+
+Lessons can embed **interactive exercises**: a marker div in the body —
+
+```html
+<div data-interactive="cpco-sim" data-scenario="bacnet-instance"></div>
+```
+
+— renders as a real component. Three exercises are registered: `cpco-sim` (the c.pCO panel
+simulator, optional `data-scenario` for a graded task, `data-guided="true"` to show all hints),
+`cpco-points` (the BACnet point explorer) and `cpco-alarm-lab` (fault injection). The first course
+using them is **Control Panel Crash Course** (migration 082, Technical Training, 10 lessons).
+
+### The moving parts
+
+| Piece | File |
+|---|---|
+| Marker split/build | `lib/learn-interactive.ts` — pure string work, no DOM |
+| Reader | `components/learn/LessonContent.tsx` — **guarded**: no marker → the byte-identical old `dangerouslySetInnerHTML` path |
+| Registry | `components/learn/InteractiveBlockView.tsx` (`'use client'` — the value imports stay behind the boundary) |
+| Editor node | `components/learn/admin/InteractiveBlock.tsx` — same job/hazard as `ImagePlaceholder`; without it, opening a lesson with an exercise and saving **deletes the exercise** |
+| Simulator engine | `lib/cpco/` — display grid, keypress reducer, menu trees as data, the 38-object point list, graded scenarios |
+| Attempts | `learn_sim_attempts` (081) + `POST /api/learn/sim-attempt` — session-scoped like progress; best run kept, `passed` sticky |
+| Workbench | `/admin/tools/panel` (`tools` perm) — deliberately NOT in the launchers; the tracked course is the front door |
+
+A passed scenario posts the attempt, then completes the lesson through the ordinary
+`/api/learn/progress` route — XP, streaks, badges and the assignments report needed no changes.
+
+### Verify scripts (run on any change to these areas)
+
+- `node --import ./scripts/ts-resolve.mjs scripts/verify-cpco.mjs` — walks the BACnet setup
+  procedure keystroke-for-keystroke, asserting **literal screen text typed from the source PDF**
+  (never read back out of the trees). 38 checks. A red run means a tree drifted from the panel.
+- `node --import ./scripts/ts-resolve.mjs scripts/verify-learn-interactive.mjs` — the splitter
+  guard: bodies without a marker must come back byte-identical.
+- **On every TipTap bump**, extend the existing jsdom round-trip harness to also assert
+  `data-interactive` markers survive open/save (same method as `img-missing`: esbuild-bundle the
+  real nodes, diff old-version output vs new-version output).
+
+### Facts the course is built on (sourced, not vibes)
+
+CAREL c.pCO manual +0300057EN rel 1.4; IAT's "How to setup the BACnet instance" (one screenshot
+per keystroke — the simulator spec); `BACnet_Documentation.xls` → `lib/cpco/points.ts`. The
+export has **three label defects** (25/26 say "Pre" for post-cool/post-heat; 14/15 descriptions
+swapped) — surfaced in the point explorer, flagged to engineering. The LCD hex in `globals.css`
+(`.cpco-*`) is a deliberate token exception: it reproduces a physical part and must not follow
+the theme.
+
+### Blocked on the SOO + screen captures
+
+Unit schematic with real sensor positions, setpoint behaviour lessons, the rest of the IAT menu
+tree (menu entries the procedure never shows are carried as `—` with `optional: true` — fill
+them from captures, don't invent), the password tiers, and the capstone quiz.
+
 ## Images in the lesson editor (2026-08-04)
 
 `components/learn/admin/LessonEditor.tsx`. Three ways in — the toolbar button, drag-and-drop,
