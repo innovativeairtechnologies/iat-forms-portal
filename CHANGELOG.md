@@ -2,6 +2,13 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-06 — Sidebar nav is now an accordion (one group open at a time)
+
+Expanding a rail group used to leave others open, so the list could get long. The nav is now an
+accordion: opening a group retracts whichever was open, and navigating opens only the active page's
+group. The single-open cap lives in all three places that set `open` — the toggle, the localStorage
+restore, and the navigation effect — and the footer's Self-service group shares the same rule.
+
 ## 2026-08-06 — Training nav un-parked
 
 The Training group in the admin rail goes live (it was parked — greyed with a "Soon" chip — since

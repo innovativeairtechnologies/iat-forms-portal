@@ -315,17 +315,23 @@ export default function AdminSidebar({ unreadCount, ticketCount, troubleshooting
   useEffect(() => {
     let stored: string[] = []
     try { stored = JSON.parse(localStorage.getItem(OPEN_KEY) || '[]') } catch { /* private mode */ }
-    setOpen(prev => Array.from(new Set([...prev, ...stored])))
+    // Accordion: restore the ONE remembered group, and only when no group is
+    // active (the activeParent effect otherwise wins and opens the active one).
+    const first = stored[0]
+    if (first) setOpen(prev => (prev.length ? prev : [first]))
     const raf = requestAnimationFrame(() => requestAnimationFrame(() => setAnimateExpand(true)))
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => {
-    if (activeParent) setOpen(prev => (prev.includes(activeParent) ? prev : [...prev, activeParent]))
+    // Navigating opens the active page's group and closes the rest (accordion).
+    if (activeParent) setOpen([activeParent])
   }, [activeParent])
   const toggle = (label: string) =>
     setOpen(prev => {
-      const next = prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]
+      // Accordion: open only the clicked group (retracting any other), or close it
+      // if it's already open. At most one group is expanded at a time.
+      const next = prev.includes(label) ? [] : [label]
       try { localStorage.setItem(OPEN_KEY, JSON.stringify(next)) } catch { /* private mode */ }
       return next
     })
