@@ -10,10 +10,12 @@ import Placeholder from '@tiptap/extension-placeholder'
 import {
   Bold, Italic, Strikethrough, Heading2, Heading3, List, ListOrdered,
   Quote, Link as LinkIcon, Image as ImageIcon, Minus, Undo, Redo,
-  ArrowLeft, ExternalLink, Loader2, Check,
+  ArrowLeft, ExternalLink, Loader2, Check, MonitorPlay,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ImagePlaceholder } from './ImagePlaceholder'
+import { InteractiveBlock, INTERACTIVE_BLOCK_NAME } from './InteractiveBlock'
+import { SCENARIOS } from '@/lib/cpco'
 import {
   IMAGE_ACCEPT, IMAGE_HINT, imageFileError, imageFilesFrom, uploadLessonImage,
 } from '@/lib/lesson-images'
@@ -78,6 +80,9 @@ export default function LessonEditor({
       StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: false } }),
       TiptapImage,
       ImagePlaceholder,
+      // Without this, opening any lesson that contains an interactive exercise
+      // and pressing Save deletes the exercise — see the note in the extension.
+      InteractiveBlock,
       Placeholder.configure({ placeholder: 'Write the lesson content…' }),
     ],
     content: lesson.content || '',
@@ -143,6 +148,30 @@ export default function LessonEditor({
     if (!url) return
     if (!isHttpUrl(url)) { window.alert('Only http:// or https:// links are allowed.'); return }
     editor?.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
+  }
+
+  // Same window.prompt idiom as the link button above. The list is the real
+  // scenario registry, so an author can't type a name that doesn't exist.
+  const addExercise = () => {
+    const menu = SCENARIOS.map((s, i) => `${i + 1}. ${s.title}`).join('\n')
+    const answer = window.prompt(
+      `Insert the control panel simulator.\n\n${menu}\n\nEnter a number, or leave blank for free play:`,
+    )
+    if (answer === null) return
+
+    const params: Record<string, string> = {}
+    const picked = SCENARIOS[Number(answer.trim()) - 1]
+    if (answer.trim() && !picked) {
+      window.alert('That isn’t one of the listed exercises.')
+      return
+    }
+    if (picked) params.scenario = picked.id
+
+    editor
+      ?.chain()
+      .focus()
+      .insertContent({ type: INTERACTIVE_BLOCK_NAME, attrs: { name: 'cpco-sim', params } })
+      .run()
   }
 
   async function save() {
@@ -259,6 +288,7 @@ export default function LessonEditor({
             <ImageIcon size={15} />
           </Btn>
           <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Divider"><Minus size={15} /></Btn>
+          <Btn onClick={addExercise} title="Insert an interactive exercise"><MonitorPlay size={15} /></Btn>
           <div className="mx-1 h-5 w-px bg-hairline" />
           <Btn onClick={() => editor.chain().focus().undo().run()} title="Undo"><Undo size={15} /></Btn>
           <Btn onClick={() => editor.chain().focus().redo().run()} title="Redo"><Redo size={15} /></Btn>

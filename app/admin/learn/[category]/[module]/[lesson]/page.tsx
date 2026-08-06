@@ -71,7 +71,7 @@ export default async function LessonPage(
         </p>
       </header>
 
-      <LessonContent html={lesson.content} />
+      <LessonContent html={lesson.content} lessonId={lesson.id} />
 
       <LessonFooterNav
         lessonId={lesson.id}

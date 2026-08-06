@@ -445,3 +445,98 @@
 @keyframes kbPulse { 0% { opacity: .85; transform: scale(.62); } 100% { opacity: 0; transform: scale(1.4); } }
 @media (prefers-reduced-motion: reduce) { .kb-wheel-wrap > span, .kb-wheel-wrap i, .kb-mote { animation: none !important; } .kb-tilt { transform: none !important; } }
 
+
+/* ── c.pCO panel simulator ───────────────────────────────────────────────────
+   The LCD is a reproduction of a physical part, not a surface in our design
+   system. Its colours are the ones the CAREL manual gives for the pGD in §10.3
+   — display light blue RGB(106,188,231) on black — and they are literal hex on
+   purpose: the glass must not follow the theme, must not invert in dark mode,
+   and must not be swept into semantic tokens. Same deliberate exception the
+   Diagram Studio artboard takes. Everything OUTSIDE the glass (bezel, keypad,
+   surrounding chrome) is on normal tokens in the components.
+
+   These rules live here rather than in the components so the DESIGN grep can
+   exclude one known file instead of a colour pattern.
+
+   The display is a character grid: 22 columns x 8 rows at the 6x8 body font,
+   16 columns on a double-height menu row. Each glyph is centred in its own
+   fixed cell, so the grid — not the font — holds the illusion together, and a
+   font fallback can never break the alignment. */
+.cpco-lcd {
+  --cpco-lcd: #6abce7;
+  --cpco-ink: #000000;
+  container-type: size;
+  aspect-ratio: 132 / 64;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--cpco-lcd);
+  color: var(--cpco-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  line-height: 1;
+  overflow: hidden;
+  user-select: none;
+}
+/* Rows clip their own contents so a glyph can never bleed into the row above.
+   A transform is not contained by the cell's own overflow, so without this the
+   stretched menu font paints over its neighbours. */
+.cpco-row { display: grid; width: 100%; min-height: 0; overflow: hidden; }
+/* Font size is driven by cell WIDTH, not row height.
+
+   A pGD glyph is 5x7 in a 6x8 cell — narrow and tall. Ordinary monospace is
+   the other way round: about 0.6em of advance width per em of height. Sizing
+   off the row height therefore leaves a third of every cell empty and the
+   masks read as though they were letter-spaced, which is nothing like the
+   panel. Sizing off the cell width fills the columns; the glyph ink is roughly
+   0.7em tall, so it still clears the row. */
+.cpco-row-1 { flex: 1 1 0; font-size: 7.3cqw; grid-template-columns: repeat(22, 1fr); }
+.cpco-row-2 { flex: 2 2 0; font-size: 10cqw; grid-template-columns: repeat(16, 1fr); }
+.cpco-cell { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; }
+/* The menu font is 8x16 against the body font's 6x8 — a third wider but twice
+   as tall. Width is already handled by the 16-column grid; this restores the
+   height, which is what makes a menu entry read as bigger than the subheader
+   above it rather than merely wider. Stretching a normal face vertically is
+   also, conveniently, what a dot-matrix LCD font looks like.
+
+   1.21 is the hard ceiling: a double-height row is 12.12cqw tall and the font
+   is 10cqw, so anything above that overflows and gets clipped. 1.18 leaves a
+   margin. Do not raise it without re-checking the menu masks. */
+.cpco-row-2 .cpco-cell { transform: scaleY(1.18); }
+/* Inverse video: headers, the selected menu bar, and the cursor block. */
+.cpco-cell-on { background: var(--cpco-ink); color: var(--cpco-lcd); }
+
+/* The bezel the glass sits in. Black, because the surround of a real pGD is. */
+.cpco-bezel { background: #111111; }
+
+/* Backlight off while the controller restarts — the glass goes dark and the
+   keypad is dead. */
+.cpco-lcd-off { filter: brightness(0.28) saturate(0.5); transition: filter 150ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cpco-lcd-off { transition: none; }
+}
+
+/* ── Interactive blocks in lesson bodies ─────────────────────────────────────
+   A lesson containing an interactive marker renders as alternating HTML runs
+   and real components (see lib/learn-interactive.ts). The runs are wrapped in
+   plain divs, which the `.learn-prose` descendant rules pass straight through —
+   only the one direct-child rule needs restating. */
+.learn-prose-split > div:first-child > :first-child { margin-top: 0; }
+
+/* Inside a widget the reading styles have to stop. `.learn-prose p/ul/li/a`
+   would otherwise put paragraph margins, disc bullets and underlines on the
+   simulator's own chrome, which is UI, not prose. */
+.learn-prose-interactive { margin: 1.6em 0; }
+.learn-prose-interactive p { margin: 0; }
+.learn-prose-interactive ul,
+.learn-prose-interactive ol { list-style: none; padding-left: 0; margin: 0; }
+.learn-prose-interactive li { margin: 0; padding: 0; }
+.learn-prose-interactive li::marker { content: none; }
+.learn-prose-interactive a { text-decoration: none; border: 0; }
+.learn-prose-interactive h2,
+.learn-prose-interactive h3 {
+  margin: 0; font-size: inherit; font-weight: inherit;
+  letter-spacing: normal; padding: 0; border: 0;
+}
+.learn-prose-interactive blockquote { margin: 0; padding: 0; border: 0; }
+.learn-prose-interactive img { margin: 0; border-radius: 0; }
