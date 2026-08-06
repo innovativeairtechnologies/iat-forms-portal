@@ -8,9 +8,9 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
-  // NB: Megaphone + GraduationCap dropped with the parked Marketing/Training
-  // entries below — restore them here when those are re-listed.
-  MessageCircle, KeyRound, Wrench, Map as MapIcon, Gauge, Workflow,
+  // NB: Megaphone dropped with the parked Marketing entry below — restore it
+  // here when that is re-listed.
+  MessageCircle, KeyRound, Wrench, Map as MapIcon, Gauge, Workflow, GraduationCap,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -66,13 +66,13 @@ const STATIC: Item[] = [
   // not `tools`, to match the gating on that page.
   { id: 'nav-sizing',  label: 'Sizing Studio',    group: 'Go to', icon: Gauge,           href: '/admin/sizing-studio', keywords: 'psychrometric sizing selection unit dehumidifier grains load chart', perm: 'sizing' },
   { id: 'nav-diagram', label: 'Application Diagrams', group: 'Go to', icon: Workflow,    href: '/admin/diagram-studio', keywords: 'airflow figure drawing proposal submittal schematic diagram studio', perm: 'diagrams' },
-  // Training (IAT Learn) delisted while its nav group is parked in AdminSidebar,
-  // same reasoning as Marketing Calendar above. Routes stay live by URL; re-add
-  // these four alongside removing `parked` from the Training nav group.
-  // { id: 'nav-learn',   label: 'Training',         group: 'Go to', icon: GraduationCap,   href: '/admin/learn', keywords: 'learn iat learn training courses lessons onboarding trainual library safety' },
-  // { id: 'nav-learn-me', label: 'My Learning',     group: 'Go to', icon: GraduationCap,   href: '/admin/learn/me', keywords: 'learn progress xp level streak badges my training' },
-  // { id: 'nav-learn-lb', label: 'Learn Leaderboard', group: 'Go to', icon: TrendingUp,    href: '/admin/learn/leaderboard', keywords: 'learn leaderboard ranking xp training' },
-  // { id: 'nav-learn-admin', label: 'Manage course content', group: 'Go to', icon: GraduationCap, href: '/admin/learn-content', keywords: 'learn admin author lessons modules categories publish edit training content', perm: 'learn_admin' },
+  // Training (IAT Learn) — re-listed 2026-08-06 when the nav group was un-parked
+  // for the Control Panel Crash Course. Learner entries carry no perm on purpose:
+  // /admin/learn is in OPEN_ADMIN_PREFIXES, open to every admin-surface role.
+  { id: 'nav-learn',   label: 'Training',         group: 'Go to', icon: GraduationCap,   href: '/admin/learn', keywords: 'learn iat learn training courses lessons onboarding trainual library safety control panel' },
+  { id: 'nav-learn-me', label: 'My Learning',     group: 'Go to', icon: GraduationCap,   href: '/admin/learn/me', keywords: 'learn progress xp level streak badges my training' },
+  { id: 'nav-learn-lb', label: 'Learn Leaderboard', group: 'Go to', icon: TrendingUp,    href: '/admin/learn/leaderboard', keywords: 'learn leaderboard ranking xp training' },
+  { id: 'nav-learn-admin', label: 'Manage course content', group: 'Go to', icon: GraduationCap, href: '/admin/learn-content', keywords: 'learn admin author lessons modules categories publish edit training content', perm: 'learn_admin' },
   { id: 'act-newform', label: 'Create a new form',           group: 'Actions', icon: Plus,       href: '/admin/forms/new', keywords: 'add build', perm: 'forms' },
   { id: 'act-aiform',  label: 'Build a form with AI',        group: 'Actions', icon: Sparkles,   href: '/admin/forms/ai', keywords: 'generate claude pdf import', perm: 'forms' },
   { id: 'act-unread',  label: 'Review unread submissions',   group: 'Actions', icon: Inbox,      href: '/admin/submissions?is_read=false', perm: 'submissions' },

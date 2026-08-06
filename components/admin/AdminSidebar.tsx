@@ -152,12 +152,13 @@ const NAV_PARENTS: NavParent[] = [
     ],
   },
   // Training — IAT Learn, ported off /learn. Learner items carry no perm
-  // ('/admin/learn' is in OPEN_ADMIN_PREFIXES); only authoring is gated.
-  // PARKED alongside Marketing — see the note there. Routes stay live by URL.
+  // ('/admin/learn' is in OPEN_ADMIN_PREFIXES), so every admin-surface role —
+  // sales included — sees this group; only authoring is gated (learn_admin).
+  // Un-parked 2026-08-06 for the Control Panel Crash Course launch, together
+  // with its four CommandPalette entries.
   {
     label: 'Training',
     icon: GraduationCap,
-    parked: true,
     children: [
       { href: '/admin/learn', label: 'Browse' },
       { href: '/admin/learn/me', label: 'My Learning' },
