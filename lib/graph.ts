@@ -21,6 +21,10 @@ export type GraphDriveItem = {
   id: string
   name?: string
   eTag?: string
+  /** Content tag — moves only when the file's CONTENT changes. eTag also moves
+   *  on metadata edits (a rename, a column update), so cTag is the right signal
+   *  for "this needs re-reading" and eTag would cause pointless re-transcription. */
+  cTag?: string
   webUrl?: string
   size?: number
   lastModifiedDateTime?: string
@@ -142,7 +146,7 @@ export async function resolveLibrary(): Promise<{ siteId: string; driveId: strin
 /** Smoke test: the first `limit` items in the library root. Proves the pipe end-to-end. */
 export async function listLibraryTop(limit = 20): Promise<GraphDriveItem[]> {
   const { driveId } = await resolveLibrary()
-  const page = await graphGet<{ value: GraphDriveItem[] }>(`/drives/${driveId}/root/children?$top=${limit}&$select=id,name,size,file,folder,lastModifiedDateTime,webUrl,lastModifiedBy,eTag`)
+  const page = await graphGet<{ value: GraphDriveItem[] }>(`/drives/${driveId}/root/children?$top=${limit}&$select=id,name,size,file,folder,lastModifiedDateTime,webUrl,lastModifiedBy,eTag,cTag`)
   return page.value
 }
 
@@ -157,7 +161,7 @@ export async function driveDelta(deltaLink?: string | null): Promise<{ items: Gr
   const { driveId } = await resolveLibrary()
   let url =
     deltaLink ||
-    `${GRAPH}/drives/${driveId}/root/delta?$select=id,name,size,file,folder,deleted,lastModifiedDateTime,webUrl,lastModifiedBy,eTag`
+    `${GRAPH}/drives/${driveId}/root/delta?$select=id,name,size,file,folder,deleted,lastModifiedDateTime,webUrl,lastModifiedBy,eTag,cTag`
   const items: GraphDriveItem[] = []
   // Follow @odata.nextLink until we get the terminal @odata.deltaLink.
   for (let guard = 0; guard < 1000; guard++) {

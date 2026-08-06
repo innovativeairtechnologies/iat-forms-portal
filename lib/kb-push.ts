@@ -91,6 +91,11 @@ export async function pushDocumentToSharePoint(documentId: string): Promise<Push
       .update({
         sharepoint_item_id: item.id,
         sharepoint_etag: item.eTag ?? null,
+        // Record the cTag of what we just uploaded. Without it the next pull
+        // sees our own file as "known but changed" and re-ingests it — the echo
+        // loop coming back through the change-detection door instead of the
+        // identity one.
+        sharepoint_ctag: item.cTag ?? null,
         pushed_at: new Date().toISOString(),
         push_error: null,
       })

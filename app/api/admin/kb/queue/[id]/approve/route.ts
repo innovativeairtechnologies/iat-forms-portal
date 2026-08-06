@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: row, error: rowErr } = await supabaseAdmin
     .from('kb_review_queue')
-    .select('id, status, source, external_id, external_etag, filename, transcript')
+    .select('id, status, source, external_id, external_etag, external_ctag, filename, transcript')
     .eq('id', id)
     .maybeSingle()
 
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     source: (row.source as string) || 'sharepoint',
     sharepointItemId: (row.external_id as string) ?? null,
     sharepointEtag: (row.external_etag as string) ?? null,
+    sharepointCtag: (row.external_ctag as string) ?? null,
   })
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status })

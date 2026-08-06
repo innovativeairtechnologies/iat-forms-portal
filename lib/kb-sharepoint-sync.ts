@@ -62,16 +62,46 @@ export async function discoverSharePointDocuments(): Promise<DiscoverResult> {
   ).length
   const deletions = items.filter((i) => i.deleted).length
 
-  // Skip anything already queued (in any state) or already published.
+  // ── RECONCILE, three ways ───────────────────────────────────────────────────
+  // "Already known" is not the same as "nothing to do". Treating it that way
+  // froze every document at the version first ingested: correct a figure in the
+  // manual upstream and Jerry kept answering from the old text forever, with
+  // nothing to show it was stale.
+  //
+  //   new              → queue it
+  //   known, changed   → queue it again, so a human re-approves the new version
+  //   known, unchanged → skip (this is where a document we pushed lands, and is
+  //                      correctly ignored instead of re-ingested)
+  //
+  // Change is judged on cTag, not eTag: eTag also moves on metadata edits, so it
+  // would re-transcribe documents whose text never changed — real cost, no new
+  // knowledge.
   const { data: queued } = await supabaseAdmin
-    .from('kb_review_queue').select('external_id').eq('source', SYNC_SOURCE)
+    .from('kb_review_queue').select('external_id, status').eq('source', SYNC_SOURCE)
   const { data: published } = await supabaseAdmin
-    .from('kb_documents').select('sharepoint_item_id').not('sharepoint_item_id', 'is', null)
-  const seen = new Set<string>([
-    ...(queued || []).map((r) => r.external_id as string),
-    ...(published || []).map((r) => r.sharepoint_item_id as string),
-  ])
-  const fresh = files.filter((f) => !seen.has(f.id))
+    .from('kb_documents').select('sharepoint_item_id, sharepoint_ctag').not('sharepoint_item_id', 'is', null)
+
+  // Anything already waiting for a human is left alone — re-queueing it would
+  // just duplicate the card (and the partial unique index forbids it anyway).
+  const pending = new Set<string>(
+    (queued || []).filter((r) => r.status === 'pending').map((r) => r.external_id as string),
+  )
+  const publishedCtag = new Map<string, string | null>(
+    (published || []).map((r) => [r.sharepoint_item_id as string, (r.sharepoint_ctag as string) ?? null]),
+  )
+
+  let changed = 0
+  const fresh = files.filter((f) => {
+    if (pending.has(f.id)) return false
+    if (!publishedCtag.has(f.id)) return true // never seen → new
+    const known = publishedCtag.get(f.id)
+    // A row published before cTag was recorded has none — treat it as current
+    // rather than re-reading the whole library once on upgrade.
+    if (!known || !f.cTag) return false
+    if (known === f.cTag) return false // unchanged → skip
+    changed++
+    return true // content moved → re-review
+  })
 
   let discovered = 0
   if (fresh.length) {
@@ -79,6 +109,7 @@ export async function discoverSharePointDocuments(): Promise<DiscoverResult> {
       source: SYNC_SOURCE,
       external_id: item.id,
       external_etag: item.eTag ?? null,
+      external_ctag: item.cTag ?? null,
       filename: item.name ?? 'document',
       title: titleFromFilename(item.name ?? 'document'),
       web_url: item.webUrl ?? null,
@@ -125,7 +156,7 @@ export async function discoverSharePointDocuments(): Promise<DiscoverResult> {
 
   // The cursor advances here because discovery genuinely finished the delta —
   // reading is tracked per row, so it can't lose work.
-  const summary = `discovered ${discovered}, ${files.length - fresh.length} already known, ${skipped} unsupported, ${deletions} deletion(s) noted`
+  const summary = `discovered ${discovered} (${changed} changed upstream), ${files.length - fresh.length} already known, ${skipped} unsupported, ${deletions} deletion(s) noted`
   await supabaseAdmin.from('kb_sync_state').upsert({
     source: SYNC_SOURCE,
     delta_link: deltaLink,

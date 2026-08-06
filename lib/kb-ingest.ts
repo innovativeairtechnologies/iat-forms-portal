@@ -23,6 +23,9 @@ export type IngestProvenance = {
   source?: string | null
   sharepointItemId?: string | null
   sharepointEtag?: string | null
+  // The content tag of the version being published. Compared on every later pull
+  // to tell "someone edited this upstream" from "already have it".
+  sharepointCtag?: string | null
   // Where the ORIGINAL file is staged, and the folder the admin chose for it.
   // Recorded so the document can be filed into SharePoint after approval — the
   // transcript alone is not something the canonical library should receive.
@@ -90,6 +93,7 @@ export async function ingestTranscript(
       source: provenance.source ?? null,
       sharepoint_item_id: spItemId,
       sharepoint_etag: provenance.sharepointEtag ?? null,
+      sharepoint_ctag: provenance.sharepointCtag ?? null,
       // Only a portal upload has an original worth filing back; a
       // sharepoint-sourced document is already in the library.
       storage_path: spItemId ? null : (provenance.storagePath ?? null),
