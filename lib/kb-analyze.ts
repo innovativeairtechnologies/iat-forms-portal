@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { anthropic } from '@/lib/anthropic'
 import { buildChunks, pagesFromTranscript, titleFromFilename } from '@/lib/kb-chunking.mjs'
 import { COMPETITOR_NAMES } from '@/lib/competitors.mjs'
+import { extractPdfText } from '@/lib/kb-extract'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The read-and-scrub engine behind Jerry's Brain, factored out so BOTH entry
@@ -50,8 +51,16 @@ export type Findings = {
 }
 
 export type AnalyzeResult =
-  | { ok: true; transcript: string; title: string; pageCount: number; chunkCount: number; findings: Findings }
-  | { ok: false; code: 'unsupported' | 'empty' | 'error'; message: string }
+  | {
+      ok: true; transcript: string; title: string; pageCount: number; chunkCount: number; findings: Findings
+      /** How the text was obtained. 'text-layer' costs nothing and has no length
+       *  ceiling; 'vision' is the AI transcription, capped at one pass. */
+      method: 'text-layer' | 'vision'
+    }
+  // 'too-large-to-read' is distinct from a plain error: the document is fine,
+  // it simply cannot be read here (scanned, and longer than one vision pass).
+  // The caller can still offer to file it in SharePoint — see push-only.
+  | { ok: false; code: 'unsupported' | 'empty' | 'error' | 'too-large-to-read'; message: string }
 
 export const IMAGE_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
 
@@ -59,8 +68,50 @@ const strArr = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()).map((x) => x.trim()).slice(0, 20) : []
 
 /**
- * Transcribe + scrub a document. Pure read — persists nothing. Callers map the
- * result to their own surface (HTTP response, or a review-queue row).
+ * The scrub report shown on the review card. Shared by both routes into a
+ * transcript — extracted text and vision transcription alike — so the human gate
+ * is identical regardless of how the words were obtained.
+ *
+ * Competitors are found locally against the authoritative token list (the same
+ * one the committer strips unconditionally); PII, customer names and other
+ * brands come from Claude. A failure here is non-fatal by design: the preview
+ * degrades, the unconditional scrub at commit time does not.
+ */
+async function scrubTranscript(transcript: string): Promise<Findings> {
+  const lower = transcript.toLowerCase()
+  const competitorsFound = Array.from(
+    new Set((COMPETITOR_NAMES as string[]).filter((n) => lower.includes(n.toLowerCase()))),
+  )
+
+  const findings: Findings = { summary: '', competitors: competitorsFound, customers: [], people: [], emails: [], phones: [] }
+  try {
+    const aMsg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 900,
+      system: ANALYZE_SYSTEM,
+      messages: [{ role: 'user', content: `TRANSCRIPT (review only):\n\n${transcript.slice(0, 60000)}` }],
+    }, { timeout: 45_000, maxRetries: 0 })
+    const raw = aMsg.content[0]?.type === 'text' ? aMsg.content[0].text : ''
+    const parsed = JSON.parse(raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim())
+    return {
+      summary: typeof parsed.summary === 'string' ? parsed.summary.trim().slice(0, 400) : '',
+      competitors: Array.from(new Set([...competitorsFound, ...strArr(parsed.otherBrands)])),
+      customers: strArr(parsed.customers),
+      people: strArr(parsed.people),
+      emails: strArr(parsed.emails),
+      phones: strArr(parsed.phones),
+    }
+  } catch (e) {
+    console.warn('[kb-analyze] scrub analysis failed; using local findings only:', e)
+    return findings
+  }
+}
+
+/**
+ * Turn a document into reviewable text + a scrub report. Pure read — persists
+ * nothing. Tries the PDF's own text layer first (free, complete, no length
+ * ceiling) and falls back to AI vision only for documents that genuinely need
+ * it. Callers map the result to their own surface.
  */
 export async function analyzeDocument(bytes: Buffer, mediaType: string, filename: string): Promise<AnalyzeResult> {
   const isPdf = mediaType === 'application/pdf'
@@ -70,6 +121,44 @@ export async function analyzeDocument(bytes: Buffer, mediaType: string, filename
   }
 
   try {
+    // ── the PDF's own text layer, first ───────────────────────────────────────
+    // Free, instant, complete, and not subject to the one-pass output ceiling
+    // that makes vision unable to read a long manual at all. Only documents
+    // without a usable text layer — scanned paper, graphics-led brochures — go
+    // on to vision.
+    if (isPdf) {
+      const extracted = await extractPdfText(bytes)
+      if (extracted.ok) {
+        const pages = pagesFromTranscript(extracted.text)
+        const chunkCount = buildChunks(pages).length
+        if (chunkCount > 0) {
+          const findings = await scrubTranscript(extracted.text)
+          return {
+            ok: true,
+            transcript: extracted.text,
+            title: titleFromFilename(filename),
+            pageCount: pages.length,
+            chunkCount,
+            findings,
+            method: 'text-layer',
+          }
+        }
+      }
+      // No usable text layer. Vision can read a scanned document, but only up to
+      // one pass — so a long scan is genuinely unreadable here, and saying so
+      // plainly beats failing later with something vaguer.
+      const megabytes = bytes.length / (1024 * 1024)
+      if (extracted.pageCount > 60 || megabytes > 24) {
+        return {
+          ok: false,
+          code: 'too-large-to-read',
+          message: extracted.pageCount > 60
+            ? `This looks scanned (${extracted.wordsPerPage} words per page of real text) and is ${extracted.pageCount} pages — too long to read in one pass. It can still be filed in SharePoint.`
+            : 'This looks scanned and is too large to read in one pass. It can still be filed in SharePoint.',
+        }
+      }
+    }
+
     const base64 = bytes.toString('base64')
 
     // ── transcribe ────────────────────────────────────────────────────────────
@@ -112,39 +201,12 @@ export async function analyzeDocument(bytes: Buffer, mediaType: string, filename
       return { ok: false, code: 'empty', message: "I couldn't find any readable text in that file. If it's a photo, try a sharper one." }
     }
 
-    // ── scrub analysis ──────────────────────────────────────────────────────────
-    // Known competitors: authoritative local check (same token list the scrubber
-    // removes). Everything else (PII, customer names, other brands) via Claude.
-    const lower = transcript.toLowerCase()
-    const competitorsFound = Array.from(
-      new Set((COMPETITOR_NAMES as string[]).filter((n) => lower.includes(n.toLowerCase()))),
-    )
+    const findings = await scrubTranscript(transcript)
 
-    let findings: Findings = { summary: '', competitors: competitorsFound, customers: [], people: [], emails: [], phones: [] }
-    try {
-      const aMsg = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 900,
-        system: ANALYZE_SYSTEM,
-        messages: [{ role: 'user', content: `TRANSCRIPT (review only):\n\n${transcript.slice(0, 60000)}` }],
-      }, { timeout: 45_000, maxRetries: 0 })
-      const raw = aMsg.content[0]?.type === 'text' ? aMsg.content[0].text : ''
-      const parsed = JSON.parse(raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim())
-      findings = {
-        summary: typeof parsed.summary === 'string' ? parsed.summary.trim().slice(0, 400) : '',
-        competitors: Array.from(new Set([...competitorsFound, ...strArr(parsed.otherBrands)])),
-        customers: strArr(parsed.customers),
-        people: strArr(parsed.people),
-        emails: strArr(parsed.emails),
-        phones: strArr(parsed.phones),
-      }
-    } catch (e) {
-      // Best-effort — a failed scrub report must not block the flow (the competitor
-      // auto-scrub at commit time is unconditional).
-      console.warn('[kb-analyze] scrub analysis failed; using local findings only:', e)
+    return {
+      ok: true, transcript, title: titleFromFilename(filename),
+      pageCount: pages.length, chunkCount, findings, method: 'vision',
     }
-
-    return { ok: true, transcript, title: titleFromFilename(filename), pageCount: pages.length, chunkCount, findings }
   } catch (e) {
     console.error('[kb-analyze] error:', e)
     return { ok: false, code: 'error', message: 'Something went wrong reading that document.' }

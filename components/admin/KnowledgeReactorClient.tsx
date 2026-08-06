@@ -165,6 +165,13 @@ export default function KnowledgeReactorClient() {
   const [spQueue, setSpQueue] = useState<SharePointQueueItem[]>([])
   const [spPulling, setSpPulling] = useState(false)
   const [spNote, setSpNote] = useState<string | null>(null)
+  // A document Jerry can't read, waiting on a decision: file it in SharePoint
+  // anyway, or drop it.
+  const [pushOnly, setPushOnly] = useState<{
+    key: string; filename: string; title: string; reason: string
+    storagePath: string; storageMime: string | null
+  } | null>(null)
+  const [pushOnlyBusy, setPushOnlyBusy] = useState(false)
   const [spFolders, setSpFolders] = useState<SpFolder[]>([])
   const [spFoldersLoaded, setSpFoldersLoaded] = useState(false)
   const [pushFolder, setPushFolder] = useState<SpFolder | null>(null) // null = library root
@@ -352,6 +359,22 @@ export default function KnowledgeReactorClient() {
         }),
       })
       const json = await res.json().catch(() => ({}))
+
+      // Unreadable but not broken — a scan longer than one pass. Offer to file
+      // it in SharePoint anyway, so the two sides can still match even though
+      // Jerry won't be able to quote from it.
+      if (!res.ok && json.code === 'too-large-to-read' && json.storagePath) {
+        updateItem(key, { status: 'error', message: 'Can’t be read — can still be filed' })
+        setPushOnly({
+          key,
+          filename: file.name,
+          title: json.title || file.name,
+          reason: json.error || 'Jerry can’t read this document.',
+          storagePath: json.storagePath,
+          storageMime: json.storageMime ?? file.type ?? null,
+        })
+        return
+      }
       if (!res.ok) throw new Error(json.error || 'Jerry couldn’t read that one.')
 
       updateItem(key, { status: 'review' })
@@ -445,6 +468,52 @@ export default function KnowledgeReactorClient() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // File an unreadable document into SharePoint without ingesting it.
+  const confirmPushOnly = async () => {
+    if (!pushOnly || pushOnlyBusy) return
+    setPushOnlyBusy(true)
+    try {
+      const res = await fetch('/api/admin/kb/push-only', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: pushOnly.filename,
+          is_internal: reviewVisibility === 'internal',
+          storage_path: pushOnly.storagePath,
+          storage_mime: pushOnly.storageMime,
+          push_folder_id: pushFolder?.id ?? null,
+          push_folder_name: pushFolder?.path ?? null,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      setSpNote(res.ok && json.pushed
+        ? `Filed “${pushOnly.title}” in SharePoint${json.folderName ? ` → ${json.folderName}` : ''}. Jerry can’t search this one.`
+        : `Couldn’t file that document — ${json.error || 'unknown error'}`)
+      if (res.ok && json.pushed) updateItem(pushOnly.key, { status: 'done' })
+      refresh()
+    } catch (e) {
+      setSpNote(e instanceof Error ? e.message : 'Something went wrong filing that document.')
+    } finally {
+      setPushOnlyBusy(false)
+      setPushOnly(null)
+      setPushFolder(null)
+      setReviewVisibility('internal')
+    }
+  }
+
+  const dismissPushOnly = () => {
+    if (!pushOnly || pushOnlyBusy) return
+    const { storagePath, key } = pushOnly
+    updateItem(key, { status: 'discarded' })
+    setPushOnly(null)
+    setPushFolder(null)
+    fetch('/api/admin/kb/upload/discard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: storagePath }),
+    }).catch(() => {})
   }
 
   const discardReview = async () => {
@@ -795,6 +864,59 @@ export default function KnowledgeReactorClient() {
           <span className="flex items-center gap-2 text-[15px] font-semibold text-emerald-700 dark:text-emerald-300">
             <UploadCloud size={19} /> Drop it in — Jerry will read it first
           </span>
+        </div>
+      )}
+
+      {/* ── Can't be read — file it anyway? ─────────────────────────────────── */}
+      {pushOnly && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-zinc-900/40 p-4 backdrop-blur-sm">
+          <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="flex items-center gap-2.5 border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
+              <AlertCircle size={17} className="text-amber-500" />
+              <div className="leading-tight">
+                <h3 className="text-[14px] font-bold text-zinc-900 dark:text-white">Jerry can’t read this one</h3>
+                <p className="text-[11px] text-zinc-400">{pushOnly.filename}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 px-5 py-4">
+              <p className="text-[12.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">{pushOnly.reason}</p>
+              <p className="text-[12px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                You can still file it in SharePoint so both sides match. It won’t be searchable —
+                Jerry won’t be able to quote from it or cite it in an answer.
+              </p>
+
+              <div>
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">File it in SharePoint</p>
+                <select
+                  value={pushFolder?.id ?? ''}
+                  onChange={(e) => setPushFolder(spFolders.find((f) => f.id === e.target.value) ?? null)}
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12.5px] text-zinc-700 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                >
+                  <option value="">Library root (top level)</option>
+                  {spFolders.map((f) => <option key={f.id} value={f.id}>{f.path}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 border-t border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
+              <button
+                onClick={dismissPushOnly}
+                disabled={pushOnlyBusy}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3.5 py-2 text-[12.5px] font-medium text-zinc-600 transition-colors hover:border-rose-300 hover:text-rose-600 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300"
+              >
+                <X size={13} /> Discard
+              </button>
+              <button
+                onClick={confirmPushOnly}
+                disabled={pushOnlyBusy}
+                className="ml-auto inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-[12.5px] font-medium text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {pushOnlyBusy ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={14} />}
+                {pushOnlyBusy ? 'Filing…' : 'File in SharePoint anyway'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

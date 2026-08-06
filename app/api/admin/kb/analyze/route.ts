@@ -32,8 +32,17 @@ export async function POST(req: NextRequest) {
 
     const result = await analyzeDocument(bytes, media_type, filename)
     if (!result.ok) {
+      // "Too large to read" is not the same as broken: the document is fine, it
+      // just can't be read here. Hand back the code and the staged path so the
+      // caller can offer to file it in SharePoint anyway rather than dead-end.
+      if (result.code === 'too-large-to-read') {
+        return NextResponse.json(
+          { error: result.message, code: result.code, storagePath: path, storageMime: media_type },
+          { status: 422 },
+        )
+      }
       const status = result.code === 'unsupported' ? 400 : result.code === 'empty' ? 422 : 500
-      return NextResponse.json({ error: result.message }, { status })
+      return NextResponse.json({ error: result.message, code: result.code }, { status })
     }
 
     return NextResponse.json({
@@ -51,6 +60,10 @@ export async function POST(req: NextRequest) {
       // dropped (discard), so it can never be orphaned by simply walking away.
       storagePath: path,
       storageMime: media_type,
+      // 'text-layer' means the PDF's own words were read directly — no AI
+      // transcription, no length ceiling. Worth surfacing: it tells the reviewer
+      // the text is the document's own, not a model's reading of it.
+      method: result.method,
     })
   } catch (e) {
     console.error('[kb/analyze] error:', e)

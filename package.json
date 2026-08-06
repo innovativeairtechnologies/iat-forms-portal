@@ -53,6 +53,7 @@
     "tailwind-merge": "^2.4.0",
     "three": "^0.185.1",
     "topojson-client": "^3.1.0",
+    "unpdf": "^1.8.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.23.0"
   },

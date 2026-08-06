@@ -26,6 +26,54 @@ import { graphConfigured, uploadFile, GraphError } from '@/lib/graph'
 
 const KB_UPLOADS_BUCKET = 'kb-uploads'
 
+/**
+ * Register a document Jerry cannot read, so it can still be filed in SharePoint.
+ *
+ * Some documents are scanned paper longer than one vision pass — genuinely
+ * unreadable here, and no amount of retrying changes that. Refusing them
+ * entirely would mean the two sides can never actually match, which is the whole
+ * point of the exercise. So the file is filed and recorded, with no chunks:
+ * SharePoint holds it, the portal knows it exists, and Jerry simply cannot quote
+ * it. That is an honest gap rather than a hidden one.
+ *
+ * Deliberately NOT ingested: a document with no text would otherwise sit in the
+ * pool contributing nothing to an answer while looking like knowledge.
+ */
+export async function registerPushOnlyDocument(params: {
+  filename: string
+  title: string
+  isInternal: boolean
+  storagePath: string
+  storageMime: string | null
+  pushFolderId: string | null
+  pushFolderName: string | null
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const { data: doc, error } = await supabaseAdmin
+    .from('kb_documents')
+    .insert({
+      title: params.title,
+      // Qualified so an unreadable file can never collide with, or replace, a
+      // readable document of the same name.
+      source_filename: `push-only:${params.storagePath}/${params.filename}`,
+      category: null,
+      is_internal: params.isInternal,
+      page_count: null,
+      source: 'portal',
+      storage_path: params.storagePath,
+      storage_mime: params.storageMime,
+      push_folder_id: params.pushFolderId,
+      push_folder_name: params.pushFolderName,
+    })
+    .select('id')
+    .single()
+
+  if (error || !doc) {
+    console.error('[kb-push] push-only insert failed:', error?.message)
+    return { ok: false, error: 'Could not record that document.' }
+  }
+  return { ok: true, id: doc.id as string }
+}
+
 export type PushResult =
   | { ok: true; itemId: string; webUrl: string | null; folderName: string | null }
   | { ok: false; error: string; skipped?: boolean }
