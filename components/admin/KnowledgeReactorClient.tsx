@@ -21,6 +21,11 @@ import {
   X, ChevronRight, ShieldCheck, Mail, Phone, Building2, User, EyeOff, FolderTree, FolderSync, ExternalLink,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+// The upload ceiling lives in one place and is imported by both the browser
+// check and the signed-URL route — they used to be separate constants, and
+// raising only the server one made the browser reject the very files the change
+// was meant to allow.
+import { KB_MAX_UPLOAD_BYTES, KB_MAX_UPLOAD_LABEL } from '@/lib/kb-limits'
 
 // The shader plasma sun (three.js) — client-only (r3f can't SSR); while the
 // chunk loads, the CSS gradient wheel stands in so the reactor never looks dead.
@@ -103,7 +108,6 @@ type SharePointQueueItem = {
 }
 
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.gif,.webp'
-const MAX_BYTES = 20 * 1024 * 1024
 
 // Miniscule, ever-so-slight growth: diameter creeps up with the log of how many
 // passages Jerry has learned, capped so it never dominates the page.
@@ -332,7 +336,7 @@ export default function KnowledgeReactorClient() {
     const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`
     setQueue((q) => [{ key, name: file.name, status: 'uploading' }, ...q])
     try {
-      if (file.size > MAX_BYTES) throw new Error('That file is too large (max 20MB).')
+      if (file.size > KB_MAX_UPLOAD_BYTES) throw new Error(`That file is too large (max ${KB_MAX_UPLOAD_LABEL}).`)
 
       const urlRes = await fetch('/api/admin/kb/upload-url', {
         method: 'POST',

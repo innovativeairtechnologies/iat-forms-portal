@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
+import { KB_MAX_UPLOAD_BYTES, KB_MAX_UPLOAD_LABEL } from '@/lib/kb-limits'
 
 // One-shot signed upload URL for a document being fed into Jerry's knowledge pool.
 // The browser uploads bytes directly to the private `kb-uploads` bucket with this
@@ -9,14 +10,8 @@ import { requireAdminAuth } from '@/lib/api-auth'
 // Admin-only — this writes to the shared knowledge base.
 
 const KB_UPLOADS_BUCKET = 'kb-uploads'
-// 50MB. The old 20MB ceiling existed because every document went to Claude for
-// vision transcription, where base64 inflation puts the real limit near 24MB.
-// A born-digital PDF now has its text layer read locally instead — no size or
-// page ceiling at all — so the cap is set by storage rather than by the reader.
-// (Supabase's own per-file limit applies underneath this; if a large upload is
-// rejected downstream, raise BOTH the project-wide and the bucket limit — the
-// effective maximum is the lower of the two.)
-const MAX_BYTES = 50 * 1024 * 1024
+// Shared with the browser's own pre-check — see lib/kb-limits.
+const MAX_BYTES = KB_MAX_UPLOAD_BYTES
 const ALLOWED_EXT = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'])
 
 export async function POST(req: NextRequest) {
@@ -27,7 +22,9 @@ export async function POST(req: NextRequest) {
   const size = typeof body?.size === 'number' && Number.isFinite(body.size) ? body.size : 0
 
   if (!name) return NextResponse.json({ error: 'Missing file name' }, { status: 400 })
-  if (size > MAX_BYTES) return NextResponse.json({ error: 'That file is too large (max 50MB).' }, { status: 400 })
+  if (size > MAX_BYTES) {
+    return NextResponse.json({ error: `That file is too large (max ${KB_MAX_UPLOAD_LABEL}).` }, { status: 400 })
+  }
 
   const ext = name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
   if (!ALLOWED_EXT.has(ext)) {
