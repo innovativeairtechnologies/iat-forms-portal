@@ -77,14 +77,29 @@ export async function discoverSharePointDocuments(): Promise<DiscoverResult> {
   // would re-transcribe documents whose text never changed — real cost, no new
   // knowledge.
   const { data: queued } = await supabaseAdmin
-    .from('kb_review_queue').select('external_id, status').eq('source', SYNC_SOURCE)
+    .from('kb_review_queue').select('external_id, status, external_ctag').eq('source', SYNC_SOURCE)
   const { data: published } = await supabaseAdmin
     .from('kb_documents').select('sharepoint_item_id, sharepoint_ctag').not('sharepoint_item_id', 'is', null)
 
-  // Anything already waiting for a human is left alone — re-queueing it would
-  // just duplicate the card (and the partial unique index forbids it anyway).
-  const pending = new Set<string>(
-    (queued || []).filter((r) => r.status === 'pending').map((r) => r.external_id as string),
+  // A DECISION ALREADY MADE IS NOT A DOCUMENT STILL TO FIND.
+  //
+  // Pending rows are skipped because a human is already looking at them.
+  // REJECTED rows must be skipped too, and that is easy to miss: rejecting a
+  // document removes it from the queue without adding it to Jerry, so nothing
+  // downstream remembers the decision — and the next sweep offers it again. The
+  // library holds the same file in two folders, so closing those duplicates
+  // would undo itself on the following pull, forever.
+  //
+  // The content tag is the escape hatch: if a rejected document is genuinely
+  // edited upstream later it comes back for another look. Otherwise the
+  // decision stands.
+  const decided = new Map<string, { status: string; ctag: string | null }>(
+    (queued || [])
+      .filter((r) => r.status === 'pending' || r.status === 'rejected')
+      .map((r) => [
+        r.external_id as string,
+        { status: r.status as string, ctag: (r.external_ctag as string) ?? null },
+      ]),
   )
   const publishedCtag = new Map<string, string | null>(
     (published || []).map((r) => [r.sharepoint_item_id as string, (r.sharepoint_ctag as string) ?? null]),
@@ -92,7 +107,14 @@ export async function discoverSharePointDocuments(): Promise<DiscoverResult> {
 
   let changed = 0
   const fresh = files.filter((f) => {
-    if (pending.has(f.id)) return false
+    const seen = decided.get(f.id)
+    if (seen) {
+      if (seen.status === 'pending') return false          // already awaiting review
+      if (!seen.ctag || !f.cTag) return false               // rejected, nothing to compare — stand by it
+      if (seen.ctag === f.cTag) return false                // rejected and unchanged — stand by it
+      changed++
+      return true                                           // rejected but genuinely edited since
+    }
     if (!publishedCtag.has(f.id)) return true // never seen → new
     const known = publishedCtag.get(f.id)
     // A row published before cTag was recorded has none — treat it as current
