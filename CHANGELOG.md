@@ -2,6 +2,15 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-06 — Training nav un-parked
+
+The Training group in the admin rail goes live (it was parked — greyed with a "Soon" chip — since
+the `/learn` port), together with its four ⌘K palette entries. **No permission work was needed for
+sales**: learner pages (`/admin/learn/*`) are in `OPEN_ADMIN_PREFIXES` and deliberately carry no
+perm, so every staff role — sales included — has Browse / My Learning / Leaderboard the moment the
+rail shows them. The Permissions matrix governs only authoring (`learn_admin`, non-delegatable,
+admin-only by design). Marketing stays parked.
+
 ## 2026-08-06 — Learn: Control Panel Crash Course — a working c.pCO simulator (migrations 081+082)
 
 Sales asked for panel training that isn't a digital textbook. The centerpiece is a **faithful
