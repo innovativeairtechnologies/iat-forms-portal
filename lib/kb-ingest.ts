@@ -23,6 +23,13 @@ export type IngestProvenance = {
   source?: string | null
   sharepointItemId?: string | null
   sharepointEtag?: string | null
+  // Where the ORIGINAL file is staged, and the folder the admin chose for it.
+  // Recorded so the document can be filed into SharePoint after approval — the
+  // transcript alone is not something the canonical library should receive.
+  storagePath?: string | null
+  storageMime?: string | null
+  pushFolderId?: string | null
+  pushFolderName?: string | null
 }
 
 export type IngestResult =
@@ -83,6 +90,12 @@ export async function ingestTranscript(
       source: provenance.source ?? null,
       sharepoint_item_id: spItemId,
       sharepoint_etag: provenance.sharepointEtag ?? null,
+      // Only a portal upload has an original worth filing back; a
+      // sharepoint-sourced document is already in the library.
+      storage_path: spItemId ? null : (provenance.storagePath ?? null),
+      storage_mime: spItemId ? null : (provenance.storageMime ?? null),
+      push_folder_id: spItemId ? null : (provenance.pushFolderId ?? null),
+      push_folder_name: spItemId ? null : (provenance.pushFolderName ?? null),
     })
     .select('id')
     .single()

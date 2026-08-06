@@ -171,6 +171,112 @@ export async function driveDelta(deltaLink?: string | null): Promise<{ items: Gr
   throw new GraphError('Delta pagination did not terminate')
 }
 
+/**
+ * Every folder in the library, flattened, for the "file it here" picker at
+ * approval time. READ ONLY — no new permission beyond what the pull already has.
+ *
+ * Read live rather than configured: the folder list is whatever SharePoint says
+ * it is right now, so a folder someone adds next month shows up on its own and a
+ * renamed one doesn't leave a dead option behind. Ids are immutable, so a rename
+ * doesn't break a document already filed there either.
+ */
+export async function listFolders(maxDepth = 2): Promise<{ id: string; name: string; path: string; childCount: number }[]> {
+  const { driveId } = await resolveLibrary()
+  const out: { id: string; name: string; path: string; childCount: number }[] = []
+
+  const walk = async (itemPath: string, prefix: string, depth: number): Promise<void> => {
+    const page = await graphGet<{ value: GraphDriveItem[] }>(
+      `/drives/${driveId}/${itemPath}/children?$top=200&$select=id,name,folder`,
+    )
+    for (const item of page.value || []) {
+      if (!item.folder) continue
+      const path = prefix ? `${prefix}/${item.name}` : (item.name ?? '')
+      out.push({ id: item.id, name: item.name ?? '', path, childCount: item.folder.childCount ?? 0 })
+      if (depth < maxDepth) await walk(`items/${item.id}`, path, depth + 1)
+    }
+  }
+
+  await walk('root', '', 1)
+  return out.sort((a, b) => a.path.localeCompare(b.path))
+}
+
+/**
+ * Upload a file INTO the library — the Push half. This is the ONLY write in the
+ * module, and it is deliberately narrow:
+ *   • it creates files, and can never replace or delete one. conflictBehavior is
+ *     'rename', so a name clash with a human's document yields "Report 1.pdf"
+ *     rather than overwriting work nobody asked us to touch.
+ *   • it targets one folder in one library, chosen by a human at approval time.
+ *
+ * Small files go up in a single PUT; anything larger uses an upload session,
+ * because Graph's simple-upload path caps out around 4MB and these are manuals.
+ * Returns the created item so the caller can record its id — that id is what
+ * stops the pull from treating our own upload as a new document to re-ingest.
+ */
+const SIMPLE_UPLOAD_MAX = 4 * 1024 * 1024
+const CHUNK = 5 * 320 * 1024 // 1.6MB — Graph requires a multiple of 320KiB
+
+export async function uploadFile(
+  folderId: string | null,
+  filename: string,
+  bytes: Buffer,
+  mimeType?: string,
+): Promise<GraphDriveItem> {
+  const { driveId } = await resolveLibrary()
+  const token = await getToken()
+  const safeName = filename.replace(/[\\/:*?"<>|]/g, '-').slice(0, 240) || 'document'
+  const parent = folderId ? `items/${folderId}` : 'root'
+
+  if (bytes.length <= SIMPLE_UPLOAD_MAX) {
+    const res = await fetch(
+      `${GRAPH}/drives/${driveId}/${parent}:/${encodeURIComponent(safeName)}:/content?@microsoft.graph.conflictBehavior=rename`,
+      {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimeType || 'application/octet-stream' },
+        body: new Uint8Array(bytes),
+      },
+    )
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+      throw new GraphError(body.error?.message || `Upload failed (${res.status})`, res.status)
+    }
+    return (await res.json()) as GraphDriveItem
+  }
+
+  // Large file: open a session, then send sequential byte ranges.
+  const sessRes = await fetch(
+    `${GRAPH}/drives/${driveId}/${parent}:/${encodeURIComponent(safeName)}:/createUploadSession`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'rename', name: safeName } }),
+    },
+  )
+  if (!sessRes.ok) {
+    const body = (await sessRes.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new GraphError(body.error?.message || `Could not start upload (${sessRes.status})`, sessRes.status)
+  }
+  const { uploadUrl } = (await sessRes.json()) as { uploadUrl: string }
+
+  for (let start = 0; start < bytes.length; start += CHUNK) {
+    const end = Math.min(start + CHUNK, bytes.length) - 1
+    const chunk = bytes.subarray(start, end + 1)
+    // The session URL carries its own auth — sending our bearer token here is
+    // both unnecessary and rejected by some storage front ends.
+    const put = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Length': String(chunk.length), 'Content-Range': `bytes ${start}-${end}/${bytes.length}` },
+      body: new Uint8Array(chunk),
+    })
+    if (put.status === 200 || put.status === 201) return (await put.json()) as GraphDriveItem
+    if (put.status !== 202) {
+      const body = (await put.json().catch(() => ({}))) as { error?: { message?: string } }
+      throw new GraphError(body.error?.message || `Upload chunk failed (${put.status})`, put.status)
+    }
+  }
+  throw new GraphError('Upload finished without a completion response')
+}
+
 /** Download one file's bytes. Returns the raw content for the analyze engine. */
 export async function downloadItem(itemId: string): Promise<Buffer> {
   const { driveId } = await resolveLibrary()

@@ -23,31 +23,35 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    try {
-      const { data: file, error: dlErr } = await supabaseAdmin.storage.from(KB_UPLOADS_BUCKET).download(path)
-      if (dlErr || !file) {
-        console.error('[kb/analyze] download error:', dlErr)
-        return NextResponse.json({ error: 'Could not read the uploaded file. Please try again.' }, { status: 404 })
-      }
-      const bytes = Buffer.from(await file.arrayBuffer())
-
-      const result = await analyzeDocument(bytes, media_type, filename)
-      if (!result.ok) {
-        const status = result.code === 'unsupported' ? 400 : result.code === 'empty' ? 422 : 500
-        return NextResponse.json({ error: result.message }, { status })
-      }
-
-      return NextResponse.json({
-        transcript: result.transcript,
-        title: result.title,
-        pageCount: result.pageCount,
-        chunkCount: result.chunkCount,
-        findings: result.findings,
-      })
-    } finally {
-      // The transcript now carries the knowledge; the raw upload is not needed.
-      await supabaseAdmin.storage.from(KB_UPLOADS_BUCKET).remove([path]).catch(() => {})
+    const { data: file, error: dlErr } = await supabaseAdmin.storage.from(KB_UPLOADS_BUCKET).download(path)
+    if (dlErr || !file) {
+      console.error('[kb/analyze] download error:', dlErr)
+      return NextResponse.json({ error: 'Could not read the uploaded file. Please try again.' }, { status: 404 })
     }
+    const bytes = Buffer.from(await file.arrayBuffer())
+
+    const result = await analyzeDocument(bytes, media_type, filename)
+    if (!result.ok) {
+      const status = result.code === 'unsupported' ? 400 : result.code === 'empty' ? 422 : 500
+      return NextResponse.json({ error: result.message }, { status })
+    }
+
+    return NextResponse.json({
+      transcript: result.transcript,
+      title: result.title,
+      pageCount: result.pageCount,
+      chunkCount: result.chunkCount,
+      findings: result.findings,
+      // Carried back so approval can file the ORIGINAL into SharePoint. The
+      // upload used to be deleted here, the moment the transcript existed —
+      // correct when Jerry was the only destination, but it is exactly what made
+      // Push impossible: the bytes were gone seconds after they arrived, and
+      // SharePoint would have had nothing to receive but AI-transcribed text.
+      // The object now survives until it is either filed (approve) or explicitly
+      // dropped (discard), so it can never be orphaned by simply walking away.
+      storagePath: path,
+      storageMime: media_type,
+    })
   } catch (e) {
     console.error('[kb/analyze] error:', e)
     return NextResponse.json({ error: 'Something went wrong reading that document. Please try again.' }, { status: 500 })

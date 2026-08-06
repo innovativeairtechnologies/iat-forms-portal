@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Brain, UploadCloud, FileText, Trash2, Loader2, Check, AlertCircle, Lock, Globe,
-  X, ChevronRight, ShieldCheck, Mail, Phone, Building2, User, EyeOff, FolderSync, ExternalLink,
+  X, ChevronRight, ShieldCheck, Mail, Phone, Building2, User, EyeOff, FolderTree, FolderSync, ExternalLink,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -60,6 +60,10 @@ type Findings = {
   phones: string[]
 }
 
+// A folder in the SharePoint library — read live, so the picker always reflects
+// what's actually there rather than a hardcoded list that rots.
+type SpFolder = { id: string; name: string; path: string; childCount: number }
+
 type ReviewItem = {
   key: string // matches the queue item
   filename: string
@@ -68,6 +72,10 @@ type ReviewItem = {
   pageCount: number
   chunkCount: number
   findings: Findings
+  // Where the original is staged, so approval can file it into SharePoint.
+  // Absent on SharePoint-sourced reviews — those are already in the library.
+  storagePath?: string | null
+  storageMime?: string | null
   // Set when this review came from the SharePoint pull rather than an upload:
   // approving posts to the queue route (which stamps provenance) instead of the
   // plain ingest route, and the transcript stays server-side.
@@ -157,6 +165,9 @@ export default function KnowledgeReactorClient() {
   const [spQueue, setSpQueue] = useState<SharePointQueueItem[]>([])
   const [spPulling, setSpPulling] = useState(false)
   const [spNote, setSpNote] = useState<string | null>(null)
+  const [spFolders, setSpFolders] = useState<SpFolder[]>([])
+  const [spFoldersLoaded, setSpFoldersLoaded] = useState(false)
+  const [pushFolder, setPushFolder] = useState<SpFolder | null>(null) // null = library root
   const [spReadingId, setSpReadingId] = useState<string | null>(null) // which doc is being read
   const [spAutoRead, setSpAutoRead] = useState(false)                 // walking the unread list
   const spStopRef = useRef(false)                                     // cooperative stop for that walk
@@ -186,6 +197,23 @@ export default function KnowledgeReactorClient() {
   }, [])
 
   useEffect(() => { refresh(); refreshQueue() }, [refresh, refreshQueue])
+
+  // The SharePoint folder list, fetched once and reused for every approval.
+  // Read-only, so it works with the pull's existing permission — an empty list
+  // just means "file at the library root", never a blocked approval.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/kb/folders')
+        const json = await res.json().catch(() => ({}))
+        if (!cancelled && Array.isArray(json.folders)) setSpFolders(json.folders)
+      } finally {
+        if (!cancelled) setSpFoldersLoaded(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const updateItem = (key: string, patch: Partial<QueueItem>) =>
     setQueue((q) => q.map((it) => (it.key === key ? { ...it, ...patch } : it)))
@@ -335,6 +363,8 @@ export default function KnowledgeReactorClient() {
         pageCount: Number(json.pageCount) || 0,
         chunkCount: Number(json.chunkCount) || 0,
         findings: json.findings || { summary: '', competitors: [], customers: [], people: [], emails: [], phones: [] },
+        storagePath: json.storagePath ?? null,
+        storageMime: json.storageMime ?? null,
       }])
     } catch (e) {
       updateItem(key, { status: 'error', message: e instanceof Error ? e.message : 'Something went wrong.' })
@@ -372,11 +402,25 @@ export default function KnowledgeReactorClient() {
               transcript: currentReview.transcript,
               filename: currentReview.filename,
               is_internal: reviewVisibility === 'internal',
+              // Carries the original + the chosen destination, so approval also
+              // files the real document into SharePoint.
+              storage_path: currentReview.storagePath ?? null,
+              storage_mime: currentReview.storageMime ?? null,
+              push_folder_id: pushFolder?.id ?? null,
+              push_folder_name: pushFolder?.path ?? null,
             }),
           })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || 'Jerry couldn’t absorb that one.')
       updateItem(currentReview.key, { status: 'done', chunks: Number(json.chunks) || 0 })
+
+      // The document is in Jerry either way; the SharePoint half is reported
+      // separately so a filing problem is visible instead of implied by silence.
+      if (json.push) {
+        setSpNote(json.push.ok
+          ? `Filed “${currentReview.title}” in SharePoint${json.push.folderName ? ` → ${json.push.folderName}` : ''}.`
+          : `Saved to Jerry, but not filed in SharePoint — ${json.push.error}`)
+      }
       setTotalChunks((c) => c + (Number(json.chunks) || 0)) // the wheel grows immediately
       setAbsorb((n) => n + 1)
       if (currentReview.queueId) setSpQueue((q) => q.filter((it) => it.id !== currentReview.queueId))
@@ -405,10 +449,22 @@ export default function KnowledgeReactorClient() {
 
   const discardReview = async () => {
     if (!currentReview || saving) return
-    const { queueId } = currentReview
+    const { queueId, storagePath } = currentReview
     updateItem(currentReview.key, { status: 'discarded' })
     setReviews((r) => r.slice(1))
     setReviewVisibility('internal')
+    setPushFolder(null)
+
+    // The upload is no longer deleted at analyze time (approval needs the bytes
+    // to file into SharePoint), so a discarded review has to clean up after
+    // itself or the bucket fills with files nobody chose to keep.
+    if (storagePath) {
+      fetch('/api/admin/kb/upload/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: storagePath }),
+      }).catch(() => {})
+    }
     // A SharePoint doc must be marked rejected server-side — otherwise the next
     // pull sees it as new again and re-queues it.
     if (queueId) {
@@ -839,6 +895,39 @@ export default function KnowledgeReactorClient() {
                   </p>
                 )}
               </div>
+
+              {/* ── Where it gets filed in SharePoint ──────────────────────────
+                  Only for portal uploads: a document pulled FROM SharePoint is
+                  already in the library, and sending it back is the echo loop. */}
+              {!currentReview.queueId && currentReview.storagePath && (
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                    File it in SharePoint
+                  </p>
+                  {!spFoldersLoaded ? (
+                    <p className="text-[12px] text-zinc-400">Loading folders…</p>
+                  ) : (
+                    <>
+                      <select
+                        value={pushFolder?.id ?? ''}
+                        onChange={(e) => setPushFolder(spFolders.find((f) => f.id === e.target.value) ?? null)}
+                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12.5px] text-zinc-700 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                      >
+                        <option value="">Library root (top level)</option>
+                        {spFolders.map((f) => (
+                          <option key={f.id} value={f.id}>{f.path}</option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-zinc-400">
+                        <FolderTree size={12} className="mt-0.5 flex-shrink-0" />
+                        {spFolders.length === 0
+                          ? 'No folders found — it will be filed at the top level of the library.'
+                          : 'The original file goes here. An existing file with the same name is never overwritten.'}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 border-t border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
