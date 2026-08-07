@@ -2,6 +2,42 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-07 — SOO: three holes found by the first real test unit
+
+A hand-built test configuration (gas reactivation, DX pre-cooling, no rotor rotation alarm package)
+produced a document that looked complete and was not. Everything below is now a permanent
+regression case in `scripts/verify-soo.mjs`, alongside the Ferrara unit.
+
+**The incomplete-document warning was computed and then not printed.** `uncovered` correctly said
+"no reactivation heat sequence for Gas" and showed it in the editor, but the print view never
+rendered it — so the PDF read as finished while missing its most important section, and still
+referred to a Reactivation Heat Enabled pilot light. A safety net that stops at the screen is not
+one. It now prints above the sequence, in red, on any draft with a gap.
+
+**Coverage could be satisfied by a one-line sensor entry.** The rule asked "did any clause testing
+this fact survive?", and on a DX unit the "Pre-Cooling Leaving Air Temperature (Type J
+thermocouple)" line was enough to make the entire missing pre-cooling *sequence* read as covered.
+A sensor is not a sequence, so `CoverageRule.covered` now names the clause that IS one. Keys
+pointing at clauses that do not exist yet (`react_heat_gas`, `pre_cooling_dx`,
+`post_heating_electric`) are the declared gaps — a to-do list of what the master document still
+owes us. Coverage now also watches both cooling media, the heating medium and the wheel drive.
+
+**Nothing at all caught the desiccant wheel never starting.** Both wheel-start clauses required the
+rotor rotation alarm package, conflating how the wheel starts with how its rotation is proven, so a
+unit without that option lost both and the sequence went straight from "Desiccant Wheel –
+contingent upon:" to the react fan. Starting and proving are now separate clauses.
+
+Freeze-protection Stage 2 is restructured from one long sentence into a lead-in plus one
+conditional action per bullet. It previously instructed the reader to open a pre-cooling valve and
+close a return-air damper whether or not the unit had them — inside the safety sequence. The
+dampers now gate themselves, which also deletes the OA-only / OA+RA variant pairs. Same for the
+shutdown valve list. The Ferrara fidelity diff moves 102/110 → 100/110, the two new differences
+being exactly these splits.
+
+The excluded/blocked receipts also stop printing internal clause keys
+(`run_oa_damper_modulating`) into a customer-facing document — `clauseSummary()` uses the clause's
+heading, or its own first sentence.
+
 ## 2026-08-07 — Sequence of Operation builder (Phase 1: clause library + deterministic assembly)
 
 New `/admin/soo` (Sales rail → **Sequences**; perm `soo`, seeded for sales + engineering by

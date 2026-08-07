@@ -204,26 +204,37 @@ export const SOO_MASTER_LIBRARY: SooLibrary = {
                 },
               ],
             },
+            // Starting the wheel and PROVING it turns are two different things,
+            // and the first version ANDed the proving-switch option into both
+            // start clauses. A unit without the Rotor Rotation Alarm Package
+            // therefore lost every start clause and the document never said the
+            // wheel begins rotating at all — found by Jacob's 2026-08-07 test
+            // unit, and nothing flagged it. Keep them separate.
             {
               key: 'wheel_start_vfd',
               order: 60,
-              body:
-                'Once enabled, the desiccant wheel gear motor (VFD) starts rotating at the speed set on the HMI. Wheel rotation is confirmed by the Wheel Rotation Proving Switch; loss of proof generates a Rotor Not Running alarm.',
+              body: 'Once enabled, the desiccant wheel gear motor (VFD) starts rotating at the speed set on the HMI.',
               requires: [
                 { fact: 'has_desiccant_wheel', is: true },
                 { fact: 'wheel_drive', is: 'vfd' },
-                { fact: 'has_rotor_rotation_alarm', is: true },
               ],
-              device: { tag_prefix: 'ZS', signal: 'DI', service: 'Wheel rotation proving switch' },
             },
             {
               key: 'wheel_start_fixed',
               order: 60,
-              body:
-                'Once enabled, the desiccant wheel gear motor starts rotating at its fixed design speed. Wheel rotation is confirmed by the Wheel Rotation Proving Switch; loss of proof generates a Rotor Not Running alarm.',
+              body: 'Once enabled, the desiccant wheel gear motor starts rotating at its fixed design speed.',
               requires: [
                 { fact: 'has_desiccant_wheel', is: true },
                 { fact: 'wheel_drive', is: 'across_line' },
+              ],
+            },
+            {
+              key: 'wheel_rotation_proving',
+              order: 65,
+              body:
+                'Wheel rotation is confirmed by the Wheel Rotation Proving Switch; loss of proof generates a Rotor Not Running alarm.',
+              requires: [
+                { fact: 'has_desiccant_wheel', is: true },
                 { fact: 'has_rotor_rotation_alarm', is: true },
               ],
               device: { tag_prefix: 'ZS', signal: 'DI', service: 'Wheel rotation proving switch' },
@@ -325,10 +336,32 @@ export const SOO_MASTER_LIBRARY: SooLibrary = {
           requires: [{ fact: 'bas_protocol', oneOf: ['bacnet_mstp', 'bacnet_ip', 'modbus'] }],
           slots: { protocol: { from: 'fact', path: 'bas_protocol', format: 'label' } },
           children: [
+            // The source master lists the fan and all three valves in one
+            // sentence, which named a pre-cooling valve on units that have no
+            // pre-cooling coil. Split so each names only what is fitted.
             {
-              key: 'shutdown_process_side',
+              key: 'shutdown_process_fan',
               order: 10,
-              body: 'The process fan, pre-cooling valve, post-cooling valve, and post-heating valve will immediately shut down/close.',
+              body: 'The process fan will immediately shut down.',
+              requires: [{ fact: 'has_process_fan', is: true }],
+            },
+            {
+              key: 'shutdown_pre_cool_valve',
+              order: 11,
+              body: 'The pre-cooling valve will immediately close.',
+              requires: [{ fact: 'pre_cool_medium', is: 'chilled_water' }],
+            },
+            {
+              key: 'shutdown_post_cool_valve',
+              order: 12,
+              body: 'The post-cooling valve will immediately close.',
+              requires: [{ fact: 'post_cool_medium', is: 'chilled_water' }],
+            },
+            {
+              key: 'shutdown_post_heat_valve',
+              order: 13,
+              body: 'The post-heating valve will immediately close.',
+              requires: [{ fact: 'post_heat_medium', is: 'hot_water' }],
             },
             {
               key: 'shutdown_react_valve',
@@ -392,39 +425,69 @@ export const SOO_MASTER_LIBRARY: SooLibrary = {
               order: 30,
               body: 'The blue Pre-Cooling Enabled pilot light illuminates whenever the pre-cooling valve is active.',
             },
+            // ── Freeze protection ──────────────────────────────────────────
+            // The source master writes Stage 2 as one long sentence listing
+            // every action. That named a pre-cooling valve, a post-cooling
+            // valve and a return-air damper whether or not the unit had them —
+            // inside the SAFETY sequence, which is the worst place for it.
+            //
+            // Each action is now its own conditional bullet. That also removes
+            // the OA-only / OA+RA variant pair: the dampers simply gate
+            // themselves. Reads better as a commissioning checklist too.
             {
-              key: 'pre_cooling_freeze',
+              key: 'pre_cooling_freeze_stage1',
               order: 40,
-              body: 'Freeze Protection:',
+              heading: 'Freeze Protection:',
+              body:
+                'Stage 1 – Freeze Prevention: If the pre-cooling coil leaving air temperature (downstream sensor) drops below a preset value (default {{stage1}}), the pre-cooling valve opens to {{fullOpen}}, process fan speed is reduced to {{fanSpeed}}, and a freeze prevention alarm is issued.',
+              slots: {
+                stage1: { from: 'constant', key: 'freeze_stage1_f' },
+                fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
+                fanSpeed: { from: 'constant', key: 'freeze_stage1_fan_percent' },
+              },
+            },
+            {
+              key: 'pre_cooling_freeze_stage2',
+              order: 50,
+              body:
+                'Stage 2 – Freeze Protection: If the hardwired mechanical pre-cooling freezestat (RANCO1, manual reset) trips on falling temperature:',
+              device: { tag_prefix: 'TSL', signal: 'DI', service: 'Pre-cooling coil freezestat (manual reset)' },
               children: [
                 {
-                  key: 'pre_cooling_freeze_stage1',
+                  key: 'pre_cooling_fs2_pre_valve',
                   order: 10,
-                  body:
-                    'Stage 1 – Freeze Prevention: If the pre-cooling coil leaving air temperature (downstream sensor) drops below a preset value (default {{stage1}}), the pre-cooling valve opens to {{fullOpen}}, process fan speed is reduced to {{fanSpeed}}, and a freeze prevention alarm is issued.',
-                  slots: {
-                    stage1: { from: 'constant', key: 'freeze_stage1_f' },
-                    fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
-                    fanSpeed: { from: 'constant', key: 'freeze_stage1_fan_percent' },
-                  },
-                },
-                {
-                  key: 'pre_cooling_freeze_stage2_oa_only',
-                  order: 20,
-                  body:
-                    'Stage 2 – Freeze Protection: If the hardwired mechanical pre-cooling freezestat (RANCO1, manual reset) trips on falling temperature, the pre-cooling valve and post-cooling valve open to {{fullOpen}}, the process fan shuts off, the outside-air damper closes, and a freeze protection (hard) alarm is issued requiring manual reset at the freezestat.',
-                  requires: [{ fact: 'ra_damper', is: 'none' }],
+                  body: 'The pre-cooling valve opens to {{fullOpen}}.',
                   slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
-                  device: { tag_prefix: 'TSL', signal: 'DI', service: 'Pre-cooling coil freezestat (manual reset)' },
                 },
                 {
-                  key: 'pre_cooling_freeze_stage2_oa_ra',
+                  key: 'pre_cooling_fs2_post_valve',
                   order: 20,
-                  body:
-                    'Stage 2 – Freeze Protection: If the hardwired mechanical pre-cooling freezestat (RANCO1, manual reset) trips on falling temperature, the pre-cooling valve and post-cooling valve open to {{fullOpen}}, the process fan shuts off, the outside-air damper and return-air damper close, and a freeze protection (hard) alarm is issued requiring manual reset at the freezestat.',
+                  body: 'The post-cooling valve opens to {{fullOpen}}.',
+                  requires: [{ fact: 'post_cool_medium', is: 'chilled_water' }],
+                  slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
+                },
+                {
+                  key: 'pre_cooling_fs2_fan',
+                  order: 30,
+                  body: 'The process fan shuts off.',
+                  requires: [{ fact: 'has_process_fan', is: true }],
+                },
+                {
+                  key: 'pre_cooling_fs2_oa',
+                  order: 40,
+                  body: 'The outside-air damper closes.',
+                  requires: [{ fact: 'oa_damper', oneOf: ['motorized_modulating', 'two_position'] }],
+                },
+                {
+                  key: 'pre_cooling_fs2_ra',
+                  order: 50,
+                  body: 'The return-air damper closes.',
                   requires: [{ fact: 'ra_damper', oneOf: ['motorized_modulating', 'two_position'] }],
-                  slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
-                  device: { tag_prefix: 'TSL', signal: 'DI', service: 'Pre-cooling coil freezestat (manual reset)' },
+                },
+                {
+                  key: 'pre_cooling_fs2_alarm',
+                  order: 60,
+                  body: 'A freeze protection (hard) alarm is issued, requiring manual reset at the freezestat.',
                 },
               ],
             },
@@ -458,38 +521,59 @@ export const SOO_MASTER_LIBRARY: SooLibrary = {
               body: 'The blue Post-Cooling Enabled pilot light illuminates whenever the post-cooling valve is active.',
             },
             {
-              key: 'post_cooling_freeze',
+              key: 'post_cooling_freeze_stage1',
               order: 40,
-              body: 'Freeze Protection:',
+              heading: 'Freeze Protection:',
+              body:
+                'Stage 1 – Freeze Prevention: If the post-cooling coil leaving air temperature (downstream sensor) drops below a preset value (default {{stage1}}), the post-cooling valve opens to {{fullOpen}}, process fan speed is reduced to {{fanSpeed}}, and a freeze prevention alarm is issued.',
+              slots: {
+                stage1: { from: 'constant', key: 'freeze_stage1_f' },
+                fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
+                fanSpeed: { from: 'constant', key: 'freeze_stage1_fan_percent' },
+              },
+            },
+            {
+              key: 'post_cooling_freeze_stage2',
+              order: 50,
+              body:
+                'Stage 2 – Freeze Protection: If the hardwired mechanical post-cooling freezestat (RANCO2, manual reset) trips on falling temperature:',
+              device: { tag_prefix: 'TSL', signal: 'DI', service: 'Post-cooling coil freezestat (manual reset)' },
               children: [
                 {
-                  key: 'post_cooling_freeze_stage1',
+                  key: 'post_cooling_fs2_pre_valve',
                   order: 10,
-                  body:
-                    'Stage 1 – Freeze Prevention: If the post-cooling coil leaving air temperature (downstream sensor) drops below a preset value (default {{stage1}}), the post-cooling valve opens to {{fullOpen}}, process fan speed is reduced to {{fanSpeed}}, and a freeze prevention alarm is issued.',
-                  slots: {
-                    stage1: { from: 'constant', key: 'freeze_stage1_f' },
-                    fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
-                    fanSpeed: { from: 'constant', key: 'freeze_stage1_fan_percent' },
-                  },
-                },
-                {
-                  key: 'post_cooling_freeze_stage2_oa_only',
-                  order: 20,
-                  body:
-                    'Stage 2 – Freeze Protection: If the hardwired mechanical post-cooling freezestat (RANCO2, manual reset) trips on falling temperature, the pre-cooling valve and post-cooling valve open to {{fullOpen}}, the process fan shuts off, the outside-air damper closes, and a freeze protection (hard) alarm is issued requiring manual reset at the freezestat.',
-                  requires: [{ fact: 'ra_damper', is: 'none' }],
+                  body: 'The pre-cooling valve opens to {{fullOpen}}.',
+                  requires: [{ fact: 'pre_cool_medium', is: 'chilled_water' }],
                   slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
-                  device: { tag_prefix: 'TSL', signal: 'DI', service: 'Post-cooling coil freezestat (manual reset)' },
                 },
                 {
-                  key: 'post_cooling_freeze_stage2_oa_ra',
+                  key: 'post_cooling_fs2_post_valve',
                   order: 20,
-                  body:
-                    'Stage 2 – Freeze Protection: If the hardwired mechanical post-cooling freezestat (RANCO2, manual reset) trips on falling temperature, the pre-cooling valve and post-cooling valve open to {{fullOpen}}, the process fan shuts off, the outside-air damper and return-air damper close, and a freeze protection (hard) alarm is issued requiring manual reset at the freezestat.',
+                  body: 'The post-cooling valve opens to {{fullOpen}}.',
+                  slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
+                },
+                {
+                  key: 'post_cooling_fs2_fan',
+                  order: 30,
+                  body: 'The process fan shuts off.',
+                  requires: [{ fact: 'has_process_fan', is: true }],
+                },
+                {
+                  key: 'post_cooling_fs2_oa',
+                  order: 40,
+                  body: 'The outside-air damper closes.',
+                  requires: [{ fact: 'oa_damper', oneOf: ['motorized_modulating', 'two_position'] }],
+                },
+                {
+                  key: 'post_cooling_fs2_ra',
+                  order: 50,
+                  body: 'The return-air damper closes.',
                   requires: [{ fact: 'ra_damper', oneOf: ['motorized_modulating', 'two_position'] }],
-                  slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
-                  device: { tag_prefix: 'TSL', signal: 'DI', service: 'Post-cooling coil freezestat (manual reset)' },
+                },
+                {
+                  key: 'post_cooling_fs2_alarm',
+                  order: 60,
+                  body: 'A freeze protection (hard) alarm is issued, requiring manual reset at the freezestat.',
                 },
               ],
             },
@@ -523,42 +607,66 @@ export const SOO_MASTER_LIBRARY: SooLibrary = {
               body: 'The amber Post-Heating Enabled pilot light illuminates whenever the post-heating valve is active.',
             },
             {
-              key: 'post_heating_freeze',
+              key: 'post_heating_freeze_stage1',
               order: 40,
-              body: 'Freeze Protection:',
+              heading: 'Freeze Protection:',
+              body:
+                'Stage 1 – Freeze Prevention: If the post-heating hot water coil leaving air temperature drops below a preset value (default {{stage1}}), the post-heating hot water valve opens to {{fullOpen}} (full hot water flow), the process fan speed is reduced to {{fanSpeed}}, and a freeze prevention alarm is issued.',
+              slots: {
+                stage1: { from: 'constant', key: 'freeze_stage1_f' },
+                fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
+                fanSpeed: { from: 'constant', key: 'freeze_stage1_fan_percent' },
+              },
+            },
+            {
+              key: 'post_heating_freeze_stage2',
+              order: 50,
+              body:
+                'Stage 2 – Freeze Protection: If the post-heating hot water coil leaving air temperature drops below a preset value (default {{stage2}}):',
+              slots: { stage2: { from: 'constant', key: 'freeze_stage2_f' } },
               children: [
                 {
-                  key: 'post_heating_freeze_stage1',
+                  key: 'post_heating_fs2_hw_valve',
                   order: 10,
-                  body:
-                    'Stage 1 – Freeze Prevention: If the post-heating hot water coil leaving air temperature drops below a preset value (default {{stage1}}), the post-heating hot water valve opens to {{fullOpen}} (full hot water flow), the process fan speed is reduced to {{fanSpeed}}, and a freeze prevention alarm is issued.',
-                  slots: {
-                    stage1: { from: 'constant', key: 'freeze_stage1_f' },
-                    fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
-                    fanSpeed: { from: 'constant', key: 'freeze_stage1_fan_percent' },
-                  },
+                  body: 'The post-heating hot water valve opens to {{fullOpen}}.',
+                  slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
                 },
                 {
-                  key: 'post_heating_freeze_stage2_oa_only',
+                  key: 'post_heating_fs2_pre_valve',
                   order: 20,
-                  body:
-                    'Stage 2 – Freeze Protection: If the post-heating hot water coil leaving air temperature drops below a preset value (default {{stage2}}), the post-heating hot water valve opens to {{fullOpen}}, the pre-cooling and post-cooling chilled water valves open to {{fullOpen}}, the process fan shuts off, the outside-air damper closes, and a freeze protection (hard) alarm is issued requiring manual reset.',
-                  requires: [{ fact: 'ra_damper', is: 'none' }],
-                  slots: {
-                    stage2: { from: 'constant', key: 'freeze_stage2_f' },
-                    fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
-                  },
+                  body: 'The pre-cooling chilled water valve opens to {{fullOpen}}.',
+                  requires: [{ fact: 'pre_cool_medium', is: 'chilled_water' }],
+                  slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
                 },
                 {
-                  key: 'post_heating_freeze_stage2_oa_ra',
-                  order: 20,
-                  body:
-                    'Stage 2 – Freeze Protection: If the post-heating hot water coil leaving air temperature drops below a preset value (default {{stage2}}), the post-heating hot water valve opens to {{fullOpen}}, the pre-cooling and post-cooling chilled water valves open to {{fullOpen}}, the process fan shuts off, the outside-air damper and return-air damper close, and a freeze protection (hard) alarm is issued requiring manual reset.',
+                  key: 'post_heating_fs2_post_valve',
+                  order: 30,
+                  body: 'The post-cooling chilled water valve opens to {{fullOpen}}.',
+                  requires: [{ fact: 'post_cool_medium', is: 'chilled_water' }],
+                  slots: { fullOpen: { from: 'constant', key: 'valve_full_open_percent' } },
+                },
+                {
+                  key: 'post_heating_fs2_fan',
+                  order: 40,
+                  body: 'The process fan shuts off.',
+                  requires: [{ fact: 'has_process_fan', is: true }],
+                },
+                {
+                  key: 'post_heating_fs2_oa',
+                  order: 50,
+                  body: 'The outside-air damper closes.',
+                  requires: [{ fact: 'oa_damper', oneOf: ['motorized_modulating', 'two_position'] }],
+                },
+                {
+                  key: 'post_heating_fs2_ra',
+                  order: 60,
+                  body: 'The return-air damper closes.',
                   requires: [{ fact: 'ra_damper', oneOf: ['motorized_modulating', 'two_position'] }],
-                  slots: {
-                    stage2: { from: 'constant', key: 'freeze_stage2_f' },
-                    fullOpen: { from: 'constant', key: 'valve_full_open_percent' },
-                  },
+                },
+                {
+                  key: 'post_heating_fs2_alarm',
+                  order: 70,
+                  body: 'A freeze protection (hard) alarm is issued, requiring manual reset.',
                 },
               ],
             },
@@ -901,19 +1009,73 @@ export const SOO_MASTER_LIBRARY: SooLibrary = {
     },
   ],
 
+  // ── Coverage ──────────────────────────────────────────────────────────────
   // See the file header. These turn "not written yet" into a loud blocker
   // instead of an exclusion indistinguishable from "not applicable".
+  //
+  // Each map lists every value that REQUIRES a sequence, pointing at the clause
+  // that provides it. Keys naming a clause that does not exist yet are the
+  // point — they are the declared gaps, and they read as a to-do list of what
+  // the master document still owes us. A value left OUT of a map needs no
+  // clauses at all (`none` = the unit has no such component).
+  //
+  // A rule must name the clause that IS the sequence, not merely a clause that
+  // mentions the component. Jacob's 2026-08-07 test unit had DX pre-cooling and
+  // the one-line pre-cooling temperature-sensor entry made the whole missing
+  // pre-cooling sequence read as covered.
   coverage: [
     {
       fact: 'reactivation',
-      requirement: 'The master library has no reactivation sequence for this reactivation type',
+      covered: {
+        steam: 'react_heat_steam',
+        gas: 'react_heat_gas', // ← not written
+        electric: 'react_heat_electric', // ← not written
+        hot_water: 'react_heat_hot_water', // ← not written
+      },
+      requirement: 'The master library has no reactivation heat sequence for this reactivation type',
+    },
+    {
+      fact: 'pre_cool_medium',
+      covered: {
+        chilled_water: 'pre_cooling',
+        dx: 'pre_cooling_dx', // ← not written
+      },
+      requirement: 'The master library has no pre-cooling sequence for this cooling medium',
+    },
+    {
+      fact: 'post_cool_medium',
+      covered: {
+        chilled_water: 'post_cooling',
+        dx: 'post_cooling_dx', // ← not written
+      },
+      requirement: 'The master library has no post-cooling sequence for this cooling medium',
+    },
+    {
+      fact: 'post_heat_medium',
+      covered: {
+        hot_water: 'post_heating',
+        steam: 'post_heating_steam', // ← not written
+        electric: 'post_heating_electric', // ← not written
+      },
+      requirement: 'The master library has no post-heating sequence for this heating medium',
+    },
+    {
+      fact: 'wheel_drive',
+      covered: { vfd: 'wheel_start_vfd', across_line: 'wheel_start_fixed' },
+      requirement: 'The master library does not say how the desiccant wheel starts on this drive type',
     },
     {
       fact: 'humidity_sensor_location',
+      covered: { space: 'humidity_basis_space', post_desiccant: 'humidity_basis_leaving' },
       requirement: 'The master library has no humidity control basis for this sensor location',
     },
     {
       fact: 'controls_package',
+      covered: {
+        icontrol_premium: 'control_device_hmi_premium',
+        icontrol_standard: 'control_device_hmi_standard',
+        other: 'control_device_hmi_other', // ← not written
+      },
       requirement: 'The master library has no HMI description for this controls package',
     },
   ],

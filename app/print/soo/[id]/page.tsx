@@ -76,9 +76,35 @@ export default async function SooPrintPage(props: { params: Promise<{ id: string
 
       <div className="max-w-[820px] mx-auto bg-white shadow-sm print:shadow-none my-6 print:my-0 px-10 py-10 print:px-0 print:py-0">
         {!approved && (
-          <div className="mb-6 border border-amber-300 bg-amber-50 px-4 py-2.5 rounded">
+          <div className="mb-4 border border-amber-300 bg-amber-50 px-4 py-2.5 rounded">
             <p className="text-[12px] font-semibold text-amber-800">
               DRAFT — not approved for construction or controls programming
+            </p>
+          </div>
+        )}
+
+        {/* The loudest thing on the page when it applies, and it prints.
+            This warning was computed correctly from day one but was only shown
+            in the editor, so a gas unit produced a PDF with no reactivation
+            sequence that read as complete — the exact failure the whole design
+            exists to prevent, leaking at the last step. It belongs ABOVE the
+            sequence: someone who reads no further must still see it. */}
+        {result.uncovered.length > 0 && (
+          <div className="mb-6 border-2 border-rose-400 bg-rose-50 px-4 py-3.5 rounded">
+            <p className="text-[12.5px] font-semibold text-rose-800 mb-1.5">
+              INCOMPLETE — this sequence is missing {result.uncovered.length === 1 ? 'a section' : 'sections'}
+            </p>
+            <ul className="space-y-1">
+              {result.uncovered.map((u) => (
+                <li key={u.fact} className="text-[11.5px] text-rose-700">
+                  {u.why} — this unit is <strong className="font-semibold">{u.value}</strong>.
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-rose-700 mt-2">
+              Do not issue this document for controls programming. The master sequence has no
+              content for the configuration above, so the corresponding clauses are absent
+              rather than not applicable.
             </p>
           </div>
         )}
@@ -115,7 +141,7 @@ export default async function SooPrintPage(props: { params: Promise<{ id: string
             <ul className="space-y-0.5">
               {result.excluded.map((e) => (
                 <li key={e.key} className="text-[11.5px] text-zinc-600">
-                  <span className="text-zinc-800">{e.heading ?? e.key}</span> — {e.why}
+                  <span className="text-zinc-800">{e.summary}</span> — {e.why}
                 </li>
               ))}
             </ul>

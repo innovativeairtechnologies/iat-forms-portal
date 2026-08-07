@@ -561,18 +561,31 @@ export type SooSection = {
 }
 
 /**
- * "Whatever this unit's value for `fact` is, at least one clause testing it must
- * survive assembly."
+ * "If the unit's `fact` has this value, THIS clause must survive assembly."
  *
- * Without this, a library holding only steam reactivation clauses would hand a
- * gas unit a document with no reactivation sequence at all — every clause
- * cleanly and correctly excluded, and the document silently missing its most
- * important section. Exclusion is only safe when it means "not applicable"; here
- * it would mean "not written yet", and nothing else can tell those apart.
+ * Without this, a library holding only steam reactivation clauses hands a gas
+ * unit a document with no reactivation sequence at all — every clause cleanly
+ * and correctly excluded, and the document silently missing its most important
+ * section. Exclusion is only safe when it means "not applicable"; here it means
+ * "not written yet", and nothing else can tell those apart.
+ *
+ * ── Why this names a clause key rather than counting survivors ──────────────
+ * The first version of this asked "did ANY clause testing this fact survive?",
+ * and that was too weak to catch the case it existed for. A DX unit kept the
+ * one-line "Pre-Cooling Leaving Air Temperature (Type J thermocouple)" sensor
+ * entry — which tests `pre_cool_medium` — so the whole missing pre-cooling
+ * SEQUENCE read as covered. A sensor is not a sequence. The rule now names the
+ * clause that constitutes having one.
+ *
+ * `covered` lists every value that REQUIRES content, mapped to the key that
+ * provides it. A key that does not exist yet is the point: it makes the gap
+ * loud. A value absent from the map legitimately needs no clauses — `none`
+ * means the unit has no such component, which is correct silence, not a hole.
  */
 export type CoverageRule = {
   fact: FactKey
-  /** Shown to the reviewer when nothing covers the unit's value. */
+  covered: Record<string, string>
+  /** Shown to the reviewer when the named clause did not survive. */
   requirement: string
 }
 
@@ -675,6 +688,8 @@ export type ExcludedClause = {
   key: string
   section: string
   heading?: string
+  /** Human-readable name for the receipt. See clauseSummary. */
+  summary: string
   /** "Reactivation type is Gas — unit is Steam". */
   why: string
 }
@@ -683,10 +698,29 @@ export type BlockedClause = {
   key: string
   section: string
   heading?: string
+  summary: string
   reason: 'unknown-fact' | 'missing-fact-slot'
   /** The fact keys a human has to resolve to unblock this clause. */
   needs: FactKey[]
   why: string
+}
+
+/**
+ * What a clause is called in the excluded/blocked receipts.
+ *
+ * These lists print on the delivered document, so they cannot show internal
+ * keys — a contractor reading "run_oa_damper_modulating" learns nothing and it
+ * reads as a leak. Falls back to the clause's own first sentence, which is
+ * already written in the document's voice, so no separate label content has to
+ * be authored and kept in sync.
+ */
+export function clauseSummary(clause: Clause): string {
+  const heading = clause.heading?.trim().replace(/:\s*$/, '')
+  if (heading) return heading
+  const body = clause.body.trim()
+  const firstStop = body.indexOf('. ')
+  const first = firstStop > 0 ? body.slice(0, firstStop + 1) : body
+  return first.length > 96 ? `${first.slice(0, 93).trimEnd()}…` : first
 }
 
 export type AssemblyResult = {
@@ -783,6 +817,7 @@ export function assemble(
           key: clause.key,
           section: sectionTitle,
           heading: clause.heading,
+          summary: clauseSummary(clause),
           why: `${describeCondition(failed.condition)} — unit is ${factValueLabel(failed.condition.fact, failed.actual)}`,
         })
         continue
@@ -794,6 +829,7 @@ export function assemble(
           key: clause.key,
           section: sectionTitle,
           heading: clause.heading,
+          summary: clauseSummary(clause),
           reason: 'unknown-fact',
           needs,
           why: `Needs ${needs.map((f) => FACT_SPECS[f].label).join(', ')} before this clause can be included or ruled out.`,
@@ -807,6 +843,7 @@ export function assemble(
           key: clause.key,
           section: sectionTitle,
           heading: clause.heading,
+          summary: clauseSummary(clause),
           reason: 'missing-fact-slot',
           needs: resolved.missing,
           why: `Text references ${resolved.missing.map((f) => FACT_SPECS[f].label).join(', ')}, which ${resolved.missing.length === 1 ? 'is' : 'are'} not known.`,
@@ -845,15 +882,11 @@ export function assemble(
   for (const rule of library.coverage ?? []) {
     const value = (facts as Record<string, unknown>)[rule.fact]
     if (value === null || value === undefined) continue
-    let covered = false
-    eachClause(library, (c) => {
-      if (covered) return
-      if (!c.requires?.some((cond) => cond.fact === rule.fact)) return
-      if (satisfiedKeys.has(c.key)) covered = true
-    })
-    if (!covered) {
-      uncovered.push({ fact: rule.fact, value: factValueLabel(rule.fact, value), why: rule.requirement })
-    }
+    const requiredKey = rule.covered[String(value)]
+    // Not in the map ⇒ this value needs no clauses (e.g. `none`). Correct silence.
+    if (!requiredKey) continue
+    if (satisfiedKeys.has(requiredKey)) continue
+    uncovered.push({ fact: rule.fact, value: factValueLabel(rule.fact, value), why: rule.requirement })
   }
 
   return { libraryVersion: library.version, sections, excluded, blocked, unsetSetpoints: [...unset], uncovered }
@@ -947,6 +980,30 @@ export function validateLibrary(incoming: unknown): string | null {
 
     const err = validateClauses(section.clauses, section.key, 1, clauseKeys)
     if (err) return err
+  }
+
+  for (const rule of lib.coverage ?? []) {
+    if (!rule || typeof rule !== 'object') return 'Malformed coverage rule.'
+    if (!(rule.fact in FACT_SPECS)) return `Coverage rule tests unknown fact "${rule.fact}".`
+    const spec = FACT_SPECS[rule.fact]
+    if (spec.group === 'design') {
+      return `Coverage rule tests "${rule.fact}", which is a design condition.`
+    }
+    if (!rule.covered || typeof rule.covered !== 'object' || Object.keys(rule.covered).length === 0) {
+      return `Coverage rule for "${rule.fact}" lists no values that require content.`
+    }
+    if (!rule.requirement?.trim()) return `Coverage rule for "${rule.fact}" needs a requirement message.`
+    for (const value of Object.keys(rule.covered)) {
+      if (spec.kind === 'enum' && !spec.options?.includes(value)) {
+        return `Coverage rule for "${rule.fact}" names value "${value}", which is not one of: ${spec.options?.join(', ')}.`
+      }
+    }
+    // A rule whose every clause key is unknown is a typo, not a declared gap —
+    // it would report "uncovered" on every unit forever and teach people to
+    // ignore the warning. At least one named clause must actually exist.
+    if (!Object.values(rule.covered).some((k) => clauseKeys.has(k))) {
+      return `Coverage rule for "${rule.fact}" names no clause that exists — check for a typo in: ${Object.values(rule.covered).join(', ')}.`
+    }
   }
   return null
 }

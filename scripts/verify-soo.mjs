@@ -193,8 +193,8 @@ ok('react ceiling renders as 300°F', (reactMode ?? '').includes('maximum temper
 const stage1 = textOf(base, 'pre_cooling_freeze_stage1')
 ok('freeze Stage 1 renders 40°F / 100% / 50%', (stage1 ?? '').includes('default 40°F') && (stage1 ?? '').includes('opens to 100%') && (stage1 ?? '').includes('reduced to 50%'), '')
 
-const stage2Heat = textOf(base, 'post_heating_freeze_stage2_oa_only')
-ok('post-heat Stage 2 renders 35°F', (stage2Heat ?? '').includes('default 35°F'), '')
+const stage2Heat = textOf(base, 'post_heating_freeze_stage2')
+ok('post-heat Stage 2 renders 35°F', (stage2Heat ?? '').includes('default 35°F'), stage2Heat ?? 'clause missing')
 
 // MUTATION: change the constant, prove every rendering moves. Without this the
 // assertions above would pass against a hard-coded string in the clause body.
@@ -257,7 +257,7 @@ section('Coverage')
   const r = assemble(SOO_MASTER_LIBRARY, gas)
   ok('a gas unit reports uncovered reactivation', r.uncovered.some((u) => u.fact === 'reactivation'), JSON.stringify(r.uncovered))
   const doc = { ...blankDoc(), facts: gas, assembled: r }
-  ok('uncovered reactivation blocks approval', approvalBlockers(doc).some((b) => b.includes('reactivation sequence')), approvalBlockers(doc).join(' | '))
+  ok('uncovered reactivation blocks approval', approvalBlockers(doc).some((b) => b.includes('reactivation heat sequence')), approvalBlockers(doc).join(' | '))
 }
 
 {
@@ -265,22 +265,81 @@ section('Coverage')
   ok('steam reactivation is covered', !r.uncovered.some((u) => u.fact === 'reactivation'))
 }
 
+// ─── 4b. The 2026-08-07 regression unit ──────────────────────────────────────
+// Jacob's first hand-built test configuration. It found three holes the Ferrara
+// unit could not, because Ferrara happens to be fully covered by the library:
+//   · gas reactivation      → no heat sequence, and the PRINT view dropped the
+//                             warning, so the PDF read as complete
+//   · no rotor alarm pkg    → BOTH wheel-start clauses excluded; the wheel never
+//                             started, and nothing flagged it
+//   · DX pre-cooling        → no pre-cooling sequence, yet a pre-cooling pilot
+//                             light, sensor and valve all still referenced
+// Kept as a permanent case: any of these regressing is a field-safety problem.
+
+const TEST_UNIT_20260807 = {
+  ...blankFacts(),
+  customer: 'IAT', project_name: 'Test', model_number: '5000-25', unit_tag: 'Test', voltage: '250',
+  controls_package: 'icontrol_premium', bas_protocol: 'bacnet_mstp',
+  has_desiccant_wheel: true, has_process_filter: true, has_react_filter: true, has_final_filter: false,
+  has_process_fan: true, has_react_fan: true, has_afms: true, has_rotor_rotation_alarm: false,
+  has_idp: true, has_process_plenum_pressure_xmtr: false, has_react_plenum_pressure_xmtr: true,
+  dirty_filter_alarms: false,
+  reactivation: 'gas', pre_cool_medium: 'dx', post_cool_medium: 'chilled_water',
+  post_heat_medium: 'hot_water', humidity_sensor_location: 'space', space_sensor_ships_loose: true,
+  oa_damper: 'two_position', ra_damper: 'motorized_modulating', react_outlet_damper: 'manually_set',
+  process_fan_drive: 'vfd', react_fan_drive: 'vfd', wheel_drive: 'vfd',
+}
+
+section('Regression — the 2026-08-07 test unit')
+
+{
+  const r = assemble(SOO_MASTER_LIBRARY, TEST_UNIT_20260807)
+  const text = keysOf(r).map((k) => textOf(r, k)).join(' ')
+
+  ok('the desiccant wheel starts even without the rotor alarm package', has(r, 'wheel_start_vfd'), keysOf(r).filter((k) => k.startsWith('wheel')).join(', '))
+  ok('the rotation proving switch is correctly absent', !has(r, 'wheel_rotation_proving'))
+  ok('gas reactivation is reported uncovered', r.uncovered.some((u) => u.fact === 'reactivation'))
+  ok('DX pre-cooling is reported uncovered', r.uncovered.some((u) => u.fact === 'pre_cool_medium'), JSON.stringify(r.uncovered.map((u) => u.fact)))
+  ok('a sensor clause alone does NOT satisfy coverage', r.uncovered.some((u) => u.fact === 'pre_cool_medium') && has(r, 'device_pre_cool_lat'))
+
+  // The document must never instruct anyone to operate a component the unit
+  // does not have — least of all inside a freeze-protection sequence.
+  ok('nothing tells you to open a pre-cooling VALVE on a DX unit', !/pre-cooling (chilled water )?valve/i.test(text), (text.match(/[^.]*pre-cooling (chilled water )?valve[^.]*\./i) ?? [''])[0])
+  ok('shutdown does not close valves the unit lacks', !has(r, 'shutdown_pre_cool_valve') && has(r, 'shutdown_post_cool_valve'))
+  ok('an uncovered unit cannot be approved', approvalBlockers({ ...blankDoc(), facts: TEST_UNIT_20260807, assembled: r }).length > 0)
+  ok('the excluded receipt carries readable names, not clause keys', r.excluded.every((e) => e.summary && !/^[a-z0-9_]+$/.test(e.summary)), r.excluded.map((e) => e.summary).filter((s) => /^[a-z0-9_]+$/.test(s)).join(', '))
+}
+
+// A fully-covered unit must stay clean — the guards above must not fire on Ferrara.
+ok('the Ferrara unit reports nothing uncovered', base.uncovered.length === 0, JSON.stringify(base.uncovered))
+ok('the Ferrara wheel still starts and is still proven', has(base, 'wheel_start_vfd') && has(base, 'wheel_rotation_proving'))
+
 // ─── 5. Conditional inclusion — mutation-tested ──────────────────────────────
 
 section('Conditional inclusion')
 
 const cases = [
   {
-    label: 'no return-air damper → only the OA-damper variant of freeze Stage 2',
+    // Freeze Stage 2 is now a lead-in plus one conditional action per bullet,
+    // so the dampers gate themselves instead of needing a variant per pairing.
+    label: 'no return-air damper → the RA action drops out of every freeze Stage 2',
     facts: FERRARA,
-    present: ['pre_cooling_freeze_stage2_oa_only', 'post_cooling_freeze_stage2_oa_only', 'post_heating_freeze_stage2_oa_only'],
-    absent: ['pre_cooling_freeze_stage2_oa_ra', 'shutdown_ra_damper', 'run_ra_damper_modulating'],
+    present: ['pre_cooling_freeze_stage2', 'pre_cooling_fs2_oa', 'post_cooling_fs2_oa', 'post_heating_fs2_oa'],
+    absent: ['pre_cooling_fs2_ra', 'post_cooling_fs2_ra', 'post_heating_fs2_ra', 'shutdown_ra_damper', 'run_ra_damper_modulating'],
   },
   {
-    label: 'a return-air damper swaps in the OA+RA variant',
+    label: 'a return-air damper adds the RA action to every freeze Stage 2',
     facts: { ...FERRARA, ra_damper: 'motorized_modulating' },
-    present: ['pre_cooling_freeze_stage2_oa_ra', 'post_heating_freeze_stage2_oa_ra', 'shutdown_ra_damper', 'run_ra_damper_modulating'],
-    absent: ['pre_cooling_freeze_stage2_oa_only', 'post_heating_freeze_stage2_oa_only'],
+    present: ['pre_cooling_fs2_ra', 'post_cooling_fs2_ra', 'post_heating_fs2_ra', 'shutdown_ra_damper', 'run_ra_damper_modulating'],
+    absent: [],
+  },
+  {
+    // The bug this restructure fixed: a safety clause naming a component the
+    // unit does not have.
+    label: 'DX pre-cooling removes the pre-cooling valve from post-cooling freeze Stage 2',
+    facts: { ...FERRARA, pre_cool_medium: 'dx' },
+    present: ['post_cooling_fs2_post_valve', 'post_cooling_fs2_alarm'],
+    absent: ['post_cooling_fs2_pre_valve', 'post_heating_fs2_pre_valve', 'shutdown_pre_cool_valve'],
   },
   {
     label: 'no AFMS drops the ventilation-flow clause and its instrument',

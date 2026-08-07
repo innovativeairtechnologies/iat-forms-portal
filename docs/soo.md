@@ -33,6 +33,31 @@ list prints on the document ("Not applicable to this unit"), so a reader can alw
 applicable* from *nobody wrote this*. A `coverage` rule turns "the library has no gas reactivation
 sequence" into a loud blocker instead of a document quietly missing its most important section.
 
+### What the 2026-08-07 test unit taught us
+
+The first hand-built test configuration (gas reactivation, DX pre-cooling, no rotor alarm package)
+found three holes the Ferrara unit could not, because Ferrara happens to be fully covered. All
+three are now permanent regression cases in `scripts/verify-soo.mjs`.
+
+1. **The warning fired but did not print.** `uncovered` was computed correctly and shown in the
+   editor, but `app/print/soo/[id]/page.tsx` never rendered it — so the PDF read as complete while
+   missing its entire reactivation heat sequence. A safety net that stops at the screen is not a
+   safety net. It now prints above the sequence, in red, on every draft that has a gap.
+2. **Coverage was satisfiable by a one-line sensor entry.** The rule used to ask "did any clause
+   testing this fact survive?", and the pre-cooling temperature-sensor line was enough to make a
+   missing DX pre-cooling *sequence* look covered. `CoverageRule.covered` now names the clause that
+   **is** the sequence. Keys pointing at clauses that don't exist yet (`react_heat_gas`,
+   `pre_cooling_dx`) are the declared gaps — effectively a to-do list of what the master document
+   still owes us.
+3. **Nothing at all caught the wheel never starting.** Both wheel-start clauses required the rotor
+   rotation alarm package, conflating *how the wheel starts* with *how its rotation is proven*.
+   Starting and proving are now separate clauses.
+
+The same review split the freeze-protection Stage 2 clauses into a lead-in plus one conditional
+action per bullet. They previously named a pre-cooling valve, a post-cooling valve and a return-air
+damper whether or not the unit had them — inside the safety sequence, which is the worst place for
+it. This also removed the OA-only / OA+RA variant pairs: the dampers now gate themselves.
+
 ## Files
 
 - `lib/soo.ts` — types, assembler, validators, constants. Pure; exercised by `scripts/verify-soo.mjs` (66 checks incl. mutation tests).
@@ -52,9 +77,10 @@ authority.
 ## Acceptance test
 
 `scripts/verify-soo.mjs` hand-enters the Ferrara facts (IAT-3000RS-IDP) and the generated document
-was diffed against the real `IAT_Trane_Ferrara_Sequence_of_Operation.docx`: 102/110 paragraphs
-exact-match; all 8 differences are hedges resolving to definite statements (intended). That fact
-object is also the ground truth for Phase 2's extractor.
+was diffed against the real `IAT_Trane_Ferrara_Sequence_of_Operation.docx`: **100/110 paragraphs
+exact-match**. Eight differences are hedges resolving to definite statements; two are the safety
+splits described above (the wheel start/prove sentence, and the shutdown valve list). All ten are
+intended. That fact object is also the ground truth for Phase 2's extractor.
 
 ## Phases
 

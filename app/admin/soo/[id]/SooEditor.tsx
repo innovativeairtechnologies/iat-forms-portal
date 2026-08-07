@@ -382,7 +382,7 @@ export default function SooEditor({
                     <div className="p-5 space-y-2">
                       {withOverrides.blocked.map((b) => (
                         <div key={b.key} className="text-[12.5px]">
-                          <span className="text-ink-secondary">{b.heading ?? b.key}</span>
+                          <span className="text-ink-secondary">{b.summary}</span>
                           <span className="text-ink-muted"> — {b.why}</span>
                         </div>
                       ))}
@@ -408,7 +408,7 @@ export default function SooEditor({
                     <div className="px-5 pb-5 space-y-1.5 border-t border-hairline pt-4">
                       {withOverrides.excluded.map((e) => (
                         <div key={e.key} className="text-[12.5px]">
-                          <span className="text-ink-secondary">{e.heading ?? e.key}</span>
+                          <span className="text-ink-secondary">{e.summary}</span>
                           <span className="text-ink-muted"> — {e.why}</span>
                         </div>
                       ))}
