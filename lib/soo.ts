@@ -262,6 +262,36 @@ export const FACT_SPECS: Record<FactKey, FactSpec> = {
 
 export const FACT_KEYS = Object.keys(FACT_SPECS) as FactKey[]
 
+/**
+ * Coerce one incoming value against its FACT_SPEC. Never throws, never invents.
+ *
+ * A value of the wrong shape becomes `null` — which means UNKNOWN, so the
+ * clauses depending on it BLOCK and surface for a human, rather than a junk
+ * value silently gating one. Shared by the PATCH route (human edits) and the
+ * extractor (model findings) so both are held to the same standard.
+ */
+export function coerceFactValue(key: FactKey, raw: unknown): unknown {
+  if (raw === null || raw === undefined || raw === '') return null
+  const spec = FACT_SPECS[key]
+  if (spec.kind === 'boolean') {
+    if (typeof raw === 'boolean') return raw
+    const s = String(raw).trim().toLowerCase()
+    if (['true', 'yes', 'y', '1'].includes(s)) return true
+    if (['false', 'no', 'n', '0'].includes(s)) return false
+    return null
+  }
+  if (spec.kind === 'number') {
+    const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/,/g, ''))
+    return Number.isFinite(n) ? n : null
+  }
+  if (spec.kind === 'enum') {
+    const s = String(raw).trim()
+    return spec.options?.includes(s) ? s : null
+  }
+  if (spec.kind === 'object') return typeof raw === 'object' ? raw : null
+  return String(raw)
+}
+
 /** Human-readable value for the review table and the "why" panel. */
 export function factValueLabel(key: FactKey, value: unknown): string {
   if (value === null || value === undefined) return '—'

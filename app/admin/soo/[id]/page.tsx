@@ -5,7 +5,8 @@ import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { clauseImpact, gatingFactKeys, type SooDocument, type UnitFacts } from '@/lib/soo'
 import { getSooLibrary } from '@/lib/soo-library'
-import SooEditor, { type FactImpact } from './SooEditor'
+import SooEditor from './SooEditor'
+import type { FactImpact } from './FactReview'
 
 export default async function SooDocumentPage(props: { params: Promise<{ id: string }> }) {
   const admin = await getAdminSurfaceUser()

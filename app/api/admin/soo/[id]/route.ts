@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireSooAuth } from '@/lib/api-auth'
-import { FACT_SPECS, PROJECT_KEYS, type FactKey, type ProjectKey, type UnitFacts } from '@/lib/soo'
+import { FACT_SPECS, PROJECT_KEYS, coerceFactValue, type FactKey, type ProjectKey, type UnitFacts } from '@/lib/soo'
 
 /* Read and update one Sequence of Operation document.
  *
@@ -29,38 +29,20 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 }
 
 /**
- * Coerce an incoming facts object against FACT_SPECS.
+ * Apply an incoming facts object onto the current one.
  *
- * Never throws and never invents. An unknown key is dropped; a value of the
- * wrong shape becomes null (= unknown), which BLOCKS the clauses that need it
- * rather than letting a junk value through to gate one. Same posture as
- * parseSizingInputs in lib/sizing.ts.
+ * Unknown keys are dropped; each known value goes through the shared
+ * `coerceFactValue` (lib/soo.ts), so a human edit and a model finding are held
+ * to exactly the same standard. Same posture as parseSizingInputs in
+ * lib/sizing.ts: never throws, never invents.
  */
 function coerceFacts(raw: unknown, current: UnitFacts): UnitFacts {
   if (!raw || typeof raw !== 'object') return current
   const incoming = raw as Record<string, unknown>
   const out = { ...current } as Record<string, unknown>
-
   for (const key of Object.keys(FACT_SPECS) as FactKey[]) {
     if (!(key in incoming)) continue
-    const v = incoming[key]
-    if (v === null || v === undefined || v === '') {
-      out[key] = null
-      continue
-    }
-    const spec = FACT_SPECS[key]
-    if (spec.kind === 'boolean') {
-      out[key] = typeof v === 'boolean' ? v : v === 'true' ? true : v === 'false' ? false : null
-    } else if (spec.kind === 'number') {
-      const n = typeof v === 'number' ? v : Number(String(v).replace(/,/g, ''))
-      out[key] = Number.isFinite(n) ? n : null
-    } else if (spec.kind === 'enum') {
-      out[key] = spec.options?.includes(String(v)) ? String(v) : null
-    } else if (spec.kind === 'object') {
-      out[key] = typeof v === 'object' ? v : null
-    } else {
-      out[key] = String(v)
-    }
+    out[key] = coerceFactValue(key, incoming[key])
   }
   return out as UnitFacts
 }

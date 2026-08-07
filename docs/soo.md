@@ -58,6 +58,41 @@ action per bullet. They previously named a pre-cooling valve, a post-cooling val
 damper whether or not the unit had them — inside the safety sequence, which is the worst place for
 it. This also removed the OA-only / OA+RA variant pairs: the dampers now gate themselves.
 
+## Phase 2 — reading the submittal
+
+Upload the DryWare PDF; the portal proposes a configuration and a human confirms it. **The extract
+route writes no facts** — it returns a proposal, and the PATCH route is what commits. Re-running it
+is free and changes nothing.
+
+**Two readers, deliberately.** The deterministic parsers in `lib/soo-extract.ts` do most of the
+work; a model call runs as a *redundant second reader* over the same filtered pages. That isn't
+belt-and-braces: with one source a wrong fact is indistinguishable from a right one and the
+reviewer has only a page citation, whereas with two the review table can mark a fact "Schedule +
+model number agree" (skim) versus "only the second reader saw this" (read it). It also turns a
+parser breakage into a visible pile of conflicts instead of a silent pile of nulls. `PRECEDENCE`
+puts `llm` last — the model can add a fact or disagree loudly, never override.
+
+**What the parsers know about the document** (all verified against the real 45-page file):
+
+| Page kind | Handling |
+|---|---|
+| Schedule (4 pp) | Primary source. Parsed by matching **known label prefixes**, not by guessing where the label ends — an unrecognised line becomes a visible `unmapped` entry rather than a bad parse. |
+| Component spec pages | `· Label - Value` bullets. The two-column layout puts several bullets on one text line, so the parser splits on the bullet glyph, not newlines. |
+| Duct connections | Authoritative for OA / RA / react-outlet dampers. |
+| Flow diagrams (2 pp) | **Images** — 37 words of text each. No fact may come from here. |
+| Guide spec (13 pp) | **Dropped in code.** Generic boilerplate ("provide freezestat set at 35°F") for a hypothetical unit: plausible, authoritative-sounding, on-topic and wrong. Deleting the pages is verifiable; prompting a model to ignore thirteen pages of them is not. |
+| Vendor cut sheets (8 pp) | Dropped. Ours vs theirs is decided by the **IAT footer**, not keywords — matching "New York Blower" would misfile our own Process Fan page, which names the manufacturer. |
+
+**Refusing to guess is a feature.** The submittal says "BACnet" without stating MS/TP or IP, so
+`bas_protocol` is left unset and reported for a human — a coin flip printed as fact in a controls
+contract is worse than a blank. Same for the plenum pressure transmitters and wheel drive, which
+the submittal never mentions: they stay null, their clauses block, and a person fills them in.
+
+**The review table is ordered by blast radius**, never document order: conflicts → gating facts
+(each annotated "N on · M off") → identity → design conditions → unrecognised lines. A flat
+fifty-row table gets clicked through, and deterministic assembly then renders the wrong facts with
+total confidence. Every human edit records `method: 'human'`, which outranks every reader.
+
 ## Files
 
 - `lib/soo.ts` — types, assembler, validators, constants. Pure; exercised by `scripts/verify-soo.mjs` (66 checks incl. mutation tests).
@@ -84,7 +119,17 @@ intended. That fact object is also the ground truth for Phase 2's extractor.
 
 ## Phases
 
-1. ✅ Library + assembler + manual facts + print view (this)
-2. Submittal PDF extraction (deterministic Schedule parser + LLM second reader + reconciliation; upload to `soo-submittals`, file **kept** as evidence)
-3. `.docx` export + submittal upload UI
+1. ✅ Library + assembler + manual facts + print view
+2. ✅ Submittal extraction — deterministic parsers + model second reader + reconciliation, upload to `soo-submittals` (file **kept** as evidence), blast-radius review table
+3. `.docx` export
 4. Library editor UI + Point List / Instrument Index (the P&ID precursor — blocked on a tagging convention from engineering, not on tooling)
+
+## Verification
+
+- `node --import ./scripts/ts-resolve.mjs scripts/verify-soo.mjs` — 78 checks: assembler, three-valued
+  predicates, coverage, constants (mutation-tested), overrides, approval gate, and the two regression
+  units (Ferrara + the 2026-08-07 gas/DX unit).
+- `node --import ./scripts/ts-resolve.mjs scripts/verify-soo-extract.mjs [--dump]` — 76 checks run
+  against the **real** 45-page Ferrara PDF, asserting the extracted fact set equals the hand-entered
+  one. Fixture-backed, not mocked: a DryWare layout change breaks it here rather than in production.
+  Skips (loudly) if the PDF is missing rather than passing vacuously.

@@ -10,7 +10,7 @@ import {
   FACT_SPECS,
   applyOverrides,
   approvalBlockers,
-  enumLabel,
+  coerceFactValue,
   type AssemblyResult,
   type ClauseOverride,
   type FactKey,
@@ -18,6 +18,8 @@ import {
   type SooDocument,
   type UnitFacts,
 } from '@/lib/soo'
+import type { FactConflict, SourceMethod } from '@/lib/soo-extract'
+import FactReview, { type FactImpact, type Proposal } from './FactReview'
 
 /* The Sequence of Operation editor.
  *
@@ -39,8 +41,6 @@ import {
  * alongside what was included. A sequence you cannot audit for omissions is not
  * worth more than the Word file it replaced.
  */
-
-export type FactImpact = Partial<Record<FactKey, { on: number; off: number }>>
 
 const STATUS_TONE: Record<string, Tone> = { draft: 'slate', in_review: 'amber', approved: 'emerald' }
 const STATUS_LABEL: Record<string, string> = { draft: 'Draft', in_review: 'In review', approved: 'Approved' }
@@ -64,6 +64,10 @@ export default function SooEditor({
   const [doc, setDoc] = useState<SooDocument>(initial)
   const [facts, setFacts] = useState<UnitFacts>((initial.facts ?? {}) as UnitFacts)
   const [overrides, setOverrides] = useState<ClauseOverride[]>(initial.overrides ?? [])
+  const [provenance, setProvenance] = useState<Record<string, { page: number; snippet: string; method: SourceMethod }>>(
+    (initial.provenance ?? {}) as Record<string, { page: number; snippet: string; method: SourceMethod }>
+  )
+  const [conflicts, setConflicts] = useState<FactConflict[]>((initial.conflicts ?? []) as unknown as FactConflict[])
   const [meta, setMeta] = useState({
     customer_name: initial.customer_name,
     project_name: initial.project_name,
@@ -82,13 +86,14 @@ export default function SooEditor({
   )
 
   const blockers = useMemo(
-    () => approvalBlockers({ ...doc, facts, overrides }),
-    [doc, facts, overrides]
+    () => approvalBlockers({ ...doc, facts, overrides, conflicts: conflicts as unknown as Record<string, unknown>[] }),
+    [doc, facts, overrides, conflicts]
   )
 
   const dirty =
     JSON.stringify(facts) !== JSON.stringify(doc.facts) ||
     JSON.stringify(overrides) !== JSON.stringify(doc.overrides ?? []) ||
+    JSON.stringify(conflicts) !== JSON.stringify(doc.conflicts ?? []) ||
     meta.customer_name !== doc.customer_name ||
     meta.project_name !== doc.project_name ||
     (meta.unit_tag || null) !== doc.unit_tag
@@ -101,7 +106,7 @@ export default function SooEditor({
       const res = await fetch(`/api/admin/soo/${doc.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...meta, unit_tag: meta.unit_tag || null, facts, overrides }),
+        body: JSON.stringify({ ...meta, unit_tag: meta.unit_tag || null, facts, overrides, provenance, conflicts }),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) { setError(data?.error ?? 'Could not save.'); return }
@@ -120,7 +125,7 @@ export default function SooEditor({
         const s = await fetch(`/api/admin/soo/${doc.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...meta, unit_tag: meta.unit_tag || null, facts, overrides }),
+          body: JSON.stringify({ ...meta, unit_tag: meta.unit_tag || null, facts, overrides, provenance, conflicts }),
         })
         if (!s.ok) { setError((await s.json().catch(() => null))?.error ?? 'Could not save.'); return }
       }
@@ -154,14 +159,43 @@ export default function SooEditor({
     } finally { setBusy(null) }
   }
 
+  /**
+   * A human edit always wins and always says so.
+   *
+   * `method: 'human'` is recorded alongside the value so the document can state
+   * which facts a person typed rather than read — and so a later re-extraction
+   * can warn before discarding them. It also outranks every reader in
+   * PRECEDENCE, which is why an edit silently settles the conflict on that fact.
+   */
   function setFact(key: FactKey, raw: string) {
-    const spec = FACT_SPECS[key]
-    let value: unknown = raw === '' ? null : raw
-    if (raw !== '') {
-      if (spec.kind === 'boolean') value = raw === 'true'
-      else if (spec.kind === 'number') { const n = Number(raw.replace(/,/g, '')); value = Number.isFinite(n) ? n : null }
-    }
+    const value = coerceFactValue(key, raw)
     setFacts((f) => ({ ...f, [key]: value }))
+    setProvenance((p) => ({
+      ...p,
+      [key]: { page: 0, snippet: value === null ? 'cleared by hand' : 'entered by hand', method: 'human' },
+    }))
+    setConflicts((c) => c.filter((x) => x.fact !== key))
+  }
+
+  function resolveConflict(fact: FactKey, value: unknown) {
+    setFacts((f) => ({ ...f, [fact]: value }))
+    setProvenance((p) => ({ ...p, [fact]: { page: 0, snippet: 'chosen by hand', method: 'human' } }))
+    setConflicts((c) => c.filter((x) => x.fact !== fact))
+  }
+
+  function applyProposal(proposal: Proposal) {
+    // The proposal REPLACES the fact set rather than merging into it: a merge
+    // would leave values from a previous submittal sitting alongside the new
+    // one with no way to tell which document each came from.
+    setFacts(proposal.record.facts)
+    setProvenance(proposal.record.provenance as Record<string, { page: number; snippet: string; method: SourceMethod }>)
+    setConflicts(proposal.record.conflicts)
+    const f = proposal.record.facts
+    setMeta({
+      customer_name: f.customer ?? '',
+      project_name: f.project_name ?? '',
+      unit_tag: f.unit_tag ?? '',
+    })
   }
 
   function setOverride(key: string, text: string, original: string) {
@@ -221,74 +255,24 @@ export default function SooEditor({
         <div className="p-4 sm:p-6 grid grid-cols-1 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)] gap-5 items-start">
 
           {/* ── Left: the unit configuration ───────────────────────────── */}
-          <div className="space-y-5">
+          <div>
             {error && (
-              <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-3">
+              <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 mb-5">
                 <p className="text-[13px] text-rose-700 dark:text-rose-300">{error}</p>
               </div>
             )}
-
-            <div className="rounded-xl border border-hairline bg-surface">
-              <div className="px-5 py-4 border-b border-hairline">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted mb-1">Project</p>
-                <h2 className="text-[15px] font-semibold text-ink">Identity</h2>
-              </div>
-              <div className="p-5 space-y-3">
-                <Field label="Customer">
-                  <input value={meta.customer_name} disabled={readOnly}
-                    onChange={(e) => setMeta((m) => ({ ...m, customer_name: e.target.value }))} className={inputCls} />
-                </Field>
-                <Field label="Project">
-                  <input value={meta.project_name} disabled={readOnly}
-                    onChange={(e) => setMeta((m) => ({ ...m, project_name: e.target.value }))} className={inputCls} />
-                </Field>
-                <Field label="Unit tag">
-                  <input value={meta.unit_tag} disabled={readOnly}
-                    onChange={(e) => setMeta((m) => ({ ...m, unit_tag: e.target.value }))} className={inputCls} />
-                </Field>
-                {identity.map((k) => (
-                  <FactField key={k} k={k} facts={facts} onChange={setFact} disabled={readOnly} />
-                ))}
-              </div>
-            </div>
-
-            {/* Ordered by blast radius. See the file header. */}
-            <div className="rounded-xl border border-hairline bg-surface">
-              <div className="px-5 py-4 border-b border-hairline">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted mb-1">Confirm first</p>
-                <h2 className="text-[15px] font-semibold text-ink">Configuration that changes the sequence</h2>
-                <p className="text-[12.5px] text-ink-muted mt-1">
-                  Each of these switches clauses in or out. The counts show what the current value does.
-                </p>
-              </div>
-              <div className="p-5 space-y-3">
-                {gating.map((k) => (
-                  <FactField
-                    key={k}
-                    k={k}
-                    facts={facts}
-                    onChange={setFact}
-                    disabled={readOnly}
-                    impact={impact[k]}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-hairline bg-surface">
-              <div className="px-5 py-4 border-b border-hairline">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted mb-1">Reference</p>
-                <h2 className="text-[15px] font-semibold text-ink">Design conditions</h2>
-                <p className="text-[12.5px] text-ink-muted mt-1">
-                  Printed on the document. These never decide which clauses apply.
-                </p>
-              </div>
-              <div className="p-5 space-y-3">
-                {design.map((k) => (
-                  <FactField key={k} k={k} facts={facts} onChange={setFact} disabled={readOnly} />
-                ))}
-              </div>
-            </div>
+            <FactReview
+              docId={doc.id}
+              facts={facts}
+              provenance={provenance}
+              conflicts={conflicts}
+              impact={impact}
+              readOnly={readOnly}
+              submittalPath={doc.submittal_path}
+              onChange={setFact}
+              onExtracted={applyProposal}
+              onResolveConflict={resolveConflict}
+            />
           </div>
 
           {/* ── Right: the assembled document ──────────────────────────── */}
@@ -429,75 +413,6 @@ export default function SooEditor({
 const inputCls =
   'w-full h-9 px-2.5 rounded-lg bg-surface-soft border border-hairline text-[13px] text-ink outline-none focus:border-brand disabled:opacity-60'
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-[12px] text-ink-secondary mb-1">{label}</span>
-      {children}
-      {hint && <span className="block text-[11.5px] text-ink-muted mt-1">{hint}</span>}
-    </label>
-  )
-}
-
-function FactField({
-  k, facts, onChange, disabled, impact,
-}: {
-  k: FactKey
-  facts: UnitFacts
-  onChange: (k: FactKey, v: string) => void
-  disabled: boolean
-  impact?: { on: number; off: number }
-}) {
-  const spec = FACT_SPECS[k]
-  const raw = (facts as Record<string, unknown>)[k]
-  const value = raw === null || raw === undefined ? '' : String(raw)
-  const unknown = raw === null || raw === undefined
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-[12px] text-ink-secondary">{spec.label}</span>
-        {spec.unit && <span className="text-[11px] text-ink-muted">({spec.unit})</span>}
-        <div className="flex-1" />
-        {impact && (
-          <span className="text-[10.5px] tabular-nums text-ink-muted">
-            <b className="font-semibold text-ink-secondary">{impact.on}</b> on · <b className="font-semibold text-ink-secondary">{impact.off}</b> off
-          </span>
-        )}
-        {unknown && impact && (
-          <span className="text-[10.5px] font-semibold px-1.5 py-[1px] rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            unknown
-          </span>
-        )}
-      </div>
-
-      {spec.kind === 'boolean' && (
-        <select value={value} onChange={(e) => onChange(k, e.target.value)} disabled={disabled} className={inputCls}>
-          <option value="">Unknown</option>
-          <option value="true">Yes</option>
-          <option value="false">No</option>
-        </select>
-      )}
-
-      {spec.kind === 'enum' && (
-        <select value={value} onChange={(e) => onChange(k, e.target.value)} disabled={disabled} className={inputCls}>
-          <option value="">Unknown</option>
-          {spec.options?.map((o) => <option key={o} value={o}>{enumLabel(o)}</option>)}
-        </select>
-      )}
-
-      {(spec.kind === 'number' || spec.kind === 'string') && (
-        <input
-          value={value}
-          onChange={(e) => onChange(k, e.target.value)}
-          disabled={disabled}
-          inputMode={spec.kind === 'number' ? 'decimal' : undefined}
-          className={inputCls}
-        />
-      )}
-    </div>
-  )
-}
 
 function countClauses(r: AssemblyResult): number {
   let n = 0

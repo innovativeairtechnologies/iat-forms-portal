@@ -2,6 +2,49 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-07 — SOO Phase 2: the portal reads the submittal
+
+Upload the DryWare Sales Submittal PDF on `/admin/soo/[id]` and the portal proposes the unit's
+configuration. Verified against the real 45-page Ferrara document: **34 of 34 target facts
+extracted, zero unrecognised Schedule lines** (`scripts/verify-soo-extract.mjs`, 76 checks). The
+extract route **writes no facts** — it returns a proposal a human confirms, so re-running it is free
+and changes nothing.
+
+**Two readers, deliberately.** Deterministic parsers do most of the work; a model call is a
+*redundant second reader* over the same pages. Not belt-and-braces: with one source a wrong fact is
+indistinguishable from a right one and the reviewer has only a page citation, whereas with two the
+review table can mark a fact "Schedule + model number agree" (skim) versus "only the second reader
+saw this" (read it) — and that triage is what makes a fifty-row table get reviewed instead of
+rubber-stamped. It also turns parser breakage into visible conflicts rather than silent nulls. The
+model never overrides a parser; it can only add or disagree.
+
+**The document fought back in three specific ways, all now handled.** The Schedule is `Label Value`
+with no delimiter ("Desiccant Wheel Size 965 X 200"), so the parser matches *known label prefixes*
+rather than guessing where the label ends — an unrecognised line becomes a visible `unmapped` entry
+instead of a plausible mis-split. The two-column spec pages put several bullets on one text line, so
+bullets split on the glyph, not newlines. And ours-vs-theirs is decided by the **IAT footer**, not
+keywords: matching "New York Blower" to spot vendor literature also matches our own Process Fan
+page, which names the manufacturer in its spec list.
+
+**The 13-page guide spec is dropped in code, not by prompting.** It is generic boilerplate
+("provide freezestat set at 35°F") written for a hypothetical unit — plausible,
+authoritative-sounding, on-topic and wrong, which makes it the worst extraction hazard in the
+document. Deleting the pages is verifiable; asking a model to ignore thirteen pages of them is not.
+The flow diagrams are images (37 words each), so no fact may come from them either.
+
+**Refusing to guess is a feature.** The submittal says "BACnet" without saying MS/TP or IP, so the
+protocol is left unset and reported for a human — a coin flip printed as fact in a controls contract
+is worse than a blank. Same for the plenum pressure transmitters and wheel drive, which the
+submittal never mentions: they stay unknown, their clauses block, and a person fills them in. A
+mutation test corrupts the model number and proves the cross-check actually fires.
+
+The review table is ordered by **blast radius**, never document order: conflicts first, then gating
+facts each annotated "N on · M off", then identity, design conditions, and unrecognised lines. Every
+human edit records `method: 'human'`, which outranks every reader and settles that fact's conflict.
+Extraction uses structured outputs (`claude-opus-5` + a schema), so "was it valid JSON" stops being
+a failure mode; `stop_reason` is checked before the output is read, and a refused or truncated read
+discards the second reader rather than silently reporting a unit with fewer options than it has.
+
 ## 2026-08-07 — SOO: three holes found by the first real test unit
 
 A hand-built test configuration (gas reactivation, DX pre-cooling, no rotor rotation alarm package)
