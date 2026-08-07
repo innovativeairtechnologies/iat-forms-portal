@@ -1,7 +1,7 @@
 # Sequence of Operation builder
 
 **Route:** `/admin/soo` · **Perm:** `soo` (sales + engineering; approval = engineering or admin)
-**Migration:** 084 · **Shipped:** 2026-08-06 (Phase 1)
+**Migration:** 084 · **Shipped:** 2026-08-07 (Phase 1)
 
 Turns a unit configuration into the project Sequence of Operation — the controls narrative that
 goes to the controls contractor and BAS integrator. Phase 1 is manual fact entry; Phase 2 adds

@@ -2,7 +2,7 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
-## 2026-08-06 — Sequence of Operation builder (Phase 1: clause library + deterministic assembly)
+## 2026-08-07 — Sequence of Operation builder (Phase 1: clause library + deterministic assembly)
 
 New `/admin/soo` (Sales rail → **Sequences**; perm `soo`, seeded for sales + engineering by
 migration 084). Enter a unit's configuration and the portal assembles the project Sequence of
