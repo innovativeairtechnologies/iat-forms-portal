@@ -301,7 +301,13 @@ export function ExerciseCard({
   return (
     <section className="rounded-xl border border-hairline bg-surface p-5">
       <Overline>Practice</Overline>
-      <h3 className="mt-1.5 text-[16px] font-semibold tracking-[-0.011em] text-ink">{title}</h3>
+      {/* Type styles go on the span, not the h3. `.learn-prose-interactive h3`
+          in globals.css sets `font-size: inherit; font-weight: inherit` at
+          specificity (0,1,1), which beats a Tailwind utility (0,1,0) — so
+          classes put directly on the heading are silently dropped. */}
+      <h3 className="mt-1.5">
+        <span className="text-[16px] font-semibold tracking-[-0.011em] text-ink">{title}</span>
+      </h3>
       <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">{description}</p>
       <div className="mt-4">{children}</div>
     </section>

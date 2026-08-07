@@ -58,8 +58,11 @@ export default function Certificate() {
     return (
       <section className="rounded-xl border border-hairline bg-surface p-5">
         <Overline>Certificate — not yet earned</Overline>
-        <h3 className="mt-1.5 text-[16px] font-semibold tracking-[-0.011em] text-ink">
-          {state.subjectsComplete} of {state.subjectsTotal} subjects complete
+        {/* Span carries the type — see the note in WidgetFrame's ExerciseCard. */}
+        <h3 className="mt-1.5">
+          <span className="text-[16px] font-semibold tracking-[-0.011em] text-ink">
+            {state.subjectsComplete} of {state.subjectsTotal} subjects complete
+          </span>
         </h3>
 
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-strong">
