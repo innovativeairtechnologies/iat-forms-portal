@@ -747,7 +747,10 @@ export type BlockedClause = {
 export function clauseSummary(clause: Clause): string {
   const heading = clause.heading?.trim().replace(/:\s*$/, '')
   if (heading) return heading
-  const body = clause.body.trim()
+  // Strip unresolved placeholders — a receipt reading "adjusted over
+  // {{protocol}}" leaks template syntax into a customer-facing document. The
+  // missing value is named in `needs` instead.
+  const body = clause.body.replace(SLOT_RE, '…').trim()
   const firstStop = body.indexOf('. ')
   const first = firstStop > 0 ? body.slice(0, firstStop + 1) : body
   return first.length > 96 ? `${first.slice(0, 93).trimEnd()}…` : first
@@ -1145,6 +1148,73 @@ export type SooDocument = {
   updated_at: string
 }
 
+// ─── What makes a document incomplete ────────────────────────────────────────
+
+export type DocumentGap = {
+  kind: 'uncovered' | 'blocked' | 'setpoint'
+  /** Short name for the thing that is missing. */
+  label: string
+  /** Why it is missing, and what would fix it. */
+  detail: string
+}
+
+/**
+ * Every reason this document is not whole, in one list.
+ *
+ * ── Why this exists ────────────────────────────────────────────────────────
+ * `uncovered`, `blocked` and `unsetSetpoints` are three arrays that all mean
+ * "something is missing from this document", and they were rendered in three
+ * separate places. The print view got the `uncovered` banner and not the
+ * `blocked` one, so a Ferrara draft shipped without its Shutdown Sequence, its
+ * BAS interface section, and the clauses that start the wheel and the react fan
+ * — every one correctly withheld, and none of it visible on the PDF.
+ *
+ * That is the same silent-omission failure the whole design exists to prevent,
+ * reintroduced by having three lists and three render sites. There is now ONE
+ * function. Anything that tells a human whether a document is finished — the
+ * editor, the print view, the approval gate — reads it, so a new gap kind
+ * cannot be added to one surface and forgotten on another.
+ */
+export function documentGaps(result: AssemblyResult): DocumentGap[] {
+  const out: DocumentGap[] = []
+
+  for (const u of result.uncovered) {
+    out.push({
+      kind: 'uncovered',
+      label: `${FACT_SPECS[u.fact].label}: ${u.value}`,
+      detail: `${u.why}. Those clauses are absent, not inapplicable — the master sequence has nothing written for this configuration.`,
+    })
+  }
+
+  // Grouped by the fact they need: twelve blocked clauses from four unknown
+  // facts reads as four problems to fix, not twelve.
+  const byNeed = new Map<FactKey, string[]>()
+  for (const b of result.blocked) {
+    for (const need of b.needs) {
+      const list = byNeed.get(need) ?? []
+      list.push(b.summary)
+      byNeed.set(need, list)
+    }
+  }
+  for (const [need, clauses] of byNeed) {
+    out.push({
+      kind: 'blocked',
+      label: FACT_SPECS[need].label,
+      detail: `Not known, so ${clauses.length} clause${clauses.length === 1 ? '' : 's'} ${clauses.length === 1 ? 'is' : 'are'} withheld: ${clauses.slice(0, 4).join('; ')}${clauses.length > 4 ? `; and ${clauses.length - 4} more` : ''}.`,
+    })
+  }
+
+  for (const key of result.unsetSetpoints) {
+    out.push({
+      kind: 'setpoint',
+      label: PROJECT_SETPOINTS[key].label,
+      detail: 'Still marked TBD in the document text. Enter it or agree it at commissioning.',
+    })
+  }
+
+  return out
+}
+
 /** Apply human overrides onto an assembly result. Pure. */
 export function applyOverrides(result: AssemblyResult, overrides: ClauseOverride[] | null): AssemblyResult {
   if (!overrides?.length) return result
@@ -1179,17 +1249,8 @@ export function approvalBlockers(doc: SooDocument): string[] {
   const result = doc.assembled
   if (result) {
     if (result.sections.length === 0) out.push('No clauses were included — check the unit configuration.')
-    if (result.blocked.length > 0) {
-      out.push(
-        `${result.blocked.length} clause${result.blocked.length === 1 ? '' : 's'} could not be resolved. Fill in the facts they need, or the sequence will ship with a hole in it.`
-      )
-    }
-    for (const key of result.unsetSetpoints) {
-      out.push(`${PROJECT_SETPOINTS[key].label} is still marked TBD.`)
-    }
-    for (const u of result.uncovered) {
-      out.push(`${u.why} (this unit: ${u.value}). The master library has nothing to say about it.`)
-    }
+    // Same source as the editor and the print view — see documentGaps.
+    for (const gap of documentGaps(result)) out.push(`${gap.label} — ${gap.detail}`)
     const unnoted = constantOverrides(result, doc.overrides).filter((o) => !o.note?.trim())
     for (const o of unnoted) {
       out.push(`Clause "${o.clause_key}" overrides text containing a control constant and needs a note explaining why.`)

@@ -28,6 +28,7 @@ import {
   blankFacts,
   clauseImpact,
   constantOverrides,
+  documentGaps,
   eachRendered,
   evaluateRequires,
   gatingFactKeys,
@@ -314,6 +315,66 @@ section('Regression — the 2026-08-07 test unit')
 ok('the Ferrara unit reports nothing uncovered', base.uncovered.length === 0, JSON.stringify(base.uncovered))
 ok('the Ferrara wheel still starts and is still proven', has(base, 'wheel_start_vfd') && has(base, 'wheel_rotation_proving'))
 
+// ─── 4c. Gaps are ONE list ───────────────────────────────────────────────────
+// The 2026-08-07 v2 test printed a Ferrara draft with no Shutdown Sequence, no
+// BAS interface section, and no clause starting the wheel or the react fan —
+// all twelve correctly WITHHELD because four facts were genuinely unknown, and
+// none of it visible on the PDF. The print view rendered `uncovered` and not
+// `blocked`; two sibling lists, two render sites, one of them forgotten.
+// documentGaps() is now the single source, and these assert it stays whole.
+
+section('Document gaps — the single completeness source')
+
+{
+  // Exactly what extraction proposes for Ferrara with nothing hand-filled: the
+  // submittal never states the protocol, the wheel drive, or either plenum
+  // pressure transmitter, and the extractor correctly refuses to guess.
+  const asExtracted = {
+    ...FERRARA,
+    bas_protocol: null,
+    wheel_drive: null,
+    has_process_plenum_pressure_xmtr: null,
+    has_react_plenum_pressure_xmtr: null,
+  }
+  const r = assemble(SOO_MASTER_LIBRARY, asExtracted)
+  const gaps = documentGaps(r)
+
+  ok('unknown facts withhold clauses', r.blocked.length > 0, `${r.blocked.length} blocked`)
+  ok('the wheel-start clause is withheld, not silently dropped', r.blocked.some((b) => b.needs.includes('wheel_drive')))
+  ok('the whole Shutdown Sequence is withheld', r.blocked.some((b) => b.summary === 'Shutdown Sequence'))
+  ok('the BAS interface section is withheld', r.blocked.some((b) => b.summary === 'Remote / BAS Interface'))
+
+  // The load-bearing assertion: every blocked clause reaches the gap list.
+  ok('EVERY blocked clause surfaces as a gap', gaps.some((g) => g.kind === 'blocked'), JSON.stringify(gaps.map((g) => g.kind)))
+  const needsCovered = new Set(r.blocked.flatMap((b) => b.needs).map((f) => FACT_SPECS[f].label))
+  const gapLabels = new Set(gaps.filter((g) => g.kind === 'blocked').map((g) => g.label))
+  ok('no blocked fact is missing from the gap list', [...needsCovered].every((l) => gapLabels.has(l)), [...needsCovered].filter((l) => !gapLabels.has(l)).join(', '))
+  ok('an incomplete document cannot be approved', approvalBlockers({ ...blankDoc(), facts: asExtracted, assembled: r }).length > 0)
+
+  // A gap must never be mistaken for a clean exclusion.
+  const excludedKeys = new Set(r.excluded.map((e) => e.key))
+  ok('withheld clauses are NOT in the "not applicable" list', r.blocked.every((b) => !excludedKeys.has(b.key)))
+  ok('gap text never leaks a {{placeholder}}', gaps.every((g) => !g.detail.includes('{{') && !g.label.includes('{{')), gaps.map((g) => g.detail).filter((d) => d.includes('{{')).join(' | '))
+}
+
+{
+  // All three kinds reach the one list — a new kind added to the assembler but
+  // not to documentGaps would be invisible on every surface at once.
+  const gas = assemble(SOO_MASTER_LIBRARY, { ...FERRARA, reactivation: 'gas' })
+  ok('an uncovered configuration surfaces as a gap', documentGaps(gas).some((g) => g.kind === 'uncovered'))
+  const spLib = {
+    version: 98,
+    sections: [{ key: 's', number: 1, title: 'T', clauses: [{
+      key: 'gap_sp', order: 1, body: 'Maintain {{dp}}.',
+      slots: { dp: { from: 'project', key: 'space_dewpoint_setpoint_f', required: true } },
+    }] }],
+  }
+  const sp = assemble(spLib, blankFacts(), {})
+  ok('an unset required setpoint surfaces as a gap', documentGaps(sp).some((g) => g.kind === 'setpoint'))
+}
+
+ok('a fully-specified Ferrara document has NO gaps', documentGaps(base).length === 0, JSON.stringify(documentGaps(base)))
+
 // ─── 5. Conditional inclusion — mutation-tested ──────────────────────────────
 
 section('Conditional inclusion')
@@ -505,7 +566,7 @@ ok('an unassembled document blocks', approvalBlockers({ ...blankDoc(), facts: FE
 ok('unconfirmed facts block', approvalBlockers({ ...blankDoc(), assembled: base }).some((b) => b.includes('not been confirmed')))
 {
   const r = assemble(SOO_MASTER_LIBRARY, { ...FERRARA, reactivation: null })
-  ok('a blocked clause blocks approval', approvalBlockers({ ...blankDoc(), facts: FERRARA, assembled: r }).some((b) => b.includes('could not be resolved')))
+  ok('a blocked clause blocks approval', approvalBlockers({ ...blankDoc(), facts: FERRARA, assembled: r }).some((b) => b.includes('withheld')), approvalBlockers({ ...blankDoc(), facts: FERRARA, assembled: r }).join(' | '))
 }
 {
   const doc = { ...blankDoc(), facts: FERRARA, assembled: base, conflicts: [{ fact: 'reactivation' }] }

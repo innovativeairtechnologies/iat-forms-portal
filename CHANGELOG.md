@@ -2,6 +2,32 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-07 — SOO: withheld clauses now print, and "incomplete" has one definition
+
+A second real test — the Ferrara unit, extracted rather than hand-entered — printed a draft with
+**no Shutdown Sequence, no Remote/BAS Interface section, and no clause starting the desiccant wheel
+or the react fan.** Twelve clauses in total, every one of them correctly withheld: the submittal
+never states the BAS protocol, the wheel drive, or either plenum pressure transmitter, extraction
+rightly refused to guess, and the assembler blocked everything depending on them. The print view
+then dropped the evidence.
+
+This is the same leak as the gas-unit case, one commit later and one list over. `uncovered`,
+`blocked` and `unsetSetpoints` all mean "something is missing from this document", and they were
+rendered in three separate places — the print view got the `uncovered` banner and not the `blocked`
+one. Fixing the symptom again would have left the shape that caused it.
+
+`documentGaps()` is now the single definition of *incomplete*, and the editor, the print view and
+the approval gate all read it, so a gap kind cannot be added to one surface and forgotten on
+another. On the page it replaces the DRAFT banner rather than sitting under it — "draft"
+understates a document with whole sections absent — and it says plainly that those clauses are
+**absent, not inapplicable**, since they are deliberately not in the "not applicable" list either.
+Gaps are grouped by the fact they need, so twelve withheld clauses read as the four questions that
+actually have to be answered.
+
+Also: the receipt no longer leaks `{{placeholder}}` syntax from an unresolved clause into a
+customer-facing document. Twelve new checks pin all of it, including "every blocked clause surfaces
+as a gap" and "withheld clauses are never in the not-applicable list".
+
 ## 2026-08-07 — SOO Phase 2: the portal reads the submittal
 
 Upload the DryWare Sales Submittal PDF on `/admin/soo/[id]` and the portal proposes the unit's

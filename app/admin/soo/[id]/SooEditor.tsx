@@ -11,6 +11,7 @@ import {
   applyOverrides,
   approvalBlockers,
   coerceFactValue,
+  documentGaps,
   type AssemblyResult,
   type ClauseOverride,
   type FactKey,
@@ -84,6 +85,7 @@ export default function SooEditor({
     () => (assembled ? applyOverrides(assembled, overrides) : null),
     [assembled, overrides]
   )
+  const gaps = useMemo(() => (withOverrides ? documentGaps(withOverrides) : []), [withOverrides])
 
   const blockers = useMemo(
     () => approvalBlockers({ ...doc, facts, overrides, conflicts: conflicts as unknown as Record<string, unknown>[] }),
@@ -340,37 +342,26 @@ export default function SooEditor({
                   </div>
                 </div>
 
-                {withOverrides.uncovered.length > 0 && (
+                {/* Every reason this document is not whole, from the ONE
+                    function the print view and the approval gate also read.
+                    Two separate cards here is how the print view came to show
+                    one list and not the other. */}
+                {gaps.length > 0 && (
                   <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-5 py-4">
-                    <p className="text-[13px] font-semibold text-rose-700 dark:text-rose-300 mb-2">
-                      The master library has nothing for this configuration
+                    <p className="text-[13px] font-semibold text-rose-700 dark:text-rose-300 mb-1">
+                      Incomplete — {gaps.length} {gaps.length === 1 ? 'item is' : 'items are'} missing
                     </p>
-                    {withOverrides.uncovered.map((u) => (
-                      <p key={u.fact} className="text-[12.5px] text-rose-700 dark:text-rose-300">
-                        · {u.why} — this unit is {u.value}.
-                      </p>
-                    ))}
-                  </div>
-                )}
-
-                {withOverrides.blocked.length > 0 && (
-                  <div className="rounded-xl border border-hairline bg-surface">
-                    <div className="px-5 py-4 border-b border-hairline">
-                      <h3 className="text-[13.5px] font-semibold text-ink">
-                        Unresolved — {withOverrides.blocked.length} clause{withOverrides.blocked.length === 1 ? '' : 's'}
-                      </h3>
-                      <p className="text-[12.5px] text-ink-muted mt-1">
-                        These are missing from the document until the facts they need are filled in.
-                      </p>
-                    </div>
-                    <div className="p-5 space-y-2">
-                      {withOverrides.blocked.map((b) => (
-                        <div key={b.key} className="text-[12.5px]">
-                          <span className="text-ink-secondary">{b.summary}</span>
-                          <span className="text-ink-muted"> — {b.why}</span>
-                        </div>
+                    <p className="text-[12px] text-rose-700 dark:text-rose-300 opacity-90 mb-2.5">
+                      These clauses are absent, not inapplicable — they are not in the
+                      “not applicable” list either. This prints on the document until it is resolved.
+                    </p>
+                    <ul className="space-y-1.5">
+                      {gaps.map((g, i) => (
+                        <li key={i} className="text-[12.5px] text-rose-700 dark:text-rose-300">
+                          <b className="font-semibold">{g.label}</b> — {g.detail}
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
 

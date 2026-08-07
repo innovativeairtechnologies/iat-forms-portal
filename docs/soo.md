@@ -33,6 +33,21 @@ list prints on the document ("Not applicable to this unit"), so a reader can alw
 applicable* from *nobody wrote this*. A `coverage` rule turns "the library has no gas reactivation
 sequence" into a loud blocker instead of a document quietly missing its most important section.
 
+### One definition of "incomplete" — `documentGaps()`
+
+`uncovered`, `blocked` and `unsetSetpoints` all mean *something is missing from this document*.
+They were rendered in three separate places, and the print view got one of them — so a Ferrara
+draft printed without its Shutdown Sequence, its BAS interface section, and the clauses that start
+the wheel and the react fan. All twelve correctly withheld (four facts the submittal never states),
+none of it visible on the page.
+
+**`documentGaps(result)` is now the only definition**, read by the editor, the print view *and*
+`approvalBlockers()`. Add a new gap kind there and every surface picks it up; add it to the
+assembler alone and the tests fail. On the printed page it replaces the DRAFT banner rather than
+sitting beneath it, and states that the clauses are **absent, not inapplicable** — they are
+deliberately excluded from the "not applicable" list, which means *this unit isn't configured for
+it*, an entirely different claim.
+
 ### What the 2026-08-07 test unit taught us
 
 The first hand-built test configuration (gas reactivation, DX pre-cooling, no rotor alarm package)

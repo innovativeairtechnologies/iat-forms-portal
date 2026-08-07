@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import PrintButton from '@/components/PrintButton'
-import { applyOverrides, type AssemblyResult, type RenderedClause, type SooDocument, type UnitFacts } from '@/lib/soo'
+import { applyOverrides, documentGaps, type AssemblyResult, type RenderedClause, type SooDocument, type UnitFacts } from '@/lib/soo'
 
 /* Print / save-as-PDF view of a Sequence of Operation — the deliverable that
    goes to the controls contractor. Lives under /print (outside the admin shell)
@@ -59,6 +59,7 @@ export default async function SooPrintPage(props: { params: Promise<{ id: string
   const result = applyOverrides(doc.assembled as AssemblyResult, doc.overrides)
   const facts = (doc.facts ?? {}) as UnitFacts
   const approved = doc.status === 'approved'
+  const gaps = documentGaps(result)
 
   return (
     <div className="min-h-screen bg-zinc-100 print:bg-white text-zinc-800">
@@ -75,7 +76,7 @@ export default async function SooPrintPage(props: { params: Promise<{ id: string
       </div>
 
       <div className="max-w-[820px] mx-auto bg-white shadow-sm print:shadow-none my-6 print:my-0 px-10 py-10 print:px-0 print:py-0">
-        {!approved && (
+        {!approved && gaps.length === 0 && (
           <div className="mb-4 border border-amber-300 bg-amber-50 px-4 py-2.5 rounded">
             <p className="text-[12px] font-semibold text-amber-800">
               DRAFT — not approved for construction or controls programming
@@ -83,29 +84,32 @@ export default async function SooPrintPage(props: { params: Promise<{ id: string
           </div>
         )}
 
-        {/* The loudest thing on the page when it applies, and it prints.
-            This warning was computed correctly from day one but was only shown
-            in the editor, so a gas unit produced a PDF with no reactivation
-            sequence that read as complete — the exact failure the whole design
-            exists to prevent, leaking at the last step. It belongs ABOVE the
-            sequence: someone who reads no further must still see it. */}
-        {result.uncovered.length > 0 && (
+        {/* The loudest thing on the page when it applies, and it PRINTS.
+            Every gap comes from documentGaps() — the one function the editor and
+            the approval gate also read. Rendering only part of it here is how a
+            Ferrara draft once printed without its Shutdown Sequence, its BAS
+            interface section, and the clauses that start the wheel and the react
+            fan: all correctly withheld, none of it visible on the page.
+            This belongs ABOVE the sequence — someone who reads no further must
+            still see it — and it replaces the DRAFT banner rather than sitting
+            under it, because "draft" understates a document with holes in it. */}
+        {gaps.length > 0 && (
           <div className="mb-6 border-2 border-rose-400 bg-rose-50 px-4 py-3.5 rounded">
-            <p className="text-[12.5px] font-semibold text-rose-800 mb-1.5">
-              INCOMPLETE — this sequence is missing {result.uncovered.length === 1 ? 'a section' : 'sections'}
+            <p className="text-[12.5px] font-semibold text-rose-800 mb-1">
+              INCOMPLETE — do not issue for construction or controls programming
             </p>
-            <ul className="space-y-1">
-              {result.uncovered.map((u) => (
-                <li key={u.fact} className="text-[11.5px] text-rose-700">
-                  {u.why} — this unit is <strong className="font-semibold">{u.value}</strong>.
+            <p className="text-[11px] text-rose-700 mb-2.5">
+              {gaps.length} {gaps.length === 1 ? 'item is' : 'items are'} missing from this sequence.
+              The clauses they cover are <strong className="font-semibold">absent</strong>, not
+              inapplicable — they are not in the &ldquo;not applicable&rdquo; list below either.
+            </p>
+            <ul className="space-y-1.5">
+              {gaps.map((g, i) => (
+                <li key={i} className="text-[11.5px] text-rose-700">
+                  <strong className="font-semibold">{g.label}</strong> — {g.detail}
                 </li>
               ))}
             </ul>
-            <p className="text-[11px] text-rose-700 mt-2">
-              Do not issue this document for controls programming. The master sequence has no
-              content for the configuration above, so the corresponding clauses are absent
-              rather than not applicable.
-            </p>
           </div>
         )}
 
