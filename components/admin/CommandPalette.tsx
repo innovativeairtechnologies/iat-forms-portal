@@ -66,6 +66,7 @@ const STATIC: Item[] = [
   // not `tools`, to match the gating on that page.
   { id: 'nav-sizing',  label: 'Sizing Studio',    group: 'Go to', icon: Gauge,           href: '/admin/sizing-studio', keywords: 'psychrometric sizing selection unit dehumidifier grains load chart', perm: 'sizing' },
   { id: 'nav-diagram', label: 'Application Diagrams', group: 'Go to', icon: Workflow,    href: '/admin/diagram-studio', keywords: 'airflow figure drawing proposal submittal schematic diagram studio', perm: 'diagrams' },
+  { id: 'nav-soo',     label: 'Sequences of Operation', group: 'Go to', icon: Workflow,  href: '/admin/soo', keywords: 'soo sequence of operation controls narrative submittal bas plc contractor commissioning', perm: 'soo' },
   // Training (IAT Learn) — re-listed 2026-08-06 when the nav group was un-parked
   // for the Control Panel Crash Course. Learner entries carry no perm on purpose:
   // /admin/learn is in OPEN_ADMIN_PREFIXES, open to every admin-surface role.

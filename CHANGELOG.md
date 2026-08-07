@@ -2,6 +2,34 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-06 — Sequence of Operation builder (Phase 1: clause library + deterministic assembly)
+
+New `/admin/soo` (Sales rail → **Sequences**; perm `soo`, seeded for sales + engineering by
+migration 084). Enter a unit's configuration and the portal assembles the project Sequence of
+Operation from a master clause library — the controls narrative that goes to the controls
+contractor. **Assembly is deterministic: no AI selects clauses or writes setpoints.** The master
+SOO (decomposed from the Trane Florida / Ferrara Orangeburg document into ~100 clauses in
+`lib/soo-master.ts`) carries a `requires` predicate per clause, so every "(where provided)" hedge
+in the old Word master became a condition and the generated document states things outright.
+
+The safety property throughout: **nothing disappears silently.** An unknown fact *blocks* its
+clauses (listed, and approval refuses) rather than dropping them; a non-matching fact *excludes*
+with a printed reason ("Not applicable to this unit" renders on the document); a configuration the
+library has no content for (e.g. gas reactivation — only steam is authored) is a loud blocker, not
+a quietly thinner document. Control constants (120°F react permissive, 40°F/35°F freeze stages,
+300°F ceiling) live in a registry with rationales — editing a clause that carries one requires a
+written note, enforced server-side at approval. `draft → in_review → approved` mirrors proposals,
+but approval is engineering-or-admin rather than admin-only: signing a control narrative is an
+engineering judgement. The library is DB-editable with append-only versioning
+(`soo_library_versions`); approving pins the version, so an approved document re-renders exactly
+as signed even after the master moves on.
+
+Verified by `scripts/verify-soo.mjs` — 66 checks including mutation tests — and by diffing the
+generated Ferrara document against the real .docx: 102/110 paragraphs exact, the 8 differences all
+being hedges resolving to definite statements. Print view at `/print/soo/[id]` with a DRAFT banner
+until approved. Phase 2 (extracting the facts from the DryWare submittal PDF) is next; the
+Ferrara fact set in the verify script is its ground truth. Docs: `docs/soo.md`.
+
 ## 2026-08-06 — Internal Apps: Desiccant Dehumidification HMI (live process-flow diagram)
 
 A new self-contained tool at `/tools/desiccant-wheel-hmi.html`, surfaced in the **Internal Apps**

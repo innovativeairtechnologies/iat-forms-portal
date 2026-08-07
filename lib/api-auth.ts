@@ -453,6 +453,53 @@ export async function requireProposalsAuth(
 }
 
 /**
+ * Guard for the Sequence of Operation API (/admin/soo, migration 084).
+ * Matrix-backed on `soo` — the same perm middleware gates the page on — so the
+ * page and the API can never disagree. Its own named guard, per
+ * requireDealsAuth's note above.
+ *
+ * ⚠️ This app's middleware matcher does NOT include /api, so these routes are
+ * fully public until they call this. There is no protected-by-default here.
+ *
+ * Approval ({ approve: true }) additionally requires ADMIN or ENGINEERING, and
+ * is deliberately WIDER than the proposals gate and narrower than the perm
+ * itself. An approved SOO is a controls contract: the controls contractor
+ * programs from it and commissioning checks against it. Deciding it is correct
+ * is an engineering judgement, not an administrative one — so engineering can
+ * sign it off without being made a full admin, while sales, who can create and
+ * edit the document, cannot self-approve.
+ *
+ * Returns the actor's user id (needed to stamp submitted_by / approved_by), or
+ * a NextResponse error to return directly.
+ */
+export async function requireSooAuth(
+  opts: { approve?: boolean } = {}
+): Promise<{ userId: string } | NextResponse> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'soo', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (opts.approve && role !== 'admin' && role !== 'engineering') {
+    return NextResponse.json(
+      { error: 'Only engineering or an admin can approve a Sequence of Operation.' },
+      { status: 403 },
+    )
+  }
+  return { userId: user.id }
+}
+
+/**
  * Guard for the marketing-calendar API (/admin/marketing, migration 071).
  * Matrix-backed on `marketing_calendar` — the same perm middleware gates the
  * page on — so the page and the API can never disagree. Its own named guard,

@@ -151,6 +151,16 @@ export type Perm =
   // falls back to 'dashboard', which five scoped roles hold, so omitting it
   // would open payroll to all of them rather than fail closed.
   | 'compensation'
+  // /admin/soo — the Sequence of Operation builder (migration 084). Sales starts
+  // the document (they download the submittal from DryWare); engineering reviews
+  // it. Seeded for both. APPROVAL is additionally role-gated in requireSooAuth
+  // ({ approve: true } → admin OR engineering) — unlike 'proposals', which is
+  // admin-only, because signing off a control narrative is an engineering
+  // judgement. Sales still cannot self-approve.
+  // Its OWN perm rather than sharing 'proposals' or 'diagrams': an SOO is a
+  // controls contract the field commissions against, which is a different trust
+  // boundary from a sales document and should be revocable on its own.
+  | 'soo'
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -188,6 +198,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   marketing_calendar: 'Marketing Calendar',
   learn_admin: 'Learn — manage content',
   compensation: 'Compensation Review',
+  soo: 'Sequence of Operation',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -210,10 +221,10 @@ export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
 // is the source of truth and this stays the seed + the fail-safe fallback used
 // whenever the DB matrix is unavailable (table missing / read error).
 export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
-  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies', 'diagrams', 'proposals'],
+  sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies', 'diagrams', 'proposals', 'soo'],
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools', 'compensation'],
   marketing: ['dashboard', 'presentations', 'jerry', 'tools', 'case_studies', 'marketing_calendar', 'diagrams'],
-  engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools', 'diagrams'],
+  engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools', 'diagrams', 'soo'],
   production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib', 'production_board'],
   production: [],
 }
@@ -281,6 +292,7 @@ export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
   { perm: 'customers', href: '/admin/customers' },
   { perm: 'case_studies', href: '/admin/case-studies' },
   { perm: 'proposals', href: '/admin/proposals' },
+  { perm: 'soo', href: '/admin/soo' },
   { perm: 'diagrams', href: '/admin/diagram-studio' },
   { perm: 'deals', href: '/admin/deals' },
   { perm: 'gantt', href: '/admin/gantt' },
@@ -385,6 +397,10 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // touching the deals trust boundary.
   { prefix: '/admin/case-studies', perm: 'case_studies' },
   { prefix: '/admin/proposals', perm: 'proposals' },
+  // Sequence of Operation builder (084). MUST be listed: an unmapped /admin/*
+  // path falls back to 'dashboard', which every scoped role holds — so omitting
+  // this would open the page to all of them rather than fail closed.
+  { prefix: '/admin/soo', perm: 'soo' },
   // Application diagram studio (073). MUST be listed: an unmapped /admin/* path
   // falls back to 'dashboard', which every scoped role holds — so omitting this
   // would open the page to all of them rather than fail closed.

@@ -118,6 +118,10 @@ const NAV_PARENTS: NavParent[] = [
       // Proposals (079) — a Sizing Studio selection + a Deal become a
       // submittal-ready PDF. Sales drafts; admin approves.
       { href: '/admin/proposals', label: 'Proposals', perm: 'proposals' },
+      // Sequence of Operation (084) — a DryWare submittal becomes the project
+      // controls narrative. Sales starts one; engineering approves. Lives under
+      // Sales because sales is who downloads the submittal and kicks it off.
+      { href: '/admin/soo', label: 'Sequences', perm: 'soo' },
     ],
   },
   {
