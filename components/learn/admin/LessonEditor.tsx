@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { InteractiveBlock, INTERACTIVE_BLOCK_NAME } from './InteractiveBlock'
 import { SCENARIOS } from '@/lib/cpco'
+import { INTERACTIVE_BLOCKS } from '@/lib/learn-blocks'
 import {
   IMAGE_ACCEPT, IMAGE_HINT, imageFileError, imageFilesFrom, uploadLessonImage,
 } from '@/lib/lesson-images'
@@ -150,27 +151,58 @@ export default function LessonEditor({
     editor?.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run()
   }
 
-  // Same window.prompt idiom as the link button above. The list is the real
-  // scenario registry, so an author can't type a name that doesn't exist.
+  /* Same window.prompt idiom as the link button above, one prompt per step:
+     which block, then each of its parameters. The lists come from the real
+     catalogue and the real scenario registry, so an author can only ever insert
+     something that renders. */
   const addExercise = () => {
-    const menu = SCENARIOS.map((s, i) => `${i + 1}. ${s.title}`).join('\n')
-    const answer = window.prompt(
-      `Insert the control panel simulator.\n\n${menu}\n\nEnter a number, or leave blank for free play:`,
-    )
+    const menu = INTERACTIVE_BLOCKS.map((b, i) => `${i + 1}. ${b.label} — ${b.group}`).join('\n')
+    const answer = window.prompt(`Insert an interactive block.\n\n${menu}\n\nEnter a number:`)
     if (answer === null) return
 
-    const params: Record<string, string> = {}
-    const picked = SCENARIOS[Number(answer.trim()) - 1]
-    if (answer.trim() && !picked) {
-      window.alert('That isn’t one of the listed exercises.')
+    const block = INTERACTIVE_BLOCKS[Number(answer.trim()) - 1]
+    if (!block) {
+      window.alert('That isn’t one of the listed blocks.')
       return
     }
-    if (picked) params.scenario = picked.id
+
+    const params: Record<string, string> = {}
+    for (const spec of block.params ?? []) {
+      let value: string | null
+      if (spec.options) {
+        const list = spec.options.map((o, i) => `${i + 1}. ${o.label}`).join('\n')
+        const pick = window.prompt(`${spec.label}\n\n${list}\n\nEnter a number:`)
+        if (pick === null) return
+        const option = spec.options[Number(pick.trim()) - 1]
+        if (!option) {
+          window.alert('That isn’t one of the listed options.')
+          return
+        }
+        value = option.value
+      } else if (block.name === 'cpco-sim' && spec.key === 'scenario') {
+        // The one free-text param with a real registry behind it — offer the
+        // scenarios by name rather than making an author recall an id.
+        const list = SCENARIOS.map((s, i) => `${i + 1}. ${s.title}`).join('\n')
+        const pick = window.prompt(`${spec.label}\n\n${list}\n\nEnter a number, or leave blank:`)
+        if (pick === null) return
+        if (!pick.trim()) continue
+        const scenario = SCENARIOS[Number(pick.trim()) - 1]
+        if (!scenario) {
+          window.alert('That isn’t one of the listed scenarios.')
+          return
+        }
+        value = scenario.id
+      } else {
+        value = window.prompt(spec.label)
+        if (value === null) return
+      }
+      if (value) params[spec.key] = value
+    }
 
     editor
       ?.chain()
       .focus()
-      .insertContent({ type: INTERACTIVE_BLOCK_NAME, attrs: { name: 'cpco-sim', params } })
+      .insertContent({ type: INTERACTIVE_BLOCK_NAME, attrs: { name: block.name, params } })
       .run()
   }
 

@@ -295,7 +295,11 @@ do not re-skin it from a Learn change.
 
 ## Content: what is actually in there
 
-5 categories · 14 modules · **357 published lessons**, imported from Trainual PDF exports.
+The Trainual-imported core is 5 categories · 14 modules · **357 published lessons**. Two courses have
+been added since and are *not* in the table below: Control Panel Crash Course (10 lessons, 2026-08-06)
+and Refrigeration & HVAC/R (18 subjects / 155 lessons, 2026-08-07) — both authored here rather than
+imported, so neither carries placeholder bodies or missing images.
+
 Verified against production 2026-07-30:
 
 | Module | Lessons | Placeholder bodies | Lessons with missing images |
@@ -385,6 +389,92 @@ the theme.
 Unit schematic with real sensor positions, setpoint behaviour lessons, the rest of the IAT menu
 tree (menu entries the procedure never shows are carried as `—` with `optional: true` — fill
 them from captures, don't invent), the password tiers, and the capstone quiz.
+
+## The Refrigeration & HVAC/R course (2026-08-07, migrations 085 + 086)
+
+The library's largest course: a new **`refrigeration-hvacr`** category holding **17 teaching
+subjects + 1 closing subject, 155 lessons, 18 quizzes, 170 questions**. Ported from a standalone
+HTML course Jacob supplied, rebuilt on the portal's own reader, progress, XP and quiz engine.
+
+### It is generated, not authored
+
+`scripts/gen-hvacr-course.mjs` reads `scripts/hvacr-course/{modules,quick,branch}.json` and writes
+**four** files — migrations `085` (category, subjects, lessons) and `086` (quizzes), plus the
+runtime data modules `lib/hvacr/branch.ts` and `lib/hvacr/terms.ts`. The bodies are 176k characters
+of prose; hand-editing them would drift from the source with nothing to diff against. Re-run the
+script rather than editing any of those four.
+
+Each subject becomes: an **Overview** lesson (objectives + the subject's hero widget), one lesson
+per source section (at-a-glance bullets, then the full explanation), a **Practice** lesson holding
+the drills, and a **Key terms** flashcard lesson.
+
+### The closing subject, the capstone, and the certificate
+
+`course-completion` is the 18th subject and carries no teaching content — an explainer for the exam
+and the certificate block. The **final exam** is a *category-scoped* quiz: 34 questions, two drawn
+from each subject. Being category-scoped it **gates nothing**, by design; each subject still
+completes on its own lessons plus its own module quiz.
+
+`GET /api/learn/hvacr-certificate` decides eligibility **server-side**, using the same
+`subjectIsComplete()` (quiz gate included) as the library pages and the assignments report — the
+agreement that stops a certificate congratulating someone the compliance report shows as overdue. It
+excludes `course-completion` from the requirement, and dates the award from the last thing that
+actually happened rather than `now()`, so it doesn't re-date itself on every page load.
+
+### Interactive blocks: the catalogue types the registry
+
+`lib/learn-blocks.ts` is the single list of every block a lesson may embed — for **both** courses.
+It is consumed three ways, and the middle one is the load-bearing part:
+
+| Consumer | What it gets |
+|---|---|
+| `InteractiveBlockView.tsx` | types its registry `Record<InteractiveBlockName, …>` — a catalogued name with no component is a **compile error** |
+| `LessonEditor.tsx` | builds the author's insert menu, including per-block parameter pickers |
+| `gen-hvacr-course.mjs` | asserts every marker it writes is catalogued |
+
+Together those mean a marker in a seed can no longer ship as a silent "isn't available" note.
+
+The 24 HVAC/R widgets live in `components/hvacr/`. Six are react-three-fiber models sharing
+`Scene3D.tsx`; the rest are SVG/DOM. Datasets for the drills are in `lib/hvacr/exercises.ts`, keyed
+by the marker's `data-set`, so a new drill is a data entry rather than a new component.
+
+### Three traps in this area
+
+- ⚠️ **`next/dynamic` needs a literal options object at the call site.** Hoisting the shared
+  `{ ssr: false }` into a const and spreading it type-checks cleanly and then **500s every lesson
+  page** ("next/dynamic options must be an object literal", enforced by SWC, not TS). The options in
+  `InteractiveBlockView.tsx` are written out one by one on purpose — do not DRY them up.
+- ⚠️ **Shuffles must not run during render.** These widgets are `'use client'`, which still
+  server-renders the first pass, so `Math.random()` in a render body or a `useState` initialiser is a
+  hydration mismatch. `components/hvacr/use-shuffle.ts` paints the source order and shuffles in an
+  effect.
+- ⚠️ **`lib/hvacr/palette.ts` is a sanctioned token exception**, like `UnitScene.tsx` and the
+  `.cpco-*` LCD hex. WebGL materials cannot read CSS variables, and blue-is-cold / orange-is-hot is
+  physics rather than branding — re-toning it per theme would make the models teach the wrong thing.
+  It is the *only* place raw colour appears in this feature; all chrome is on semantic tokens.
+
+### Practice drills are ungraded on purpose
+
+The drills reveal their answer and explanation on a wrong attempt, and write **nothing** to
+`learn_progress` or `learn_sim_attempts`. That is the opposite of the graded quizzes, whose key
+never reaches the browser, and the difference is deliberate: one is a rehearsal, the other feeds the
+compliance report. `/api/learn/sim-attempt` was left alone — it still validates against the c.pCO
+scenario registry only.
+
+### Verifying
+
+```
+node scripts/gen-hvacr-course.mjs                      # regenerate; asserts markers + answer keys
+node --env-file=.env.local --import ./scripts/ts-resolve.mjs \
+  scripts/verify-hvacr-certificate.mjs                 # 17 checks against production
+```
+
+The second script checks the certificate route's data logic *and* re-parses every seeded lesson body
+through `splitLessonHtml`, asserting all 55 markers resolve to a catalogued widget with valid
+params. Learn pages are login-gated, so widgets were browser-verified through a temporary
+unauthenticated route (the middleware matcher is a prefix whitelist, so an unlisted top-level path
+renders without a session) — and **the Browser pane does not composite, so WebGL canvases never size
+and screenshots time out there**; use headed Playwright from inside `iat-forms-portal`.
 
 ## Images in the lesson editor (2026-08-04)
 

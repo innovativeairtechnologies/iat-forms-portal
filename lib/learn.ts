@@ -295,6 +295,7 @@ const TONE_BY_SLUG: Record<string, LearnTone> = {
   safety: 'amber',
   'technical-training': 'violet',
   'products-tools': 'rose',
+  'refrigeration-hvacr': 'slate',
 }
 
 export type SubjectStatus = 'not-started' | 'in-progress' | 'completed'

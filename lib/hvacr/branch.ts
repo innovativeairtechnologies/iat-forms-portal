@@ -1,0 +1,442 @@
+/* Branching service-call simulations.
+ *
+ * GENERATED FILE — run `node scripts/gen-hvacr-course.mjs`.
+ * Source: scripts/hvacr-course/branch.json
+ *
+ * A decision tree per scenario. Terminal nodes carry `correct`, which is what
+ * the learner is graded against on screen — the wrong turns are modelled
+ * deliberately, because the point of the exercise is that a plausible-sounding
+ * shortcut (recover refrigerant because head pressure is high) leads somewhere
+ * expensive.
+ */
+
+export type BranchChoice = { label: string; next: string }
+
+export type BranchNode = {
+  prompt: string
+  choices?: BranchChoice[]
+  terminal?: boolean
+  correct?: boolean
+  resultText?: string
+}
+
+export type BranchScenario = {
+  id: string
+  title: string
+  intro: string
+  startNode: string
+  nodes: Record<string, BranchNode>
+}
+
+export const BRANCH_SCENARIOS: BranchScenario[] = [
+  {
+    "id": "high-head-pressure",
+    "title": "Service Call: High Head Pressure Complaint",
+    "intro": "A commercial rooftop package unit has tripped on a high-pressure lockout twice on a hot afternoon, and the property manager wants it running again before closing time.",
+    "startNode": "start",
+    "nodes": {
+      "start": {
+        "prompt": "You're dispatched to a commercial rooftop package unit (R-410A, 7.5 ton) that has tripped on a high-pressure lockout twice this afternoon. It's 95°F outside. Before the last trip, gauges showed suction pressure at 128 psig (~41°F) while head pressure climbed to 590 psig before the high-pressure switch opened at its 600 psig cutout. The unit is currently shut down on lockout.",
+        "choices": [
+          {
+            "label": "Walk out to the condensing section and visually inspect the coil and airflow before doing anything else",
+            "next": "inspect_condenser"
+          },
+          {
+            "label": "Based on the high head pressure, assume the system is overcharged and recover some refrigerant",
+            "next": "term_recovered_wrong"
+          },
+          {
+            "label": "Reset the high-pressure switch, restart the unit, and log it as a nuisance trip",
+            "next": "term_reset_wrong"
+          },
+          {
+            "label": "Check compressor amp draw with a clamp meter to rule out a compressor problem",
+            "next": "check_amps"
+          }
+        ]
+      },
+      "check_amps": {
+        "prompt": "Nameplate RLA is 28A. Your clamp meter reads 26A on each leg with no locked-rotor spike, and the compressor sounds mechanically normal. Current draw alone doesn't explain a 590 psig head pressure.",
+        "choices": [
+          {
+            "label": "Amp draw is normal, so move on to check the condenser coil and airflow",
+            "next": "inspect_condenser"
+          },
+          {
+            "label": "Conclude the compressor's discharge valves are failing internally and recommend compressor replacement",
+            "next": "term_compressor_wrong"
+          }
+        ]
+      },
+      "inspect_condenser": {
+        "prompt": "At the condensing section you find the coil fins matted with cottonwood fluff, dust, and grass clippings covering roughly 70% of the coil face. The condenser fan blade is turning.",
+        "choices": [
+          {
+            "label": "Before assuming the coil is the culprit, check the fan's rotation direction and amp draw",
+            "next": "check_fan"
+          },
+          {
+            "label": "Since the fan is spinning, rule out airflow and check/add refrigerant charge instead",
+            "next": "term_add_refrigerant_wrong"
+          },
+          {
+            "label": "Replace the condenser fan motor since airflow across it seems weak",
+            "next": "term_fan_replace_wrong"
+          },
+          {
+            "label": "The coil is visibly filthy — clean it now and verify afterward",
+            "next": "clean_coil_action"
+          }
+        ]
+      },
+      "check_fan": {
+        "prompt": "Fan motor amp draw reads 1.1A against a 1.4A nameplate rating, rotation is correct, and the blade is secure and undamaged. The motor itself is healthy — it just can't pull enough air through a coil this dirty.",
+        "choices": [
+          {
+            "label": "Clean the condenser coil thoroughly, then let the unit run and recheck pressures",
+            "next": "clean_coil_action"
+          },
+          {
+            "label": "Replace the fan motor anyway since airflow still seems low",
+            "next": "term_fan_replace_wrong"
+          }
+        ]
+      },
+      "clean_coil_action": {
+        "prompt": "You comb out the fins, apply coil cleaner, rinse thoroughly, and restart the unit. It's been running about 15 minutes on this 95°F day.",
+        "choices": [
+          {
+            "label": "Recheck head and suction pressures to confirm the fix before closing the ticket",
+            "next": "term_correct"
+          },
+          {
+            "label": "Assume the job is done and close the ticket without rechecking pressures",
+            "next": "term_no_verify_wrong"
+          }
+        ]
+      },
+      "term_correct": {
+        "terminal": true,
+        "correct": true,
+        "prompt": "Diagnosis: Dirty/blocked condenser coil restricting airflow",
+        "resultText": "After cleaning, head pressure settled at 385 psig (~119°F condensing) and suction at 122 psig (~40°F) — both appropriate for a 95°F ambient day on R-410A. Superheat measured 11°F and subcooling 9°F, both in normal range, confirming charge was never the problem. A condenser starved of airflow can't reject heat, so refrigerant backs up in the coil, raising both condensing pressure/temperature and subcooling. That pattern — high head pressure with normal-to-high subcooling and normal superheat — points to restricted condenser airflow, not overcharge. Cleaning the coil (after confirming the fan itself was healthy) restored proper heat rejection and normal pressures without touching the refrigerant charge."
+      },
+      "term_no_verify_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Coil cleaned but repair not verified",
+        "resultText": "You found and corrected the real problem — a dirty coil — but leaving without rechecking head and suction pressures (and superheat/subcooling) means you never confirmed the fix actually worked. Debris can be missed on the back side of a coil, a second issue can coexist, and a unit that tripped high pressure twice in one day deserves a documented, verified fix. Always let the unit run 10-15 minutes after a repair and recheck gauge readings against target values before calling the job done."
+      },
+      "term_recovered_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: 'overcharged' — refrigerant recovered unnecessarily",
+        "resultText": "High head pressure by itself doesn't mean overcharge — it only tells you the system isn't rejecting heat properly. Here the real cause was a condenser coil so fouled with debris it couldn't move enough air, so refrigerant backed up and both head pressure and subcooling read high even though the actual charge was correct. Recovering refrigerant based on pressure alone, without confirming subcooling/superheat and airflow, leaves the system undercharged once the real restriction is eventually cleared — pressures will drop further than expected and you'll be adding refrigerant back in on a return trip. It also means refrigerant was recovered unnecessarily, wasting product and time; refrigerant recovery is regulated under EPA Section 608 and should only happen when there's a verified need. Always check condenser airflow and coil condition, and get a subcooling reading, before concluding a system is overcharged."
+      },
+      "term_reset_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: nuisance trip — reset and returned to service",
+        "resultText": "A high-pressure switch tripping twice in one afternoon on a hot day is a real symptom, not noise. Resetting the switch without finding the cause risks a third trip, accelerated compressor wear from repeated high-pressure cycling, and a callback. Here the coil was 70% blocked with debris — left uncleaned, the unit will trip again as soon as it builds load. Any high-pressure lockout should be treated as valid until proven otherwise: check gauge readings, then inspect condenser airflow/coil condition and fan operation before resetting and walking away."
+      },
+      "term_compressor_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: failing compressor valves",
+        "resultText": "Normal amp draw with no locked-rotor spike, and a compressor that sounds mechanically smooth, argues against a compressor problem. Failing discharge valves typically show the opposite pattern of this call — reduced compression shows up as LOW head pressure and elevated suction pressure, along with poor cooling capacity, since the compressor can no longer pump refrigerant efficiently. High head pressure with a mechanically sound-sounding compressor should point you toward the condensing side of the system — check airflow across the condenser coil and fan operation before condemning the compressor."
+      },
+      "term_add_refrigerant_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: added refrigerant with a spinning-but-starved fan",
+        "resultText": "A fan that's turning isn't the same as a fan that's moving enough air. Here the blade was spinning fine, but the coil behind it was 70% blocked with debris, so actual CFM through the coil was far below design. Because refrigerant was backing up in the restricted coil, subcooling was already elevated — adding refrigerant on top of that pushes the system into a true overcharge, raising head pressure further and risking liquid slugging back to the compressor. Confirm airflow and coil condition (and take a subcooling reading) before deciding refrigerant needs to be added."
+      },
+      "term_fan_replace_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Unnecessary repair: condenser fan motor replaced",
+        "resultText": "The fan motor tested well within its amp rating, with correct rotation and no mechanical play — it was healthy. The actual restriction was three-quarters of the coil face packed with cottonwood and debris, which no fan motor, however strong, can push enough air through. Replacing the motor added cost and time without touching the real problem, so head pressure would climb right back up on the next hot day. When airflow is weak, check the coil itself before condemning the fan motor — a visual inspection plus an amp-draw/rotation check on the existing motor takes only minutes and can save an unnecessary parts swap."
+      }
+    }
+  },
+  {
+    "id": "no-cooling",
+    "title": "Service Call: Not Cooling At All",
+    "intro": "A homeowner calls because their central air conditioner is running but not cooling the house at all on a hot August afternoon.",
+    "startNode": "start",
+    "nodes": {
+      "start": {
+        "prompt": "You arrive at a residential home. The homeowner says the AC has been running but blowing room-temperature air all afternoon. Indoor temperature is 82°F with the thermostat set to 72°F on 'Cool.'",
+        "choices": [
+          {
+            "label": "Check the thermostat call and confirm the equipment is actually receiving a signal to cool",
+            "next": "check_call"
+          },
+          {
+            "label": "Head to the outdoor condensing unit and connect your gauges to check the refrigerant charge",
+            "next": "term_gauges_wrong"
+          },
+          {
+            "label": "Check the electrical panel for a tripped breaker before doing anything else",
+            "next": "check_breaker"
+          },
+          {
+            "label": "Assume the thermostat is faulty and replace it",
+            "next": "term_thermostat_replace_wrong"
+          }
+        ]
+      },
+      "check_breaker": {
+        "prompt": "At the panel, the breaker labeled 'A/C' is in the ON position and shows no signs of having tripped.",
+        "choices": [
+          {
+            "label": "Continue troubleshooting by checking the thermostat's call for cooling at the equipment",
+            "next": "check_call"
+          },
+          {
+            "label": "Cycle the breaker off and on anyway and tell the homeowner that should fix it",
+            "next": "term_breaker_reset_wrong"
+          }
+        ]
+      },
+      "check_call": {
+        "prompt": "At the air handler you confirm 24VAC between the R and Y terminals while the thermostat is calling for cooling — the call is reaching the equipment control board correctly.",
+        "choices": [
+          {
+            "label": "Head out to the condensing unit to see how it's responding to the call",
+            "next": "outdoor_unit"
+          },
+          {
+            "label": "Since the call is confirmed, assume the outdoor unit must be fine and just check indoor blower/airflow",
+            "next": "term_blower_wrong"
+          }
+        ]
+      },
+      "outdoor_unit": {
+        "prompt": "At the condensing unit, the contactor is pulled in and energized, but the condenser fan isn't turning, and you hear the compressor humming without starting.",
+        "choices": [
+          {
+            "label": "With power removed and the capacitor safely discharged, test the dual run capacitor's capacitance",
+            "next": "check_capacitor"
+          },
+          {
+            "label": "Conclude the compressor is locked up/seized and recommend replacing it",
+            "next": "term_compressor_seized_wrong"
+          },
+          {
+            "label": "Since the contactor is energized, connect your gauges and check refrigerant pressures",
+            "next": "term_gauges_wrong2"
+          }
+        ]
+      },
+      "check_capacitor": {
+        "prompt": "The dual run capacitor is rated 40/5 µF at 370V. Testing it: the 5 µF fan section reads 0.4 µF (essentially open), and the 40 µF compressor section reads only 14 µF — both far outside the ±6% tolerance. An ohmmeter check of the compressor and fan motor windings shows no shorts, opens, or grounds.",
+        "choices": [
+          {
+            "label": "Replace the dual run capacitor with a correctly rated OEM-spec part",
+            "next": "replace_cap"
+          },
+          {
+            "label": "Since neither motor started, replace both the compressor and the condenser fan motor",
+            "next": "term_overreplace_wrong"
+          }
+        ]
+      },
+      "replace_cap": {
+        "prompt": "You install a new 40/5 µF 370V dual run capacitor, restore power, and cycle the unit.",
+        "choices": [
+          {
+            "label": "Verify the fan spins, the compressor starts and runs, check amp draw against RLA, and check suction/head pressures before leaving",
+            "next": "term_correct2"
+          },
+          {
+            "label": "Button the panels up and leave without verifying operation",
+            "next": "term_no_verify_wrong2"
+          }
+        ]
+      },
+      "term_gauges_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Skipped electrical checks: gauges connected first",
+        "resultText": "Refrigerant pressure readings only mean something if the compressor is actually running — and at this point you don't even know whether the unit is receiving power or a call for cooling. If the fault turns out to be electrical (a tripped breaker, bad contactor, or failed capacitor, as it is here), connecting gauges first wastes time, tells you nothing useful, and risks opening the refrigerant circuit unnecessarily. Always confirm the thermostat call, power at the unit, and basic electrical components (breaker, contactor, capacitor) before touching the refrigerant side."
+      },
+      "term_thermostat_replace_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Unnecessary repair: thermostat replaced",
+        "resultText": "Condemning the thermostat before verifying whether its call is actually reaching the equipment is a guess, not a diagnosis. A quick voltage check at the air handler (24VAC between R and Y during a call) shows whether the thermostat is doing its job. In this case the thermostat and its call were fine — the fault was downstream at the condensing unit. Replacing a working thermostat wastes a part and a trip, and the customer's system still won't cool."
+      },
+      "term_blower_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: checked indoor blower only",
+        "resultText": "The homeowner reported air blowing but not cold — that's consistent with a fine indoor blower and a condensing unit that isn't running at all. Confirming the thermostat call reaches the equipment doesn't mean the rest of the system is working; the compressor and condenser fan live outside, and 'not cooling at all' almost always means you need to observe the outdoor unit directly. Skipping that step here would have left the actual fault — a failed run capacitor — undiscovered."
+      },
+      "term_breaker_reset_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Breaker cycled unnecessarily",
+        "resultText": "The breaker was never tripped, so flipping it off and on changes nothing and doesn't explain to the homeowner what's actually wrong. Cycling a breaker that already shows no fault is a placebo fix; the real problem, downstream at the condensing unit, is still there and the unit will still fail to cool after you leave."
+      },
+      "term_compressor_seized_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: seized/failed compressor",
+        "resultText": "A compressor that hums but doesn't start, alongside a condenser fan that also won't spin, is the classic signature of a failed run capacitor — not a seized compressor. The capacitor provides the phase-shifted current both motors need for starting torque; without it, the motors draw current and hum but can't develop enough torque to start, and the internal overload eventually cycles them off. Condemning and replacing the compressor without first testing the cheap, easy-to-check capacitor is a very expensive misdiagnosis. Confirm capacitor condition before assuming the compressor itself has failed."
+      },
+      "term_gauges_wrong2": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Gauges connected to a non-running compressor",
+        "resultText": "With the compressor not actually running, pressure readings on the manifold gauges won't reflect real operating superheat or subcooling — you'll just see static/equalized pressures that tell you nothing about the charge. There's also a safety concern: energizing a compressor circuit with a failing capacitor can cause hard starts or repeated hum-and-trip cycles while you're working near the unit. Diagnose and correct the electrical fault (test the run capacitor) before connecting gauges."
+      },
+      "term_overreplace_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Unnecessary repair: compressor and fan motor both replaced",
+        "resultText": "An ohmmeter check showed no shorts, opens, or grounds in either motor winding — both motors are electrically healthy. A failed dual run capacitor alone fully explains why both the compressor (humming, not starting) and the condenser fan (not spinning) failed to run, since a shared dual capacitor provides starting/running capacitance to both. Replacing two good motors is a costly, unnecessary repair; replacing only the capacitor and retesting is the correct next step."
+      },
+      "term_no_verify_wrong2": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Capacitor replaced but repair not verified",
+        "resultText": "Installing the right part doesn't guarantee the job is finished. Without confirming the fan spins, the compressor starts and stays running, amp draw is within RLA, and suction/head pressures look normal, you can't be sure the new capacitor fully resolved the issue or that there isn't a secondary problem, such as a marginal contactor or a compressor stressed by repeated hard-starting. Always verify operation before leaving a call."
+      },
+      "term_correct2": {
+        "terminal": true,
+        "correct": true,
+        "prompt": "Diagnosis: Failed dual run capacitor",
+        "resultText": "With the new 40/5 µF capacitor installed, the condenser fan spun up immediately and the compressor started smoothly, settling to 24A against its 28A RLA nameplate. Suction pressure read 122 psig and head pressure 340 psig on this afternoon's conditions, both consistent with normal operation, and the space began cooling. The original symptoms — compressor humming without starting and the condenser fan not turning, with the contactor confirmed pulled in and motor windings testing electrically sound — are the textbook signature of a failed run capacitor: it can no longer supply the starting torque and running phase shift both motors need. Verifying the thermostat call, power, and basic electrical components before opening the refrigerant circuit led straight to the correct, low-cost fix."
+      }
+    }
+  },
+  {
+    "id": "iced-evaporator",
+    "title": "Service Call: Frozen Evaporator Coil",
+    "intro": "A homeowner reports water leaking near the indoor unit and poor cooling; the evaporator coil is found completely iced over.",
+    "startNode": "start",
+    "nodes": {
+      "start": {
+        "prompt": "You're called to a home where the homeowner says the AC is 'leaking water' and not cooling well. You find the indoor evaporator coil and suction line completely covered in ice, and the system has been running continuously trying to reach setpoint.",
+        "choices": [
+          {
+            "label": "Shut the system down to let the ice melt safely, then check the air filter and blower first",
+            "next": "check_filter"
+          },
+          {
+            "label": "Connect your manifold gauges right now while the coil is still frozen and start diagnosing charge",
+            "next": "term_gauge_on_frozen_wrong"
+          },
+          {
+            "label": "Assume the charge is low and start adding refrigerant to help melt the ice faster",
+            "next": "term_add_refrigerant_wrong3"
+          },
+          {
+            "label": "Replace the thermostat's temperature sensor, assuming it's letting the system run too long",
+            "next": "term_thermostat_wrong"
+          }
+        ]
+      },
+      "check_filter": {
+        "prompt": "With the system off and the ice melting, you pull the return air filter — it's filthy, gray with dust, and clearly restricting airflow.",
+        "choices": [
+          {
+            "label": "Replace the filter, then check the blower wheel and coil fins for dust before restarting",
+            "next": "check_blower"
+          },
+          {
+            "label": "The filter's a little dirty but probably not the main issue — connect gauges and check refrigerant charge instead",
+            "next": "check_charge_low_confidence"
+          }
+        ]
+      },
+      "check_blower": {
+        "prompt": "After replacing the filter, you pull the blower access panel and find the squirrel-cage blower wheel coated in a layer of dust, and the evaporator fins also visibly dusty. You clean the wheel and coil fins, then let the system finish defrosting fully before restarting.",
+        "choices": [
+          {
+            "label": "Let the unit run about 20 minutes, then check suction pressure, superheat, and subcooling to confirm the fix",
+            "next": "after_filter_fix"
+          },
+          {
+            "label": "Skip verification — the filter and blower were clearly dirty, so close the ticket now",
+            "next": "term_no_verify_wrong3"
+          }
+        ]
+      },
+      "check_charge_low_confidence": {
+        "prompt": "With the dirty filter still in place, you connect gauges: suction pressure reads low at 108 psig (~34°F saturation), superheat is elevated at 22°F, and subcooling is normal at 9°F. Airflow off the supply registers still feels weak.",
+        "choices": [
+          {
+            "label": "Recognize that low suction with high superheat, normal subcooling, and weak airflow points to an airflow restriction, not undercharge — go back and properly address the filter/blower",
+            "next": "check_blower"
+          },
+          {
+            "label": "Read the low suction pressure as undercharge and add refrigerant to bring it up",
+            "next": "term_add_refrigerant_wrong3b"
+          }
+        ]
+      },
+      "after_filter_fix": {
+        "prompt": "About 20 minutes into the run, gauges show suction pressure at 118 psig (~40°F saturation) and head pressure normal for conditions; superheat is 11°F and subcooling is 10°F, both within normal range. No new ice is forming, and condensate is draining steadily.",
+        "choices": [
+          {
+            "label": "Confirm the readings are normal and close out the call as a resolved airflow restriction",
+            "next": "term_correct3"
+          },
+          {
+            "label": "Even though readings look normal, add a pound of refrigerant 'just to be safe'",
+            "next": "term_unnecessary_charge_wrong"
+          }
+        ]
+      },
+      "term_correct3": {
+        "terminal": true,
+        "correct": true,
+        "prompt": "Diagnosis: Iced coil caused by restricted airflow (dirty filter/blower)",
+        "resultText": "Restricted airflow across the evaporator — from the clogged filter and dusty blower wheel — starved the coil of warm return air. That drops the evaporator's saturation temperature and pressure well below normal even with a correct refrigerant charge, and once coil surface temperature drops below 32°F, condensate freezes instead of draining, which is exactly what iced this coil. After restoring airflow (new filter, cleaned blower wheel and coil), suction pressure returned to 118 psig (~40°F), with normal superheat (11°F) and subcooling (10°F), confirming the charge was correct all along and airflow was the real root cause. Because a dirty filter/blower is by far the more common cause of evaporator icing and is quick and cheap to rule out, checking it before touching the refrigerant circuit is the right order of operations."
+      },
+      "term_no_verify_wrong3": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Filter/blower cleaned but fix not verified",
+        "resultText": "Cleaning a dirty filter and blower wheel is the right instinct here, but closing the ticket without letting the system run and rechecking suction pressure, superheat, and subcooling means you never confirmed airflow was fully restored or that the charge is actually correct. If there's also a partial refrigerant restriction or a marginal duct issue underneath the airflow problem, you'd miss it, and the coil could ice right back up. Always verify a repair with real operating readings before leaving."
+      },
+      "term_unnecessary_charge_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Unnecessary refrigerant added to a properly charged system",
+        "resultText": "Superheat (11°F) and subcooling (10°F) were both already in normal range after the airflow fix, which means the charge was correct. Adding refrigerant 'just to be safe' when readings already look normal will push the system toward overcharge — raising head pressure, raising subcooling further, and potentially causing liquid floodback to the compressor over time. Only adjust charge based on actual superheat/subcooling readings compared to target values, never as a precaution after readings already look normal."
+      },
+      "term_add_refrigerant_wrong3b": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: airflow restriction read as undercharge",
+        "resultText": "Low suction pressure with high superheat can indicate either undercharge/restriction OR restricted airflow — the way to tell them apart is subcooling and airflow condition, not suction pressure alone. Here subcooling was normal (9°F), not low, and airflow off the registers was noticeably weak — both point to an airflow problem starving the coil, not a shortage of refrigerant. A true undercharge typically shows LOW subcooling along with low suction and high superheat, because there isn't enough liquid refrigerant to fully fill the condenser. Adding refrigerant here, on top of an already-adequate charge, would overcharge the system once the real airflow restriction, the dirty filter, is eventually fixed."
+      },
+      "term_gauge_on_frozen_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Gauges connected to a still-frozen coil",
+        "resultText": "Pressure readings taken while the evaporator is packed in ice don't reflect normal operating conditions — the ice itself insulates the coil and distorts suction pressure and superheat readings, making the charge look worse, or different, than it actually is. It's also harder to safely and accurately assess airflow restriction with the coil blocked by ice. The correct first step is to shut the system down, let the coil fully defrost, and check the simpler, more common causes — filter and blower condition — before drawing any conclusions from gauge readings."
+      },
+      "term_add_refrigerant_wrong3": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Misdiagnosis: refrigerant added to melt ice",
+        "resultText": "Adding refrigerant does not melt ice, and assuming low charge before any inspection skips the most common cause of coil icing entirely: restricted airflow from a dirty filter or dirty blower wheel. If the real problem is airflow, as it is here, adding refrigerant will overcharge an already-adequate system, raising subcooling and head pressure and risking compressor damage from liquid refrigerant returning through the suction line, all while the ice never actually gets addressed at its root cause. Always shut the system down, let it defrost, and check filter/airflow before considering refrigerant charge at all."
+      },
+      "term_thermostat_wrong": {
+        "terminal": true,
+        "correct": false,
+        "prompt": "Irrelevant repair: thermostat sensor replaced",
+        "resultText": "There's no diagnostic evidence pointing to the thermostat's sensing element — the system running long is a symptom of the underlying airflow/icing problem, not its cause. Replacing a thermostat component without evidence skips straight past the two most common and easily verified causes of evaporator icing: airflow restriction (filter/blower) and refrigerant charge. This wastes a part and a trip while the ice-causing problem remains."
+      }
+    }
+  }
+]
+
+export const BRANCH_BY_ID: Record<string, BranchScenario> = Object.fromEntries(
+  BRANCH_SCENARIOS.map((s) => [s.id, s]),
+)

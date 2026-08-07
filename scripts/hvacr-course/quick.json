@@ -1,0 +1,1055 @@
+{
+  "refrigeration-cycle": [
+    {
+      "heading": "The Four Main Processes",
+      "icon": "🔄",
+      "quick": [
+        "Cycle has four steps: compression, condensation, metering, evaporation.",
+        "Compressor raises refrigerant's pressure and temperature as vapor.",
+        "Condenser rejects heat, turning hot vapor into liquid.",
+        "Refrigerant runs in a closed loop, reused continuously."
+      ]
+    },
+    {
+      "heading": "Refrigerant State at Each of the Four Key Points",
+      "icon": "🌡️",
+      "quick": [
+        "Compressor inlet: cool, low-pressure, superheated vapor.",
+        "Compressor outlet: hot, high-pressure superheated vapor.",
+        "Condenser outlet: warm, high-pressure subcooled liquid.",
+        "Evaporator inlet: cold, low-pressure liquid/vapor mixture."
+      ]
+    },
+    {
+      "heading": "High Side vs. Low Side",
+      "icon": "⚖️",
+      "quick": [
+        "High side runs from compressor discharge to metering device.",
+        "Low side runs from metering device to compressor suction.",
+        "High side holds condensing pressure; low side holds evaporating pressure.",
+        "Blue gauge hose reads low side; red hose reads high side."
+      ]
+    },
+    {
+      "heading": "The Pressure-Enthalpy (P-H) Diagram",
+      "icon": "📈",
+      "quick": [
+        "P-H diagram plots pressure against enthalpy (heat content).",
+        "Saturation dome separates liquid, mixture, and vapor zones.",
+        "Compression rises vertically; condensation runs left at high pressure.",
+        "Evaporation runs right, showing the system's refrigeration effect."
+      ]
+    },
+    {
+      "heading": "Why the Evaporator Absorbs Heat and the Condenser Rejects It",
+      "icon": "🔥",
+      "quick": [
+        "Metering device drops refrigerant temperature below room temperature.",
+        "Heat flows naturally from the warm space into cold refrigerant.",
+        "Compressor raises refrigerant temperature above outdoor air temperature.",
+        "Cycle forces heat to flow \"uphill,\" cold space to warm air."
+      ]
+    },
+    {
+      "heading": "Mechanical vs. Absorption Refrigeration, and Reverse-Cycle (Heat Pump) Operation",
+      "icon": "🔀",
+      "quick": [
+        "Mechanical systems use a compressor; absorption uses heat and absorbent fluid.",
+        "Absorption appears in some chillers and RV refrigerators.",
+        "Heat pumps use the same cycle plus a reversing valve.",
+        "Reversing valve swaps evaporator and condenser roles for heating."
+      ]
+    }
+  ],
+  "compressors": [
+    {
+      "heading": "The Compressor: Heart of the Refrigeration System",
+      "icon": "⚙️",
+      "quick": [
+        "Compressor is the heart, driving refrigerant flow and pressure.",
+        "Raises low-pressure vapor into high-pressure, high-temperature vapor.",
+        "Adds heat of compression, boosting discharge temperature further.",
+        "Every other component depends on pressures the compressor creates."
+      ]
+    },
+    {
+      "heading": "Compressor Types and Mechanical Operation",
+      "icon": "🔧",
+      "quick": [
+        "Five main types: reciprocating, scroll, rotary, screw, centrifugal.",
+        "Reciprocating uses pistons; scroll uses interleaving spiral scrolls.",
+        "Screw and centrifugal handle large commercial, industrial loads.",
+        "Scroll compressors dominate residential AC and heat pumps today."
+      ]
+    },
+    {
+      "heading": "Hermetic, Semi-Hermetic, and Open-Drive Construction",
+      "icon": "🔩",
+      "quick": [
+        "Hermetic: motor sealed inside welded shell, not field-repairable.",
+        "Semi-hermetic: bolted housing allows field service of internal parts.",
+        "Open-drive: external motor connects via shaft seal and coupling.",
+        "Construction type shows whether a failure means repair or replacement."
+      ]
+    },
+    {
+      "heading": "Compression Ratio and Staging",
+      "icon": "📐",
+      "quick": [
+        "Compression ratio equals absolute discharge pressure over suction pressure.",
+        "Higher ratios lower efficiency and raise discharge temperature.",
+        "Single-stage compressors work best up to about 9:1 ratio.",
+        "Two-stage booster compression suits very low-temperature freezer applications."
+      ]
+    },
+    {
+      "heading": "Oil Management",
+      "icon": "🛢️",
+      "quick": [
+        "Oil lubricates, cools, and seals compressor moving parts.",
+        "Crankcase heater keeps oil warm, preventing refrigerant migration.",
+        "Oil sight glass reveals oil level and contamination signs.",
+        "Proper oil return prevents bearing failure despite normal pressures."
+      ]
+    },
+    {
+      "heading": "Common Failure Modes and Diagnostic Checks",
+      "icon": "🛠️",
+      "quick": [
+        "Flooded start and slugging cause liquid damage inside the compressor.",
+        "Short cycling and burnout stem from control or motor faults.",
+        "Winding resistance and megohm tests reveal shorts or ground faults.",
+        "Compression test checks for worn or broken internal valves."
+      ]
+    }
+  ],
+  "metering-devices": [
+    {
+      "heading": "The Role of the Metering Device",
+      "icon": "🎛️",
+      "quick": [
+        "Creates the pressure drop between high side and low side.",
+        "Regulates refrigerant flow rate to match current heat load.",
+        "Overfeeding risks liquid refrigerant reaching the compressor.",
+        "Underfeeding starves the evaporator, raising discharge temperature."
+      ]
+    },
+    {
+      "heading": "Fixed-Orifice Metering Devices: Capillary Tubes and Piston/Orifice (AXV)",
+      "icon": "📏",
+      "quick": [
+        "Capillary tubes are long, fixed-diameter tubes with no moving parts.",
+        "Capillary systems need a precise \"critical charge\" of refrigerant.",
+        "Piston/orifice valves are common in residential heat pumps.",
+        "Neither device actively adjusts flow as load changes."
+      ]
+    },
+    {
+      "heading": "Thermostatic Expansion Valves (TXV): Superheat Control",
+      "icon": "🎚️",
+      "quick": [
+        "TXV actively adjusts flow to hold a target superheat.",
+        "Bulb pressure, spring pressure, and evaporator pressure balance the valve.",
+        "Rising heat load raises bulb pressure, opening the valve further.",
+        "Typical target superheat range is about 8 to 12°F."
+      ]
+    },
+    {
+      "heading": "Internally vs Externally Equalized TXVs",
+      "icon": "🔗",
+      "quick": [
+        "Equalization is where the TXV senses evaporator pressure.",
+        "Internal equalization suits low pressure-drop, single-circuit evaporators.",
+        "External equalizer tube suits coils with multiple distributor circuits.",
+        "External sensing prevents the valve from starving the coil."
+      ]
+    },
+    {
+      "heading": "Electronic Expansion Valves (EEV)",
+      "icon": "🖥️",
+      "quick": [
+        "EEV uses a stepper motor instead of bulb and spring.",
+        "Sensors feed temperature and pressure data to a controller.",
+        "EEVs respond faster and hold lower superheat than TXVs.",
+        "Common on inverter equipment and commercial refrigeration racks."
+      ]
+    },
+    {
+      "heading": "Overfeeding, Underfeeding, and a Worked Superheat Example",
+      "icon": "🧮",
+      "quick": [
+        "Overfeeding causes low superheat, frost migration, floodback risk.",
+        "Underfeeding causes high superheat, a starved coil, low suction pressure.",
+        "Superheat equals actual line temperature minus saturation temperature.",
+        "Example: 50°F minus 40°F equals 10°F, within normal range."
+      ]
+    }
+  ],
+  "troubleshooting-diagnostics": [
+    {
+      "heading": "A Systematic Troubleshooting Approach",
+      "icon": "🔍",
+      "quick": [
+        "Gather information from the customer before touching the system.",
+        "Verify the complaint yourself by observing actual operation.",
+        "Inspect visually, then test electrical, pressure, and temperature values.",
+        "Always verify the repair actually resolved the original complaint."
+      ]
+    },
+    {
+      "heading": "Reading a PT Chart and Using Gauges",
+      "icon": "📉",
+      "quick": [
+        "PT charts link refrigerant pressure to saturation temperature.",
+        "Each refrigerant has its own unique pressure-temperature chart.",
+        "Blue hose connects low side; red hose connects high side.",
+        "A2L refrigerants require specially rated gauges and hoses."
+      ]
+    },
+    {
+      "heading": "Superheat and Subcooling: Diagnosing Charge and Airflow",
+      "icon": "🧊",
+      "quick": [
+        "Superheat confirms all liquid refrigerant vaporized before the compressor.",
+        "Subcooling confirms refrigerant fully condensed before the metering device.",
+        "Superheat verifies charge on fixed-orifice systems; subcooling on TXVs.",
+        "Always check airflow before adjusting charge based on pressures."
+      ]
+    },
+    {
+      "heading": "Common Symptom-to-Cause Tables",
+      "icon": "📋",
+      "quick": [
+        "Short cycling often traces to oversized equipment or low charge.",
+        "High head pressure usually means a dirty or blocked condenser.",
+        "Low suction pressure suggests undercharge or restricted airflow.",
+        "Symptoms overlap causes, so measurements must confirm the diagnosis."
+      ]
+    },
+    {
+      "heading": "Tools of the Trade and Safe Use",
+      "icon": "🧰",
+      "quick": [
+        "Manifold gauges read high- and low-side pressures simultaneously.",
+        "Clamp meters verify motor amp draw without breaking circuits.",
+        "Recovery machines are required before removing refrigerant, per EPA rules.",
+        "Always lockout equipment and discharge capacitors before servicing."
+      ]
+    }
+  ],
+  "safety": [
+    {
+      "heading": "Personal Protective Equipment (PPE)",
+      "icon": "🥽",
+      "quick": [
+        "Goggles or face shield required when opening lines or charging.",
+        "Insulated gloves prevent frostbite from liquid refrigerant contact.",
+        "Hearing protection required above 85 dBA near compressors.",
+        "PPE is the last line of defense, not the first."
+      ]
+    },
+    {
+      "heading": "Lockout/Tagout (LOTO) and Electrical Safety",
+      "icon": "🔒",
+      "quick": [
+        "Isolate energy sources, lock and tag, then verify zero energy.",
+        "Only the technician who applied a lock removes it.",
+        "Test meter live-dead-live before and after touching a circuit.",
+        "De-energize equipment rather than work live to avoid arc flash."
+      ]
+    },
+    {
+      "heading": "Refrigerant Hazards: Asphyxiation, Frostbite, and Safety Classifications",
+      "icon": "⚠️",
+      "quick": [
+        "Leaks displace oxygen, risking asphyxiation in confined spaces.",
+        "Liquid refrigerant causes near-instant frostbite on skin contact.",
+        "ASHRAE 34 rates toxicity (A/B) and flammability (1, 2L, 2, 3).",
+        "A1 is nonflammable, A2L mildly flammable, A3 highly flammable."
+      ]
+    },
+    {
+      "heading": "A2L Mildly Flammable Refrigerants: New Precautions",
+      "icon": "🔥",
+      "quick": [
+        "A2Ls (R-32, R-454B) are now standard but mildly flammable.",
+        "Use combustible-gas-rated leak detectors and ventilate before brazing.",
+        "Eliminate ignition sources; de-energize equipment near suspected leaks.",
+        "Use only A2L-listed recovery tools; never exceed nameplate charge."
+      ]
+    },
+    {
+      "heading": "Cylinder and Pressure Vessel Safety",
+      "icon": "🛢️",
+      "quick": [
+        "Never heat a sealed cylinder with a torch or open flame.",
+        "Fill by weight only; max fill leaves vapor expansion space.",
+        "Transport cylinders upright and secured; never in a passenger cabin.",
+        "Check hydrostatic test date; never fill an expired cylinder."
+      ]
+    },
+    {
+      "heading": "Brazing/Soldering Fire Safety and Confined Space Basics",
+      "icon": "🧯",
+      "quick": [
+        "Use a heat shield and keep an extinguisher nearby when brazing.",
+        "Purge lines with dry nitrogen to limit oxidation and combustion risk.",
+        "Never braze a system still under refrigerant pressure.",
+        "Test confined-space atmosphere for oxygen and gases before entry."
+      ]
+    }
+  ],
+  "thermodynamics": [
+    {
+      "heading": "Temperature Scales and Conversions",
+      "icon": "🌡️",
+      "quick": [
+        "Fahrenheit and Celsius are common scales for HVAC/R work.",
+        "Rankine and Kelvin are absolute scales starting at absolute zero.",
+        "Simple formulas convert between F, C, K, and R.",
+        "Absolute temperature is needed for ideal gas law relationships."
+      ]
+    },
+    {
+      "heading": "Heat vs. Temperature; Sensible vs. Latent Heat",
+      "icon": "♨️",
+      "quick": [
+        "Temperature measures intensity; heat measures thermal energy in transit.",
+        "Sensible heat changes temperature; latent heat changes phase only.",
+        "Melting or boiling holds temperature steady while absorbing latent heat.",
+        "Water's high specific heat (1.0 Btu/lb·°F) suits hydronic systems."
+      ]
+    },
+    {
+      "heading": "Phases of Matter and the Phase-Change Diagram",
+      "icon": "🧊",
+      "quick": [
+        "Matter exists as solid, liquid, or vapor in refrigeration.",
+        "Phase diagram alternates sloped sensible-heat lines with flat latent-heat plateaus.",
+        "Evaporator coil mirrors this: liquid boils to vapor at constant temperature.",
+        "Vapor gains sensible heat (superheat) after fully boiling off."
+      ]
+    },
+    {
+      "heading": "Pressure-Temperature Relationship and Saturation",
+      "icon": "📈",
+      "quick": [
+        "Pure substances have one saturation temperature for each pressure.",
+        "Raising pressure raises saturation temperature, and vice versa.",
+        "P-T charts let techs find boiling or condensing temperature from pressure.",
+        "Blends show a temperature glide between bubble and dew points."
+      ]
+    },
+    {
+      "heading": "Superheat and Subcooling",
+      "icon": "📏",
+      "quick": [
+        "Superheat is actual vapor temperature minus saturation temperature.",
+        "Measured at the evaporator outlet to confirm no liquid floodback.",
+        "Subcooling is saturation temperature minus actual liquid temperature.",
+        "Both need a pressure-derived P-T value plus a temperature probe reading."
+      ]
+    },
+    {
+      "heading": "Heat Transfer Modes and Why This Matters for Refrigeration",
+      "icon": "🔄",
+      "quick": [
+        "Heat transfers by conduction, convection, and radiation.",
+        "Heat always flows from hot to cold without added work.",
+        "Compressors force heat to move against its natural direction.",
+        "Phase change moves large heat loads efficiently in compact equipment."
+      ]
+    }
+  ],
+  "refrigerants-regulations": [
+    {
+      "heading": "What Is a Refrigerant, and What Makes One Effective",
+      "icon": "🧪",
+      "quick": [
+        "Refrigerants absorb heat at low pressure, reject it at high pressure.",
+        "Ideal traits: high latent heat, stability, low toxicity and flammability.",
+        "Low ozone depletion and global warming impact are now critical.",
+        "No single refrigerant is ideal for every application."
+      ]
+    },
+    {
+      "heading": "Refrigerant Naming and Numbering Conventions",
+      "icon": "🔢",
+      "quick": [
+        "ASHRAE 34 numbering standardizes refrigerant identity across trade names.",
+        "R-1xx and R-2xx series name methane- and ethane-based compounds.",
+        "R-4xx are zeotropic blends; R-5xx are azeotropic blends.",
+        "R-1xxx series covers HFOs such as R-1234yf."
+      ]
+    },
+    {
+      "heading": "ASHRAE 34 Safety Classification",
+      "icon": "🏷️",
+      "quick": [
+        "Classification combines toxicity (A/B) with flammability (1, 2L, 2, 3).",
+        "A1 is nonflammable/low toxicity; A2L (e.g. R-32) is mildly flammable.",
+        "B2L ammonia is higher toxicity and mildly flammable.",
+        "Classification drives code rules on charge size and ventilation."
+      ]
+    },
+    {
+      "heading": "Ozone Depletion Potential (ODP) and Global Warming Potential (GWP)",
+      "icon": "🌍",
+      "quick": [
+        "ODP measures ozone-depletion ability, indexed against R-11 at 1.0.",
+        "Chlorine in CFCs and HCFCs destroys stratospheric ozone.",
+        "GWP measures warming contribution versus CO2, which equals 1.",
+        "R-410A (~2,088 GWP) far exceeds R-32 (~675) or R-1234yf (<1)."
+      ]
+    },
+    {
+      "heading": "Historical Transition: CFCs to HCFCs to HFCs to HFOs/A2Ls",
+      "icon": "📜",
+      "quick": [
+        "CFCs (R-12) were phased out under the 1987 Montreal Protocol.",
+        "HCFCs (R-22) were phased out of U.S. production/import by 2020.",
+        "HFCs (R-410A, R-134a) have zero ODP but often high GWP.",
+        "HFOs/A2Ls (R-32, R-454B) cut GWP but add mild flammability."
+      ]
+    },
+    {
+      "heading": "Comparison of Common Refrigerants",
+      "icon": "📊",
+      "quick": [
+        "Legacy R-12 and R-22 are phased out or reclaim-only now.",
+        "R-410A (~2,088 GWP) is being phased down after 2025.",
+        "R-32 and R-454B are the leading low-GWP A2L replacements.",
+        "Naturals like R-744 (CO2) and R-290 (propane) are growing options."
+      ]
+    },
+    {
+      "heading": "Current U.S. Regulatory Drivers: The AIM Act and EPA Technology Transitions Rule",
+      "icon": "⚖️",
+      "quick": [
+        "The 2020 AIM Act lets EPA phase down HFC production/import.",
+        "Sector-specific GWP limits mostly phase in between 2025 and 2027.",
+        "Since January 2025, new AC/heat pumps must use GWP of 700 or lower.",
+        "This rule drives adoption of A2L refrigerants like R-32 and R-454B."
+      ]
+    }
+  ],
+  "condensers": [
+    {
+      "heading": "The Condenser's Role and the Three Heat Rejection Zones",
+      "icon": "♨️",
+      "quick": [
+        "Condenser rejects evaporator heat plus the compressor's heat of compression.",
+        "Desuperheating cools hot discharge vapor down to saturation temperature.",
+        "Condensing releases latent heat across the bulk of the coil.",
+        "Subcooling ensures 100% liquid reaches the metering device."
+      ]
+    },
+    {
+      "heading": "Air-Cooled Condensers",
+      "icon": "💨",
+      "quick": [
+        "Fin-and-tube coils use axial or blower fans to move air.",
+        "Standard-efficiency units condense roughly 25 to 30°F above ambient.",
+        "Higher-efficiency designs run closer to 10 to 20°F above ambient.",
+        "Readings outside range signal airflow, charge, or coil cleanliness problems."
+      ]
+    },
+    {
+      "heading": "Water-Cooled Condensers and Cooling Towers",
+      "icon": "💧",
+      "quick": [
+        "Shell-and-tube condensers reject heat into a circulated water loop.",
+        "Open cooling towers evaporate water to lower the loop temperature.",
+        "Closed-circuit towers isolate process water from the evaporated water.",
+        "Water treatment prevents scale, corrosion, and Legionella risk."
+      ]
+    },
+    {
+      "heading": "Evaporative Condensers",
+      "icon": "🌫️",
+      "quick": [
+        "Combines air- and water-cooling by spraying water on the coil.",
+        "Evaporation is driven by wet-bulb, not dry-bulb, air temperature.",
+        "Can reach lower condensing temperatures than air-cooled units on hot, dry days.",
+        "Common in large commercial, industrial, and ammonia refrigeration systems."
+      ]
+    },
+    {
+      "heading": "Head Pressure Control Strategies",
+      "icon": "🎛️",
+      "quick": [
+        "Head pressure must stay high enough for flow and oil return.",
+        "Fan cycling stages fans on/off to hold pressure in cold weather.",
+        "Variable-speed fans modulate airflow for tighter, more efficient control.",
+        "Flooded condenser control backs up liquid to raise head pressure."
+      ]
+    },
+    {
+      "heading": "Diagnosing Condenser Problems and Calculating Subcooling",
+      "icon": "🔍",
+      "quick": [
+        "Dirty or blocked coils cause high head pressure and amp draw.",
+        "Non-condensables raise standing pressure above the P-T chart value.",
+        "Subcooling equals saturation temperature minus measured liquid line temperature.",
+        "Low subcooling suggests undercharge; high suggests overcharge or a restriction."
+      ]
+    }
+  ],
+  "evaporators": [
+    {
+      "heading": "The Evaporator's Role: Absorbing Heat by Boiling Refrigerant",
+      "icon": "❄️",
+      "quick": [
+        "Low-pressure liquid refrigerant boils in the coil, absorbing heat.",
+        "Evaporator pressure sets the refrigerant's boiling/operating temperature.",
+        "Coolers run ~15-25°F; freezers run -20 to -30°F.",
+        "Colder evaporators boost heat transfer but raise frost and dehydration."
+      ]
+    },
+    {
+      "heading": "Evaporator Types: Finned-Tube Coils, Plate, and Shell-and-Tube Chillers",
+      "icon": "🔧",
+      "quick": [
+        "Finned-tube air coils are most common in AC and refrigeration.",
+        "Distributors balance refrigerant flow across multiple coil circuits.",
+        "Plate evaporators are compact and efficient, used in chillers and ice machines.",
+        "Shell-and-tube chillers cool water, glycol, or brine, flooded or DX."
+      ]
+    },
+    {
+      "heading": "Flooded vs Direct-Expansion (DX) Evaporators",
+      "icon": "💧",
+      "quick": [
+        "DX is standard; TXV/EEV controls superheat at coil outlet.",
+        "Flooded coils stay full of liquid for higher heat transfer.",
+        "A surge drum separates liquid from vapor before the compressor.",
+        "Flooded designs need more charge; mainly large/industrial systems."
+      ]
+    },
+    {
+      "heading": "Evaporator TD, Sensible vs Latent Cooling, and Dehumidification",
+      "icon": "💦",
+      "quick": [
+        "TD is the gap between entering air and coil saturation temp.",
+        "Comfort coils typically run a 30-35°F TD.",
+        "Low TD (10-12°F) cuts dehydration; good for produce coolers.",
+        "Higher TD removes more moisture but adds frost and dehydration risk."
+      ]
+    },
+    {
+      "heading": "Frost, Ice, and Defrost Necessity",
+      "icon": "🌨️",
+      "quick": [
+        "Frost forms whenever coil surface hits 32°F or below.",
+        "Frost is normal on refrigeration coils, abnormal on AC coils.",
+        "Frost restricts airflow and insulates the coil, cutting capacity.",
+        "Defrost methods: off-cycle, electric, and hot gas defrost."
+      ]
+    },
+    {
+      "heading": "Basic Heat Load Concepts: Why a Box Runs Warm",
+      "icon": "📦",
+      "quick": [
+        "Heat loads include transmission, infiltration, product, and respiration load.",
+        "Internal loads: lighting, motors, workers, defrost heaters add heat.",
+        "Rule out load-side causes before assuming a refrigerant fault.",
+        "Propped doors or big warm-product loads often explain a warm box."
+      ]
+    }
+  ],
+  "system-components": [
+    {
+      "heading": "Liquid Line Filter-Driers",
+      "icon": "🧪",
+      "quick": [
+        "Removes moisture, acid, and debris from the liquid line.",
+        "Desiccant core bonds with water; screen traps particulates.",
+        "Moisture causes freeze-ups, acids, and winding/plating damage.",
+        "Replace after burnout, opened circuit, or excess pressure drop."
+      ]
+    },
+    {
+      "heading": "Suction Line Accumulators",
+      "icon": "🛢️",
+      "quick": [
+        "Prevents liquid and oil slugs from reaching the compressor.",
+        "Liquid and oil settle in the shell; vapor exits to compressor.",
+        "A metered bleed hole slowly returns oil and liquid safely.",
+        "Critical on heat pumps during defrost and variable loads."
+      ]
+    },
+    {
+      "heading": "Receivers and King Valves",
+      "icon": "🚰",
+      "quick": [
+        "Receiver stores a liquid refrigerant reserve after the condenser.",
+        "King valve isolates the receiver, used for pump-down service.",
+        "Receiver systems need head pressure control in cold ambients.",
+        "No-receiver systems are critically charged; exact charge matters."
+      ]
+    },
+    {
+      "heading": "Oil Separators",
+      "icon": "⚙️",
+      "quick": [
+        "Installed right after the compressor to remove entrained oil.",
+        "Baffles and coalescing filters knock oil out of hot gas.",
+        "Collected oil returns to the crankcase via a float valve.",
+        "Poor oil return starves compressor lubrication, causing bearing failure."
+      ]
+    },
+    {
+      "heading": "Solenoid Valves and Check Valves",
+      "icon": "🔀",
+      "quick": [
+        "Solenoids stop liquid flow for pump-down when compressor cycles off.",
+        "Also used for hot gas defrost and hot gas bypass.",
+        "Check valves allow one-way flow, bypassing unused metering devices.",
+        "Let heat pumps meter correctly in both flow directions."
+      ]
+    },
+    {
+      "heading": "Sight Glasses, Service Valves, and the Complete System",
+      "icon": "👀",
+      "quick": [
+        "Clear liquid is normal; bubbles signal charge or restriction issues.",
+        "Built-in moisture indicator changes color for wet vs. dry.",
+        "Service valves give access for gauges, recovery, and charging.",
+        "Tracing full component flow helps pinpoint where problems originate."
+      ]
+    }
+  ],
+  "electrical-fundamentals": [
+    {
+      "heading": "Basic Circuit Concepts and Ohm's Law",
+      "icon": "⚡",
+      "quick": [
+        "Ohm's law: Voltage = Current x Resistance (E = I x R).",
+        "Power (watts) = Voltage x Current; sizes wiring and breakers.",
+        "Series circuits: same current; one open part stops everything.",
+        "Parallel circuits: same voltage; current divides among branches."
+      ]
+    },
+    {
+      "heading": "AC Power: Single-Phase, Three-Phase, and Voltage Levels",
+      "icon": "🔌",
+      "quick": [
+        "Residential equipment uses single-phase 120V/240V line power.",
+        "Larger equipment uses three-phase power (208/240/480V).",
+        "Control circuits run on 24V AC via a step-down transformer.",
+        "Single-phasing drops one leg, causing motor overheating."
+      ]
+    },
+    {
+      "heading": "Key Components: Contactors, Relays, and Capacitors",
+      "icon": "🔗",
+      "quick": [
+        "Contactors and relays use low-voltage coils to switch higher-current loads.",
+        "Run capacitors stay energized, improving motor efficiency and torque.",
+        "Start capacitors give a brief boost, then switch out.",
+        "Shorted caps cause humming/high amps; open caps block starting."
+      ]
+    },
+    {
+      "heading": "Motors, Transformers, and Overcurrent Protection",
+      "icon": "🌀",
+      "quick": [
+        "PSC motors run fixed speed with a permanent run capacitor.",
+        "ECM motors are variable-speed, efficient, and harder to diagnose.",
+        "Transformers step line voltage down to 24V for controls.",
+        "Fuses, breakers, and overloads each guard against overcurrent differently."
+      ]
+    },
+    {
+      "heading": "Reading a Basic Ladder Diagram",
+      "icon": "🪜",
+      "quick": [
+        "Ladder rungs run in parallel between two power rails.",
+        "Series-wired safety devices can shut down the compressor.",
+        "Diagrams show components in their normal, de-energized resting state.",
+        "Misreading a switch's resting state is a common misdiagnosis."
+      ]
+    },
+    {
+      "heading": "Multimeter Use and Common Electrical Failures",
+      "icon": "🔍",
+      "quick": [
+        "Measure voltage live in parallel; measure resistance de-energized.",
+        "Continuity tests check fuses, switches, and overloads for failure.",
+        "Fully discharge capacitors before measuring, even when power is off.",
+        "Open windings read infinite resistance; shorted windings read very low."
+      ]
+    }
+  ],
+  "controls-safety-devices": [
+    {
+      "heading": "Thermostats",
+      "icon": "🌡️",
+      "quick": [
+        "Mechanical thermostats use bimetal or bellows elements to switch contacts.",
+        "Electronic thermostats use thermistors and microprocessors for tighter control.",
+        "Smart thermostats add Wi-Fi, scheduling, and geofencing features.",
+        "A thermostat call must still pass every series safety device."
+      ]
+    },
+    {
+      "heading": "Pressure Controls",
+      "icon": "📉",
+      "quick": [
+        "Low-pressure control stops the compressor on low suction pressure.",
+        "LPC serves freeze protection and pump-down operating roles.",
+        "High-pressure control stops the compressor on excessive discharge pressure.",
+        "Many HPCs are manual-reset to force root-cause diagnosis."
+      ]
+    },
+    {
+      "heading": "Defrost Controls and Strategies",
+      "icon": "⏱️",
+      "quick": [
+        "Time-temperature defrost runs on a fixed schedule with a termination sensor.",
+        "Demand defrost triggers only when frost is actually detected.",
+        "Electric and hot gas defrost melt frost using different heat sources.",
+        "Reverse cycle defrost is used specifically on heat pumps."
+      ]
+    },
+    {
+      "heading": "Safety Devices",
+      "icon": "🛡️",
+      "quick": [
+        "Oil pressure switch protects compressors from inadequate lubrication.",
+        "Internal and external overloads protect motor windings from overheating.",
+        "Freeze stats prevent hydronic coils from freezing and rupturing.",
+        "Fusible plugs and relief valves guard against overpressure."
+      ]
+    },
+    {
+      "heading": "Sequence of Operation for a Basic Refrigeration Control Circuit",
+      "icon": "🔄",
+      "quick": [
+        "Thermostat call opens the liquid line solenoid to start flow.",
+        "LPC closes on rising suction pressure, starting the compressor.",
+        "Satisfied thermostat triggers pump-down, then closes the compressor.",
+        "HPC can stop the compressor anytime, overriding thermostat and LPC."
+      ]
+    }
+  ],
+  "psychrometrics-dehumidification": [
+    {
+      "heading": "What Is Psychrometrics?",
+      "icon": "💧",
+      "quick": [
+        "Studies moisture in air and its effects on comfort, equipment, storage.",
+        "Changing temperature alone shifts RH even without added moisture.",
+        "Lets techs tell a real moisture problem from air that just feels humid.",
+        "Core language for sizing dehumidifiers and explaining performance ratings."
+      ]
+    },
+    {
+      "heading": "Key Properties of Moist Air",
+      "icon": "🌡️",
+      "quick": [
+        "Dry-bulb is plain temperature; wet-bulb is cooled by evaporation.",
+        "Dew point is where condensation starts forming on cold surfaces.",
+        "RH shifts with temperature; humidity ratio only changes with real moisture.",
+        "Enthalpy is total heat content (sensible plus latent) per pound of air."
+      ]
+    },
+    {
+      "heading": "Reading a Psychrometric Chart",
+      "icon": "📈",
+      "quick": [
+        "Plots dry-bulb temperature against humidity ratio on one chart.",
+        "Saturation curve marks 100% RH; air can't exist beyond it.",
+        "Cooling moves left (sensible only) until reaching the dew point.",
+        "Past dew point, path follows saturation curve as moisture condenses out."
+      ]
+    },
+    {
+      "heading": "Sensible Heat Ratio and Why Cooling Below Dew Point Dehumidifies",
+      "icon": "💦",
+      "quick": [
+        "SHR = sensible heat removed divided by total heat removed.",
+        "Comfort systems run ~0.70–0.80 SHR; dehumidifiers run much lower.",
+        "Coil surface must drop below dew point for any moisture removal.",
+        "Warm, dirty, or undercharged coils blow \"cold\" air but dehumidify poorly."
+      ]
+    },
+    {
+      "heading": "Refrigerant (DX Coil) Dehumidification vs. Desiccant Dehumidification",
+      "icon": "🔄",
+      "quick": [
+        "DX uses a cold coil plus reheat to dry air without overcooling.",
+        "DX works best in warm, moderate-to-high humidity spaces (45°F+).",
+        "DX capacity drops and coils frost below ~40–45°F entering air.",
+        "Desiccants adsorb moisture chemically, working in cold or very dry air."
+      ]
+    },
+    {
+      "heading": "Common Dehumidifier System Types",
+      "icon": "🏠",
+      "quick": [
+        "Portable DX units rated in pints removed per day (AHAM).",
+        "Whole-building/ducted DX handles humidity oversized ACs can't.",
+        "Desiccant units range from small wheels to large industrial systems.",
+        "Hybrid DX-plus-desiccant designs reach very low humidity targets."
+      ]
+    },
+    {
+      "heading": "Practical Implications of Humidity Control",
+      "icon": "⚠️",
+      "quick": [
+        "Mold risk rises above ~60–70% RH with organic material present.",
+        "Condensation forms whenever a surface drops below the air's dew point.",
+        "Sensitive goods (paper, electronics, meds) need tight RH bands.",
+        "In manufacturing, humidity control is process-critical, not just comfort."
+      ]
+    }
+  ],
+  "system-types-applications": [
+    {
+      "heading": "Domestic Refrigeration",
+      "icon": "🧊",
+      "quick": [
+        "Sealed, factory-charged units with capillary tube metering, no service ports.",
+        "Common refrigerants: R-600a (flammable hydrocarbon) or older R-134a.",
+        "Service is mostly electrical, gaskets, and defrost system repairs.",
+        "Frozen evaporator often means a failed defrost heater, timer, or thermostat."
+      ]
+    },
+    {
+      "heading": "Commercial Refrigeration",
+      "icon": "🏪",
+      "quick": [
+        "Reach-ins are self-contained; walk-ins use remote condensing units.",
+        "Supermarket racks centralize compressors serving many cases at once.",
+        "Med-temp racks run ~20–35°F; low-temp racks ~-20 to -30°F.",
+        "Ice machines use hot-gas harvest; scale and airflow are top issues."
+      ]
+    },
+    {
+      "heading": "Comfort Cooling as a Refrigeration Application",
+      "icon": "❄️",
+      "quick": [
+        "AC uses the same vapor-compression cycle as any refrigeration system.",
+        "Differs mainly in target temperature range and humidity performance focus.",
+        "Common setups: split systems, packaged rooftop units, ductless mini-splits."
+      ]
+    },
+    {
+      "heading": "Heat Pumps: Reverse-Cycle Operation",
+      "icon": "🔁",
+      "quick": [
+        "Reversing valve redirects refrigerant flow to heat or cool the building.",
+        "Outdoor coil frosts in heating mode, requiring periodic defrost cycles.",
+        "Balance point is the outdoor temp where capacity meets building heat loss.",
+        "Below balance point, auxiliary (strip) heat makes up the shortfall."
+      ]
+    },
+    {
+      "heading": "Chillers",
+      "icon": "🧪",
+      "quick": [
+        "Chillers cool water/glycol, then circulate it to air handlers.",
+        "Air-cooled chillers reject heat directly to outdoor air.",
+        "Water-cooled chillers use cooling towers and are generally more efficient.",
+        "Chilled water typically supplied ~42–45°F, returns ~55–58°F."
+      ]
+    },
+    {
+      "heading": "Industrial/Process Refrigeration and Transport Refrigeration",
+      "icon": "🚛",
+      "quick": [
+        "Ammonia (R-717): efficient, natural, toxic refrigerant for industrial plants.",
+        "CO2 (R-744): high-pressure, used in cascade/transcritical supermarket systems.",
+        "Blast freezing and cold storage often need multi-stage/cascade compression.",
+        "Transport reefers are self-contained diesel/electric DX units on trailers."
+      ]
+    },
+    {
+      "heading": "System Type Comparison",
+      "icon": "📊",
+      "quick": [
+        "Quick-reference table of refrigerant, temp range, and application by system.",
+        "Comfort/heat pump systems typically use R-410A, R-32, or R-454B.",
+        "Industrial ammonia/CO2 systems span roughly -40 to +35°F.",
+        "Transport refrigeration ranges from chilled (34–38°F) to frozen (-20°F)."
+      ]
+    }
+  ],
+  "installation-practices": [
+    {
+      "heading": "Copper Tubing Handling and Brazing Practices",
+      "icon": "🔧",
+      "quick": [
+        "Use Type ACR tubing; cut square and ream burrs before joining.",
+        "Clean joints to bright copper before brazing for a solid bond.",
+        "Purge with nitrogen while brazing to prevent oxide scale forming.",
+        "Use silver-based brazing alloy; never soft solder on refrigerant lines."
+      ]
+    },
+    {
+      "heading": "Pressure Testing with Nitrogen",
+      "icon": "🧯",
+      "quick": [
+        "Test only with dry nitrogen, never refrigerant, oxygen, or shop air.",
+        "Pressurize to manufacturer limits, then check joints with bubbles/detector.",
+        "Standing test holds pressure for hours, correlated against temperature.",
+        "Unexplained pressure drop signals a leak needing repair and retest."
+      ]
+    },
+    {
+      "heading": "Evacuation and Dehydration",
+      "icon": "🌀",
+      "quick": [
+        "Deep vacuum boils off trapped moisture before refrigerant is added.",
+        "Vacuum is measured in microns; target roughly 500 microns.",
+        "Triple evacuation or one deep continuous pull both remove moisture/air.",
+        "Evacuate from both sides with core removal tools for speed."
+      ]
+    },
+    {
+      "heading": "Charging Methods",
+      "icon": "⚖️",
+      "quick": [
+        "Weigh in charge by nameplate weight for the most accurate fill.",
+        "Fine-tune with superheat (fixed orifice) or subcooling (TXV) targets.",
+        "Charge liquid into the high side with compressor off to avoid slugging.",
+        "Zeotropic blends often need liquid charging to avoid fractionation."
+      ]
+    },
+    {
+      "heading": "Leak Detection Methods",
+      "icon": "🔍",
+      "quick": [
+        "Electronic sniffers catch low-level leaks but can give false positives.",
+        "Bubble solution visually confirms a leak's exact location under pressure.",
+        "UV dye reveals hard-to-find leaks after some system run time.",
+        "Nitrogen plus trace gas combines pressure testing with leak pinpointing."
+      ]
+    },
+    {
+      "heading": "Basic Piping Practices: Line Sizing, Traps, and Risers",
+      "icon": "📐",
+      "quick": [
+        "Size lines from manufacturer tables, not just equipment connection stubs.",
+        "Vertical suction risers need high velocity to carry oil upward.",
+        "P-traps at riser bases catch oil during low-velocity periods.",
+        "Avoid accidental sags or extra loops that trap oil unintentionally."
+      ]
+    }
+  ],
+  "maintenance": [
+    {
+      "heading": "Why Preventive Maintenance Matters",
+      "icon": "💰",
+      "quick": [
+        "Dirty coils, worn belts, or low charge quietly waste energy.",
+        "PM prevents premature compressor failure and costly emergency replacement.",
+        "Reliability is critical in refrigeration to avoid spoiled inventory.",
+        "Documented PM supports EPA leak inspection and compliance needs."
+      ]
+    },
+    {
+      "heading": "A Typical PM Checklist",
+      "icon": "✅",
+      "quick": [
+        "Clean coils and filters; check belts, bearings, electrical connections.",
+        "Verify refrigerant charge via superheat/subcooling against baseline.",
+        "Clean condensate drains and inspect door gaskets/seals.",
+        "Confirm defrost system and safety controls are functioning correctly."
+      ]
+    },
+    {
+      "heading": "Seasonal Maintenance Considerations",
+      "icon": "🍂",
+      "quick": [
+        "Spring pre-season AC checks catch issues before peak summer demand.",
+        "Fall checks cover burners, ignition, and heat pump defrost function.",
+        "Refrigeration runs year-round but still needs seasonal ambient attention.",
+        "Tailor schedule to environment: salt air, grease, dust exposure."
+      ]
+    },
+    {
+      "heading": "Documenting Service Records",
+      "icon": "📝",
+      "quick": [
+        "Record date, tech, equipment ID, readings, parts, refrigerant used.",
+        "Baseline data helps spot gradual degradation across future visits.",
+        "Documentation supports warranty claims and protects tech/company liability.",
+        "Thorough records are an EPA regulatory requirement for larger systems."
+      ]
+    },
+    {
+      "heading": "PM's Role in Reducing Leaks and Supporting Emissions Compliance",
+      "icon": "🌍",
+      "quick": [
+        "Most leaks start small at joints, seals, or degraded braze points.",
+        "Oil-residue checks and charge verification catch leaks early.",
+        "Undetected small leaks can grow into threshold-exceeding leak rates.",
+        "Preventing leaks saves refrigerant cost and cuts environmental impact."
+      ]
+    }
+  ],
+  "codes-certification": [
+    {
+      "heading": "EPA Section 608 Certification Types",
+      "icon": "📜",
+      "quick": [
+        "Type I covers small appliances with 5 lbs or less of charge.",
+        "Type II covers high-pressure equipment; requires a hands-on exam.",
+        "Type III covers low-pressure chillers (e.g., R-11, R-113).",
+        "Universal requires all three exams; certification never expires."
+      ]
+    },
+    {
+      "heading": "Record-Keeping and Leak Rate Requirements for Larger Systems",
+      "icon": "🗂️",
+      "quick": [
+        "Systems with 50+ lbs of charge require detailed service records.",
+        "Records must be kept 3 years and shown on request.",
+        "Leak thresholds: 10% comfort, 20% commercial, 30% industrial.",
+        "Exceeding the threshold triggers mandatory repair within 30 days."
+      ]
+    },
+    {
+      "heading": "Recovery, Recycling, and Reclaiming: Critical Definitions",
+      "icon": "♻️",
+      "quick": [
+        "Recovery: removing refrigerant into a container, no cleaning implied.",
+        "Recycling: on-site cleaning for reuse by the same owner.",
+        "Reclaiming: off-site processing to AHRI 700 purity for resale.",
+        "Exams often test mixing up these three precise definitions."
+      ]
+    },
+    {
+      "heading": "Recovery Equipment Standards and A2L Refrigerant Requirements",
+      "icon": "🛠️",
+      "quick": [
+        "Recovery machines must be AHRI 700/740 certified for performance.",
+        "A1-rated recovery machines aren't automatically safe for A2L use.",
+        "A2L service needs specifically rated recovery machines, gauges, hoses.",
+        "Lacking A2L-rated tools can block legal service of new systems."
+      ]
+    },
+    {
+      "heading": "The Broader Regulatory Backdrop: The AIM Act and Sector GWP Limits",
+      "icon": "⚖️",
+      "quick": [
+        "AIM Act phases down HFC production via shrinking allowances.",
+        "Baseline is set against 2011–2013 average production/consumption.",
+        "Sector GWP limits (~150–300) phase in for new equipment 2025–2027.",
+        "Drives the industry shift toward A2L, HFO, and lower-GWP options."
+      ]
+    },
+    {
+      "heading": "Safety Codes, State Programs, and Exam Preparation Tips",
+      "icon": "🎓",
+      "quick": [
+        "ASHRAE 15 and UL 60335-2-40 cover safety and A2L equipment rules.",
+        "Local codes and OSHA's General Duty Clause also apply broadly.",
+        "States like California (CARB) can impose stricter requirements.",
+        "Know cert types, the 50-lb threshold, leak rates, and 30-day rule."
+      ]
+    }
+  ]
+}

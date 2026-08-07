@@ -2,6 +2,47 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-07 — Refrigeration & HVAC/R: a 17-subject technician course, rebuilt on our own rails
+
+Training gains its largest course by a wide margin: **17 subjects, 155 lessons, 170 quiz questions**
+covering refrigeration theory, components, electrical, psychrometrics, installation, troubleshooting
+and EPA 608. It arrived as a single self-contained HTML file and has been rebuilt as real portal
+content — same lesson reader, same progress and XP, same quiz engine, same Quiet Precision surface.
+
+**The interactive parts came across as components, not as an iframe.** Twenty-four of them: six
+WebGL models on react-three-fiber (the vapour-compression cycle, reciprocating and scroll
+compressors, a TXV that responds to a superheat slider, phase-change particles, refrigerant
+molecules, and one air-coil model that serves both the condenser and evaporator subjects with a
+fault toggle), five click-to-explore diagrams, six calculators, and six practice drills including
+three branching service calls where the plausible wrong turn is the point.
+
+Three decisions worth recording:
+
+- **The quizzes use the existing engine, so the answer key never reaches the browser.** The source
+  revealed the correct answer on a failed attempt; ours does not, because these scores feed the
+  compliance report. The ungraded practice drills *do* explain themselves on a wrong answer — that is
+  the whole value of a rehearsal — and they deliberately write nothing to anyone's record.
+- **The final exam is a category capstone and gates nothing.** 34 cumulative questions, two per
+  subject. Each subject still completes on its own lessons plus its own knowledge check; the exam is
+  what the certificate waits for. Eligibility is decided server-side by the *same*
+  `subjectIsComplete()` the library and the compliance report use, so a certificate can never
+  congratulate someone the report lists as overdue.
+- **The course is generated, not hand-written.** `scripts/gen-hvacr-course.mjs` turns the source data
+  into both migrations, and asserts every marker it writes exists in `lib/learn-blocks.ts` — the
+  catalogue that also *types* the widget registry. A block named in the seed but not wired up is now
+  a compile error rather than a lesson that quietly renders "isn't available".
+
+Two bugs caught in browser verification that no type-check could see. `next/dynamic` requires a
+literal options object at the call site: hoisting the shared `{ ssr: false }` into a const and
+spreading it passes `tsc` and then 500s **every lesson page** at request time — the comment above
+those imports says not to DRY them up. And the psychrometric chart stacked its 80% and 100% labels
+at the right-hand edge, where they overprinted into "8100%", because both curves leave the top of
+the plot long before 100°F; each label now sits at the end of its own curve.
+
+Course data verified against production: 155 lessons, 53 carrying 55 markers across all 24 widgets,
+170 questions, and **every question with exactly one correct option** — the condition the publish
+gate requires. `scripts/verify-hvacr-certificate.mjs` re-runs all of it.
+
 ## 2026-08-07 — SOO: withheld clauses now print, and "incomplete" has one definition
 
 A second real test — the Ferrara unit, extracted rather than hand-entered — printed a draft with
