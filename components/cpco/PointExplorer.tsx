@@ -49,7 +49,12 @@ export default function PointExplorer({ className }: { className?: string }) {
   return (
     <div className={cn('overflow-hidden rounded-xl border border-hairline bg-surface', className)}>
       <div className="border-b border-hairline px-5 py-4">
-        <h3 className="text-[15px] font-medium text-ink">The unit’s BACnet point list</h3>
+        {/* Type goes on the span, not the h3: `.learn-prose-interactive h3` in
+            globals.css resets font-size/weight/letter-spacing to `inherit` at
+            specificity (0,1,1), which beats a Tailwind utility (0,1,0). */}
+        <h3>
+          <span className="text-[15px] font-medium text-ink">The unit’s BACnet point list</span>
+        </h3>
         <p className="mt-1 text-[12.5px] leading-relaxed text-ink-secondary">
           {POINTS.length} objects; a building system can write exactly{' '}
           <span className="font-medium text-ink">{writableCount}</span> of them. Instance numbers

@@ -2,6 +2,26 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-07 — c.pCO widget headings render at their intended weight again
+
+The three headings in the Control Panel Crash Course widgets — "Put the unit on BACnet", "The unit's
+BACnet point list", "Break the unit" — were rendering at body size and normal weight instead of
+15px/500, so each read as another paragraph rather than as the title of its widget.
+
+Not a typo: `.learn-prose-interactive h2, h3` in `globals.css` sets `font-size`, `font-weight` and
+`letter-spacing` to `inherit`, and at specificity (0,1,1) that **beats any Tailwind utility** (0,1,0)
+placed on the heading. The classes were there and doing nothing. Measured in the browser before the
+fix: `15.5px / 400`. After: `15px / 500`.
+
+The reset is correct and stays — it is what stops prose styling leaking into widget chrome — so the
+fix is local, the same one applied to the HVAC/R widgets earlier today: the `<h3>` keeps the
+semantics and an inner `<span>` carries the type. Colour was never affected, only those three
+properties.
+
+Worth knowing generally: a Tailwind utility on an element that a descendant selector also targets
+loses, silently, and `tsc` cannot see it. This is the second bug in one day whose only symptom was
+visual and whose only detection was opening the page.
+
 ## 2026-08-07 — Refrigeration & HVAC/R: a 17-subject technician course, rebuilt on our own rails
 
 Training gains its largest course by a wide margin: **17 subjects, 155 lessons, 170 quiz questions**

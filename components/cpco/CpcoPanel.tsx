@@ -200,7 +200,12 @@ export default function CpcoPanel({
       {scenario && (
         <div className="border-b border-hairline px-5 py-4">
           <p className="text-[11px] uppercase tracking-wider text-ink-faint">Your task</p>
-          <h3 className="mt-1 text-[15px] font-medium text-ink">{scenario.title}</h3>
+          {/* Type goes on the span, not the h3: `.learn-prose-interactive h3` in
+              globals.css resets font-size/weight/letter-spacing to `inherit` at
+              specificity (0,1,1), which beats a Tailwind utility (0,1,0). */}
+          <h3 className="mt-1">
+            <span className="text-[15px] font-medium text-ink">{scenario.title}</span>
+          </h3>
           <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-secondary">{scenario.brief}</p>
         </div>
       )}
