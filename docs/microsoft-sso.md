@@ -4,11 +4,26 @@ Staff sign in with their `@dehumidifiers.com` Microsoft account from `/login`. S
 Scoping/rationale lives in the parent `docs/microsoft-sso-mfa-plan.md`; this file is the
 operational reference.
 
-**Login layout (restacked 2026-07-27):** Microsoft is now the **primary** action — a solid dark
-button at the top of the form panel. Email + password moved below an "or sign in with email"
-divider and were demoted to a secondary outline button. Password sign-in still works; this is the
-visual lead-in to the eventual SSO-only posture (deleting passwords stays gated on removing the
-provisioning gate first — see the parent plan).
+**Login layout (restacked 2026-07-27, collapsed 2026-08-10):** Microsoft is the **primary**
+action — a solid dark button at the top of the form panel. Email + password now sits **collapsed**
+behind an "or sign in with email" disclosure and expands on click. Password sign-in still works;
+this is the visual lead-in to the eventual SSO-only posture (deleting passwords stays gated on
+removing the provisioning gate first — see the parent plan).
+
+Deliberately a **disclosure, not a hidden easter egg**. Break-glass sign-in happens during an
+outage, under pressure, possibly on a phone — so the toggle keeps `aria-expanded`/`aria-controls`,
+is reachable in two Tab presses, opens on Enter, and moves focus to the email field. Two things
+that are easy to get wrong if this is ever restyled:
+
+- **The `?error=` banner renders OUTSIDE the collapsible.** A callback error arrives with the
+  panel closed; rendering it inside would hide the only explanation the user gets.
+- **`sso_failed` is the one code that starts the panel open** — its message tells the user to fall
+  back to email, so the fallback needs to be visible. The others (expired link, wrong tenant, no
+  linked account) aren't fixed by typing a password and leave it closed.
+
+Hiding the form is **UX, not a security control** — `signInWithPassword` runs client-side and the
+anon key is public in the bundle. What actually removes password sign-in is deleting the
+credentials.
 
 ## How it fits
 

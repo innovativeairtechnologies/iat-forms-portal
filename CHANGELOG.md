@@ -2,6 +2,25 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-10 — Login: collapse email + password behind a disclosure
+
+"Sign in with Microsoft" was already the primary action; the email + password form now starts
+**collapsed** behind the "or sign in with email" divider and expands on click. The eye lands on
+the SSO button, but the fallback stays honest — this is a disclosure, not a hidden easter egg,
+because break-glass sign-in happens during an outage, under pressure, possibly on a phone. The
+toggle carries `aria-expanded`/`aria-controls`, is reachable in two Tab presses, opens on Enter,
+and moves focus to the email field.
+
+Two behaviours worth keeping if this is ever restyled: the `?error=` banner moved **outside** the
+collapsible (a callback error arrives with the panel closed, and rendering it inside would hide
+the only explanation the user gets), and `sso_failed` is the one error code that starts the panel
+open, since its message tells the user to fall back to email.
+
+No auth logic changed — password sign-in works exactly as before. Note this is presentation, not
+a control: `signInWithPassword` runs client-side against Supabase and the anon key is public in
+the bundle, so what actually retires password sign-in is deleting the credentials, which stays
+gated on removing the provisioning gate first. See [docs/microsoft-sso.md](docs/microsoft-sso.md).
+
 ## 2026-08-10 — Damper Flow Model: a damper you drive, not a calculator you type into
 
 Internal Apps gains `/tools/damper-flow-model.html`, an interactive model of a **TAMCO Series 1000

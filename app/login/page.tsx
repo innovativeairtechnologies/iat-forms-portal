@@ -1,11 +1,11 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, ArrowRight, X, FileText, Users, Bell } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, X, ChevronDown, FileText, Users, Bell } from 'lucide-react'
 import Image from 'next/image'
 import Logo from '@/components/Logo'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { normalizeRole, landingForRole } from '@/lib/roles'
 import { safeRedirect } from '@/lib/redirect'
@@ -50,8 +50,28 @@ function LoginForm() {
   const [loading, setLoading]   = useState(false)
   const [msLoading, setMsLoading] = useState(false)
   const [showPw, setShowPw]     = useState(false)
+  /* Email + password is collapsed by default so the eye lands on Microsoft.
+     Deliberately a disclosure, not a hidden easter egg: it stays keyboard-
+     reachable and screen-reader-announced, because break-glass sign-in happens
+     during an outage, under pressure, possibly on a phone. */
+  const [showEmail, setShowEmail] = useState(
+    /* Start open only when Microsoft itself failed to launch — that message
+       tells the user to fall back to email, so make the fallback visible. The
+       other codes (expired link, wrong tenant, no linked account) aren't fixed
+       by typing a password, so they leave it closed. */
+    () => searchParams.get('error') === 'sso_failed'
+  )
+  const emailRef     = useRef<HTMLInputElement>(null)
   const router       = useRouter()
   const supabase     = createSupabaseBrowser()
+
+  const toggleEmail = () => {
+    setShowEmail(open => {
+      if (open) setError('')                 // drop a stale failure on the way closed
+      else setTimeout(() => emailRef.current?.focus(), 180)  // after the expand settles
+      return !open
+    })
+  }
 
   /* Hand off to Entra ID. The heavy lifting — tenant restriction, MFA, and the
      domain + provisioning gates — happens in Entra and /auth/callback; this
@@ -278,19 +298,55 @@ function LoginForm() {
               Staff sign in with their Innovative Air Technologies account.
             </p>
 
-            {/* ── Email + password — the fallback path (secondary, outline) ── */}
-            <div className="flex items-center gap-3 my-6" aria-hidden="true">
-              <div className="h-px flex-1 bg-gray-100" />
-              <span className="text-[11px] text-gray-300 uppercase tracking-widest">or sign in with email</span>
-              <div className="h-px flex-1 bg-gray-100" />
+            {/* Errors live OUTSIDE the collapsible: a ?error= from /auth/callback
+                arrives with the panel closed, and rendering it inside would hide
+                the only explanation the user gets. */}
+            {error && (
+              <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 text-[12px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5 mt-6">
+                <X size={12} className="flex-shrink-0" />{error}
+              </motion.div>
+            )}
+
+            {/* ── Email + password — the fallback path, collapsed by default ── */}
+            <div className="flex items-center gap-3 my-6">
+              <div className="h-px flex-1 bg-gray-100" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={toggleEmail}
+                aria-expanded={showEmail}
+                aria-controls="email-signin"
+                className="flex items-center gap-1.5 text-[11px] text-gray-300 hover:text-gray-500 uppercase tracking-widest transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#089447]/30"
+              >
+                or sign in with email
+                <ChevronDown
+                  size={13}
+                  className={`transition-transform duration-200 ${showEmail ? 'rotate-180' : ''}`}
+                />
+              </button>
+              <div className="h-px flex-1 bg-gray-100" aria-hidden="true" />
             </div>
 
+            <AnimatePresence initial={false}>
+              {showEmail && (
+            <motion.div
+              key="email-signin"
+              id="email-signin"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              /* overflow-hidden is what makes the height tween work; the -mx/px
+                 pair gives the inputs' focus ring room so it isn't clipped. */
+              className="overflow-hidden -mx-1 px-1"
+            >
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">
                   Email
                 </label>
                 <input
+                  ref={emailRef}
                   type="email"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
@@ -318,13 +374,6 @@ function LoginForm() {
                 </div>
               </div>
 
-              {error && (
-                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 text-[12px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">
-                  <X size={12} className="flex-shrink-0" />{error}
-                </motion.div>
-              )}
-
               <button type="submit" disabled={loading || !email || !password}
                 className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 text-[14px] font-semibold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                 {loading ? (
@@ -334,6 +383,9 @@ function LoginForm() {
                 )}
               </button>
             </form>
+            </motion.div>
+              )}
+            </AnimatePresence>
 
             <p className="text-center text-[12px] text-gray-300 mt-6">
               Secured · Internal access only
