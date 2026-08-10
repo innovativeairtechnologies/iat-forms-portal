@@ -121,7 +121,7 @@ const NAV_PARENTS: NavParent[] = [
       // Sequence of Operation (084) — a DryWare submittal becomes the project
       // controls narrative. Sales starts one; engineering approves. Lives under
       // Sales because sales is who downloads the submittal and kicks it off.
-      { href: '/admin/soo', label: 'Sequences', perm: 'soo' },
+      { href: '/admin/soo', label: 'Submittal Generator', perm: 'soo' },
     ],
   },
   {
