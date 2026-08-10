@@ -2,6 +2,71 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-10 — Damper Flow Model: a damper you drive, not a calculator you type into
+
+Internal Apps gains `/tools/damper-flow-model.html`, an interactive model of a **TAMCO Series 1000
+Air-Foil Control Damper**. It rebuilds an externally-written selection calculator as something with a
+handle on it: a blade-angle slider drives a live section view and a face view, and free area,
+pressure drop, loss coefficient and the ΔP→CFM K-factor all move together. The face view is the
+honest one — the open fraction you see *is* α, checked in-browser at 0.8999 drawn against 0.9000
+modelled.
+
+Two modes off one physics core. **Select** sizes the damper. **Measure** treats it as a flow element:
+lock a blade angle, get the K for `CFM = K√ΔP`, fit a real K from field-measured points (least
+squares through the origin, with R² and a worst-point residual), and export IEC 61131-3 structured
+text so a PLC can drive a CFM readout from a differential-pressure transmitter — including the
+low-flow cutoff, because below it the square root turns transmitter noise into a jumping display.
+
+**The headline correction: a damper's loss coefficient depends on its size, not just its profile.**
+AMCA Fig. 5.3 is **five separate curves**, not one — implied C spans roughly **0.18 to 0.70 for SP**
+and **0.30 to 1.04 for NP**, falling as the opening grows, because frame and blade edges block a much
+larger fraction of a small opening. The inherited single value of 0.45 tracks the 48×12 curve, so on
+the default 36×24 selection it overstated pressure drop by about **2×** and understated the exported
+K by about 30%. Corrected: **ΔP 0.0125 → 0.0067 in. w.g., K 35,822 → 49,051.** The tool now carries
+per-size values for all three profiles and resolves to the tested size nearest your opening.
+
+**Three more things the source data says that a calculator can quietly get wrong:**
+
+- **TAMCO's WP number is not the damper.** The WP table is a plenum test. The column a coefficient
+  derives from is dominated by the opening's own entry loss, and TAMCO's own "Damper Only" column is
+  **negative in all thirty published rows** — the air-foil blades cost less than the bare hole. The
+  readout is labelled damper + plenum opening.
+- **Leakage is a closed-damper property**, so it is evaluated at the system design static pressure
+  (a new input, defaulting to the 1 in. w.g. AMCA rating basis), not at the damper's own open
+  pressure drop. The maths is derived rather than fitted: every AMCA class is exactly `base × √ΔP`
+  cfm/ft², reproducing all **thirteen** published numeric cells (class 1A is rated at 1 in. w.g.
+  only, so its other three read n/a).
+- **Air density scales the exported K, not just the displayed ΔP.** At 200 °F reactivation air it
+  moves the PLC constant by 11.6%. It is now an editable assumption and the emitted structured text
+  says when it is non-standard.
+
+**Two bugs carried over from the source calculator were fixed** — the coefficient above, and the
+maximum **section** size, which is 25 ft² **and** (60″w × 60″h **or** 48″w × 75″h). The original
+checked `w > 60 || h > 75`, so a 60 × 70 passed when TAMCO does not allow it.
+
+The Measure side refuses to hand over a constant it cannot stand behind. Calibration points are
+**stamped with the geometry and blade angle** they were measured at, so moving the blades retires the
+fitted K instead of silently relabelling it. The fit is judged on **worst-point error, not R²** —
+for a fit forced through the origin a centred R² does not decompose, and a tap with a constant offset
+scores R² 0.985 while being 12% out. A shut damper exports no constant at all rather than a
+plausible-looking `K_FLOW := 0.0`.
+
+Everything the model does not take from TAMCO is exposed in an **Assumptions** panel and tagged
+*Measured*, *Chart-read*, or *Modelled*. The coefficient fields are overrides rather than values:
+blank resolves to the size-matched number and shows it as the placeholder. Nothing in the UI calls
+SP or NP "certified" — those were read off a chart by eye, and the tool says so on the pill, the
+chart legend, the angle hint and the exported summary. **Copy review summary** dumps the whole state
+with its provenance tags as plain text. That panel is the deliverable as much as the model is: this
+was built to be argued with by people who know dampers better than the model does.
+
+Verified in headed Playwright runs — the size-resolved coefficient at all five tested sizes, drawn
+free area 0.8999 against 0.9000 modelled, keyboard entry into the calibration table, the tap-offset
+case, stamp invalidation, the crossover solve, density scaling of both ΔP and K, and a NaN sweep from
+3×3 to 200×200. The tool was then put through a ten-agent adversarial audit against the source PDFs,
+which confirmed all 30 WP values, the leakage identity, every geometry constant and the core algebra
+— and caught the size-dependence error. No new perm, route or migration; `/tools/*` already gates it
+to signed-in staff. The `New` chip moves off the Desiccant HMI onto this.
+
 ## 2026-08-07 — c.pCO widget headings render at their intended weight again
 
 The three headings in the Control Panel Crash Course widgets — "Put the unit on BACnet", "The unit's

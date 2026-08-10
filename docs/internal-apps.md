@@ -52,9 +52,10 @@ palette (on their own perms, matching this page) — that's now their keyboard s
 3. Match the **Quiet Precision** tokens (`DESIGN.md`, workspace root; see also
    [design-language.md](design-language.md)). Every existing tool declares the light ladder as
    CSS variables at the top of the file — copy that block rather than inventing colors. These
-   pages are light-only by design; they are print and PDF surfaces, not portal chrome. (One
-   documented exception — the [Desiccant Dehumidification HMI](#desiccant-dehumidification-hmi) is a
-   live screen, not a print surface, so it keeps a full light/dark toggle. See its section below.)
+   pages are light-only by design; they are print and PDF surfaces, not portal chrome. (Two
+   documented exceptions — the [Desiccant Dehumidification HMI](#desiccant-dehumidification-hmi) and
+   the [Damper Flow Model](#damper-flow-model) are live screens, not print surfaces, so both keep a
+   full light/dark toggle. See their sections below.)
 
 The IAT logo is a ~41 KB base64 PNG. Define it **once** as a `const LOGO` and set the header
 `<img>` src from JS — the older tools inline the same string twice (markup + PDF), which is
@@ -178,4 +179,143 @@ departs from "light-only" in two places — don't "fix" either:
    instead of being rebuilt in JS.
 
 No jsPDF, no CDN dependencies, no `window` globals beyond the sim. No new perm or migration — the
+`/tools/*` middleware already gates it to signed-in staff.
+
+---
+
+## Damper Flow Model
+
+`/tools/damper-flow-model.html` — added 2026-08-10.
+
+An interactive model of a **TAMCO Series 1000 Air-Foil Control Damper** (SP / NP / WP). It replaces a
+one-way "type CFM, read pressure drop" calculator with something you drive: a blade-angle slider
+moves a live section view and a face view, and free area, pressure drop, loss coefficient and the
+ΔP→CFM K-factor all move with it. Like the HMI it keeps a light/dark toggle and swaps the header
+logo, for the same reason — it is a screen, not a print sheet.
+
+Two modes off one physics core:
+
+- **Select** — size the damper. Face velocity, pressure drop, leakage class, blade-length limit,
+  section-size and install-type checks.
+- **Measure** — use the damper as a flow element. Lock a blade angle, get the K for `CFM = K√ΔP`,
+  fit a real K from field-measured points, and export IEC 61131-3 structured text for the PLC so the
+  HMI can display CFM from a differential-pressure transmitter.
+
+### The model
+
+Face velocity is `CFM ÷ (W×H/144)`; velocity pressure is `(V/4005)² × (ρ/0.075)`, where 4005 is the
+standard-air constant TAMCO's own data assumes. Blade angle enters through free area — blades are
+pitched to fill the height, so with `n` blades the projected blockage is `n·(b·cosθ + t·sinθ)` and
+
+```
+α(θ)  = 1 − cosθ − (n·t/H)·sinθ            0 at closed, 1 − n·t/H at full open
+C(θ)  = C_size + C_blade·((α_open/α)^p − 1)        returns C_size exactly at 90°
+K     = 4005·A ÷ √(C(θ)·ρ/0.075)           A in ft², ΔP in in. w.g.
+```
+
+`p` is the free-area **exponent** (2, the orifice default) and has nothing to do with `n`, the blade
+count — raising the free-area ratio to the blade count instead of to 2 is an easy and badly wrong
+mistake. `W` is **parallel** to the blades and therefore *is* the blade length, which is the
+dimension the blade-length limit applies to.
+
+Leakage is derived rather than fitted: every AMCA class in TAMCO's table is precisely `base × √ΔP`
+cfm/ft² with base = 3, 4, 10, 40 for classes 1A, 1, 2, 3. That reproduces all **thirteen** published
+numeric cells to TAMCO's own rounding (class 1A is rated at 1 in. w.g. only, so its other three cells
+read n/a). It is evaluated at the **system design static pressure** (a rail input, defaulting to
+1 in. w.g., the AMCA rating basis) because leakage is a closed-damper property — not at the damper's
+own open-position drop, which is a different and much smaller number.
+
+### Four things this tool is careful about
+
+1. **The loss coefficient is a property of the size, not just the profile.** This is the big one, and
+   it is what the calculator this tool replaces got wrong. AMCA Fig. 5.3 is **five separate curves**,
+   not one: implied C spans roughly **0.18 to 0.70 for SP** and **0.30 to 1.04 for NP**, falling
+   steadily as the opening grows, because frame and blade edges block a much larger fraction of a
+   small opening. WP's published table shows the same thing more mildly, 2.17 to 2.60. A single
+   blanket coefficient is about **2× wrong in the middle of the range** — the inherited 0.45 tracked
+   the 48×12 curve, so a 36×24 read roughly double its true pressure drop and its K was ~30% low.
+   `PERF` holds the per-size values for all three profiles and `nearestSize()` resolves in log space.
+
+2. **The WP number is not the damper.** TAMCO's WP data (p.6) is a *plenum* test. Its
+   "Damper & System" column — the one a coefficient can be derived from — is dominated by the
+   opening's own entry loss, and the **"Damper Only" column is negative in all thirty published rows**
+   (−0.003″ to −0.271″ w.g.): the air-foil blades cost *less* than the bare hole. The page labels the
+   WP readout as damper + plenum opening. Never quote it as the damper's loss.
+
+3. **Provenance is tracked, not assumed.** WP full-open comes from a published table. SP and NP
+   full-open were **read off a log-log chart by eye** — three independent readings agreed within
+   ±0.02 on four of the five SP curves, but the lowest (36×36) spanned 0.12–0.24, so it carries about
+   ±30%. Nothing in the UI calls SP or NP "certified"; the pill, the chart legend, the angle hint and
+   the exported summary all say chart-read.
+
+4. **Everything off full open is modelled.** TAMCO publishes nothing for partly-closed blades — which
+   is exactly why no manufacturer offers a universal partial-open K for rectangular dampers. Near
+   closed the orifice term runs to infinity while a real damper simply leaks at its AMCA class, so
+   `crossoverAngle()` **solves for** the angle where the modelled path passes less than the seals
+   leak (~11–13° on the shipped default) and marks everything below it as not physical.
+
+### The calibration path is guarded
+
+The K is the number that ends up in a PLC, so the Measure side refuses to hand over one it cannot
+stand behind:
+
+- **Points are stamped** with `{profile, action, W, H, angle}`. Move the blades or change the damper
+  and the fitted K is retired rather than silently relabelled to the new geometry — a K belongs to
+  one blade position only, which is the whole premise of the method.
+- **The fit is judged on worst-point error (≤3%), not R².** For a fit forced through the origin the
+  centred R² does not decompose: a tap with a constant offset gives a beautifully straight line that
+  misses the origin, scoring R² 0.985 while the worst point is 12% out. Verified — that exact case is
+  now caught. R² is still shown, but in its uncentred through-origin form and labelled as such.
+- **A shut damper exports no constant.** `K_FLOW := 0.0` would be a valid-looking number that reads
+  zero CFM for ever, so the PLC card is replaced with an explanation instead.
+- **Air density reaches the exported K**, not just the displayed ΔP. At 200 °F reactivation air
+  (ρ ≈ 0.0602) ΔP falls to 0.803× and K rises to 1.116×; the emitted structured text carries a
+  non-standard-density comment.
+
+### The Assumptions panel is the point
+
+Every number *not* taken from TAMCO is exposed as an editable field at the bottom of the page, tagged
+**Measured** (certified test data), **Chart-read** (SP/NP full-open C, read by eye off the AMCA
+Fig. 5.3 curves because no table exists), or **Modelled** (blade thickness, free-area exponent, air
+density). Editing any of them recalculates the page.
+
+The four coefficient fields are **overrides, not values**: left blank they resolve to the nearest
+tested size and the placeholder shows what is in use, so clearing a field restores size-awareness
+rather than pinning whatever was last typed. Pinning one raises a check saying how far it sits from
+the size-matched value.
+
+One coupling worth knowing: **the SP coefficient also drives WP's partly-closed behaviour.** WP's
+published number is a plenum-entry loss that does not scale with blade angle, so the incremental
+throttling is modelled on the same 6″ air-foil blade at the same size — pin SP and WP moves too. The
+exported summary states this.
+
+**Copy review summary** dumps the whole state — inputs, results, every assumption with its provenance
+tag, and every check — as plain text to paste into a review. The tool was built to be argued with.
+
+### Sources and verification
+
+TAMCO *Series 1000 Submittal & Performance Data* (TA-1000-TECH-24, April 2017) and *Aluminum Control
+Damper Installation Guidelines* (TA-IOM-CD-24, 2020).
+
+Verified in headed Playwright runs against the `tools-preview` launch config: the free-area maths
+(drawn face free-area 0.8999 against 0.9000 modelled), the size-resolved coefficient at all five
+tested sizes, keyboard entry into the calibration table, the tap-offset case, stamp invalidation when
+the blades move, the crossover solve, density scaling of both ΔP and K, and a NaN/Infinity sweep from
+3×3 to 200×200.
+
+The whole tool was then put through a ten-agent adversarial audit against the source PDFs — four
+independent lenses (data transcription, physics, claims, code robustness), each finding attacked by a
+refuter whose default was that it was wrong. It confirmed all 30 WP table values, the leakage
+identity, every geometry constant, the max-size logic and the core algebra, and it caught the
+size-dependence error described above.
+
+**Two bugs carried over from the source calculator were fixed here:**
+
+1. The maximum **section** size is 25 ft² **and** (60″w × 60″h **or** 48″w × 75″h). The original
+   checked `w > 60 || h > 75`, which passed a 60 × 70 that TAMCO does not allow. (Note this is
+   section size — the finished O.D. is separately larger or smaller per install type, so a legal
+   60 × 60 flanged opening correctly reports a 62 × 62 finished O.D.)
+2. The single blanket loss coefficient, described above.
+
+No jsPDF, no CDN dependencies beyond the Google Fonts link. No new perm or migration — the
 `/tools/*` middleware already gates it to signed-in staff.

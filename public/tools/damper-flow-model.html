@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IAT · Damper Flow Model — TAMCO Series 1000</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   Quiet Precision tokens (DESIGN.md §2). Same ladder as the Desiccant HMI —
+   this is a live model surface, not a print surface, so it keeps the dark
+   toggle and both themes are fully tokenised.
+   The schematic keeps two functional hues: --air (the airstream) and --throat
+   (the accelerated jet through the blade gap). Those encode physics, not
+   decoration, the way the Application Diagram artboard does.
+   ───────────────────────────────────────────────────────────────────────────── */
+:root{
+  --canvas:#F7F6F3; --surface:#FFFFFF; --surface-soft:#FBFAF8; --surface-strong:#EFEDE8;
+  --hairline:#E8E6E1; --hairline-soft:#F0EEE9; --hairline-strong:#D6D3CC;
+  --ink:#1F1E1B; --ink-secondary:#57544D; --ink-muted:#8A867C; --ink-faint:#B3AFA5;
+  --brand:#089447; --brand-hover:#077A3C; --brand-soft:#E9F6EE; --brand-ink:#0B6B36;
+  --amber:#92400E; --amber-soft:#FEF6E7; --amber-line:#F1D9A6;
+  --rose:#B4231C; --rose-soft:#FBECEA; --rose-line:#F0C9C5;
+  --sky:#0369A1; --sky-soft:#EFF6FF; --sky-line:#CFE3F5;
+  --violet:#6D28D9; --violet-soft:#F3EEFE;
+
+  /* functional schematic hues */
+  --air:#0F8FB5; --throat:#B4551F;
+  --metal:#EFEDE8; --metal-line:#C7C2B8; --blade:#D8D4CC; --blade-line:#9E998F;
+  --grid-line:rgba(31,30,27,0.032);
+
+  --radius:12px;
+}
+body.dark{
+  --canvas:#101215; --surface:#1C2026; --surface-soft:#16191E; --surface-strong:#262B32;
+  --hairline:#2A2F37; --hairline-soft:#21252C; --hairline-strong:#3A404A;
+  --ink:#F1F3F7; --ink-secondary:#AEB4BD; --ink-muted:#7F858F; --ink-faint:#565C66;
+  --brand:#1FB668; --brand-hover:#2BC474; --brand-soft:rgba(31,182,104,0.14); --brand-ink:#4ED292;
+  --amber:#F5B454; --amber-soft:rgba(245,166,35,0.12); --amber-line:rgba(245,166,35,0.30);
+  --rose:#F08A82; --rose-soft:rgba(239,68,68,0.12); --rose-line:rgba(239,68,68,0.28);
+  --sky:#6FC3E8; --sky-soft:rgba(79,195,232,0.12); --sky-line:rgba(79,195,232,0.28);
+  --violet:#C4B5FD; --violet-soft:rgba(167,139,250,0.14);
+
+  --air:#4FC3E8; --throat:#FF8A5C;
+  --metal:#262B32; --metal-line:#3A404A; --blade:#333941; --blade-line:#5A626D;
+  --grid-line:rgba(255,255,255,0.028);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--canvas); color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-feature-settings:'cv02','cv03','cv04','cv11';
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  transition:background .2s ease, color .2s ease;
+}
+.tnum{font-variant-numeric:tabular-nums; font-feature-settings:'tnum';}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+
+/* ── App bar ─────────────────────────────────────────────────────────────── */
+.appbar{
+  display:flex; align-items:center; gap:16px;
+  padding:14px 28px; background:var(--surface); border-bottom:1px solid var(--hairline);
+}
+.appbar img{height:32px; width:auto; display:block; flex-shrink:0;}
+.appbar .wm{border-left:1px solid var(--hairline); padding-left:16px;}
+.appbar .wm .over{font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted);}
+.appbar .wm .name{font-size:13px; font-weight:600; color:var(--ink); margin-top:1px; letter-spacing:-.006em;}
+.appbar-spacer{flex:1;}
+
+.icon-btn{
+  width:36px; height:36px; border-radius:8px; background:var(--surface); border:1px solid var(--hairline-strong);
+  color:var(--ink-secondary); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background .12s ease, border-color .12s ease, color .12s ease;
+}
+.icon-btn:hover{background:var(--surface-soft); color:var(--ink);}
+.icon-btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+.icon-btn svg{width:17px; height:17px;}
+
+/* ── Title bar ───────────────────────────────────────────────────────────── */
+.titlebar{
+  max-width:1380px; margin:0 auto; padding:26px 28px 4px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;
+}
+.titlebar .over{font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:5px;}
+.titlebar h1{font-size:24px; font-weight:600; letter-spacing:-.02em; margin:0; color:var(--ink);}
+.titlebar .sub{font-size:13px; color:var(--ink-muted); margin-top:6px; max-width:72ch; line-height:1.55;}
+.titlebar .sub b{color:var(--ink-secondary); font-weight:500;}
+.actions{display:flex; align-items:center; gap:8px; flex-shrink:0; flex-wrap:wrap;}
+
+.btn{
+  font-family:inherit; font-size:13px; font-weight:500; color:var(--ink-secondary);
+  background:var(--surface); border:1px solid var(--hairline-strong); padding:0 13px; height:36px; border-radius:8px;
+  cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+  transition:background .12s ease, border-color .12s ease, color .12s ease;
+}
+.btn:hover{background:var(--surface-soft); color:var(--ink);}
+.btn:active{transform:scale(.985);}
+.btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+.btn.primary{background:var(--brand); border-color:var(--brand); color:#fff;}
+.btn.primary:hover{background:var(--brand-hover); border-color:var(--brand-hover); color:#fff;}
+.btn.sm{height:30px; font-size:12px; padding:0 10px; border-radius:7px;}
+
+/* ── Segmented ───────────────────────────────────────────────────────────── */
+.seg{display:inline-flex; background:var(--surface-strong); border:1px solid var(--hairline); border-radius:9px; padding:3px; gap:3px;}
+.seg button{
+  font-family:inherit; font-size:13px; font-weight:500; color:var(--ink-secondary);
+  background:transparent; border:none; padding:0 14px; height:30px; border-radius:6px; cursor:pointer; white-space:nowrap;
+  transition:background .12s ease, color .12s ease;
+}
+.seg button:hover{color:var(--ink);}
+.seg button.on{background:var(--surface); color:var(--ink); font-weight:600; box-shadow:0 1px 2px rgba(31,30,27,.05);}
+body.dark .seg button.on{box-shadow:none; background:var(--surface-strong); border:1px solid var(--hairline-strong);}
+.seg button:focus-visible{outline:2px solid var(--brand); outline-offset:1px;}
+.seg.wide{display:flex;}
+.seg.wide button{flex:1; padding:0 6px;}
+
+.wrap{max-width:1380px; margin:0 auto; padding:8px 28px 64px;}
+.instructions{font-size:13px; color:var(--ink-muted); margin:14px 0 18px; line-height:1.55; max-width:96ch;}
+.instructions b{color:var(--ink-secondary); font-weight:500;}
+
+/* ── Stat strip ──────────────────────────────────────────────────────────── */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:12px; margin-bottom:20px;}
+.stat-card{background:var(--surface); border:1px solid var(--hairline); border-radius:var(--radius); padding:14px 16px;}
+.stat-label{font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:8px;}
+.stat-value{font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.15;}
+.stat-value span{font-size:11px; color:var(--ink-muted); font-weight:400; margin-left:3px; font-family:'Inter',sans-serif;}
+.stat-note{font-size:11px; color:var(--ink-muted); margin-top:6px; line-height:1.4;}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.layout{display:grid; grid-template-columns:332px 1fr; gap:20px; align-items:start;}
+@media (max-width:1080px){ .layout{grid-template-columns:1fr;} }
+
+.card{background:var(--surface); border:1px solid var(--hairline); border-radius:var(--radius); overflow:hidden;}
+.card + .card{margin-top:20px;}
+.card-head{padding:15px 18px 0;}
+.card-head h2{font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; color:var(--ink);}
+.card-head p{font-size:12px; color:var(--ink-muted); margin:5px 0 0; line-height:1.5;}
+.card-body{padding:16px 18px 18px;}
+
+.rail{position:sticky; top:16px;}
+@media (max-width:1080px){ .rail{position:static;} }
+
+.group{padding:16px 18px;}
+.group + .group{border-top:1px solid var(--hairline-soft);}
+.group-label{
+  font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-muted); margin:0 0 13px;
+}
+
+label.fl{display:block; font-size:12px; font-weight:500; color:var(--ink-secondary); margin:0 0 5px;}
+.field{margin-bottom:13px;}
+.field:last-child{margin-bottom:0;}
+.hint{font-size:11px; color:var(--ink-muted); margin-top:5px; line-height:1.45;}
+
+input[type=number], input[type=text], select{
+  width:100%; padding:8px 10px; height:36px;
+  border:1px solid var(--hairline-strong); border-radius:8px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; font-variant-numeric:tabular-nums;
+  background:var(--surface); color:var(--ink);
+}
+select{font-family:'Inter',sans-serif;}
+input:focus, select:focus{outline:none; border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-soft);}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+
+/* range */
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; cursor:pointer; margin:0;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:99px; background:var(--hairline-strong);}
+input[type=range]::-moz-range-track{height:4px; border-radius:99px; background:var(--hairline-strong);}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%;
+  background:var(--brand); border:2px solid var(--surface); margin-top:-6px;
+}
+input[type=range]::-moz-range-thumb{
+  width:16px; height:16px; border-radius:50%; background:var(--brand); border:2px solid var(--surface);
+}
+input[type=range]:focus-visible{outline:2px solid var(--brand); outline-offset:3px; border-radius:8px;}
+
+.angle-row{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:2px;}
+.angle-val{font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums;}
+.angle-val span{font-size:12px; color:var(--ink-muted); font-weight:400;}
+.angle-state{font-size:11.5px; color:var(--ink-muted);}
+.tick-row{display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); font-family:'JetBrains Mono',monospace; margin-top:2px;}
+.preset-row{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;}
+
+/* ── Stage ───────────────────────────────────────────────────────────────── */
+.stage-grid{display:grid; grid-template-columns:1fr 236px; gap:18px; align-items:start;}
+@media (max-width:760px){ .stage-grid{grid-template-columns:1fr;} }
+.stage{
+  border-radius:10px; overflow:hidden; border:1px solid var(--hairline-soft);
+  background:
+    repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 32px),
+    var(--surface-soft);
+}
+.stage svg{display:block; width:100%; height:auto;}
+.face-cap{font-size:11px; color:var(--ink-muted); margin-top:8px; line-height:1.5; text-align:center;}
+.face-cap b{color:var(--ink-secondary); font-weight:600; font-family:'JetBrains Mono',monospace;}
+
+.legend{display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:11.5px; color:var(--ink-muted);}
+.legend-item{display:flex; align-items:center; gap:6px;}
+.legend-swatch{width:11px; height:3px; border-radius:2px; display:inline-block;}
+
+/* schematic classes */
+.sc-duct{fill:none; stroke:var(--metal-line); stroke-width:2;}
+.sc-wall{fill:var(--metal);}
+.sc-frame{fill:var(--metal); stroke:var(--metal-line); stroke-width:1.5;}
+.sc-blade{fill:var(--blade); stroke:var(--blade-line); stroke-width:1.2;}
+.sc-pivot{fill:var(--blade-line);}
+.sc-air{fill:none; stroke:var(--air); stroke-width:2.4; stroke-linecap:round; stroke-dasharray:12 9; animation:flow 1.1s linear infinite;}
+.sc-throat{fill:none; stroke:var(--throat); stroke-width:2.4; stroke-linecap:round; stroke-dasharray:7 6; animation:flow .55s linear infinite;}
+@keyframes flow{to{stroke-dashoffset:-21;}}
+.sc-tap{stroke:var(--ink-muted); stroke-width:1.6; fill:none;}
+.sc-dim{stroke:var(--ink-faint); stroke-width:1;}
+.sc-txt{font-family:'JetBrains Mono',monospace; font-size:10px; fill:var(--ink-muted);}
+.sc-txt-b{font-family:'JetBrains Mono',monospace; font-size:10.5px; fill:var(--ink-secondary); font-weight:600;}
+.sc-open{fill:var(--air); opacity:.17;}
+/* hairline only — a heavier stroke visually inflates a thin blade band and
+   makes the face view read as less free area than the model actually says */
+.sc-blocked{fill:var(--blade); stroke:var(--blade-line); stroke-width:.35;}
+
+/* ── Checks ──────────────────────────────────────────────────────────────── */
+.checks{display:flex; flex-direction:column; gap:8px;}
+.chk{display:flex; gap:10px; padding:11px 13px; border-radius:9px; font-size:12.5px; line-height:1.55; border:1px solid;}
+.chk .ic{font-family:'JetBrains Mono',monospace; font-weight:600; flex-shrink:0; line-height:1.5;}
+.chk.ok{background:var(--brand-soft); border-color:transparent; color:var(--brand-ink);}
+.chk.warn{background:var(--amber-soft); border-color:var(--amber-line); color:var(--amber);}
+.chk.bad{background:var(--rose-soft); border-color:var(--rose-line); color:var(--rose);}
+.chk.info{background:var(--sky-soft); border-color:var(--sky-line); color:var(--sky);}
+.chk b{font-weight:600;}
+
+/* ── Pills ───────────────────────────────────────────────────────────────── */
+.pills{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px;}
+.pill{font-size:11.5px; font-weight:500; padding:4px 11px; border-radius:999px; line-height:1.35; white-space:nowrap;}
+.pill.slate{background:var(--surface-strong); color:var(--ink-secondary);}
+.pill.emerald{background:var(--brand-soft); color:var(--brand-ink);}
+.pill.amber{background:var(--amber-soft); color:var(--amber);}
+.pill.sky{background:var(--sky-soft); color:var(--sky);}
+.pill.violet{background:var(--violet-soft); color:var(--violet);}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+table.t{width:100%; border-collapse:collapse; font-size:13px;}
+table.t th{
+  text-align:left; font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-muted); padding:0 10px 9px; border-bottom:1px solid var(--hairline);
+}
+table.t td{padding:0 10px; height:52px; border-bottom:1px solid var(--hairline-soft); color:var(--ink-secondary);}
+table.t tr:last-child td{border-bottom:none;}
+table.t td.num, table.t th.num{text-align:right; font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;}
+table.t input{height:32px; padding:5px 8px; font-size:12.5px;}
+.t-empty{font-size:12.5px; color:var(--ink-muted); padding:14px 10px; line-height:1.6;}
+
+.del-btn{
+  width:26px; height:26px; border-radius:6px; border:1px solid var(--hairline-strong); background:var(--surface);
+  color:var(--ink-muted); cursor:pointer; font-size:14px; line-height:1; display:inline-flex; align-items:center; justify-content:center;
+}
+.del-btn:hover{color:var(--rose); border-color:var(--rose-line);}
+
+/* ── Code block ──────────────────────────────────────────────────────────── */
+pre.code{
+  margin:0; background:var(--surface-soft); border:1px solid var(--hairline);
+  border-radius:9px; padding:14px 16px; overflow-x:auto;
+  font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7; color:var(--ink-secondary);
+  white-space:pre; tab-size:2;
+}
+pre.code .cm{color:var(--ink-faint);}
+pre.code .kw{color:var(--violet);}
+pre.code .nm{color:var(--sky);}
+
+/* ── Assumptions ─────────────────────────────────────────────────────────── */
+details.assum{background:var(--surface); border:1px solid var(--hairline); border-radius:var(--radius); margin-top:20px;}
+details.assum > summary{
+  list-style:none; cursor:pointer; padding:15px 18px; display:flex; align-items:center; gap:10px;
+  font-size:14px; font-weight:600; color:var(--ink);
+}
+details.assum > summary::-webkit-details-marker{display:none;}
+details.assum > summary .chev{
+  width:14px; height:14px; flex-shrink:0; color:var(--ink-muted);
+  transition:transform .15s ease;
+}
+details.assum[open] > summary .chev{transform:rotate(90deg);}
+details.assum > summary .tail{margin-left:auto; font-size:12px; font-weight:400; color:var(--ink-muted);}
+.assum-body{padding:2px 18px 18px; border-top:1px solid var(--hairline-soft); margin-top:0;}
+.assum-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-top:16px;}
+.assum-note{font-size:12px; color:var(--ink-muted); line-height:1.6; margin:14px 0 0;}
+.src-tag{
+  display:inline-block; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
+  padding:2px 7px; border-radius:5px; margin-left:6px; vertical-align:1px;
+}
+.src-tag.measured{background:var(--brand-soft); color:var(--brand-ink);}
+.src-tag.read{background:var(--amber-soft); color:var(--amber);}
+.src-tag.model{background:var(--sky-soft); color:var(--sky);}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+footer{
+  max-width:1380px; margin:0 auto; padding:26px 28px 60px; font-size:12px; line-height:1.7; color:var(--ink-muted);
+  border-top:1px solid var(--hairline); margin-top:32px;
+}
+footer h3{font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-secondary); margin:0 0 10px;}
+footer p{margin:0 0 12px; max-width:100ch;}
+footer b{color:var(--ink-secondary); font-weight:600;}
+footer code{font-family:'JetBrains Mono',monospace; font-size:11.5px; background:var(--surface-strong); padding:1px 5px; border-radius:4px; color:var(--ink-secondary);}
+.foot-cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:28px;}
+
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <img id="logo" src="/iat-logo.png" alt="Innovative Air Technologies">
+  <div class="wm">
+    <div class="over">IAT</div>
+    <div class="name">Innovative Air Technologies</div>
+  </div>
+  <div class="appbar-spacer"></div>
+  <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark mode" title="Toggle light / dark mode"></button>
+</header>
+
+<div class="titlebar">
+  <div>
+    <div class="over">Internal Apps · Damper Model</div>
+    <h1>Damper Flow Model</h1>
+    <div class="sub">TAMCO Series&nbsp;1000 Air-Foil Control Damper — <b>SP</b> / <b>NP</b> / <b>WP</b>. Drive the blades through their travel and watch free area, pressure drop, and the ΔP→CFM K-factor move together.</div>
+  </div>
+  <div class="actions">
+    <div class="seg" id="modeSeg" role="tablist" aria-label="Tool mode">
+      <button data-mode="select" class="on" role="tab">Select</button>
+      <button data-mode="measure" role="tab">Measure</button>
+    </div>
+    <button class="btn" id="btn-copy">Copy review summary</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <p class="instructions" id="instructions"></p>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="layout">
+
+    <!-- ── CONTROL RAIL ────────────────────────────────────────────────── -->
+    <aside class="rail">
+      <div class="card">
+
+        <div class="group">
+          <p class="group-label">Airflow &amp; opening</p>
+          <div class="field">
+            <label class="fl" for="in-cfm">Design airflow</label>
+            <input type="number" id="in-cfm" value="4000" min="1" step="50">
+            <div class="hint">CFM through the damper at design.</div>
+          </div>
+          <div class="field">
+            <label class="fl">Opening size (in.)</label>
+            <div class="row2">
+              <div>
+                <input type="number" id="in-w" value="36" min="4" step="0.5" aria-label="Opening width">
+                <div class="hint">Width — <b>parallel</b> to blades (= blade length)</div>
+              </div>
+              <div>
+                <input type="number" id="in-h" value="24" min="4" step="0.5" aria-label="Opening height">
+                <div class="hint">Height — <b>perpendicular</b> to blades</div>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="fl" for="in-sysp">System design static pressure</label>
+            <input type="number" id="in-sysp" placeholder="1.0" min="0" step="0.25">
+            <div class="hint">in. w.g. across the damper when it is <b>closed</b> — a system property, not the damper's own drop. Drives the blade-length limit and the leakage figure. Blank uses 1 in. w.g., the AMCA leakage rating basis.</div>
+          </div>
+        </div>
+
+        <div class="group">
+          <p class="group-label">Damper</p>
+          <div class="field">
+            <label class="fl">Profile</label>
+            <div class="seg wide" id="profileSeg">
+              <button data-p="SP" class="on">SP</button>
+              <button data-p="NP">NP</button>
+              <button data-p="WP">WP</button>
+            </div>
+            <div class="hint" id="profileHint"></div>
+          </div>
+          <div class="field">
+            <label class="fl">Blade action</label>
+            <div class="seg wide" id="actionSeg">
+              <button data-a="opposed" class="on">Opposed</button>
+              <button data-a="parallel">Parallel</button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="fl" for="in-install">Install type</label>
+            <select id="in-install"></select>
+            <div class="hint" id="installHint"></div>
+          </div>
+          <div class="field hidden" id="dirField">
+            <label class="fl">Plenum airflow direction</label>
+            <div class="seg wide" id="dirSeg">
+              <button data-d="intake" class="on">Intake</button>
+              <button data-d="exhaust">Exhaust</button>
+            </div>
+            <div class="hint">WP is tested at a plenum face — AMCA Fig.&nbsp;5.4 (intake) / 5.5 (exhaust).</div>
+          </div>
+        </div>
+
+        <div class="group">
+          <p class="group-label">Blade position</p>
+          <div class="angle-row">
+            <div class="angle-val" id="angleVal">90<span>°</span></div>
+            <div class="angle-state" id="angleState">Full open</div>
+          </div>
+          <input type="range" id="in-angle" min="0" max="90" step="1" value="90" aria-label="Blade angle from closed">
+          <div class="tick-row"><span>0° closed</span><span>45°</span><span>90° open</span></div>
+          <div class="preset-row">
+            <button class="btn sm" data-angle="90">Full open</button>
+            <button class="btn sm" data-angle="60">60°</button>
+            <button class="btn sm" data-angle="45">45°</button>
+            <button class="btn sm" data-angle="30">30°</button>
+          </div>
+          <div class="hint" id="angleHint" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="group hidden" id="txGroup">
+          <p class="group-label">ΔP transmitter</p>
+          <div class="field">
+            <div class="row2">
+              <div>
+                <label class="fl" for="in-span">Span (in. w.g.)</label>
+                <input type="number" id="in-span" value="1.0" min="0.05" step="0.05">
+              </div>
+              <div>
+                <label class="fl" for="in-acc">Accuracy (± % FS)</label>
+                <input type="number" id="in-acc" value="1.0" min="0.05" step="0.05">
+              </div>
+            </div>
+            <div class="hint">Most HVAC ΔP transmitters spec accuracy as a percentage of <b>full span</b>, so a small reading on a large span is a poor reading.</div>
+          </div>
+          <button class="btn primary" id="btn-solve" style="width:100%; justify-content:center;">Set angle for best resolution</button>
+          <div class="hint" style="margin-top:8px;">Drives the blades to put design ΔP near 70% of span, where the √ curve resolves flow best.</div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ── STAGE ───────────────────────────────────────────────────────── -->
+    <section>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>The damper</h2>
+          <p id="stageSub"></p>
+        </div>
+        <div class="card-body">
+          <div class="stage-grid">
+            <div>
+              <div class="stage"><svg id="svgSection" viewBox="0 0 760 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Damper section view"></svg></div>
+              <div class="legend">
+                <div class="legend-item"><span class="legend-swatch" style="background:var(--air);"></span>Approach air at face velocity</div>
+                <div class="legend-item"><span class="legend-swatch" style="background:var(--throat);"></span>Jet through the blade gap</div>
+                <div class="legend-item"><span class="legend-swatch" style="background:var(--blade-line);"></span>Air-foil blade</div>
+              </div>
+            </div>
+            <div>
+              <div class="stage"><svg id="svgFace" viewBox="0 0 236 236" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Damper face view"></svg></div>
+              <p class="face-cap" id="faceCap"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 id="chartTitle"></h2>
+          <p id="chartSub"></p>
+        </div>
+        <div class="card-body">
+          <svg id="svgChart" viewBox="0 0 720 330" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:auto;" role="img" aria-label="Performance chart"></svg>
+        </div>
+      </div>
+
+      <!-- Measure-only: calibration -->
+      <div class="card hidden" id="calCard">
+        <div class="card-head">
+          <h2>Field calibration</h2>
+          <p>With the blades <b>locked at this angle</b>, measure actual airflow independently — a Pitot traverse per ASHRAE/AABC, or a reference flow station — and log the ΔP across your taps at each point. Four or five points across the real operating range is enough. The slope of CFM against √ΔP is your K.</p>
+        </div>
+        <div class="card-body">
+          <div id="calTableWrap"></div>
+          <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+            <button class="btn" id="btn-add-point">Add point</button>
+            <button class="btn" id="btn-clear-points">Clear all</button>
+          </div>
+          <div id="calResult" style="margin-top:16px;"></div>
+        </div>
+      </div>
+
+      <!-- Measure-only: PLC -->
+      <div class="card hidden" id="plcCard">
+        <div class="card-head">
+          <h2>PLC / HMI implementation</h2>
+          <p>Generic IEC 61131-3 structured text. The constant is the only thing that changes between dampers — everything else is scaling and guard rails.</p>
+        </div>
+        <div class="card-body">
+          <div class="pills" id="plcPills"></div>
+          <pre class="code" id="plcCode"></pre>
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="btn" id="btn-copy-plc">Copy code</button>
+          </div>
+          <div class="checks" id="plcChecks" style="margin-top:16px;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Checks</h2>
+          <p>Against TAMCO Series 1000 submittal data (TA-1000-TECH-24) and the Aluminum Control Damper Installation Guidelines (TA-IOM-CD-24).</p>
+        </div>
+        <div class="card-body">
+          <div class="pills" id="pills"></div>
+          <div class="checks" id="checks"></div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- ── ASSUMPTIONS ───────────────────────────────────────────────────── -->
+  <details class="assum" id="assumBox">
+    <summary>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      Assumptions — open to revise
+      <span class="tail">Every number the model does not get from TAMCO lives here</span>
+    </summary>
+    <div class="assum-body">
+      <p class="assum-note" style="margin-top:16px;">
+        Three tags run through this tool. <span class="src-tag measured">Measured</span> means it comes from TAMCO's certified test data.
+        <span class="src-tag read">Chart-read</span> means TAMCO publishes only a log-log curve for it, so the coefficient was read off that curve — by eye, with real uncertainty.
+        <span class="src-tag model">Modelled</span> means it is first-principles fluid mechanics, not TAMCO data at all — TAMCO publishes nothing for partly-closed blades.
+        Change anything below and the whole page recalculates.
+      </p>
+      <p class="assum-note">
+        The four coefficient fields are <b>overrides</b>. Left blank they resolve to the tested size nearest your opening — the placeholder shows the value in use.
+        That matters more than it sounds: the loss coefficient is a property of the profile <i>and</i> the size, not the profile alone, and it varies by a factor of four across the sizes TAMCO tested.
+      </p>
+
+      <div class="assum-grid">
+        <div class="field">
+          <label class="fl">SP full-open C <span class="src-tag read">Chart-read</span></label>
+          <input type="number" id="as-cdSP" value="" min="0.01" step="0.01">
+          <div class="hint">Read off the AMCA Fig. 5.3 chart (p.2), which is <b>five curves, not one</b>: 12×12 ≈ 0.70, 48×12 ≈ 0.46, 12×48 ≈ 0.28, 24×24 ≈ 0.24, 36×36 ≈ 0.18. Fully ducted, flanged-to-duct basis. Three independent readings agreed within ±0.02 on four curves; the 36×36 dotted curve is the lowest and hardest to read and spanned ±30%.</div>
+        </div>
+        <div class="field">
+          <label class="fl">NP full-open C <span class="src-tag read">Chart-read</span></label>
+          <input type="number" id="as-cdNP" value="" min="0.01" step="0.01">
+          <div class="hint">Read off AMCA Fig. 5.3 (p.4) — note its y-axis runs to 3.0, not 1.0. 12×12 ≈ 1.04, 48×12 ≈ 0.76, 12×48 ≈ 0.63, 24×24 ≈ 0.54, 36×36 ≈ 0.30. NP sits above SP at matched size, as the narrower 4″ blade and higher blade count imply.</div>
+        </div>
+        <div class="field">
+          <label class="fl">WP C, intake <span class="src-tag measured">Measured</span></label>
+          <input type="number" id="as-cdWPi" value="" min="0.01" step="0.01">
+          <div class="hint">Derived from the p.6 "Damper &amp; System" table, AMCA Fig. 5.4 — TAMCO does tabulate WP. Within a size it holds to about ±3% with velocity; across the five tested sizes it runs <b>2.20 (48×12) to 2.60 (48×48)</b>, mean 2.46.</div>
+        </div>
+        <div class="field">
+          <label class="fl">WP C, exhaust <span class="src-tag measured">Measured</span></label>
+          <input type="number" id="as-cdWPe" value="" min="0.01" step="0.01">
+          <div class="hint">Same derivation against AMCA Fig. 5.5: 2.17 (48×12) to 2.56 (24×24), mean 2.38.</div>
+        </div>
+        <div class="field">
+          <label class="fl">6″ blade thickness (in.) <span class="src-tag model">Modelled</span></label>
+          <input type="number" id="as-t6" value="0.60" min="0.05" step="0.05">
+          <div class="hint">Sets free area at full open. TAMCO does not publish an air-foil section; 0.60″ on a 6″ chord is 10% t/c, which puts full-open free area at 90% on a 24″-high SP damper.</div>
+        </div>
+        <div class="field">
+          <label class="fl">4″ blade thickness (in.) <span class="src-tag model">Modelled</span></label>
+          <input type="number" id="as-t4" value="0.45" min="0.05" step="0.05">
+          <div class="hint">0.45″ on a 4″ chord — 11.25% t/c, giving 88.75% free area at full open on a 24″-high NP damper.</div>
+        </div>
+        <div class="field">
+          <label class="fl">Free-area exponent <span class="src-tag model">Modelled</span></label>
+          <input type="number" id="as-expo" value="2.0" min="0.5" max="4" step="0.1">
+          <div class="hint">Loss scales as (α<sub>open</sub>/α)<sup>p</sup>, with <b>p = 2</b> the orifice/sudden-expansion default. Note this is the exponent, not the blade count — the two are unrelated. Single biggest lever on partly-closed behaviour, and the one most worth checking against a real traverse.</div>
+        </div>
+        <div class="field">
+          <label class="fl">Air density (lb/ft³) <span class="src-tag model">Modelled</span></label>
+          <input type="number" id="as-rho" value="0.075" min="0.01" max="0.2" step="0.001">
+          <div class="hint">0.075 is the standard air TAMCO's data — and the 4005 constant — assume. It scales velocity pressure <b>and the exported K</b>, so hot reactivation air or altitude changes the PLC constant, not just the ΔP. TAMCO rates this damper to 212 °F standard and 300 °F with the ET option; 200 °F air is about 0.060.</div>
+        </div>
+      </div>
+
+      <p class="assum-note">
+        <b>What is not adjustable, because TAMCO measured it:</b> the leakage classes and their allowances, the maximum blade length versus design pressure lines, the section-size and install-type limits, and the WP damper-only deltas. Those come straight off the submittal.
+      </p>
+      <div style="margin-top:14px;"><button class="btn" id="btn-reset-assum">Reset assumptions to published defaults</button></div>
+    </div>
+  </details>
+
+</div>
+
+<footer>
+  <div class="foot-cols">
+    <div>
+      <h3>How the numbers are made</h3>
+      <p>
+        Face velocity is <code>CFM ÷ (W×H/144)</code> and velocity pressure is <code>(V/4005)²</code> at standard air.
+        Full-open pressure drop is <code>C<sub>d</sub> × Pv</code> with C<sub>d</sub> per profile.
+      </p>
+      <p>
+        Blade angle enters through free area. Blades are pitched to fill the height, so with <code>n</code> blades the
+        projected blockage is <code>n·(b·cosθ + t·sinθ)</code>, giving free-area fraction
+        <code>α(θ) = 1 − cosθ − (n·t/H)·sinθ</code> — zero at closed, <code>1 − n·t/H</code> at full open.
+        Throttling loss then scales as an orifice: <code>C(θ) = C<sub>published</sub> + C<sub>blade</sub>·((α<sub>open</sub>/α)ⁿ − 1)</code>,
+        which returns exactly TAMCO's published number at full open and grows as the gap closes.
+      </p>
+      <p>
+        The K-factor falls out of that directly: <code>CFM = K√ΔP</code> with <code>K = 4005·A ÷ √C(θ)</code>, A in ft² and ΔP in in. w.g.
+        Leakage is derived rather than fitted — every AMCA class in TAMCO's table is precisely
+        <code>base × √ΔP</code> cfm/ft² (base = 3, 4, 10, 40 for classes 1A, 1, 2, 3), which reproduces all <b>thirteen</b> published numeric
+        cells to TAMCO's own rounding. Class 1A is rated at 1 in. w.g. only, so its other three cells read n/a.
+      </p>
+    </div>
+    <div>
+      <h3>What to distrust</h3>
+      <p>
+        <b>The WP number is not the damper.</b> TAMCO's WP table is a plenum test: its "Damper &amp; System" column is dominated by
+        the opening's own entry loss. Its "Damper Only" column is <b>negative in all thirty published rows</b> — the air-foil blades
+        cost less than the bare hole. Read the WP pressure drop as the opening plus the damper, never as the damper alone.
+      </p>
+      <p>
+        <b>SP and NP full-open coefficients were read off a chart, and they depend on the size.</b> TAMCO tabulates nothing for
+        those profiles — only the AMCA Fig. 5.3 log-log curves, and that figure is <b>five separate curves</b> whose implied
+        coefficients span roughly 0.18 to 0.70 (SP) and 0.30 to 1.04 (NP). A single blanket coefficient — the usual shortcut —
+        is about 2× wrong in the middle of that range. This page resolves to the tested size nearest your opening and says which
+        one it used. Treat every one of them as planning-grade: they were read by eye, and the lowest curves are the least certain.
+      </p>
+      <p>
+        <b>Everything about partly-closed blades is a model.</b> TAMCO certifies full-open performance only. A multi-blade damper's
+        downstream field is genuinely messy — jets between blades, wakes off each edge, and for parallel action a flow that biases to
+        one side — which is exactly why no manufacturer publishes a universal partial-open K for rectangular dampers. For a
+        measuring application the model picks your aperture; a field traverse sets your K.
+      </p>
+      <p>
+        <b>Near closed, this model is wrong on purpose.</b> The orifice term runs away toward infinity while the real damper simply
+        leaks at its AMCA class. The page solves for the angle at which the modelled path passes less than the seals leak, names it,
+        and marks everything below it as not physical — rather than pretending the curve is still valid.
+      </p>
+      <p>
+        <b>Blade action is drawn, not calculated.</b> Opposed and parallel return identical numbers here, because TAMCO publishes no
+        separate data for them. The difference is real — parallel throws the discharge to one side — but nobody has quantified it for
+        this damper, so the page gives you the advice and declines to invent the arithmetic.
+      </p>
+    </div>
+  </div>
+  <p style="margin-top:18px; padding-top:16px; border-top:1px solid var(--hairline-soft);">
+    <b>Sources:</b> TAMCO <i>Series 1000 Air-Foil Control Damper — Submittal Data &amp; Performance Data</i> (TA-1000-TECH-24, April 2017) and
+    <i>Aluminum Control Damper Installation Guidelines</i> (TA-IOM-CD-24, 2020). TAMCO states that information on tamcodampers.com supersedes the printed catalogue.
+    This tool is for preliminary sizing and commissioning planning — confirm final selections with TAMCO Connect or your TAMCO representative before issuing a submittal.
+  </p>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+var S = {
+  mode:'select', cfm:4000, w:36, h:24, sysP:0,
+  profile:'SP', action:'opposed', install:'flanged', dir:'intake',
+  angle:90, span:1.0, acc:1.0,
+  points:[]
+};
+
+/* Assumption overrides. The four Cd entries are null by default, meaning "resolve
+   from the per-size PERF table". Typing a number in the Assumptions panel pins it
+   instead. The rest are always numbers. */
+var DEFAULTS = { cdSP:null, cdNP:null, cdWPi:null, cdWPe:null, t6:0.60, t4:0.45, expo:2.0, rho:0.075 };
+var A = {};
+Object.keys(DEFAULTS).forEach(function(k){ A[k] = DEFAULTS[k]; });
+
+var RHO_STD = 0.075;   /* lb/ft3 — the density TAMCO's 4005 constant assumes */
+
+/* Profile geometry + limits, all from TA-1000-TECH-24 pp.1-8.
+   chart:[lo,hi] are the BLADE DESIGN PRESSURE LIMITATIONS x-axis endpoints, over
+   which max blade length runs 60" down to 12". NP's chart holds flat at 60" until
+   1.5 in. w.g. before it starts falling — knee it, or the tool tells you to split
+   a 56" NP damper that TAMCO allows whole. */
+var PROF = {
+  SP:{ label:'SP — Standard Profile', blade:6, frame:4, openDepth:6.4,
+       chart:[3,12], braceOver:37.75,
+       installs:['induct','flanged','erf','s2r'],
+       hint:'4″ deep frame, 6″ air-foil blades. Leakage Class 1A at 1 in. w.g.' },
+  NP:{ label:'NP — Narrow Profile', blade:4, frame:4, openDepth:4.4,
+       chart:[1,10], chartKnee:1.5, braceOver:35.75,
+       installs:['induct','flanged','erf','s2r'],
+       hint:'4″ deep frame, 4″ blades. Leakage ≤ 2.35 cfm/ft² at 1 in. w.g. (36×36 tested).' },
+  WP:{ label:'WP — Wide Profile', blade:6, frame:6.5, openDepth:6.4,
+       chart:[3,12], braceOver:37.75,
+       installs:['flanged'],
+       hint:'6.5″ deep frame, plenum-rated. Leakage ≤ 1.95 cfm/ft² at 1 in. w.g. (24×24 tested).' }
+};
+
+var INSTALL = {
+  induct:{ label:'Installed in duct', delta:-0.5, minW:6.5, minH:6.75,
+           note:'Finished O.D. is ½″ smaller than the opening. TAMCO notes pressure drop is <b>greater</b> than the flanged basis these coefficients come from.' },
+  flanged:{ label:'Flanged to duct', delta:2, deltaWP:3.25, minW:4.5, minH:4.25,
+           note:'The basis for all published pressure-drop data. Finished O.D. is 2″ larger than the opening (3.25″ on WP).' },
+  erf:{ label:'Extended rear flange', delta:4, minW:4.5, minH:4.25,
+        note:'Finished O.D. is 4″ larger than the opening. The damper front cannot be inserted into the opening — side frame members run the full height of the rear flange.' },
+  s2r:{ label:'Square to round transition', delta:4, minW:4.5, minH:4.25,
+        note:'Damper is fabricated square, 4″ larger than the specified duct diameter. Duct 4″–58″; max finished O.D. 62″×62″.' }
+};
+
+/* AMCA leakage allowance, cfm/ft². Every cell of TAMCO's published table is
+   exactly base×√ΔP — verified against all thirteen numeric cells on p.2. Class 1A
+   is published at 1 in. w.g. only; its other three cells read n/a. */
+var LEAK_BASE = { '1A':3, '1':4, '2':10, '3':40 };
+
+/* ─── Full-open coefficient, PER TESTED SIZE ──────────────────────────────────
+   The single most important thing this table fixes: the loss coefficient is NOT
+   a property of the profile, it is a property of the profile AND the opening
+   size. Frame and blade edges block a much larger fraction of a small opening
+   than a large one, so C falls steadily as the opening grows. Every TAMCO chart
+   and table on this damper shows the same ordering:
+       12x12  >  48x12  >  12x48  >  24x24  >  36x36
+   A single blanket coefficient — which is what the calculator this tool replaces
+   used — is roughly 2x wrong at the middle of the range.
+
+   SP (p.2) and NP (p.4): TAMCO publishes NO table for these, only the AMCA
+   Fig. 5.3 log-log chart, so each value below is READ OFF THAT CHART. Axes were
+   calibrated from the printed decade gridlines and every curve read at 1000 fpm
+   (Pv = 0.0623439). Three independent readings agreed to within about 0.02 on
+   four of the five SP curves; the 36x36 dotted curve is the lowest and hardest
+   to read and the readings spanned 0.12-0.24, so treat that one as +/-30%.
+   These are planning-grade numbers. They are not certified data and this page
+   never claims they are.
+
+   WP (p.6): TAMCO DOES publish a table, so these are derived, not read — each is
+   the mean over the three tested velocities of (Damper & System) / Pv. Flat to
+   about 3% with velocity inside a given size; across sizes, 2.17 to 2.60. */
+var PERF = {
+  SP: [
+    { w:12, h:12, cd:0.70 },
+    { w:12, h:48, cd:0.28 },
+    { w:24, h:24, cd:0.24 },
+    { w:36, h:36, cd:0.18 },
+    { w:48, h:12, cd:0.46 }
+  ],
+  NP: [
+    { w:12, h:12, cd:1.04 },
+    { w:12, h:48, cd:0.63 },
+    { w:24, h:24, cd:0.54 },
+    { w:36, h:36, cd:0.30 },
+    { w:48, h:12, cd:0.76 }
+  ],
+  WP: [
+    { w:12, h:48, intake:2.499, exhaust:2.353 },
+    { w:24, h:24, intake:2.482, exhaust:2.564 },
+    { w:36, h:36, intake:2.511, exhaust:2.454 },
+    { w:48, h:12, intake:2.199, exhaust:2.173 },
+    { w:48, h:48, intake:2.603, exhaust:2.337 }
+  ]
+};
+
+/* Nearest tested size in log space, so a mismatch in either dimension counts the
+   same proportionally. Nearest-neighbour rather than a fitted surface on purpose:
+   five points, two of them chart-read, do not support an interpolating model. */
+function nearestSize(profile, w, h){
+  var rows = PERF[profile], best = rows[0], bestD = Infinity;
+  rows.forEach(function(r){
+    var d = Math.pow(Math.log(w / r.w), 2) + Math.pow(Math.log(h / r.h), 2);
+    if(d < bestD){ bestD = d; best = r; }
+  });
+  return best;
+}
+
+function tableCd(profile, dir, w, h){
+  var r = nearestSize(profile, w, h);
+  return profile === 'WP' ? (dir === 'intake' ? r.intake : r.exhaust) : r.cd;
+}
+
+function cdRange(profile, dir){
+  var vals = PERF[profile].map(function(r){ return profile === 'WP' ? (dir === 'intake' ? r.intake : r.exhaust) : r.cd; });
+  return { lo:Math.min.apply(null, vals), hi:Math.max.apply(null, vals) };
+}
+
+/* TAMCO leakage rating for SP, by damper width (p.2). null means TAMCO does not
+   rate it: over 36″ wide the recommended blade length is already exceeded at 6
+   and 8 in. w.g., and the table stops at 8 in. w.g. for every width. */
+function leakClassSP(width, press){
+  if(press > 8) return null;
+  if(press <= 1) return '1A';
+  if(press <= 4) return '1';
+  return width > 36 ? null : '1';
+}
+
+/* Max blade length vs max design static pressure. Both charts fall linearly from
+   60″ to 12″ across their x-range, except NP which holds flat at 60″ up to its
+   knee (1.5 in. w.g.) before starting down. */
+function maxBladeLen(profile, designP){
+  var pr = PROF[profile], c = pr.chart, lo = pr.chartKnee != null ? pr.chartKnee : c[0], hi = c[1];
+  var p = Math.min(Math.max(designP, lo), hi);
+  return 60 - 48 * (p - lo) / (hi - lo);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+function bladeThickness(profile){ return PROF[profile].blade >= 6 ? A.t6 : A.t4; }
+
+/* Resolved full-open coefficient: the Assumptions override if one is pinned,
+   otherwise the nearest tested size from PERF. */
+function publishedCd(profile, dir, w, h){
+  w = w == null ? S.w : w; h = h == null ? S.h : h;
+  var ov = profile === 'WP' ? (dir === 'intake' ? A.cdWPi : A.cdWPe) : (profile === 'SP' ? A.cdSP : A.cdNP);
+  if(ov != null) return ov;
+  return tableCd(profile, dir, w, h);
+}
+function cdIsPinned(profile, dir){
+  var ov = profile === 'WP' ? (dir === 'intake' ? A.cdWPi : A.cdWPe) : (profile === 'SP' ? A.cdSP : A.cdNP);
+  return ov != null;
+}
+
+/* The blade's own throttling scale. For SP/NP the full-open coefficient IS the
+   damper in a duct, so it doubles as the throttle scale. For WP the published
+   number is a plenum-entry system loss that does not scale with blade angle, so
+   the incremental throttling is modelled on the same 6″ air-foil blade the SP
+   profile uses — at the SAME opening size, so it tracks the size dependence too.
+   Either way C(90°) returns the full-open coefficient exactly. */
+function throttleScale(profile){
+  return profile === 'WP' ? publishedCd('SP', S.dir) : publishedCd(profile, S.dir);
+}
+
+function freeArea(profile, h, angleDeg){
+  var b = PROF[profile].blade;
+  var n = Math.max(1, Math.ceil(h / b));
+  var t = bladeThickness(profile);
+  var r = angleDeg * Math.PI / 180;
+  var tRatio = n * t / h;
+  var aOpen = Math.max(0.02, 1 - tRatio);
+  var a = 1 - Math.cos(r) - tRatio * Math.sin(r);
+  a = Math.max(0, Math.min(a, aOpen));
+  return { n:n, bEff:h / n, t:t, alpha:a, alphaOpen:aOpen };
+}
+
+function model(){
+  var p = PROF[S.profile];
+  var area = S.w * S.h / 144;
+  var vel = area > 0 ? S.cfm / area : 0;
+  /* Density enters as a ratio against the 0.075 lb/ft3 that TAMCO's 4005 assumes,
+     so at standard air this reduces exactly to (V/4005)^2 with no drift. */
+  var rhoRatio = A.rho / RHO_STD;
+  var pv = Math.pow(vel / 4005, 2) * rhoRatio;
+
+  var fa = freeArea(S.profile, S.h, S.angle);
+  var cPub = publishedCd(S.profile, S.dir);
+  var cBlade = throttleScale(S.profile);
+
+  var ratio = fa.alpha > 0 ? Math.pow(fa.alphaOpen / fa.alpha, A.expo) : Infinity;
+  var c = fa.alpha > 0 ? cPub + cBlade * (ratio - 1) : Infinity;
+  var dp = c * pv;
+  /* K = 0 would be read as "no flow"; the damper is shut, so the honest value is
+     that no finite dP produces flow. Infinity keeps the over-span branch honest. */
+  var k = (isFinite(c) && c > 0) ? 4005 * area / Math.sqrt(c * rhoRatio) : 0;
+
+  var throatVel = fa.alpha > 0 ? vel / fa.alpha : Infinity;
+
+  /* Leakage is a closed-damper property, so it is evaluated at the SYSTEM
+     static pressure the shut damper holds back — not at the damper's own
+     open-position drop, which is a different (and much smaller) number.
+     Blank defaults to 1 in. w.g., the pressure AMCA rates leakage at. */
+  var sysP = S.sysP > 0 ? S.sysP : 1.0;
+  var lkClass = S.profile === 'SP' ? leakClassSP(S.w, sysP) : null;
+  var lkBase;
+  if(S.profile === 'SP') lkBase = lkClass ? LEAK_BASE[lkClass] : LEAK_BASE['1'];
+  else if(S.profile === 'NP') lkBase = 2.35;
+  else lkBase = 1.95;
+  var leakCfm = lkBase * Math.sqrt(sysP) * area;
+
+  return {
+    area:area, vel:vel, pv:pv, c:c, cPub:cPub, dp:dp, k:k, closed:!(fa.alpha > 0),
+    n:fa.n, bEff:fa.bEff, t:fa.t, alpha:fa.alpha, alphaOpen:fa.alphaOpen, rhoRatio:rhoRatio,
+    throatVel:throatVel, leakCfm:leakCfm, leakClass:lkClass, leakBase:lkBase,
+    sysP:sysP, sysPGiven:S.sysP > 0, profile:p
+  };
+}
+
+/* The blade angle at which the modelled throttling loss becomes so large that the
+   flow the model predicts falls below what simply leaks past the seals. Below it
+   the orifice term is describing a hole that is no longer the dominant path. */
+function crossoverAngle(m){
+  if(!(m.vel > 0)) return null;
+  /* leak velocity through the face, fpm: leakCfm / area = leakBase*sqrt(sysP) */
+  var vLeak = m.leakBase * Math.sqrt(m.sysP);
+  /* modelled face velocity at this dP equals vel; the model "loses" when the C it
+     needs drives predicted flow under vLeak. Walk down in 0.5 deg steps. */
+  for(var deg = 45; deg >= 0.5; deg -= 0.5){
+    var fa = freeArea(S.profile, S.h, deg);
+    if(fa.alpha <= 0) return deg;
+    var c = m.cPub + throttleScale(S.profile) * (Math.pow(fa.alphaOpen / fa.alpha, A.expo) - 1);
+    /* face velocity the model would pass at the SAME dP the system can deliver */
+    var vMod = 4005 * Math.sqrt(Math.max(m.dp, 1e-9) / (c * m.rhoRatio));
+    if(vMod <= vLeak) return deg;
+  }
+  return null;
+}
+
+/* Least-squares K through the origin on CFM = K·√ΔP.
+   NOTE ON R²: the usual centred R² does not decompose for a through-origin fit —
+   it can read high on a badly offset line and can even go negative. So the fit is
+   judged on the WORST point's percentage error, which is what a commissioning
+   engineer actually cares about, and R² is reported only in its uncentred form
+   and clearly labelled. */
+function fitK(points){
+  var good = points.filter(function(pt){ return pt.q > 0 && pt.dp > 0; });
+  if(good.length < 2) return null;
+  var num = 0, den = 0;
+  good.forEach(function(pt){ num += Math.sqrt(pt.dp) * pt.q; den += pt.dp; });
+  if(!(den > 0)) return null;
+  var k = num / den;
+  var ssRes = 0, ssQ = 0, worst = 0, signs = { pos:0, neg:0 };
+  good.forEach(function(pt){
+    var pred = k * Math.sqrt(pt.dp), resid = pt.q - pred;
+    ssRes += resid * resid;
+    ssQ += pt.q * pt.q;
+    worst = Math.max(worst, Math.abs(resid) / pt.q * 100);
+    if(resid > 0) signs.pos++; else if(resid < 0) signs.neg++;
+  });
+  var r2u = ssQ > 0 ? 1 - ssRes / ssQ : null;      /* uncentred, through-origin */
+  var spread = Math.max.apply(null, good.map(function(p){ return p.dp; }))
+             / Math.min.apply(null, good.map(function(p){ return p.dp; }));
+  /* A run of same-signed residuals across an ordered sweep is the signature of a
+     tap offset — a straight line that does not pass through the origin. */
+  var ordered = good.slice().sort(function(a, b){ return a.dp - b.dp; });
+  var curved = ordered.length >= 3
+    && (ordered[0].q - k * Math.sqrt(ordered[0].dp)) * (ordered[ordered.length - 1].q - k * Math.sqrt(ordered[ordered.length - 1].dp)) > 0
+    && (signs.pos === 0 || signs.neg === 0);
+  return { k:k, r2u:r2u, n:good.length, worst:worst, spread:spread, curved:curved };
+}
+
+/* A calibration is only valid for the geometry it was measured on. Points carry a
+   stamp; if the blades move or the damper changes, the fitted K is retired rather
+   than silently relabelled to the new state. */
+function stateStamp(){ return S.profile + '|' + S.action + '|' + S.w + '|' + S.h + '|' + S.angle; }
+function staleStamp(){
+  var now = stateStamp();
+  var bad = null;
+  S.points.forEach(function(pt){ if(pt.stamp && pt.stamp !== now && !bad) bad = pt.stamp; });
+  return bad;
+}
+
+function activeK(m){
+  var stale = staleStamp();
+  var fit = stale ? null : fitK(S.points);
+  return fit
+    ? { k:fit.k, fit:fit, calibrated:true, stale:null }
+    : { k:m.k, fit:null, calibrated:false, stale:stale };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORMATTING
+   ═══════════════════════════════════════════════════════════════════════════ */
+function fx(v, d){
+  if(!isFinite(v)) return '—';
+  return v.toLocaleString('en-US', { minimumFractionDigits:d, maximumFractionDigits:d });
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECTION VIEW — side elevation, air left to right
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawSection(m){
+  var W = 760, H = 320;
+  var yTop = 54, yBot = 266, duct = yBot - yTop;
+  var wallT = 12;
+  var pxPerIn = duct / S.h;
+
+  var frameDepthPx = Math.max(16, Math.min(52, m.profile.frame * pxPerIn * 0.9));
+  var fx0 = 392, fx1 = fx0 + frameDepthPx;
+  var cx = (fx0 + fx1) / 2;
+
+  var s = '';
+
+  /* duct walls */
+  s += '<rect class="sc-wall" x="0" y="' + (yTop - wallT) + '" width="' + W + '" height="' + wallT + '"/>';
+  s += '<rect class="sc-wall" x="0" y="' + yBot + '" width="' + W + '" height="' + wallT + '"/>';
+  s += '<line class="sc-duct" x1="0" y1="' + yTop + '" x2="' + W + '" y2="' + yTop + '"/>';
+  s += '<line class="sc-duct" x1="0" y1="' + yBot + '" x2="' + W + '" y2="' + yBot + '"/>';
+
+  /* approach flow */
+  var lanes = 5;
+  for(var i = 0; i < lanes; i++){
+    var y = yTop + duct * (i + 0.5) / lanes;
+    s += '<line class="sc-air" x1="18" y1="' + y.toFixed(1) + '" x2="' + (fx0 - 26) + '" y2="' + y.toFixed(1) + '"/>';
+    s += '<line class="sc-air" x1="' + (fx1 + 118) + '" y1="' + y.toFixed(1) + '" x2="' + (W - 18) + '" y2="' + y.toFixed(1) + '"/>';
+  }
+
+  /* frame */
+  s += '<rect class="sc-frame" x="' + fx0 + '" y="' + (yTop - wallT) + '" width="' + frameDepthPx + '" height="' + wallT + '"/>';
+  s += '<rect class="sc-frame" x="' + fx0 + '" y="' + yBot + '" width="' + frameDepthPx + '" height="' + wallT + '"/>';
+
+  /* blades */
+  var n = m.n;
+  var chord = m.bEff * pxPerIn;
+  var thick = Math.max(3.2, m.t * pxPerIn);
+  var rot = 90 - S.angle;
+
+  var gapCentres = [];
+  for(var b = 0; b < n; b++){
+    var py = yTop + duct * (b + 0.5) / n;
+    var sign = (S.action === 'opposed' && b % 2 === 1) ? -1 : 1;
+    var c2 = chord / 2, t2 = thick / 2;
+    var path = 'M ' + (-c2) + ',0'
+      + ' C ' + (-c2) + ',' + (-t2 * 0.85) + ' ' + (-c2 * 0.45) + ',' + (-t2) + ' ' + (-c2 * 0.1) + ',' + (-t2)
+      + ' C ' + (c2 * 0.45) + ',' + (-t2) + ' ' + (c2 * 0.85) + ',' + (-t2 * 0.42) + ' ' + c2 + ',0'
+      + ' C ' + (c2 * 0.85) + ',' + (t2 * 0.42) + ' ' + (c2 * 0.45) + ',' + t2 + ' ' + (-c2 * 0.1) + ',' + t2
+      + ' C ' + (-c2 * 0.45) + ',' + t2 + ' ' + (-c2) + ',' + (t2 * 0.85) + ' ' + (-c2) + ',0 Z';
+    s += '<g transform="translate(' + cx.toFixed(1) + ',' + py.toFixed(1) + ') rotate(' + (rot * sign).toFixed(1) + ')">'
+       + '<path class="sc-blade" d="' + path + '"/></g>';
+    s += '<circle class="sc-pivot" cx="' + cx.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="2.2"/>';
+    if(b < n) gapCentres.push(py + duct / (2 * n));
+  }
+
+  /* throat jets — one per gap, only while a gap exists */
+  if(m.alpha > 0.02){
+    gapCentres.slice(0, n - 1 >= 0 ? n : 0).forEach(function(gy){
+      if(gy > yBot - 4) return;
+      s += '<line class="sc-throat" x1="' + (fx0 - 14) + '" y1="' + gy.toFixed(1) + '" x2="' + (fx1 + 108) + '" y2="' + gy.toFixed(1) + '"/>';
+    });
+    /* top gap above first blade */
+    s += '<line class="sc-throat" x1="' + (fx0 - 14) + '" y1="' + (yTop + duct / (2 * n) * 0.32).toFixed(1) + '" x2="' + (fx1 + 108) + '" y2="' + (yTop + duct / (2 * n) * 0.32).toFixed(1) + '"/>';
+  } else {
+    s += '<text class="sc-txt-b" x="' + (fx1 + 60) + '" y="' + (yTop + duct / 2) + '" text-anchor="middle" fill="var(--rose)">SEALED</text>';
+  }
+
+  /* pressure taps */
+  var tapUpX = 176, tapDnX = fx1 + 22;
+  var tapY = yBot + wallT;
+  s += '<line class="sc-tap" x1="' + tapUpX + '" y1="' + yBot + '" x2="' + tapUpX + '" y2="' + (tapY + 30) + '"/>';
+  s += '<line class="sc-tap" x1="' + tapDnX + '" y1="' + yBot + '" x2="' + tapDnX + '" y2="' + (tapY + 30) + '"/>';
+  s += '<line class="sc-tap" x1="' + tapUpX + '" y1="' + (tapY + 30) + '" x2="' + (tapDnX) + '" y2="' + (tapY + 30) + '"/>';
+  s += '<circle cx="' + tapUpX + '" cy="' + yBot + '" r="3" fill="var(--ink-muted)"/>';
+  s += '<circle cx="' + tapDnX + '" cy="' + yBot + '" r="3" fill="var(--ink-muted)"/>';
+  s += '<text class="sc-txt" x="' + (tapUpX - 6) + '" y="' + (yBot - 8) + '" text-anchor="end">P₁</text>';
+  s += '<text class="sc-txt" x="' + (tapDnX + 6) + '" y="' + (yBot - 8) + '">P₂</text>';
+
+  var mid = (tapUpX + tapDnX) / 2;
+  var dpTxt = isFinite(m.dp) ? fx(m.dp, 3) + '″ w.g.' : '—';
+  s += '<rect x="' + (mid - 62) + '" y="' + (tapY + 18) + '" width="124" height="26" rx="7" fill="var(--surface)" stroke="var(--hairline-strong)"/>';
+  s += '<text class="sc-txt-b" x="' + mid + '" y="' + (tapY + 35) + '" text-anchor="middle">ΔP  ' + dpTxt + '</text>';
+
+  /* upstream distance note */
+  s += '<line class="sc-dim" x1="' + tapUpX + '" y1="' + (yTop - wallT - 16) + '" x2="' + fx0 + '" y2="' + (yTop - wallT - 16) + '" stroke-dasharray="3 3"/>';
+  s += '<text class="sc-txt" x="' + ((tapUpX + fx0) / 2) + '" y="' + (yTop - wallT - 22) + '" text-anchor="middle">2–3 equivalent duct dia. of straight run</text>';
+
+  /* labels */
+  s += '<text class="sc-txt-b" x="18" y="26">Approach ' + fx(m.vel, 0) + ' fpm</text>';
+  if(m.alpha > 0.02){
+    s += '<text class="sc-txt-b" x="' + (fx1 + 118) + '" y="26" fill="var(--throat)">Through gap ' + fx(m.throatVel, 0) + ' fpm</text>';
+  }
+  s += '<text class="sc-txt" x="' + cx + '" y="' + (yBot + wallT + 62) + '" text-anchor="middle">' + n + ' × ' + fx(m.bEff, 1) + '″ blades · ' + S.action + ' action · ' + S.angle + '° from closed</text>';
+
+  document.getElementById('svgSection').innerHTML = s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FACE VIEW — free area made literal
+   ═══════════════════════════════════════════════════════════════════════════ */
+function drawFace(m){
+  var BOX = 236, pad = 26;
+  var avail = BOX - pad * 2;
+  var ar = S.w / S.h;
+  var fw, fh;
+  if(ar >= 1){ fw = avail; fh = avail / ar; } else { fh = avail; fw = avail * ar; }
+  if(fh < 40){ fh = 40; }
+  if(fw < 40){ fw = 40; }
+  var x0 = (BOX - fw) / 2, y0 = (BOX - fh) / 2 - 4;
+
+  var s = '';
+  /* open field first, blocked bands on top */
+  s += '<rect class="sc-open" x="' + x0 + '" y="' + y0 + '" width="' + fw + '" height="' + fh + '"/>';
+
+  var n = m.n;
+  var rowH = fh / n;
+  var blockH = rowH * Math.cos(S.angle * Math.PI / 180)
+             + (m.t / m.bEff) * rowH * Math.sin(S.angle * Math.PI / 180);
+  blockH = Math.max(1.2, Math.min(blockH, rowH));
+  for(var i = 0; i < n; i++){
+    var cy = y0 + rowH * (i + 0.5);
+    s += '<rect class="sc-blocked" x="' + x0 + '" y="' + (cy - blockH / 2).toFixed(2) + '" width="' + fw + '" height="' + blockH.toFixed(2) + '"/>';
+  }
+
+  s += '<rect x="' + x0 + '" y="' + y0 + '" width="' + fw + '" height="' + fh + '" fill="none" stroke="var(--metal-line)" stroke-width="2"/>';
+
+  /* dimensions */
+  s += '<line class="sc-dim" x1="' + x0 + '" y1="' + (y0 + fh + 10) + '" x2="' + (x0 + fw) + '" y2="' + (y0 + fh + 10) + '"/>';
+  s += '<text class="sc-txt" x="' + (x0 + fw / 2) + '" y="' + (y0 + fh + 23) + '" text-anchor="middle">' + S.w + '″ W</text>';
+  s += '<line class="sc-dim" x1="' + (x0 - 10) + '" y1="' + y0 + '" x2="' + (x0 - 10) + '" y2="' + (y0 + fh) + '"/>';
+  s += '<text class="sc-txt" x="' + (x0 - 14) + '" y="' + (y0 + fh / 2) + '" text-anchor="middle" transform="rotate(-90 ' + (x0 - 14) + ' ' + (y0 + fh / 2) + ')">' + S.h + '″ H</text>';
+
+  document.getElementById('svgFace').innerHTML = s;
+
+  var pct = (m.alpha * 100);
+  document.getElementById('faceCap').innerHTML =
+    'Free area <b>' + fx(pct, 1) + '%</b> of the ' + fx(m.area, 2) + ' ft² opening<br>' +
+    '<span style="color:var(--ink-faint)">' + fx(m.area * m.alpha, 2) + ' ft² clear · ' + m.n + ' blades · ' + fx(m.alphaOpen * 100, 1) + '% at full open</span>';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHARTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+function chartFrame(W, H, padL, padR, padT, padB){
+  return { W:W, H:H, padL:padL, padR:padR, padT:padT, padB:padB, pw:W - padL - padR, ph:H - padT - padB };
+}
+
+function drawChartSelect(m){
+  var f = chartFrame(720, 330, 62, 20, 18, 46);
+  var xMin = 100, xMax = 10000, yMin = 0.005, yMax = 30;
+  var lg = Math.log10;
+  var mx = function(v){ return f.padL + (lg(Math.min(Math.max(v, xMin), xMax)) - lg(xMin)) / (lg(xMax) - lg(xMin)) * f.pw; };
+  var my = function(v){ return f.padT + f.ph - (lg(Math.min(Math.max(v, yMin), yMax)) - lg(yMin)) / (lg(yMax) - lg(yMin)) * f.ph; };
+
+  var s = '<rect x="' + f.padL + '" y="' + f.padT + '" width="' + f.pw + '" height="' + f.ph + '" fill="var(--surface-soft)" stroke="var(--hairline)"/>';
+  [100, 300, 1000, 3000, 10000].forEach(function(v){
+    var x = mx(v);
+    s += '<line x1="' + x + '" y1="' + f.padT + '" x2="' + x + '" y2="' + (f.padT + f.ph) + '" stroke="var(--hairline-soft)"/>';
+    s += '<text class="sc-txt" x="' + x + '" y="' + (f.padT + f.ph + 16) + '" text-anchor="middle">' + v.toLocaleString() + '</text>';
+  });
+  [0.005, 0.05, 0.5, 5, 30].forEach(function(v){
+    var y = my(v);
+    s += '<line x1="' + f.padL + '" y1="' + y + '" x2="' + (f.padL + f.pw) + '" y2="' + y + '" stroke="var(--hairline-soft)"/>';
+    s += '<text class="sc-txt" x="' + (f.padL - 8) + '" y="' + (y + 3.5) + '" text-anchor="end">' + v + '</text>';
+  });
+
+  /* Unclamped y so a steep curve leaves the plot instead of crawling along the
+     top edge, then a clip trims it at the frame. */
+  var myRaw = function(v){ return f.padT + f.ph - (lg(v) - lg(yMin)) / (lg(yMax) - lg(yMin)) * f.ph; };
+  function curve(coef){
+    var d = '';
+    for(var i = 0; i <= 70; i++){
+      var v = xMin * Math.pow(xMax / xMin, i / 70);
+      var p = coef * Math.pow(v / 4005, 2);
+      d += (i === 0 ? 'M' : 'L') + mx(v).toFixed(1) + ',' + myRaw(p).toFixed(1) + ' ';
+    }
+    return d;
+  }
+
+  s += '<defs><clipPath id="damperPlotClip"><rect x="' + f.padL + '" y="' + f.padT + '" width="' + f.pw + '" height="' + f.ph + '"/></clipPath></defs>';
+  s += '<g clip-path="url(#damperPlotClip)">';
+  s += '<path d="' + curve(m.cPub) + '" fill="none" stroke="var(--ink-faint)" stroke-width="1.8" stroke-dasharray="6 5"/>';
+  if(isFinite(m.c) && Math.abs(m.c - m.cPub) > 1e-6){
+    s += '<path d="' + curve(m.c) + '" fill="none" stroke="var(--brand)" stroke-width="2.4"/>';
+  }
+  s += '</g>';
+
+  if(isFinite(m.dp) && m.vel > 0){
+    var px = mx(m.vel), py = my(m.dp);
+    s += '<line x1="' + px + '" y1="' + f.padT + '" x2="' + px + '" y2="' + (f.padT + f.ph) + '" stroke="var(--throat)" stroke-width="1" stroke-dasharray="3 3"/>';
+    s += '<line x1="' + f.padL + '" y1="' + py + '" x2="' + (f.padL + f.pw) + '" y2="' + py + '" stroke="var(--throat)" stroke-width="1" stroke-dasharray="3 3"/>';
+    s += '<circle cx="' + px + '" cy="' + py + '" r="5.5" fill="var(--throat)" stroke="var(--surface)" stroke-width="2"/>';
+  }
+
+  s += '<text class="sc-txt" x="' + (f.padL + f.pw / 2) + '" y="' + (f.H - 6) + '" text-anchor="middle">Face velocity (fpm)</text>';
+  s += '<text class="sc-txt" x="14" y="' + (f.padT + f.ph / 2) + '" text-anchor="middle" transform="rotate(-90 14 ' + (f.padT + f.ph / 2) + ')">Pressure drop (in. w.g.)</text>';
+
+  var lx = f.padL + 14, ly = f.padT + 16;
+  s += '<line x1="' + lx + '" y1="' + ly + '" x2="' + (lx + 22) + '" y2="' + ly + '" stroke="var(--ink-faint)" stroke-width="1.8" stroke-dasharray="6 5"/>';
+  s += '<text class="sc-txt" x="' + (lx + 28) + '" y="' + (ly + 3.5) + '">Full open — ' + (S.profile === 'WP' ? 'TAMCO table' : 'TAMCO chart-read') + '</text>';
+  if(isFinite(m.c) && Math.abs(m.c - m.cPub) > 1e-6){
+    s += '<line x1="' + lx + '" y1="' + (ly + 16) + '" x2="' + (lx + 22) + '" y2="' + (ly + 16) + '" stroke="var(--brand)" stroke-width="2.4"/>';
+    s += '<text class="sc-txt" x="' + (lx + 28) + '" y="' + (ly + 19.5) + '">At ' + S.angle + '° — modelled</text>';
+  }
+
+  document.getElementById('svgChart').innerHTML = s;
+}
+
+function drawChartMeasure(m){
+  var f = chartFrame(720, 330, 66, 20, 18, 52);
+  var ak = activeK(m);
+
+  var dpMax = Math.max(S.span, isFinite(m.dp) ? m.dp * 1.35 : 0.1, 0.05);
+  S.points.forEach(function(p){ if(p.dp > 0) dpMax = Math.max(dpMax, p.dp * 1.15); });
+  var xMax = Math.sqrt(dpMax);
+  var qMax = Math.max(S.cfm * 1.35, ak.k * xMax, 100);
+  S.points.forEach(function(p){ if(p.q > 0) qMax = Math.max(qMax, p.q * 1.15); });
+
+  var mx = function(x){ return f.padL + (x / xMax) * f.pw; };
+  var my = function(q){ return f.padT + f.ph - (q / qMax) * f.ph; };
+
+  var s = '<rect x="' + f.padL + '" y="' + f.padT + '" width="' + f.pw + '" height="' + f.ph + '" fill="var(--surface-soft)" stroke="var(--hairline)"/>';
+
+  /* transmitter span band — the usable measuring window */
+  var xSpan = Math.min(Math.sqrt(S.span), xMax);
+  s += '<rect x="' + f.padL + '" y="' + f.padT + '" width="' + (mx(xSpan) - f.padL) + '" height="' + f.ph + '" fill="var(--sky)" opacity="0.055"/>';
+  s += '<line x1="' + mx(xSpan) + '" y1="' + f.padT + '" x2="' + mx(xSpan) + '" y2="' + (f.padT + f.ph) + '" stroke="var(--sky)" stroke-width="1.4" stroke-dasharray="5 4"/>';
+  s += '<text class="sc-txt" x="' + (mx(xSpan) - 6) + '" y="' + (f.padT + 14) + '" text-anchor="end" fill="var(--sky)">transmitter span ' + fx(S.span, 2) + '″</text>';
+
+  /* gridlines labelled in ΔP, positioned by √ΔP */
+  var ticks = [];
+  for(var i = 1; i <= 5; i++) ticks.push(dpMax * i / 5);
+  ticks.forEach(function(dp){
+    var x = mx(Math.sqrt(dp));
+    s += '<line x1="' + x + '" y1="' + f.padT + '" x2="' + x + '" y2="' + (f.padT + f.ph) + '" stroke="var(--hairline-soft)"/>';
+    s += '<text class="sc-txt" x="' + x + '" y="' + (f.padT + f.ph + 16) + '" text-anchor="middle">' + fx(dp, 2) + '</text>';
+  });
+  for(var j = 1; j <= 4; j++){
+    var q = qMax * j / 4, y = my(q);
+    s += '<line x1="' + f.padL + '" y1="' + y + '" x2="' + (f.padL + f.pw) + '" y2="' + y + '" stroke="var(--hairline-soft)"/>';
+    s += '<text class="sc-txt" x="' + (f.padL - 8) + '" y="' + (y + 3.5) + '" text-anchor="end">' + fx(q, 0) + '</text>';
+  }
+
+  /* Lines end where they leave the plot, so the slope stays true — clamping the
+     endpoint's y while holding x at xMax would silently flatten the line. */
+  function ray(k, stroke, width, dash){
+    if(!(k > 0)) return '';
+    var xEnd = Math.min(xMax, qMax / k);
+    return '<line x1="' + mx(0) + '" y1="' + my(0) + '" x2="' + mx(xEnd).toFixed(1) + '" y2="' + my(k * xEnd).toFixed(1)
+         + '" stroke="' + stroke + '" stroke-width="' + width + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
+  }
+  s += ray(m.k, 'var(--ink-faint)', 1.8, '6 5');
+  if(ak.calibrated) s += ray(ak.k, 'var(--brand)', 2.4, null);
+
+  /* measured points */
+  S.points.forEach(function(p){
+    if(!(p.q > 0 && p.dp > 0)) return;
+    s += '<circle cx="' + mx(Math.sqrt(p.dp)).toFixed(1) + '" cy="' + my(p.q).toFixed(1) + '" r="4.5" fill="var(--surface)" stroke="var(--brand)" stroke-width="2.2"/>';
+  });
+
+  /* design point on the active line */
+  if(isFinite(m.dp) && m.dp > 0){
+    var dx = mx(Math.sqrt(m.dp)), dy = my(S.cfm);
+    s += '<circle cx="' + dx + '" cy="' + dy + '" r="5.5" fill="var(--throat)" stroke="var(--surface)" stroke-width="2"/>';
+    s += '<text class="sc-txt-b" x="' + (dx + 10) + '" y="' + (dy - 8) + '" fill="var(--throat)">design</text>';
+  }
+
+  s += '<text class="sc-txt" x="' + (f.padL + f.pw / 2) + '" y="' + (f.H - 22) + '" text-anchor="middle">Differential pressure ΔP (in. w.g.) — plotted on a √ΔP axis</text>';
+  s += '<text class="sc-txt" x="' + (f.padL + f.pw / 2) + '" y="' + (f.H - 7) + '" text-anchor="middle" fill="var(--ink-faint)">a correct K makes the data a straight line through the origin</text>';
+  s += '<text class="sc-txt" x="14" y="' + (f.padT + f.ph / 2) + '" text-anchor="middle" transform="rotate(-90 14 ' + (f.padT + f.ph / 2) + ')">Airflow (CFM)</text>';
+
+  var lx = f.padL + 14, ly = f.padT + 34;
+  s += '<line x1="' + lx + '" y1="' + ly + '" x2="' + (lx + 22) + '" y2="' + ly + '" stroke="var(--ink-faint)" stroke-width="1.8" stroke-dasharray="6 5"/>';
+  s += '<text class="sc-txt" x="' + (lx + 28) + '" y="' + (ly + 3.5) + '">Modelled K = ' + fx(m.k, 0) + '</text>';
+  if(ak.calibrated){
+    s += '<line x1="' + lx + '" y1="' + (ly + 16) + '" x2="' + (lx + 22) + '" y2="' + (ly + 16) + '" stroke="var(--brand)" stroke-width="2.4"/>';
+    s += '<text class="sc-txt" x="' + (lx + 28) + '" y="' + (ly + 19.5) + '">Calibrated K = ' + fx(ak.k, 0) + ' (' + ak.fit.n + ' pts)</text>';
+  }
+
+  document.getElementById('svgChart').innerHTML = s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHECKS
+   ═══════════════════════════════════════════════════════════════════════════ */
+function buildChecks(m){
+  var out = [];
+  var inst = INSTALL[S.install];
+  var p = PROF[S.profile];
+
+  function add(cls, html){ out.push({ cls:cls, html:html }); }
+
+  /* 1 — section size */
+  if(m.area > 25){
+    add('bad', 'Opening is <b>' + fx(m.area, 1) + ' ft²</b>, over TAMCO\'s 25 ft² maximum single section. This must be built in multiple sections with field-supplied intermediate structural support in both planes.');
+  }
+  /* 2 — max finished size: 60×60 OR 48×75, not a blanket 60 wide / 75 high */
+  var fitsA = S.w <= 60 && S.h <= 60;
+  var fitsB = S.w <= 48 && S.h <= 75;
+  if(!fitsA && !fitsB){
+    add('bad', '<b>' + S.w + '″ × ' + S.h + '″</b> exceeds the maximum section size. TAMCO allows 60″w × 60″h <b>or</b> 48″w × 75″h — not any combination up to 60 × 75.');
+  }
+  /* 3 — minimum */
+  var minW = inst.minW, minH = inst.minH;
+  if(S.w < minW || S.h < minH){
+    add('bad', 'Below the ' + inst.label.toLowerCase() + ' minimum section size of ' + minW + '″w × ' + minH + '″h.');
+  }
+  /* 4 — profile / install compatibility */
+  if(p.installs.indexOf(S.install) === -1){
+    add('bad', 'The <b>' + S.profile + '</b> profile is not available as ' + inst.label.toLowerCase() + '. WP is flanged-to-duct only; in-duct, extended rear flange and square-to-round are SP and NP only.');
+  }
+  /* 5 — blade length vs design pressure */
+  var maxBL = maxBladeLen(S.profile, m.sysP);
+  var pSrc = m.sysPGiven ? '' : ' (assumed — enter your system design static pressure to check this properly)';
+  if(S.w > maxBL + 0.01){
+    add('warn', 'At ' + fx(m.sysP, 2) + '″ w.g.' + pSrc + ' the recommended maximum blade length for ' + S.profile + ' is about <b>' + fx(maxBL, 0) + '″</b>. Width is the blade length here, and ' + S.w + '″ exceeds it — split into sections (e.g. two at ' + fx(S.w / 2, 0) + '″w × ' + S.h + '″h) with intermediate support.');
+  } else if(m.sysPGiven){
+    add('ok', 'Blade length ' + S.w + '″ is within the ≈' + fx(maxBL, 0) + '″ limit for ' + S.profile + ' at ' + fx(m.sysP, 2) + '″ w.g. system design pressure.');
+  } else {
+    add('info', 'Blade length ' + S.w + '″ clears the ≈' + fx(maxBL, 0) + '″ limit, but only against the assumed 1.00″ w.g. The limit falls to 12″ by ' + p.chart[1] + '″ w.g. — <b>enter your real system design static pressure</b> before relying on this.');
+  }
+  /* 6 — mid-height brace */
+  if(S.h > p.braceOver){
+    add('info', 'At ' + S.h + '″ high this exceeds ' + p.braceOver + '″, so TAMCO fits a <b>mid-height brace</b> to hold the leakage tolerance. Expect it in the submittal drawing.');
+  }
+  /* 7 — leakage, at the system pressure the closed damper holds back */
+  var atP = fx(m.sysP, 2) + '″ w.g.' + (m.sysPGiven ? '' : ' (assumed)');
+  if(S.profile === 'SP'){
+    if(m.leakClass){
+      add('ok', 'Leakage Class <b>' + m.leakClass + '</b> at ' + atP + ' — allowance ' + m.leakBase + ' cfm/ft² at 1″ w.g., so about <b>' + fx(m.leakCfm, 0) + ' CFM</b> past the closed damper across ' + fx(m.area, 1) + ' ft².');
+    } else if(m.sysP > 8){
+      add('warn', 'TAMCO\'s leakage rating table stops at <b>8 in. w.g.</b> — nothing is published at ' + fx(m.sysP, 2) + '″. Class 1 was assumed to get the ' + fx(m.leakCfm, 0) + ' CFM figure, and the blade-length limit at this pressure is already the binding constraint; confirm the whole selection with TAMCO.');
+    } else {
+      add('warn', 'TAMCO does not publish a leakage class for dampers over 36″ wide above 4″ w.g. — the recommended blade length is already exceeded there. Class 1 was assumed to get the ' + fx(m.leakCfm, 0) + ' CFM figure; confirm with TAMCO.');
+    }
+  } else if(S.profile === 'NP'){
+    add('ok', 'NP leakage is rated ≤ 2.35 cfm/ft² at 1″ w.g. (36×36 tested) — about <b>' + fx(m.leakCfm, 0) + ' CFM</b> past the closed damper at ' + atP + '.');
+  } else {
+    add('ok', 'WP leakage is rated ≤ 1.95 cfm/ft² at 1″ w.g. (24×24 tested) — about <b>' + fx(m.leakCfm, 0) + ' CFM</b> past the closed damper at ' + atP + '.');
+  }
+  /* 8 — where the orifice model hands over to seal leakage.
+     The old test compared leakage CFM to design CFM, but both scale with area,
+     so it reduced to a face-velocity test that no real damper ever trips. The
+     real question is the angle at which the modelled path passes less than the
+     seals leak — solve for it. */
+  var xover = crossoverAngle(m);
+  if(xover != null && S.angle <= xover){
+    add('bad', 'At ' + S.angle + '° the modelled flow path passes <b>less than the seals leak</b> (' + fx(m.leakCfm, 0) + ' CFM at ' + fx(m.sysP, 2) + '″ w.g.). Below about <b>' + fx(xover, 0) + '°</b> this damper\'s behaviour is set by its leakage class, not by the orifice model — the pressure drop shown here is not physical, and a K must not be calibrated in this range.');
+  } else if(xover != null && S.angle < xover + 12){
+    add('warn', 'Approaching the leakage floor: below about <b>' + fx(xover, 0) + '°</b> seal leakage overtakes the modelled flow path and the curve stops describing this damper. Keep a measuring aperture well above it.');
+  }
+  /* 9 — the full-open coefficient is size-dependent for EVERY profile */
+  var near = nearestSize(S.profile, S.w, S.h);
+  var nearCd = S.profile === 'WP' ? (S.dir === 'intake' ? near.intake : near.exhaust) : near.cd;
+  var rng = cdRange(S.profile, S.dir);
+  var isWP = S.profile === 'WP';
+  var basis = isWP
+    ? 'TAMCO\'s published table gives a coefficient per tested size, from ' + fx(rng.lo, 2) + ' to ' + fx(rng.hi, 2) + ' — no single number fits the whole table.'
+    : 'TAMCO publishes no table for ' + S.profile + ', only the AMCA Fig. 5.3 chart, and that chart is <b>five separate curves</b> spanning ' + fx(rng.lo, 2) + ' to ' + fx(rng.hi, 2) + ' — the coefficient is a property of the size, not just the profile.';
+  if(cdIsPinned(S.profile, S.dir)){
+    var off = (m.cPub / nearCd - 1) * 100;
+    add(Math.abs(off) > 10 ? 'warn' : 'info',
+      'You have pinned C = <b>' + fx(m.cPub, 3) + '</b> in Assumptions. The nearest tested size (' + near.w + '″ × ' + near.h + '″) reads <b>' + fx(nearCd, 3)
+      + '</b>, so this is ' + fx(Math.abs(off), 1) + '% ' + (off > 0 ? 'higher' : 'lower') + '. ' + basis + ' Clear the field to go back to the size-matched value.');
+  } else {
+    add('info', 'Full-open C = <b>' + fx(m.cPub, 3) + '</b>, taken from the nearest tested size, <b>' + near.w + '″ × ' + near.h + '″</b>. ' + basis
+      + (isWP ? '' : ' These chart reads are planning-grade; the lowest curve (36×36) is the hardest to read and independent readings of it spanned ±30%.'));
+  }
+  if(isWP){
+    add('info', 'This WP figure is <b>damper + plenum opening</b>, per AMCA Fig. 5.4/5.5. TAMCO\'s own "Damper Only" column runs −0.003″ to −0.271″ w.g. and is <b>negative in all thirty published rows</b> — the air-foil blades cost <i>less</i> than the bare opening. Do not quote it as the damper\'s loss.');
+  }
+  /* 10 — install-type pressure basis */
+  if(S.install === 'induct'){
+    add('warn', 'Published pressure drop is on the <b>flanged-to-duct</b> basis. TAMCO states in-duct install types will read higher; TAMCO does not quantify by how much.');
+  }
+  if(m.area < 9 && S.install === 'induct'){
+    add('info', 'Under 9 ft², TAMCO recommends flanged-to-duct or extended rear flange specifically to reduce pressure drop.');
+  }
+  /* 11 — dimensional. Square-to-round is ordered by DUCT DIAMETER and fabricated
+     square, so quoting a rectangular +4/+4 finished O.D. for it would contradict
+     the geometry — it gets its own note below instead. */
+  var d = (S.profile === 'WP' && inst.deltaWP != null) ? inst.deltaWP : inst.delta;
+  if(S.install !== 's2r'){
+    var od = (d >= 0 ? '+' : '') + d + '″';
+    add('info', '<b>' + inst.label + '</b> — finished O.D. is ' + od + ' on both width and height, so ' + fx(S.w + d, 2) + '″ × ' + fx(S.h + d, 2) + '″. ' + inst.note);
+  }
+  /* 12 — weight */
+  add('info', 'Approximate weight <b>' + fx(m.area * 5, 0) + ' lb</b> uninsulated (' + fx(m.area * 6, 0) + ' lb insulated) at TAMCO\'s 5 / 6 lb per ft². Supporting structure must hold the pressure load at less than L/230 deflection.');
+  /* 13 — square to round */
+  if(S.install === 's2r'){
+    var dia = Math.min(S.w, S.h);
+    var frame = dia + 4;
+    add('info', '<b>Square to round</b> is ordered by <b>duct diameter</b>, not by a rectangular opening — TAMCO fabricates the damper square, 4″ larger than the diameter you specify, and the finished transition bore is ¼″ under it. Reading the smaller of your two dimensions as the duct, a <b>' + fx(dia, 0) + '″ duct</b> gives a <b>' + fx(frame, 0) + '″ × ' + fx(frame, 0) + '″</b> square frame and a ' + fx(dia - 0.25, 2) + '″ bore.');
+    if(dia < 4 || dia > 58){
+      add('bad', 'Duct diameter ' + fx(dia, 0) + '″ is outside TAMCO\'s square-to-round range of <b>4″ to 58″</b>.');
+    }
+    if(frame > 62){
+      add('bad', 'A ' + fx(frame, 0) + '″ square frame exceeds the <b>62″ × 62″</b> maximum finished O.D. for a square-to-round transition.');
+    }
+  }
+  /* 14 — measure mode specifics */
+  if(S.mode === 'measure'){
+    if(S.action === 'parallel'){
+      add('warn', 'Parallel action biases the discharge to one side of the duct, which makes a single downstream tap position-sensitive and the K unstable. <b>Opposed action is the better choice for a measuring damper</b>; if parallel is fixed, use averaging taps.');
+    } else {
+      add('ok', 'Opposed action gives the more symmetric, centred discharge of the two — the better basis for a stable single ΔP reading.');
+    }
+    add('info', 'Blade action changes <b>no number on this page</b>, only the drawing and this advice — TAMCO publishes no separate performance data for opposed versus parallel, so inventing a difference would be worse than admitting there is none. The effect is real; it is just not something anyone has quantified for this damper.');
+    add('info', 'Use averaging taps if you can: two or three tap points across the width, manifolded together, cancel the blade-to-blade non-uniformity that makes a single-point downstream reading depend on exactly where it landed.');
+    add('warn', 'This only holds with the blades <b>locked at one angle</b>. If the damper also has to modulate, one ΔP pair will not read flow at every position — you need either a full K-versus-angle calibration matrix or a separate averaging flow station.');
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RENDER
+   ═══════════════════════════════════════════════════════════════════════════ */
+function statCard(label, value, unit, note){
+  return '<div class="stat-card"><div class="stat-label">' + label + '</div>'
+       + '<div class="stat-value">' + value + (unit ? '<span>' + unit + '</span>' : '') + '</div>'
+       + (note ? '<div class="stat-note">' + note + '</div>' : '') + '</div>';
+}
+
+/* keepCalTable=true repaints everything EXCEPT the calibration table's <input>
+   nodes, so a full recalculation can run on every keystroke without stealing
+   focus from the cell being typed into. Everything else — stats, checks, pills,
+   chart, PLC — stays live, so nothing goes stale mid-entry. */
+function render(keepCalTable){
+  var m = model();
+  var closed = m.alpha <= 0.005;
+
+  /* stats */
+  var html = '';
+  html += statCard('Face velocity', fx(m.vel, 0), 'fpm', fx(m.area, 2) + ' ft² opening');
+  html += statCard('Free area', closed ? '0.0' : fx(m.alpha * 100, 1), '%', m.n + ' blades at ' + S.angle + '°');
+  /* "C" not "Cd" — this is a loss coefficient on velocity pressure, ΔP = C × Pv.
+     Calling it a discharge coefficient invites someone to apply it as one, which
+     would overstate flow by C^1.5. */
+  if(S.mode === 'select'){
+    html += statCard('Pressure drop', closed ? '—' : fx(m.dp, 3), 'in. w.g.',
+      S.profile === 'WP' ? 'Damper + plenum opening' : 'C = ' + fx(m.c, 2) + ' × Pv');
+    html += statCard('Loss coefficient', closed ? '—' : fx(m.c, 2), '',
+      'Full open ' + fx(m.cPub, 2) + ' at ' + nearestSize(S.profile, S.w, S.h).w + '×' + nearestSize(S.profile, S.w, S.h).h);
+    html += statCard('Closed leakage', fx(m.leakCfm, 0), 'CFM',
+      'At ' + fx(m.sysP, 2) + '″ w.g. system' + (m.sysPGiven ? '' : ' (assumed)'));
+  } else {
+    var ak = activeK(m);
+    var errPct = (isFinite(m.dp) && m.dp > 0) ? 0.5 * (S.acc / 100 * S.span) / m.dp * 100 : Infinity;
+    html += statCard('ΔP at design', closed ? '—' : fx(m.dp, 3), 'in. w.g.',
+      closed ? 'Damper shut' : fx(m.dp / S.span * 100, 0) + '% of transmitter span');
+    html += statCard(ak.calibrated ? 'K — calibrated' : ak.stale ? 'K — reverted to model' : 'K — modelled',
+      (closed || !(ak.k > 0)) ? '—' : fx(ak.k, 0), '',
+      ak.calibrated ? 'CFM = K√ΔP · worst point ' + fx(ak.fit.worst, 1) + '%'
+        : ak.stale ? 'Calibration was for a different setting' : 'CFM = K√ΔP · not calibrated');
+    html += statCard('Flow uncertainty', isFinite(errPct) ? '±' + fx(errPct, 1) : '—', '%',
+      'From ±' + fx(S.acc, 2) + '% of ' + fx(S.span, 2) + '″ span alone');
+  }
+  document.getElementById('stats').innerHTML = html;
+
+  /* instructions */
+  document.getElementById('instructions').innerHTML = S.mode === 'select'
+    ? '<b>Drag the blade angle</b> and watch the section, the face free area, and the curve move together. Full open uses TAMCO\'s data for the tested size nearest yours; everything left of that is modelled, because TAMCO rates full-open only.'
+    : '<b>Lock the blades at a position</b> that puts your design flow at a readable ΔP, then calibrate the K against a real traverse. The damper becomes a flow element: the PLC reads ΔP and the HMI shows CFM.';
+
+  document.getElementById('stageSub').innerHTML = PROF[S.profile].label
+    + ' · ' + INSTALL[S.install].label
+    + (S.profile === 'WP' ? ' · ' + (S.dir === 'intake' ? 'plenum intake' : 'plenum exhaust') : '')
+    + ' · air flows left to right';
+
+  drawSection(m);
+  drawFace(m);
+
+  if(S.mode === 'select'){
+    document.getElementById('chartTitle').textContent = 'Velocity versus pressure drop';
+    document.getElementById('chartSub').innerHTML = 'AMCA Fig. ' + (S.profile === 'WP' ? '5.4 / 5.5' : '5.3') + ' reference basis. The dashed line is the full-open curve for the tested size nearest yours; the solid line is this blade position.';
+    drawChartSelect(m);
+  } else {
+    document.getElementById('chartTitle').textContent = 'Airflow against √ΔP';
+    document.getElementById('chartSub').innerHTML = 'The calibration plot. If the tap arrangement is sound, measured points fall on a straight line through the origin and its slope is K.';
+    drawChartMeasure(m);
+  }
+
+  /* checks */
+  var checks = buildChecks(m);
+  var ic = { ok:'✓', warn:'!', bad:'✕', info:'i' };
+  document.getElementById('checks').innerHTML = checks.map(function(c){
+    return '<div class="chk ' + c.cls + '"><span class="ic">' + ic[c.cls] + '</span><span>' + c.html + '</span></div>';
+  }).join('');
+
+  document.getElementById('pills').innerHTML =
+    '<span class="pill slate">' + S.profile + ' profile</span>'
+    + '<span class="pill slate">' + fx(m.area, 2) + ' ft²</span>'
+    + '<span class="pill slate">' + m.n + ' × ' + fx(m.bEff, 1) + '″ blades</span>'
+    + '<span class="pill ' + (m.area > 25 ? 'amber' : 'emerald') + '">' + (m.area > 25 ? 'Multi-section required' : 'Single section') + '</span>'
+    + (S.profile === 'WP' ? '<span class="pill sky">Plenum-basis data</span>' : '')
+    + (S.angle >= 90
+        ? (S.profile === 'WP'
+            ? '<span class="pill emerald">Full open — published table</span>'
+            : '<span class="pill amber">Full open — chart-read</span>')
+        : '<span class="pill violet">' + S.angle + '° — modelled</span>');
+
+  if(S.mode === 'measure'){ renderCalibration(m, keepCalTable !== true); renderPLC(m); }
+
+  /* angle chrome */
+  var xo = crossoverAngle(m);
+  document.getElementById('angleVal').innerHTML = S.angle + '<span>°</span>';
+  document.getElementById('angleState').textContent =
+    S.angle >= 90 ? 'Full open' : S.angle <= 0 ? 'Closed — sealed' : S.angle < 20 ? 'Near closed' : S.angle < 55 ? 'Throttling' : 'Mostly open';
+  document.getElementById('angleHint').innerHTML = S.angle >= 90
+    ? (S.profile === 'WP'
+        ? 'At full open this is TAMCO\'s published table value for the nearest tested size.'
+        : 'At full open this is a coefficient <b>read off TAMCO\'s AMCA Fig. 5.3 chart</b> for the nearest tested size — TAMCO publishes no table for ' + S.profile + '. Planning-grade, not certified.')
+    : 'Off full open, pressure drop and K come from the free-area model, not from TAMCO. '
+      + (xo != null && S.angle <= xo ? '<b>Below about ' + fx(xo, 0) + '° seal leakage exceeds what the model passes — the curve no longer describes this damper.</b>' : '');
+
+  syncAssumPlaceholders();
+}
+
+/* ── calibration table ───────────────────────────────────────────────────────
+   rebuild=false updates only the derived cells and the verdict. The <input>
+   nodes are never re-created while the user is typing in one — re-creating them
+   removes the focused node from the DOM mid-keystroke, which loses focus AND
+   truncates the entry after the first character. */
+function renderCalibration(m, rebuild){
+  if(rebuild !== false){
+    var rows = '';
+    if(S.points.length === 0){
+      rows = '<p class="t-empty">No measured points yet. Add four or five spanning the real operating range — the fit is only as good as its spread, and two points sitting close together can look perfect while telling you nothing.</p>';
+    } else {
+      rows = '<table class="t"><thead><tr><th style="width:34px">#</th><th class="num">Measured CFM</th><th class="num">Measured ΔP (in. w.g.)</th><th class="num">Implied K</th><th style="width:44px"></th></tr></thead><tbody>';
+      S.points.forEach(function(pt, i){
+        /* raw strings, not numbers — so a half-typed "0." or "0.3" survives, and
+           a legitimate leading zero is not rendered away as an empty cell */
+        rows += '<tr><td class="mono">' + (i + 1) + '</td>'
+          + '<td class="num"><input type="number" data-pi="' + i + '" data-pf="q" value="' + esc(pt.qRaw == null ? '' : pt.qRaw) + '" min="0" step="10" aria-label="Measured CFM, point ' + (i + 1) + '"></td>'
+          + '<td class="num"><input type="number" data-pi="' + i + '" data-pf="dp" value="' + esc(pt.dpRaw == null ? '' : pt.dpRaw) + '" min="0" step="0.005" aria-label="Measured differential pressure, point ' + (i + 1) + '"></td>'
+          + '<td class="num" data-kcell="' + i + '">—</td>'
+          + '<td><button class="del-btn" data-del="' + i + '" aria-label="Remove point ' + (i + 1) + '">×</button></td></tr>';
+      });
+      rows += '</tbody></table>';
+    }
+    document.getElementById('calTableWrap').innerHTML = rows;
+  }
+
+  /* derived cells — safe to repaint on every keystroke, they hold no focus */
+  S.points.forEach(function(pt, i){
+    var cell = document.querySelector('[data-kcell="' + i + '"]');
+    if(cell) cell.textContent = (pt.q > 0 && pt.dp > 0) ? fx(pt.q / Math.sqrt(pt.dp), 0) : '—';
+  });
+
+  var ak = activeK(m);
+  var fit = ak.calibrated ? ak.fit : null;
+  var res = '';
+
+  if(ak.stale){
+    res = '<div class="chk bad"><span class="ic">✕</span><span><b>These points no longer describe this damper.</b> They were measured at <span class="mono">'
+      + esc(ak.stale.replace(/\|/g, ' · ')) + '</span> and the damper is now <span class="mono">' + esc(stateStamp().replace(/\|/g, ' · '))
+      + '</span>. A K belongs to one blade position and one geometry — moving the blades changes it. The constant below has reverted to the <b>modelled</b> K; clear the points, or set the damper back, and re-calibrate.</span></div>';
+  } else if(!fit){
+    res = '<div class="chk info"><span class="ic">i</span><span>Until at least two valid points exist, the PLC constant below is the <b>modelled</b> K of ' + fx(m.k, 0) + '. That is enough to pick an aperture and a transmitter range; it is not enough to trust a displayed CFM.</span></div>';
+  } else {
+    /* Judged on the worst point, not on R². For a fit forced through the origin a
+       centred R² does not decompose: a tap with a constant offset produces a
+       beautifully straight line that misses the origin, scoring R² 0.985 while
+       the worst point is 12% out. The percentage error is the honest test. */
+    var good = fit.worst <= 3 && !fit.curved && fit.spread >= 2;
+    var cls = good ? 'ok' : 'warn';
+    res = '<div class="chk ' + cls + '"><span class="ic">' + (good ? '✓' : '!') + '</span><span>'
+      + 'Fitted <b>K = ' + fx(fit.k, 0) + '</b> from ' + fit.n + ' points · <b>worst point ' + fx(fit.worst, 1) + '% off the line</b>'
+      + (fit.r2u != null ? ' · through-origin R² ' + fx(fit.r2u, 4) : '') + '.';
+    if(good){
+      res += ' That is within commissioning tolerance — this K is usable.';
+    } else {
+      var why = [];
+      if(fit.worst > 3) why.push('the worst point is ' + fx(fit.worst, 1) + '% off, above the 3% you want');
+      if(fit.curved) why.push('every residual falls on the same side of the line, which is the signature of a <b>constant tap offset</b> — a straight line that misses the origin, not a bad K');
+      if(fit.spread < 2) why.push('the points span only ' + fx(fit.spread, 1) + '× in ΔP, too narrow to constrain a slope');
+      res += ' <b>Not yet usable:</b> ' + why.join('; ') + '. Check the downstream tap is not sitting in a jet or a wake — manifold two or three across the width — and re-run over a wider flow range.';
+    }
+    res += '</span></div>';
+    var dev = m.k > 0 ? Math.abs(fit.k - m.k) / m.k * 100 : null;
+    if(dev != null){
+      res += '<div class="chk info" style="margin-top:8px;"><span class="ic">i</span><span>The fitted K is <b>' + fx(dev, 1) + '% ' + (fit.k > m.k ? 'above' : 'below') + '</b> the modelled ' + fx(m.k, 0) + '. The measurement wins — the model exists to get you to a sensible aperture and transmitter range, not to set the constant.</span></div>';
+    }
+  }
+  document.getElementById('calResult').innerHTML = res;
+}
+
+/* ── PLC block ─────────────────────────────────────────────────────────── */
+function renderPLC(m){
+  var ak = activeK(m);
+  var k = ak.k;
+  var cutoff = Math.max(0.002, S.acc / 100 * S.span * 4);
+  var minFlow = k * Math.sqrt(cutoff);
+
+  /* A shut damper has no flow element to describe. Emitting K_FLOW := 0.0 would
+     be a valid-looking constant that silently reads zero CFM for ever. */
+  if(!(k > 0) || !isFinite(k)){
+    document.getElementById('plcPills').innerHTML = '<span class="pill amber">No flow element at this blade position</span>';
+    document.getElementById('plcCode').innerHTML =
+      '<span class="cm">(* The blades are closed — there is no measurable flow path, so there  *)</span>\n' +
+      '<span class="cm">(* is no K to export. Open the damper to a position that passes design *)</span>\n' +
+      '<span class="cm">(* flow at a readable differential pressure, then calibrate.           *)</span>';
+    document.getElementById('plcChecks').innerHTML =
+      '<div class="chk bad"><span class="ic">✕</span><span>At ' + S.angle + '° the modelled free area is zero. Whatever gets past a shut damper is <b>seal leakage</b>, which no ΔP-to-CFM constant describes — that is a leakage class, not a flow element.</span></div>';
+    return;
+  }
+
+  document.getElementById('plcPills').innerHTML =
+    '<span class="pill ' + (ak.calibrated ? 'emerald' : 'amber') + '">' + (ak.calibrated ? 'Calibrated constant' : 'Modelled constant — not yet calibrated') + '</span>'
+    + '<span class="pill slate">K = ' + fx(k, 0) + '</span>'
+    + '<span class="pill slate">Span ' + fx(S.span, 2) + '″ w.g.</span>'
+    + '<span class="pill slate">Blades locked at ' + S.angle + '°</span>'
+    + (Math.abs(m.rhoRatio - 1) > 0.001 ? '<span class="pill sky">Air ' + fx(A.rho, 4) + ' lb/ft³</span>' : '');
+
+  var code =
+'<span class="cm">(* ── Damper flow element ─────────────────────────────────────── *)</span>\n' +
+'<span class="cm">(* ' + esc(S.profile) + ' ' + S.w + '" x ' + S.h + '" ' + esc(S.action) + ', blades LOCKED at ' + S.angle + ' deg   *)</span>\n' +
+'<span class="cm">(* K ' + (ak.calibrated ? 'from field calibration, ' + ak.fit.n + ' pts, worst ' + fx(ak.fit.worst, 1) + '%' : 'MODELLED - calibrate before trusting the display') + ' *)</span>\n' +
+(Math.abs(m.rhoRatio - 1) > 0.001
+  ? '<span class="cm">(* Air density ' + fx(A.rho, 4) + ' lb/ft3, NOT standard 0.075. K carries it. *)</span>\n'
+  : '') +
+'\n' +
+'<span class="kw">VAR CONSTANT</span>\n' +
+'    K_FLOW      : <span class="nm">REAL</span> := ' + fx(k, 1).replace(/,/g, '') + ';   <span class="cm">(* CFM per sqrt(in.w.g.) *)</span>\n' +
+'    DP_SPAN     : <span class="nm">REAL</span> := ' + fx(S.span, 3) + ';   <span class="cm">(* transmitter span, in.w.g. *)</span>\n' +
+'    DP_CUTOFF   : <span class="nm">REAL</span> := ' + fx(cutoff, 4) + ';  <span class="cm">(* 4x transmitter accuracy *)</span>\n' +
+'    RAW_MIN     : <span class="nm">REAL</span> := 4.0;     <span class="cm">(* mA at zero *)</span>\n' +
+'    RAW_MAX     : <span class="nm">REAL</span> := 20.0;    <span class="cm">(* mA at full span *)</span>\n' +
+'<span class="kw">END_VAR</span>\n' +
+'\n' +
+'<span class="kw">VAR</span>\n' +
+'    AI_DP_MA    : <span class="nm">REAL</span>;   <span class="cm">(* scaled analog input *)</span>\n' +
+'    DP          : <span class="nm">REAL</span>;\n' +
+'    CFM         : <span class="nm">REAL</span>;\n' +
+'    FLOW_VALID  : <span class="nm">BOOL</span>;\n' +
+'<span class="kw">END_VAR</span>\n' +
+'\n' +
+'<span class="cm">(* 1. mA to differential pressure *)</span>\n' +
+'DP := (AI_DP_MA - RAW_MIN) * DP_SPAN / (RAW_MAX - RAW_MIN);\n' +
+'<span class="kw">IF</span> DP &lt; 0.0 <span class="kw">THEN</span> DP := 0.0; <span class="kw">END_IF</span>\n' +
+'\n' +
+'<span class="cm">(* 2. Low-flow cutoff. Below this the square root amplifies *)</span>\n' +
+'<span class="cm">(*    transmitter noise into a wildly unstable CFM display.  *)</span>\n' +
+'<span class="kw">IF</span> DP &lt; DP_CUTOFF <span class="kw">THEN</span>\n' +
+'    CFM        := 0.0;\n' +
+'    FLOW_VALID := <span class="kw">FALSE</span>;\n' +
+'<span class="kw">ELSE</span>\n' +
+'    CFM        := K_FLOW * <span class="nm">SQRT</span>(DP);\n' +
+'    FLOW_VALID := <span class="kw">TRUE</span>;\n' +
+'<span class="kw">END_IF</span>\n' +
+'\n' +
+'<span class="cm">(* 3. HMI: display CFM, and grey it out when FLOW_VALID is false. *)</span>\n' +
+'<span class="cm">(*    Never show a number the instrument cannot actually resolve. *)</span>';
+
+  document.getElementById('plcCode').innerHTML = code;
+
+  var checks = [];
+  checks.push({ cls:'info', html:'Below <b>' + fx(cutoff, 4) + '″ w.g.</b> — about <b>' + fx(minFlow, 0) + ' CFM</b> — the display is cut off. That is four times the transmitter\'s own accuracy; under it the √ term turns instrument noise into a jumping readout.' });
+  var pctSpan = isFinite(m.dp) ? m.dp / S.span * 100 : 0;
+  if(pctSpan > 100){
+    checks.push({ cls:'bad', html:'Design ΔP of ' + fx(m.dp, 3) + '″ w.g. is <b>over the ' + fx(S.span, 2) + '″ transmitter span</b>. Open the blades, or specify a wider transmitter.' });
+  } else if(pctSpan < 25){
+    checks.push({ cls:'warn', html:'Design ΔP sits at only <b>' + fx(pctSpan, 0) + '% of span</b>. Because accuracy is a percentage of full scale, a small reading on a large span is a poor one — close the blades further or specify a narrower transmitter.' });
+  } else {
+    checks.push({ cls:'ok', html:'Design ΔP sits at <b>' + fx(pctSpan, 0) + '% of span</b> — a good place to be. Accuracy is a percentage of full scale, so you want the working reading high in the range.' });
+  }
+  checks.push({ cls:'ok', html:'The square root works in your favour on the flow side: a 1% error in ΔP is only a <b>0.5% error in CFM</b>, since Q ∝ √ΔP.' });
+  if(!ak.calibrated){
+    checks.push({ cls:'warn', html:'This constant has <b>not been calibrated</b>. Commission it against a traverse before the HMI number goes in front of anyone — the model sizes the aperture, the field sets the K.' });
+  }
+  document.getElementById('plcChecks').innerHTML = checks.map(function(c){
+    var ic = { ok:'✓', warn:'!', bad:'✕', info:'i' };
+    return '<div class="chk ' + c.cls + '"><span class="ic">' + ic[c.cls] + '</span><span>' + c.html + '</span></div>';
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WIRING
+   ═══════════════════════════════════════════════════════════════════════════ */
+function num(id, fallback){
+  var v = parseFloat(document.getElementById(id).value);
+  return (isNaN(v) || v <= 0) ? fallback : v;
+}
+
+function readInputs(){
+  S.cfm = num('in-cfm', 1);
+  S.w = num('in-w', 4);
+  S.h = num('in-h', 4);
+  S.span = num('in-span', 0.05);
+  S.acc = num('in-acc', 0.05);
+  var sp = parseFloat(document.getElementById('in-sysp').value);
+  S.sysP = (isNaN(sp) || sp <= 0) ? 0 : sp;   /* 0 means "not given" */
+}
+
+['in-cfm','in-w','in-h','in-sysp','in-span','in-acc'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', function(){ readInputs(); render(); });
+});
+
+document.getElementById('in-angle').addEventListener('input', function(){
+  S.angle = parseInt(this.value, 10);
+  render();
+});
+document.querySelectorAll('[data-angle]').forEach(function(b){
+  b.addEventListener('click', function(){
+    S.angle = parseInt(this.dataset.angle, 10);
+    document.getElementById('in-angle').value = S.angle;
+    render();
+  });
+});
+
+function wireSeg(id, key, after){
+  var g = document.getElementById(id);
+  g.querySelectorAll('button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      g.querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
+      btn.classList.add('on');
+      S[key] = btn.dataset.p || btn.dataset.a || btn.dataset.d || btn.dataset.mode;
+      if(after) after();
+      render();
+    });
+  });
+}
+
+function syncProfile(){
+  var p = PROF[S.profile];
+  document.getElementById('profileHint').innerHTML = p.hint;
+  document.getElementById('dirField').classList.toggle('hidden', S.profile !== 'WP');
+  var sel = document.getElementById('in-install');
+  if(p.installs.indexOf(S.install) === -1) S.install = p.installs[0];
+  sel.innerHTML = Object.keys(INSTALL).map(function(k){
+    var avail = p.installs.indexOf(k) !== -1;
+    return '<option value="' + k + '"' + (k === S.install ? ' selected' : '') + '>' + INSTALL[k].label + (avail ? '' : ' — not available on ' + S.profile) + '</option>';
+  }).join('');
+  document.getElementById('installHint').innerHTML = INSTALL[S.install].note;
+}
+
+function syncMode(){
+  var measure = S.mode === 'measure';
+  document.getElementById('txGroup').classList.toggle('hidden', !measure);
+  document.getElementById('calCard').classList.toggle('hidden', !measure);
+  document.getElementById('plcCard').classList.toggle('hidden', !measure);
+}
+
+wireSeg('modeSeg', 'mode', syncMode);
+wireSeg('profileSeg', 'profile', syncProfile);
+wireSeg('actionSeg', 'action');
+wireSeg('dirSeg', 'dir');
+
+document.getElementById('in-install').addEventListener('change', function(){
+  S.install = this.value;
+  document.getElementById('installHint').innerHTML = INSTALL[S.install].note;
+  render();
+});
+
+/* calibration points. Each carries a stamp of the damper it was measured on —
+   a K is only valid for one blade position and one geometry. */
+document.getElementById('btn-add-point').addEventListener('click', function(){
+  S.points.push({ q:0, dp:0, qRaw:'', dpRaw:'', stamp:stateStamp() });
+  render();
+});
+document.getElementById('btn-clear-points').addEventListener('click', function(){
+  S.points = [];
+  render();
+});
+document.getElementById('calTableWrap').addEventListener('input', function(e){
+  var t = e.target;
+  if(t.dataset.pi == null) return;
+  var pt = S.points[+t.dataset.pi];
+  var f = t.dataset.pf;
+  var v = parseFloat(t.value);
+  pt[f] = isNaN(v) ? 0 : v;
+  pt[f + 'Raw'] = t.value;          /* keep what was typed, so "0." survives */
+  if(!pt.stamp) pt.stamp = stateStamp();
+  render(true);                      /* full recalculation, table inputs untouched */
+});
+document.getElementById('calTableWrap').addEventListener('click', function(e){
+  if(e.target.dataset.del == null) return;
+  S.points.splice(+e.target.dataset.del, 1);
+  render();
+});
+
+/* solve for best resolution */
+document.getElementById('btn-solve').addEventListener('click', function(){
+  var target = 0.70 * S.span;
+  var area = S.w * S.h / 144;
+  var pv = Math.pow((S.cfm / area) / 4005, 2) * (A.rho / RHO_STD);
+  if(pv <= 0) return;
+  var cTarget = target / pv;
+  var lo = 10, hi = 90, best = 90;
+  function cAt(deg){
+    var fa = freeArea(S.profile, S.h, deg);
+    if(fa.alpha <= 0) return Infinity;
+    return publishedCd(S.profile, S.dir) + throttleScale(S.profile) * (Math.pow(fa.alphaOpen / fa.alpha, A.expo) - 1);
+  }
+  if(cAt(90) >= cTarget){ best = 90; }
+  else if(cAt(lo) <= cTarget){ best = lo; }
+  else {
+    for(var i = 0; i < 40; i++){
+      var mid = (lo + hi) / 2;
+      if(cAt(mid) > cTarget) lo = mid; else hi = mid;
+    }
+    best = Math.round((lo + hi) / 2);
+  }
+  S.angle = Math.max(0, Math.min(90, best));
+  document.getElementById('in-angle').value = S.angle;
+  render();
+});
+
+/* assumptions. The four Cd fields are OPTIONAL overrides: blank means "use the
+   nearest tested size", so clearing one restores the size-aware value rather
+   than pinning whatever was last typed. */
+var ASSUM_IDS = { 'as-cdSP':'cdSP', 'as-cdNP':'cdNP', 'as-cdWPi':'cdWPi', 'as-cdWPe':'cdWPe', 'as-t6':'t6', 'as-t4':'t4', 'as-expo':'expo', 'as-rho':'rho' };
+var NULLABLE = { cdSP:1, cdNP:1, cdWPi:1, cdWPe:1 };
+Object.keys(ASSUM_IDS).forEach(function(id){
+  document.getElementById(id).addEventListener('input', function(){
+    var key = ASSUM_IDS[id];
+    var v = parseFloat(this.value);
+    if(this.value.trim() === '' && NULLABLE[key]) A[key] = null;
+    else if(!isNaN(v) && v > 0) A[key] = v;
+    render();
+  });
+});
+document.getElementById('btn-reset-assum').addEventListener('click', function(){
+  Object.keys(DEFAULTS).forEach(function(k){ A[k] = DEFAULTS[k]; });
+  Object.keys(ASSUM_IDS).forEach(function(id){
+    var d = DEFAULTS[ASSUM_IDS[id]];
+    document.getElementById(id).value = d == null ? '' : d;
+  });
+  render();
+});
+
+/* Placeholders show the value the size table is currently resolving to, so a
+   blank field still tells you what the model is using. */
+function syncAssumPlaceholders(){
+  var pairs = [['as-cdSP', tableCd('SP', 'intake', S.w, S.h)],
+               ['as-cdNP', tableCd('NP', 'intake', S.w, S.h)],
+               ['as-cdWPi', tableCd('WP', 'intake', S.w, S.h)],
+               ['as-cdWPe', tableCd('WP', 'exhaust', S.w, S.h)]];
+  pairs.forEach(function(p){
+    var el = document.getElementById(p[0]);
+    if(el) el.placeholder = fx(p[1], 3) + ' (auto)';
+  });
+}
+
+/* copy helpers */
+function copyText(text, btn){
+  var done = function(){
+    var old = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(function(){ btn.textContent = old; }, 1400);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){});
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+document.getElementById('btn-copy-plc').addEventListener('click', function(){
+  copyText(document.getElementById('plcCode').textContent, this);
+});
+
+document.getElementById('btn-copy').addEventListener('click', function(){
+  var m = model(), ak = activeK(m);
+  var L = [];
+  L.push('DAMPER FLOW MODEL — review copy');
+  L.push('TAMCO Series 1000 · ' + PROF[S.profile].label);
+  L.push('');
+  L.push('SELECTION');
+  L.push('  Opening              ' + S.w + '" W x ' + S.h + '" H  (' + fx(m.area, 2) + ' ft2)');
+  L.push('  Install type         ' + INSTALL[S.install].label);
+  L.push('  Blade action         ' + S.action + ', ' + m.n + ' x ' + fx(m.bEff, 1) + '" blades');
+  if(S.profile === 'WP') L.push('  Plenum direction     ' + S.dir);
+  L.push('  Design airflow       ' + fx(S.cfm, 0) + ' CFM');
+  L.push('  Face velocity        ' + fx(m.vel, 0) + ' fpm');
+  L.push('  System design static ' + fx(m.sysP, 2) + '" w.g.' + (m.sysPGiven ? '' : '   [ASSUMED - not entered]'));
+  L.push('');
+  var nr = nearestSize(S.profile, S.w, S.h);
+  L.push('AT ' + S.angle + ' DEG FROM CLOSED');
+  L.push('  Free area            ' + fx(m.alpha * 100, 1) + '%  (' + fx(m.alphaOpen * 100, 1) + '% at full open)');
+  L.push('  Loss coefficient  C  ' + fx(m.c, 3) + '   dP = C x Pv, Pv = (V/4005)^2 x rho/0.075');
+  L.push('    full open C        ' + fx(m.cPub, 3) + '   from tested size ' + nr.w + 'x' + nr.h
+       + (cdIsPinned(S.profile, S.dir) ? '  [PINNED override]' : (S.profile === 'WP' ? '  [published table]' : '  [CHART-READ, planning grade]')));
+  L.push('  Pressure drop        ' + fx(m.dp, 3) + '" w.g.' + (S.profile === 'WP' ? '   [damper + plenum opening, not damper alone]' : ''));
+  L.push('  Velocity thru gap    ' + fx(m.throatVel, 0) + ' fpm');
+  L.push('  Closed leakage       ' + fx(m.leakCfm, 0) + ' CFM at ' + fx(m.sysP, 2) + '" w.g. system');
+  L.push('');
+  L.push('MEASURING');
+  L.push('  K (modelled)         ' + fx(m.k, 0) + '   CFM = K x sqrt(dP),  K = 4005 x A / sqrt(C x rho/0.075)');
+  if(ak.calibrated){
+    L.push('  K (calibrated)       ' + fx(ak.k, 0) + '   from ' + ak.fit.n + ' points, worst point ' + fx(ak.fit.worst, 1) + '% off the line');
+    L.push('                       (judged on worst-point error, NOT R2 - a centred R2');
+    L.push('                        does not decompose for a fit forced through the origin)');
+    S.points.forEach(function(p, i){ L.push('    pt' + (i + 1) + '   ' + fx(p.q, 0) + ' CFM at ' + fx(p.dp, 4) + '" w.g.'); });
+    L.push('                       valid ONLY at ' + stateStamp().replace(/\|/g, ' / '));
+  } else if(ak.stale){
+    L.push('  K (calibrated)       RETIRED - points were taken at ' + ak.stale.replace(/\|/g, ' / '));
+    L.push('                       and the damper is now ' + stateStamp().replace(/\|/g, ' / '));
+  } else {
+    L.push('  K (calibrated)       not calibrated');
+  }
+  L.push('  Transmitter          ' + fx(S.span, 2) + '" w.g. span, +/-' + fx(S.acc, 2) + '% FS');
+  L.push('');
+  L.push('ASSUMPTIONS USED  (change these if you disagree)');
+  function cdLine(label, key, prof, dir, tag){
+    var pinned = A[key] != null;
+    L.push('  ' + label + (pinned ? fx(A[key], 3) + '   [PINNED override]' : fx(tableCd(prof, dir, S.w, S.h), 3) + '   [auto: nearest tested size ' + nearestSize(prof, S.w, S.h).w + 'x' + nearestSize(prof, S.w, S.h).h + '] ' + tag));
+  }
+  cdLine('SP full-open C       ', 'cdSP', 'SP', 'intake', '[CHART-READ off AMCA Fig 5.3; 5 curves, 0.18-0.70]');
+  cdLine('NP full-open C       ', 'cdNP', 'NP', 'intake', '[CHART-READ off AMCA Fig 5.3; 5 curves, 0.30-1.04]');
+  cdLine('WP C intake          ', 'cdWPi', 'WP', 'intake', '[published table, Damper & System; 2.20-2.60]');
+  cdLine('WP C exhaust         ', 'cdWPe', 'WP', 'exhaust', '[published table, Damper & System; 2.17-2.56]');
+  L.push('  6" blade thickness   ' + A.t6 + '"  [modelled, sets full-open free area]');
+  L.push('  4" blade thickness   ' + A.t4 + '"  [modelled]');
+  L.push('  Free-area exponent p ' + A.expo + '   [modelled, orifice default 2.0; NOT the blade count]');
+  L.push('  Air density          ' + A.rho + ' lb/ft3' + (Math.abs(m.rhoRatio - 1) > 0.001 ? '   [NON-STANDARD - scales dP and K]' : '   [standard]'));
+  L.push('  WP throttling scale  uses the SP coefficient at this same size, because the');
+  L.push('                       published WP number is a plenum-entry loss that does not');
+  L.push('                       scale with blade angle. Changing SP therefore moves WP too.');
+  L.push('');
+  L.push('CHECKS');
+  buildChecks(m).forEach(function(c){
+    var tag = { ok:'OK  ', warn:'WARN', bad:'FAIL', info:'NOTE' }[c.cls];
+    L.push('  [' + tag + '] ' + c.html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&'));
+  });
+  L.push('');
+  L.push('Source: TAMCO TA-1000-TECH-24 (April 2017) and TA-IOM-CD-24 (2020).');
+  L.push('WP full-open is TAMCO published data. SP and NP full-open are READ OFF A CHART');
+  L.push('and are planning grade. Every partly-closed number is modelled, and is what most');
+  L.push('needs your review.');
+  copyText(L.join('\n'), this);
+});
+
+/* theme */
+var sunIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>';
+var moonIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>';
+var themeBtn = document.getElementById('theme-toggle');
+var logoImg = document.getElementById('logo');
+function setTheme(dark){
+  document.body.classList.toggle('dark', dark);
+  themeBtn.innerHTML = dark ? sunIcon : moonIcon;
+  logoImg.src = dark ? '/iat-logo-white.png' : '/iat-logo.png';
+  render();
+}
+setTheme(false);
+themeBtn.addEventListener('click', function(){ setTheme(!document.body.classList.contains('dark')); });
+
+/* init */
+readInputs();
+syncProfile();
+syncMode();
+render();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Wind, Image as ImageIcon, Zap, Calculator, Flame, PartyPopper, Droplets, Fan } from 'lucide-react'
+import { Wind, Image as ImageIcon, Zap, Calculator, Flame, PartyPopper, Droplets, Fan, Blinds } from 'lucide-react'
 
 /* Single source of truth for the internal-apps launcher ("Internal Apps" in the
    nav — renamed from "Tools" so it isn't confused with the Tool Crib check-out
@@ -19,12 +19,19 @@ export type ToolApp = {
 
 export const TOOL_APPS: ToolApp[] = [
   {
+    title: 'Damper Flow Model',
+    desc: 'Drive a TAMCO Series 1000 damper through its blade travel and watch free area, pressure drop, and the ΔP→CFM K-factor move together — then calibrate the K against a field traverse and export the PLC/HMI logic.',
+    href: '/tools/damper-flow-model.html',
+    icon: Blinds,
+    external: true,
+    tag: 'New',
+  },
+  {
     title: 'Desiccant Dehumidification HMI',
     desc: 'A live, clickable process-flow diagram of a desiccant dehumidification unit — walk the process and reactivation airstreams through filter, coil, wheel, heater, and fans, toggle any component, adjust setpoints, and watch airflow, moisture removal, and power respond in real time.',
     href: '/tools/desiccant-wheel-hmi.html',
     icon: Fan,
     external: true,
-    tag: 'New',
   },
   {
     title: 'Washdown Load Calculator',
