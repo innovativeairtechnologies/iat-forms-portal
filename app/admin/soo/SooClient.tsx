@@ -90,7 +90,7 @@ export default function SooClient({ rows }: { rows: SooListRow[] }) {
         <ListCard>
           <CardHead
             overline="Engineering"
-            title="Sequence of Operation"
+            title="Submittal Generator"
             count={`${rows.length} document${rows.length === 1 ? '' : 's'}`}
           />
 
