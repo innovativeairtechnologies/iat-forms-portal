@@ -29,9 +29,19 @@ import { titleFromFilename } from '@/lib/kb-chunking.mjs'
 
 export const SYNC_SOURCE = 'sharepoint'
 
-/** Only these are transcribable today. Office formats (.docx/.xlsx/.pptx) are
- *  deliberately skipped in v1 — they'd need text extraction first. */
-const SUPPORTED = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+/** What Jerry can actually read. Word joins PDFs and images because a .docx is a
+ *  zip of XML and its text extracts directly.
+ *
+ *  Spreadsheets and presentations are deliberately NOT here. They are the same
+ *  format and would be easy to add, but this library's .xlsx files are
+ *  calculators — what comes out is formula fragments, not knowledge — and
+ *  putting that in the pool would make Jerry's answers worse. They stay in
+ *  SharePoint as files, which is where they're useful. */
+const SUPPORTED = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+])
 
 export type DiscoverResult = {
   discovered: number

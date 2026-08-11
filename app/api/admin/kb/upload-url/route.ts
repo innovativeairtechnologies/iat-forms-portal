@@ -12,7 +12,7 @@ import { KB_MAX_UPLOAD_BYTES, KB_MAX_UPLOAD_LABEL } from '@/lib/kb-limits'
 const KB_UPLOADS_BUCKET = 'kb-uploads'
 // Shared with the browser's own pre-check — see lib/kb-limits.
 const MAX_BYTES = KB_MAX_UPLOAD_BYTES
-const ALLOWED_EXT = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'])
+const ALLOWED_EXT = new Set(['pdf', 'docx', 'png', 'jpg', 'jpeg', 'gif', 'webp'])
 
 export async function POST(req: NextRequest) {
   const err = await requireAdminAuth(); if (err) return err

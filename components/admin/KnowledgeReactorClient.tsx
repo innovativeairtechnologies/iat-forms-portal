@@ -107,7 +107,8 @@ type SharePointQueueItem = {
   size_bytes: number | null
 }
 
-const ACCEPT = '.pdf,.png,.jpg,.jpeg,.gif,.webp'
+const ACCEPT = '.pdf,.docx,.png,.jpg,.jpeg,.gif,.webp'
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 // Miniscule, ever-so-slight growth: diameter creeps up with the log of how many
 // passages Jerry has learned, capped so it never dominates the page.
@@ -358,7 +359,11 @@ export default function KnowledgeReactorClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           path: urlJson.path,
-          media_type: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : ''),
+          // Browsers don't always report a type for .docx; fall back to the
+          // extension so the server still knows how to read it.
+          media_type: file.type
+            || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : '')
+            || (file.name.toLowerCase().endsWith('.docx') ? DOCX_MIME : ''),
           filename: file.name,
         }),
       })

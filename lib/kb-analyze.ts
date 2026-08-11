@@ -2,7 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { anthropic } from '@/lib/anthropic'
 import { buildChunks, pagesFromTranscript, titleFromFilename } from '@/lib/kb-chunking.mjs'
 import { COMPETITOR_NAMES } from '@/lib/competitors.mjs'
-import { extractPdfText } from '@/lib/kb-extract'
+import { extractPdfText, extractDocxText, DOCX_MIME } from '@/lib/kb-extract'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The read-and-scrub engine behind Jerry's Brain, factored out so BOTH entry
@@ -116,11 +116,32 @@ async function scrubTranscript(transcript: string): Promise<Findings> {
 export async function analyzeDocument(bytes: Buffer, mediaType: string, filename: string): Promise<AnalyzeResult> {
   const isPdf = mediaType === 'application/pdf'
   const isImage = (IMAGE_MEDIA_TYPES as readonly string[]).includes(mediaType)
-  if (!isPdf && !isImage) {
-    return { ok: false, code: 'unsupported', message: 'Unsupported file type. Feed me a PDF or an image.' }
+  const isDocx = mediaType === DOCX_MIME
+  if (!isPdf && !isImage && !isDocx) {
+    return { ok: false, code: 'unsupported', message: 'Unsupported file type. Feed me a PDF, a Word document, or an image.' }
   }
 
   try {
+    // ── Word: a zip of XML, so the text comes straight out ────────────────────
+    // There is no vision fallback here — a .docx with no text has nothing to
+    // look at, unlike a scanned PDF whose content is pixels.
+    if (isDocx) {
+      const extracted = extractDocxText(bytes)
+      if (!extracted.ok) {
+        return { ok: false, code: extracted.reason === 'no-text-layer' ? 'empty' : 'error', message: extracted.message }
+      }
+      const pages = pagesFromTranscript(extracted.text)
+      const chunkCount = buildChunks(pages).length
+      if (chunkCount === 0) {
+        return { ok: false, code: 'empty', message: 'That Word document has no readable text.' }
+      }
+      const findings = await scrubTranscript(extracted.text)
+      return {
+        ok: true, transcript: extracted.text, title: titleFromFilename(filename),
+        pageCount: pages.length, chunkCount, findings, method: 'text-layer',
+      }
+    }
+
     // ── the PDF's own text layer, first ───────────────────────────────────────
     // Free, instant, complete, and not subject to the one-pass output ceiling
     // that makes vision unable to read a long manual at all. Only documents
