@@ -3,7 +3,7 @@ import { Sparkles, Trophy, Flame, ArrowRight } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getLearnDashboard } from '@/lib/learn'
-import SubjectScroller from '@/components/learn/SubjectScroller'
+import SubjectLibrary from '@/components/learn/SubjectLibrary'
 import WeekChart from '@/components/learn/WeekChart'
 import UpNextList from '@/components/learn/UpNextList'
 import LearnPageShell from './LearnPageShell'
@@ -19,10 +19,14 @@ function greeting(hour: number) {
 /* The Learn library landing.
 
    Deliberately more playful than the rest of /admin: per-category Tone washes on
-   the subject deck, a level ring, an activity strip. That is the DESIGN.md §2.4
+   the subject tiles, a level ring, an activity strip. That is the DESIGN.md §2.4
    dashboard exception, not a departure from the system — every colour is a Tone
    from the sanctioned table, and the wash means "this part of the library"
    rather than decoration.
+
+   The library is grouped into one vertical shelf per category (SubjectLibrary).
+   It was a single sideways deck of every subject until the HVAC/R course took
+   the count from 14 to 32 — see that file for why the deck stopped working.
 
    Everything on this page comes from data that exists — and more of it exists
    now than when this was first built. Due dates and the Required filter are real
@@ -113,7 +117,7 @@ export default async function LearnHomePage() {
         </section>
 
         {/* ── The library ────────────────────────────────────────────── */}
-        <SubjectScroller subjects={data.subjects} />
+        <SubjectLibrary subjects={data.subjects} />
 
         {/* ── Activity + what's next ─────────────────────────────────── */}
         <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">

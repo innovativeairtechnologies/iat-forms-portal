@@ -2,6 +2,47 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-11 — Learn: the library is shelves by category, not one sideways deck
+
+Team feedback on `/admin/learn`: scrolling sideways through the courses, with no sense of which
+category anything belonged to. Both complaints were the same regression. The library was a single
+horizontal deck built when there were **14 subjects**; the Refrigeration & HVAC/R course took it to
+**32**, and `getLearnDashboard` fetches modules ordered by the *module's* `display_order` alone —
+which **interleaves categories**. So the deck had become 32 cards of shuffled subject matter, about
+4½ visible at a time, behind roughly seven sideways scrolls.
+
+It is now **one vertical shelf per category**, in the admin's order, each with its own counts and
+progress: Onboarding 2 · Company 3 · Safety 1 · Technical Training 6 · Products & Tools 2 ·
+Refrigeration & HVAC/R 18. Inside a shelf subjects keep their module order, so the 18-part HVAC/R
+course reads as the syllabus it is instead of an alphabet soup. The whole library is now ~2,700px
+at 1280 wide — under three screens, all of it vertical, with a **"jump to" row** across the six
+shelves at the top.
+
+**The colour got better, not worse.** Every subject still wears its category's Tone (the DESIGN.md
+§2.4 dashboard exception), but a shelf is now one colour block rather than six tones shuffled
+together, so the wash finally reads as "this part of the library" — which is what it always claimed
+to mean.
+
+Added along the way: a **text search** (32 subjects is past the point of scanning), and shelves that
+collapse away when a filter or search excludes them, with an `n of 32` count. Shelf totals are
+computed over the **whole category, never the filtered subset** — "22 of 63 lessons read in
+Onboarding" is a fact about Onboarding, and would otherwise jump every time someone clicked a tab.
+
+Three smaller fixes that fell out of the rebuild:
+
+- **Tile titles now align across a row.** The status pill sat *above* the title, so a card with a
+  "Done" or due pill pushed its title down while its neighbour's stayed up — ragged in exactly the
+  place you scan. Title is first now; completion moved into the progress row.
+- **"Required of you" is a compact list, not tiles.** Every subject in it also appears in its own
+  shelf below, and repeating the full card a screen apart read as a rendering bug.
+- **100% no longer means "finished" when a quiz is outstanding.** A subject with every lesson read
+  but an unpassed published quiz is *not* complete (`subjectIsComplete`) — that tile said "100%".
+  It says **"Quiz left"**.
+
+`SubjectScroller` and its `.learn-deck` scrollbar CSS are deleted; `SubjectCard` gained
+`categorySlug` + `categoryOrder`, without which grouping can't reconstruct the category order the
+interleaved module ordering destroys.
+
 ## 2026-08-10 — Login: collapse email + password behind a disclosure
 
 "Sign in with Microsoft" was already the primary action; the email + password form now starts

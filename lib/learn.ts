@@ -306,6 +306,11 @@ export type SubjectCard = {
   description: string | null
   href: string
   categoryName: string
+  /** Category slug + order, so the library can group into shelves and put them
+   *  in the admin's chosen order. `modules` is fetched ordered by the MODULE's
+   *  display_order alone, which interleaves categories — grouping needs these. */
+  categorySlug: string
+  categoryOrder: number
   tone: LearnTone
   lessonCount: number
   minutes: number
@@ -427,6 +432,8 @@ export async function getLearnDashboard(userId: string): Promise<LearnDashboard>
       description: m.description,
       href: `/admin/learn/${cat?.slug ?? ''}/${m.slug}`,
       categoryName: cat?.name ?? '',
+      categorySlug: cat?.slug ?? '',
+      categoryOrder: cat?.display_order ?? 999,
       tone: cat?.tone ?? 'slate',
       lessonCount: ls.length,
       minutes: ls.reduce((n, l) => n + (l.estimated_minutes ?? 0), 0),

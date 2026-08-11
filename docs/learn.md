@@ -28,9 +28,11 @@ so a `?redirect=/learn...` login round-trip still lands correctly.
 A gamified library dashboard, rebuilt 2026-07-31 from a reference design Jacob supplied:
 
 - **Level band** — level ring, title, XP, progress to the next level, streak.
-- **My courses** — a horizontal deck of the 14 **subjects**, each washed in its *category's* Tone,
-  with lesson count, estimated time and a progress bar. Filters: All / In progress / Not started /
-  Completed.
+- **Library** — one vertical **shelf per category** (`components/learn/SubjectLibrary.tsx`), in the
+  admin's `display_order`, each shelf carrying its own subject/lesson/time counts and a progress
+  bar. Inside a shelf, subjects keep their module `display_order` — for the HVAC/R course that
+  order *is* the syllabus. Filters: All / Required / In progress / Not started / Completed, plus a
+  text search and a "jump to" row. See **Why the deck became shelves** below.
 - **This week** — a bar chart of content completed per day, with a vs-last-week delta and four
   stat tiles.
 - **Up next** — a 7-day activity strip plus the next lessons to open (subjects already underway
@@ -40,6 +42,34 @@ A gamified library dashboard, rebuilt 2026-07-31 from a reference design Jacob s
 the sanctioned table (emerald / sky / amber / violet / rose / slate) — no off-system pastels — and
 a subject inherits its *category's* tone, so the colour means "this part of the library" rather
 than decoration. The map lives in `components/learn/learn-tones.ts`.
+
+### Why the deck became shelves (2026-08-11)
+
+The library was **one horizontal deck of every subject**. That was built for 14 subjects; the
+Refrigeration & HVAC/R course (085) took it to **32**, and `getLearnDashboard` fetches modules
+ordered by the *module's* `display_order` alone — which **interleaves categories**. So the deck had
+become 32 cards of shuffled subject matter, about 4½ visible at a time, behind roughly seven
+sideways scrolls. The team's feedback was exactly that: sideways scrolling, and no sense of which
+part of the library you were in.
+
+Grouping by category is the fix, and it made the **colour work better, not worse** — a shelf is now
+one Tone block instead of six tones shuffled together, so the §2.4 wash finally reads as "this part
+of the library". Notes for anyone changing it:
+
+- `SubjectCard` carries `categorySlug` + `categoryOrder` **because** the module ordering interleaves
+  categories. Don't group on `categoryName`.
+- **Shelf totals are computed over the whole category, never the filtered subset.** "You have read
+  22 of 63 lessons in Onboarding" is a fact about Onboarding; recomputing it per filter would make
+  the number jump whenever someone clicked a tab.
+- Shelf progress is **lessons read**, deliberately *not* a completion claim — a subject with a
+  published quiz also needs a pass (`subjectIsComplete`). It's labelled "lessons read" for that
+  reason. A tile showing 100% with an unpassed quiz says **"Quiz left"** rather than 100%.
+- The subject title is the **first** element in a tile. Anything optional above it (a due chip, a
+  Done pill) knocks the titles in a row out of alignment, which is what you scan down a shelf.
+- **Required of you** is a compact list, not tiles — every subject in it also appears in its own
+  shelf, and repeating the full tile a screen apart read as a rendering bug rather than a shortcut.
+- The "jump to" row is hidden while a filter or search is active, because it would advertise
+  shelves that have been filtered away.
 
 **How the page tracks the reference design.** Three of the five gaps closed the same day:
 
