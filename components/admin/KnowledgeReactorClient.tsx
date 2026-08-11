@@ -177,6 +177,7 @@ export default function KnowledgeReactorClient() {
     storagePath: string; storageMime: string | null
   } | null>(null)
   const [pushOnlyBusy, setPushOnlyBusy] = useState(false)
+  const [visBusy, setVisBusy] = useState<string | null>(null) // doc whose visibility is changing
   const [spFolders, setSpFolders] = useState<SpFolder[]>([])
   const [spFoldersLoaded, setSpFoldersLoaded] = useState(false)
   const [pushFolder, setPushFolder] = useState<SpFolder | null>(null) // null = library root
@@ -554,6 +555,40 @@ export default function KnowledgeReactorClient() {
     }
   }
 
+  // Change who Jerry may use a document for, in place. is_internal lives only on
+  // the document row and retrieval filters on it at query time, so this changes
+  // every passage at once — nothing is re-read, re-chunked, or re-uploaded.
+  const toggleVisibility = async (doc: KbDoc) => {
+    if (visBusy) return
+    const next = !doc.is_internal
+
+    // Going customer-facing is a disclosure, and the scrub findings that were on
+    // screen at approval time aren't kept on the document — so this is the last
+    // point anyone is asked to think about it. The reverse direction only ever
+    // narrows the audience, so it goes through silently.
+    if (!next && !confirm(`Make “${doc.title}” customer-facing?\n\nThe customer assistant will be able to quote from it.`)) return
+
+    setVisBusy(doc.id)
+    setDocs((ds) => ds.map((d) => (d.id === doc.id ? { ...d, is_internal: next } : d))) // optimistic
+    try {
+      const res = await fetch(`/api/admin/kb/documents/${doc.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_internal: next }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setDocs((ds) => ds.map((d) => (d.id === doc.id ? { ...d, is_internal: doc.is_internal } : d))) // roll back
+        setSpNote(json.error || 'Could not change that document’s visibility.')
+      }
+    } catch {
+      setDocs((ds) => ds.map((d) => (d.id === doc.id ? { ...d, is_internal: doc.is_internal } : d)))
+      setSpNote('Could not change that document’s visibility.')
+    } finally {
+      setVisBusy(null)
+    }
+  }
+
   const removeDoc = async (id: string) => {
     const prev = docs
     setDocs((d) => d.filter((x) => x.id !== id)) // optimistic
@@ -846,9 +881,19 @@ export default function KnowledgeReactorClient() {
                       <li key={d.id} className="group flex items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
                         <FileText size={13} className="flex-shrink-0 text-zinc-400" />
                         <span className="min-w-0 flex-1 truncate text-[12px] text-zinc-700 dark:text-zinc-200" title={d.title}>{d.title}</span>
-                        <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded px-1 py-0.5 text-[9.5px] font-medium ${d.is_internal ? 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'}`}>
-                          {d.is_internal ? <Lock size={8} /> : <Globe size={8} />}
-                        </span>
+                        <button
+                          onClick={() => toggleVisibility(d)}
+                          disabled={visBusy === d.id}
+                          aria-label={d.is_internal ? `Make ${d.title} customer-facing` : `Make ${d.title} staff-only`}
+                          title={d.is_internal
+                            ? 'Staff only — click to make it customer-facing'
+                            : 'Customer-facing — click to make it staff only'}
+                          className={`flex-shrink-0 inline-flex items-center gap-1 rounded px-1 py-0.5 text-[9.5px] font-medium transition-colors disabled:opacity-50 ${d.is_internal ? 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400'}`}
+                        >
+                          {visBusy === d.id
+                            ? <Loader2 size={8} className="animate-spin" />
+                            : d.is_internal ? <Lock size={8} /> : <Globe size={8} />}
+                        </button>
                         <button
                           onClick={() => removeDoc(d.id)}
                           aria-label={`Remove ${d.title}`}
