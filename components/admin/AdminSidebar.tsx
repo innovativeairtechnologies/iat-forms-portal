@@ -127,10 +127,11 @@ const NAV_PARENTS: NavParent[] = [
   {
     label: 'Marketing',
     icon: Megaphone,
-    // PARKED — a "nice to have one day". The calendar is built and its route
-    // still works by URL; only the nav affordance is switched off. Un-park by
-    // deleting `parked` here and restoring the palette entry in CommandPalette.
-    parked: true,
+    // Un-parked 2026-08-11 — the calendar is clickable again. To park it back:
+    // add `parked: true` here AND re-comment the `nav-mktg` entry in
+    // CommandPalette (leaving that listed would make ⌘K a back door into a tab
+    // we just greyed out). Parking is a nav affordance only — the route stays
+    // live either way; `marketing_calendar` is what actually gates access.
     children: [
       // Content calendar (071) — social posts, email campaigns, blog, shows, ads.
       { href: '/admin/marketing', label: 'Calendar', perm: 'marketing_calendar' },

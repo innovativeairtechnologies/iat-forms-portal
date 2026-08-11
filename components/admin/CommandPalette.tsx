@@ -8,9 +8,7 @@ import {
   LayoutDashboard, Inbox, Ticket, Boxes, Users,
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
-  // NB: Megaphone dropped with the parked Marketing entry below — restore it
-  // here when that is re-listed.
-  MessageCircle, KeyRound, Wrench, Map as MapIcon, Gauge, Workflow, GraduationCap,
+  MessageCircle, KeyRound, Wrench, Map as MapIcon, Gauge, Workflow, GraduationCap, Megaphone,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -50,10 +48,10 @@ const STATIC: Item[] = [
   { id: 'nav-terr',    label: 'Territories',      group: 'Go to', icon: MapIcon,         href: '/admin/territories', keywords: 'map reps rep firms sales regions states counties territory mapline', perm: 'deals' },
   // US Rotors hidden for now — re-enable alongside the admin nav section in AdminSidebar:
   // { id: 'nav-orders',  label: 'US Rotors Orders', group: 'Go to', icon: Package,         href: '/admin/us-rotors/orders', keywords: 'orders rotors cassette c-series', perm: 'us_rotors' },
-  // Marketing Calendar delisted while its nav group is parked in AdminSidebar —
-  // leaving it here would make ⌘K a back door into a tab we just greyed out.
-  // Route stays live. Re-add alongside removing `parked` from the nav group:
-  // { id: 'nav-mktg',    label: 'Marketing Calendar', group: 'Go to', icon: Megaphone,     href: '/admin/marketing', keywords: 'marketing calendar social media post linkedin facebook instagram email campaign newsletter blog trade show content schedule', perm: 'marketing_calendar' },
+  // Re-listed 2026-08-11 when the Marketing nav group was un-parked. If it's
+  // ever parked again, comment this back out — leaving it listed would make ⌘K
+  // a back door into a tab we just greyed out.
+  { id: 'nav-mktg',    label: 'Marketing Calendar', group: 'Go to', icon: Megaphone,     href: '/admin/marketing', keywords: 'marketing calendar social media post linkedin facebook instagram email campaign newsletter blog trade show content schedule', perm: 'marketing_calendar' },
   { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },
   { id: 'nav-timeoff', label: 'Time Off Requests', group: 'Go to', icon: Calendar,        href: '/admin/requests', keywords: 'pto sick time off vacation leave', perm: 'pto' },
   { id: 'nav-sched',   label: 'Scheduling',       group: 'Go to', icon: Calendar,        href: '/admin/schedule', keywords: 'calendar', perm: 'scheduling' },
