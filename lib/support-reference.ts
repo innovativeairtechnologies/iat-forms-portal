@@ -12,6 +12,8 @@
    `lib/supabase-admin.ts` has no `server-only` guard, so nothing would error if
    that import crossed into the browser bundle. Keep the split. */
 
+import { isPublicBucketUrl } from '@/lib/public-storage'
+
 export const SUPPORT_REFERENCE_SLOTS = [
   {
     slot: 'wheel',
@@ -49,16 +51,12 @@ export function isSupportReferenceKey(v: unknown): v is SupportReferenceKey {
    rendered straight into an <img src> on a page anonymous customers can reach,
    so an off-site or javascript: URL must never survive a write — the same rule
    `validPhotoUrls` enforces on customer ticket photos in app/api/tickets/route.ts.
-   Note this also keeps us off `images.remotePatterns` wildcards. */
-const PUBLIC_STORAGE_PREFIX =
-  `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}/storage/v1/object/public/ticket-photos/`
+   Note this also keeps us off `images.remotePatterns` wildcards.
 
+   The prefix comes from lib/public-storage.ts, which trims the env first. Building
+   it inline here is what let a trailing newline in NEXT_PUBLIC_SUPABASE_URL reject
+   every legitimate upload — including these slots, which is why both app_settings
+   rows sat empty. Don't re-inline it. */
 export function isAllowedReferenceUrl(url: string): boolean {
-  // Fail closed on a missing/misconfigured env rather than accepting everything.
-  if (!PUBLIC_STORAGE_PREFIX.startsWith('https://')) return false
-  try {
-    return new URL(url).protocol === 'https:' && url.startsWith(PUBLIC_STORAGE_PREFIX)
-  } catch {
-    return false
-  }
+  return isPublicBucketUrl(url, 'ticket-photos')
 }

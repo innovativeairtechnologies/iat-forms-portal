@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
 import { sendTroubleshootingCsAlert } from '@/lib/resend-troubleshooting'
+import { isPublicBucketUrl, publicBucketPrefix } from '@/lib/public-storage'
 
 // Retired path — the checklist merged into the Equipment Support ticket, so this
 // endpoint only fires if something POSTs it directly. Kept in step with
@@ -34,18 +35,21 @@ const oneOf = <T extends readonly string[]>(v: unknown, allowed: T): T[number] |
 // (javascript:/data:/external host) is dropped, so a direct POST to this public
 // endpoint can't seed the table with malicious or off-site URLs. Also caps the
 // count to the client's contract so a flood can't bloat the row.
-const PHOTO_URL_PREFIX =
-  `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''}/storage/v1/object/public/ticket-photos/`
-
+//
+// The prefix check lives in lib/public-storage.ts so the env is trimmed once —
+// see that file for why an untrimmed prefix silently ate customer photos.
 function validPhotoUrls(v: unknown): string[] {
   if (!Array.isArray(v)) return []
-  return v
-    .filter((u): u is string => typeof u === 'string')
-    .filter(u => {
-      try { return new URL(u).protocol === 'https:' && u.startsWith(PHOTO_URL_PREFIX) }
-      catch { return false }
-    })
-    .slice(0, 8)
+  const kept = v.filter(u => isPublicBucketUrl(u, 'ticket-photos')).slice(0, 8) as string[]
+  // A submission that uploaded photos and then stored none is the exact shape of
+  // the 2026-08-13 data-loss bug. Never let that pass without a trace in the log.
+  if (Array.isArray(v) && v.length > kept.length) {
+    console.warn(
+      `[troubleshooting] dropped ${v.length - kept.length} of ${v.length} photo URL(s) — not in our public bucket.`,
+      { prefix: publicBucketPrefix('ticket-photos'), rejected: v.filter(u => !isPublicBucketUrl(u, 'ticket-photos')) },
+    )
+  }
+  return kept
 }
 
 export async function POST(req: NextRequest) {

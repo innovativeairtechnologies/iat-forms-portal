@@ -6,6 +6,7 @@ import type { NotificationRule } from '@/lib/supabase'
 import { ensureSrvForm, getSrvReview } from '@/lib/srv-form'
 import { getSrvSections } from '@/lib/srv-config'
 import { flattenSrvPayload, validateSrvPayload, applicableSections, type SrvPayload } from '@/lib/srv'
+import { isPublicBucketUrl } from '@/lib/public-storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,11 +26,10 @@ export const dynamic = 'force-dynamic'
  */
 
 /** Photo values must be uploads from OUR public bucket — they render as <img>
- *  in the admin detail. Identical to the internal route's check. */
+ *  in the admin detail. Identical to the internal route's check; both defer to
+ *  lib/public-storage.ts so the env is trimmed in exactly one place. */
 function isOurUpload(url: string): boolean {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!base) return false
-  return url.startsWith(`${base}/storage/v1/object/public/form-uploads/`)
+  return isPublicBucketUrl(url, 'form-uploads')
 }
 
 export async function POST(request: Request) {

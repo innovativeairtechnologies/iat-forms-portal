@@ -6,6 +6,7 @@ import { sendSubmissionEmail } from '@/lib/resend'
 import type { NotificationRule } from '@/lib/supabase'
 import { ensureSrvForm, getSrvReview } from '@/lib/srv-form'
 import { getSrvSections } from '@/lib/srv-config'
+import { isPublicBucketUrl } from '@/lib/public-storage'
 import {
   flattenSrvPayload, validateSrvPayload,
   applicableSections,
@@ -21,11 +22,11 @@ import {
 // (/customer/srv?resume=<id>) and resubmits with prior_id — the new submission
 // carries Revision N+1 and the old one is marked superseded + resolved.
 
-/** Photo values must be uploads from OUR public bucket — they render as <img> in admin. */
+/** Photo values must be uploads from OUR public bucket — they render as <img> in
+ *  admin. Prefix built in lib/public-storage.ts so the env is trimmed first; an
+ *  untrimmed one rejects every legitimate upload without erroring (2026-08-13). */
 function isOurUpload(url: string): boolean {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!base) return false
-  return url.startsWith(`${base}/storage/v1/object/public/form-uploads/`)
+  return isPublicBucketUrl(url, 'form-uploads')
 }
 
 export async function POST(req: NextRequest) {

@@ -2,6 +2,44 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-13 — A trailing newline in an env var was eating every customer photo
+
+A customer attached six photos to a burner-alarm ticket (IAT-2026-2944) and staff opened it to
+find none of them. The `image5.jpeg` filenames visible in the description were a red herring —
+those come from pasting an Outlook email into a `<textarea>` and were never clickable. The real
+bug was underneath: **all six photos uploaded successfully**, landing in the `ticket-photos`
+bucket one second before the ticket row was written, and the row still came out with
+`photo_urls = NULL`. So had every other ticket in the table.
+
+The Vercel production value of `NEXT_PUBLIC_SUPABASE_URL` carried a **trailing newline** —
+`"https://….supabase.co\n"`, almost certainly `echo` piped into `vercel env add`. It broke
+asymmetrically, which is why it hid for so long:
+
+- The browser's `supabase-js` client **normalizes** the URL it's constructed with, so uploads
+  worked and `getPublicUrl()` returned a clean link.
+- Every server-side allow-list built its prefix by **raw template concatenation**, so the newline
+  landed in the *middle* of the prefix and `url.startsWith(prefix)` was false for every
+  legitimate upload.
+
+Photos were accepted, stored, then silently dropped on the way into the row. No error anywhere:
+the customer saw a success screen, the desk email sent, and the files sat orphaned in the bucket.
+It took a customer complaint to surface it.
+
+The same untrimmed prefix guarded SRV photos (`form-uploads`) and the `/admin/support-content`
+reference photos — which is why saving a wheel/seal image failed with the misleading *"Images must
+be uploaded here — external links are not allowed"*, and why both `app_settings` rows sat empty.
+
+Fixed by re-saving the env var for Production and Preview with no trailing whitespace (it's
+inlined at build time, so this needs a redeploy to take effect), and by adding
+**`lib/public-storage.ts`** — the single place the env becomes a bucket prefix. It trims and
+strips trailing slashes once; `lib/support-reference.ts`, `app/api/troubleshooting/route.ts` and
+both SRV routes now defer to it instead of re-concatenating. `validPhotoUrls()` also logs when it
+drops URLs, so this class of silent data loss leaves a trace instead of nothing. The six orphaned
+photos were backfilled onto IAT-2026-2944.
+
+`next.config.js` was never affected — `new URL()` tolerates the newline, so `remotePatterns`
+resolved correctly throughout. Full writeup in [docs/support-tickets.md](docs/support-tickets.md).
+
 ## 2026-08-11 — Learn: the library is shelves by category, not one sideways deck
 
 Team feedback on `/admin/learn`: scrolling sideways through the courses, with no sense of which
