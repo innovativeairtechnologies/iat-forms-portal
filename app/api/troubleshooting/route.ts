@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
 import { sendTroubleshootingCsAlert } from '@/lib/resend-troubleshooting'
 import { isPublicBucketUrl, publicBucketPrefix } from '@/lib/public-storage'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 // Retired path — the checklist merged into the Equipment Support ticket, so this
 // endpoint only fires if something POSTs it directly. Kept in step with
@@ -59,6 +60,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
+
+    // Public, unauthenticated endpoint that writes a row, spends a model call and
+    // sends mail — so it gets the same gate as /api/tickets (added 2026-08-13;
+    // rate limiting alone was the only barrier before that).
+    //
+    // ⚠️ No live UI posts here: the checklist merged into the Equipment Support
+    // ticket, /support/troubleshooting redirects to it, and
+    // components/support/TroubleshootingChecklistForm.tsx is no longer rendered
+    // anywhere. If that form is ever revived it must send a token generated with
+    // action 'submit_troubleshooting', or every submit will 400.
+    const recaptcha = await verifyRecaptcha(body.recaptcha_token, 'submit_troubleshooting')
+    if (!recaptcha.ok) {
+      console.warn('[troubleshooting] reCAPTCHA check failed:', recaptcha.reason)
+      return NextResponse.json({ error: 'Please try again.' }, { status: 400 })
+    }
 
     // ── Required-field backstop (client validates too, but never trust it) ──
     const customer_name = str(body.customer_name)

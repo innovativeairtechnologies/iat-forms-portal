@@ -2,6 +2,45 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-13 — Support-desk alerts were silently undeliverable; two open endpoints closed
+
+Found while verifying the photo fix below: **no support-ticket notification has been delivered
+since 2026-08-03.** Resend's send log stops dead at IAT-2026-2938. Tickets 2940, 2941, 2942, 2943,
+**2944** and 2945 produced no send at all — which is why 2944 (a customer with a burner alarm)
+reached us as a forwarded screenshot instead of a notification.
+
+Three things that each look fine alone:
+
+- `dehumidifiers.com` is **`status: failed`** in Resend — DKIM verified, SPF failing.
+- No `RESEND_FROM_*` in Vercel, so the sender falls back to `onboarding@resend.dev`. Resend's
+  sandbox sender can **only deliver to the account owner's own address**.
+- On 2026-08-03 (`44c9452`) the desk recipient changed from the admin roster to hardcoded
+  `crystal@dehumidifiers.com`.
+
+Before that commit the mail went to the account owner and delivered. After it, Resend refuses every
+send and the route logs the failure without failing the ticket — the same silent-success signature
+as the photo bug.
+
+**Stopgap now live:** `SUPPORT_NOTIFICATION_EMAIL` = `jacob.younker@dehumidifiers.com`
+(Production + Preview). `crystal@dehumidifiers.com` is untouched in code and is still the fallback —
+deleting the env var reverts instantly. **Alerts must be forwarded to Crystal by hand until the
+domain verifies.** Verified live: a submission on 2026-08-13 delivered to the redirect address, the
+first successful send since 3 August.
+
+**The DNS defect is identified but NOT yet applied** (no changes have been made at Wix, GoDaddy or
+M365). Resend verifies via a `send.` subdomain, so the apex SPF is *not* involved and Microsoft 365
+is not at risk. The actual problem is a **misplaced MX record** — see
+[docs/support-tickets.md](docs/support-tickets.md) for the exact two edits.
+
+**Also closed two open endpoints.** `/api/troubleshooting` was a public, unauthenticated POST that
+wrote a row, spent a model call and sent mail behind nothing but a rate limit; `/api/troubleshooting/analyze`
+spent a paid model call the same way, while its twin `/api/tickets/analyze` had been gated all
+along. Both now verify reCAPTCHA (`submit_troubleshooting` / `analyze_troubleshooting`). No live UI
+posts to either — the checklist merged into the Equipment Support ticket and
+`TroubleshootingChecklistForm.tsx` is no longer rendered anywhere — so nothing changes for
+customers. The read-only `/status` endpoints stay ungated, matching `/api/tickets/status` and the
+live status page, which sends no token.
+
 ## 2026-08-13 — A trailing newline in an env var was eating every customer photo
 
 A customer attached six photos to a burner-alarm ticket (IAT-2026-2944) and staff opened it to
