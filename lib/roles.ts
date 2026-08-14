@@ -62,7 +62,10 @@ export const ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
 // ─── Permission keys — one per gated admin area ──────────────────────────────
 
 export type Perm =
-  | 'dashboard' // /admin root executive overview — admin only
+  // /admin root executive overview. ⚠️ NOT admin-only — every scoped role holds
+  // it, which is exactly what makes an unmapped /admin/* path permissive rather
+  // than fail-closed. See the warning above ADMIN_PATH_PERMS.
+  | 'dashboard'
   | 'submissions'
   | 'tickets'
   | 'equipment'
@@ -352,7 +355,7 @@ export function landingForRole(role: Role | null): string {
 
 // Paths under /admin that are always allowed for any admin-surface role.
 // /admin/home is the Company Home rendered in the admin shell — every internal
-// role lands there, so it must not fall through to the admin-only 'dashboard' gate.
+// role lands there, so it must not fall through to the 'dashboard' gate at all.
 // '/admin/me/*' is the self-service namespace (Time Off, Submit a form, Directory,
 // Internal Apps) — the pages every employee needs, ported off '/employee' into the
 // admin shell. Open to any admin-surface role, like /admin/home. The perm-gated
@@ -369,9 +372,16 @@ export function landingForRole(role: Role | null): string {
 // exactly why Learn AUTHORING sits at the sibling '/admin/learn-content'.
 const OPEN_ADMIN_PREFIXES = ['/admin/profile', '/admin/home', '/admin/me', '/admin/learn']
 
-// Longest matching prefix wins. The bare '/admin' catch-all maps to 'dashboard'
-// (admin-only), so ANY /admin/* route not explicitly listed here is fail-closed
-// to admin only — new admin routes are protected by default until mapped.
+// Longest matching prefix wins, and the bare '/admin' catch-all maps to
+// 'dashboard'.
+//
+// ⚠️ 'dashboard' is NOT admin-only. Verified against live `role_permissions`
+// 2026-08-14: sales, hr, marketing, engineering and production_manager ALL hold
+// it (it is what lets each of them land on their department dashboard). So an
+// unmapped /admin/* route is fail-OPEN to every scoped role, not fail-closed —
+// **every new admin route must be added here**, which is why the entries below
+// for comp-review, learn-content and rfq each carry that warning.
+// (This comment used to read "fail-closed to admin only". It was wrong.)
 const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin', perm: 'dashboard' },
   { prefix: '/admin/jerry', perm: 'jerry' },
@@ -463,6 +473,14 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // an exact hit or a trailing '/', so '/admin/learn' never swallows
   // '/admin/learn-content' (same idiom as /admin/tools vs /admin/tool-crib).
   { prefix: '/admin/learn-content', perm: 'learn_admin' },
+  // Inbound Requests for Quote from /support/rfq (087). MUST be listed: an
+  // unmapped /admin/* path falls back to 'dashboard', which sales, hr,
+  // marketing, engineering and production_manager all hold — so omitting this
+  // would show every scoped role a stranger's contact details and project.
+  // Shares the 'deals' perm rather than taking one of its own: an RFQ is the
+  // front of the sales pipeline and becomes a deal, so the two are the same
+  // trust boundary and should be granted and revoked together.
+  { prefix: '/admin/rfq', perm: 'deals' },
 ]
 
 function matchesPrefix(pathname: string, prefix: string): boolean {
@@ -481,7 +499,9 @@ export function requiredPermForPath(pathname: string): Perm | null {
       if (!best || entry.prefix.length > best.prefix.length) best = entry
     }
   }
-  return best?.perm ?? 'dashboard' // unmapped /admin path → admin only
+  // Unmapped /admin path → 'dashboard', which EVERY scoped role holds. See the
+  // warning above ADMIN_PATH_PERMS: this default is permissive, not restrictive.
+  return best?.perm ?? 'dashboard'
 }
 
 /** True if `role` may view `pathname` under /admin. */

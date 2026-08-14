@@ -2,6 +2,64 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-14 — RFQ: the moisture survey becomes an interactive form with a PDF that teaches
+
+A second card on `/support`, under "Start a support request": **RFQ — Request for Quote**. It
+replaces the two Word attachments we have been emailing around (*IAT Quote Request and Moisture
+Survey Form*, Room and Process) with a guided survey at `/support/rfq`.
+
+**The fork comes first.** Room or building (a space held at a condition) vs process airstream (dry
+air delivered to a machine). The two tracks then ask different questions — 9 steps vs 7 — and the
+switch is offered only on the application step, before anything branch-specific has been answered.
+
+**Typical values are the whole trick.** Picking one of 18 room applications or 11 process
+applications seeds the target condition, surrounding space, occupancy and door activity with
+numbers someone in that industry recognises. Every one stays editable and carries a one-tap
+"typical" chip, which is how a technically complete survey still finishes in about three minutes.
+
+**The numbers build as you type.** A live rail computes grains, dew point, the running load
+estimate, a bar breakdown by source and the dry-air cfm. Beyond being the engaging part, it
+quietly teaches the thing that matters most to a first-time buyer: relative humidity on its own
+cannot size a dehumidifier.
+
+**The PDF is the deliverable.** Five vector pages (~35 KB, generated client-side): a cover with
+four at-a-glance tiles, the space with an isometric room diagram and the design-conditions table,
+the load breakdown with bars, equipment and utilities, and — the last page — **a one-page takeaway
+infographic** of the customer's own numbers: their target in four units, their room drawn to their
+dimensions, the arithmetic done with their figures, where their moisture comes from, a typical-
+conditions reference with their application highlighted, and the five-step design procedure.
+
+The estimate is preliminary everywhere it appears and says so, in the same words as the paper form.
+
+**Under it:** `lib/rfq-psych.ts` (ASHRAE moist-air properties, checked against published points),
+`lib/rfq.ts` (the load set, arranged like our internal moisture-load workbook — permeation, shell
+leakage, doors, people, product, combustion, wet surfaces, fresh air, 10% safety factor, with
+ventilation carried separately so the system is not oversized), `lib/rfq-pdf.ts`, migration 087
+(`rfq_requests` + an atomic per-year reference counter), `POST /api/rfq`, and `/admin/rfq`.
+
+Two things worth knowing before editing:
+
+- **Every PDF string passes through `san()`.** jsPDF's Helvetica is WinAnsi-encoded with no
+  fallback — `≈` shipped as `ʺH` and `′` as a stray `2` until the sanitiser existed. Silent
+  corruption, no error.
+- **`/admin/rfq` is mapped to the `deals` perm in `ADMIN_PATH_PERMS`, and that mapping is
+  load-bearing.** An unmapped `/admin/*` path falls back to `dashboard`, which every scoped role
+  holds — leaving it off would have shown a stranger's contact details to HR, marketing and
+  production. (The comment at `requiredPermForPath` claiming unmapped paths are "admin only" is
+  wrong; the entries around `comp-review` and `learn-content` have it right.)
+
+**The desk alert inherits the support stopgap on purpose.** Recipient chain is
+`RFQ_NOTIFICATION_EMAIL` → `SUPPORT_NOTIFICATION_EMAIL` → `jacob@dehumidifiers.com`. Written with
+only its own variable, this feature would have shipped straight into the failure documented below
+— sandbox sender, silent refusal, nobody the wiser. Falling through to the stopgap that is already
+set means RFQ alerts arrive with no new Vercel config, and both senders revert to their proper
+defaults together the day that stopgap is deleted. The survey is committed **before** any send is
+attempted, so a refused email never costs us the request; it is in `/admin/rfq` either way.
+
+No customer confirmation email: they already have the PDF, which is the better artefact.
+
+See [`docs/rfq-moisture-survey.md`](docs/rfq-moisture-survey.md).
+
 ## 2026-08-13 — Support-desk alerts were silently undeliverable; two open endpoints closed
 
 Found while verifying the photo fix below: **no support-ticket notification has been delivered

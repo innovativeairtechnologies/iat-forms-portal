@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
-import { LifeBuoy, ArrowRight, Camera, Sparkles, Clock, type LucideIcon } from 'lucide-react'
+import { LifeBuoy, ArrowRight, Camera, Sparkles, Clock, FileText, type LucideIcon } from 'lucide-react'
 
-// A single support avenue for now: the Equipment Support request. This page is
-// deliberately one loud "do this" — hero + one primary action — rather than a
-// grid of options. Follows DESIGN.md (Quiet Precision): warm canvas, hairline
-// cards, green only on the single primary action + focus rings.
+// Two support avenues: an Equipment Support request (something is broken) and a
+// Request for Quote (you need a machine). They are stacked rather than gridded so
+// the page keeps one obvious first action; the RFQ card is the quieter sibling —
+// hairline surface, no brand fill — because green belongs to one action per view
+// (DESIGN.md §2.3). Warm canvas, hairline cards, no resting shadows throughout.
 
 // Quiet reassurance points under the CTA — each mirrors a real feature of the form.
 const ASSURANCES: { icon: LucideIcon; label: string; desc: string }[] = [
@@ -66,6 +67,29 @@ export default function SupportPortal() {
               </span>
               <p className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">
                 Report an equipment issue and walk the guided checks — about 3 minutes.
+              </p>
+            </div>
+            <ArrowRight
+              size={20}
+              className="flex-shrink-0 text-ink-faint transition-all group-hover:translate-x-0.5 group-hover:text-brand"
+            />
+          </Link>
+
+          {/* The second action — a quote, not a repair */}
+          <Link
+            href="/support/rfq"
+            className="group mt-3 flex items-center gap-5 rounded-2xl border border-hairline bg-surface p-6 transition-all duration-150 hover:border-hairline-strong hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:p-7"
+          >
+            <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-surface-strong text-ink-secondary transition-colors group-hover:bg-emerald-50 group-hover:text-emerald-700 dark:group-hover:bg-emerald-500/10 dark:group-hover:text-emerald-400">
+              <FileText size={26} strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <span className="text-[18px] font-semibold tracking-tight text-ink">
+                RFQ — Request for Quote
+              </span>
+              <p className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">
+                A guided moisture survey for a room or a process — typical values filled in as you go,
+                and a branded PDF of the whole thing at the end. About 3 minutes.
               </p>
             </div>
             <ArrowRight

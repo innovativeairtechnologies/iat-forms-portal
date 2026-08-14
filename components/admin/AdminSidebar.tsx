@@ -104,6 +104,10 @@ const NAV_PARENTS: NavParent[] = [
       // firm. Sits next to Territories: same rep roster, `deals` perm again.
       { href: '/admin/rep-scorecard', label: 'Rep Scorecard', perm: 'deals' },
       { href: '/admin/customers', label: 'Customers', perm: 'customers' },
+      // Inbound Requests for Quote (087) — the guided moisture survey at
+      // /support/rfq lands here. Shares `deals`: an RFQ is the front of the
+      // pipeline and becomes a deal.
+      { href: '/admin/rfq', label: 'Quote Requests', perm: 'deals' },
       // Gantt — moved from Operations.
       { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
       // Sizing Studio and Application Diagrams left this group — they now hang off
