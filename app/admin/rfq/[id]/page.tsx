@@ -5,7 +5,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Card, CardHead, DetailShell, DetailTopBar, Field, MetaRow } from '@/components/admin/detail-ui'
 import { StatusPill } from '@/components/admin/list'
 import {
-  LOAD_DISCLAIMER, dewPointF, fmt, fmtDewPoint, fmtGrains, grains, type RfqData,
+  LOAD_DISCLAIMER, conditionEntered, dewPointF, fmt, fmtDewPoint, fmtGrains, grains,
+  type ConditionKey, type RfqData,
 } from '@/lib/rfq'
 
 /* /admin/rfq/[id] — one submitted moisture survey, read-only.
@@ -98,9 +99,16 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                     {d.targetTempF}°F / {d.targetRhPct}% rh
                     {' · '}{fmtGrains(grains(num(d.targetTempF), num(d.targetRhPct), elev))} gr/lb
                     {' · '}{fmtDewPoint(dewPointF(num(d.targetTempF), num(d.targetRhPct), elev))} dp
+                    <Entered data={d} conditionKey="target" />
                   </Field>
-                  <Field label="Surrounding space">{d.surroundTempF || '—'}°F / {d.surroundRhPct || '—'}% rh</Field>
-                  <Field label="Outdoor design">{d.outdoorTempF || '—'}°F / {d.outdoorRhPct || '—'}% rh</Field>
+                  <Field label="Surrounding space">
+                    {d.surroundTempF || '—'}°F / {d.surroundRhPct || '—'}% rh
+                    <Entered data={d} conditionKey="surround" />
+                  </Field>
+                  <Field label="Outdoor design">
+                    {d.outdoorTempF || '—'}°F / {d.outdoorRhPct || '—'}% rh
+                    <Entered data={d} conditionKey="outdoor" />
+                  </Field>
                   <Field label="Elevation">{d.elevationFt ? `${d.elevationFt} ft ASL` : 'Not given'}</Field>
                 </div>
               </Card>
@@ -143,7 +151,7 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
             <Card>
               <CardHead title="The airstream" icon={<Gauge size={15} />} />
               <div className="px-5 py-1">
-                <Field label="Leaving air">{d.leavingTempF}°F / {d.leavingGrains} gr/lb</Field>
+                <Field label="Leaving air">{d.leavingTempF}°F / {d.leavingGrains} gr/lb<Entered data={d} conditionKey="leaving" /></Field>
                 <Field label="Process airflow">{d.processCfm ? `${d.processCfm} cfm` : '—'}</Field>
                 <Field label="Air source">{d.airSource}{d.mixOutdoorPct ? ` — ${d.mixOutdoorPct}% OA` : ''}</Field>
                 <Field label="Return / room air">{d.surroundTempF || '—'}°F / {d.surroundRhPct || '—'}% rh</Field>
@@ -248,6 +256,23 @@ function Breakdown({ lines }: { lines: { key: string; label: string; gr_per_hr: 
         </div>
       ))}
     </div>
+  )
+}
+
+/**
+ * The reading as the customer typed it, shown only when they used something
+ * other than the canonical unit. Answering in dew point or wet bulb is a signal
+ * about how their spec is written, and that is worth seeing on the desk side.
+ * Surveys taken before the unit selector shipped have no reading and show nothing.
+ */
+function Entered({ data, conditionKey }: { data: RfqData; conditionKey: ConditionKey }) {
+  const entered = conditionEntered(data, conditionKey)
+  const canonical = conditionKey === 'leaving' ? 'gr/lb' : '% rh'
+  if (entered === '—' || entered.endsWith(canonical)) return null
+  return (
+    <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+      entered as {entered}
+    </span>
   )
 }
 

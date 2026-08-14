@@ -20,15 +20,85 @@ import {
   airDensity,
   dewPointF,
   grains,
+  rhFromDewPoint,
   rhFromGrains,
+  rhFromWetBulb,
   vaporPressureFromGrains,
   vaporPressureInHg,
+  wetBulbF,
 } from './rfq-psych'
 
 export const LOAD_DISCLAIMER =
   'This is a preliminary estimate generated from the information entered above. Final verification is required by the owner or a qualified mechanical engineer. IAT does not guarantee the estimate due to potential differences between the information provided and actual facility conditions, and does not guarantee compliance with state or local codes or standards.'
 
 export type Track = 'room' | 'process'
+
+// ─── Moisture units ───────────────────────────────────────────────────────────
+//
+// Nobody writes a humidity spec the same way. A room spec is usually %rh, a dry
+// room is a dew point, a process wheel is grains, and a mechanical contractor
+// reading off a sling psychrometer has a wet bulb. Making customers convert
+// before they can answer is how you get a wrong number typed confidently.
+//
+// So every temperature/moisture pair carries a MODE and the value AS TYPED,
+// while the canonical field beside it (`…RhPct`, or `leavingGrains` for the
+// process track) is kept in sync and is the only thing the load engine reads.
+// Nothing downstream of here — estimateLoad, the PDF, the admin page — knows or
+// cares which unit was used.
+//
+// Rows written before this existed have no mode at all; `normalizeMode()` treats
+// a missing mode as the canonical one, so those submissions still render.
+
+export type MoistureMode = 'rh' | 'dp' | 'gr' | 'wb'
+
+export const MOISTURE_MODES: { value: MoistureMode; label: string; short: string; suffix: string; hint: string }[] = [
+  { value: 'rh', label: 'Relative humidity', short: '% rh', suffix: '% rh', hint: 'The everyday unit. Means a different amount of water at every temperature.' },
+  { value: 'dp', label: 'Dew point', short: '°F dp', suffix: '°F dp', hint: 'The temperature at which this air starts to condense. Does not move when the dry bulb does.' },
+  { value: 'gr', label: 'Grains', short: 'gr/lb', suffix: 'gr/lb', hint: 'Grains of water per pound of dry air — what equipment is actually sized on.' },
+  { value: 'wb', label: 'Wet bulb', short: '°F wb', suffix: '°F wb', hint: "What a sling psychrometer reads. Handy if that's the instrument you have." },
+]
+
+export const MOISTURE_SUFFIX: Record<MoistureMode, string> =
+  Object.fromEntries(MOISTURE_MODES.map(m => [m.value, m.suffix])) as Record<MoistureMode, string>
+
+/** A stored mode, defaulting a missing/unknown one to `fallback` (pre-selector rows). */
+export function normalizeMode(mode: unknown, fallback: MoistureMode): MoistureMode {
+  return MOISTURE_MODES.some(m => m.value === mode) ? (mode as MoistureMode) : fallback
+}
+
+/** Any moisture unit → relative humidity %, at a given dry bulb. */
+export function moistureToRh(mode: MoistureMode, value: number, tempF: number, elevationFt = 0): number {
+  if (!Number.isFinite(value)) return 0
+  switch (mode) {
+    case 'rh': return Math.min(Math.max(value, 0), 100)
+    case 'dp': return rhFromDewPoint(tempF, value)
+    case 'gr': return rhFromGrains(tempF, value, elevationFt)
+    case 'wb': return rhFromWetBulb(tempF, value, elevationFt)
+  }
+}
+
+/** Relative humidity % → any moisture unit, for showing the same air a new way. */
+export function rhToMoisture(mode: MoistureMode, rhPct: number, tempF: number, elevationFt = 0): number {
+  switch (mode) {
+    case 'rh': return rhPct
+    case 'dp': return dewPointF(tempF, rhPct, elevationFt)
+    case 'gr': return grains(tempF, rhPct, elevationFt)
+    case 'wb': return wetBulbF(tempF, rhPct, elevationFt)
+  }
+}
+
+/** Any moisture unit → grains, for the process track whose canonical unit is gr/lb. */
+export function moistureToGrains(mode: MoistureMode, value: number, tempF: number, elevationFt = 0): number {
+  if (mode === 'gr') return Number.isFinite(value) ? Math.max(value, 0) : 0
+  return grains(tempF, moistureToRh(mode, value, tempF, elevationFt), elevationFt)
+}
+
+/** Rounding that suits each unit — grains can be sub-1 in a dry room, rh cannot. */
+export function roundForMode(mode: MoistureMode, n: number): number {
+  if (!Number.isFinite(n)) return 0
+  if (mode === 'gr') return n < 10 ? Math.round(n * 100) / 100 : Math.round(n * 10) / 10
+  return Math.round(n * 10) / 10
+}
 
 // ─── Application presets ──────────────────────────────────────────────────────
 // The heart of "typical values at each stage": picking an application seeds the
@@ -128,7 +198,9 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Lithium reacting with water vapour',
     tempF: 68, rhPct: 1, surroundTempF: 75, surroundRhPct: 50,
     occupants: 4, activity: 'Light Work', doorOpensPerHour: 6,
-    note: 'Specified by dew point, not %rh. 1%rh at 68°F is roughly a −20°F dew point; many cell lines ask for −40°F or drier.',
+    // 1%rh at 68°F is a −30.2°F dew point (this said −20°F until it was checked
+    // against the psychrometrics; −20°F dp is 1.8%rh).
+    note: 'Usually specified as a dew point rather than %rh — switch the unit on the humidity field. 1%rh at 68°F is about a −30°F dew point, and many cell lines ask for −40°F or drier.',
   },
   {
     key: 'food',
@@ -250,8 +322,10 @@ export const PROCESS_PRESETS: ProcessPreset[] = [
     label: 'Battery / lithium dry room supply',
     blurb: 'Supply air to a dry room, glovebox train or electrode line.',
     driver: 'Anhydrous process chemistry',
-    leavingTempF: 70, leavingGrains: 0.4, cfm: 4000,
-    note: 'Around 0.4 gr/lb is a −40°F dew point. Tell us the dew point if that is how your spec is written.',
+    // 0.55 gr/lb at 70°F is exactly a −40°F dew point — the canonical cell-line
+    // spec. Was 0.4 gr/lb (which is −45°F) until it was checked.
+    leavingTempF: 70, leavingGrains: 0.55, cfm: 4000,
+    note: '0.55 gr/lb is a −40°F dew point, the usual cell-line spec. If yours is written as a dew point, switch the unit on the field above and type it straight in.',
   },
   {
     key: 'pharma-process',
@@ -450,13 +524,19 @@ export type RfqData = {
   dateClose: string
   purpose: string
 
-  // Room target
+  // Room target. `targetRhPct` stays canonical; the two Moisture fields record
+  // what the customer actually typed and in which unit. Same pattern for the
+  // three conditions below. See setCondition().
   targetTempF: string
   targetRhPct: string
+  targetMoistureMode: MoistureMode
+  targetMoistureValue: string
 
-  // Process target
+  // Process target — canonical unit here is grains, not rh.
   leavingTempF: string
   leavingGrains: string
+  leavingMoistureMode: MoistureMode
+  leavingMoistureValue: string
   processCfm: string
 
   // Entering air
@@ -464,8 +544,12 @@ export type RfqData = {
   mixOutdoorPct: string
   outdoorTempF: string
   outdoorRhPct: string
+  outdoorMoistureMode: MoistureMode
+  outdoorMoistureValue: string
   surroundTempF: string
   surroundRhPct: string
+  surroundMoistureMode: MoistureMode
+  surroundMoistureValue: string
 
   // Geometry
   roomL: string
@@ -526,11 +610,12 @@ export function emptyRfq(): RfqData {
     company: '', contactName: '', email: '', phone: '',
     projectName: '', location: '', elevationFt: '', endUser: '',
     engineeringFirm: '', engineerContact: '', dateRequired: '', dateClose: '', purpose: '',
-    targetTempF: '', targetRhPct: '',
-    leavingTempF: '', leavingGrains: '', processCfm: '',
+    targetTempF: '', targetRhPct: '', targetMoistureMode: 'rh', targetMoistureValue: '',
+    leavingTempF: '', leavingGrains: '', leavingMoistureMode: 'gr', leavingMoistureValue: '',
+    processCfm: '',
     airSource: '100% return air', mixOutdoorPct: '',
-    outdoorTempF: '95', outdoorRhPct: '55',
-    surroundTempF: '', surroundRhPct: '',
+    outdoorTempF: '95', outdoorRhPct: '55', outdoorMoistureMode: 'rh', outdoorMoistureValue: '55',
+    surroundTempF: '', surroundRhPct: '', surroundMoistureMode: 'rh', surroundMoistureValue: '',
     roomL: '', roomW: '', roomH: '',
     wallMaterial: 'Insulated metal panel',
     ceilingMaterial: 'Insulated metal panel',
@@ -553,6 +638,86 @@ export function emptyRfq(): RfqData {
   }
 }
 
+// ─── Conditions ───────────────────────────────────────────────────────────────
+
+export type ConditionKey = 'target' | 'surround' | 'outdoor' | 'leaving'
+
+/** Which canonical field each condition keeps in sync, and its default unit. */
+const CONDITION_CANON: Record<ConditionKey, { canon: 'rh' | 'gr'; defaultMode: MoistureMode }> = {
+  target:   { canon: 'rh', defaultMode: 'rh' },
+  surround: { canon: 'rh', defaultMode: 'rh' },
+  outdoor:  { canon: 'rh', defaultMode: 'rh' },
+  leaving:  { canon: 'gr', defaultMode: 'gr' },
+}
+
+/**
+ * The ONE place a condition changes. Editing the dry bulb, the moisture number
+ * or the unit all route through here, and the canonical field is recomputed from
+ * whichever three are current.
+ *
+ * The dry bulb matters even when it wasn't the thing edited: a dew point of 50°F
+ * is 49%rh at 75°F and 70%rh at 60°F. Leave the canonical value alone when the
+ * temperature moves and the survey quietly reports air the customer never
+ * described.
+ *
+ * Switching UNITS converts rather than clears — the air stays the same, only the
+ * way of saying it changes — which is also what stops a half-typed number from
+ * being reinterpreted as a different quantity.
+ */
+export function setCondition(
+  data: RfqData,
+  key: ConditionKey,
+  patch: { tempF?: string; value?: string; mode?: MoistureMode },
+): RfqData {
+  const { canon, defaultMode } = CONDITION_CANON[key]
+  const elev = num(data.elevationFt)
+  const prevMode = normalizeMode(data[`${key}MoistureMode` as keyof RfqData], defaultMode)
+  const tempF = patch.tempF !== undefined ? patch.tempF : (data[`${key}TempF` as keyof RfqData] as string)
+  const t = num(tempF, key === 'leaving' ? 70 : 70)
+
+  let mode = prevMode
+  let value = patch.value !== undefined ? patch.value : (data[`${key}MoistureValue` as keyof RfqData] as string) ?? ''
+
+  // A unit change re-expresses the SAME air in the new unit.
+  if (patch.mode && patch.mode !== prevMode) {
+    mode = patch.mode
+    const current = num(value)
+    if (value.trim() !== '' && Number.isFinite(current)) {
+      const asRh = moistureToRh(prevMode, current, t, elev)
+      value = String(roundForMode(mode, rhToMoisture(mode, asRh, t, elev)))
+    }
+  }
+
+  const out: RfqData = {
+    ...data,
+    [`${key}TempF`]: tempF,
+    [`${key}MoistureMode`]: mode,
+    [`${key}MoistureValue`]: value,
+  }
+
+  // Blank stays blank — do not manufacture a 0% reading from an empty field.
+  if (value.trim() === '') {
+    return { ...out, [canon === 'rh' ? `${key}RhPct` : 'leavingGrains']: '' }
+  }
+  const n = num(value)
+  return canon === 'rh'
+    ? { ...out, [`${key}RhPct`]: String(roundForMode('rh', moistureToRh(mode, n, t, elev))) }
+    : { ...out, leavingGrains: String(roundForMode('gr', moistureToGrains(mode, n, t, elev))) }
+}
+
+/** The as-entered reading for a condition, e.g. `50 °F dp`. */
+export function conditionEntered(data: RfqData, key: ConditionKey): string {
+  const { defaultMode } = CONDITION_CANON[key]
+  const mode = normalizeMode(data[`${key}MoistureMode` as keyof RfqData], defaultMode)
+  const value = (data[`${key}MoistureValue` as keyof RfqData] as string) ?? ''
+  if (!value.trim()) {
+    // Pre-selector rows carry only the canonical field.
+    const canon = key === 'leaving' ? data.leavingGrains : (data[`${key}RhPct` as keyof RfqData] as string)
+    return canon ? `${canon} ${MOISTURE_SUFFIX[defaultMode]}` : '—'
+  }
+  return `${value} ${MOISTURE_SUFFIX[mode]}`
+}
+
 /** Seed the form from a chosen application, preserving anything already typed. */
 export function applyRoomPreset(data: RfqData, preset: RoomPreset): RfqData {
   return {
@@ -561,8 +726,12 @@ export function applyRoomPreset(data: RfqData, preset: RoomPreset): RfqData {
     application: preset.key,
     targetTempF: String(preset.tempF),
     targetRhPct: String(preset.rhPct),
+    targetMoistureMode: 'rh',
+    targetMoistureValue: String(preset.rhPct),
     surroundTempF: String(preset.surroundTempF),
     surroundRhPct: String(preset.surroundRhPct),
+    surroundMoistureMode: 'rh',
+    surroundMoistureValue: String(preset.surroundRhPct),
     occupants: String(preset.occupants),
     activity: preset.activity,
     doors: preset.doorOpensPerHour
@@ -585,6 +754,8 @@ export function applyProcessPreset(data: RfqData, preset: ProcessPreset): RfqDat
     application: preset.key,
     leavingTempF: String(preset.leavingTempF),
     leavingGrains: String(preset.leavingGrains),
+    leavingMoistureMode: 'gr',
+    leavingMoistureValue: String(preset.leavingGrains),
     processCfm: String(preset.cfm),
   }
 }

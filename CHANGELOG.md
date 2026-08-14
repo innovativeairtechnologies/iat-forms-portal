@@ -2,6 +2,54 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-14 — RFQ: answer in your own units, and the one-pager leads the PDF
+
+Four changes from Jacob's first pass over the live form.
+
+**Every temperature/moisture pair now takes %rh, dew point, grains or wet bulb** from a
+dropdown. Room specs arrive as %rh, dry rooms as a dew point, process wheels as grains, and a
+sling psychrometer gives a wet bulb — making someone convert before they can answer is how you
+get a wrong number typed confidently. All four are live on the room target, the surrounding
+space, the outdoor design condition and the process leaving-air spec.
+
+`setCondition()` is the only place a condition changes, because two things have to hold and
+both are easy to get wrong piecemeal: **the dry bulb is part of the moisture answer** (a 50°F
+dew point is 49%rh at 75°F and 70%rh at 60°F, so moving the temperature recomputes the canonical
+%rh), and **switching units converts rather than clears**. The canonical field stays the only
+input to the load engine, so nothing downstream knows a unit was chosen. `/api/rfq` re-derives
+every canonical value server-side, so a direct POST cannot claim 5%rh while its dew-point field
+says otherwise.
+
+**Two numbers in the preset copy were wrong and are now checked against the psychrometrics.**
+"1%rh at 68°F is roughly a −20°F dew point" — it is −30°F (−20°F dp is 1.8%rh). "Around
+0.4 gr/lb is a −40°F dew point" — that is −45°F; −40°F dp is 0.55 gr/lb, and the battery dry-room
+preset now seeds exactly that. Both were confident-sounding and wrong, which is worse than
+vague.
+
+**`dewPointF` is now exact rather than a curve fit.** ASHRAE's explicit eq. 39/40 is a different
+function from `satVaporPressure`, so rh → dew point → rh did not round-trip across the ice/water
+crossover (0°F at 70%rh came back as 70.25%). With customers able to type a dew point directly,
+and freezer and cold-storage presets sitting on that crossover, the two directions have to be
+exact inverses. Bisection instead; ≤0.07°F from the old values at normal conditions.
+
+**PDF:** the takeaway one-pager **leads** the document instead of closing it — the person
+opening it wants their own numbers first. Every page now carries a diagonal PRELIMINARY
+watermark and a highlighted band with the required wording: *"Preliminary selections and
+performance readouts are provided for planning purposes only and should be validated by IAT or
+a qualified professional engineer prior to final design or commitment."* The old one-off
+disclaimer panel on the load page is gone — two copies on one page read as boilerplate.
+
+Reserving the bottom of every page for that band meant the record pages could run underneath it,
+so each section now calls `ensure()` with the height it is about to draw and continues on a fresh
+page if it would collide. Doors moved from the geometry page to the load page, where the
+breakdown that says they are usually the dominant load actually lives.
+
+Also: the doors exposure toggle reads **"Opens to Surrounding"**, and both the PDF and the admin
+detail echo back the reading as entered ("entered 35 °F dp") when it was not the canonical unit —
+how a spec is written is itself a signal worth keeping.
+
+See [`docs/rfq-moisture-survey.md`](docs/rfq-moisture-survey.md).
+
 ## 2026-08-14 — Customer ticket emails land in the codebase, still switched off
 
 Written 2026-08-12 and left uncommitted on one machine until now. Two customer-facing

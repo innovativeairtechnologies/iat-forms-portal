@@ -22,6 +22,31 @@ The two tracks then ask genuinely different questions (9 steps vs 7). Switching 
 **only on the application step**, where nothing branch-specific has been entered yet — past
 that point a silent switch would strand half the answers.
 
+## Answer in your own units
+
+Every temperature/moisture pair takes **%rh, dew point °F, grains, or wet bulb °F** from a
+dropdown. Room specs arrive as %rh, dry rooms as a dew point, process wheels as grains, and a
+sling psychrometer gives a wet bulb — making a customer convert before they can answer is how
+you get a wrong number typed confidently.
+
+`setCondition()` in `lib/rfq.ts` is the **only** place a condition changes, and every edit —
+temperature, number, or unit — routes through it. Two behaviours it exists to guarantee:
+
+- **The dry bulb is part of the moisture answer.** A 50°F dew point is 49%rh at 75°F and 70%rh
+  at 60°F. Change the temperature and the canonical %rh is recomputed; leave that out and the
+  survey quietly reports air the customer never described.
+- **Switching units converts, it never clears.** The air is the same; only the way of saying it
+  changes.
+
+The canonical field beside each pair (`…RhPct`, or `leavingGrains` on the process track) stays
+the single input to the load engine, so `estimateLoad`, the PDF and the admin page neither know
+nor care which unit was used. `/api/rfq` re-derives every canonical value server-side from
+(temp, mode, value), so a direct POST cannot claim 5%rh while its dew-point field says otherwise.
+
+Surveys taken before this shipped carry no mode at all; `normalizeMode()` treats a missing mode
+as the canonical one, so those rows still render. The reading is echoed back on the PDF
+("entered 35 °F dp") and on the admin detail, because how a spec is written is itself a signal.
+
 ## Typical values are the whole trick
 
 Picking an application seeds the target condition, the surrounding space, occupancy and door
@@ -81,20 +106,39 @@ the file is ~35 KB, prints crisply and stays text-searchable.
 
 | Page | Contents |
 |---|---|
-| 1 | Cover — project identity, four at-a-glance tiles, contact + project detail, purpose |
-| 2 | The space (isometric room diagram, design conditions, envelope, openings) *or* the process spec |
-| 3 | *Room only* — internal loads, estimated breakdown bars, totals, disclaimer |
-| 4 | Equipment & utilities + standing engineering notes from the paper form |
-| **Last** | **The takeaway infographic** — one page, the customer's own numbers |
+| **1** | **The takeaway infographic** — one page, the customer's own numbers |
+| 2 | Cover — project identity, four at-a-glance tiles, contact + project detail, purpose |
+| 3 | The space (isometric room diagram, design conditions, envelope) *or* the process spec |
+| 4 | *Room only* — openings, internal loads, estimated breakdown bars, totals |
+| 5 | Equipment & utilities + standing engineering notes from the paper form |
 
-### Two rules for editing the PDF
+The takeaway **leads** the document (moved from last, 2026-08-14). The person opening it wants
+their own numbers first; the detail pages behind are the evidence, not the headline. jsPDF has
+no page-reorder, so it is simply built first.
+
+Every page carries a diagonal **PRELIMINARY** watermark and a highlighted disclaimer band with
+IAT's required wording, applied by `stampEveryPage()` after all content is laid out.
+
+### Four rules for editing the PDF
 
 1. **Every string passes through `san()`.** jsPDF's Helvetica is WinAnsi-encoded and does not
    fall back — `≈` rendered as `ʺH` and `′` as a stray `2` before the sanitiser existed. It is
    a silent corruption, not an error.
-2. **The takeaway page has a fixed vertical budget** (the `T` constants). It must stay one page
-   no matter how long the project name is or how many load lines there are, so panel heights
-   are constants and their contents are sized to fit. Change one, re-check the total.
+2. **The takeaway page has a fixed vertical budget** (the `T` constants, summing to 238 mm). It
+   must stay one page no matter how long the project name is or how many load lines there are,
+   so panel heights are constants and their contents are sized to fit. Change one, re-check the
+   total against `FOOTER_BAND_TOP`.
+3. **Nothing may cross `CONTENT_BOTTOM`.** The record pages flow, and their length varies with
+   the survey, so each section calls `ensure()` with the height it is about to draw and
+   continues on a fresh page if it would run under the disclaimer band.
+4. **The watermark is drawn on top at 7%, not underneath.** The pages are built from opaque
+   white cards; drawn first it would survive only in the gutters between them, which reads as a
+   rendering fault rather than a stamp.
+
+### Verifying a PDF change
+
+Render it and look at it — layout bugs here are invisible to the type checker. Poppler's
+`pdftoppm -png -r 110 out.pdf page` is on the dev box and turns each page into an image.
 
 ---
 

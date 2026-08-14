@@ -90,20 +90,82 @@ export function rhFromGrains(tempF: number, grainsPerLb: number, elevationFt = 0
 }
 
 /**
- * Dew point °F from dry bulb + RH. ASHRAE Fundamentals eq. 39/40 — an explicit
- * fit in ln(pw), so no iteration and no chance of a solver stalling in the UI.
+ * Dew point °F — the temperature at which this air's vapour pressure would be
+ * saturation pressure. Solved by bisecting satVaporPressure rather than with
+ * ASHRAE's eq. 39/40 curve fit.
+ *
+ * The fit is faster but it is a DIFFERENT function from satVaporPressure, so
+ * rh → dew point → rh did not round-trip across the ice/water crossover (0°F at
+ * 70%rh came back as 70.25%). With the unit selector letting a customer type a
+ * dew point directly — and with freezer and cold-storage presets sitting right
+ * on that crossover — the two directions have to be exact inverses of each
+ * other. 60 halvings over a fixed bracket cannot stall and is far past display
+ * precision.
  */
 export function dewPointF(tempF: number, rhPct: number, elevationFt = 0): number {
-  const p = pressureAtElevation(elevationFt)
   const w = humidityRatio(tempF, rhPct, elevationFt)
   if (w <= 0) return -100
+  const p = pressureAtElevation(elevationFt)
   const pw = (w * p) / (0.621945 + w)
-  const a = Math.log(pw)
-  const dp =
-    pw >= 0.08865 // ≈ the 32°F crossover in psia
-      ? 100.45 + 33.193 * a + 2.319 * a * a + 0.17074 * a * a * a + 1.2063 * Math.pow(pw, 0.1984)
-      : 90.12 + 26.142 * a + 0.8927 * a * a
-  return Math.min(dp, tempF)
+  let lo = -150 // below any dew point this equipment will ever see
+  let hi = tempF // dew point can never exceed dry bulb
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2
+    if (satVaporPressure(mid) < pw) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
+}
+
+/** Relative humidity (%) implied by a dew point at a given dry bulb. */
+export function rhFromDewPoint(tempF: number, dewPtF: number): number {
+  const pws = satVaporPressure(tempF)
+  if (pws <= 0) return 0
+  // A dew point above the dry bulb is not physical; saturation is the ceiling.
+  return clampRh((satVaporPressure(Math.min(dewPtF, tempF)) / pws) * 100)
+}
+
+/**
+ * Humidity ratio (lb/lb) from a dry-bulb / wet-bulb pair. ASHRAE Fundamentals
+ * eq. 33 above freezing, eq. 35 below — the wet-bulb depression is a heat
+ * balance, so the two regimes use different latent constants.
+ */
+export function humidityRatioFromWetBulb(tempF: number, wetBulbF: number, elevationFt = 0): number {
+  const p = pressureAtElevation(elevationFt)
+  const twb = Math.min(wetBulbF, tempF) // wet bulb can never exceed dry bulb
+  const pwsWb = satVaporPressure(twb)
+  if (pwsWb >= p) return 0
+  const wsWb = (0.621945 * pwsWb) / (p - pwsWb)
+  const w = twb >= 32
+    ? ((1093 - 0.556 * twb) * wsWb - 0.24 * (tempF - twb)) / (1093 + 0.444 * tempF - twb)
+    : ((1220 - 0.04 * twb) * wsWb - 0.24 * (tempF - twb)) / (1220 + 0.444 * tempF - 0.48 * twb)
+  return Math.max(w, 0)
+}
+
+/** Relative humidity (%) implied by a dry-bulb / wet-bulb pair. */
+export function rhFromWetBulb(tempF: number, wetBulbF: number, elevationFt = 0): number {
+  return rhFromGrains(tempF, humidityRatioFromWetBulb(tempF, wetBulbF, elevationFt) * GRAINS_PER_LB, elevationFt)
+}
+
+/**
+ * Wet-bulb temperature (°F) for a condition. There is no closed form for this
+ * direction, so bisect: humidity ratio rises monotonically with wet bulb between
+ * the dew point (saturation) and the dry bulb, which makes the search safe and
+ * quick. 50 halvings on that interval is far past display precision and cannot
+ * loop — no convergence test to get wrong.
+ */
+export function wetBulbF(tempF: number, rhPct: number, elevationFt = 0): number {
+  const target = humidityRatio(tempF, rhPct, elevationFt)
+  if (target <= 0) return tempF
+  let lo = dewPointF(tempF, rhPct, elevationFt)
+  let hi = tempF
+  if (lo > hi) return tempF
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2
+    if (humidityRatioFromWetBulb(tempF, mid, elevationFt) < target) lo = mid
+    else hi = mid
+  }
+  return (lo + hi) / 2
 }
 
 /**

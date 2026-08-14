@@ -4,7 +4,10 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
-import { applicationLabel, emptyRfq, type RfqData } from '@/lib/rfq'
+import {
+  applicationLabel, emptyRfq, normalizeMode, setCondition,
+  type ConditionKey, type RfqData,
+} from '@/lib/rfq'
 
 // Public endpoint behind /support/rfq. Anonymous by design — the whole point of
 // the wizard is that a stranger with a humidity problem can reach our desk in
@@ -71,7 +74,28 @@ function coerce(raw: unknown): RfqData {
     }))
 
   out.track = src.track === 'process' ? 'process' : 'room'
-  return out as unknown as RfqData
+
+  // The moisture-unit fields are string unions, so the generic string copy above
+  // would happily accept "banana" and hand it to the converter. Pin them to the
+  // known set, then re-derive every canonical value from (temp, mode, value) via
+  // setCondition — the same function the wizard uses. A direct POST therefore
+  // cannot claim 5% rh while its dew-point field says otherwise: the stored %rh
+  // and the stored reading always describe the same air.
+  let coerced = out as unknown as RfqData
+  const CONDITIONS: ConditionKey[] = ['target', 'surround', 'outdoor', 'leaving']
+  for (const key of CONDITIONS) {
+    const modeKey = `${key}MoistureMode` as keyof RfqData
+    const valueKey = `${key}MoistureValue` as keyof RfqData
+    const mode = normalizeMode(coerced[modeKey], key === 'leaving' ? 'gr' : 'rh')
+    coerced = { ...coerced, [modeKey]: mode }
+    // Blank reading → leave the canonical field as submitted. Older clients (and
+    // the three surveys taken before the selector shipped) send only the
+    // canonical value, and re-deriving from an empty reading would erase it.
+    if (String(coerced[valueKey] ?? '').trim() !== '') {
+      coerced = setCondition(coerced, key, { mode })
+    }
+  }
+  return coerced
 }
 
 function finite(v: unknown): number {

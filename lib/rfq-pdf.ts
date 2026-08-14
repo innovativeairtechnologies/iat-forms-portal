@@ -15,12 +15,12 @@
 // Runs in the browser only — it reaches for <canvas> to downscale the logo.
 
 import {
-  LOAD_DISCLAIMER,
   type LoadEstimate,
   type ProcessEstimate,
   type RfqData,
   ROOM_PRESETS,
   applicationLabel,
+  conditionEntered,
   dewPointF,
   estimateLoad,
   estimateProcess,
@@ -91,13 +91,17 @@ export async function generateRfqPdf(data: RfqData, meta: RfqPdfMeta): Promise<B
 
   const ctx: Ctx = { doc, data, meta, load, proc, logoLight, isRoom }
 
-  coverPage(ctx)
+  // The takeaway leads. It used to close the document, but the person opening
+  // this wants their own numbers first — the detail pages behind it are the
+  // evidence, not the headline. jsPDF has no page-reorder, so it is simply built
+  // first; the first page of a new document already exists, hence no addPage.
+  takeawayPage(ctx, { first: true })
+  coverPage(ctx, { newPage: true })
   isRoom ? spacePage(ctx) : processPage(ctx)
   if (isRoom) loadsPage(ctx)
   equipmentPage(ctx)
-  takeawayPage(ctx)
 
-  stampFooters(doc, meta)
+  stampEveryPage(doc, meta)
   return doc.output('blob')
 }
 
@@ -113,7 +117,8 @@ type Ctx = {
 
 // ─── Page 1 · Cover ───────────────────────────────────────────────────────────
 
-function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx) {
+function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts?: { newPage?: boolean }) {
+  if (opts?.newPage) doc.addPage()
   paper(doc)
 
   // Header band — pine, with a ghosted mark bleeding off the right edge below
@@ -168,14 +173,14 @@ function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx) {
 
   const tiles: TileSpec[] = isRoom && load
     ? [
-        { label: 'Target condition', value: `${fmt(numOf(data.targetTempF))}°F`, sub: `${fmt(numOf(data.targetRhPct))}% rh · ${fmtGrains(load.roomGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
+        { label: 'Target condition', value: `${fmt(numOf(data.targetTempF))}°F`, sub: `${enteredPrefix(data, 'target')}${fmt(numOf(data.targetRhPct))}% rh · ${fmtGrains(load.roomGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
         { label: 'Estimated load', value: load.complete ? `${fmt(load.totalLbPerHr, 1)}` : '—', unit: 'lb/hr', sub: load.complete ? `About ${fmt(load.totalPintsPerDay)} pints of water a day` : 'Need room dimensions', tone: C.blue, soft: C.blueSoft },
         { label: 'Dry air needed', value: load.complete ? fmt(load.dryAirCfm) : '—', unit: 'cfm', sub: load.complete ? `${fmt(load.airChangesPerHour, 1)} air changes per hour` : 'Preliminary', tone: C.violet, soft: C.violetSoft },
         { label: 'Biggest driver', value: load.dominant ? shortDriver(load.dominant.label) : '—', sub: load.dominant && load.complete ? `${pct(load.dominant.grainsPerHour, load.lines.reduce((s, l) => s + l.grainsPerHour, 0))} of the room load` : 'Preliminary', tone: C.amber, soft: C.amberSoft, small: true },
       ]
     : proc
       ? [
-          { label: 'Leaving air', value: `${fmt(numOf(data.leavingTempF))}°F`, sub: `${fmtGrains(proc.leavingGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
+          { label: 'Leaving air', value: `${fmt(numOf(data.leavingTempF))}°F`, sub: `${enteredPrefix(data, 'leaving')}${fmtGrains(proc.leavingGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
           { label: 'Leaving dew point', value: fmtDewPoint(proc.leavingDewPointF), sub: `${fmt(proc.leavingRhPct, 1)}% rh at the leaving temp`, tone: C.blue, soft: C.blueSoft },
           { label: 'Process airflow', value: fmt(proc.cfm), unit: 'cfm', sub: data.airSource, tone: C.violet, soft: C.violetSoft },
           { label: 'Moisture removed', value: proc.complete ? fmt(proc.lbPerHr, 1) : '—', unit: 'lb/hr', sub: proc.complete ? `${fmtGrains(proc.depression)} gr/lb of drying` : 'Preliminary', tone: C.amber, soft: C.amberSoft },
@@ -253,9 +258,9 @@ function spacePage(ctx: Ctx) {
   y += 4
   const elev = numOf(data.elevationFt)
   const rows: string[][] = [
-    condRow('Inside the room (target)', numOf(data.targetTempF), numOf(data.targetRhPct), elev),
-    condRow('Surrounding space', numOf(data.surroundTempF), numOf(data.surroundRhPct), elev),
-    condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev),
+    condRow('Inside the room (target)', numOf(data.targetTempF), numOf(data.targetRhPct), elev, conditionEntered(data, 'target')),
+    condRow('Surrounding space', numOf(data.surroundTempF), numOf(data.surroundRhPct), elev, conditionEntered(data, 'surround')),
+    condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev, conditionEntered(data, 'outdoor')),
   ]
   y = table(doc, M, y, CW,
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
@@ -265,6 +270,7 @@ function spacePage(ctx: Ctx) {
   y += 6
 
   // Envelope
+  y = ensure(ctx, y, 9 + tableH(5), 'The space', 'Construction and envelope')
   overline(doc, 'CONSTRUCTION & ENVELOPE', M, y, C.inkMuted)
   y += 4
   y = table(doc, M, y, CW, ['Element', 'Material / rating'], [
@@ -277,21 +283,10 @@ function spacePage(ctx: Ctx) {
   y += 9
 
   // Openings
-  overline(doc, 'DOORS & OPENINGS', M, y, C.inkMuted)
-  y += 4
-  if (data.doors.length) {
-    y = table(doc, M, y, CW,
-      ['Opening', 'Size', 'Opens/hr', 'Seconds open', 'Opens onto'],
-      data.doors.map(d => [
-        d.label,
-        `${fmt(d.widthFt)} × ${fmt(d.heightFt)} ft`,
-        fmt(d.opensPerHour),
-        fmt(d.secondsOpen),
-        d.exposure,
-      ]), [0.32, 0.16, 0.14, 0.18, 0.2])
-  } else {
-    y = emptyRow(doc, M, y, CW, 'No doors or openings recorded.')
-  }
+  // Doors used to close this page. They now open the load page instead — they
+  // are almost always the dominant load, so they belong beside the breakdown
+  // that says so rather than filed under geometry. It also stops a two-door
+  // survey from spilling a near-empty continuation page out of this one.
 }
 
 // ─── Page 2 · The process (process track) ─────────────────────────────────────
@@ -329,13 +324,14 @@ function processPage(ctx: Ctx) {
   ], [0.4, 0.6])
   y += 9
 
+  y = ensure(ctx, y, 9 + tableH(2) + 16, 'The process', 'Design conditions')
   overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
   y += 4
   y = table(doc, M, y, CW,
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
     [
-      condRow('Return / room air', numOf(data.surroundTempF), numOf(data.surroundRhPct), elev),
-      condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev),
+      condRow('Return / room air', numOf(data.surroundTempF), numOf(data.surroundRhPct), elev, conditionEntered(data, 'surround')),
+      condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev, conditionEntered(data, 'outdoor')),
     ], [0.4, 0.15, 0.15, 0.15, 0.15])
   y += 3
   y = note(doc, 'A desiccant wheel is sized on the grain depression it has to deliver, not on relative humidity. Where a specification is written as a dew point, that is the number we design to.', M, y, CW)
@@ -353,8 +349,25 @@ function processPage(ctx: Ctx) {
 function loadsPage(ctx: Ctx) {
   const { doc, data, load } = ctx
   if (!load) return
-  newPage(ctx, 'Where the moisture comes from', 'Preliminary internal load estimate')
+  newPage(ctx, 'Where the moisture comes from', 'Openings, internal loads and the preliminary estimate')
   let y = 46
+
+  overline(doc, 'DOORS & OPENINGS', M, y, C.inkMuted)
+  y += 4
+  if (data.doors.length) {
+    y = table(doc, M, y, CW,
+      ['Opening', 'Size', 'Opens/hr', 'Seconds open', 'Opens onto'],
+      data.doors.map(d => [
+        d.label,
+        `${fmt(d.widthFt)} × ${fmt(d.heightFt)} ft`,
+        fmt(d.opensPerHour),
+        fmt(d.secondsOpen),
+        d.exposure,
+      ]), [0.32, 0.16, 0.14, 0.18, 0.2])
+  } else {
+    y = emptyRow(doc, M, y, CW, 'No doors or openings recorded.')
+  }
+  y += 5
 
   overline(doc, 'INTERNAL LOADS RECORDED', M, y, C.inkMuted)
   y += 4
@@ -366,29 +379,28 @@ function loadsPage(ctx: Ctx) {
     ['Ventilation air in', data.ventCfm ? `${fmt(numOf(data.ventCfm))} cfm` : 'None recorded'],
     ['Exhaust air out', data.exhaustCfm ? `${fmt(numOf(data.exhaustCfm))} cfm` : 'None recorded'],
   ], [0.34, 0.66])
-  y += 10
+  y += 6
 
+  y = ensure(ctx, y, 10 + load.lines.length * 10.6 + 44, 'Where the moisture comes from', 'Estimated breakdown')
   overline(doc, 'ESTIMATED BREAKDOWN', M, y, C.inkMuted)
-  y += 6
+  y += 5
   y = loadBars(doc, M, y, CW, load)
-  y += 6
+  y += 5
 
   // Totals strip
   const totals: TileSpec[] = [
     { label: 'Room internal load', value: fmt(load.internalGrPerHr), unit: 'gr/hr', sub: `${fmt(load.internalGrPerHr / 7000, 1)} lb/hr, includes ${Math.round(load.safetyFactor * 100)}% safety factor`, tone: C.green, soft: C.greenSoft },
-    { label: 'Ventilation air load', value: fmt(load.ventilationGrPerHr), unit: 'gr/hr', sub: load.ventilationGrPerHr > 0 ? 'Dried upstream of the room' : 'No ventilation air recorded', tone: C.blue, soft: C.blueSoft },
+    { label: 'Ventilation air load', value: fmt(load.ventilationGrPerHr), unit: 'gr/hr', sub: load.ventilationGrPerHr > 0 ? 'Dried upstream, kept out of the room total' : 'No ventilation air recorded', tone: C.blue, soft: C.blueSoft },
     { label: 'Total to remove', value: fmt(load.totalLbPerHr, 1), unit: 'lb/hr', sub: `About ${fmt(load.totalPintsPerDay)} pints of water a day`, tone: C.amber, soft: C.amberSoft },
   ]
   y = tileRow(doc, totals, M, y, CW)
   y += 8
 
-  y = note(doc, 'Ventilation and make-up air is carried separately on purpose. The dehumidifier dries that air before it reaches the room, so folding it into the room load would oversize the system.', M, y, CW)
-  y += 6
-
-  softPanel(doc, M, y, CW, 22, C.roseSoft)
-  accentEdge(doc, M, y, 22, C.rose)
-  overline(doc, 'PRELIMINARY ESTIMATE', M + 6, y + 7, [150, 50, 60])
-  wrapped(doc, LOAD_DISCLAIMER, M + 6, y + 12.5, CW - 12, { size: 7.6, color: [120, 60, 66], leading: 3.6 })
+  text(doc, 'Ventilation air is carried separately on purpose: the dehumidifier dries it before it reaches the room, so folding it into the room total would oversize the system.',
+    M, y + 4, { size: 7, color: C.inkMuted })
+  // The old rose "PRELIMINARY ESTIMATE" panel lived here. It is gone because
+  // stampEveryPage() now prints the disclaimer on every page — two copies on
+  // this one page would read as boilerplate rather than as a caution.
 }
 
 // ─── Page 4 · Equipment & utilities ───────────────────────────────────────────
@@ -420,6 +432,7 @@ function equipmentPage(ctx: Ctx) {
   keyPanel(doc, 'UTILITIES AVAILABLE', right, M + colW + 6, y, colW, h)
   y += h + 9
 
+  y = ensure(ctx, y, 9 + tableH(7), 'Equipment & utilities', 'Air treatment')
   overline(doc, 'AIR TREATMENT', M, y, C.inkMuted)
   y += 4
   y = table(doc, M, y, CW, ['Item', 'Selection'], [
@@ -453,7 +466,7 @@ function equipmentPage(ctx: Ctx) {
   const boxH = 12 + notes.reduce(
     (h, [, b]) => h + 4 + wrapLines(doc, b, CW - 12, bodyOpts).length * bodyOpts.leading + 3, 0
   )
-  const boxY = Math.min(Math.max(y, 190), PAGE_H - 20 - boxH)
+  const boxY = Math.min(Math.max(y, 186), CONTENT_BOTTOM - boxH)
   softPanel(doc, M, boxY, CW, boxH, C.paper)
   overline(doc, 'NOTES FROM OUR ENGINEERING TEAM', M + 6, boxY + 8, C.inkMuted)
   let ny = boxY + 15
@@ -466,33 +479,35 @@ function equipmentPage(ctx: Ctx) {
 // ─── Last page · The takeaway infographic ─────────────────────────────────────
 // The whole page is laid out against a fixed vertical budget, because it must
 // stay ONE page no matter how long the project name is or how many load lines
-// there are. Every band below is a constant, and they sum to 263 mm — leaving
-// the footer at 267 mm clear. Change one and re-check the total.
+// there are. Every band below is a constant and they sum to 249 mm, clearing
+// CONTENT_BOTTOM so the per-page disclaimer band has room. Change one and
+// re-check the total — nothing here reflows.
 const T = {
-  band: 26,
-  headline: 19,
-  duo: 50,      // target condition + the space
-  formula: 36,
-  bars: 44,
-  ref: 48,      // typical conditions + what happens next
-  strip: 16,
-  gap: 4,
+  band: 24,
+  headline: 17,
+  duo: 46,      // target condition + the space
+  formula: 34,
+  bars: 40,
+  ref: 45,      // typical conditions + what happens next
+  strip: 14,
+  gap: 3,
 }
+// 24+3 +17+3 +46+3 +34+3 +40+3 +45+3 +14 = 238, clearing FOOTER_BAND_TOP (246.4).
 
-function takeawayPage(ctx: Ctx) {
+function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   const { doc, data, load, proc, logoLight, isRoom } = ctx
-  doc.addPage()
+  if (!opts?.first) doc.addPage()
   paper(doc, C.white)
 
   // Title block
   fill(doc, C.pine)
   doc.rect(0, 0, PAGE_W, T.band, 'F')
-  ghostMark(doc, logoLight, PAGE_W - 22, 2, 30)
-  if (logoLight) doc.addImage(logoLight, 'PNG', M, 5, 12.5, 16)
-  text(doc, 'YOUR DEHUMIDIFICATION SNAPSHOT', M + 18, 13.5,
+  ghostMark(doc, logoLight, PAGE_W - 21, 1.5, 27)
+  if (logoLight) doc.addImage(logoLight, 'PNG', M, 4, 12, 15.3)
+  text(doc, 'YOUR DEHUMIDIFICATION SNAPSHOT', M + 17.5, 12.5,
     { size: 14, weight: 'bold', color: C.white, spacing: 0.25 })
   text(doc, truncate(doc, `${data.projectName || 'Your project'}  ·  ${applicationLabel(data)}`, CW - 22, 8.5),
-    M + 18, 20, { size: 8.5, color: [150, 190, 168] })
+    M + 17.5, 18.8, { size: 8.5, color: [150, 190, 168] })
 
   let y = T.band + T.gap
 
@@ -510,8 +525,8 @@ function takeawayPage(ctx: Ctx) {
 
   softPanel(doc, M, y, CW, T.headline, C.amberSoft)
   accentEdge(doc, M, y, T.headline, C.amber)
-  text(doc, truncate(doc, headline, CW - 16, 12), M + 7, y + 8.5, { size: 12, weight: 'bold', color: [120, 66, 6] })
-  wrapped(doc, sub, M + 7, y + 14.5, CW - 14, { size: 8.4, color: [150, 100, 30], leading: 3.8, maxLines: 1 })
+  text(doc, truncate(doc, headline, CW - 16, 11.5), M + 7, y + 8, { size: 11.5, weight: 'bold', color: [120, 66, 6] })
+  wrapped(doc, sub, M + 7, y + 13.8, CW - 14, { size: 8.2, color: [150, 100, 30], leading: 3.6, maxLines: 1 })
   y += T.headline + T.gap
 
   // ── Left: the target in four units · Right: the room / the airstream ──
@@ -536,7 +551,7 @@ function takeawayPage(ctx: Ctx) {
       : []
   quad.forEach(([v, l], i) => {
     const x = M + 7 + (i % 2) * (halfW / 2 - 2)
-    const yy = y + 23 + Math.floor(i / 2) * 12.5
+    const yy = y + 21 + Math.floor(i / 2) * 11.5
     text(doc, v, x, yy, { size: 13.5, weight: 'bold', color: C.ink })
     text(doc, l, x, yy + 4.4, { size: 7.2, color: C.inkMuted })
   })
@@ -544,31 +559,31 @@ function takeawayPage(ctx: Ctx) {
     isRoom
       ? 'Four ways of saying the same thing. Grains and dew point are the two that size equipment — relative humidity on its own cannot.'
       : 'A process is specified by the air leaving the dehumidifier. Dew point is the honest unit: it does not move when the temperature does.',
-    M + 7, y + 43.5, halfW - 14, { size: 7, color: C.inkMuted, leading: 3.1, maxLines: 2 })
+    M + 7, y + 41, halfW - 14, { size: 6.8, color: C.inkMuted, leading: 2.9, maxLines: 2 })
 
   panelHead(doc, rx, y, halfW, T.duo, '2', isRoom ? 'YOUR SPACE' : 'YOUR AIRSTREAM', C.blue, C.blueSoft)
   if (isRoom) {
-    roomDiagram(doc, rx + 6, y + 13, halfW - 12, 30, numOf(data.roomL), numOf(data.roomW), numOf(data.roomH))
+    roomDiagram(doc, rx + 6, y + 12, halfW - 12, 27, numOf(data.roomL), numOf(data.roomW), numOf(data.roomH))
     const v = load?.volumeCuFt ?? 0
-    text(doc, v ? `${fmt(v)} cu.ft` : 'Dimensions not given', rx + 6, y + 46, { size: 9, weight: 'bold', color: C.ink })
+    text(doc, v ? `${fmt(v)} cu.ft` : 'Dimensions not given', rx + 6, y + 42, { size: 9, weight: 'bold', color: C.ink })
     if (v) {
       text(doc, `${fmt(numOf(data.roomL))} × ${fmt(numOf(data.roomW))} × ${fmt(numOf(data.roomH))} ft`,
-        rx + halfW - 6, y + 46, { size: 8, color: C.inkMuted, align: 'right' })
+        rx + halfW - 6, y + 42, { size: 8, color: C.inkMuted, align: 'right' })
     }
   } else {
-    airstreamDiagram(doc, rx + 6, y + 15, halfW - 12, 30, proc)
+    airstreamDiagram(doc, rx + 6, y + 13, halfW - 12, 27, proc)
   }
   y += T.duo + T.gap
 
   // ── The formula, with their own numbers substituted in ──
   panelHead(doc, M, y, CW, T.formula, '3', isRoom ? 'THE MATH BEHIND YOUR NUMBER' : 'THE MATH BEHIND YOUR WHEEL', C.violet, C.violetSoft)
   if (isRoom && load) {
-    formulaLine(doc, M + 7, y + 20,
+    formulaLine(doc, M + 7, y + 18,
       'Dry air (cfm)  =',
       { top: 'moisture load (gr/hr)', bottom: 'density × 60 × grain difference' },
       `${fmt(load.internalGrPerHr)}  ÷  ( 0.075 × 60 × ${fmtGrains(load.roomGrains - load.supplyGrains)} )  =  ${fmt(load.dryAirCfm)} cfm`)
   } else if (proc) {
-    formulaLine(doc, M + 7, y + 20,
+    formulaLine(doc, M + 7, y + 18,
       'Water removed (lb/hr)  =',
       { top: 'cfm × density × 60 × grain depression', bottom: '7,000 grains per pound' },
       `${fmt(proc.cfm)} × 0.075 × 60 × ${fmtGrains(proc.depression)}  ÷  7,000  =  ${fmt(proc.lbPerHr, 1)} lb/hr`)
@@ -578,7 +593,7 @@ function takeawayPage(ctx: Ctx) {
   // ── Where the moisture comes from · or the five system types ──
   if (isRoom && load && load.lines.length) {
     panelHead(doc, M, y, CW, T.bars, '4', 'WHERE YOUR MOISTURE COMES FROM', C.teal, C.tealSoft)
-    miniBars(doc, M + 7, y + 16, CW - 14, load)
+    miniBars(doc, M + 7, y + 15, CW - 14, load)
   } else {
     panelHead(doc, M, y, CW, T.bars, '4', 'THE FIVE KINDS OF DESICCANT SYSTEM', C.teal, C.tealSoft)
     const kinds: [string, string][] = [
@@ -588,12 +603,12 @@ function takeawayPage(ctx: Ctx) {
       ['Industrial HVAC', 'Tight tolerance, 24/7, high-value process'],
       ['Product drying', 'Removing water from the product, not the room'],
     ]
-    let ky = y + 18
+    let ky = y + 17
     kinds.forEach(([k, v]) => {
       fill(doc, C.teal); doc.circle(M + 9, ky - 1.2, 1.1, 'F')
       text(doc, k, M + 13, ky, { size: 8, weight: 'bold', color: C.ink })
       text(doc, v, M + 58, ky, { size: 7.8, color: C.inkMuted })
-      ky += 5.6
+      ky += 5.2
     })
   }
   y += T.bars + T.gap
@@ -612,12 +627,12 @@ function takeawayPage(ctx: Ctx) {
     ...ROOM_PRESETS.filter(p => p.key === data.application && !p.key.startsWith('other')),
     ...ROOM_PRESETS.filter(p => refKeys.includes(p.key) && p.key !== data.application),
   ].slice(0, 4)
-  let ry = y + 17
+  let ry = y + 16
   text(doc, 'Application', M + 7, ry, { size: 6.6, weight: 'bold', color: C.inkMuted })
   text(doc, '°F', M + refW - 30, ry, { size: 6.6, weight: 'bold', color: C.inkMuted, align: 'right' })
   text(doc, '%rh', M + refW - 19, ry, { size: 6.6, weight: 'bold', color: C.inkMuted, align: 'right' })
   text(doc, 'gr/lb', M + refW - 6, ry, { size: 6.6, weight: 'bold', color: C.inkMuted, align: 'right' })
-  ry += 1.8
+  ry += 1.6
   hair(doc, M + 7, ry, M + refW - 6, ry)
   ry += 5
   for (const p of refRows) {
@@ -633,9 +648,9 @@ function takeawayPage(ctx: Ctx) {
     text(doc, String(p.tempF), M + refW - 30, ry, { size: 7.4, color: C.inkSoft, align: 'right' })
     text(doc, String(p.rhPct), M + refW - 19, ry, { size: 7.4, color: C.inkSoft, align: 'right' })
     text(doc, fmtGrains(grains(p.tempF, p.rhPct, 0)), M + refW - 6, ry, { size: 7.4, color: C.inkSoft, align: 'right' })
-    ry += 5.6
+    ry += 5.5
   }
-  text(doc, 'Starting points, not specifications.', M + 7, y + T.ref - 4, { size: 6.6, color: C.inkMuted })
+  text(doc, 'Starting points, not specifications.', M + 7, y + T.ref - 2.5, { size: 6.4, color: C.inkMuted })
 
   // Chapter-7 design procedure, in the customer's language.
   panelHead(doc, nextX, y, nextW, T.ref, '6', 'WHAT HAPPENS NEXT', C.green, C.greenSoft)
@@ -646,34 +661,31 @@ function takeawayPage(ctx: Ctx) {
     'Select, size and position the components.',
     'Select and locate the controls.',
   ]
-  let sy = y + 19
+  let sy = y + 18
   steps.forEach((s, i) => {
     fill(doc, C.green)
     doc.circle(nextX + 9, sy - 1.3, 2.4, 'F')
     text(doc, String(i + 1), nextX + 9, sy + 0.3, { size: 6.2, weight: 'bold', color: C.white, align: 'center' })
     text(doc, truncate(doc, s, nextW - 20, 7.8), nextX + 14.5, sy, { size: 7.8, color: C.inkSoft })
-    sy += 6.4
+    sy += 6.2
   })
   y += T.ref + T.gap
 
   // ── Key takeaway strip ──
   fill(doc, C.pine)
   doc.roundedRect(M, y, CW, T.strip, 3, 3, 'F')
-  text(doc, 'ONE NUMBER TO REMEMBER', PAGE_W / 2, y + 6.5,
+  text(doc, 'ONE NUMBER TO REMEMBER', PAGE_W / 2, y + 6,
     { size: 6.6, weight: 'bold', color: [150, 190, 168], align: 'center', spacing: 0.5 })
   const takeaway = isRoom && load?.complete
     ? `${fmt(load.dryAirCfm)} cfm of dry air at ${fmtGrains(load.supplyGrains)} gr/lb holds this room at ${fmt(numOf(data.targetRhPct))}% rh`
     : proc?.complete
       ? `${fmt(proc.cfm)} cfm at ${fmtGrains(proc.leavingGrains)} gr/lb  ·  ${fmtDewPoint(proc.leavingDewPointF)} dew point`
       : 'Send this to IAT and we will put the numbers to it'
-  text(doc, truncate(doc, takeaway, CW - 12, 10), PAGE_W / 2, y + 12.8,
-    { size: 10, weight: 'bold', color: C.white, align: 'center' })
+  text(doc, truncate(doc, takeaway, CW - 12, 9.6), PAGE_W / 2, y + 12,
+    { size: 9.6, weight: 'bold', color: C.white, align: 'center' })
 
-  // Footer credit (this page is skipped by stampFooters, which is why it is here)
-  text(doc, 'Prepared by Innovative Air Technologies  ·  dehumidifiers.com  ·  770.788.6744',
-    PAGE_W / 2, PAGE_H - 12, { size: 7.5, color: C.inkMuted, align: 'center' })
-  text(doc, 'Preliminary — for discussion. Final verification by the owner or a qualified mechanical engineer.',
-    PAGE_W / 2, PAGE_H - 8, { size: 6.6, color: C.inkMuted, align: 'center' })
+  // No footer lines here any more — stampEveryPage() carries the disclaimer and
+  // the credit on every page, this one included.
 }
 // ─── Drawing helpers ──────────────────────────────────────────────────────────
 
@@ -681,6 +693,24 @@ function paper(doc: Doc, color: RGB = C.white) {
   fill(doc, color)
   doc.rect(0, 0, PAGE_W, PAGE_H, 'F')
 }
+
+/**
+ * Page-break guard for the flowing record pages. Their content is variable —
+ * a survey with eight doors is much taller than one with none — and every page
+ * now reserves its bottom for the disclaimer band, so a section that would cross
+ * CONTENT_BOTTOM continues on a fresh page instead of printing underneath it.
+ *
+ * Call it with the height of the block you are ABOUT to draw, and use the y it
+ * returns.
+ */
+function ensure(ctx: Ctx, y: number, needed: number, title: string, sub: string): number {
+  if (y + needed <= CONTENT_BOTTOM) return y
+  newPage(ctx, `${title} (continued)`, sub)
+  return 46
+}
+
+/** Height a table() call will occupy, so ensure() can be asked before drawing. */
+const tableH = (rows: number) => 8 + rows * 8
 
 function newPage(ctx: Ctx, title: string, sub: string) {
   const { doc } = ctx
@@ -843,18 +873,18 @@ function loadBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
   const sorted = [...load.lines].sort((a, b) => b.grainsPerHour - a.grainsPerHour)
   for (const line of sorted) {
     const [tone, soft] = BAR_COLORS[line.key] ?? [C.inkMuted, C.paper]
-    text(doc, truncate(doc, line.label, labelW - 4, 8), x, ry + 4, { size: 8, weight: 'bold', color: C.ink })
-    text(doc, truncate(doc, line.detail, labelW - 4, 6.6), x, ry + 8, { size: 6.6, color: C.inkMuted })
+    text(doc, truncate(doc, line.label, labelW - 4, 7.8), x, ry + 3.6, { size: 7.8, weight: 'bold', color: C.ink })
+    text(doc, truncate(doc, line.detail, labelW - 4, 6.4), x, ry + 7.4, { size: 6.4, color: C.inkMuted })
     fill(doc, soft)
-    doc.roundedRect(x + labelW, ry, barW, 6, 1.2, 1.2, 'F')
+    doc.roundedRect(x + labelW, ry, barW, 5.4, 1.2, 1.2, 'F')
     const bw = Math.max((line.grainsPerHour / max) * barW, line.grainsPerHour > 0 ? 1.6 : 0)
     if (bw > 0) {
       fill(doc, tone)
-      doc.roundedRect(x + labelW, ry, bw, 6, 1.2, 1.2, 'F')
+      doc.roundedRect(x + labelW, ry, bw, 5.4, 1.2, 1.2, 'F')
     }
-    text(doc, `${fmt(line.grainsPerHour)} gr/hr`, x + w, ry + 4.3, { size: 7.6, weight: 'bold', color: C.ink, align: 'right' })
-    text(doc, pct(line.grainsPerHour, totalRaw), x + w, ry + 8.6, { size: 6.6, color: C.inkMuted, align: 'right' })
-    ry += 12.5
+    text(doc, `${fmt(line.grainsPerHour)} gr/hr`, x + w, ry + 3.9, { size: 7.4, weight: 'bold', color: C.ink, align: 'right' })
+    text(doc, pct(line.grainsPerHour, totalRaw), x + w, ry + 7.8, { size: 6.4, color: C.inkMuted, align: 'right' })
+    ry += 10.6
   }
   return ry
 }
@@ -882,7 +912,7 @@ function miniBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
       doc.roundedRect(x + labelW, ry + 0.6, bw, 4.6, 1, 1, 'F')
     }
     text(doc, pct(line.grainsPerHour, totalRaw), x + w, ry + 4.1, { size: 7.2, weight: 'bold', color: C.ink, align: 'right' })
-    ry += 5.9
+    ry += 5.0
   }
 }
 
@@ -1008,6 +1038,8 @@ type TextOpts = {
   color?: RGB
   align?: 'left' | 'center' | 'right'
   spacing?: number
+  /** Degrees counter-clockwise — used only by the watermark. */
+  angle?: number
 }
 
 /**
@@ -1039,7 +1071,7 @@ function text(doc: Doc, s: string, x: number, y: number, o: TextOpts = {}) {
   const c = o.color ?? C.ink
   doc.setTextColor(c[0], c[1], c[2])
   if (o.spacing) doc.setCharSpace(o.spacing)
-  doc.text(san(s), x, y, { align: o.align ?? 'left' })
+  doc.text(san(s), x, y, { align: o.align ?? 'left', ...(o.angle ? { angle: o.angle } : {}) })
   if (o.spacing) doc.setCharSpace(0)
 }
 
@@ -1105,30 +1137,82 @@ function hair(doc: Doc, x1: number, y1: number, x2: number, y2: number) {
   doc.line(x1, y1, x2, y2)
 }
 
-function stampFooters(doc: Doc, meta: RfqPdfMeta) {
+/** The exact wording IAT requires on every page of a preliminary document. */
+const PAGE_DISCLAIMER =
+  'Preliminary selections and performance readouts are provided for planning purposes only and should be validated by IAT or a qualified professional engineer prior to final design or commitment.'
+
+/** Top of the per-page disclaimer band — no page content may cross this line. */
+const FOOTER_BAND_TOP = PAGE_H - 29
+/** Where flowing page content must stop, with a little air above the band. */
+const CONTENT_BOTTOM = FOOTER_BAND_TOP - 4
+
+/**
+ * Applied to every page after all content is laid out: the diagonal PRELIMINARY
+ * watermark, the highlighted disclaimer band, and the page meta line.
+ *
+ * The watermark goes on TOP at 7% rather than underneath, because the pages are
+ * built from opaque white cards — drawn first it would only survive in the
+ * gutters between them, which reads as a rendering fault rather than a stamp.
+ * At this opacity it is legible over white and imperceptible over the pine bands.
+ */
+function stampEveryPage(doc: Doc, meta: RfqPdfMeta) {
   const pages = doc.getNumberOfPages()
-  // The takeaway page carries its own credit line, so it is skipped here.
-  for (let i = 1; i < pages; i++) {
+  const g = doc as unknown as { GState: new (o: object) => object }
+  const bodyOpts = { size: 6.9, color: [124, 74, 12] as RGB, leading: 3.3 }
+  const lines = wrapLines(doc, PAGE_DISCLAIMER, CW - 34, bodyOpts)
+  const bandH = lines.length * bodyOpts.leading + 6
+  const bandY = FOOTER_BAND_TOP
+
+  for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
-    hair(doc, M, PAGE_H - 14, PAGE_W - M, PAGE_H - 14)
-    text(doc, `Innovative Air Technologies  ·  Request for Quote ${meta.reference}`, M, PAGE_H - 9,
+
+    doc.setGState(new g.GState({ opacity: 0.07 }))
+    text(doc, 'PRELIMINARY', PAGE_W / 2, PAGE_H / 2 + 26, {
+      size: 62, weight: 'bold', color: [90, 90, 84], align: 'center', angle: 32,
+    })
+    doc.setGState(new g.GState({ opacity: 1 }))
+
+    fill(doc, C.amberSoft)
+    doc.roundedRect(M, bandY, CW, bandH, 2, 2, 'F')
+    accentEdge(doc, M, bandY, bandH, C.amber)
+    text(doc, 'PRELIMINARY', M + 6, bandY + 5.6, { size: 6.2, weight: 'bold', color: C.amber, spacing: 0.4 })
+    wrapped(doc, PAGE_DISCLAIMER, M + 28, bandY + 4.6, CW - 34, bodyOpts)
+
+    text(doc, `Innovative Air Technologies  ·  Request for Quote ${meta.reference}`, M, PAGE_H - 12,
       { size: 7, color: C.inkMuted })
-    text(doc, `Page ${i} of ${pages}`, PAGE_W - M, PAGE_H - 9, { size: 7, color: C.inkMuted, align: 'right' })
+    text(doc, `Page ${i} of ${pages}`, PAGE_W - M, PAGE_H - 12, { size: 7, color: C.inkMuted, align: 'right' })
   }
-  doc.setPage(pages)
+  doc.setPage(1)
 }
 
 // ─── Small utilities ──────────────────────────────────────────────────────────
 
-function condRow(label: string, t: number, rh: number, elev: number): string[] {
+/**
+ * A design-conditions row. When the customer answered in something other than
+ * %rh, their own reading is appended to the label — their document should show
+ * the number they typed, not only our conversion of it.
+ */
+function condRow(label: string, t: number, rh: number, elev: number, entered?: string): string[] {
   if (!t && !rh) return [label, '—', '—', '—', '—']
+  const shown = entered && !entered.endsWith('% rh') ? `${label} (entered ${entered})` : label
   return [
-    label,
+    shown,
     `${fmt(t)}°F`,
-    `${fmt(rh)}%`,
+    `${fmt(rh, rh < 10 ? 1 : 0)}%`,
     `${fmtGrains(grains(t, rh, elev))} gr/lb`,
     fmtDewPoint(dewPointF(t, rh, elev)),
   ]
+}
+
+/**
+ * `"35 °F dp · "` when the answer came in a unit other than the canonical one,
+ * otherwise empty — so a tile leads with the customer's own reading and follows
+ * with our conversion, rather than silently replacing what they typed.
+ */
+function enteredPrefix(data: RfqData, key: Parameters<typeof conditionEntered>[1]): string {
+  const entered = conditionEntered(data, key)
+  const canonical = key === 'leaving' ? 'gr/lb' : '% rh'
+  return entered === '—' || entered.endsWith(canonical) ? '' : `${entered} · `
 }
 
 function numOf(v: string): number {

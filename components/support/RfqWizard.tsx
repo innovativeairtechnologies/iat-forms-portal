@@ -14,12 +14,13 @@ import ThemeToggle from '@/components/ThemeToggle'
 import { getRecaptchaToken } from '@/components/use-recaptcha'
 import {
   AIR_SOURCES, CEILING_MATERIALS, CONSTRUCTIONS, COOLING_TYPES, DOOR_TYPES, FLOOR_MATERIALS,
-  HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, PACKAGE_PREFS, PEOPLE_LOADS,
-  PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES, TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS,
+  HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
+  PACKAGE_PREFS, PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES,
+  TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
-  estimateProcess, fmt, fmtDewPoint, fmtGrains, grains, presetFor,
-  type ActivityLevel, type DoorSpec, type Exposure, type ProcessPreset, type RfqData,
-  type RoomPreset, type Tightness, type Track, type VaporBarrier,
+  estimateProcess, fmt, fmtDewPoint, fmtGrains, grains, normalizeMode, presetFor, setCondition,
+  type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
+  type ProcessPreset, type RfqData, type RoomPreset, type Tightness, type Track, type VaporBarrier,
 } from '@/lib/rfq'
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
@@ -204,6 +205,128 @@ function Segmented<T extends string>({
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/**
+ * A dry-bulb + moisture pair, where the moisture unit is the customer's choice.
+ * Room specs arrive as %rh, dry rooms as a dew point, process wheels as grains,
+ * and a sling psychrometer gives a wet bulb — so all four are typeable and the
+ * conversion happens here rather than in the customer's head.
+ *
+ * Both fields route through setCondition(), which is what keeps the canonical
+ * value right when the DRY BULB moves — a 50°F dew point is 49%rh at 75°F and
+ * 70%rh at 60°F, so the temperature is part of the moisture answer.
+ */
+function ConditionField({
+  label, hint, tempLabel = 'Temperature', data, conditionKey, onChange, autoFocus, typical, tone = 'sky',
+}: {
+  label: string
+  hint?: string
+  tempLabel?: string
+  data: RfqData
+  conditionKey: ConditionKey
+  onChange: (next: RfqData) => void
+  autoFocus?: boolean
+  typical?: { tempF: number; value: number; mode: MoistureMode }
+  tone?: Tone
+}) {
+  const tempId = useId()
+  const valueId = useId()
+  const modeId = useId()
+  const hintId = `${valueId}-hint`
+
+  const tempF = (data[`${conditionKey}TempF` as keyof RfqData] as string) ?? ''
+  const mode = normalizeMode(data[`${conditionKey}MoistureMode` as keyof RfqData], conditionKey === 'leaving' ? 'gr' : 'rh')
+  const value = (data[`${conditionKey}MoistureValue` as keyof RfqData] as string) ?? ''
+  const modeMeta = MOISTURE_MODES.find(m => m.value === mode)!
+
+  const typicalUsed = !!typical
+    && tempF === String(typical.tempF)
+    && mode === typical.mode
+    && value === String(typical.value)
+
+  return (
+    <div>
+      <div className="mb-1.5">
+        <span className="block text-[12.5px] font-medium text-ink-secondary">{label}</span>
+        {hint && <p id={hintId} className="mt-0.5 text-[11.5px] leading-relaxed text-ink-muted">{hint}</p>}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label htmlFor={tempId} className="mb-1 block text-[11px] text-ink-muted">{tempLabel}</label>
+          <div className="relative">
+            <input
+              id={tempId}
+              type="number"
+              inputMode="decimal"
+              value={tempF}
+              autoFocus={autoFocus}
+              onChange={e => onChange(setCondition(data, conditionKey, { tempF: e.target.value }))}
+              className={`${inputCx} pr-10 tabular-nums`}
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-ink-muted">°F</span>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor={valueId} className="mb-1 block text-[11px] text-ink-muted">Moisture</label>
+          <div className="flex gap-1.5">
+            <input
+              id={valueId}
+              type="number"
+              inputMode="decimal"
+              value={value}
+              aria-describedby={hint ? hintId : undefined}
+              onChange={e => onChange(setCondition(data, conditionKey, { value: e.target.value }))}
+              className={`${inputCx} min-w-0 flex-1 tabular-nums`}
+            />
+            <div className="relative flex-shrink-0">
+              <label htmlFor={modeId} className="sr-only">Moisture unit for {label}</label>
+              <select
+                id={modeId}
+                value={mode}
+                onChange={e => onChange(setCondition(data, conditionKey, { mode: e.target.value as MoistureMode }))}
+                className={`${inputCx} w-[104px] cursor-pointer appearance-none pl-2.5 pr-7 text-[12.5px]`}
+              >
+                {MOISTURE_MODES.map(m => <option key={m.value} value={m.value}>{m.short}</option>)}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-muted">{modeMeta.hint}</p>
+
+      {typical && (
+        <Typical
+          label={`${typical.tempF}°F / ${typical.value}${MOISTURE_SUFFIX[typical.mode].replace('°F', '°F').replace('% rh', '% rh')}`}
+          used={typicalUsed}
+          onUse={() => onChange(setCondition(
+            setCondition(data, conditionKey, { tempF: String(typical.tempF) }),
+            conditionKey,
+            { mode: typical.mode, value: String(typical.value) },
+          ))}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Every way of saying the same air — the payoff for the unit selector. */
+function ConditionReadout({ tempF, rhPct, elevationFt, tone = 'sky' }: {
+  tempF: number; rhPct: number; elevationFt: number; tone?: Tone
+}) {
+  if (!tempF || !rhPct) return null
+  return (
+    <div className={`grid grid-cols-2 gap-3 rounded-xl p-4 sm:grid-cols-4 ${TONE[tone].softBg}`}>
+      <Stat label="Temperature" value={`${fmt(tempF)}°F`} />
+      <Stat label="Relative humidity" value={`${fmt(rhPct, rhPct < 10 ? 1 : 0)}%`} />
+      <Stat label="Grains" value={fmtGrains(grains(tempF, rhPct, elevationFt))} unit="gr/lb" />
+      <Stat label="Dew point" value={fmtDewPoint(dewPointF(tempF, rhPct, elevationFt))} />
     </div>
   )
 }
@@ -765,14 +888,14 @@ function StepBody({
 }) {
   switch (step) {
     case 'application': return <StepApplication data={data} set={set} setData={setData} />
-    case 'target':      return <StepTarget data={data} set={set} />
+    case 'target':      return <StepTarget data={data} setData={setData} />
     case 'space':       return <StepSpace data={data} set={set} load={load} />
-    case 'shell':       return <StepShell data={data} set={set} />
+    case 'shell':       return <StepShell data={data} set={set} setData={setData} />
     case 'openings':    return <StepOpenings data={data} setData={setData} />
     case 'inside':      return <StepInside data={data} set={set} />
-    case 'leaving':     return <StepLeaving data={data} set={set} proc={proc} />
+    case 'leaving':     return <StepLeaving data={data} set={set} setData={setData} proc={proc} />
     case 'airstream':   return <StepAirstream data={data} set={set} />
-    case 'entering':    return <StepEntering data={data} set={set} />
+    case 'entering':    return <StepEntering data={data} set={set} setData={setData} />
     case 'unit':        return <StepUnit data={data} set={set} />
     case 'about':       return <StepAbout data={data} set={set} />
     case 'review':      return <StepReview data={data} load={load} proc={proc} onDownloadPreview={onDownloadPreview} downloading={downloading} />
@@ -849,52 +972,30 @@ function StepApplication({
   )
 }
 
-function StepTarget({ data, set }: { data: RfqData; set: SetFn }) {
+function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
   const preset = presetFor(data) as RoomPreset | undefined
   const elev = numOf(data.elevationFt)
-  const t = numOf(data.targetTempF)
-  const rh = numOf(data.targetRhPct)
-  const gr = grains(t, rh, elev)
   return (
     <div className="space-y-5">
-      <Grid>
-        <div>
-          <TextField label="Target temperature" value={data.targetTempF} onChange={v => set('targetTempF', v)} type="number" suffix="°F" autoFocus />
-          {preset && (
-            <Typical
-              label={`${preset.tempF}°F`}
-              used={data.targetTempF === String(preset.tempF)}
-              onUse={() => set('targetTempF', String(preset.tempF))}
-            />
-          )}
-        </div>
-        <div>
-          <TextField label="Target relative humidity" value={data.targetRhPct} onChange={v => set('targetRhPct', v)} type="number" suffix="% rh" />
-          {preset && (
-            <Typical
-              label={`${preset.rhPct}% rh`}
-              used={data.targetRhPct === String(preset.rhPct)}
-              onUse={() => set('targetRhPct', String(preset.rhPct))}
-            />
-          )}
-        </div>
-      </Grid>
+      <ConditionField
+        label="The condition you need held inside"
+        tempLabel="Target temperature"
+        data={data}
+        conditionKey="target"
+        onChange={setData}
+        autoFocus
+        typical={preset ? { tempF: preset.tempF, value: preset.rhPct, mode: 'rh' } : undefined}
+      />
 
-      {t > 0 && rh > 0 && (
-        <div className="grid grid-cols-2 gap-3 rounded-xl bg-sky-50/60 p-4 dark:bg-sky-500/5 sm:grid-cols-4">
-          <Stat label="In grains" value={fmtGrains(gr)} unit="gr/lb" />
-          <Stat label="Dew point" value={fmtDewPoint(dewPointF(t, rh, elev))} />
-          <Stat label="Temperature" value={`${fmt(t)}°F`} />
-          <Stat label="Relative humidity" value={`${fmt(rh)}%`} />
-        </div>
-      )}
+      <ConditionReadout tempF={numOf(data.targetTempF)} rhPct={numOf(data.targetRhPct)} elevationFt={elev} />
 
       {preset?.note && <Callout tone="sky">{preset.note}</Callout>}
 
       <Callout tone="amber">
-        Grains is the unit that actually sizes equipment. <strong className="font-semibold">30% rh</strong> is a
-        very different amount of water at 50°F than at 90°F — dew point and grains do not move when the
-        temperature does, which is why every calculation below runs on them.
+        Answer in whichever unit your spec is written in — the four above are the same air, and we convert
+        as you type. Grains and dew point are what actually size equipment:{' '}
+        <strong className="font-semibold">30% rh</strong> is a very different amount of water at 50°F than
+        at 90°F, while a dew point does not move when the temperature does.
       </Callout>
     </div>
   )
@@ -943,7 +1044,10 @@ function StepSpace({ data, set, load }: { data: RfqData; set: SetFn; load: Retur
   )
 }
 
-function StepShell({ data, set }: { data: RfqData; set: SetFn }) {
+function StepShell({
+  data, set, setData,
+}: { data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
+  const preset = presetFor(data) as RoomPreset | undefined
   return (
     <div className="space-y-5">
       <Grid>
@@ -977,23 +1081,24 @@ function StepShell({ data, set }: { data: RfqData; set: SetFn }) {
         <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{TIGHTNESS_HELP[data.tightness]}</p>
       </div>
 
-      <div className="rounded-xl border border-hairline bg-surface-soft p-4">
-        <p className="text-[12.5px] font-medium text-ink-secondary">The space around the room</p>
-        <p className="mt-0.5 mb-3 text-[11.5px] leading-relaxed text-ink-muted">
-          Moisture pushes in from whatever is on the other side of the wall — usually the rest of the plant, not the weather.
-        </p>
-        <Grid>
-          <TextField label="Surrounding temperature" value={data.surroundTempF} onChange={v => set('surroundTempF', v)} type="number" suffix="°F" />
-          <TextField label="Surrounding humidity" value={data.surroundRhPct} onChange={v => set('surroundRhPct', v)} type="number" suffix="% rh" />
-        </Grid>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <TextField label="Outdoor summer design temp" value={data.outdoorTempF} onChange={v => set('outdoorTempF', v)} type="number" suffix="°F" />
-          <TextField label="Outdoor summer design humidity" value={data.outdoorRhPct} onChange={v => set('outdoorRhPct', v)} type="number" suffix="% rh" />
-        </div>
-        <p className="mt-2 text-[11.5px] text-ink-muted">
-          Not sure? Leave the defaults — a hot, humid summer day is the right thing to design against, and we
-          confirm against ASHRAE design data for your location.
-        </p>
+      <div className="space-y-4 rounded-xl border border-hairline bg-surface-soft p-4">
+        <ConditionField
+          label="The space around the room"
+          hint="Moisture pushes in from whatever is on the other side of the wall — usually the rest of the plant, not the weather."
+          tempLabel="Surrounding temperature"
+          data={data}
+          conditionKey="surround"
+          onChange={setData}
+          typical={preset ? { tempF: preset.surroundTempF, value: preset.surroundRhPct, mode: 'rh' } : undefined}
+        />
+        <ConditionField
+          label="Outdoor summer design"
+          hint="The worst day the system has to hold. We confirm against ASHRAE design data for your location."
+          tempLabel="Outdoor temperature"
+          data={data}
+          conditionKey="outdoor"
+          onChange={setData}
+        />
       </div>
     </div>
   )
@@ -1056,7 +1161,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
                 value={door.exposure}
                 onChange={v => update(door.id, { exposure: v })}
                 options={[
-                  { value: 'Surrounding space', label: 'Opens into the plant' },
+                  { value: 'Surrounding space', label: 'Opens to Surrounding' },
                   { value: 'Outdoor', label: 'Opens to outside' },
                 ]}
               />
@@ -1181,37 +1286,32 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
   )
 }
 
-function StepLeaving({ data, set, proc }: { data: RfqData; set: SetFn; proc: ReturnType<typeof estimateProcess> }) {
+function StepLeaving({
+  data, set, setData, proc,
+}: {
+  data: RfqData; set: SetFn
+  setData: React.Dispatch<React.SetStateAction<RfqData>>
+  proc: ReturnType<typeof estimateProcess>
+}) {
   const preset = presetFor(data) as ProcessPreset | undefined
   return (
     <div className="space-y-5">
-      <Grid>
-        <div>
-          <TextField label="Leaving air temperature" value={data.leavingTempF} onChange={v => set('leavingTempF', v)} type="number" suffix="°F" autoFocus />
-          {preset && (
-            <Typical label={`${preset.leavingTempF}°F`} used={data.leavingTempF === String(preset.leavingTempF)} onUse={() => set('leavingTempF', String(preset.leavingTempF))} />
-          )}
-        </div>
-        <div>
-          <TextField
-            label="Leaving air moisture"
-            hint="Grains of water per pound of dry air. If your spec is a dew point, tell us in the notes."
-            value={data.leavingGrains}
-            onChange={v => set('leavingGrains', v)}
-            type="number"
-            suffix="gr/lb"
-          />
-          {preset && (
-            <Typical label={`${preset.leavingGrains} gr/lb`} used={data.leavingGrains === String(preset.leavingGrains)} onUse={() => set('leavingGrains', String(preset.leavingGrains))} />
-          )}
-        </div>
-      </Grid>
+      <ConditionField
+        label="The condition you need off the dehumidifier"
+        tempLabel="Leaving air temperature"
+        data={data}
+        conditionKey="leaving"
+        onChange={setData}
+        autoFocus
+        typical={preset ? { tempF: preset.leavingTempF, value: preset.leavingGrains, mode: 'gr' } : undefined}
+      />
 
       {numOf(data.leavingGrains) > 0 && (
-        <div className="grid grid-cols-2 gap-3 rounded-xl bg-sky-50/60 p-4 dark:bg-sky-500/5 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 rounded-xl bg-sky-50/60 p-4 dark:bg-sky-500/5 sm:grid-cols-4">
+          <Stat label="Temperature" value={`${fmt(numOf(data.leavingTempF))}°F`} />
+          <Stat label="Grains" value={fmtGrains(proc.leavingGrains)} unit="gr/lb" />
           <Stat label="Dew point" value={fmtDewPoint(proc.leavingDewPointF)} />
           <Stat label="At leaving temp" value={`${fmt(proc.leavingRhPct, 1)}%`} unit="rh" />
-          <Stat label="Grains" value={fmtGrains(proc.leavingGrains)} unit="gr/lb" />
         </div>
       )}
 
@@ -1259,29 +1359,30 @@ function StepAirstream({ data, set }: { data: RfqData; set: SetFn }) {
   )
 }
 
-function StepEntering({ data, set }: { data: RfqData; set: SetFn }) {
+function StepEntering({
+  data, set, setData,
+}: { data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
-        <p className="text-[12.5px] font-medium text-ink-secondary">Return / room air</p>
-        <p className="mt-0.5 mb-3 text-[11.5px] leading-relaxed text-ink-muted">
-          The condition of the air coming back to the unit from the space.
-        </p>
-        <Grid>
-          <TextField label="Temperature" value={data.surroundTempF} onChange={v => set('surroundTempF', v)} type="number" suffix="°F" autoFocus />
-          <TextField label="Relative humidity" value={data.surroundRhPct} onChange={v => set('surroundRhPct', v)} type="number" suffix="% rh" />
-        </Grid>
+        <ConditionField
+          label="Return / room air"
+          hint="The condition of the air coming back to the unit from the space."
+          data={data}
+          conditionKey="surround"
+          onChange={setData}
+          autoFocus
+        />
       </div>
 
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
-        <p className="text-[12.5px] font-medium text-ink-secondary">Outdoor summer design</p>
-        <p className="mt-0.5 mb-3 text-[11.5px] leading-relaxed text-ink-muted">
-          The worst day the unit has to hold. We confirm against ASHRAE design data for your location.
-        </p>
-        <Grid>
-          <TextField label="Temperature" value={data.outdoorTempF} onChange={v => set('outdoorTempF', v)} type="number" suffix="°F" />
-          <TextField label="Relative humidity" value={data.outdoorRhPct} onChange={v => set('outdoorRhPct', v)} type="number" suffix="% rh" />
-        </Grid>
+        <ConditionField
+          label="Outdoor summer design"
+          hint="The worst day the unit has to hold. We confirm against ASHRAE design data for your location."
+          data={data}
+          conditionKey="outdoor"
+          onChange={setData}
+        />
       </div>
 
       <Grid>
