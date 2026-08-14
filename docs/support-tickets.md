@@ -180,6 +180,14 @@ customer not to reply while giving them no way to write back leaves anyone with 
 question stranded — worse than the reply-to-a-mailbox behaviour it replaced. If you
 ever disable the message box, restore a monitored reply address in the same change.
 
+**`noreply@dehumidifiers.com` is a real alias forwarding to `iatsupport@`** (created
+2026-08-14). Sending does not require it — Resend sends on behalf of the verified
+domain either way — but people reply to no-reply addresses regardless of what the
+email says, and without a mailbox there their message would bounce and be lost.
+The forward means a determined customer is never stranded, sitting behind the
+message box rather than replacing it. **Do not delete that alias** without first
+removing the "do not reply" wording.
+
 ### How an anonymous customer writes to a ticket
 
 `POST /api/tickets/status/message`, backing the message box on `/support/status`.
