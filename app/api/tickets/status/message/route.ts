@@ -53,7 +53,22 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
 
-    const recaptcha = await verifyRecaptcha(body.recaptcha_token, 'ticket_message')
+    // Stricter than every other public endpoint, deliberately.
+    //
+    // failClosed: elsewhere a missing secret or a Google outage lets the request
+    // through, because losing a real customer's submission is worse than
+    // admitting a bot. Here the opposite holds: this is an anonymous WRITE into
+    // an existing record, reCAPTCHA is the only thing gating it, and failing open
+    // would mean one missing env var silently turns it into an open door that
+    // nobody notices. A customer blocked here still has the phone and the ticket.
+    //
+    // minScore 0.7 rather than the 0.5 default: the account this protects is a
+    // guessable pair (sequential ticket number + an often-public email), so the
+    // bar for automation should be higher than for a first-time submission.
+    const recaptcha = await verifyRecaptcha(body.recaptcha_token, 'ticket_message', {
+      failClosed: true,
+      minScore: 0.7,
+    })
     if (!recaptcha.ok) {
       console.warn('[status/message] reCAPTCHA check failed:', recaptcha.reason)
       return NextResponse.json({ error: 'Please try again.' }, { status: 400 })

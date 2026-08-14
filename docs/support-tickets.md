@@ -197,8 +197,25 @@ plus the email the ticket was raised with** must both match one row. The number
 alone is guessable; the pair is not, and it is what the customer already supplied
 to see the ticket at all.
 
-Because it is a public write, it also carries: reCAPTCHA (action
-`ticket_message`), a tighter rate limit than the lookup (8 per 10 min vs 20),
+Because it is a public write, it also carries **the strictest reCAPTCHA settings
+in the codebase** (action `ticket_message`): `failClosed: true` and a
+`minScore` of **0.7** rather than the 0.5 default.
+
+Both are deliberate inversions of the house rule. Everywhere else reCAPTCHA fails
+OPEN, because losing a real customer's submission is worse than admitting a bot.
+Here reCAPTCHA is the *only* control gating a stranger's write, so failing open
+would mean one missing env var silently turns it into an open door that nobody
+notices — and a customer blocked here still has the phone. The higher score bar
+exists because the "credential" it protects is a guessable pair (a sequential
+ticket number plus an often-public email), so automation should face a higher bar
+than it does on a first-time submission.
+
+⚠️ A visible "I'm not a robot" checkbox was considered and rejected: it is
+reCAPTCHA **v2** (a different site key), it adds friction to the exact journey a
+frustrated customer takes to reach us, and it does not address the real threat —
+a human guessing a ticket number passes a checkbox without breaking stride.
+
+It also carries a tighter rate limit than the lookup (8 per 10 min vs 20),
 message text stored **escaped** and never as caller-supplied HTML, and
 `visibility`/`author_type` hardcoded — a crafted request cannot post an internal
 note or impersonate staff. The note attaches to the ticket the number+email pair

@@ -95,6 +95,37 @@ No customer confirmation email: they already have the PDF, which is the better a
 
 See [`docs/rfq-moisture-survey.md`](docs/rfq-moisture-survey.md).
 
+## 2026-08-14 — Hardening the customer message box after a security review
+
+Two fixes and a deliberate non-fix, from reviewing the endpoint added earlier today.
+
+**The message box no longer appears on troubleshooting lookups.** The portal-access CTA beside it
+was correctly gated with `!startsWith('TSC-')`; the message box was not. TSC- references are
+checklist intakes in a different table, and the endpoint only resolves `tickets` — so a customer
+looking up one of those was offered a reply that could never land. Not a security hole, but a
+promise the portal could not keep.
+
+**reCAPTCHA now fails CLOSED on that endpoint, at a 0.7 score threshold.** `verifyRecaptcha` takes
+options; every other caller keeps the existing fail-open behaviour, which is correct for customer
+submissions — a missing env var or a bad day at Google must never be why a real support ticket is
+lost. An anonymous *write into an existing record* is the opposite case: reCAPTCHA is the only
+control gating it, so failing open would mean one missing `RECAPTCHA_SECRET_KEY` silently turns it
+into an open door with nobody the wiser. A customer blocked there still has the phone. The score bar
+rises from 0.5 to 0.7 because the credential it protects is a guessable pair — a sequential ticket
+number plus an often-public email.
+
+**A visible "I'm not a robot" checkbox was considered and rejected.** It is reCAPTCHA v2 and needs a
+different site key; it adds friction to the exact journey a frustrated customer takes to reach us;
+and it does not address the actual threat, since a human guessing a ticket number passes a checkbox
+without breaking stride. Raising the invisible v3 bar achieves more, for free.
+
+**Known and accepted:** ticket references are sequential (`IAT-2026-2944`), so the number half of
+the pair is enumerable. This predates the write endpoint — `/api/tickets/status` already exposed
+ticket details to the same guess — but writes make it worth fixing properly. A random suffix on the
+reference would close it at the root and is the highest-leverage remaining change. The rate limiter
+still fails open by design: it is a throttle, not an auth control, and failing closed there would
+deny real customers during a backend blip.
+
 ## 2026-08-14 — Customer mail stops inviting replies, and customers can finally write back
 
 The confirmation emails shipped earlier today told customers to reply to them, and sent from

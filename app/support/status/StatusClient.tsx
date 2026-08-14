@@ -368,7 +368,14 @@ export default function StatusClient({ customerContext = null }: { customerConte
                 </div>
 
                 {/* Write back — the reason confirmation emails can say "don't reply".
-                    Ownership is already proven by the number + email used above. */}
+                    Ownership is already proven by the number + email used above.
+
+                    Support tickets only. TSC- references are troubleshooting-checklist
+                    intakes, which live in a different table; the endpoint below only
+                    resolves `tickets`, so showing the box for them would offer a
+                    customer a reply that could never land. Same gate as the portal-access
+                    CTA further down. */}
+                {!ticketNumber.toUpperCase().startsWith('TSC-') && (
                 <div className="px-6 pb-6">
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Add a message</p>
                   {msgSent ? (
@@ -404,6 +411,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                     </>
                   )}
                 </div>
+                )}
 
                 {/* Request portal access — support tickets only, not troubleshooting-checklist refs */}
                 {!ticketNumber.toUpperCase().startsWith('TSC-') && (
