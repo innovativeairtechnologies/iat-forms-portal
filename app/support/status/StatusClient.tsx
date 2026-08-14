@@ -5,12 +5,26 @@ import { motion } from 'framer-motion'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
 import Link from 'next/link'
+import Script from 'next/script'
 import {
   Search, Loader2, CheckCircle, Clock, Wrench, Lightbulb,
   ArrowRight, BookOpen, AlertCircle, Ticket as TicketIcon,
 } from 'lucide-react'
 import type { StatusCustomerContext } from '@/lib/support-context'
 import RequestAccountCta from '@/components/support/RequestAccountCta'
+
+// Invisible reCAPTCHA v3 for the "add a message" write path. Absent in env →
+// no script, no token, and lib/recaptcha.ts skips verification entirely.
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void
+      execute: (siteKey: string, options: { action: string }) => Promise<string>
+    }
+  }
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,6 +81,51 @@ export default function StatusClient({ customerContext = null }: { customerConte
   const [result, setResult] = useState<TicketResult | null>(null)
   const [articles, setArticles] = useState<RelatedArticle[]>([])
 
+  // "Add a message" — the write path that lets the confirmation emails tell
+  // customers not to reply. Reset whenever a different ticket is looked up.
+  const [message, setMessage] = useState('')
+  const [msgSending, setMsgSending] = useState(false)
+  const [msgSent, setMsgSent] = useState(false)
+  const [msgError, setMsgError] = useState<string | null>(null)
+
+  const sendMessage = async () => {
+    const text = message.trim()
+    if (!text) return
+    setMsgSending(true)
+    setMsgError(null)
+    try {
+      // Same best-effort reCAPTCHA pattern as the ticket form: a grecaptcha
+      // hiccup must never stop a real customer from reaching us.
+      let recaptcha_token: string | undefined
+      if (RECAPTCHA_SITE_KEY) {
+        try {
+          await new Promise<void>(resolve => window.grecaptcha?.ready(resolve) ?? resolve())
+          recaptcha_token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, { action: 'ticket_message' })
+        } catch (e) {
+          console.error('[status] reCAPTCHA token fetch failed:', e)
+        }
+      }
+      const res = await fetch('/api/tickets/status/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticket_number: ticketNumber.trim(),
+          email: email.trim(),
+          message: text,
+          ...(recaptcha_token ? { recaptcha_token } : {}),
+        }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error || 'We could not send your message. Please try again.')
+      setMsgSent(true)
+      setMessage('')
+    } catch (err) {
+      setMsgError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setMsgSending(false)
+    }
+  }
+
   // Prefill the ticket number from ?ticket= (e.g. the link on the success screen).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -81,6 +140,12 @@ export default function StatusClient({ customerContext = null }: { customerConte
     setLoading(true)
     setError(null)
     setResult(null)
+    // Looking up a different ticket must not inherit the previous one's
+    // "message sent" confirmation, or the customer sees a success state for a
+    // message they never wrote on this ticket.
+    setMessage('')
+    setMsgSent(false)
+    setMsgError(null)
     try {
       // TSC- references are troubleshooting-checklist intakes; everything else
       // (TKT-…) is a support ticket. Both endpoints return the same shape.
@@ -122,6 +187,14 @@ export default function StatusClient({ customerContext = null }: { customerConte
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
+      {/* reCAPTCHA v3 (invisible) — gates the "add a message" POST. Only loads
+          once a site key is configured; see lib/recaptcha.ts for the server side. */}
+      {RECAPTCHA_SITE_KEY && (
+        <Script
+          src={`https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`}
+          strategy="afterInteractive"
+        />
+      )}
 
       {/* Header */}
       <header className="px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center gap-3">
@@ -292,6 +365,44 @@ export default function StatusClient({ customerContext = null }: { customerConte
                 <div className="px-6 pb-6">
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Your reported issue</p>
                   <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{result.problem_description}</p>
+                </div>
+
+                {/* Write back — the reason confirmation emails can say "don't reply".
+                    Ownership is already proven by the number + email used above. */}
+                <div className="px-6 pb-6">
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Add a message</p>
+                  {msgSent ? (
+                    <div className="bg-[#089447]/5 border border-[#089447]/15 rounded-xl px-4 py-3 flex items-start gap-2.5">
+                      <CheckCircle size={15} className="text-[#089447] mt-0.5 flex-shrink-0" />
+                      <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                        Thanks — your message is on the ticket and our team has been notified.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <textarea
+                        value={message}
+                        onChange={e => setMessage(e.target.value)}
+                        rows={4}
+                        maxLength={4000}
+                        placeholder="Anything to add, or a question for the team?"
+                        className="w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-[13px] text-gray-700 dark:text-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#089447]/30 focus:border-[#089447] resize-y"
+                      />
+                      {msgError && (
+                        <p className="mt-2 text-[12px] text-rose-500">{msgError}</p>
+                      )}
+                      <button
+                        onClick={sendMessage}
+                        disabled={msgSending || !message.trim()}
+                        className="mt-2.5 inline-flex items-center gap-2 text-[13px] font-semibold text-white bg-[#089447] hover:bg-[#077a3c] disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 rounded-xl transition-colors"
+                      >
+                        {msgSending ? <><Loader2 size={14} className="animate-spin" /> Sending…</> : <>Send to the team <ArrowRight size={14} /></>}
+                      </button>
+                      <p className="mt-2 text-[11px] text-gray-400 leading-relaxed">
+                        This goes straight onto your ticket, so everything stays in one place.
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 {/* Request portal access — support tickets only, not troubleshooting-checklist refs */}

@@ -86,3 +86,43 @@ export async function sendTicketNotificationToSupportDesk(ticket: Ticket, recipi
     else console.log(`[resend] ticket notification sent to ${recipients[i]}: id=${r.data?.id}`)
   })
 }
+
+// ── Desk alert when a customer writes back via /support/status ────────────────
+// Anonymous customers can add a message to their own ticket (proving ownership
+// with the ticket number + the email it was raised with — see
+// app/api/tickets/status/message/route.ts). Without this alert their reply would
+// land silently in the thread and nobody would know to look, which is exactly
+// the failure mode the whole no-reply redesign exists to prevent.
+export async function sendCustomerMessageAlert(
+  args: { ticket_number: string; customer_name: string | null; message: string },
+  recipients: string[],
+) {
+  const { ticket_number, customer_name, message } = args
+  const url = `${APP_URL}/admin/tickets`
+
+  const body = `
+    ${ticketChip(ticket_number)}
+    <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">
+      ${esc(customer_name || 'The customer')} added a message
+    </p>
+    <div style="background:#f8f9fa;border-left:3px solid #089447;border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 20px;">
+      <p style="margin:0;color:#333;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>
+    </div>
+    <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;">
+      It is already on the ticket thread. Reply from the ticket so the whole conversation stays in one place.
+    </p>
+    <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Open the ticket queue</a>`
+
+  const results = await Promise.all(
+    recipients.map(to => resend.emails.send({
+      from: FROM,
+      to,
+      subject: `Customer reply on ${ticket_number}${customer_name ? ` — ${customer_name}` : ''}`,
+      html: shell('#1a1a2e', 'Customer Reply', body),
+    }))
+  )
+  results.forEach((r, i) => {
+    if (r.error) console.error(`[resend] customer message alert failed to ${recipients[i]}:`, r.error)
+    else console.log(`[resend] customer message alert sent to ${recipients[i]}: id=${r.data?.id}`)
+  })
+}

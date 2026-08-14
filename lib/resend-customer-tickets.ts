@@ -27,7 +27,34 @@ export function customerTicketEmailsEnabled(): boolean {
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = EMAIL_FROM.SUPPORT
+// PORTAL (noreply@), never SUPPORT (iatsupport@). Customer-facing mail must not
+// invite a reply: an emailed reply lands in a mailbox, not on the ticket, and the
+// thread fragments across two places nobody reconciles. Every one of these emails
+// tells the customer not to reply and links them back into the portal instead.
+const FROM = EMAIL_FROM.PORTAL
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL
+  || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
+
+/** Deep link to the status page with the reference prefilled. The customer still
+ *  has to supply the email the ticket was raised with before anything is shown. */
+function portalLink(reference: string) {
+  return `${APP_URL}/support/status?ticket=${encodeURIComponent(reference)}`
+}
+
+/** The call to action that replaces "just reply to this email". */
+function replyBlock(reference: string, verb: string) {
+  return `
+    <div style="background:#f0faf4;border:1px solid rgba(8,148,71,0.25);border-radius:10px;padding:18px 20px;margin:24px 0 0;">
+      <p style="margin:0 0 12px;color:#333;font-size:14px;line-height:1.6;">
+        Need to add something, or ${esc(verb)}? Use the link below — it keeps everything on your ticket
+        where our team will see it.
+      </p>
+      <a href="${esc(portalLink(reference))}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View your ticket &amp; send a message</a>
+    </div>
+    <p style="margin:18px 0 0;color:#999;font-size:12px;line-height:1.5;">
+      Please do not reply to this email — it is sent from an unmonitored address and replies are not read.
+    </p>`
+}
 
 function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -86,10 +113,7 @@ export async function sendTicketConfirmationToCustomer(ticket: Ticket): Promise<
     <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">What you told us</p>
     <p style="margin:0 0 4px;color:#555;font-size:15px;line-height:1.55;white-space:pre-wrap;">${esc(ticket.problem_description)}</p>` : ''}
     ${aiRecsBlock(ticket.ai_recommendations)}
-    <p style="margin:22px 0 0;color:#333;font-size:14px;line-height:1.6;">
-      You can reply directly to this email if you have anything to add — just keep ${esc(ticket.ticket_number)}
-      in the subject line so it stays with your ticket.
-    </p>`
+    ${replyBlock(ticket.ticket_number, 'have a question')}`
 
   const result = await resend.emails.send({
     from: FROM,
@@ -120,10 +144,7 @@ export async function sendTicketReplyToCustomer(
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;overflow:hidden;margin-bottom:20px;">
       <tr><td style="padding:16px 20px;color:#333;font-size:15px;line-height:1.6;">${replyHtml}</td></tr>
     </table>
-    <p style="margin:0;color:#333;font-size:14px;line-height:1.6;">
-      Reply directly to this email to respond — please keep ${esc(ticket.ticket_number)} in the subject line
-      so your message stays with the ticket.
-    </p>`
+    ${replyBlock(ticket.ticket_number, 'want to respond')}`
 
   const result = await resend.emails.send({
     from: FROM,

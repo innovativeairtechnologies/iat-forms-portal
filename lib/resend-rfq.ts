@@ -146,9 +146,14 @@ export async function sendRfqConfirmationToCustomer(
       ${data.location ? row('Location', data.location) : ''}
       ${data.dateRequired ? row('Quote needed by', data.dateRequired) : ''}
     </table>
-    <p style="margin:22px 0 0;color:#333;font-size:14px;line-height:1.6;">
-      You can reply directly to this email if anything has changed or you have more to add — just keep
-      ${esc(reference)} in the subject line so it stays with your survey.
+    <div style="background:#f0faf4;border:1px solid rgba(8,148,71,0.25);border-radius:10px;padding:18px 20px;margin:24px 0 0;">
+      <p style="margin:0 0 12px;color:#333;font-size:14px;line-height:1.6;">
+        Anything changed, or something to add? Use the link below so it stays with your request.
+      </p>
+      <a href="${esc(APP_URL + '/support/status?ticket=' + encodeURIComponent(reference))}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View your request &amp; send a message</a>
+    </div>
+    <p style="margin:18px 0 0;color:#999;font-size:12px;line-height:1.5;">
+      Please do not reply to this email — it is sent from an unmonitored address and replies are not read.
     </p>`
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
@@ -169,7 +174,9 @@ export async function sendRfqConfirmationToCustomer(
 </body></html>`
 
   const result = await resend.emails.send({
-    from: EMAIL_FROM.SUPPORT,
+    // PORTAL (noreply@) — customer-facing mail never invites a reply; see the
+    // note in lib/resend-customer-tickets.ts.
+    from: EMAIL_FROM.PORTAL,
     to: data.email,
     subject: `We've received your request — ${reference}`,
     html,

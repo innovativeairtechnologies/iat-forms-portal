@@ -95,6 +95,36 @@ No customer confirmation email: they already have the PDF, which is the better a
 
 See [`docs/rfq-moisture-survey.md`](docs/rfq-moisture-survey.md).
 
+## 2026-08-14 — Customer mail stops inviting replies, and customers can finally write back
+
+The confirmation emails shipped earlier today told customers to reply to them, and sent from
+`iatsupport@`. That was a dead end: **nothing ingests inbound email into a ticket**, so a reply
+would land in a mailbox while the thread sat in the portal, splitting the conversation across two
+places nobody reconciles.
+
+All customer-facing mail now sends from **`noreply@dehumidifiers.com`** and says plainly not to
+reply. In place of the reply invitation each email carries a deep link to
+`/support/status?ticket=<reference>` and a "View your ticket & send a message" button. That covers
+the ticket confirmation, the copy of an admin's reply, and the RFQ confirmation. Desk notifications
+are unchanged and still go to `iatsupport@`.
+
+**The link needed somewhere to land.** `/support/status` was read-only, and every route touching
+`ticket_notes` was authentication-gated — there was no write path for an anonymous customer at all.
+Telling people not to reply while giving them nowhere to write would have been worse than the
+behaviour it replaced, so the two ship together: a **message box on the status page**, backed by
+`POST /api/tickets/status/message`.
+
+A stranger is allowed to write to a ticket by proving the same pair the status lookup already
+requires — the ticket number **and** the email it was raised with. The number alone is guessable;
+the pair is not. On top of that: reCAPTCHA, a tighter rate limit than the lookup (8 per 10 min),
+message text stored escaped rather than as caller-supplied HTML, and `visibility`/`author_type`
+hardcoded so a crafted request cannot post an internal note or impersonate staff. The note attaches
+to whichever ticket the pair resolves to, so a caller cannot aim it at another ticket's id.
+
+The desk gets an alert when a customer writes (`sendCustomerMessageAlert`). Without it a reply
+would sit silently in the thread with nobody prompted to look — the same failure shape as the
+notification outage earlier this month.
+
 ## 2026-08-14 — The domain sends its own mail, and no notification goes to a person again
 
 DNS moved from Wix to GoDaddy and `dehumidifiers.com` **verified in Resend**. Portal mail now sends

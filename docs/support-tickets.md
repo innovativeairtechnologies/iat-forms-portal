@@ -159,6 +159,48 @@ customer-facing sends, so they can never drift apart:
 Each goes to the address the customer typed, quotes their reference number, and
 invites a reply that keeps the reference in the subject.
 
+### Customer mail never invites a reply
+
+Every customer-facing send goes out from **`noreply@dehumidifiers.com`**
+(`EMAIL_FROM.PORTAL`), never from `iatsupport@`, and every one carries the line
+*"Please do not reply to this email — it is sent from an unmonitored address."*
+
+The reason is structural, not cosmetic. **Nothing ingests inbound email into a
+ticket.** An emailed reply lands in a mailbox while the ticket thread sits in the
+portal, and the conversation splits across two places nobody reconciles. Sending
+from the support mailbox and inviting replies — which is what these emails used to
+do — actively caused that split.
+
+Instead each email carries a deep link to
+`/support/status?ticket=<reference>` and a **"View your ticket & send a message"**
+button.
+
+⚠️ **The no-reply wording and the write path have to ship together.** Telling a
+customer not to reply while giving them no way to write back leaves anyone with a
+question stranded — worse than the reply-to-a-mailbox behaviour it replaced. If you
+ever disable the message box, restore a monitored reply address in the same change.
+
+### How an anonymous customer writes to a ticket
+
+`POST /api/tickets/status/message`, backing the message box on `/support/status`.
+
+Ownership is proved exactly as the status lookup proves it: **the ticket number
+plus the email the ticket was raised with** must both match one row. The number
+alone is guessable; the pair is not, and it is what the customer already supplied
+to see the ticket at all.
+
+Because it is a public write, it also carries: reCAPTCHA (action
+`ticket_message`), a tighter rate limit than the lookup (8 per 10 min vs 20),
+message text stored **escaped** and never as caller-supplied HTML, and
+`visibility`/`author_type` hardcoded — a crafted request cannot post an internal
+note or impersonate staff. The note attaches to the ticket the number+email pair
+resolves to, so a caller cannot aim it at someone else's ticket id.
+
+The desk is alerted by `sendCustomerMessageAlert` (`lib/resend-tickets.ts`) to
+`SUPPORT_NOTIFICATION_EMAIL`. Without that, a customer reply would land silently
+in the thread and nobody would know to look — the same class of failure as the
+August outage.
+
 ### The DNS that makes this work
 
 | Record | Value |
