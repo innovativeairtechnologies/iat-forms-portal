@@ -52,9 +52,10 @@ function aiRecsBlock(recs: string[] | null) {
 }
 
 // ── Support-desk notification on new ticket ───────────────────────────────────
-// The ONLY email a support submission sends. A customer confirmation used to go
-// out alongside this one; it was removed 2026-08-03 — customers are contacted by
-// the desk, not by the app.
+// The support-desk heads-up. A customer confirmation was removed 2026-08-03, then
+// reinstated 2026-08-12 as an INERT, switch-gated path — see
+// sendTicketConfirmationToCustomer in lib/resend-customer-tickets.ts (no-op unless
+// CUSTOMER_TICKET_EMAILS === "on"). This function is unchanged and still desk-only.
 export async function sendTicketNotificationToSupportDesk(ticket: Ticket, recipients: string[]) {
   const ticketUrl = `${APP_URL}/admin/tickets/${ticket.id}`
 

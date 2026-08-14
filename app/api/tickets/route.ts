@@ -6,13 +6,20 @@ import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
 import { sendTicketNotificationToSupportDesk } from '@/lib/resend-tickets'
+import { sendTicketConfirmationToCustomer } from '@/lib/resend-customer-tickets'
 
-// A support submission sends exactly ONE email: a heads-up to the support desk
-// so they know a ticket came through (decision 2026-08-03). There is deliberately
-// NO customer confirmation, and the admin roster is deliberately NOT mailed —
+// A support submission sends a heads-up to the support desk so they know a ticket
+// came through (decision 2026-08-03). The admin roster is deliberately NOT mailed —
 // don't re-plumb getAdminRecipients()/ADMIN_NOTIFICATION_EMAIL back in here.
 // SUPPORT_NOTIFICATION_EMAIL (comma-separated) redirects or widens the list from
 // Vercel without a deploy.
+//
+// A customer confirmation is ALSO sent, but it ships INERT: sendTicketConfirmation-
+// ToCustomer() is a no-op unless CUSTOMER_TICKET_EMAILS === "on" (see
+// lib/resend-customer-tickets.ts). With the switch unset — its default — this route
+// behaves exactly as the desk-only version did. Do not remove the call thinking the
+// 2026-08-03 "no customer confirmation" decision still stands; the owner reversed it
+// 2026-08-12, gated on the email-domain cutover.
 const SUPPORT_DESK_EMAIL = 'crystal@dehumidifiers.com'
 
 // ── Merged-field validation (the unified support form carries the old
@@ -199,6 +206,10 @@ export async function POST(req: NextRequest) {
     } else {
       console.log('[tickets] no support recipient configured — notification skipped')
     }
+
+    // Customer confirmation — no-op unless CUSTOMER_TICKET_EMAILS === "on". Never
+    // fails the ticket (already committed above); a send error is only logged.
+    await sendTicketConfirmationToCustomer(fullTicket).catch(console.error)
 
     return NextResponse.json({ success: true, ticket_number, ai_recommendations })
   } catch (err) {

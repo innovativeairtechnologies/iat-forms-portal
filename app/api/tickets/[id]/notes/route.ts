@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdminAuth } from '@/lib/api-auth'
 import { requireTicketAccess } from '@/lib/ticket-access'
 import { sanitizeNoteHtml, noteHasContent, sanitizeAttachments } from '@/lib/sanitize'
+import { customerTicketEmailsEnabled, sendTicketReplyToCustomer } from '@/lib/resend-customer-tickets'
 
 // Ticket notes — a shared reply thread. Writes go through this service-role
 // route (NOT the browser anon client), content is sanitized server-side before
@@ -131,6 +132,25 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   }
 
   if (error) return NextResponse.json({ error: 'Failed to save note' }, { status: 500 })
+
+  // Email the customer a copy of an admin's public reply. Ships INERT: the guard
+  // short-circuits (no ticket lookup, no send) unless CUSTOMER_TICKET_EMAILS ===
+  // "on", so with the switch unset this route is byte-for-byte the old behavior —
+  // the "Reply to customer" toggle still only marks the note public on their
+  // portal page. Never fails the note save (already committed); errors are logged.
+  if (visibility === 'public' && authorType === 'admin' && noteHasContent(clean) && customerTicketEmailsEnabled()) {
+    try {
+      const { data: t } = await supabaseAdmin
+        .from('tickets')
+        .select('ticket_number, customer_name, customer_email, brand')
+        .eq('id', params.id)
+        .single()
+      if (t?.customer_email) await sendTicketReplyToCustomer(t, clean)
+    } catch (mailErr) {
+      console.error('[notes] customer reply email failed:', mailErr)
+    }
+  }
+
   return NextResponse.json(data)
 }
 

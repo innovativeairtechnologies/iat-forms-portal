@@ -91,6 +91,13 @@ SUPPORT_NOTIFICATION_EMAIL (comma-separated)  ||  crystal@dehumidifiers.com
 admin fan-out; don't re-plumb `getAdminRecipients()` / `ADMIN_NOTIFICATION_EMAIL`
 into either route.
 
+**`SUPPORT_NOTIFICATION_EMAIL` now has a second consumer.** The RFQ desk alert
+(`/api/rfq`, migration 087) resolves
+`RFQ_NOTIFICATION_EMAIL || SUPPORT_NOTIFICATION_EMAIL || jacob@dehumidifiers.com`,
+so it inherits whatever redirect is in place here rather than needing its own. When
+you change the value below, you are changing where quote requests land too — and
+when you delete it, both senders fall back to their own proper defaults together.
+
 A customer confirmation and an admin-reply copy also exist
 (`lib/resend-customer-tickets.ts`) but ship **inert** behind
 `CUSTOMER_TICKET_EMAILS = "on"`. Leave that off until the domain below is verified —
