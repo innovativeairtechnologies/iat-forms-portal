@@ -9,7 +9,8 @@ import { verifyRecaptcha } from '@/lib/recaptcha'
 // Retired path — the checklist merged into the Equipment Support ticket, so this
 // endpoint only fires if something POSTs it directly. Kept in step with
 // app/api/tickets/route.ts: one email, to the support desk, none to the customer.
-const SUPPORT_DESK_EMAIL = 'crystal@dehumidifiers.com'
+// Shared mailbox, never an individual — see the note in app/api/tickets/route.ts.
+const SUPPORT_DESK_EMAIL = 'iatsupport@dehumidifiers.com'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

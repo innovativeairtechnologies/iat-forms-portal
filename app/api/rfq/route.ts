@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
-import { sendRfqNotificationToSalesDesk } from '@/lib/resend-rfq'
+import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
 import { applicationLabel, emptyRfq, type RfqData } from '@/lib/rfq'
 
 // Public endpoint behind /support/rfq. Anonymous by design — the whole point of
@@ -14,18 +14,22 @@ import { applicationLabel, emptyRfq, type RfqData } from '@/lib/rfq'
 // RFQ_NOTIFICATION_EMAIL (comma-separated) → SUPPORT_NOTIFICATION_EMAIL → the
 // inside-sales default below.
 //
-// That middle step is the load-bearing one. Until dehumidifiers.com verifies in
-// Resend, portal mail sends from Resend's SANDBOX address, which may only
-// deliver to the Resend account owner — every other recipient is refused, and
-// refused silently. That is what made six support tickets vanish between
-// 2026-08-03 and 08-13. SUPPORT_NOTIFICATION_EMAIL is the stopgap that already
-// points at an address which does deliver, so inheriting it means RFQ alerts
-// arrive on day one with no new Vercel config, and both senders revert to their
-// proper defaults together the moment that stopgap is deleted.
+// The middle step was load-bearing while dehumidifiers.com was unverified in
+// Resend: portal mail sent from Resend's SANDBOX address, which only delivers to
+// the Resend account owner, refusing every other recipient silently. That is what
+// made six support tickets vanish between 2026-08-03 and 08-13.
+//
+// The domain verified on 2026-08-14, so that hazard is gone — mail now sends from
+// the real domain and reaches anyone. The chain is kept because it is still a
+// useful redirect, but RFQ_NOTIFICATION_EMAIL is now set explicitly rather than
+// inherited, so changing where tickets go no longer silently moves quote requests.
+//
+// A shared mailbox on purpose, never an individual: quote requests have to keep
+// being seen when someone is on holiday, off sick, or has left.
 //
 // The survey itself is committed before any mail is attempted, so a refused
 // send never costs us the request — it is still in /admin/rfq either way.
-const SALES_DESK_EMAIL = 'jacob@dehumidifiers.com'
+const SALES_DESK_EMAIL = 'iatsupport@dehumidifiers.com'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -173,6 +177,12 @@ export async function POST(req: NextRequest) {
     } else {
       console.log('[rfq] no sales recipient configured — notification skipped')
     }
+
+    // Receipt to the person who filled the survey in. No-op unless
+    // CUSTOMER_TICKET_EMAILS === "on"; never fails the request, which is already
+    // committed above and visible in /admin/rfq regardless of what mail does.
+    await sendRfqConfirmationToCustomer({ reference, data, applicationLabel: label })
+      .catch(err => console.error('[rfq] customer confirmation failed:', err))
 
     return NextResponse.json({ success: true, id: saved.id, reference: saved.reference })
   } catch (err) {

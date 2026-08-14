@@ -20,7 +20,12 @@ import { sendTicketConfirmationToCustomer } from '@/lib/resend-customer-tickets'
 // behaves exactly as the desk-only version did. Do not remove the call thinking the
 // 2026-08-03 "no customer confirmation" decision still stands; the owner reversed it
 // 2026-08-12, gated on the email-domain cutover.
-const SUPPORT_DESK_EMAIL = 'crystal@dehumidifiers.com'
+// A shared mailbox on purpose, never an individual. Support has to keep working
+// when someone is on holiday, off sick, or has left — a personal address is a
+// single point of failure that nobody notices until a ticket goes unanswered.
+// SUPPORT_NOTIFICATION_EMAIL (comma-separated) can widen or redirect this from
+// Vercel without a deploy; this constant is only the floor it falls back to.
+const SUPPORT_DESK_EMAIL = 'iatsupport@dehumidifiers.com'
 
 // ── Merged-field validation (the unified support form carries the old
 // Troubleshooting Checklist fields too). Mirrors app/api/troubleshooting/route.ts.

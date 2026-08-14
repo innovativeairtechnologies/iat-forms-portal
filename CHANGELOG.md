@@ -95,6 +95,39 @@ No customer confirmation email: they already have the PDF, which is the better a
 
 See [`docs/rfq-moisture-survey.md`](docs/rfq-moisture-survey.md).
 
+## 2026-08-14 — The domain sends its own mail, and no notification goes to a person again
+
+DNS moved from Wix to GoDaddy and `dehumidifiers.com` **verified in Resend**. Portal mail now sends
+from the real domain instead of Resend's sandbox address, which could only ever deliver to the
+Resend account owner. That limitation is what silently swallowed six support tickets between
+2026-08-03 and 08-13.
+
+The move itself: 16 records rebuilt at GoDaddy and verified record-by-record against live DNS
+*before* the name servers were switched at Network Solutions, so the cutover was a non-event —
+company email never dropped, and the Wix website came through on the pointing method (apex A →
+`185.230.63.107`, `www` → `pointing.wixdns.net`). The stray `feedback-smtp` MX that had been sitting
+on the apex at priority 20 was deleted first, which also cleared an error Microsoft 365 had been
+reporting on the domain.
+
+**Senders now use the real domain:** `RESEND_FROM_SUPPORT` = `iatsupport@dehumidifiers.com`,
+`RESEND_FROM_PORTAL` and `RESEND_FROM_FORMS` = `noreply@dehumidifiers.com`. Ticket mail carries no
+separate reply-to, so replies land on the support sender — hence a real, monitored, shared mailbox
+rather than the `technicalsupport@` placeholder that only ever existed in a code comment.
+
+**No notification is addressed to an individual any more.** Ticket, troubleshooting and RFQ desk
+alerts all go to `iatsupport@dehumidifiers.com`, and the hardcoded fallbacks in the three routes
+changed from `crystal@` / `jacob@` to the same shared mailbox. A personal address is a single point
+of failure that nobody notices until something is missed — holiday, sick leave, someone leaving.
+Even the floor the code falls back to should be shared. `RFQ_NOTIFICATION_EMAIL` is now set
+explicitly rather than inheriting `SUPPORT_NOTIFICATION_EMAIL`, so changing where tickets go no
+longer silently moves quote requests with them.
+
+**Customers now get a confirmation.** `CUSTOMER_TICKET_EMAILS` is on, and despite the name that one
+switch governs every customer-facing send so they cannot drift apart: the ticket confirmation, the
+copy of an admin's "Reply to customer" note, and a **new RFQ confirmation**
+(`sendRfqConfirmationToCustomer`) sent when a moisture survey is submitted. Each quotes the
+customer's reference number and invites a reply that keeps it in the subject line.
+
 ## 2026-08-13 — Support-desk alerts were silently undeliverable; two open endpoints closed
 
 Found while verifying the photo fix below: **no support-ticket notification has been delivered

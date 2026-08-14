@@ -104,59 +104,79 @@ A customer confirmation and an admin-reply copy also exist
 with the sandbox sender it would only ever reach the Resend account owner, never the
 customer.
 
-## ⚠️ Current state: the domain is unverified, so mail only reaches the account owner
+## ✅ Resolved 2026-08-14 — the domain is verified and mail sends as itself
 
-`dehumidifiers.com` is `status: failed` in Resend. With no `RESEND_FROM_*` set in
-Vercel every sender falls back to `onboarding@resend.dev`, and **Resend's sandbox
-sender can only deliver to the account owner's address**. Any send to anyone else is
-refused outright.
+DNS moved from Wix to GoDaddy (name servers changed at Network Solutions, the
+registrar). `dehumidifiers.com` now reports **verified** in Resend: DKIM, the
+`send` SPF TXT, and the `send` MX all pass. Portal mail sends from the real
+domain and reaches anyone — the sandbox-sender limitation is gone.
 
-That is why **no ticket notification was delivered between 2026-08-03 and
-2026-08-13**: the desk recipient became `crystal@dehumidifiers.com` on 2026-08-03,
-and every send since was rejected. The route logs the failure and never fails the
-ticket, so nothing surfaced.
+For the record, the outage this fixed: **no support-desk notification was
+delivered between 2026-08-03 and 2026-08-13.** The desk recipient became
+`crystal@dehumidifiers.com` on 2026-08-03, the sandbox sender could only reach the
+Resend account owner, and every send since was refused silently because the route
+logs failures without failing the ticket. Six tickets, nobody notified.
 
-**Stopgap in place:** `SUPPORT_NOTIFICATION_EMAIL` = `jacob.younker@dehumidifiers.com`.
-Alerts must be **forwarded to Crystal by hand** until the domain verifies.
+### Senders (Vercel, live)
 
-## Fixing it — two DNS edits (NOT yet applied as of 2026-08-13)
-
-Resend authenticates via a **`send.` subdomain**, so the apex SPF record is *not*
-involved and Microsoft 365 mail flow is not at risk. Current live DNS:
-
-| Record | State |
+| Variable | Value |
 |---|---|
-| `send.dehumidifiers.com` TXT → `v=spf1 include:amazonses.com ~all` | ✅ correct |
-| `send.dehumidifiers.com` MX | ❌ **missing** |
-| `dehumidifiers.com` (apex) MX → `feedback-smtp.us-east-1.amazonses.com` pri 20 | ⚠️ **wrong place** |
-| `resend._domainkey` DKIM | ✅ verified |
+| `RESEND_FROM_SUPPORT` | `IAT Technical Support <iatsupport@dehumidifiers.com>` |
+| `RESEND_FROM_PORTAL` | `IAT Portal <noreply@dehumidifiers.com>` |
+| `RESEND_FROM_FORMS` | `IAT Forms <noreply@dehumidifiers.com>` |
 
-Resend's MX was added to the **root domain** instead of the `send` host. Two edits:
+Ticket mail carries no separate reply-to, so **replies land on the SUPPORT sender**.
+That is why it is `iatsupport@` — a real, monitored, shared mailbox.
 
-1. **Delete** from `dehumidifiers.com`:
-   `MX  @  feedback-smtp.us-east-1.amazonses.com  priority 20`
-2. **Add** on host `send`:
-   `MX  send  feedback-smtp.us-east-1.amazonses.com  priority 10`
+### Recipients — shared mailboxes only, never individuals
 
-Leave the apex SPF (`include:spf.protection.outlook.com`) and the Outlook MX
-(priority 10) exactly as they are.
+```
+SUPPORT_NOTIFICATION_EMAIL = iatsupport@dehumidifiers.com   (tickets, troubleshooting)
+RFQ_NOTIFICATION_EMAIL     = iatsupport@dehumidifiers.com   (quote requests)
+```
 
-Do edit 1 regardless of Resend: that stray priority-20 apex MX is a **backup mail
-route pointing at an SES feedback endpoint that does not accept mail for the
-domain**. If Outlook's MX is briefly unreachable, senders fall back to it and
-inbound mail can bounce.
+⚠️ **Do not point any of these at a person.** An individual mailbox is a single
+point of failure that goes unnoticed until something is missed — holiday, sick
+leave, or someone leaving the company. The hardcoded fallbacks in
+`app/api/tickets/route.ts`, `app/api/troubleshooting/route.ts` and
+`app/api/rfq/route.ts` were changed from `crystal@` / `jacob@` to
+`iatsupport@` on 2026-08-14 for the same reason: even the floor should be shared.
 
-Once Resend reports `verified`:
+`RFQ_NOTIFICATION_EMAIL` is now set **explicitly** rather than inheriting
+`SUPPORT_NOTIFICATION_EMAIL`. Previously the RFQ route fell through to whatever
+tickets used, so changing the ticket recipient silently moved quote requests too.
 
-1. Set `RESEND_FROM_SUPPORT` = `IAT Technical Support <technicalsupport@dehumidifiers.com>`
-   in Vercel (read at runtime — no code change).
-2. Point `SUPPORT_NOTIFICATION_EMAIL` back at `crystal@dehumidifiers.com`, or delete
-   the var to fall through to the hardcoded default.
-3. Only then consider `CUSTOMER_TICKET_EMAILS = "on"`.
+### Customer-facing mail is ON
 
-**Do not set `RESEND_FROM_*` before the domain verifies** — sending from an
-unverified domain makes Resend reject every message, which is strictly worse than
-the sandbox fallback.
+`CUSTOMER_TICKET_EMAILS = "on"`. Despite the name, this one switch governs **all**
+customer-facing sends, so they can never drift apart:
+
+- ticket confirmation when a ticket is created — `lib/resend-customer-tickets.ts`
+- a copy of an admin's "Reply to customer" note — same file
+- **RFQ confirmation when a moisture survey is submitted** —
+  `sendRfqConfirmationToCustomer` in `lib/resend-rfq.ts`, added 2026-08-14
+
+Each goes to the address the customer typed, quotes their reference number, and
+invites a reply that keeps the reference in the subject.
+
+### The DNS that makes this work
+
+| Record | Value |
+|---|---|
+| name servers | `ns29.domaincontrol.com` / `ns30.domaincontrol.com` (set at Network Solutions) |
+| `send` MX | `feedback-smtp.us-east-1.amazonses.com` priority 10 |
+| `send` TXT | `v=spf1 include:amazonses.com ~all` |
+| `resend._domainkey` TXT | the 218-char DKIM key |
+| apex MX | `dehumidifiers-com.mail.protection.outlook.com` priority 10 — **Microsoft, do not touch** |
+| apex TXT | `v=spf1 include:spf.protection.outlook.com ~all` |
+
+The website stayed on Wix throughout, reached by "pointing": apex A →
+`185.230.63.107`, `www` CNAME → `pointing.wixdns.net`.
+
+⚠️ The stray `feedback-smtp` MX that used to sit on the **apex** at priority 20 was
+deleted on 2026-08-14. It belonged on `send`, and as an apex backup it was a route
+to a server that does not accept mail for the domain. Microsoft was flagging it as
+an error. Never re-create it.
 
 ## Endpoint gating
 
