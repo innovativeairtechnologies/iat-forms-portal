@@ -5,7 +5,12 @@ import { anthropic } from './anthropic'
 // ─── The weekly leadership update ────────────────────────────────────────────
 //
 // Turns the last seven days of CHANGELOG.md into a one-page summary a director
-// can read in under a minute, and mails it as a Word attachment.
+// can read in about two minutes, and mails it as a Word attachment.
+//
+// Length is a deliberate setting, not an accident: the brief targets 16-22 lines
+// of at most two short sentences each. An earlier pass at ~11 terse lines read in
+// 25 seconds but lost the "so what" — Jacob asked for more room to explain, on
+// the assumption the reader is not technical and wants the picture, not the gist.
 //
 // ── Why the changelog is the source ─────────────────────────────────────────
 // Because it is already written, already accurate, and already updated on every
@@ -57,10 +62,10 @@ export function recentEntries(markdown: string, asOf: Date, days = 7): { heading
 
 const SYSTEM = `You write the weekly one-page update for the leadership team of Innovative Air Technologies, an industrial dehumidification manufacturer. Your input is the engineering changelog for the past week.
 
-Your reader is a director. They are not technical. They will give this 45 seconds.
+Your reader is a director or owner. They are NOT technical. They will give this about two minutes.
 
 THE HARD RULE
-Each line is ONE sentence of AT MOST 18 WORDS. Count them. A line with two full stops is wrong. A line that needs a semicolon is too long — cut it down or drop the detail.
+Each line is AT MOST TWO short sentences and AT MOST 28 WORDS in total. Count them. The first sentence says what changed; an optional second says why it matters or what it cost. Never a third.
 
 WHAT TO WRITE
 - The business outcome only. What can someone now do, or what stopped being broken.
@@ -68,6 +73,7 @@ WHAT TO WRITE
 - Problems found and fixed belong here, stated plainly and without blame or drama.
 - When something was broken, say what it COST — how long it ran, or what was missed. "Six customer tickets went unseen for ten days" earns its words; "alerts now deliver reliably" hides the story leadership needs.
 - Invent NOTHING. Every line must trace to the input. A quiet week gets fewer lines, not padding.
+- NEVER state a number, duration or date that is not explicitly in the input. If the input says "had never run since it was built", write that — do not compute or guess how long that was. A figure a director might repeat in a meeting must be one we actually wrote down.
 - Never name a customer, a customer's company, or a competitor. Say "a customer".
 - Plain business English. No marketing language, no exclamation marks, no emoji.
 
@@ -75,28 +81,33 @@ EXAMPLES
 
 Input mentions a missing CRON_SECRET meaning cron routes 401'd and digest_runs was empty.
 BAD:  "Scheduled jobs have never run since launch. The authentication secret was missing, so every cron route returned 401. Fixed and verified."
-GOOD: "Scheduled jobs had never run; the daily digest and weekly leave accrual now work."
+GOOD: "Scheduled background jobs had never run since launch. The daily management summary and weekly leave accrual now work for the first time."
 
 Input describes a guided RFQ wizard with 18 presets producing a 5-page PDF.
 BAD:  "Quote requests can be submitted through a guided moisture survey form. Replaces emailed Word attachments. Eighteen room applications and eleven process types seed typical values."
-GOOD: "Customers can now complete a full moisture survey online in about three minutes."
+GOOD: "Customers can now complete a full moisture survey online in about three minutes. It replaces the Word form we used to email out."
 
 Input describes append-only notes with author snapshots and assignee permission checks.
 BAD:  "Quote requests gain an owner and permanent note trail. Each request assigns to someone holding deals permissions. Notes are append-only with timestamps and attribution."
-GOOD: "Every quote request now has an owner and a permanent, attributed note trail."
+GOOD: "Every quote request now has a named owner and a permanent note history. Notes are stamped with who wrote them and cannot be edited later."
 
 SHAPE
 At most 4 sections, titles in capitals (NEW, FIXED, IMPROVED are usually right).
-AT MOST 14 lines in total across all sections. Merge related items rather than listing each one.
+BETWEEN 16 AND 22 lines in total across all sections — enough that a reader finishes with the full picture of the week, not so many that it stops being a summary. Merge closely related items rather than listing every one.
 
 Return ONLY valid JSON, no prose around it:
 {"sections":[{"title":"NEW","items":["...","..."]}]}`
 
-/** Lines that break the brief, so a bad generation can be caught and retried. */
+/**
+ * Lines that break the brief, so a bad generation can be caught and retried.
+ * Thresholds sit slightly above the prompt's stated limits (28 words, 2 sentences)
+ * so a line that is a shade long is allowed through — the gate is for lines that
+ * have clearly reverted to explaining the engineering, not for hairline overruns.
+ */
 function offenders(sections: UpdateSection[]): string[] {
   const BANNED = /\b(endpoint|cron|idempotenc|API|environment variable|reCAPTCHA|migration|bisection|canonical|round-trip|401|server[- ]side|permissions)\b/i
   return sections.flatMap(s => s.items).filter(
-    line => line.split(/\s+/).length > 20 || (line.match(/\./g) ?? []).length > 1 || BANNED.test(line),
+    line => line.split(/\s+/).length > 32 || (line.match(/\./g) ?? []).length > 2 || BANNED.test(line),
   )
 }
 
@@ -152,7 +163,7 @@ export async function buildLeadershipUpdate(asOf = new Date()): Promise<Leadersh
       { role: 'assistant', content: text },
       {
         role: 'user',
-        content: `These lines break the brief — each is over 18 words, contains more than one sentence, or uses banned technical vocabulary:\n\n${bad.map(b => `- ${b}`).join('\n')}\n\nRewrite the WHOLE response. Same facts, same JSON shape, but every line one short sentence a director would read aloud in a meeting. At most 14 lines total.`,
+        content: `These lines break the brief — each is over 28 words, runs to three or more sentences, or uses banned technical vocabulary:\n\n${bad.map(b => `- ${b}`).join('\n')}\n\nRewrite the WHOLE response. Same facts, same JSON shape, but every line at most two short sentences a director would read aloud in a meeting. Between 16 and 22 lines total.`,
       },
     )
   }
