@@ -3,11 +3,14 @@ import { runRfqReminders } from '@/lib/rfq-reminders'
 
 /* Chases quote requests that have stalled at "new" — see lib/rfq-reminders.ts.
  *
- * NOT registered in vercel.json. The account tier caps cron entries at two
- * (accrue-pto + admin-digest, per the note in app/api/cron/admin-digest), so
- * the daily sweep piggybacks on the digest run instead. This route exists to
- * trigger it by hand, and is safe to register on its own schedule the day more
- * slots are available: the reminder stamps make a double-run a no-op.
+ * Registered in vercel.json at 13:00 UTC — start of business either side of the
+ * DST line (9am EDT / 8am EST), so a stalled quote is chased at the top of the
+ * day rather than at the end of it. The digest run also calls the same sweep;
+ * that is deliberate redundancy, not a leftover. The reminder stamps make the
+ * second run of the day a no-op.
+ *
+ * It was unregistered until 2026-08-17 because the account tier was believed to
+ * cap vercel.json at two cron entries. It does not.
  *
  * Auth FAILS CLOSED: no CRON_SECRET configured means nobody may call this, the
  * same rule as /api/cron/admin-digest. The first version of this guard read

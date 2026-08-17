@@ -8,18 +8,17 @@ import { runRfqReminders } from '@/lib/rfq-reminders'
    America/New_York, containing the shared AI briefing paragraph plus their
    newly-assigned/aging/overdue tickets.
 
-   Vercel Cron is UTC-only and doesn't shift for US daylight saving. The
-   ideal setup registers TWO fixed-UTC schedules (20:30 and 21:30 UTC — one
-   correct for EDT, the other for EST) and lets this route's NY-wall-clock
-   check no-op on whichever one is "wrong" for the season — fully automatic,
-   no manual maintenance. vercel.json currently registers only the EDT entry
-   (20:30 UTC) to stay within a 2-cron-job account tier limit (alongside
-   accrue-pto); this route's isDigestTime() check works identically either
-   way. TWO CONSEQUENCES of running single-entry: (1) around the Nov/Mar DST
-   changeover, vercel.json's schedule needs a manual one-line flip between
-   "30 20 * * *" and "30 21 * * *" to keep firing at 4:30pm local, and (2) if
-   the account is ever upgraded to a tier with more cron jobs, just add the
-   second entry back to vercel.json for zero-maintenance DST handling.
+   Vercel Cron is UTC-only and doesn't shift for US daylight saving, so
+   vercel.json registers TWO fixed-UTC schedules — 20:30 and 21:30 UTC, one
+   correct for EDT and the other for EST — and isDigestTime() below no-ops on
+   whichever one is "wrong" for the season. Zero seasonal maintenance.
+
+   This registered only the 20:30 entry until 2026-08-17, on the belief that
+   the account tier capped vercel.json at two cron jobs. That belief was wrong:
+   a third entry deployed fine, and Vercel documents multiple schedules for a
+   single path as the supported pattern. What the belief actually cost was a
+   manual one-line flip every Nov/Mar changeover — one nobody had yet had to
+   make, since no cron had ever run before CRON_SECRET was set.
 
    Idempotency: the digest_runs table (migration 038) guards against sending
    twice in one NY calendar day — e.g. if both cron entries somehow land in
@@ -33,10 +32,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // ── Quote-request reminders piggyback on this run ──
-  // vercel.json is capped at two cron entries on the current account tier, and
-  // both are spoken for, so the RFQ sweep rides along here rather than claiming
-  // its own slot. See lib/rfq-reminders.ts.
+  // ── Quote-request reminders also run here ──
+  // The sweep has its own slot now (/api/cron/rfq-reminders at 13:00 UTC). This
+  // call is KEPT rather than removed: the reminder stamps from migration 088
+  // make a repeat run a no-op, so redundancy costs two queries and buys chasing
+  // that survives either entry failing. It began as a workaround for a cron
+  // limit that turned out not to exist; it stays because it is free.
+  // See lib/rfq-reminders.ts.
   //
   // Placed BEFORE the digest-time and already-ran guards on purpose: those exist
   // to stop the digest going out twice, while the sweep has its own idempotency

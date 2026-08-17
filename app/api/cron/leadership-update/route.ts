@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { buildLeadershipUpdate } from '@/lib/leadership-update'
 import { renderLeadershipDocx } from '@/lib/leadership-docx'
 import { sendLeadershipUpdate, leadershipRecipients } from '@/lib/resend-leadership'
+import { getNyWallClock } from '@/lib/admin-digest'
 
 /* Weekly leadership update — Mondays at noon Eastern.
  *
@@ -13,15 +14,29 @@ import { sendLeadershipUpdate, leadershipRecipients } from '@/lib/resend-leaders
  * may call this. Do not relax to `if (SECRET && ...)` — that form skips the
  * check entirely when the variable is unset, and this route sends mail.
  *
- * DST: Vercel Cron is UTC and does not shift. `0 16 * * 1` is noon Eastern in
- * summer (EDT) and 11am in winter (EST). The same one-line seasonal flip the
- * admin digest documents applies here — change to `0 17 * * 1` for EST.
+ * DST: Vercel Cron is UTC and does not shift, so vercel.json registers BOTH
+ * 16:00 and 17:00 UTC on Mondays and isNoonEastern() below discards whichever
+ * one is wrong for the season. Exactly one survives, in both directions:
+ *
+ *            16:00 UTC        17:00 UTC
+ *   EDT      12:00 ET  SEND   13:00 ET  skip
+ *   EST      11:00 ET  skip   12:00 ET  SEND
+ *
+ * The window is the whole 12:00 hour, not a narrow band around the minute,
+ * because the two entries sit a full hour apart — so it can absorb a late
+ * invocation without ever letting both through.
  *
  * `?dry=1` builds everything and returns the summary WITHOUT sending, which is
- * how to check the wording before a Monday.
+ * how to check the wording before a Monday. `?force=1` sends outside the
+ * window. Neither is subject to the hour check; both still require the secret.
  */
 
 export const maxDuration = 60   // the model call plus docx render exceeds the default
+
+/** True anywhere inside the noon hour, America/New_York. */
+function isNoonEastern(): boolean {
+  return getNyWallClock().hour === 12
+}
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
@@ -30,6 +45,14 @@ export async function GET(req: NextRequest) {
   }
 
   const dryRun = req.nextUrl.searchParams.get('dry') === '1'
+  const force = req.nextUrl.searchParams.get('force') === '1'
+
+  // One of the two Monday entries is an hour off for the season — drop it here.
+  // A dry run and an explicit force both bypass this, so the preview command in
+  // docs/ still works on a Wednesday afternoon.
+  if (!dryRun && !force && !isNoonEastern()) {
+    return NextResponse.json({ skipped: true, reason: 'not noon (NY)' })
+  }
 
   try {
     const update = await buildLeadershipUpdate()

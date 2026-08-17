@@ -20,12 +20,14 @@ import { UNSTARTED_STATUS } from './rfq-status'
 // checked before the next send. An in-memory flag would not survive separate
 // serverless invocations.
 //
-// ── Why it is called from the digest cron ───────────────────────────────────
-// vercel.json is capped at two cron entries on the current account tier (see
-// the note in app/api/cron/admin-digest/route.ts). Rather than spend the second
-// slot, this piggybacks on the daily digest run. /api/cron/rfq-reminders exists
-// for a manual or independent trigger and is safe to register on its own the
-// day more slots are available — the stamps make a double-run a no-op.
+// ── What calls this ─────────────────────────────────────────────────────────
+// Twice a day, deliberately. /api/cron/rfq-reminders owns the 13:00 UTC slot,
+// and the daily digest run calls it again in the afternoon. The stamps above
+// make the second call of the day a no-op, so the duplication costs two queries
+// and buys a sweep that still happens if either entry breaks.
+//
+// Until 2026-08-17 only the digest call existed, because vercel.json was
+// believed to be capped at two cron entries on this account tier. It is not.
 
 /** How long a survey may sit before we chase it. */
 const UNSTARTED_HOURS = 24

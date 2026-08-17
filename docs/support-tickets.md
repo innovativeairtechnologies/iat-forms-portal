@@ -162,6 +162,37 @@ when the variable is missing. `/api/cron/rfq-reminders` shipped that way for abo
 2026-08-17 and an anonymous GET ran the sweep and sent real mail. A route whose only job is to
 send email must never be reachable by default. All four cron routes now fail closed.
 
+### Cron schedules and daylight saving — no seasonal maintenance
+
+Vercel Cron is UTC and does not shift, so a fixed schedule drifts an hour twice a year. Jobs whose
+local time matters are registered **twice**, and the route discards whichever invocation is wrong
+for the season. `vercel.json` as of 2026-08-17:
+
+| Job | UTC schedule | Local | Guard |
+|---|---|---|---|
+| `accrue-pto` | `0 8 * * 1` | Mon early am | none needed — hour is immaterial |
+| `admin-digest` | `30 20 * * *` + `30 21 * * *` | 4:30pm ET | `isDigestTime()` in `lib/admin-digest.ts` |
+| `leadership-update` | `0 16 * * 1` + `0 17 * * 1` | Mon noon ET | `isNoonEastern()` in the route |
+| `rfq-reminders` | `0 13 * * *` | 9am EDT / 8am EST | none — start of business either way |
+
+⚠️ **The "2-cron account tier limit" was never real.** Three comments asserted it and were the
+reason this was not done sooner. A third entry deployed fine, and Vercel documents multiple
+schedules for one path as the supported pattern. Do not reintroduce that claim.
+
+The digest's window is a **10-minute band** (`minute >= 25 && <= 34`); the leadership update's is
+the **whole noon hour**. The wide window is deliberate and is the better of the two: because the
+paired entries sit a full hour apart, a wide window can absorb a late invocation and still never
+let both through. The digest's narrow band means a delivery delayed past 4:34pm ET drops that
+day's digest entirely — pre-existing, not yet changed, and safe to widen to `hour === 16` if it
+ever bites.
+
+**`rfq-reminders` runs twice a day on purpose.** It owns the 13:00 UTC slot *and* is still called
+at the top of `admin-digest`. The reminder stamps from migration 088 make the second run a no-op,
+so redundancy costs two queries and buys chasing that survives either entry failing.
+
+`?force=1` sends the leadership update outside its window; `?dry=1` previews without sending.
+Neither bypasses the secret.
+
 ### Daily digest opt-out — TEMPORARY, revisit
 
 Arming the digest meant six admins would receive an email none of them had ever seen. Three are

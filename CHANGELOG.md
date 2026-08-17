@@ -2,6 +2,32 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — Scheduled jobs no longer need a twice-yearly reminder
+
+Vercel Cron runs on UTC and does not shift for daylight saving, so every schedule drifts by an
+hour twice a year. The fix — register the job at **both** UTC times and let the route discard
+whichever one is wrong for the season — was already written down but never applied, because a
+comment claimed the account tier capped `vercel.json` at two entries.
+
+**That cap does not exist.** A third entry deployed fine this week, and multiple schedules for a
+single path is the documented, supported pattern. What the belief actually cost was a manual edit
+every November and March, on jobs where arriving an hour early is visible to the people receiving
+them. Three comments asserting the limit have been corrected.
+
+The daily admin digest and the weekly leadership update are now each registered twice, an hour
+apart, with the season's wrong half discarded inside the route. The leadership update had **no**
+wall-clock guard at all, so it could not have taken a second entry without mailing leadership
+twice; it has one now, matched to the whole noon hour rather than a narrow band, because entries
+a full hour apart let a wide window absorb a late invocation without ever admitting both.
+Verified against Mondays either side of both changeovers: exactly one fires in every case, with
+59 minutes of delay tolerance.
+
+**Stalled quote requests are now chased in the morning.** The reminder sweep has its own slot at
+the start of business instead of only riding the afternoon digest — a request that has sat
+untouched gets surfaced at the top of the day rather than the end of it. The digest still calls
+the same sweep, deliberately: the reminder stamps make the second run a no-op, so the duplication
+costs two queries and buys chasing that survives either schedule breaking.
+
 ## 2026-08-17 — Session handoff record
 
 Full business-continuity record of the session that built Request for Quote and everything that
