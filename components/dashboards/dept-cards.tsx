@@ -348,16 +348,37 @@ const execCard = (id: string, title: string, defaultSpan: Span, sizes: Span[], r
 // It also shows the unclaimed count to everyone who can see the queue: a card
 // that only listed your own assignments would go quiet exactly when nobody has
 // picked something up, which is the failure the whole feature exists to stop.
+//
+// ⚠️ Every card Component supplies its OWN <Card> and <CardHead> — DashboardGrid
+// wraps children in a bare <div> and adds no chrome. This one shipped with
+// neither (2026-08-15), so it rendered as unstyled content with no border and no
+// title: on a grid of titled cards, an anonymous block reading "5 unassigned"
+// gives no clue what it belongs to. Caught the first time it was rendered in a
+// browser, 2026-08-17. Do not drop the wrapper again.
 function MyRfqCard({ d }: { d: MyRfqSummary }) {
+  const head = (
+    <CardHead
+      title="My Quote Requests"
+      icon={<ClipboardList size={13} />}
+      iconTone="sky"
+      action="View all"
+      href="/admin/rfq"
+    />
+  )
   if (!d.mine.length && !d.unclaimed) {
     return (
-      <p className="px-4 py-6 text-center text-[12.5px] text-ink-muted">
-        Nothing waiting on you. Every quote request has an owner.
-      </p>
+      <Card className="h-full">
+        {head}
+        <p className="px-4 py-6 text-center text-[12.5px] text-ink-muted">
+          Nothing waiting on you. Every quote request has an owner.
+        </p>
+      </Card>
     )
   }
   return (
-    <div className="px-1 pb-1">
+    <Card className="h-full">
+      {head}
+      <div className="px-1 py-1">
       {d.unclaimed > 0 && (
         <Link
           href="/admin/rfq"
@@ -392,7 +413,8 @@ function MyRfqCard({ d }: { d: MyRfqSummary }) {
       {!d.mine.length && (
         <p className="px-3 py-2 text-[12.5px] text-ink-muted">None assigned to you.</p>
       )}
-    </div>
+      </div>
+    </Card>
   )
 }
 

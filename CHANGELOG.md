@@ -2,6 +2,19 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — The quote-requests dashboard card gets its title back
+
+The "My Quote Requests" card you can add to your dashboard was rendering with **no title and no
+card border** — an anonymous block of text beginning "5 unassigned", sitting on a grid where every
+other card is titled and framed. The data in it was correct; there was just no way to tell what it
+belonged to.
+
+Each card on that dashboard is responsible for drawing its own frame and heading, and this one had
+been written without either. It was never caught because **no admin page in the quote-request
+feature had ever been opened in a browser** — it was verified by compiling it and by querying the
+database, both of which a missing wrapper passes cleanly. Found within a minute of someone actually
+looking at it.
+
 ## 2026-08-17 — Being handed a quote request is no longer silent
 
 Assigning a quote request to someone sent them nothing. The first thing an owner heard about work

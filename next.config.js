@@ -16,6 +16,17 @@ const nextConfig = {
   // picks the repo-root package-lock.json (left from one-off scripts) as the
   // workspace root and mis-infers the serverless file-tracing base.
   outputFileTracingRoot: __dirname,
+  // Escape hatch for building while a dev server is up. `next dev` and
+  // `next build` share .next, and running both against it corrupts the dev
+  // server's chunks — which surfaces as every page 500ing, with nothing wrong
+  // in the source. Several people work in this one tree, so "just stop the dev
+  // server" means interrupting someone else. Set NEXT_BUILD_DIST_DIR to a
+  // scratch path instead:
+  //
+  //   NEXT_BUILD_DIST_DIR=.next-verify npm run build
+  //
+  // Inert when unset, so normal builds and the Vercel build are unchanged.
+  ...(process.env.NEXT_BUILD_DIST_DIR ? { distDir: process.env.NEXT_BUILD_DIST_DIR } : {}),
   // Disable the client-side Router Cache for dynamic pages so admin tabs always
   // fetch fresh data instead of serving a stale snapshot. NOTE: in Next 15
   // staleTimes lives under `experimental` — a top-level key is silently ignored
