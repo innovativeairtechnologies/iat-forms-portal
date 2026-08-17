@@ -9,12 +9,16 @@ import { runRfqReminders } from '@/lib/rfq-reminders'
  * trigger it by hand, and is safe to register on its own schedule the day more
  * slots are available: the reminder stamps make a double-run a no-op.
  *
- * Same CRON_SECRET bearer check as the other cron routes.
+ * Auth FAILS CLOSED: no CRON_SECRET configured means nobody may call this, the
+ * same rule as /api/cron/admin-digest. The first version of this guard read
+ * `if (SECRET && auth !== ...)`, which skipped the check entirely when the
+ * variable was unset — an anonymous GET then ran the sweep and sent real mail.
+ * A route whose only job is to send email must never be reachable by default.
  */
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
