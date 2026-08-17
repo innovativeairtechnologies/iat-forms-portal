@@ -62,10 +62,11 @@ export async function GET(req: NextRequest) {
   try {
     const update = await buildLeadershipUpdate()
     const lineCount = update.sections.reduce((n, s) => n + s.items.length, 0)
+    const technicalLines = update.technical.reduce((n, s) => n + s.items.length, 0)
 
     if (dryRun) {
       return NextResponse.json({
-        ok: true, dryRun: true, lineCount,
+        ok: true, dryRun: true, lineCount, technicalLines,
         recipients: leadershipRecipients(),
         sourceEntries: update.sourceEntries,
         update,
@@ -77,8 +78,8 @@ export async function GET(req: NextRequest) {
     const docx = await renderLeadershipDocx(update)
     const sent = await sendLeadershipUpdate(update, docx)
 
-    console.log(`[cron/leadership-update] ${lineCount} lines from ${update.sourceEntries.length} entries → ${sent.length} recipient(s)`)
-    return NextResponse.json({ ok: true, lineCount, sent, sourceEntries: update.sourceEntries })
+    console.log(`[cron/leadership-update] ${lineCount} summary + ${technicalLines} technical lines from ${update.sourceEntries.length} entries → ${sent.length} recipient(s)`)
+    return NextResponse.json({ ok: true, lineCount, technicalLines, sent, sourceEntries: update.sourceEntries })
   } catch (err) {
     console.error('[cron/leadership-update] failed:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })

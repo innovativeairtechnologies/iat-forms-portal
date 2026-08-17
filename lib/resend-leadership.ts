@@ -54,10 +54,14 @@ export async function sendLeadershipUpdate(update: LeadershipUpdate, docx: Buffe
       about a minute to read, everything already live in production.
     </p>
     ${preview}
-    <p style="margin:0;color:#888;font-size:13px;">The attached document has the full week.</p>
+    <p style="margin:0;color:#888;font-size:13px;">
+      The attached document has the full week${update.technical.length
+        ? ', in two parts: the summary above, then a longer technical record for whoever has to act on it'
+        : ''}.
+    </p>
   </td></tr>
   <tr><td style="padding:16px 32px;background:#f8f9fa;border-top:1px solid #eee;">
-    <p style="margin:0;color:#aaa;font-size:12px;">IAT Portal &middot; Automated weekly update, Mondays at noon</p>
+    <p style="margin:0;color:#aaa;font-size:12px;">IAT Portal &middot; Automated weekly update, Mondays at 5pm Eastern</p>
   </td></tr>
 </table>
 </td></tr></table>

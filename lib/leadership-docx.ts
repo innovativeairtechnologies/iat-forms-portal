@@ -95,6 +95,32 @@ export async function renderLeadershipDocx(update: LeadershipUpdate): Promise<Bu
             size: 15, color: MUTED, italics: true,
           })],
         }),
+
+        // ── Part 2, the engineering read ──
+        // Appended rather than sent separately: one document means the technical
+        // notes are always findable from the summary, and a leadership reader who
+        // stops at the rule above has already got what they came for. Omitted
+        // entirely when the second generation failed, rather than leaving a
+        // heading over nothing.
+        ...(update.technical.length
+          ? [
+              new Paragraph({
+                spacing: { before: 420, after: 60 },
+                children: [new TextRun({
+                  text: 'PART 2 · TECHNICAL DETAIL',
+                  bold: true, size: 18, color: GREEN, characterSpacing: 12,
+                })],
+              }),
+              new Paragraph({
+                spacing: { after: 160 },
+                children: [new TextRun({
+                  text: 'The engineering record for the same week. Not required reading for the summary above.',
+                  size: 15, color: MUTED, italics: true,
+                })],
+              }),
+              ...update.technical.flatMap(s => [heading(s.title), ...bullets(s.items)]),
+            ]
+          : []),
       ],
     }],
   })
