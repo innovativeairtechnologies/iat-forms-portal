@@ -2,6 +2,38 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — Being handed a quote request is no longer silent
+
+Assigning a quote request to someone sent them nothing. The first thing an owner heard about work
+that was already theirs was the 24-hour reminder telling them it had been sitting untouched — the
+system's opening line was a complaint. Assigning now emails the new owner immediately, with the
+customer, the project, the size of the job and a link straight to it.
+
+Four judgement calls worth knowing about. **Assigning something to yourself sends nothing** — you
+know what you just did, and mail people send themselves is the fastest way to teach them to ignore
+the sender. **It fires only when the owner actually changes**, so re-saving the same person does
+not re-send. **A mail failure never fails the assignment**, which is already saved by then — the
+assignment is the record, the email is a courtesy, and losing the courtesy must not roll back the
+record. And **assigning to someone with no working address is logged as a warning rather than
+swallowed**, because the 24-hour reminder would hit the same dead end and the unassigned sweep
+only covers rows nobody owns — that request would otherwise be chased by nobody at all.
+
+## 2026-08-17 — Four security advisories closed, without the fix that breaks the build
+
+`nanoid`, `js-yaml` and `brace-expansion` (all high) plus `dompurify` (moderate), all reaching us
+indirectly through other packages. Closed by pinning safe versions.
+
+**Two of the four could not be fixed the obvious way.** `brace-expansion` is installed twice on two
+incompatible major versions, one for each version of `minimatch` in the tree; `nanoid` likewise, one
+copy for `postcss` and another for the Word-document library. Pinning either package globally — the
+fix a tool suggests — silently hands one consumer a version whose API it does not speak. Each was
+pinned against its specific parent instead.
+
+This repo has been bitten by exactly that before, and by the fact that **`npm audit` reports "0
+vulnerabilities" either way**, so it cannot be used to tell a real fix from a broken one. Verified
+instead by running both versions of the affected code and checking real results against expected
+ones — fifteen checks, including that the Word-document generator still produces a valid document.
+
 ## 2026-08-17 — Scheduled jobs no longer need a twice-yearly reminder
 
 Vercel Cron runs on UTC and does not shift for daylight saving, so every schedule drifts by an

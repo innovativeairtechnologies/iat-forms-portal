@@ -211,14 +211,33 @@ clipped history reads as "more below" rather than as a rendering fault.
 Migration 088 carried the old single `internal_notes` textarea into the trail and left the column
 behind as a tombstone; drop it in a later migration once nothing has read it for a while.
 
-### Chasing (lib/rfq-reminders.ts)
+### Telling the owner, then chasing them (lib/rfq-reminders.ts)
 
-Two daily sweeps, both keyed on a survey still sitting at `new`:
+Three messages, all to IAT staff, all rendered by `lib/resend-rfq-reminders.ts` from one shell so
+the same request looks the same whichever one you open it from:
 
-| Condition | Who gets mailed |
+| When | Who gets mailed |
 |---|---|
-| Assigned, `assigned_at` > 24h ago | The owner — one email covering **all** their stalled rows, not one per row |
-| Unassigned, `created_at` > 24h ago | The shared desk, subject prefixed **`REMINDER:`** |
+| The moment a survey is assigned to a person | The new owner — *"this one is yours"* |
+| Assigned, `assigned_at` > 24h ago, still `new` | The owner — one email covering **all** their stalled rows, not one per row |
+| Unassigned, `created_at` > 24h ago, still `new` | The shared desk, subject prefixed **`REMINDER:`** |
+
+The first is action-triggered from `PATCH /api/admin/rfq/[id]`; the other two are the daily sweep.
+Until the assignment notice existed (2026-08-17), being handed a quote request was **silent** — the
+first thing an owner heard about it was the 24-hour nudge telling them they were already late. The
+nudge is the second message now, not the first.
+
+**The assignment notice is deliberately not sent when someone assigns a row to themselves.** You
+know what you just did, and self-addressed mail is the fastest way to teach someone to filter the
+sender. Three more things about it, all load-bearing:
+
+- It fires only when the owner actually **changes** — the route reads the prior `assignee_id`
+  before writing, so re-saving the same assignee does not re-notify.
+- It runs **after** the write and never throws. The assignment is the record and it is already
+  committed; a mail failure must not turn a saved triage decision into a 500 the operator retries.
+- An assignee with no active `employees.email` is logged as a **warning**, not swallowed. The 24h
+  nudge will hit the same dead end, and the desk sweep only covers *unassigned* rows — so that row
+  would otherwise be chased by nobody.
 
 Moving a survey to any other status stops the chasing. That is the point — one click on
 *Reviewing* says a human has it.
@@ -228,12 +247,11 @@ send (so a failure retries tomorrow rather than going quiet) and re-chased after
 them when the status leaves `new` means a row that later returns to `new` is chased fresh
 instead of being suppressed by a months-old stamp.
 
-**Scheduling:** `vercel.json` is capped at two cron entries on the current account tier and both
-are taken, so the sweep piggybacks on the daily `admin-digest` run — placed *before* that route's
-digest-time and already-ran guards, since those exist to stop the digest sending twice and would
-otherwise mean a day the digest skipped was a day nobody got chased.
-`/api/cron/rfq-reminders` exists for a manual trigger and can be given its own schedule the day
-more slots are available; the stamps make a double-run a no-op.
+**Scheduling:** `/api/cron/rfq-reminders` has its **own** daily slot at 13:00 UTC — start of
+business either side of the DST line. The `admin-digest` run also calls the same sweep, on purpose:
+the stamps make the second run of the day a no-op, so the redundancy costs two queries and buys
+chasing that survives either entry breaking. It used to ride the digest alone because `vercel.json`
+was believed to cap cron entries at two — it does not; see `docs/support-tickets.md`.
 
 ### On the dashboard
 

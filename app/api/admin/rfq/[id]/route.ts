@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { requireRfqAuth } from '@/lib/api-auth'
 import { getEmployeesWithPerm, shortStaffName } from '@/lib/staff'
 import { RFQ_STATUSES, UNSTARTED_STATUS, type RfqStatus } from '@/lib/rfq-status'
+import { sendRfqAssignmentNotice, type ReminderRow } from '@/lib/resend-rfq-reminders'
 
 // Triage writes for one inbound survey (/admin/rfq/[id], migrations 087 + 088).
 //
@@ -70,6 +72,15 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
+  // Who owned it before this write, plus the fields the assignment email renders.
+  // Read BEFORE the update so "did the owner actually change?" is answerable — an
+  // idempotent re-save of the same assignee must not re-notify them.
+  const { data: before } = await supabaseAdmin
+    .from('rfq_requests')
+    .select('id, reference, company, project_name, application_label, track, created_at, summary, assignee_id')
+    .eq('id', id)
+    .maybeSingle()
+
   const { data, error } = await supabaseAdmin
     .from('rfq_requests')
     .update(patch)
@@ -82,6 +93,51 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Could not save' }, { status: 500 })
   }
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // ── Tell the new owner, once ──
+  // Everything below is best-effort and deliberately AFTER the write. The
+  // assignment is the record and it is already committed; a mail failure must
+  // not turn a saved triage decision into a 500 the operator will retry.
+  if (data.assignee_id && before && data.assignee_id !== before.assignee_id) {
+    try {
+      const supabase = await createSupabaseServer()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Assigning something to yourself is not news. Skip silently — mail a
+      // person sends themselves is the fastest way to teach them to filter it.
+      if (user && user.id === data.assignee_id) {
+        console.log(`[admin/rfq] ${before.reference} self-assigned — no notice sent`)
+      } else {
+        const [{ data: owner }, { data: actor }] = await Promise.all([
+          supabaseAdmin.from('employees').select('name, email').eq('id', data.assignee_id).eq('is_active', true).maybeSingle(),
+          user
+            ? supabaseAdmin.from('employees').select('name').eq('id', user.id).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ])
+
+        if (!owner?.email) {
+          // Assignable but unreachable. Logged loudly rather than swallowed: the
+          // 24h nudge will hit the same dead end, and the desk sweep only covers
+          // UNASSIGNED rows, so this one would otherwise be chased by nobody.
+          console.warn(`[admin/rfq] ${before.reference} assigned to ${data.assignee_id} with no active email — no notice sent`)
+        } else {
+          // shortStaffName() answers "Unknown" for a blank roster name, which
+          // would render as "Unknown assigned this to you". An unattributed
+          // sentence reads better than a wrong name, so drop it to empty and let
+          // the template use its passive fallback.
+          const byName = shortStaffName(actor?.name ?? user?.email?.split('@')[0] ?? '')
+          await sendRfqAssignmentNotice(
+            owner.email,
+            owner.name ?? '',
+            before as ReminderRow,
+            byName === 'Unknown' ? '' : byName,
+          )
+        }
+      }
+    } catch (err) {
+      console.error('[admin/rfq] assignment notice failed:', err)
+    }
+  }
 
   return NextResponse.json(data)
 }

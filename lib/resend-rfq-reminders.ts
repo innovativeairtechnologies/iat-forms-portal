@@ -1,16 +1,19 @@
 import { Resend } from 'resend'
 import { EMAIL_FROM } from './email-from'
 
-// ─── Chaser mail for stalled quote requests (lib/rfq-reminders.ts) ───────────
+// ─── Mail about a quote request's life in the queue ──────────────────────────
 //
-// Two reminders for a survey still sitting at "new":
-//   • to the assignee — "you own this and haven't started it"
-//   • to the shared desk — "nobody has picked these up", REMINDER in the subject
+// Three sends, all to IAT staff, all linking to one row:
+//   • assignment notice — "this one is yours now"            (action-triggered)
+//   • assignee nudge    — "you own this and haven't started" (lib/rfq-reminders)
+//   • unclaimed reminder — "nobody has picked these up"      (lib/rfq-reminders)
 //
 // A separate module from resend-rfq.ts on purpose: that file handles the mail a
 // SUBMISSION triggers (desk heads-up, customer confirmation), this one handles
-// mail a SCHEDULE triggers. Different triggers, different failure modes, and
-// keeping them apart means a change to one cannot quietly alter the other.
+// everything that happens to a request AFTER it lands. Different triggers,
+// different failure modes, and keeping them apart means a change to one cannot
+// quietly alter the other. The three share a shell, a table and a job line so
+// the same request looks the same whichever message you open it from.
 //
 // Neither is gated behind CUSTOMER_TICKET_EMAILS: these go to IAT staff and the
 // shared desk, never to a customer, and they are the mechanism that stops a real
@@ -79,7 +82,10 @@ function table(rows: ReminderRow[]): string {
     </tr>${body}</table>`
 }
 
-function shell(headerBg: string, title: string, sub: string, inner: string): string {
+/** Footer for the two scheduled chasers — says how to make them stop. */
+const CHASER_FOOTER = 'IAT Portal · Automated reminder. Moving a request off "New" stops these.'
+
+function shell(headerBg: string, title: string, sub: string, inner: string, footer = CHASER_FOOTER): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f8f9fa;font-family:Inter,Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;padding:32px 0;">
@@ -92,7 +98,7 @@ function shell(headerBg: string, title: string, sub: string, inner: string): str
   </td></tr>
   <tr><td style="padding:28px 32px;">${inner}</td></tr>
   <tr><td style="padding:16px 32px;background:#f8f9fa;border-top:1px solid #eee;">
-    <p style="margin:0;color:#aaa;font-size:12px;">IAT Portal · Automated reminder. Moving a request off "New" stops these.</p>
+    <p style="margin:0;color:#aaa;font-size:12px;">${esc(footer)}</p>
   </td></tr>
 </table>
 </td></tr></table>
@@ -101,6 +107,57 @@ function shell(headerBg: string, title: string, sub: string, inner: string): str
 
 function cta(label: string, href: string): string {
   return `<a href="${esc(href)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">${esc(label)}</a>`
+}
+
+/**
+ * "This one is yours now." Sent once, the moment a survey is assigned to a
+ * person — the only message here that is triggered by an action rather than a
+ * schedule.
+ *
+ * Until this existed, being handed a quote request was silent: the first thing
+ * an owner heard about it was the 24-hour nudge telling them they were already
+ * late. The nudge is the second message now, not the first.
+ *
+ * Two things the caller decides, not this function: it is NOT sent when someone
+ * assigns a row to themselves (you know what you just did, and self-addressed
+ * mail trains people to ignore the sender), and a failure here is logged rather
+ * than thrown. The assignment is already written — it is the record, and the
+ * mail is a courtesy. Losing the courtesy must never roll back the record.
+ */
+export async function sendRfqAssignmentNotice(
+  to: string,
+  name: string,
+  row: ReminderRow,
+  assignedBy: string,
+): Promise<void> {
+  const first = (name || '').trim().split(' ')[0]
+  const by = (assignedBy || '').trim()
+
+  const inner = `
+    <p style="margin:0 0 16px;color:#333;font-size:15px;">${first ? `Hi ${esc(first)},` : 'Hello,'}</p>
+    <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">
+      ${by ? `<strong>${esc(by)}</strong> assigned this quote request to you.` : 'A quote request has been assigned to you.'}
+      It is yours to price.
+    </p>
+    <p style="margin:10px 0 0;color:#555;font-size:14px;line-height:1.6;">
+      Move it to <strong>Reviewing</strong> once you have had a look. That is all it takes to stop
+      the reminders — otherwise a nudge follows in 24 hours.
+    </p>
+    ${table([row])}
+    ${cta('Open the request', `${APP_URL}/admin/rfq/${row.id}`)}`
+
+  const subject = `Quote request ${row.reference} is yours`
+    + (row.company ? ` — ${row.company}` : '')
+
+  const res = await resend.emails.send({
+    from: FROM, to, subject,
+    html: shell(
+      '#0a2e1e', 'Assigned to you', 'A new quote request to price', inner,
+      'IAT Portal · Sent once, when a request is assigned to you.',
+    ),
+  })
+  if (res.error) throw new Error(`resend rfq assignment notice: ${JSON.stringify(res.error)}`)
+  console.log(`[resend] rfq assignment notice sent to ${to}: id=${res.data?.id}`)
 }
 
 /** "You own these and have not started them." One email per owner, not per row. */
