@@ -28,6 +28,13 @@ a shape this system has never issued.
 resolver on that page *in the same change*. The link and the lookup were each fine on their own;
 they were pointed at different tables.
 
+One knock-on: that email's button read *"View your request & send a message"*, and there is no
+message box on a quote request — only support tickets have somewhere for a customer note to land.
+Now that the link actually arrives somewhere, the button had to stop promising something the page
+does not do. It reads **"Check your request status"**, and the closing line points anyone with a
+question at their sales engineer rather than at an unmonitored mailbox. Giving quote requests a real
+message box is the better fix and remains open.
+
 ## 2026-08-17 — A support ticket now has to say enough to act on
 
 Three fields the support form asked for politely, it now requires: **company / organization**,

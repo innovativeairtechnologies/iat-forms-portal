@@ -336,6 +336,14 @@ either on a checklist or an RFQ result would promise a customer a reply that cou
 never land. Both are gated on the *resolved* reference kind, not on what is
 currently typed in the input.
 
+Which is why **the RFQ confirmation email no longer says "send a message"** — its
+button now reads *"Check your request status"*, and the closing line points anyone
+with a question at their sales engineer instead of at a box that is not there. Per
+the rule above, no-reply wording and a write path ship together; an RFQ has no
+write path today, so it does not get the no-reply-and-nothing-else treatment.
+**If a customer message box is ever added for RFQs, restore the original wording
+in the same change.**
+
 ## What the support form now requires
 
 Three gates, added 2026-08-17 at the owner's request, enforced **both** in
