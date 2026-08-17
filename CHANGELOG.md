@@ -2,6 +2,46 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — A support ticket can no longer go quiet, and closing one means saying why
+
+Quote requests have been chased since last week. Support tickets never were — a ticket could sit
+unassigned indefinitely, or sit assigned to someone who had forgotten it, and nothing noticed.
+Three things now do.
+
+**Nobody has picked it up.** Unassigned for 24 hours and the support desk is told. **Assigned but
+nothing is happening.** No note for 24 hours and the owner is told — one email covering all of their
+stalled tickets, not one per ticket. "Nothing happening" deliberately means *no note*, not *the
+status has not moved*: a ticket someone is working leaves a trail, even "waiting on parts", and
+keying on status would let a ticket sit in In Progress forever and count as alive.
+
+**And if neither of those lands** — a shared mailbox can go unread, and an unassigned ticket has
+nobody to nudge — Kacy and Crystal are emailed by name, with the unassigned quote requests folded
+into the same message, because both need the identical decision: hand it to a person. Separate
+copies each, not one email addressed to both; a message addressed to two people is a message
+addressed to nobody. Assigning an owner stops all of it; anything still unassigned is raised again
+in 48 hours.
+
+**Closing now requires saying why.** Both Resolved and Closed need real closing notes from the
+employee, and those notes go to the customer word for word. The resolution dropdown does not count —
+it is fifteen fixed phrases chosen for reporting, and "Replacement part installed" tells the person
+whose machine broke nothing about their machine.
+
+**And the customer hears about it.** They already got a copy of any public reply; they now also
+hear when the status changes, and get the closing notes when it ends. Internal notes still never
+reach them — that line does not move.
+
+**A customer marking their own ticket resolved still does not close it.** They now have to say what
+changed, and the desk is emailed to go and verify. "It seems fine now" and "the fault is gone" are
+different claims, and only one of them belongs in a service record.
+
+Who gets told what, and when, is now one page: [docs/notifications.md](docs/notifications.md).
+
+## 2026-08-17 — The weekly leadership update moves to 5pm
+
+It went out at noon on a Monday, summarising a week that included a Monday morning which had barely
+happened — so anything shipped that day missed the report it belonged in. It now sends at 5pm
+Eastern, when the day it describes is actually over.
+
 ## 2026-08-17 — A quote request needs a way to reach you
 
 Name, company, email **and phone** are now all required on the RFQ wizard. Only the first three

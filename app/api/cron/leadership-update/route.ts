@@ -4,25 +4,30 @@ import { renderLeadershipDocx } from '@/lib/leadership-docx'
 import { sendLeadershipUpdate, leadershipRecipients } from '@/lib/resend-leadership'
 import { getNyWallClock } from '@/lib/admin-digest'
 
-/* Weekly leadership update — Mondays at noon Eastern.
+/* Weekly leadership update — Mondays at 5pm Eastern.
  *
- * Reads the last seven days of CHANGELOG.md, has Claude rewrite it for a
- * non-engineering reader, renders a one-page Word document and emails it to
- * LEADERSHIP_UPDATE_EMAIL.
+ * Reads the last seven days of CHANGELOG.md, has Claude rewrite it into a
+ * non-technical leadership read AND a longer technical read, renders a Word
+ * document and emails it to LEADERSHIP_UPDATE_EMAIL.
  *
  * Auth FAILS CLOSED, like every other cron route: no CRON_SECRET means nobody
  * may call this. Do not relax to `if (SECRET && ...)` — that form skips the
  * check entirely when the variable is unset, and this route sends mail.
  *
+ * WHY 5PM AND NOT NOON (changed 2026-08-17): at noon the update went out
+ * covering a Monday that had barely happened, and anything shipped that morning
+ * missed the report it belonged in. Sending at the end of the day means the week
+ * it describes is actually over.
+ *
  * DST: Vercel Cron is UTC and does not shift, so vercel.json registers BOTH
- * 16:00 and 17:00 UTC on Mondays and isNoonEastern() below discards whichever
- * one is wrong for the season. Exactly one survives, in both directions:
+ * 21:00 and 22:00 UTC on Mondays and is5pmEastern() below discards whichever one
+ * is wrong for the season. Exactly one survives, in both directions:
  *
- *            16:00 UTC        17:00 UTC
- *   EDT      12:00 ET  SEND   13:00 ET  skip
- *   EST      11:00 ET  skip   12:00 ET  SEND
+ *            21:00 UTC        22:00 UTC
+ *   EDT      17:00 ET  SEND   18:00 ET  skip
+ *   EST      16:00 ET  skip   17:00 ET  SEND
  *
- * The window is the whole 12:00 hour, not a narrow band around the minute,
+ * The window is the whole 17:00 hour, not a narrow band around the minute,
  * because the two entries sit a full hour apart — so it can absorb a late
  * invocation without ever letting both through.
  *
@@ -33,9 +38,9 @@ import { getNyWallClock } from '@/lib/admin-digest'
 
 export const maxDuration = 60   // the model call plus docx render exceeds the default
 
-/** True anywhere inside the noon hour, America/New_York. */
-function isNoonEastern(): boolean {
-  return getNyWallClock().hour === 12
+/** True anywhere inside the 5pm hour, America/New_York. */
+function is5pmEastern(): boolean {
+  return getNyWallClock().hour === 17
 }
 
 export async function GET(req: NextRequest) {
@@ -50,8 +55,8 @@ export async function GET(req: NextRequest) {
   // One of the two Monday entries is an hour off for the season — drop it here.
   // A dry run and an explicit force both bypass this, so the preview command in
   // docs/ still works on a Wednesday afternoon.
-  if (!dryRun && !force && !isNoonEastern()) {
-    return NextResponse.json({ skipped: true, reason: 'not noon (NY)' })
+  if (!dryRun && !force && !is5pmEastern()) {
+    return NextResponse.json({ skipped: true, reason: 'not 5pm (NY)' })
   }
 
   try {

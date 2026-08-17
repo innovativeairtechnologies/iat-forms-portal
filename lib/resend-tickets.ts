@@ -126,3 +126,44 @@ export async function sendCustomerMessageAlert(
     else console.log(`[resend] customer message alert sent to ${recipients[i]}: id=${r.data?.id}`)
   })
 }
+
+// ── Desk alert when a CUSTOMER says their ticket is fixed ─────────────────────
+// A customer marking their own ticket resolved does NOT close it — it raises a
+// hand. IAT confirms the fix and closes it formally, because "it seems fine now"
+// and "the fault is gone" are different claims, and only one of them belongs in
+// the record. The ticket therefore stays live and assigned until a person here
+// agrees, and this email is what starts that check.
+export async function sendCustomerResolvedAlert(
+  args: { ticket_number: string; customer_name: string | null; note: string; ticketId: string },
+  recipients: string[],
+) {
+  const { ticket_number, customer_name, note, ticketId } = args
+  const url = `${APP_URL}/admin/tickets/${ticketId}`
+
+  const body = `
+    ${ticketChip(ticket_number)}
+    <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">
+      ${esc(customer_name || 'The customer')} says this is resolved
+    </p>
+    <div style="background:#f8f9fa;border-left:3px solid #089447;border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 20px;">
+      <p style="margin:0;color:#333;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(note)}</p>
+    </div>
+    <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;">
+      <strong>The ticket is still open.</strong> Confirm what they describe actually matches a fixed
+      unit, then close it here — their word starts the check, it does not end it.
+    </p>
+    <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Review and close the ticket</a>`
+
+  const results = await Promise.all(
+    recipients.map(to => resend.emails.send({
+      from: FROM,
+      to,
+      subject: `Verify before closing: ${ticket_number}${customer_name ? ` — ${customer_name}` : ''}`,
+      html: shell('#1a1a2e', 'Customer Marked Resolved', body),
+    }))
+  )
+  results.forEach((r, i) => {
+    if (r.error) console.error(`[resend] customer resolved alert failed to ${recipients[i]}:`, r.error)
+    else console.log(`[resend] customer resolved alert sent to ${recipients[i]}: id=${r.data?.id}`)
+  })
+}

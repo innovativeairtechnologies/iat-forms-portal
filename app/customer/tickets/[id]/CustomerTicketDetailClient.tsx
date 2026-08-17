@@ -11,6 +11,11 @@ import { isInlineViewable, AttachmentViewerModal } from '@/components/shared/Att
 
 const RichTextEditor = dynamic(() => import('@/components/shared/RichTextEditor'), { ssr: false })
 
+/** Floor for "what changed" when a customer marks their own ticket resolved.
+ *  Mirrors MIN_CUSTOMER_NOTE in app/api/customer/tickets/[id]/resolve — change
+ *  both together. */
+const MIN_RESOLVE_NOTE = 10
+
 function formatNoteDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -90,6 +95,11 @@ export default function CustomerTicketDetailClient({
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState<string | null>(null)
 
+  // What changed, in the customer's words. Required to mark resolved (not to
+  // undo it) — their claim starts a verification, so the engineer checking it
+  // needs something to check against.
+  const [resolveNote, setResolveNote] = useState('')
+
   const markResolved = async (resolved: boolean) => {
     setResolving(true)
     setResolveError(null)
@@ -97,7 +107,7 @@ export default function CustomerTicketDetailClient({
       const res = await fetch(`/api/customer/tickets/${ticket.id}/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resolved }),
+        body: JSON.stringify({ resolved, note: resolved ? resolveNote.trim() : undefined }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -248,18 +258,31 @@ export default function CustomerTicketDetailClient({
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Is this issue resolved?</p>
-                    <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">Let our team know so we can close the ticket.</p>
-                  </div>
-                  <button
-                    onClick={() => markResolved(true)}
+                <div>
+                  <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Is this issue resolved?</p>
+                  <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Tell us what changed and we&apos;ll confirm the fix before closing the ticket.
+                  </p>
+                  <textarea
+                    value={resolveNote}
+                    onChange={e => setResolveNote(e.target.value)}
                     disabled={resolving}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-9 rounded-lg disabled:opacity-50 transition-colors"
-                  >
-                    <CheckCircle2 size={15} /> {resolving ? 'Saving…' : 'Mark as resolved'}
-                  </button>
+                    rows={3}
+                    placeholder="e.g. The humidity has held at 40% for three days since the technician replaced the heater."
+                    className="mt-3 w-full resize-y rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 disabled:opacity-50"
+                  />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-[11.5px] text-zinc-400 dark:text-zinc-500">
+                      This does not close the ticket on its own — our team confirms it first.
+                    </p>
+                    <button
+                      onClick={() => markResolved(true)}
+                      disabled={resolving || resolveNote.trim().length < MIN_RESOLVE_NOTE}
+                      className="inline-flex items-center gap-1.5 text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-9 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <CheckCircle2 size={15} /> {resolving ? 'Saving…' : 'Mark as resolved'}
+                    </button>
+                  </div>
                 </div>
               )}
               {resolveError && <p className="text-[12px] text-rose-500 mt-2">{resolveError}</p>}

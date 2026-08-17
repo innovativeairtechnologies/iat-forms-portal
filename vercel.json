@@ -18,14 +18,18 @@
     },
     {
       "path": "/api/cron/leadership-update",
-      "schedule": "0 16 * * 1"
+      "schedule": "0 21 * * 1"
     },
     {
       "path": "/api/cron/leadership-update",
-      "schedule": "0 17 * * 1"
+      "schedule": "0 22 * * 1"
     },
     {
       "path": "/api/cron/rfq-reminders",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/ticket-reminders",
       "schedule": "0 13 * * *"
     }
   ]

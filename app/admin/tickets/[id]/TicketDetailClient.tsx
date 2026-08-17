@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Lightbulb, ExternalLink, BookOpen, Paperclip, Mail, User, Wrench, FileText, Snowflake, ClipboardCheck, Image as ImageIcon, MessageSquare, SlidersHorizontal, X, Loader2, Wind, Activity, ChevronDown, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react'
 import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/supabase'
@@ -22,6 +23,12 @@ const STATUS_OPTIONS: { value: Ticket['status']; label: string; cls: string }[] 
   { value: 'resolved',    label: 'Resolved',    cls: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30' },
   { value: 'closed',      label: 'Closed',      cls: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700' },
 ]
+
+/** Floor for closing remarks. Mirrors the server guard in ../actions.ts — change
+ *  both together. Low on purpose: this is a bar against an empty box, not an
+ *  essay requirement, and a real one-line answer ("replaced the react heater
+ *  contactor") clears it comfortably. */
+const MIN_CLOSING_NOTE = 10
 
 const PRIORITY_OPTIONS: { value: Ticket['priority']; label: string; cls: string }[] = [
   { value: 'low',  label: 'Low',  cls: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30' },
@@ -282,6 +289,7 @@ export default function TicketDetailClient({
    */
   canReplyToCustomer: boolean
 }) {
+  const router = useRouter()
   const [ticket, setTicket] = useState(initial)
   const [pendingStatus, setPendingStatus] = useState(initial.status)
   const [pendingPriority, setPendingPriority] = useState<Ticket['priority']>(initial.priority ?? 'med')
@@ -322,8 +330,15 @@ export default function TicketDetailClient({
 
   const resolvedReasonRequired = pendingStatus === 'resolved' && !pendingResolvedReason
 
+  // Closing remarks — required on the move into resolved/closed, and emailed
+  // verbatim to the customer. The server enforces the same floor; this is the
+  // half that explains why the button is disabled.
+  const [closingNote, setClosingNote] = useState('')
+  const closingNow = pendingStatus !== ticket.status && (pendingStatus === 'resolved' || pendingStatus === 'closed')
+  const closingNoteRequired = closingNow && closingNote.trim().length < MIN_CLOSING_NOTE
+
   const saveTicket = async () => {
-    if (updating || !hasUnsavedChanges || resolvedReasonRequired) return
+    if (updating || !hasUnsavedChanges || resolvedReasonRequired || closingNoteRequired) return
     setUpdating(true)
     setSaveError(null)
     const { error } = await updateTicket(ticket.id, {
@@ -331,11 +346,15 @@ export default function TicketDetailClient({
       priority: pendingPriority,
       owner_id: pendingOwnerId,
       resolved_reason: pendingStatus === 'resolved' ? pendingResolvedReason : null,
+      closing_note: closingNow ? closingNote.trim() : null,
     })
     setUpdating(false)
     if (error) { setSaveError(error); return }
     const owner = owners.find(o => o.id === pendingOwnerId)
     const resolvedReason = pendingStatus === 'resolved' ? pendingResolvedReason : null
+    // The closing note was just written to the thread server-side; refresh so it
+    // appears rather than leaving the operator wondering where their text went.
+    if (closingNow) { setClosingNote(''); router.refresh() }
     setTicket(t => ({ ...t, status: pendingStatus, priority: pendingPriority, owner_id: pendingOwnerId, resolved_reason: resolvedReason, owner: owner ? { ...owner } as Employee : undefined }))
   }
 
@@ -546,8 +565,8 @@ export default function TicketDetailClient({
                 action={hasUnsavedChanges ? (
                   <button
                     onClick={saveTicket}
-                    disabled={updating}
-                    className="text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg disabled:opacity-50 transition-colors"
+                    disabled={updating || resolvedReasonRequired || closingNoteRequired}
+                    className="text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {updating ? 'Saving…' : 'Update Ticket'}
                   </button>
@@ -622,6 +641,36 @@ export default function TicketDetailClient({
                     {resolvedReasonRequired && (
                       <p className="text-[11px] text-rose-400 mt-1.5">A resolution reason is required to mark this ticket resolved.</p>
                     )}
+                  </div>
+                )}
+
+                {/* Closing remarks — required on the way into resolved/closed, and
+                    sent to the customer verbatim. Distinct from the reason
+                    dropdown above: that is fifteen fixed phrases chosen for
+                    reporting, and "Replacement part installed" tells the person
+                    whose machine broke nothing about their machine. */}
+                {closingNow && (
+                  <div className="mt-4">
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-2">
+                      Closing notes <span className="text-rose-400">*</span>
+                    </p>
+                    <textarea
+                      value={closingNote}
+                      onChange={e => setClosingNote(e.target.value)}
+                      disabled={updating}
+                      rows={4}
+                      placeholder="What was wrong and what you did about it — e.g. Replaced the failed reactivation heater contactor and retested; unit held 35%rh for two hours on site."
+                      className={`w-full resize-y rounded-lg border bg-white dark:bg-zinc-900 px-3 py-2.5 text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-200 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 outline-none transition-all focus:ring-2 disabled:opacity-50 ${
+                        closingNoteRequired
+                          ? 'border-rose-300 dark:border-rose-700 focus:border-rose-400 focus:ring-rose-100 dark:focus:ring-rose-900/30'
+                          : 'border-zinc-200 dark:border-zinc-700 focus:border-emerald-500/50 focus:ring-emerald-500/15'
+                      }`}
+                    />
+                    <p className={`mt-1.5 text-[11px] leading-relaxed ${closingNoteRequired ? 'text-rose-400' : 'text-zinc-400 dark:text-zinc-500'}`}>
+                      {closingNoteRequired
+                        ? `Required to ${pendingStatus === 'resolved' ? 'resolve' : 'close'} — at least ${MIN_CLOSING_NOTE} characters.`
+                        : 'This goes on the ticket thread and is emailed to the customer word for word.'}
+                    </p>
                   </div>
                 )}
               </div>

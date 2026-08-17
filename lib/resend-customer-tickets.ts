@@ -125,6 +125,97 @@ export async function sendTicketConfirmationToCustomer(ticket: Ticket): Promise<
   else console.log(`[resend] customer ticket confirmation sent to ${ticket.customer_email}: id=${result.data?.id}`)
 }
 
+// ── Status moved ──────────────────────────────────────────────────────────────
+// Every move except into a terminal state, which gets the richer close email
+// below instead. Deliberately short: the customer asked for their unit fixed,
+// not for a workflow diary, so this says what changed and offers the link.
+const STATUS_WORDS: Record<string, { label: string; blurb: string }> = {
+  open:        { label: 'Received',    blurb: 'Your ticket is in the queue and waiting to be picked up.' },
+  in_progress: { label: 'In Progress', blurb: 'An IAT engineer has started work on your ticket.' },
+  resolved:    { label: 'Resolved',    blurb: 'Your ticket has been marked resolved.' },
+  closed:      { label: 'Closed',      blurb: 'Your ticket has been closed.' },
+}
+
+export async function sendTicketStatusChangeToCustomer(
+  ticket: Pick<Ticket, 'ticket_number' | 'customer_name' | 'customer_email'>,
+  to: string,
+): Promise<void> {
+  if (!customerTicketEmailsEnabled()) return
+  if (!ticket.customer_email) return
+
+  const words = STATUS_WORDS[to]
+  // An unknown status would produce an email saying nothing. Better to send
+  // nothing than to tell a customer their ticket is now "undefined".
+  if (!words) {
+    console.warn(`[resend] status-change email skipped — unknown status "${to}"`)
+    return
+  }
+
+  const greeting = ticket.customer_name ? `Hi ${esc(ticket.customer_name)},` : 'Hello,'
+  const body = `
+    <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
+    <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
+      There is an update on your support ticket. It is now
+      <strong>${esc(words.label)}</strong> — ${esc(words.blurb)}
+    </p>
+    ${ticketChip(ticket.ticket_number)}
+    ${replyBlock(ticket.ticket_number, 'have a question')}`
+
+  const result = await resend.emails.send({
+    from: FROM,
+    to: ticket.customer_email,
+    subject: `Your IAT ticket ${ticket.ticket_number} is now ${words.label}`,
+    html: shell('Ticket Update', body),
+  })
+  if (result.error) console.error(`[resend] status change failed to ${ticket.customer_email}:`, result.error)
+  else console.log(`[resend] status change (${to}) sent to ${ticket.customer_email}: id=${result.data?.id}`)
+}
+
+// ── Closed, with the closing remarks ──────────────────────────────────────────
+// The one email on this ticket a customer is most likely to keep. It carries the
+// engineer's own words rather than a status word, because "Resolved" on its own
+// tells someone whose equipment was broken nothing about what was done to it.
+//
+// `remarks` is the plain text the closing employee typed — escaped here, never
+// treated as markup.
+export async function sendTicketClosedToCustomer(
+  ticket: Pick<Ticket, 'ticket_number' | 'customer_name' | 'customer_email'>,
+  remarks: string,
+  status: 'resolved' | 'closed',
+  resolvedReason?: string | null,
+): Promise<void> {
+  if (!customerTicketEmailsEnabled()) return
+  if (!ticket.customer_email) return
+
+  const greeting = ticket.customer_name ? `Hi ${esc(ticket.customer_name)},` : 'Hello,'
+  const word = status === 'resolved' ? 'resolved' : 'closed'
+  const body = `
+    <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
+    <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
+      Your support ticket has been <strong>${esc(word)}</strong>. Here is what our engineer recorded:
+    </p>
+    ${ticketChip(ticket.ticket_number)}
+    <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Closing notes</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;overflow:hidden;margin-bottom:18px;">
+      <tr><td style="padding:16px 20px;color:#333;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(remarks)}</td></tr>
+    </table>
+    ${resolvedReason ? `<p style="margin:0 0 18px;color:#777;font-size:13px;">Resolution: ${esc(resolvedReason)}</p>` : ''}
+    <p style="margin:0 0 4px;color:#555;font-size:14px;line-height:1.6;">
+      If this is not fixed, or the problem comes back, use the link below and tell us — it reopens
+      the conversation on the same ticket rather than starting again from scratch.
+    </p>
+    ${replyBlock(ticket.ticket_number, 'need to reopen this')}`
+
+  const result = await resend.emails.send({
+    from: FROM,
+    to: ticket.customer_email,
+    subject: `Your IAT support ticket ${ticket.ticket_number} has been ${word}`,
+    html: shell(status === 'resolved' ? 'Ticket Resolved' : 'Ticket Closed', body),
+  })
+  if (result.error) console.error(`[resend] close email failed to ${ticket.customer_email}:`, result.error)
+  else console.log(`[resend] close email sent to ${ticket.customer_email}: id=${result.data?.id}`)
+}
+
 // ── A copy of an admin's "Reply to customer" note ─────────────────────────────
 // `replyHtml` is the note content already sanitized by the notes route
 // (sanitizeNoteHtml) before storage, so it is safe to embed here.
