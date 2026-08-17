@@ -2,6 +2,37 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — A weekly leadership update, generated from this file
+
+Mondays at noon Eastern, `/api/cron/leadership-update` reads the last seven days of **this
+changelog**, has Claude rewrite it for a non-technical reader, renders a one-page Word document
+and emails it to `LEADERSHIP_UPDATE_EMAIL` (currently Lee Childers).
+
+**Why the changelog is the source.** It is already written, already accurate, and already
+updated on every deploy. Summarising git subjects instead would mean summarising commit
+messages, which describe code; changelog entries describe what changed for the business. It also
+means the report cannot drift from reality — if nothing was written down, nothing is claimed.
+
+**The model translates, it does not invent.** The prompt forbids anything not present in the
+source, bans implementation vocabulary outright, caps each line at one sentence under 18 words,
+holds the total to 14 lines, and repeats the standing rule about never naming a customer or a
+competitor. The first version produced 553 words across 19 lines, every one over the cap and
+thick with `endpoint`, `idempotency`, `401`, `bisection` — it wanted to explain the engineering.
+Three bad/good examples plus a validation gate fixed it: any line over 20 words, containing more
+than one sentence, or using banned vocabulary is quoted back for one rewrite. Naming the
+offending lines works far better than restating the rules. **This week: 11 lines, 144 words, one
+page, about 25 seconds to read.**
+
+A quiet week still sends — silence is indistinguishable from a broken job, and this portal has
+been bitten twice by exactly that. A second failed rewrite ships anyway and logs it: a wordy
+update beats a silent Monday. `?dry=1` returns the summary without sending, to check the wording
+before a Monday.
+
+**The two-cron tier limit is gone.** This is the third registered cron and it deployed fine, so
+the note in `admin-digest` about staying within two entries is stale. Worth revisiting: that
+constraint is why the digest registers only its EDT schedule and needs a manual one-line flip at
+each DST changeover. Adding the second entry back would make it self-correcting.
+
 ## 2026-08-17 — CRON_SECRET was never set, so no cron had ever run
 
 Found while verifying the RFQ reminder sweep: **`CRON_SECRET` did not exist in Vercel
