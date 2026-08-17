@@ -277,8 +277,12 @@ that **no `/admin/*` page here has ever been rendered with a logged-in session.*
 - No weather lookup — outdoor design conditions default to 95°F/55% and are confirmed against
   ASHRAE design data by hand during the survey.
 - No file/drawing upload; the form asks customers to mention drawings in the notes.
-- Nothing converts an RFQ into a deal yet — it is re-keyed by hand.
+- **⚠️ Nothing converts an RFQ into a deal — it is re-keyed by hand.** Flagged 2026-08-17 as the
+  next thing to build here, deliberately deferred rather than forgotten. **It needs a scoping
+  decision before any code**: per `docs/projected-sales.md`, DryWare is the source of truth for the
+  pipeline, and `replace_projected_sales()` *wipes and reloads* the table before
+  `materializeDealsFromProjectedSales()` rebuilds `deals`. So an RFQ→deal button either writes into
+  a table the next sync overwrites, or it has to push upstream into DryWare. That choice is the
+  actual work — the form-filling is trivial either way.
 - The reminder cadence (24h to first chase, 48h to re-chase) is hard-coded in
   `lib/rfq-reminders.ts` rather than configurable.
-- Reminders ride the digest cron, so they fire once a day at the digest hour rather than on
-  their own schedule.
