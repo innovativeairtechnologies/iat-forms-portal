@@ -2,6 +2,20 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — Session handoff record
+
+Full business-continuity record of the session that built Request for Quote and everything that
+fell out of it: [`docs/handoff/2026-08-17-session-handoff.md`](../docs/handoff/2026-08-17-session-handoff.md)
+(repo root `docs/`, not this app's `docs/`).
+
+Scope, a file-by-file change log with reasoning, every design decision including the ones
+**rejected** so they don't get re-proposed, the gotchas found, an explicit verification table
+naming what was **not** tested, open threads, and the minimum context to resume cold.
+
+Read it before picking this feature up. The two things most likely to bite: an unmapped
+`/admin/*` path is fail-**open**, and `if (CRON_SECRET && …)` is fail-**open** — both are
+documented there with what they cost.
+
 ## 2026-08-17 — A weekly leadership update, generated from this file
 
 Mondays at noon Eastern, `/api/cron/leadership-update` reads the last seven days of **this

@@ -246,6 +246,14 @@ Both show the **unclaimed count as well as your own**. A dashboard that only lis
 assignments would go quiet exactly when nobody has picked something up, which is the failure this
 whole feature exists to stop.
 
+## Handoff record
+
+The session that built all of this left a full continuity record at
+[`docs/handoff/2026-08-17-session-handoff.md`](../../docs/handoff/2026-08-17-session-handoff.md)
+(repo root `docs/`, not this app's). It carries the reasoning behind each decision, the options
+**rejected**, the traps found, and an explicit table of what was and was not verified — notably
+that **no `/admin/*` page here has ever been rendered with a logged-in session.**
+
 ## Known gaps
 
 - No weather lookup — outdoor design conditions default to 95°F/55% and are confirmed against
