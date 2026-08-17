@@ -65,9 +65,49 @@ export function isDigestTime(): boolean {
   return hour === 16 && minute >= 25 && minute <= 34
 }
 
-/** All admins who should receive the daily digest. */
+/**
+ * ⚠️ TEMPORARY OPT-OUT — added 2026-08-17, REVISIT.
+ *
+ * The digest had never actually sent: CRON_SECRET was missing from Vercel, so
+ * every cron invocation 401'd and `digest_runs` sat empty from the day it was
+ * built. Setting that secret armed it for real, and Jacob asked to hold three
+ * people back for the first live sends while the format is reviewed:
+ *
+ *   jacob.younker@dehumidifiers.com   Jacob Younker
+ *   tyler@dehumidifiers.com           Tyler Bell
+ *   jo.evans@dehumidifiers.com        Jo Evans
+ *
+ * The remaining admins (Crystal, Kacy, Lee) do receive it.
+ *
+ * TO PUT THEM BACK: delete a line here, or set DIGEST_OPT_OUT_EMAILS in Vercel
+ * to override the whole list without a deploy (empty string = nobody excluded).
+ * This is a recipient filter only — nothing else about the digest changes.
+ */
+const DIGEST_OPT_OUT_DEFAULT = [
+  'jacob.younker@dehumidifiers.com',
+  'tyler@dehumidifiers.com',
+  'jo.evans@dehumidifiers.com',
+]
+
+function digestOptOut(): Set<string> {
+  const raw = process.env.DIGEST_OPT_OUT_EMAILS
+  const list = raw === undefined
+    ? DIGEST_OPT_OUT_DEFAULT
+    : raw.split(',').map(s => s.trim()).filter(Boolean)
+  return new Set(list.map(e => e.toLowerCase()))
+}
+
+/** All admins who should receive the daily digest, minus the opt-out above. */
 export async function getDigestRecipients(): Promise<Employee[]> {
-  return getAdminRecipients()
+  const all = await getAdminRecipients()
+  const skip = digestOptOut()
+  const recipients = all.filter(e => !skip.has((e.email ?? '').toLowerCase()))
+  const held = all.length - recipients.length
+  if (held > 0) {
+    // Logged every run so a "temporary" exclusion cannot quietly become permanent.
+    console.log(`[admin-digest] ${held} admin(s) held back by the opt-out list — see lib/admin-digest.ts`)
+  }
+  return recipients
 }
 
 export type AdminTicketDigest = {

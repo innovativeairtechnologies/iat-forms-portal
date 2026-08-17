@@ -2,6 +2,35 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — CRON_SECRET was never set, so no cron had ever run
+
+Found while verifying the RFQ reminder sweep: **`CRON_SECRET` did not exist in Vercel
+production.** Every cron route guards with `if (!CRON_SECRET || auth !== …)`, and Vercel only
+attaches the bearer header when that variable exists — so every scheduled invocation 401'd.
+
+`digest_runs` was **empty**. The daily admin digest has never sent, not once, since the day it
+was built. Weekly PTO accrual (`/api/cron/accrue-pto`) had never run either.
+
+The secret is now set (48 bytes of CSPRNG, base64url, Production only) and the project
+redeployed so the functions pick it up. Verified against production: anonymous → 401, wrong
+secret → 401, correct secret → 200. `/api/cron/admin-digest` called with the secret outside its
+window returns `{skipped: true, reason: "not digest time (NY)"}` and leaves `digest_runs` empty,
+which is exactly right.
+
+**⚠️ A related bug of my own, same day:** `/api/cron/rfq-reminders` shipped with
+`if (CRON_SECRET && auth !== …)` — the check is *skipped* when the variable is unset, so while
+it was missing an anonymous GET could run the sweep and send mail. One did, during verification:
+it stamped all five surveys and delivered a REMINDER to the shared desk. Fixed in `426de37`; all
+four cron routes now fail closed. **A route whose only job is to send email must never be
+reachable by default.** (That push also hit the missed-webhook trap and needed an empty commit.)
+
+**Digest opt-out, temporary — revisit.** Arming the digest means six admins get an email they
+have never seen. At Jacob's request three are held back for the first live sends while the
+format is reviewed: **Jacob Younker, Tyler Bell, Jo Evans**. Crystal, Kacy and Lee receive it.
+The list is `DIGEST_OPT_OUT_DEFAULT` in `lib/admin-digest.ts`, overridable without a deploy via
+`DIGEST_OPT_OUT_EMAILS` (empty string = nobody excluded), and every run logs how many were held
+so a temporary exclusion cannot quietly become permanent.
+
 ## 2026-08-15 — Quote requests get an owner, a permanent note trail, and someone chasing them
 
 Migration 088. Four connected pieces, all aimed at the same failure: five real surveys sat

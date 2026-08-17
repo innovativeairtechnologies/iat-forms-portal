@@ -146,6 +146,35 @@ leave, or someone leaving the company. The hardcoded fallbacks in
 `SUPPORT_NOTIFICATION_EMAIL`. Previously the RFQ route fell through to whatever
 tickets used, so changing the ticket recipient silently moved quote requests too.
 
+### Cron: `CRON_SECRET` — set 2026-08-17, and until then nothing ran
+
+`CRON_SECRET` did not exist in Vercel production until 2026-08-17. Every cron route guards with
+`if (!process.env.CRON_SECRET || auth !== ...)`, and Vercel only attaches the bearer header when
+that variable exists — so **every scheduled invocation 401'd.** `digest_runs` was empty from the
+day the digest was built, and weekly PTO accrual had never fired either.
+
+It is now set (48 bytes of CSPRNG, base64url, Production only) and the project redeployed, since
+a new env var does nothing until the functions are rebuilt. Verified live: anonymous → 401,
+wrong secret → 401, correct secret → 200.
+
+⚠️ **Never relax a cron guard to `if (CRON_SECRET && ...)`.** That form skips the check entirely
+when the variable is missing. `/api/cron/rfq-reminders` shipped that way for about an hour on
+2026-08-17 and an anonymous GET ran the sweep and sent real mail. A route whose only job is to
+send email must never be reachable by default. All four cron routes now fail closed.
+
+### Daily digest opt-out — TEMPORARY, revisit
+
+Arming the digest meant six admins would receive an email none of them had ever seen. Three are
+held back for the first live sends while the format is reviewed:
+
+| Held back | Receives |
+|---|---|
+| Jacob Younker, Tyler Bell, Jo Evans | Crystal Hill, Kacy Orr, Lee Childers |
+
+The list is `DIGEST_OPT_OUT_DEFAULT` in `lib/admin-digest.ts`. Set `DIGEST_OPT_OUT_EMAILS` in
+Vercel to override it without a deploy (empty string = nobody excluded). Every run logs how many
+were held back, so this cannot quietly become permanent.
+
 ### Customer-facing mail is ON
 
 `CUSTOMER_TICKET_EMAILS = "on"`. Despite the name, this one switch governs **all**
