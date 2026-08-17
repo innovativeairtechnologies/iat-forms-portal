@@ -467,6 +467,10 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
   if (ctx.role === 'admin') {
     return ([
       { id: 'metrics', span: 3 },
+      // High and left on purpose: this is the only card showing work assigned to
+      // the VIEWER, and it carries the unclaimed count. Buried below the fold it
+      // cannot do the job it exists for — surfacing a quote request nobody owns.
+      { id: 'my_rfqs', span: 1 },
       { id: 'exec_forms_performance', span: 2 }, { id: 'tickets_donut', span: 1 },
       { id: 'exec_top_forms', span: 1 }, { id: 'exec_top_submitters', span: 1 }, { id: 'exec_needs_attention', span: 1 },
       { id: 'exec_activity', span: 2 }, { id: 'recent_submissions', span: 1 },
@@ -479,6 +483,11 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
     .map((k) => `recent_${k}`)
     .find((id) => CARD_BY_ID[id]?.available(ctx))
   if (topRecent) items.push({ id: topRecent, span: 2 })
+  // Same reasoning as the admin default above. The trailing .filter() drops it
+  // for roles without `deals`, so this is safe to push unconditionally — and it
+  // means a scoped role that is later granted the quote queue gets the card
+  // without anyone remembering to come back here.
+  items.push({ id: 'my_rfqs', span: 1 })
 
   if (ctx.can('tickets')) {
     items.push({ id: 'tickets_donut', span: 1 }, { id: 'quick_links', span: 2 }, { id: 'snapshot', span: 1 })
