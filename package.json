@@ -33,6 +33,7 @@
     "barcode-detector": "^3.2.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "docx": "^9.7.1",
     "fflate": "^0.8.3",
     "framer-motion": "^11.3.0",
     "html2canvas": "^1.4.1",
