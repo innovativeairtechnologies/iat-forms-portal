@@ -1150,11 +1150,19 @@ const CONTENT_BOTTOM = FOOTER_BAND_TOP - 4
  * Applied to every page after all content is laid out: the diagonal PRELIMINARY
  * watermark, the highlighted disclaimer band, and the page meta line.
  *
- * The watermark goes on TOP at 7% rather than underneath, because the pages are
- * built from opaque white cards — drawn first it would only survive in the
- * gutters between them, which reads as a rendering fault rather than a stamp.
- * At this opacity it is legible over white and imperceptible over the pine bands.
+ * The watermark goes on TOP rather than underneath, because the pages are built
+ * from opaque white cards — drawn first it would only survive in the gutters
+ * between them, which reads as a rendering fault rather than a stamp.
+ *
+ * WATERMARK_OPACITY is the one knob. It was 0.07, raised to 0.10 on 2026-08-17
+ * because the stamp read as almost nothing on a printed page — screen contrast
+ * flatters it, toner does not. This is the ceiling worth having: it has to stay
+ * legible over white without competing with the body text sitting on top of it,
+ * and it must still disappear into the dark pine bands rather than smearing them.
+ * Nudge this constant rather than the colour, so there is one number to reason
+ * about if it is ever wrong again.
  */
+const WATERMARK_OPACITY = 0.10
 function stampEveryPage(doc: Doc, meta: RfqPdfMeta) {
   const pages = doc.getNumberOfPages()
   const g = doc as unknown as { GState: new (o: object) => object }
@@ -1166,7 +1174,7 @@ function stampEveryPage(doc: Doc, meta: RfqPdfMeta) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
 
-    doc.setGState(new g.GState({ opacity: 0.07 }))
+    doc.setGState(new g.GState({ opacity: WATERMARK_OPACITY }))
     text(doc, 'PRELIMINARY', PAGE_W / 2, PAGE_H / 2 + 26, {
       size: 62, weight: 'bold', color: [90, 90, 84], align: 'center', angle: 32,
     })

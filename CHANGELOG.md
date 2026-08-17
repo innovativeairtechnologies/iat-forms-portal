@@ -2,6 +2,29 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — A quote request needs a way to reach you
+
+Name, company, email **and phone** are now all required on the RFQ wizard. Only the first three
+were, and phone was the one that mattered most in practice: pricing a job almost always needs a
+question answered, and doing that by email costs a day per round trip.
+
+Enforced in the wizard step by step and again in `POST /api/rfq`, which is public and
+unauthenticated. The digit rule is the same loose one the support form uses — ten digits after
+punctuation is stripped, checking that a number was really given rather than that it can be
+dialled — so the two intakes cannot drift into disagreeing about what a phone number is.
+
+## 2026-08-17 — PRELIMINARY actually reads as a stamp now
+
+The diagonal watermark on every page of the quote-request PDF was set to 7% opacity. On a screen
+that is a legible ghost; through a printer it is very nearly nothing, which is a problem for the one
+mark on the document whose whole job is to stop a planning estimate being read as a commitment.
+
+Raised to 10% — enough to register as a stamp, still faint enough that the body text sitting on top
+of it stays comfortable and the dark pine bands swallow it rather than showing a smear. It is a
+named constant now rather than a number buried in the render loop, so there is one place to nudge if
+it is ever wrong again. Checked by generating the PDF and looking at it, not by reasoning about
+opacity.
+
 ## 2026-08-17 — A customer can now write back on a quote request
 
 Support tickets have had a message box on the status page since the confirmation emails started

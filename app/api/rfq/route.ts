@@ -135,6 +135,14 @@ export async function POST(req: NextRequest) {
     if (!data.contactName.trim() || !EMAIL_RE.test(data.email.trim()) || !data.company.trim()) {
       return NextResponse.json({ error: 'Please give us your name, company and a valid email address.' }, { status: 400 })
     }
+    // Phone joined the required set 2026-08-17. The wizard blocks the same thing
+    // step by step; this is the backstop, because the endpoint is public and
+    // unauthenticated. Ten digits after punctuation is stripped — deliberately
+    // loose, and the same rule POST /api/tickets applies, so the two intakes
+    // cannot drift into disagreeing about what a phone number is.
+    if ((data.phone.match(/\d/g) || []).length < 10) {
+      return NextResponse.json({ error: 'Please give us a phone number we can reach you on.' }, { status: 400 })
+    }
     if (!data.application) {
       return NextResponse.json({ error: 'Please choose an application.' }, { status: 400 })
     }

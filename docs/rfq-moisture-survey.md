@@ -131,9 +131,13 @@ IAT's required wording, applied by `stampEveryPage()` after all content is laid 
 3. **Nothing may cross `CONTENT_BOTTOM`.** The record pages flow, and their length varies with
    the survey, so each section calls `ensure()` with the height it is about to draw and
    continues on a fresh page if it would run under the disclaimer band.
-4. **The watermark is drawn on top at 7%, not underneath.** The pages are built from opaque
-   white cards; drawn first it would survive only in the gutters between them, which reads as a
-   rendering fault rather than a stamp.
+4. **The watermark is drawn on top, not underneath.** The pages are built from opaque white
+   cards; drawn first it would survive only in the gutters between them, which reads as a
+   rendering fault rather than a stamp. Its strength is the single constant
+   `WATERMARK_OPACITY` — **0.10** since 2026-08-17, raised from 0.07 because the stamp came
+   through a printer as very nearly nothing. Screen contrast flatters it and toner does not, so
+   judge any change from a rendered page rather than from the number. Nudge that constant rather
+   than the grey, so there is one thing to reason about.
 
 ### Verifying a PDF change
 
@@ -141,6 +145,24 @@ Render it and look at it — layout bugs here are invisible to the type checker.
 `pdftoppm -png -r 110 out.pdf page` is on the dev box and turns each page into an image.
 
 ---
+
+## What the wizard requires
+
+Four contact fields, all four gating the About step and all four re-checked in `POST /api/rfq`
+because that endpoint is public and unauthenticated:
+
+| Field | Rule |
+|---|---|
+| `contactName` | more than one character |
+| `company` | more than one character |
+| `email` | `EMAIL_RE` |
+| `phone` | **≥ 10 digits** after punctuation is stripped |
+
+Phone joined the set 2026-08-17. Pricing a job almost always needs a question answered, and an
+email round trip costs a day each time. The digit rule is deliberately loose — it checks a number
+was really given, not that it is dialable — and is **the same rule `POST /api/tickets` applies**, so
+the two public intakes cannot drift into disagreeing about what a phone number is. Change one,
+change both.
 
 ## Storage & delivery
 

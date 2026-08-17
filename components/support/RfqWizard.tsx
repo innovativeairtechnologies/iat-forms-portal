@@ -69,26 +69,28 @@ const inputCx =
 // Every control is explicitly wired to its <label> and hint via useId, so the
 // label is a click target, screen readers announce the hint, and the fields are
 // addressable by accessible name in tests.
-function Label({ id, children, hint, hintId }: { id: string; children: React.ReactNode; hint?: string; hintId: string }) {
+function Label({ id, children, hint, hintId, required }: { id: string; children: React.ReactNode; hint?: string; hintId: string; required?: boolean }) {
   return (
     <div className="mb-1.5">
-      <label htmlFor={id} className="block text-[12.5px] font-medium text-ink-secondary">{children}</label>
+      <label htmlFor={id} className="block text-[12.5px] font-medium text-ink-secondary">
+        {children}{required && <span className="ml-0.5 text-rose-400" aria-hidden="true">*</span>}
+      </label>
       {hint && <p id={hintId} className="mt-0.5 text-[11.5px] leading-relaxed text-ink-muted">{hint}</p>}
     </div>
   )
 }
 
 function TextField({
-  label, hint, value, onChange, placeholder, type = 'text', autoFocus, suffix,
+  label, hint, value, onChange, placeholder, type = 'text', autoFocus, suffix, required,
 }: {
   label: string; hint?: string; value: string; onChange: (v: string) => void
-  placeholder?: string; type?: string; autoFocus?: boolean; suffix?: string
+  placeholder?: string; type?: string; autoFocus?: boolean; suffix?: string; required?: boolean
 }) {
   const id = useId()
   const hintId = `${id}-hint`
   return (
     <div>
-      <Label id={id} hint={hint} hintId={hintId}>{label}</Label>
+      <Label id={id} hint={hint} hintId={hintId} required={required}>{label}</Label>
       <div className="relative">
         <input
           id={id}
@@ -98,6 +100,7 @@ function TextField({
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
           aria-describedby={hint ? hintId : undefined}
+          aria-required={required || undefined}
           inputMode={type === 'number' ? 'decimal' : undefined}
           className={`${inputCx} ${suffix ? 'pr-12' : ''} ${type === 'number' ? 'tabular-nums' : ''}`}
         />
@@ -1486,12 +1489,19 @@ function StepAbout({ data, set }: { data: RfqData; set: SetFn }) {
   return (
     <div className="space-y-5">
       <Grid>
-        <TextField label="Your name" value={data.contactName} onChange={v => set('contactName', v)} autoFocus />
-        <TextField label="Company" value={data.company} onChange={v => set('company', v)} />
+        <TextField label="Your name" value={data.contactName} onChange={v => set('contactName', v)} autoFocus required />
+        <TextField label="Company" value={data.company} onChange={v => set('company', v)} required />
       </Grid>
       <Grid>
-        <TextField label="Email" value={data.email} onChange={v => set('email', v)} type="email" placeholder="you@company.com" />
-        <TextField label="Phone" value={data.phone} onChange={v => set('phone', v)} type="tel" />
+        <TextField label="Email" value={data.email} onChange={v => set('email', v)} type="email" placeholder="you@company.com" required />
+        <TextField
+          label="Phone"
+          value={data.phone}
+          onChange={v => set('phone', v)}
+          type="tel"
+          required
+          hint="A quote is a conversation — we will almost always need to ask you something."
+        />
       </Grid>
 
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
@@ -1631,7 +1641,15 @@ function validateStep(step: StepKey, d: RfqData): boolean {
       return numOf(d.processCfm) > 0
     case 'about':
     case 'review':
-      return d.contactName.trim().length > 1 && EMAIL_RE.test(d.email.trim()) && d.company.trim().length > 1
+      // Phone joined name/company/email as required 2026-08-17. Pricing a job
+      // always needs a question answered, and an email round trip costs a day
+      // each time. Same loose digit count as the support form: ten digits after
+      // punctuation is stripped, checking that a number was really given rather
+      // than that it is dialable.
+      return d.contactName.trim().length > 1
+        && EMAIL_RE.test(d.email.trim())
+        && d.company.trim().length > 1
+        && (d.phone.match(/\d/g) || []).length >= 10
     default:
       return true
   }
@@ -1645,7 +1663,7 @@ function requirementHint(step: StepKey): string {
     case 'leaving':     return 'Enter the leaving air temperature and grains'
     case 'airstream':   return 'Enter the process airflow'
     case 'about':
-    case 'review':      return 'Name, company and a valid email, please'
+    case 'review':      return 'Name, company, a valid email and a phone number, please'
     default:            return ''
   }
 }
