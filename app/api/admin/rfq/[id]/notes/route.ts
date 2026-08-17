@@ -46,7 +46,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       // no row for them — an odd byline beats an anonymous note.
       author_name: shortStaffName(employee?.name ?? user.email?.split('@')[0] ?? ''),
     })
-    .select('id, body, author_name, created_at')
+    // author_type comes back so the optimistic row the client prepends carries
+    // the same shape as the ones the page loaded — it defaults to 'staff' in the
+    // database (089), so this route never sets it.
+    .select('id, body, author_name, author_type, created_at')
     .single()
 
   if (error) {

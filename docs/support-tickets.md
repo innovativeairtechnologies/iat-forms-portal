@@ -259,7 +259,9 @@ to see the ticket at all.
 
 Because it is a public write, it also carries **the strictest reCAPTCHA settings
 in the codebase** (action `ticket_message`): `failClosed: true` and a
-`minScore` of **0.7** rather than the 0.5 default.
+`minScore` of **0.7** rather than the 0.5 default. `POST /api/rfq/status/message`
+is the same endpoint for quote requests, with the same posture and action
+`rfq_message`.
 
 Both are deliberate inversions of the house rule. Everywhere else reCAPTCHA fails
 OPEN, because losing a real customer's submission is worse than admitting a bot.
@@ -330,19 +332,46 @@ and email"* — a correct answer from the ticket resolver, which was the only pl
 the page ever looked. The link was live and the lookup worked; they were just
 pointed at different tables.
 
-**Only support tickets get the "Add a message" box and the "Request portal access"
-CTA.** `POST /api/tickets/status/message` resolves `tickets` alone, so offering
-either on a checklist or an RFQ result would promise a customer a reply that could
-never land. Both are gated on the *resolved* reference kind, not on what is
-currently typed in the input.
+**Tickets and quote requests each get an "Add a message" box; checklists do not.**
+Each kind writes to its own endpoint and its own note table:
 
-Which is why **the RFQ confirmation email no longer says "send a message"** — its
-button now reads *"Check your request status"*, and the closing line points anyone
-with a question at their sales engineer instead of at a box that is not there. Per
-the rule above, no-reply wording and a write path ship together; an RFQ has no
-write path today, so it does not get the no-reply-and-nothing-else treatment.
-**If a customer message box is ever added for RFQs, restore the original wording
-in the same change.**
+| Kind | Write endpoint | Lands in | reCAPTCHA action |
+|---|---|---|---|
+| ticket | `POST /api/tickets/status/message` | `ticket_notes` | `ticket_message` |
+| rfq | `POST /api/rfq/status/message` | `rfq_notes` | `rfq_message` |
+| checklist | — none — | — | — |
+
+TSC- checklist intakes have no note table and no write endpoint, so the box is
+hidden for them rather than offering a reply that could never land. The box and
+the endpoint choice are both keyed off the **resolved** reference kind, never off
+what is currently typed in the input — retyping the box cannot aim a message at
+the wrong table.
+
+**"Request portal access" stays ticket-only.** That CTA links a submission to a
+customer portal account, which is a ticket-shaped thing; a quote request has no
+equipment behind it to show.
+
+⚠️ **`rfq_notes.body` is rendered as TEXT** (`whitespace-pre-wrap` in
+`TriageCard`), while `ticket_notes.content` is rendered as **markup**. The ticket
+endpoint therefore escapes the customer's message into HTML and the RFQ endpoint
+stores it verbatim. Copying `toSafeHtml()` across would show a customer their own
+message wrapped in visible `<p>` tags.
+
+### Telling a customer's message apart from a sales note
+
+`rfq_notes` began (088) as a purely internal trail, and the card above it said so.
+Migration **089** adds `author_type` (`staff` | `customer`, defaulting to `staff`)
+because both now share one list. The admin trail gives customer entries a sky wash
+and a **Customer** badge, and the "internal" promise moved from the heading onto
+the composer — the only place it is still true.
+
+`author_type` is hardcoded per route and never read from a request body, so a
+crafted POST cannot file a note that reads as staff.
+
+**Who hears about it:** the assignee if the request has one (and their account is
+active), otherwise the shared desk — never both. A request with an owner has
+someone whose job this is; copying the desk on every message teaches the desk to
+filter the folder.
 
 ## What the support form now requires
 
@@ -372,6 +401,8 @@ and a ticket with no organization or callback number cannot be triaged.
 | `POST /api/tickets/status` | yes | none | read-only lookup |
 | `POST /api/troubleshooting/status` | yes | none | read-only, used by `/support/status` |
 | `POST /api/rfq/status` | yes | none | read-only, used by `/support/status` |
+| `POST /api/tickets/status/message` | 8 / 10 min | `ticket_message` | **fail-CLOSED, minScore 0.7** |
+| `POST /api/rfq/status/message` | 8 / 10 min | `rfq_message` | **fail-CLOSED, minScore 0.7** |
 
 The two troubleshooting endpoints were open until 2026-08-13 — a rate limit was the
 only barrier on a public POST that wrote a row, spent a model call and sent mail.

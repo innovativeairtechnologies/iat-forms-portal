@@ -2,6 +2,36 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — A customer can now write back on a quote request
+
+Support tickets have had a message box on the status page since the confirmation emails started
+saying *"do not reply"* — you cannot tell someone not to reply and then give them nowhere to write.
+Quote requests had the same no-reply wording and no such box, so a customer with a correction had
+the phone or nothing. Now they have the same write-back: reference plus the email they submitted
+with, a message, and it lands on the request.
+
+**Where it lands is the interesting part.** Sales notes on a quote request were built as a strictly
+internal trail — the card above them says the customer never sees this — and a customer message
+dropped into that same list would be indistinguishable from a colleague's note except by a name you
+have to recognise. Someone skims, mistakes their words for ours, and replies as though the customer
+cannot read what was said around it. So every entry now records **who wrote it**: customer messages
+carry a badge and their own tint, and the "internal" promise moved off the heading and onto the box
+you type into, which is the only place it is still true.
+
+**Somebody hears about it.** The person who owns the request, or the shared desk if nobody owns it
+yet — never both, because copying the desk on everything teaches the desk to filter the folder. The
+message is quoted in full in that email; making someone click through to read two sentences is how
+an alert becomes something people scroll past.
+
+The same locks as the ticket version: the reference alone is guessable and the reference-plus-email
+pair is not, the bot check fails **closed** here rather than open, and whether a note reads as
+"customer" or "staff" is decided by which door it came through — never by anything the sender can
+put in the request.
+
+With a real message box behind it, the RFQ confirmation email's button goes back to reading
+**"View your request & send a message"**. It was reworded this morning precisely because it was
+promising something that did not exist.
+
 ## 2026-08-17 — Checking your status now works for quote requests, not just tickets
 
 The "View your request & send a message" button in the RFQ confirmation email has been landing

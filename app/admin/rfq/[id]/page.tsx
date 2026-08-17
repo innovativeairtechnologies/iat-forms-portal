@@ -48,7 +48,7 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
   const [{ data: notes }, roster] = await Promise.all([
     supabaseAdmin
       .from('rfq_notes')
-      .select('id, body, author_name, created_at')
+      .select('id, body, author_name, author_type, created_at')
       .eq('rfq_id', id)
       .order('created_at', { ascending: false }),
     getEmployeesWithPerm('deals'),

@@ -3,10 +3,11 @@ import { EMAIL_FROM } from './email-from'
 
 // ─── Mail about a quote request's life in the queue ──────────────────────────
 //
-// Three sends, all to IAT staff, all linking to one row:
-//   • assignment notice — "this one is yours now"            (action-triggered)
-//   • assignee nudge    — "you own this and haven't started" (lib/rfq-reminders)
-//   • unclaimed reminder — "nobody has picked these up"      (lib/rfq-reminders)
+// Four sends, all to IAT staff, all linking to one row:
+//   • assignment notice  — "this one is yours now"            (action-triggered)
+//   • customer message   — "they have written to you"         (action-triggered)
+//   • assignee nudge     — "you own this and haven't started" (lib/rfq-reminders)
+//   • unclaimed reminder — "nobody has picked these up"       (lib/rfq-reminders)
 //
 // A separate module from resend-rfq.ts on purpose: that file handles the mail a
 // SUBMISSION triggers (desk heads-up, customer confirmation), this one handles
@@ -39,8 +40,10 @@ function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/** Same recipient chain as the submission heads-up, so one env var moves both. */
-function deskRecipients(): string[] {
+/** Same recipient chain as the submission heads-up, so one env var moves both.
+ *  Exported so the public message endpoint falls back to exactly this list
+ *  rather than growing a second, drifting copy of it. */
+export function deskRecipients(): string[] {
   const raw = process.env.RFQ_NOTIFICATION_EMAIL
     || process.env.SUPPORT_NOTIFICATION_EMAIL
     || 'iatsupport@dehumidifiers.com'
@@ -158,6 +161,69 @@ export async function sendRfqAssignmentNotice(
   })
   if (res.error) throw new Error(`resend rfq assignment notice: ${JSON.stringify(res.error)}`)
   console.log(`[resend] rfq assignment notice sent to ${to}: id=${res.data?.id}`)
+}
+
+/**
+ * "The customer has written to you." Sent the moment someone adds a message to
+ * their own quote request from /support/status.
+ *
+ * This is the half of the write-back that makes it worth having. The message is
+ * already on the trail by the time this runs and is visible in /admin/rfq either
+ * way — but nobody refreshes a quote request they are not thinking about, so
+ * without a push the customer's reply sits unread and the silence they wrote to
+ * break gets longer. A mail failure is logged, never thrown: losing the alert
+ * must not cost us the message.
+ *
+ * Recipients are the caller's decision — the assignee when the request has one,
+ * the shared desk when it does not. Deliberately not both: a request with an
+ * owner has someone whose job this is, and copying the desk on every message
+ * teaches the desk to filter the folder.
+ *
+ * The message is quoted in full rather than summarised. It is at most 4000
+ * characters, and asking someone to click through to read two sentences is how
+ * an alert becomes something people skim past.
+ */
+export async function sendRfqCustomerMessageAlert(
+  args: { id: string; reference: string; company: string; contactName: string; message: string },
+  recipients: string[],
+): Promise<void> {
+  if (!recipients.length) {
+    console.log('[resend] rfq customer message: no recipient configured — skipped')
+    return
+  }
+  const { id, reference, company, contactName, message } = args
+  const who = contactName || 'The customer'
+
+  const inner = `
+    <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">
+      <strong>${esc(who)}</strong>${company ? ` at ${esc(company)}` : ''} added a message to quote
+      request <strong style="font-family:monospace;">${esc(reference)}</strong>.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;overflow:hidden;margin:0 0 20px;">
+      <tr><td style="padding:16px 20px;color:#333;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</td></tr>
+    </table>
+    <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;">
+      It is on the request's note trail, marked as coming from them. Reply by email or phone —
+      the portal does not send your answer back to them.
+    </p>
+    ${cta('Open the request', `${APP_URL}/admin/rfq/${id}`)}`
+
+  const subject = `${who} replied on quote request ${reference}`
+    + (company ? ` — ${company}` : '')
+
+  const results = await Promise.all(
+    recipients.map(to => resend.emails.send({
+      from: FROM, to, subject,
+      html: shell(
+        '#0a2e1e', 'A customer replied', 'On a quote request', inner,
+        'IAT Portal · Sent when a customer adds a message to their quote request.',
+      ),
+    })),
+  )
+  results.forEach((r, i) => {
+    if (r.error) console.error(`[resend] rfq customer message alert failed to ${recipients[i]}:`, r.error)
+    else console.log(`[resend] rfq customer message alert sent to ${recipients[i]}: id=${r.data?.id}`)
+  })
 }
 
 /** "You own these and have not started them." One email per owner, not per row. */

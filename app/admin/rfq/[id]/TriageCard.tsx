@@ -23,6 +23,10 @@ export type RfqNote = {
   body: string
   author_name: string
   created_at: string
+  /** 'staff' | 'customer' (migration 089). Optional so a row selected before the
+   *  column existed still renders — it falls back to staff, which is what every
+   *  pre-089 row was. */
+  author_type?: string | null
 }
 
 const TONE: Record<RfqStatus, { on: string; off: string }> = {
@@ -198,11 +202,16 @@ export default function TriageCard({
           </p>
         </div>
 
-        {/* ── Note trail ── */}
+        {/* ── Note trail ──
+            Mixed since migration 089: staff notes and customer messages sit on
+            one list. The heading can no longer say "internal" — half the rows
+            are not — so the privacy promise moved onto the composer, which is
+            the only place it is still true. */}
         <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800/60">
-          <p className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">Internal notes</p>
+          <p className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">Notes &amp; messages</p>
           <p className="mb-2 text-[11.5px] leading-relaxed text-zinc-400 dark:text-zinc-500">
-            Not visible to the customer. Entries are stamped and permanent — to correct one, add another.
+            What you write here is internal — the customer never sees it. Entries are stamped and
+            permanent; to correct one, add another.
           </p>
 
           <textarea
@@ -238,15 +247,36 @@ export default function TriageCard({
           )}
           {notes.length > 0 && (
             <ol className="max-h-[300px] space-y-2.5 overflow-y-auto pr-1">
-              {notes.map(n => (
-                <li key={n.id} className="rounded-lg bg-zinc-50 px-3 py-2.5 dark:bg-zinc-800/40">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-[11.5px] font-semibold text-zinc-700 dark:text-zinc-200">{n.author_name || 'Unknown'}</span>
-                    <span className="flex-shrink-0 text-[10.5px] tabular-nums text-zinc-400 dark:text-zinc-500">{stamp(n.created_at)}</span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">{n.body}</p>
-                </li>
-              ))}
+              {notes.map(n => {
+                // A customer message gets its own wash and a badge. Skimming a
+                // mixed trail and mistaking their words for a colleague's is the
+                // one failure this list must not allow — you would reply around
+                // them as if they could not read it.
+                const fromCustomer = n.author_type === 'customer'
+                return (
+                  <li
+                    key={n.id}
+                    className={`rounded-lg px-3 py-2.5 ${
+                      fromCustomer
+                        ? 'bg-sky-50/70 ring-1 ring-inset ring-sky-100 dark:bg-sky-500/[0.07] dark:ring-sky-500/20'
+                        : 'bg-zinc-50 dark:bg-zinc-800/40'
+                    }`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="flex items-baseline gap-1.5 min-w-0">
+                        <span className="truncate text-[11.5px] font-semibold text-zinc-700 dark:text-zinc-200">{n.author_name || 'Unknown'}</span>
+                        {fromCustomer && (
+                          <span className="flex-shrink-0 rounded-full bg-sky-100 px-1.5 py-px text-[10px] font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-400">
+                            Customer
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex-shrink-0 text-[10.5px] tabular-nums text-zinc-400 dark:text-zinc-500">{stamp(n.created_at)}</span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">{n.body}</p>
+                  </li>
+                )
+              })}
             </ol>
           )}
           {notes.length === 0 && (

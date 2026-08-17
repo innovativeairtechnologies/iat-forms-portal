@@ -211,18 +211,43 @@ clipped history reads as "more below" rather than as a rendering fault.
 Migration 088 carried the old single `internal_notes` textarea into the trail and left the column
 behind as a tombstone; drop it in a later migration once nothing has read it for a while.
 
+**The trail is no longer internal-only.** A customer can add a message to their own request from
+`/support/status` (`POST /api/rfq/status/message`), and it lands here as a row with
+`author_type = 'customer'` — migration **089**, defaulting to `staff` so every pre-existing row and
+every staff note is correctly labelled without touching either. The admin trail gives those entries
+a sky wash and a **Customer** badge; the heading is *"Notes & messages"* and the privacy line moved
+onto the composer, which is the only place *"the customer never sees this"* is still true.
+
+`author_type` is hardcoded per route, never read from a request body. Ownership on the public
+endpoint is the same pair the status lookup uses — reference **plus** the submitting email — behind
+a fail-closed reCAPTCHA at `minScore` 0.7. Full write-up in
+[support-tickets.md](support-tickets.md).
+
+⚠️ `body` is rendered as **text**, not markup. Do not store escaped HTML in it — the ticket
+endpoint does that because `ticket_notes.content` *is* markup, and copying that across would show
+the customer's own words wrapped in visible tags.
+
 ### Telling the owner, then chasing them (lib/rfq-reminders.ts)
 
-Three messages, all to IAT staff, all rendered by `lib/resend-rfq-reminders.ts` from one shell so
+Four messages now, all to IAT staff, all rendered by `lib/resend-rfq-reminders.ts` from one shell so
 the same request looks the same whichever one you open it from:
 
 | When | Who gets mailed |
 |---|---|
 | The moment a survey is assigned to a person | The new owner — *"this one is yours"* |
+| The moment a **customer** adds a message | The assignee if there is one, otherwise the shared desk — never both |
 | Assigned, `assigned_at` > 24h ago, still `new` | The owner — one email covering **all** their stalled rows, not one per row |
 | Unassigned, `created_at` > 24h ago, still `new` | The shared desk, subject prefixed **`REMINDER:`** |
 
-The first is action-triggered from `PATCH /api/admin/rfq/[id]`; the other two are the daily sweep.
+The first two are action-triggered — from `PATCH /api/admin/rfq/[id]` and
+`POST /api/rfq/status/message`; the other two are the daily sweep.
+
+The customer-message alert quotes the message **in full** rather than linking to it: it is capped at
+4000 characters, and asking someone to click through to read two sentences is how an alert becomes
+something people skim past. Like the others it is logged-not-thrown — the message is already on the
+trail and visible in `/admin/rfq` either way. But nobody refreshes a quote request they are not
+thinking about, so without the push the reply sits unread and the silence the customer wrote to
+break just gets longer.
 Until the assignment notice existed (2026-08-17), being handed a quote request was **silent** — the
 first thing an owner heard about it was the 24-hour nudge telling them they were already late. The
 nudge is the second message now, not the first.

@@ -143,16 +143,21 @@ export default function StatusClient({ customerContext = null }: { customerConte
     try {
       // Same best-effort reCAPTCHA pattern as the ticket form: a grecaptcha
       // hiccup must never stop a real customer from reaching us.
+      // A quote request and a support ticket each have their own write endpoint
+      // and their own reCAPTCHA action; both are keyed off the RESOLVED kind, so
+      // a message can never be aimed at the wrong table by retyping the box.
+      const isRfqMsg = resultKind === 'rfq'
+      const action = isRfqMsg ? 'rfq_message' : 'ticket_message'
       let recaptcha_token: string | undefined
       if (RECAPTCHA_SITE_KEY) {
         try {
           await new Promise<void>(resolve => window.grecaptcha?.ready(resolve) ?? resolve())
-          recaptcha_token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, { action: 'ticket_message' })
+          recaptcha_token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, { action })
         } catch (e) {
           console.error('[status] reCAPTCHA token fetch failed:', e)
         }
       }
-      const res = await fetch('/api/tickets/status/message', {
+      const res = await fetch(isRfqMsg ? '/api/rfq/status/message' : '/api/tickets/status/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -231,10 +236,14 @@ export default function StatusClient({ customerContext = null }: { customerConte
   const meta = result ? (isRfq ? RFQ_STATUS_META : TICKET_STATUS_META)[result.status] : null
   const steps = isRfq ? RFQ_STEPS : TICKET_STEPS
   const activeStep = meta?.step ?? -1
-  // Only support tickets have a notes thread and a portal-account link. The
-  // checklist and RFQ tables have neither, so offering either would promise the
-  // customer something that could never land.
+  // Only support tickets have a portal account behind them, so only they get the
+  // "see all your equipment in one place" invitation.
   const isTicket = resultKind === 'ticket'
+  // Tickets and quote requests both have a note trail a customer message can
+  // land on. TSC- checklist intakes do not — there is no write endpoint that
+  // resolves that table, so offering the box would promise a reply that could
+  // never arrive.
+  const canWriteBack = resultKind === 'ticket' || resultKind === 'rfq'
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
@@ -425,19 +434,18 @@ export default function StatusClient({ customerContext = null }: { customerConte
                 {/* Write back — the reason confirmation emails can say "don't reply".
                     Ownership is already proven by the number + email used above.
 
-                    Support tickets only. TSC- (checklist intake) and RFQ- (quote
-                    request) references live in different tables; the endpoint below
-                    only resolves `tickets`, so showing the box for them would offer a
-                    customer a reply that could never land. Same gate as the portal-access
-                    CTA further down. */}
-                {isTicket && (
+                    Tickets and quote requests each have their own write endpoint and
+                    their own note trail. TSC- checklist intakes have neither, so the
+                    box is hidden for them rather than offering a reply that could
+                    never land. */}
+                {canWriteBack && (
                 <div className="px-6 pb-6">
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Add a message</p>
                   {msgSent ? (
                     <div className="bg-[#089447]/5 border border-[#089447]/15 rounded-xl px-4 py-3 flex items-start gap-2.5">
                       <CheckCircle size={15} className="text-[#089447] mt-0.5 flex-shrink-0" />
                       <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                        Thanks — your message is on the ticket and our team has been notified.
+                        Thanks — your message is on your {isRfq ? 'request' : 'ticket'} and our team has been notified.
                       </p>
                     </div>
                   ) : (
@@ -447,7 +455,9 @@ export default function StatusClient({ customerContext = null }: { customerConte
                         onChange={e => setMessage(e.target.value)}
                         rows={4}
                         maxLength={4000}
-                        placeholder="Anything to add, or a question for the team?"
+                        placeholder={isRfq
+                          ? 'Anything changed, or a question about your quote?'
+                          : 'Anything to add, or a question for the team?'}
                         className="w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-[13px] text-gray-700 dark:text-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#089447]/30 focus:border-[#089447] resize-y"
                       />
                       {msgError && (
@@ -461,7 +471,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                         {msgSending ? <><Loader2 size={14} className="animate-spin" /> Sending…</> : <>Send to the team <ArrowRight size={14} /></>}
                       </button>
                       <p className="mt-2 text-[11px] text-gray-400 leading-relaxed">
-                        This goes straight onto your ticket, so everything stays in one place.
+                        This goes straight onto your {isRfq ? 'request' : 'ticket'}, so everything stays in one place.
                       </p>
                     </>
                   )}
