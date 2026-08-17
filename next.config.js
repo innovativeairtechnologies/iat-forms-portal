@@ -26,6 +26,10 @@ const nextConfig = {
   //   NEXT_BUILD_DIST_DIR=.next-verify npm run build
   //
   // Inert when unset, so normal builds and the Vercel build are unchanged.
+  //
+  // ⚠️ One side effect: Next rewrites tsconfig.json's `include` to add
+  // "<distDir>/types/**/*.ts". Revert that afterwards (`git checkout --
+  // tsconfig.json`) — a scratch path must not be committed.
   ...(process.env.NEXT_BUILD_DIST_DIR ? { distDir: process.env.NEXT_BUILD_DIST_DIR } : {}),
   // Disable the client-side Router Cache for dynamic pages so admin tabs always
   // fetch fresh data instead of serving a stale snapshot. NOTE: in Next 15
