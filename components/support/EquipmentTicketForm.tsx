@@ -109,6 +109,20 @@ function seedForm(ctx: SupportCustomerContext | null): FormData {
   }
 }
 
+// ── Intake quality gates (owner decision 2026-08-17) ─────────────────────────
+// A one-line "it's broken" costs the desk a whole round trip before anyone can
+// help, and a ticket with no organization or phone number can't be triaged or
+// called back. Both are enforced here AND in app/api/tickets/route.ts — this
+// wizard is the only caller today, but the endpoint is public.
+const MIN_PROBLEM_CHARS = 100
+
+/** Deliberately loose: 10+ digits after stripping punctuation, so international
+ *  and extension formats pass. We are checking that a number was really given,
+ *  not validating dialability. */
+function phoneOk(v: string): boolean {
+  return (v.match(/\d/g) || []).length >= 10
+}
+
 // reCAPTCHA v3 (invisible, score-based) — scoped to this form only for now. Unset
 // in env until the user adds it, at which point the script loads + a token is
 // sent with the submission; the server (lib/recaptcha.ts) fails open either way.
@@ -647,10 +661,13 @@ export default function EquipmentTicketForm({
   const canAdvance = () => {
     if (stepKey === 'contact') {
       const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customer_email.trim())
-      return !!form.customer_name.trim() && emailOk
+      return !!form.customer_name.trim()
+        && emailOk
+        && !!form.customer_company.trim()
+        && phoneOk(form.customer_phone)
     }
     if (stepKey === 'equipment') return !!form.serial_number.trim() && !!form.model_number.trim()
-    if (stepKey === 'problem') return !!form.problem_description.trim()
+    if (stepKey === 'problem') return form.problem_description.trim().length >= MIN_PROBLEM_CHARS
     return true
   }
 
@@ -1105,10 +1122,18 @@ function StepContact({ form, set }: { form: FormData; set: SetFn }) {
     <div className="space-y-4">
       <StepHeader title="Contact Information" sub="We'll use this to follow up on your ticket." />
       <InputField label="Full Name" value={form.customer_name} onChange={v => set('customer_name', v)} placeholder="Jane Smith" required autoFocus />
-      <InputField label="Company / Organization" value={form.customer_company} onChange={v => set('customer_company', v)} placeholder="Acme Corp" />
+      <InputField label="Company / Organization" value={form.customer_company} onChange={v => set('customer_company', v)} placeholder="Acme Corp" required />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InputField label="Email Address" value={form.customer_email} onChange={v => set('customer_email', v)} placeholder="jane@acme.com" type="email" required />
-        <InputField label="Phone Number" value={form.customer_phone} onChange={v => set('customer_phone', v)} placeholder="(555) 000-0000" type="tel" />
+        <InputField
+          label="Phone Number"
+          value={form.customer_phone}
+          onChange={v => set('customer_phone', v)}
+          placeholder="(555) 000-0000"
+          type="tel"
+          required
+          hint="So a technician can reach you directly if we need more detail."
+        />
       </div>
     </div>
   )
@@ -1201,6 +1226,11 @@ function StepEquipment({ form, set }: { form: FormData; set: SetFn }) {
 }
 
 function StepProblem({ form, set }: { form: FormData; set: SetFn }) {
+  // Live progress toward the 100-character floor. A disabled "Next" with no
+  // explanation reads as a broken form, so the shortfall is always spelled out.
+  const len = form.problem_description.trim().length
+  const short = len < MIN_PROBLEM_CHARS
+
   return (
     <div className="space-y-4">
       <StepHeader title="Describe the Problem" sub="Be specific — what's happening, when it started, and any error codes or unusual behavior." />
@@ -1208,11 +1238,20 @@ function StepProblem({ form, set }: { form: FormData; set: SetFn }) {
         label="What's happening?"
         value={form.problem_description}
         onChange={v => set('problem_description', v)}
-        placeholder="Describe what's happening with your unit…"
+        placeholder="e.g. Over the last week the room humidity has climbed from 35% to 55% RH. The unit runs, but the reactivation temperature never gets above 180°F and the DDC shows a high-limit alarm about ten minutes after startup…"
         required
         rows={6}
         autoFocus
+        hint="Please give us at least a couple of sentences — the more detail, the faster we can help."
       />
+      <div className="flex items-center justify-between gap-3 -mt-2">
+        <p className={`text-[12px] leading-relaxed ${short ? 'text-amber-600 dark:text-amber-400' : 'text-[#089447]'}`}>
+          {short
+            ? `${MIN_PROBLEM_CHARS - len} more character${MIN_PROBLEM_CHARS - len === 1 ? '' : 's'} needed`
+            : 'Thanks — that gives our team something to work with.'}
+        </p>
+        <p className="text-[12px] tabular-nums text-gray-400 flex-shrink-0">{len} / {MIN_PROBLEM_CHARS}</p>
+      </div>
       <InputField label="When did it start?" value={form.problem_started} onChange={v => set('problem_started', v)} placeholder="e.g. Last Tuesday, about 3 days ago" hint="A rough date or timeframe is fine." />
     </div>
   )

@@ -36,6 +36,27 @@ function YesNo({ val }: { val: boolean | null | undefined }) {
     : <span className="text-rose-500 font-medium">No</span>
 }
 
+/** One cell of the hero identity strip: an 11px overline over a single fact.
+    Cells sit in a gap-px grid over a hairline-coloured background, so separators
+    stay correct however the grid wraps. */
+function HeroFact({ label, mono, title, children }: {
+  label: string; mono?: boolean; title?: string; children: React.ReactNode
+}) {
+  return (
+    <div className="min-w-0 bg-white dark:bg-zinc-900/40 px-4 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-400 dark:text-zinc-500">{label}</p>
+      <p
+        title={title}
+        className={`mt-0.5 truncate text-[13px] font-medium text-zinc-800 dark:text-zinc-100 ${mono ? 'font-mono tracking-wide' : ''}`}
+      >
+        {children}
+      </p>
+    </div>
+  )
+}
+
+const dash = <span className="text-zinc-300 dark:text-zinc-600">—</span>
+
 /** A titled card whose body is padded — used for the read-only info sections. */
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -436,12 +457,62 @@ export default function TicketDetailClient({
             )}
           </div>
           <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-1">
-            {ticket.customer_name}
-            {ticket.customer_company ? ` · ${ticket.customer_company}` : ''}
-            {' · '}{submitted}
+            Submitted {submitted}
             {ticket.owner && ` · ${ticket.owner.name}`}
           </p>
         </div>
+
+        {/* Identity strip — who called and which unit it is, the two things you need
+            before reading anything else. Both used to be under-served: the customer
+            line was a grey run-on under the title, and the serial number was buried
+            inside the collapsed "Intake details" card further down the page. This
+            replaces the old "Contact" card in the main column — it carries the same
+            facts plus the unit, so keeping both would just be the page saying
+            everything twice. Cells sit in a gap-px grid over a hairline-coloured
+            background so separators stay correct however the grid wraps. */}
+        <Card className="overflow-hidden">
+          <CardHead
+            title="Customer & Unit"
+            icon={<User size={14} />}
+            action={
+              <a
+                href={emailCustomerHref}
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg transition-colors"
+                title={`Compose an email tagged with ${ticket.ticket_number}`}
+              >
+                <Mail size={13} /> Email customer
+              </a>
+            }
+          />
+          <div className="grid grid-cols-1 gap-px bg-zinc-200 dark:bg-zinc-800 sm:grid-cols-2 xl:grid-cols-3">
+          <HeroFact label="Customer" title={ticket.customer_name || undefined}>
+            {ticket.customer_name || dash}
+          </HeroFact>
+          <HeroFact label="Organization" title={ticket.customer_company || undefined}>
+            {ticket.customer_company || dash}
+          </HeroFact>
+          <HeroFact label="Phone">
+            {ticket.customer_phone
+              ? <a href={`tel:${ticket.customer_phone}`} className="text-emerald-600 hover:underline dark:text-emerald-400">{ticket.customer_phone}</a>
+              : dash}
+          </HeroFact>
+          <HeroFact label="Email" title={ticket.customer_email || undefined}>
+            {ticket.customer_email
+              ? <a href={`mailto:${ticket.customer_email}`} className="text-emerald-600 hover:underline dark:text-emerald-400">{ticket.customer_email}</a>
+              : dash}
+          </HeroFact>
+          <HeroFact label="Serial Number" mono title={ticket.serial_number || undefined}>
+            {ticket.serial_number
+              ? (equipmentId
+                  ? <Link href={`/admin/equipment/${equipmentId}`} className="text-emerald-600 hover:underline dark:text-emerald-400">{ticket.serial_number}</Link>
+                  : ticket.serial_number)
+              : dash}
+          </HeroFact>
+          <HeroFact label="Model" mono title={ticket.model_number || undefined}>
+            {ticket.model_number || dash}
+          </HeroFact>
+          </div>
+        </Card>
 
         <div className="flex flex-col xl:flex-row gap-4 items-start">
           {/* ── Main column ───────────────────────────────────────── */}
@@ -556,38 +627,8 @@ export default function TicketDetailClient({
               </div>
             </Card>
 
-            {/* Contact */}
-            <Card>
-              <CardHead
-                title="Contact"
-                icon={<User size={14} />}
-                action={
-                  <a
-                    href={emailCustomerHref}
-                    className="inline-flex items-center gap-1.5 text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg transition-colors"
-                    title={`Compose an email tagged with ${ticket.ticket_number}`}
-                  >
-                    <Mail size={13} /> Email customer
-                  </a>
-                }
-              />
-              <div className="px-5 py-2.5">
-                <Field label="Name">{ticket.customer_name}</Field>
-                {ticket.customer_company && <Field label="Company">{ticket.customer_company}</Field>}
-                <Field label="Email">
-                  <a href={`mailto:${ticket.customer_email}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                    {ticket.customer_email}
-                  </a>
-                </Field>
-                {ticket.customer_phone && (
-                  <Field label="Phone">
-                    <a href={`tel:${ticket.customer_phone}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">
-                      {ticket.customer_phone}
-                    </a>
-                  </Field>
-                )}
-              </div>
-            </Card>
+            {/* Contact used to live here — now the "Customer & Unit" strip at the
+                top of the page, alongside the serial number. */}
 
             {/* Intake details — the read-only diagnostic-form echoes, folded into one
                 progressively-disclosed card (collapsed by default to calm the page). */}

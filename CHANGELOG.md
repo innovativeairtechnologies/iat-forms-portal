@@ -2,6 +2,62 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-17 — Checking your status now works for quote requests, not just tickets
+
+The "View your request & send a message" button in the RFQ confirmation email has been landing
+customers on a page that told them their reference **did not exist**. Not a broken link, not a
+bad reference — the page simply never looked in the right place.
+
+`/support/status` resolved two kinds of reference: support tickets (`IAT-…`) and troubleshooting
+checklists (`TSC-…`). Anything else fell through to the ticket lookup, which searched the tickets
+table, found no `RFQ-…` row there, and answered — correctly, from where it was standing — *"No
+ticket found matching that number and email."* The RFQ confirmation email has carried that link
+since quote requests shipped on 14 August. Every customer who pressed it got that message.
+
+There is now a third resolver, and the page routes on the reference prefix. A quote request also
+reads as one: it moves **Received → In Review → Quoted** rather than being told an engineer is
+working on a repair, it shows back the application and location we captured so the customer can
+confirm we understood the job, and it does **not** offer the "add a message" box or the portal-access
+invitation — both of those write to the tickets table, and offering them here would promise a reply
+that could never arrive.
+
+The lookup box also stopped lying about the format it wants. Its placeholder read `TKT-123456-789`,
+a shape this system has never issued.
+
+**The general rule this cost us:** any intake that emails a customer a reference number needs a
+resolver on that page *in the same change*. The link and the lookup were each fine on their own;
+they were pointed at different tables.
+
+## 2026-08-17 — A support ticket now has to say enough to act on
+
+Three fields the support form asked for politely, it now requires: **company / organization**,
+**phone number**, and a problem description of **at least 100 characters**.
+
+The description floor is the substantive one. A ticket reading "unit not working" costs the desk a
+full round trip — email the customer, wait, re-read — before anyone can even decide who should look
+at it. The Problem step shows a live character count and says exactly how far short you are, because
+a "Next" button that greys out with no explanation reads as a broken form rather than an unfinished
+one. The phone check is deliberately loose — ten digits after punctuation is stripped — since it is
+confirming a number was really given, not that it can be dialled.
+
+All three are enforced twice: in the form, step by step, and again in `POST /api/tickets`, which is
+a public unauthenticated endpoint and cannot trust that the browser did its job.
+
+## 2026-08-17 — The serial number stops hiding at the bottom of the ticket
+
+Opening a support ticket in the admin showed you the customer's name and company as a grey run-on
+line under the ticket number, and the serial number of the actual unit **inside a collapsed section**
+below the problem, the status editor and the contact card. The two things you need before reading
+anything else were the two hardest to find.
+
+Both now sit in a **Customer & Unit** strip directly under the ticket number: customer, organization,
+phone, email, serial and model, each labelled, with the phone and email click-to-contact and the
+serial linking straight into the equipment registry when we have the unit on file. The old Contact
+card is gone rather than duplicated — it carried a subset of the same facts one screen further down.
+
+The queue list gained the serial too, alongside the ticket number, since that is what the desk
+actually searches on.
+
 ## 2026-08-17 — The quote-requests dashboard card gets its title back
 
 The "My Quote Requests" card you can add to your dashboard was rendering with **no title and no

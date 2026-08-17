@@ -211,7 +211,15 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
                     <ToneAvatar name={ticket.customer_name} />
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-ink truncate group-hover:text-brand-ink transition-colors">{ticket.customer_name}</p>
-                      <p className="text-[11.5px] text-ink-muted truncate">{ticket.ticket_number} · {ticket.model_number}</p>
+                      {/* Serial first — it identifies the actual unit, and it is what
+                          the desk searches on. Model stays as the trailing detail. */}
+                      <p
+                        className="text-[11.5px] text-ink-muted truncate"
+                        title={`${ticket.ticket_number} · S/N ${ticket.serial_number} · ${ticket.model_number}`}
+                      >
+                        {ticket.ticket_number} · {ticket.serial_number}
+                        {ticket.model_number ? ` · ${ticket.model_number}` : ''}
+                      </p>
                     </div>
                   </div>
                   {/* Assignee */}

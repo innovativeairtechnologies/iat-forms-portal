@@ -44,19 +44,62 @@ type TicketResult = {
 
 type RelatedArticle = { title: string; slug: string; excerpt: string | null; category: string | null }
 
+// ─── Reference routing ────────────────────────────────────────────────────────
+// Three different intakes hand a customer a reference, each in its own table, and
+// each linked here from its own confirmation email:
+//
+//   IAT-YYYY-NNNN  support ticket          → tickets
+//   TSC-…          troubleshooting intake  → troubleshooting_intakes
+//   RFQ-YYYY-NNNN  quote / moisture survey → rfq_requests
+//
+// Anything unrecognised falls through to the ticket resolver, which is what the
+// overwhelming majority of references are.
+
+type RefKind = 'ticket' | 'checklist' | 'rfq'
+
+function refKind(ref: string): RefKind {
+  const u = ref.trim().toUpperCase()
+  if (u.startsWith('TSC-')) return 'checklist'
+  if (u.startsWith('RFQ-')) return 'rfq'
+  return 'ticket'
+}
+
+const ENDPOINT: Record<RefKind, string> = {
+  ticket: '/api/tickets/status',
+  checklist: '/api/troubleshooting/status',
+  rfq: '/api/rfq/status',
+}
+
 // ─── Status presentation ───────────────────────────────────────────────────────
 
-const STATUS_META: Record<StatusKey, { label: string; blurb: string; step: number }> = {
+type StatusMeta = { label: string; blurb: string; step: number }
+
+const TICKET_STATUS_META: Record<StatusKey, StatusMeta> = {
   open:        { label: 'Received',     blurb: "We've received your ticket and it's in the queue.", step: 0 },
   in_progress: { label: 'In Progress',  blurb: 'An IAT engineer is actively working on your ticket.', step: 1 },
   resolved:    { label: 'Resolved',     blurb: 'This ticket has been resolved.', step: 2 },
   closed:      { label: 'Closed',       blurb: 'This ticket is closed.', step: 2 },
 }
 
-const STEPS = [
+// A quote request moves through a different lifecycle than a repair, so it gets
+// its own wording rather than being told an engineer is "working on your ticket".
+const RFQ_STATUS_META: Record<StatusKey, StatusMeta> = {
+  open:        { label: 'Received',  blurb: "We've received your request and it's with our sales engineering team.", step: 0 },
+  in_progress: { label: 'In Review', blurb: 'Our team is sizing equipment for your application.', step: 1 },
+  resolved:    { label: 'Quoted',    blurb: 'A quote has been prepared — check your email, or contact us if it has not arrived.', step: 2 },
+  closed:      { label: 'Closed',    blurb: 'This request is closed.', step: 2 },
+}
+
+const TICKET_STEPS = [
   { key: 'received', label: 'Received', icon: TicketIcon },
   { key: 'progress', label: 'In Progress', icon: Wrench },
   { key: 'resolved', label: 'Resolved', icon: CheckCircle },
+]
+
+const RFQ_STEPS = [
+  { key: 'received', label: 'Received', icon: TicketIcon },
+  { key: 'progress', label: 'In Review', icon: Wrench },
+  { key: 'resolved', label: 'Quoted', icon: CheckCircle },
 ]
 
 function formatDate(d: string) {
@@ -79,6 +122,10 @@ export default function StatusClient({ customerContext = null }: { customerConte
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<TicketResult | null>(null)
+  // The kind of the reference that produced `result` — not of whatever is
+  // currently in the input box, so the card's wording can't change under the
+  // customer while they type a different reference.
+  const [resultKind, setResultKind] = useState<RefKind>('ticket')
   const [articles, setArticles] = useState<RelatedArticle[]>([])
 
   // "Add a message" — the write path that lets the confirmation emails tell
@@ -147,12 +194,9 @@ export default function StatusClient({ customerContext = null }: { customerConte
     setMsgSent(false)
     setMsgError(null)
     try {
-      // TSC- references are troubleshooting-checklist intakes; everything else
-      // (TKT-…) is a support ticket. Both endpoints return the same shape.
-      const endpoint = ref.toUpperCase().startsWith('TSC-')
-        ? '/api/troubleshooting/status'
-        : '/api/tickets/status'
-      const res = await fetch(endpoint, {
+      // Route by reference prefix — every resolver returns the same shape.
+      const kind = refKind(ref)
+      const res = await fetch(ENDPOINT[kind], {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticket_number: ref, email: mail }),
@@ -160,6 +204,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Lookup failed.')
       setResult(json.ticket)
+      setResultKind(kind)
       setArticles(json.related_articles ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -182,8 +227,14 @@ export default function StatusClient({ customerContext = null }: { customerConte
     runLookup(ref, mail)
   }
 
-  const meta = result ? STATUS_META[result.status] : null
+  const isRfq = resultKind === 'rfq'
+  const meta = result ? (isRfq ? RFQ_STATUS_META : TICKET_STATUS_META)[result.status] : null
+  const steps = isRfq ? RFQ_STEPS : TICKET_STEPS
   const activeStep = meta?.step ?? -1
+  // Only support tickets have a notes thread and a portal-account link. The
+  // checklist and RFQ tables have neither, so offering either would promise the
+  // customer something that could never land.
+  const isTicket = resultKind === 'ticket'
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col">
@@ -214,7 +265,9 @@ export default function StatusClient({ customerContext = null }: { customerConte
           <div className="text-center mb-7">
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight mb-1.5">Check your request status</h1>
             <p className="text-[14px] text-gray-400 leading-relaxed">
-              Enter your ticket or reference number and the email you submitted with to see the latest update.
+              Enter the reference number from your confirmation email — a support ticket
+              (IAT-…) or a quote request (RFQ-…) — along with the email you submitted
+              with, to see the latest update.
             </p>
           </div>
 
@@ -259,7 +312,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                 <input
                   value={ticketNumber}
                   onChange={e => setTicketNumber(e.target.value)}
-                  placeholder="e.g. TKT-123456-789 or TSC-123456-789"
+                  placeholder="e.g. IAT-2026-0148 or RFQ-2026-0007"
                   className="w-full text-[13px] bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 transition-all font-mono"
                 />
               </div>
@@ -322,7 +375,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                 {/* Progress tracker */}
                 <div className="px-6 py-6">
                   <div className="flex items-center">
-                    {STEPS.map((s, i) => {
+                    {steps.map((s, i) => {
                       const done = i < activeStep
                       const active = i === activeStep
                       const Icon = s.icon
@@ -340,7 +393,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                               done || active ? 'text-[#089447]' : 'text-gray-300 dark:text-gray-600'
                             }`}>{s.label}</span>
                           </div>
-                          {i < STEPS.length - 1 && (
+                          {i < steps.length - 1 && (
                             <div className={`flex-1 h-0.5 mx-2 -mt-5 rounded-full ${
                               i < activeStep ? 'bg-[#089447]' : 'bg-gray-100 dark:bg-zinc-800'
                             }`} />
@@ -363,19 +416,21 @@ export default function StatusClient({ customerContext = null }: { customerConte
 
                 {/* Submitted problem */}
                 <div className="px-6 pb-6">
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Your reported issue</p>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                    {isRfq ? 'What you asked us to quote' : 'Your reported issue'}
+                  </p>
                   <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{result.problem_description}</p>
                 </div>
 
                 {/* Write back — the reason confirmation emails can say "don't reply".
                     Ownership is already proven by the number + email used above.
 
-                    Support tickets only. TSC- references are troubleshooting-checklist
-                    intakes, which live in a different table; the endpoint below only
-                    resolves `tickets`, so showing the box for them would offer a
+                    Support tickets only. TSC- (checklist intake) and RFQ- (quote
+                    request) references live in different tables; the endpoint below
+                    only resolves `tickets`, so showing the box for them would offer a
                     customer a reply that could never land. Same gate as the portal-access
                     CTA further down. */}
-                {!ticketNumber.toUpperCase().startsWith('TSC-') && (
+                {isTicket && (
                 <div className="px-6 pb-6">
                   <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Add a message</p>
                   {msgSent ? (
@@ -413,8 +468,8 @@ export default function StatusClient({ customerContext = null }: { customerConte
                 </div>
                 )}
 
-                {/* Request portal access — support tickets only, not troubleshooting-checklist refs */}
-                {!ticketNumber.toUpperCase().startsWith('TSC-') && (
+                {/* Request portal access — support tickets only, not checklist or RFQ refs */}
+                {isTicket && (
                   <div className="px-6 pb-6">
                     <RequestAccountCta
                       ticketNumber={result.ticket_number}
@@ -461,7 +516,10 @@ export default function StatusClient({ customerContext = null }: { customerConte
               {/* Related knowledge base articles.
                   Backend matching is live (see /api/tickets/status + lib/kb.ts); the
                   KB itself has no published content yet, so we render real matches when
-                  they exist and fall back to a "coming soon" stub otherwise. */}
+                  they exist and fall back to a "coming soon" stub otherwise. Skipped
+                  entirely for RFQs — troubleshooting guides answer a question a quote
+                  request never asked. */}
+              {(!isRfq || articles.length > 0) && (
               <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
@@ -489,6 +547,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                   </p>
                 )}
               </div>
+              )}
 
               {/* Footer actions */}
               <div className="flex items-center justify-between gap-4 pt-1">

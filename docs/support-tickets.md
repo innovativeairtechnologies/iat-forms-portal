@@ -305,6 +305,54 @@ deleted on 2026-08-14. It belonged on `send`, and as an apex backup it was a rou
 to a server that does not accept mail for the domain. Microsoft was flagging it as
 an error. Never re-create it.
 
+## `/support/status` resolves three kinds of reference
+
+Three different intakes hand a customer a reference number, each one living in its
+own table, and **each one links the customer to the same status page** from its own
+confirmation email. The page routes on the reference prefix:
+
+| Prefix | Table | Resolver |
+|---|---|---|
+| `IAT-YYYY-NNNN` | `tickets` | `POST /api/tickets/status` |
+| `TSC-…` | `troubleshooting_intakes` | `POST /api/troubleshooting/status` |
+| `RFQ-YYYY-NNNN` | `rfq_requests` | `POST /api/rfq/status` |
+
+Anything unrecognised falls through to the ticket resolver. All three return the
+**same response shape**, so the page needs no per-kind result plumbing — only the
+wording differs (an RFQ moves Received → In Review → **Quoted**, and is never told
+an engineer is working on a repair).
+
+⚠️ **A new intake that emails a reference needs a resolver here, in the same
+change.** The RFQ resolver was missing from 2026-08-14 until 2026-08-17: the RFQ
+confirmation email carried a `/support/status?ticket=RFQ-…` button the whole time,
+and every customer who pressed it was told *"No ticket found matching that number
+and email"* — a correct answer from the ticket resolver, which was the only place
+the page ever looked. The link was live and the lookup worked; they were just
+pointed at different tables.
+
+**Only support tickets get the "Add a message" box and the "Request portal access"
+CTA.** `POST /api/tickets/status/message` resolves `tickets` alone, so offering
+either on a checklist or an RFQ result would promise a customer a reply that could
+never land. Both are gated on the *resolved* reference kind, not on what is
+currently typed in the input.
+
+## What the support form now requires
+
+Three gates, added 2026-08-17 at the owner's request, enforced **both** in
+`EquipmentTicketForm` (step by step, so the customer sees why "Next" is disabled)
+and again in `POST /api/tickets` (the endpoint is public and unauthenticated):
+
+- **Company / organization** — non-empty.
+- **Phone number** — at least 10 digits after stripping punctuation. Deliberately
+  loose: it checks that a number was really given, not that it is dialable.
+- **Problem description** — at least **100 characters** (`MIN_PROBLEM_CHARS`,
+  duplicated as a constant in both files; change them together). The Problem step
+  shows a live `n / 100` counter and the exact shortfall, because a disabled "Next"
+  with no explanation reads as a broken form.
+
+A one-line "it's broken" costs the desk a whole round trip before anyone can help,
+and a ticket with no organization or callback number cannot be triaged.
+
 ## Endpoint gating
 
 | Endpoint | Rate limit | reCAPTCHA action | Notes |
@@ -315,6 +363,7 @@ an error. Never re-create it.
 | `POST /api/troubleshooting/analyze` | 20 / 10 min | `analyze_troubleshooting` | gated 2026-08-13 |
 | `POST /api/tickets/status` | yes | none | read-only lookup |
 | `POST /api/troubleshooting/status` | yes | none | read-only, used by `/support/status` |
+| `POST /api/rfq/status` | yes | none | read-only, used by `/support/status` |
 
 The two troubleshooting endpoints were open until 2026-08-13 — a rate limit was the
 only barrier on a public POST that wrote a row, spent a model call and sent mail.

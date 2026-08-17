@@ -27,6 +27,9 @@ import { sendTicketConfirmationToCustomer } from '@/lib/resend-customer-tickets'
 // Vercel without a deploy; this constant is only the floor it falls back to.
 const SUPPORT_DESK_EMAIL = 'iatsupport@dehumidifiers.com'
 
+// Minimum problem description. Mirrors MIN_PROBLEM_CHARS in the support wizard.
+const MIN_PROBLEM_CHARS = 100
+
 // ── Merged-field validation (the unified support form carries the old
 // Troubleshooting Checklist fields too). Mirrors app/api/troubleshooting/route.ts.
 const ONSET = ['sudden', 'gradual', 'unsure'] as const
@@ -77,6 +80,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please try again.' }, { status: 400 })
     }
 
+    // Intake quality gates (owner decision 2026-08-17). The wizard enforces the
+    // same three rules step by step; this is the backstop, because the endpoint
+    // is public and unauthenticated. Kept in sync with MIN_PROBLEM_CHARS /
+    // phoneOk() in components/support/EquipmentTicketForm.tsx.
+    const customerCompany = String(body.customer_company ?? '').trim()
+    const customerPhone = String(body.customer_phone ?? '').trim()
+    const problemDescription = String(body.problem_description ?? '').trim()
+
+    if (!customerCompany) {
+      return NextResponse.json({ error: 'Please tell us your company or organization.' }, { status: 400 })
+    }
+    if ((customerPhone.match(/\d/g) || []).length < 10) {
+      return NextResponse.json({ error: 'Please give us a phone number we can reach you on.' }, { status: 400 })
+    }
+    if (problemDescription.length < MIN_PROBLEM_CHARS) {
+      return NextResponse.json(
+        { error: `Please describe the problem in at least ${MIN_PROBLEM_CHARS} characters so our team can help.` },
+        { status: 400 }
+      )
+    }
+
     // Ticket number: IAT-YYYY-NNNN, sequential per year (migration 029). The DB
     // generates the next value atomically so concurrent tickets can't collide. If
     // the RPC isn't there yet (migration not run) we fall back to a timestamp-based
@@ -112,13 +136,13 @@ export async function POST(req: NextRequest) {
       .insert({
         ticket_number,
         customer_name: body.customer_name,
-        customer_company: body.customer_company || null,
+        customer_company: customerCompany,
         customer_email: body.customer_email,
-        customer_phone: body.customer_phone || null,
+        customer_phone: customerPhone,
         serial_number: body.serial_number,
         model_number: body.model_number,
         voltage: body.voltage,
-        problem_description: body.problem_description,
+        problem_description: problemDescription,
         pre_cooling: body.pre_cooling ?? null,
         pre_cooling_type: body.pre_cooling_type || null,
         pre_cooling_working: body.pre_cooling_working ?? null,
@@ -166,10 +190,10 @@ export async function POST(req: NextRequest) {
           serial_number:    eqSerial,
           model_number:     body.model_number || null,
           voltage:          body.voltage || null,
-          customer_company: body.customer_company || null,
+          customer_company: customerCompany,
           customer_name:    body.customer_name || null,
           customer_email:   body.customer_email || null,
-          customer_phone:   body.customer_phone || null,
+          customer_phone:   customerPhone,
         }, { onConflict: 'serial_number', ignoreDuplicates: true })
       } catch (eqErr) {
         console.error('[tickets] equipment auto-accrue failed:', eqErr)
