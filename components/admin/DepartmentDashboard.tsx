@@ -35,7 +35,7 @@ export default async function DepartmentDashboard({ role, displayName, userId, p
     role === 'admin' ? getExecData() : Promise.resolve(undefined),
   ])
 
-  const ctx: CardCtx = { role, can, headcount: headcount ?? 0, quickLinks, execData }
+  const ctx: CardCtx = { role, can, headcount: headcount ?? 0, quickLinks, userId, execData }
 
   // Render every card the role can access up front (data loaded server-side), so
   // the client editor can add/remove any of them without a round-trip.

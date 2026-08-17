@@ -179,24 +179,80 @@ the channel that has been unreliable; five sat unopened before the badge existed
 
 ### Triage is the only writable part
 
-`PATCH /api/admin/rfq/[id]` accepts **`status` and `internal_notes` and nothing else.** The
-survey and its estimate are a record of a conversation, and a record you can quietly edit after
-the fact is not a record — if a figure is wrong the fix is a new survey or a note saying so.
+`PATCH /api/admin/rfq/[id]` accepts **`status` and the assignee and nothing else**; notes go to
+the sibling `/notes` route and are append-only. The survey and its estimate are a record of a
+conversation, and a record you can quietly edit after the fact is not a record — if a figure is
+wrong the fix is a new survey or a note saying so.
 
-`TriageCard` saves status on click (optimistic, reverting on failure so the UI never shows a
-state the server rejected) and notes on a pause in typing, because a desk note is written in
-fits and starts and a Save button people forget to press is the same as no notes at all. A
-status change calls `router.refresh()` so the list and the sidebar badge follow.
+`TriageCard` saves on click (optimistic, reverting on failure so the UI never shows a state the
+server rejected) and calls `router.refresh()` so the list, the dashboard and the sidebar badge
+follow.
 
 The status vocabulary lives in `lib/rfq-status.ts` — one dependency-free module shared by the
 list filter, the detail picker and the API validator, because the column carries a CHECK
 constraint and three copies of that list would eventually disagree with it.
+
+### Ownership (migration 088)
+
+`assignee_id` / `assignee_name` / `assigned_at`. The roster comes from
+`getEmployeesWithPerm('deals')` — only someone who can actually reach the queue may own a row in
+it, resolved server-side against the live perm matrix and never taken from the client. The name
+is a **snapshot** (`shortStaffName` → "Jacob Y."), so deleting an account later cannot erase who
+was working it. Two people called Jacob is exactly why it is first name + last initial.
+
+### The note trail
+
+`rfq_notes`, one row per note, **append-only by construction**: the route is POST-only, there is
+no PATCH or DELETE, and author and timestamp come from the verified session and the database
+clock rather than the request body, so neither can be forged or backdated. A correction is a new
+note. The card lists newest-first, scrolls at 300px, and shows a count above the list so a
+clipped history reads as "more below" rather than as a rendering fault.
+
+Migration 088 carried the old single `internal_notes` textarea into the trail and left the column
+behind as a tombstone; drop it in a later migration once nothing has read it for a while.
+
+### Chasing (lib/rfq-reminders.ts)
+
+Two daily sweeps, both keyed on a survey still sitting at `new`:
+
+| Condition | Who gets mailed |
+|---|---|
+| Assigned, `assigned_at` > 24h ago | The owner — one email covering **all** their stalled rows, not one per row |
+| Unassigned, `created_at` > 24h ago | The shared desk, subject prefixed **`REMINDER:`** |
+
+Moving a survey to any other status stops the chasing. That is the point — one click on
+*Reviewing* says a human has it.
+
+**Idempotency** is `assignee_nudged_at` / `unclaimed_reminded_at`, stamped only on a successful
+send (so a failure retries tomorrow rather than going quiet) and re-chased after 48h. Clearing
+them when the status leaves `new` means a row that later returns to `new` is chased fresh
+instead of being suppressed by a months-old stamp.
+
+**Scheduling:** `vercel.json` is capped at two cron entries on the current account tier and both
+are taken, so the sweep piggybacks on the daily `admin-digest` run — placed *before* that route's
+digest-time and already-ran guards, since those exist to stop the digest sending twice and would
+otherwise mean a day the digest skipped was a day nobody got chased.
+`/api/cron/rfq-reminders` exists for a manual trigger and can be given its own schedule the day
+more slots are available; the stamps make a double-run a no-op.
+
+### On the dashboard
+
+`lib/rfq-mine.ts` answers "what is waiting on me?" for both surfaces: the **My Quote Requests**
+card on the department dashboard (the first card that reads `ctx.userId` — everything else there
+is a department roll-up) and two pills in the **Sales** dashboard header, since Sales lands on
+its own command center and would otherwise never see an RFQ without opening the queue.
+
+Both show the **unclaimed count as well as your own**. A dashboard that only listed your
+assignments would go quiet exactly when nobody has picked something up, which is the failure this
+whole feature exists to stop.
 
 ## Known gaps
 
 - No weather lookup — outdoor design conditions default to 95°F/55% and are confirmed against
   ASHRAE design data by hand during the survey.
 - No file/drawing upload; the form asks customers to mention drawings in the notes.
-- No assignee. `internal_notes` carries "who has it" by convention; if that stops scaling, a
-  proper owner column is the next step.
 - Nothing converts an RFQ into a deal yet — it is re-keyed by hand.
+- The reminder cadence (24h to first chase, 48h to re-chase) is hard-coded in
+  `lib/rfq-reminders.ts` rather than configurable.
+- Reminders ride the digest cron, so they fire once a day at the digest hour rather than on
+  their own schedule.

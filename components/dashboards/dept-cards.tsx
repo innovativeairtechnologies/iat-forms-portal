@@ -9,9 +9,10 @@ import {
 import {
   ArrowRight, Ticket, Boxes, Building2, Clock, Inbox, Sparkles,
   Calendar, Users, FileText, Presentation, CalendarRange, DollarSign, CalendarClock,
-  MessageSquare, LayoutGrid, Compass, ClipboardList, CheckCircle2,
+  MessageSquare, LayoutGrid, Compass, ClipboardList, CheckCircle2, AlertCircle,
 } from 'lucide-react'
 import type { ExecData } from '@/lib/exec-dashboard-data'
+import { getMyRfqs, type MyRfqSummary } from '@/lib/rfq-mine'
 import {
   FormsPerformanceCard, TopFormsCard, TopSubmittersCard, ActivityCard,
   FormStatusCard, NeedsAttentionCard, LiveActivityCard, AdminActivityCard,
@@ -35,7 +36,9 @@ export type DeptRole = Exclude<StaffRole, 'production'>
 export type Span = 1 | 2 | 3
 export type QuickLink = { href: string; label: string; perm: string }
 export type LayoutItem = { id: string; span: Span }
-export type CardCtx = { role: DeptRole; can: (p: Perm) => boolean; headcount: number; quickLinks: QuickLink[]; execData?: ExecData }
+// userId added 2026-08-15 for the 'my_rfqs' card — the first card that shows
+// the VIEWER their own work rather than a department-wide roll-up.
+export type CardCtx = { role: DeptRole; can: (p: Perm) => boolean; headcount: number; quickLinks: QuickLink[]; userId: string; execData?: ExecData }
 
 export type CardDef = {
   id: string
@@ -337,11 +340,72 @@ const execCard = (id: string, title: string, defaultSpan: Span, sizes: Span[], r
   Component: async (ctx) => (ctx.execData ? render(ctx.execData) : null),
 })
 
+
+// ── My Quote Requests ──────────────────────────────────────────────────────
+// The only card that shows the VIEWER their own work. Everything else here is a
+// department roll-up, so this one takes ctx.userId.
+//
+// It also shows the unclaimed count to everyone who can see the queue: a card
+// that only listed your own assignments would go quiet exactly when nobody has
+// picked something up, which is the failure the whole feature exists to stop.
+function MyRfqCard({ d }: { d: MyRfqSummary }) {
+  if (!d.mine.length && !d.unclaimed) {
+    return (
+      <p className="px-4 py-6 text-center text-[12.5px] text-ink-muted">
+        Nothing waiting on you. Every quote request has an owner.
+      </p>
+    )
+  }
+  return (
+    <div className="px-1 pb-1">
+      {d.unclaimed > 0 && (
+        <Link
+          href="/admin/rfq"
+          className="mx-3 mb-1.5 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800 transition-colors hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/15"
+        >
+          <AlertCircle size={14} className="flex-shrink-0" />
+          <span className="font-medium">{d.unclaimed} unassigned</span>
+          <span className="truncate opacity-80">— nobody owns {d.unclaimed === 1 ? 'it' : 'them'} yet</span>
+        </Link>
+      )}
+      {d.mine.map((r) => (
+        <Link
+          key={r.id}
+          href={`/admin/rfq/${r.id}`}
+          className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-surface-soft"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-medium text-ink">{r.company || 'Not given'}</span>
+            <span className="block truncate text-[11.5px] text-ink-muted">{r.project_name || r.reference}</span>
+          </span>
+          <span
+            className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              r.status === 'new'
+                ? 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400'
+                : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+            }`}
+          >
+            {r.status === 'new' ? 'Not started' : 'Reviewing'}
+          </span>
+        </Link>
+      ))}
+      {!d.mine.length && (
+        <p className="px-3 py-2 text-[12.5px] text-ink-muted">None assigned to you.</p>
+      )}
+    </div>
+  )
+}
+
 export const CARD_REGISTRY: CardDef[] = [
   {
     id: 'metrics', title: 'Key Metrics', defaultSpan: 3, sizes: [2, 3],
     available: () => true,
     Component: async (ctx) => <MetricsStrip stats={await loadStats(ctx)} />,
+  },
+  {
+    id: 'my_rfqs', title: 'My Quote Requests', perm: 'deals', defaultSpan: 1, sizes: [1, 2],
+    available: (ctx) => ctx.can('deals'),
+    Component: async (ctx) => <MyRfqCard d={await getMyRfqs(ctx.userId)} />,
   },
   recentCard('tickets', 'Recent Tickets', 'tickets'),
   recentCard('submissions', 'Recent Submissions', 'submissions'),

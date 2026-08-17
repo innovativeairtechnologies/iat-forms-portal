@@ -99,6 +99,23 @@ export async function isCustomer(id: string): Promise<boolean> {
  * needing a currently-set value to stay selectable must union it back in
  * themselves (see the ticket-owner picker).
  */
+/**
+ * "Jacob Younker" → "Jacob Y." — the byline format for internal note trails.
+ *
+ * Enough to know who wrote it at a glance without a wall of full names, and it
+ * is SNAPSHOTTED at write time by every caller, so the credit survives the
+ * account being renamed or deleted. Falls back to whatever it was given rather
+ * than to an empty string: an odd-looking byline beats an anonymous note.
+ */
+export function shortStaffName(full: string | null | undefined): string {
+  const name = (full ?? '').trim().replace(/\s+/g, ' ')
+  if (!name) return 'Unknown'
+  const parts = name.split(' ')
+  if (parts.length === 1) return parts[0]
+  const last = parts[parts.length - 1]
+  return `${parts[0]} ${last[0].toUpperCase()}.`
+}
+
 export async function getEmployeesWithPerm(perm: Perm): Promise<Pick<Employee, 'id' | 'name'>[]> {
   const [{ data: profiles, error }, matrix] = await Promise.all([
     supabaseAdmin.from('profiles').select('id, role'),

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import {
   Layers, Target, Trophy, Percent, DollarSign, Inbox,
   Building2, Filter, TrendingUp, Award, CalendarClock, Activity, AlertTriangle,
-  ArrowUpRight, FileSpreadsheet, Flame,
+  ArrowUpRight, FileSpreadsheet, Flame, FileText, AlertCircle,
 } from 'lucide-react'
 import type { Deal } from '@/lib/supabase'
 import { formatCompactCurrency as fmtC } from '@/lib/utils'
@@ -29,7 +29,7 @@ import {
    tracked yet" state. Pure/deterministic given (deals, now).
    ──────────────────────────────────────────────────────────────────────────── */
 
-export default function SalesDashboardView({ deals, displayName, followUpsDue = 0 }: { deals: Deal[]; displayName: string; followUpsDue?: number }) {
+export default function SalesDashboardView({ deals, displayName, followUpsDue = 0, rfqMine = 0, rfqUnclaimed = 0 }: { deals: Deal[]; displayName: string; followUpsDue?: number; rfqMine?: number; rfqUnclaimed?: number }) {
   const now = new Date()
 
   const summary = computeSummary(deals)
@@ -115,6 +115,19 @@ export default function SalesDashboardView({ deals, displayName, followUpsDue = 
             </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Quote requests waiting on this rep, and the unowned pile. Sales
+                lands here rather than on the card dashboard, so without these
+                two pills an RFQ is invisible until someone opens the queue. */}
+            {rfqMine > 0 && (
+              <Link href="/admin/rfq" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium border border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition-colors">
+                <FileText size={14} /> {rfqMine} quote request{rfqMine === 1 ? '' : 's'}
+              </Link>
+            )}
+            {rfqUnclaimed > 0 && (
+              <Link href="/admin/rfq" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors">
+                <AlertCircle size={14} /> {rfqUnclaimed} unassigned
+              </Link>
+            )}
             {followUpsDue > 0 && (
               <Link href="/admin/deals" className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors">
                 <CalendarClock size={14} /> {followUpsDue} follow-up{followUpsDue === 1 ? '' : 's'} due

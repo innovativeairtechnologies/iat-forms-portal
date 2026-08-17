@@ -23,7 +23,7 @@ export default async function AdminRfqPage() {
   // on the detail page.
   const { data } = await supabaseAdmin
     .from('rfq_requests')
-    .select('id, reference, track, application_label, company, contact_name, email, project_name, location, date_required, status, is_read, summary, created_at')
+    .select('id, reference, track, application_label, company, contact_name, email, project_name, location, date_required, status, is_read, assignee_id, assignee_name, summary, created_at')
     .order('created_at', { ascending: false })
 
   return <RfqClient rows={data ?? []} />

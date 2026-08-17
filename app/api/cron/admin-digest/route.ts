@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getNyWallClock, isDigestTime, getDigestRecipients, getAdminTicketDigest, getSharedBriefing } from '@/lib/admin-digest'
 import { sendAdminDigestEmail } from '@/lib/resend-digest'
+import { runRfqReminders } from '@/lib/rfq-reminders'
 
 /* Daily admin email digest — one email per active admin at ~4:30pm
    America/New_York, containing the shared AI briefing paragraph plus their
@@ -30,6 +31,27 @@ export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── Quote-request reminders piggyback on this run ──
+  // vercel.json is capped at two cron entries on the current account tier, and
+  // both are spoken for, so the RFQ sweep rides along here rather than claiming
+  // its own slot. See lib/rfq-reminders.ts.
+  //
+  // Placed BEFORE the digest-time and already-ran guards on purpose: those exist
+  // to stop the digest going out twice, while the sweep has its own idempotency
+  // (the reminder stamps from migration 088). Gating it behind them would mean a
+  // day the digest skipped was also a day nobody got chased.
+  //
+  // Never fails the digest — a reminder that could not send is logged and
+  // retried tomorrow, because its rows are only stamped on success.
+  try {
+    const reminders = await runRfqReminders()
+    if (reminders.nudged.length || reminders.unclaimed.length || reminders.skipped) {
+      console.log('[cron/admin-digest] rfq reminders:', JSON.stringify(reminders))
+    }
+  } catch (err) {
+    console.error('[cron/admin-digest] rfq reminder sweep failed:', err)
   }
 
   const { dateISO } = getNyWallClock()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Layers } from 'lucide-react'
+import { Layers, UserRound } from 'lucide-react'
 import {
   ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar, CardTable, Row,
   EmptyRow, ListSearch, FilterDropdown, Pagination, usePagedList,
@@ -27,6 +27,8 @@ export type RfqRow = {
   date_required: string | null
   status: RfqStatus
   is_read: boolean
+  assignee_id: string | null
+  assignee_name: string | null
   summary: {
     track?: string
     complete?: boolean
@@ -39,7 +41,7 @@ export type RfqRow = {
   created_at: string
 }
 
-const COLS = 'grid-cols-[130px_minmax(180px,1.2fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px_100px]'
+const COLS = 'grid-cols-[125px_minmax(170px,1.15fr)_minmax(140px,1fr)_minmax(140px,1fr)_110px_105px_95px]'
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -57,24 +59,34 @@ export default function RfqClient({ rows }: { rows: RfqRow[] }) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('__all')
   const [track, setTrack] = useState('__all')
+  const [owner, setOwner] = useState('__all')
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter(r => {
       if (status !== '__all' && r.status !== status) return false
       if (track !== '__all' && r.track !== track) return false
+      if (owner === '__unassigned' && r.assignee_id) return false
+      if (owner !== '__all' && owner !== '__unassigned' && r.assignee_id !== owner) return false
       if (!q) return true
       return [r.reference, r.company, r.contact_name, r.email, r.project_name, r.location, r.application_label]
         .filter(Boolean).join(' ').toLowerCase().includes(q)
     })
-  }, [rows, search, status, track])
+  }, [rows, search, status, track, owner])
 
   const { page, setPage, perPage, setPerPage, totalPages, start, end } = usePagedList(
-    filtered.length, { resetKey: `${search}|${status}|${track}` }
+    filtered.length, { resetKey: `${search}|${status}|${track}|${owner}` }
   )
+
+  const owners = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const r of rows) if (r.assignee_id && r.assignee_name) seen.set(r.assignee_id, r.assignee_name)
+    return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [rows])
 
   const counts = useMemo(() => ({
     unread: rows.filter(r => !r.is_read).length,
+    unassigned: rows.filter(r => !r.assignee_id && r.status === 'new').length,
     room: rows.filter(r => r.track === 'room').length,
     process: rows.filter(r => r.track === 'process').length,
   }), [rows])
@@ -89,6 +101,7 @@ export default function RfqClient({ rows }: { rows: RfqRow[] }) {
         />
         <StatStrip>
           <Stat tone="sky" label="Unread" value={counts.unread} />
+          <Stat tone={counts.unassigned ? 'amber' : 'slate'} label="Unassigned" value={counts.unassigned} sub="Nobody owns these yet" />
           <Stat tone="emerald" label="Room" value={counts.room} sub="Space held at a condition" />
           <Stat tone="violet" label="Process" value={counts.process} sub="Leaving-air spec" />
         </StatStrip>
@@ -108,16 +121,28 @@ export default function RfqClient({ rows }: { rows: RfqRow[] }) {
             onChange={setTrack}
             options={[{ value: 'room', label: 'Room' }, { value: 'process', label: 'Process' }]}
           />
+          {/* "Unassigned" first — it is the filter that finds the problem. */}
+          <FilterDropdown
+            icon={UserRound}
+            allLabel="Anyone"
+            value={owner}
+            onChange={setOwner}
+            options={[
+              { value: '__unassigned', label: 'Unassigned' },
+              ...owners.map(o => ({ value: o.id, label: o.name })),
+            ]}
+          />
         </Toolbar>
         <CardTable
           cols={COLS}
-          minWidth={940}
+          minWidth={1040}
           head={
             <>
               <span>Reference</span>
               <span>Company &amp; contact</span>
               <span>Project</span>
               <span>The job</span>
+              <span>Owner</span>
               <span>Status</span>
               <span className="justify-self-end">Received</span>
             </>
@@ -147,6 +172,11 @@ export default function RfqClient({ rows }: { rows: RfqRow[] }) {
                   <span className="block truncate text-[11px] text-ink-muted">{r.application_label}</span>
                 </span>
                 <span className="truncate text-[12.5px] tabular-nums text-ink-secondary">{headline(r)}</span>
+                <span className="truncate text-[12.5px]">
+                  {r.assignee_name
+                    ? <span className="text-ink-secondary">{r.assignee_name}</span>
+                    : <span className="text-amber-700 dark:text-amber-400">Unassigned</span>}
+                </span>
                 <span><StatusPill tone={STATUS_TONE[r.status]}>{RFQ_STATUS_LABELS[r.status]}</StatusPill></span>
                 <span className="justify-self-end text-[12px] tabular-nums text-ink-muted">{fmtDate(r.created_at)}</span>
               </Row>

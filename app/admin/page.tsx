@@ -7,6 +7,7 @@ import DepartmentDashboard from '@/components/admin/DepartmentDashboard'
 import SalesDashboardView from '@/components/dashboards/SalesDashboardView'
 import { STAFF_ROLES, type StaffRole } from '@/lib/roles'
 import type { Deal } from '@/lib/supabase'
+import { getMyRfqs } from '@/lib/rfq-mine'
 
 /* ────────────────────────────────────────────────────────────────────────────
    /admin dashboard router. Every admin-surface role lands on the customizable
@@ -17,13 +18,22 @@ import type { Deal } from '@/lib/supabase'
    real session role in middleware, so a preview never grants reach or locks out.
    ──────────────────────────────────────────────────────────────────────────── */
 
-async function salesDashboard(displayName: string) {
+async function salesDashboard(displayName: string, userId: string) {
   const today = new Date().toISOString().slice(0, 10)
-  const [{ data: deals }, { count: followUpsDue }] = await Promise.all([
+  const [{ data: deals }, { count: followUpsDue }, rfq] = await Promise.all([
     supabaseAdmin.from('deals').select('*').order('created_at', { ascending: false }),
     supabaseAdmin.from('deal_follow_ups').select('*', { count: 'exact', head: true }).eq('done', false).lte('due_date', today),
+    getMyRfqs(userId),
   ])
-  return <SalesDashboardView deals={(deals ?? []) as Deal[]} displayName={displayName} followUpsDue={followUpsDue ?? 0} />
+  return (
+    <SalesDashboardView
+      deals={(deals ?? []) as Deal[]}
+      displayName={displayName}
+      followUpsDue={followUpsDue ?? 0}
+      rfqMine={rfq.mine.length}
+      rfqUnclaimed={rfq.unclaimed}
+    />
+  )
 }
 
 export default async function AdminDashboard() {
@@ -34,7 +44,7 @@ export default async function AdminDashboard() {
   if (surfaceUser.role === 'admin') {
     const vaRaw = (await cookies()).get('va_role')?.value
     const preview = vaRaw && vaRaw !== 'admin' && (STAFF_ROLES as readonly string[]).includes(vaRaw) ? (vaRaw as StaffRole) : null
-    if (preview === 'sales') return await salesDashboard(surfaceUser.displayName)
+    if (preview === 'sales') return await salesDashboard(surfaceUser.displayName, surfaceUser.user.id)
     if (preview === 'production') {
       return (
         <div className="flex-1 flex items-center justify-center bg-canvas p-8 min-h-0">
@@ -53,7 +63,7 @@ export default async function AdminDashboard() {
   }
 
   // Sales keeps its dedicated command center.
-  if (surfaceUser.role === 'sales') return await salesDashboard(surfaceUser.displayName)
+  if (surfaceUser.role === 'sales') return await salesDashboard(surfaceUser.displayName, surfaceUser.user.id)
 
   // Admin + the other scoped roles get the customizable card dashboard.
   return <DepartmentDashboard role={surfaceUser.role as Exclude<StaffRole, 'production'>} displayName={surfaceUser.displayName} userId={surfaceUser.user.id} />

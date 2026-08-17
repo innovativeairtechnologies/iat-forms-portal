@@ -30,3 +30,15 @@ export const RFQ_STATUS_HELP: Record<RfqStatus, string> = {
 export function isRfqStatus(v: unknown): v is RfqStatus {
   return typeof v === 'string' && (RFQ_STATUSES as readonly string[]).includes(v)
 }
+
+/**
+ * "Nobody has started this yet." The reminder sweep chases exactly this state —
+ * assigned-but-still-new gets a nudge to the owner, unassigned-and-still-new
+ * gets a REMINDER to the shared desk. Moving a survey to any other status is
+ * what stops the chasing, which is why `reviewing` is worth a click even before
+ * any real work happens.
+ */
+export const UNSTARTED_STATUS: RfqStatus = 'new'
+
+/** Statuses that still need someone's attention — what the dashboard counts. */
+export const OPEN_STATUSES: readonly RfqStatus[] = ['new', 'reviewing']

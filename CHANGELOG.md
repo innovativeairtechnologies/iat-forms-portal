@@ -2,6 +2,55 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-15 — Quote requests get an owner, a permanent note trail, and someone chasing them
+
+Migration 088. Four connected pieces, all aimed at the same failure: five real surveys sat
+unread for three days because nothing made them anyone's job.
+
+**An assignee.** Picked from the people who actually hold `deals` — resolved server-side against
+the live permission matrix, never taken from the client. The name is snapshotted as first name +
+last initial ("Jacob Y."), so deleting an account later cannot erase who was working it. Two
+people called Jacob is precisely why it is not just a first name. The queue gains an Owner
+column, an owner filter with **Unassigned** at the top, and an Unassigned stat that turns amber
+when it is non-zero.
+
+**Notes become a permanent trail.** The single editable textarea is gone — it was a whiteboard
+where the last person to type won. Each note is now its own row, stamped and attributed, listed
+newest-first and scrollable. The route is **POST-only**: no PATCH, no DELETE, and author and
+timestamp come from the verified session and the database clock rather than the request body, so
+neither can be forged or backdated. A correction is a new note. Anything already typed into the
+old column was migrated into the trail; the column stays as a tombstone.
+
+**Two reminders, both keyed on a survey still sitting at New:**
+
+- Assigned and untouched for 24h → the owner gets one email covering *all* their stalled rows,
+  not one per row.
+- Nobody assigned for 24h → the shared desk gets one with **`REMINDER:`** leading the subject.
+
+Moving a request to any other status stops the chasing, which is the point — one click on
+*Reviewing* says a human has it. Idempotency is a timestamp per reminder kind, stamped only on a
+successful send so a failure retries tomorrow rather than going quiet, and cleared when the
+status leaves New so a row that later comes back is chased fresh rather than suppressed by a
+months-old stamp.
+
+`vercel.json` is capped at two cron entries on this tier and both are taken, so the sweep
+piggybacks on the daily digest run — deliberately *before* that route's digest-time and
+already-sent guards, since those exist to stop the digest sending twice and would otherwise mean
+a day the digest skipped was a day nobody got chased. `/api/cron/rfq-reminders` exists for a
+manual trigger and can take its own schedule when a slot frees up.
+
+**On the dashboard.** A *My Quote Requests* card on the department dashboard (the first card
+that reads the viewer's own id rather than a department roll-up) and two pills in the Sales
+dashboard header, since Sales lands on its own command center and would otherwise never see an
+RFQ without opening the queue. Both show the unclaimed count *as well as* your own — a dashboard
+that only listed your assignments would go quiet exactly when nobody has picked something up.
+
+Verified: the roster resolves to the eight people holding `deals`; the byline handles both
+Jacobs, single-word names and blanks; and the sweep's row selection was dry-run against
+production — all five current surveys qualify for the unclaimed reminder, and the owner sweep is
+correctly empty because nothing is assigned yet. **The first digest run after this deploy will
+therefore send one REMINDER email listing all five.**
+
 ## 2026-08-15 — The RFQ queue can actually be worked
 
 `/admin/rfq` could be read but not worked: the `status` and `internal_notes` columns from

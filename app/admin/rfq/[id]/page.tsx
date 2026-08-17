@@ -4,6 +4,7 @@ import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Card, CardHead, DetailShell, DetailTopBar, Field, MetaRow } from '@/components/admin/detail-ui'
 import { StatusPill } from '@/components/admin/list'
+import { getEmployeesWithPerm } from '@/lib/staff'
 import { isRfqStatus } from '@/lib/rfq-status'
 import TriageCard from './TriageCard'
 import {
@@ -41,6 +42,17 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
     .maybeSingle()
 
   if (!row) notFound()
+
+  // The note trail and the assignable roster. Both are needed to render triage;
+  // fetched together with the read-marking below so the page is one round trip.
+  const [{ data: notes }, roster] = await Promise.all([
+    supabaseAdmin
+      .from('rfq_notes')
+      .select('id, body, author_name, created_at')
+      .eq('rfq_id', id)
+      .order('created_at', { ascending: false }),
+    getEmployeesWithPerm('deals'),
+  ])
 
   // Reading a survey marks it read — the same convention as the submissions
   // detail page, and it is what makes the "unread" stat on the list mean anything.
@@ -207,7 +219,9 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
           <TriageCard
             id={row.id}
             initialStatus={isRfqStatus(row.status) ? row.status : 'new'}
-            initialNotes={row.internal_notes ?? ''}
+            initialAssigneeId={row.assignee_id ?? null}
+            roster={roster}
+            notes={notes ?? []}
           />
 
           <Card>
