@@ -4,12 +4,19 @@ import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Card, CardHead, DetailShell, DetailTopBar, Field, MetaRow } from '@/components/admin/detail-ui'
 import { StatusPill } from '@/components/admin/list'
+import { isRfqStatus } from '@/lib/rfq-status'
+import TriageCard from './TriageCard'
 import {
   LOAD_DISCLAIMER, conditionEntered, dewPointF, fmt, fmtDewPoint, fmtGrains, grains,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
 
-/* /admin/rfq/[id] — one submitted moisture survey, read-only.
+/* /admin/rfq/[id] — one submitted moisture survey.
+ *
+ * The SURVEY is read-only; only triage (status + internal notes, via TriageCard)
+ * can be written. What the customer told us and what we told them back is a
+ * record of a conversation, and a record you can quietly edit after the fact is
+ * not a record.
  *
  * Renders from the STORED `data` + `summary` (migration 087). The estimate is
  * never recomputed here: `summary` is what the customer was shown and what their
@@ -197,6 +204,12 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
 
         {/* Right rail */}
         <div className="space-y-5">
+          <TriageCard
+            id={row.id}
+            initialStatus={isRfqStatus(row.status) ? row.status : 'new'}
+            initialNotes={row.internal_notes ?? ''}
+          />
+
           <Card>
             <CardHead title="Who sent it" icon={<Building2 size={15} />} />
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">

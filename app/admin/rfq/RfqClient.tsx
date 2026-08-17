@@ -7,12 +7,8 @@ import {
   EmptyRow, ListSearch, FilterDropdown, Pagination, usePagedList,
 } from '@/components/admin/list-card'
 import { StatusPill, type Tone } from '@/components/admin/list'
+import { RFQ_STATUSES, RFQ_STATUS_LABELS, type RfqStatus } from '@/lib/rfq-status'
 
-type RfqStatus = 'new' | 'reviewing' | 'quoted' | 'closed'
-
-const STATUS_LABELS: Record<RfqStatus, string> = {
-  new: 'New', reviewing: 'Reviewing', quoted: 'Quoted', closed: 'Closed',
-}
 const STATUS_TONE: Record<RfqStatus, Tone> = {
   new: 'sky', reviewing: 'amber', quoted: 'emerald', closed: 'slate',
 }
@@ -103,7 +99,7 @@ export default function RfqClient({ rows }: { rows: RfqRow[] }) {
             allLabel="All statuses"
             value={status}
             onChange={setStatus}
-            options={(['new', 'reviewing', 'quoted', 'closed'] as const).map(s => ({ value: s, label: STATUS_LABELS[s] }))}
+            options={RFQ_STATUSES.map(s => ({ value: s, label: RFQ_STATUS_LABELS[s] }))}
           />
           <FilterDropdown
             icon={Layers}
@@ -151,7 +147,7 @@ export default function RfqClient({ rows }: { rows: RfqRow[] }) {
                   <span className="block truncate text-[11px] text-ink-muted">{r.application_label}</span>
                 </span>
                 <span className="truncate text-[12.5px] tabular-nums text-ink-secondary">{headline(r)}</span>
-                <span><StatusPill tone={STATUS_TONE[r.status]}>{STATUS_LABELS[r.status]}</StatusPill></span>
+                <span><StatusPill tone={STATUS_TONE[r.status]}>{RFQ_STATUS_LABELS[r.status]}</StatusPill></span>
                 <span className="justify-self-end text-[12px] tabular-nums text-ink-muted">{fmtDate(r.created_at)}</span>
               </Row>
             ))

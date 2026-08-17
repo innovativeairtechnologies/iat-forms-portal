@@ -19,7 +19,7 @@ import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'timeoff' | 'usrotors' | 'drafts'
+type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'timeoff' | 'usrotors' | 'drafts' | 'rfq'
 
 type NavChild = {
   href: string
@@ -57,6 +57,7 @@ type Counts = {
   timeoff: number
   usrotors: number
   drafts: number
+  rfq: number
 }
 
 // ─── Nav structure — parents with expandable children ─────────────────────────
@@ -107,7 +108,7 @@ const NAV_PARENTS: NavParent[] = [
       // Inbound Requests for Quote (087) — the guided moisture survey at
       // /support/rfq lands here. Shares `deals`: an RFQ is the front of the
       // pipeline and becomes a deal.
-      { href: '/admin/rfq', label: 'Quote Requests', perm: 'deals' },
+      { href: '/admin/rfq', label: 'Quote Requests', badge: 'rfq', perm: 'deals' },
       // Gantt — moved from Operations.
       { href: '/admin/gantt', label: 'Gantt', perm: 'gantt' },
       // Sizing Studio and Application Diagrams left this group — they now hang off
@@ -236,6 +237,8 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   timeoff:     'bg-amber-500/15 text-amber-400',
   usrotors:    'bg-sky-500/15 text-sky-400',
   drafts:      'bg-amber-500/15 text-amber-400',
+  // Sky like Submissions: an unread inbound request, not a warning.
+  rfq:         'bg-sky-500/15 text-sky-400',
 }
 
 function Badge({ kind, count }: { kind: BadgeKind; count: number }) {
@@ -278,16 +281,17 @@ interface Props {
   sickPending: number
   usRotorsOrders: number
   draftCount: number
+  rfqUnread: number
   adminName: string
 }
 
 // adminName stays in Props (the layout passes it) but is no longer rendered here —
 // identity moved to the top-bar avatar.
-export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount }: Props) {
+export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, rfqUnread }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const { hasPerm, home, canPreview } = useViewAs()
-  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, timeoff: ptoPending + sickPending, usrotors: usRotorsOrders, drafts: draftCount }
+  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, timeoff: ptoPending + sickPending, usrotors: usRotorsOrders, drafts: draftCount, rfq: rfqUnread }
   const [mobileOpen, setMobileOpen] = useState(false)
 
   // An exact hit, or a real path segment below it — never a raw string prefix, so

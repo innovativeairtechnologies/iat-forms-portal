@@ -32,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { count: sickPending },
     { count: usRotorsOrders },
     { count: newIntakes },
+    { count: rfqUnread },
     draftCount,
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
@@ -40,6 +41,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     supabaseAdmin.from('time_off_requests').select('*', { count: 'exact', head: true }).eq('type', 'sick').eq('status', 'pending'),
     supabaseAdmin.from('us_rotors_orders').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     supabaseAdmin.from('troubleshooting_intakes').select('*', { count: 'exact', head: true }).eq('status', 'new'),
+    // Unread rather than status='new': opening one marks it read, so the badge
+    // clears when a human has actually looked — the same rule as Submissions.
+    supabaseAdmin.from('rfq_requests').select('*', { count: 'exact', head: true }).eq('is_read', false),
     getUserFormDraftCount(),
   ])
 
@@ -70,6 +74,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           sickPending={sickPending ?? 0}
           usRotorsOrders={usRotorsOrders ?? 0}
           draftCount={draftCount}
+          rfqUnread={rfqUnread ?? 0}
           adminName={admin.displayName}
         />
         {/* pt-14 clears the fixed mobile top bar (the sidebar's old h-14 spacer sat in

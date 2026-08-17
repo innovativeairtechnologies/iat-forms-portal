@@ -54,6 +54,37 @@ export async function requireDealsAuth(): Promise<NextResponse | null> {
 }
 
 /**
+ * Write guard for the inbound RFQ queue (/admin/rfq, migration 087). Keyed on
+ * the SAME `deals` permission as the pipeline and as ADMIN_PATH_PERMS, so page
+ * access and triage writes can never disagree: an RFQ is the front of the sales
+ * pipeline and becomes a deal.
+ *
+ * Its own named guard rather than a second caller of requireDealsAuth (same
+ * reasoning as requireProjectedSalesAuth below), so it can be split onto a
+ * dedicated perm later by changing one line here plus the ADMIN_PATH_PERMS entry.
+ *
+ * NOTE: this gates the ADMIN write route only. The public survey posts to
+ * /api/rfq, which is deliberately anonymous — do not add a guard there.
+ */
+export async function requireRfqAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const matrix = await getPermMatrix()
+  if (!hasPermission(normalizeRole(profile?.role), 'deals', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * Read/sync guard for the Projected Sales page + its Dryware sync route
  * (/admin/projected-sales, migration 059). Deliberately keyed on the SAME
  * `deals` permission as the pipeline: projected sales is the same sales-pipeline

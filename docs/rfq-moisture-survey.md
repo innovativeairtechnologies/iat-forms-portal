@@ -166,17 +166,37 @@ would be worse than no page.
 
 ## Admin
 
-`/admin/rfq` (list) and `/admin/rfq/[id]` (read-only detail), gated on the **`deals`** perm and
-mapped in `ADMIN_PATH_PERMS`. That mapping is load-bearing: an *unmapped* `/admin/*` path falls
-back to `dashboard`, which every scoped role holds — it would have shown a stranger's contact
-details to HR, marketing and production. An RFQ shares the sales trust boundary because it is
-the front of the pipeline and becomes a deal.
+`/admin/rfq` (list) and `/admin/rfq/[id]` (detail), gated on the **`deals`** perm and mapped in
+`ADMIN_PATH_PERMS`. That mapping is load-bearing: an *unmapped* `/admin/*` path falls back to
+`dashboard`, which every scoped role holds — it would have shown a stranger's contact details to
+HR, marketing and production. An RFQ shares the sales trust boundary because it is the front of
+the pipeline and becomes a deal.
 
-Opening a detail marks it read, which is what makes the "Unread" stat mean anything.
+**Sidebar badge.** Sales › Quote Requests carries an unread count, keyed on `is_read` rather
+than `status = 'new'` so it clears when a human has actually opened one — the same rule as
+Submissions. Without it the only signal a survey arrived was the desk email, which is exactly
+the channel that has been unreliable; five sat unopened before the badge existed.
+
+### Triage is the only writable part
+
+`PATCH /api/admin/rfq/[id]` accepts **`status` and `internal_notes` and nothing else.** The
+survey and its estimate are a record of a conversation, and a record you can quietly edit after
+the fact is not a record — if a figure is wrong the fix is a new survey or a note saying so.
+
+`TriageCard` saves status on click (optimistic, reverting on failure so the UI never shows a
+state the server rejected) and notes on a pause in typing, because a desk note is written in
+fits and starts and a Save button people forget to press is the same as no notes at all. A
+status change calls `router.refresh()` so the list and the sidebar badge follow.
+
+The status vocabulary lives in `lib/rfq-status.ts` — one dependency-free module shared by the
+list filter, the detail picker and the API validator, because the column carries a CHECK
+constraint and three copies of that list would eventually disagree with it.
 
 ## Known gaps
 
 - No weather lookup — outdoor design conditions default to 95°F/55% and are confirmed against
   ASHRAE design data by hand during the survey.
 - No file/drawing upload; the form asks customers to mention drawings in the notes.
-- The admin detail is read-only — `status` and `internal_notes` columns exist but have no UI yet.
+- No assignee. `internal_notes` carries "who has it" by convention; if that stops scaling, a
+  proper owner column is the next step.
+- Nothing converts an RFQ into a deal yet — it is re-keyed by hand.

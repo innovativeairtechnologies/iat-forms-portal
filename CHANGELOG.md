@@ -2,6 +2,33 @@
 
 Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
+## 2026-08-15 — The RFQ queue can actually be worked
+
+`/admin/rfq` could be read but not worked: the `status` and `internal_notes` columns from
+migration 087 had no UI, so every survey read "New" forever. Five had landed — two of them real
+outside submissions — and none had been opened.
+
+**Triage card** on the detail page: a status picker (New / Reviewing / Quoted / Closed) and
+internal notes. Status saves on click and reverts if the server rejects it, so the UI never
+shows a state that did not stick. Notes save on a pause in typing — a desk note is written in
+fits and starts, and a Save button people forget to press is the same as no notes at all.
+
+**Sidebar badge** on Sales › Quote Requests, keyed on `is_read` rather than `status = 'new'` so
+it clears when a human has actually opened one, matching Submissions. Without it the only signal
+a survey arrived was the desk email, which is the channel that has been unreliable — that is why
+five sat unnoticed.
+
+`PATCH /api/admin/rfq/[id]` accepts **`status` and `internal_notes` and nothing else.** The
+survey and the estimate we showed the customer are a record of a conversation; a record you can
+quietly edit after the fact is not a record. Gated by `requireRfqAuth` on the same `deals` perm
+as the page, so page access and write access cannot drift apart. Verified: an anonymous PATCH
+returns 401 and changes nothing.
+
+The status vocabulary moved to `lib/rfq-status.ts`, shared by the list filter, the detail picker
+and the API validator. The column has a CHECK constraint and three private copies of that list
+would eventually disagree with it — the route now rejects an unknown status with a readable
+message instead of surfacing a raw Postgres error.
+
 ## 2026-08-14 — RFQ: answer in your own units, and the one-pager leads the PDF
 
 Four changes from Jacob's first pass over the live form.
