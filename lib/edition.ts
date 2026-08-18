@@ -5,15 +5,17 @@
 // work week, named after the Monday that starts it, so any change has exactly
 // one edition and everyone can name it the same way.
 //
-// ── Why the id is year-first ────────────────────────────────────────────────
-// The obvious spelling is 8.17.26, and that is how it gets said out loud. It is
-// a poor identifier though: it does not sort (8.17.26 lands before 12.1.26 in
-// every list, filename and mailbox that orders by name), and outside the US it
-// reads as the 8th of the 17th month. 2026.08.17 keeps the dots and keeps the
-// Monday date, but sorts correctly everywhere it will be written down — inbox
-// subject lines, docx attachments, changelog headings.
+// ── The format is M.D.YY, no leading zeros ──────────────────────────────────
+// The week beginning Monday 17 August 2026 is edition 8.17.26. Owner's call,
+// made deliberately over a year-first spelling: this is the form people already
+// say out loud, and it is the shortest thing that still reads as a date.
 //
-// Flipping the house style is one line: change fmt() below and nothing else.
+// The trade it accepts, so nobody rediscovers it as a bug: editions do NOT sort
+// chronologically by name. In a folder of attachments 10.5.26 lands above
+// 8.17.26, and 9.1.26 above 9.10.26. Every place an edition is written also
+// carries the full date range, and the files carry their own timestamps, so this
+// costs tidiness rather than information. Changing it is still one function —
+// fmt() below, and nothing else.
 //
 // ── Why editions are DERIVED, never stored ──────────────────────────────────
 // The edition of a change is a function of its date, so nothing has to be
@@ -22,9 +24,9 @@
 // line of it. A stored edition would be one more field that can drift.
 
 export type Edition = {
-  /** Sortable canonical id, e.g. "2026.08.17". */
+  /** Canonical id, e.g. "8.17.26". Used in labels, subjects and filenames. */
   id: string
-  /** e.g. "Edition 2026.08.17". */
+  /** e.g. "Edition 8.17.26". */
   label: string
   /** Monday, midday UTC. Midday, not midnight, so a timezone shift can never
    *  move the boundary onto the adjacent day. */
@@ -37,12 +39,14 @@ export type Edition = {
 
 const DAY_MS = 864e5
 
-/** House format. Change this one function to restyle every edition label. */
+/** House format: month.day.two-digit-year, no leading zeros on any part.
+ *  Change this one function to restyle every edition label, subject and
+ *  filename. Nothing else in the codebase spells an edition. */
 function fmt(monday: Date): string {
-  const y = monday.getUTCFullYear()
-  const m = String(monday.getUTCMonth() + 1).padStart(2, '0')
-  const d = String(monday.getUTCDate()).padStart(2, '0')
-  return `${y}.${m}.${d}`
+  const month = monday.getUTCMonth() + 1
+  const day = monday.getUTCDate()
+  const year = monday.getUTCFullYear() % 100
+  return `${month}.${day}.${year}`
 }
 
 /** Midday UTC on the Monday of the week containing `d`. */
@@ -64,24 +68,58 @@ function rangeLabel(start: Date, endInclusive: Date): string {
     : `${start.getUTCDate()} ${month(start)} – ${endInclusive.getUTCDate()} ${month(endInclusive)} ${year}`
 }
 
+function build(monday: Date): Edition {
+  const end = new Date(monday.getTime() + 7 * DAY_MS)
+  const endInclusive = new Date(end.getTime() - DAY_MS)
+  return {
+    id: fmt(monday),
+    label: `Edition ${fmt(monday)}`,
+    start: monday,
+    end,
+    range: rangeLabel(monday, endInclusive),
+  }
+}
+
 /** The edition containing `d`. */
 export function editionFor(d: Date): Edition {
-  const start = mondayOf(d)
-  const end = new Date(start.getTime() + 7 * DAY_MS)
-  const endInclusive = new Date(end.getTime() - DAY_MS)
-  return { id: fmt(start), label: `Edition ${fmt(start)}`, start, end, range: rangeLabel(start, endInclusive) }
+  return build(mondayOf(d))
 }
 
 /** The edition BEFORE the one containing `d` — the last complete week. */
 export function previousEdition(d: Date): Edition {
-  return editionFor(new Date(mondayOf(d).getTime() - DAY_MS))
+  return build(mondayOf(new Date(mondayOf(d).getTime() - DAY_MS)))
 }
 
-/** Parse a `YYYY-MM-DD` or `YYYY.MM.DD` into its edition; null if unparseable.
- *  Backs the ?edition= preview parameter on the cron route. */
+/**
+ * Parse an edition reference. Accepts the house format and a year-first form,
+ * and any day inside the week resolves to that week's Monday — so a caller never
+ * has to work out which day the edition is named after.
+ *
+ *   8.17.26      house format, month.day.year
+ *   2026-08-17   year-first, unambiguous — kept because it is what a date picker,
+ *                a log line and a URL usually hand you
+ *
+ * Returns null rather than guessing on anything else.
+ */
 export function parseEdition(value: string): Edition | null {
-  const m = /^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/.exec(value.trim())
-  if (!m) return null
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12))
-  return Number.isNaN(d.getTime()) ? null : editionFor(d)
+  const v = value.trim()
+
+  // Year-first is detected by a four-digit leading component, so the two forms
+  // can never be confused with each other.
+  const ymd = /^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/.exec(v)
+  if (ymd) return fromParts(Number(ymd[1]), Number(ymd[2]), Number(ymd[3]))
+
+  const mdy = /^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2})$/.exec(v)
+  if (mdy) return fromParts(2000 + Number(mdy[3]), Number(mdy[1]), Number(mdy[2]))
+
+  return null
+}
+
+function fromParts(year: number, month: number, day: number): Edition | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  const d = new Date(Date.UTC(year, month - 1, day, 12))
+  // Rejects a rolled-over date such as 2.31.26, which Date would silently turn
+  // into 3 March rather than refusing.
+  if (d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return null
+  return editionFor(d)
 }

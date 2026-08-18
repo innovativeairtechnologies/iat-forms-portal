@@ -59,10 +59,10 @@ failure being chased.
 | 21 | Form submissions, PTO requests, approvals | Per-form recipients | Immediately |
 
 The weekly update covers one **edition** — a Monday-to-Sunday work week named
-after its Monday (`lib/edition.ts`), e.g. **Edition 2026.08.17** for 17–23 August.
+after its Monday (`lib/edition.ts`), e.g. **Edition 8.17.26** for 17–23 August.
 Sent Monday evening, it reports the edition that closed the night before; that
 Monday's own work belongs to the edition just starting and appears next week.
-Rebuild any past week with `?edition=YYYY-MM-DD` — any date inside it resolves to
+Rebuild any past week with `?edition=8.17.26` (or `2026-08-17`) — any date inside it resolves to
 that week's Monday.
 
 ---

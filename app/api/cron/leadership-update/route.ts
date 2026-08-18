@@ -33,14 +33,15 @@ import { parseEdition, previousEdition } from '@/lib/edition'
  * invocation without ever letting both through.
  *
  * WHAT IT COVERS: the edition that closed yesterday — one Monday-to-Sunday week,
- * named after its Monday (lib/edition.ts). Monday's own work belongs to the
- * edition just starting and is reported next week, so nothing is counted twice.
+ * named after its Monday in M.D.YY form, e.g. 8.17.26 (lib/edition.ts). Monday's
+ * own work belongs to the edition just starting and is reported next week, so
+ * nothing is counted twice.
  *
  * `?dry=1` builds everything and returns the summary WITHOUT sending, which is
  * how to check the wording before a Monday. `?force=1` sends outside the
- * window. `?edition=2026-08-17` rebuilds a specific past week — any date inside
- * it resolves to that week's Monday. None are subject to the hour check; all
- * still require the secret.
+ * window. `?edition=8.17.26` rebuilds a specific past week — 2026-08-17 is also
+ * accepted, and any date inside the week resolves to that week's Monday. None are
+ * subject to the hour check; all still require the secret.
  */
 
 export const maxDuration = 60   // the model call plus docx render exceeds the default
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
   const editionParam = req.nextUrl.searchParams.get('edition')
   const edition = editionParam ? parseEdition(editionParam) : previousEdition(new Date())
   if (!edition) {
-    return NextResponse.json({ error: 'Bad edition — use YYYY-MM-DD' }, { status: 400 })
+    return NextResponse.json({ error: 'Bad edition — use 8.17.26 or 2026-08-17' }, { status: 400 })
   }
 
   // One of the two Monday entries is an hour off for the season — drop it here.

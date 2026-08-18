@@ -4,7 +4,7 @@ Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 
 **Editions.** Changes ship most days, so the reporting unit is a week. An *edition*
 is one Monday-to-Sunday work week named after its Monday — the entries below dated
-17–23 August are **Edition 2026.08.17**. Nothing here is tagged by hand: an entry's
+17–23 August are **Edition 8.17.26**. Nothing here is tagged by hand: an entry's
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
@@ -12,15 +12,20 @@ nothing can drift out of step. The weekly report covers exactly one edition.
 
 Changes ship most days, which made "what went out this week" hard to talk about and impossible to
 reference later. Each work week is now an **edition**, named after the Monday that starts it — this
-week is **Edition 2026.08.17**, covering 17–23 August.
+week is **Edition 8.17.26**, covering 17–23 August.
 
 Nothing is tagged by hand. An entry's edition is a function of its date, so every changelog entry
 ever written already has one, and there is no field that can fall out of step with reality.
 
-The written form is year-first on purpose. `8.17.26` is how it gets said out loud, but it makes a
-poor identifier: it sorts wrongly in every inbox, folder and file list that orders by name, and read
-outside the US it is the 8th of the 17th month. `2026.08.17` keeps the dots and keeps the Monday
-date while sorting correctly. Restyling it is one function in `lib/edition.ts`.
+The written form is `M.D.YY` with no leading zeros — `8.17.26`, and `9.7.26` for a single-digit
+month or day. It is what people already say out loud and the shortest thing that still reads as a
+date. A year-first spelling was built first and reversed on the owner's call.
+
+The trade that comes with it, recorded so nobody rediscovers it as a bug: **editions do not sort
+chronologically by name**, so in a folder of attachments `10.5.26` lands above `8.17.26`. Every
+place an edition is written also carries the full date range, and files keep their own timestamps,
+so this costs tidiness rather than information. Restyling is one function in `lib/edition.ts` and
+nothing else.
 
 **The report now covers a closed week rather than a rolling seven days.** That matters more than it
 sounds: the old window was measured backwards from whenever the job happened to fire, so an entry
@@ -30,7 +35,8 @@ before — and Monday's own work belongs to the edition just starting, so it lan
 report instead of being counted twice.
 
 Editions appear in the email subject, the document header and the attachment filename
-(`IAT-Portal-Edition-2026.08.17.docx`). Any past week can be rebuilt with `?edition=YYYY-MM-DD`;
+(`IAT-Portal-Edition-8.17.26.docx`). Any past week can be rebuilt with `?edition=8.17.26` or
+`?edition=2026-08-17`;
 any date inside the week resolves to that week's Monday, so nobody has to work out which day it is
 named after.
 
