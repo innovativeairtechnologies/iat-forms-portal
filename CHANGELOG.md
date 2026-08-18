@@ -8,6 +8,27 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-18 — Closing the last open door into the database
+
+Public form submissions could, until today, be written straight into the database
+over Supabase's REST API using the anonymous key — skipping `/api/submit` entirely,
+and with it the rate limiting, the server-side validation, and the check that refuses
+submissions to draft forms. The anonymous key is not a secret; it ships inside the
+JavaScript of every public page, so anyone who wanted it had it.
+
+Two database policies allowed this, and migration `091` drops both. One of them was
+broader than it looked: it applied to *every* logged-in account, not just anonymous
+visitors, which meant customer logins could write submission rows too.
+
+These policies were not an oversight — the old standalone ticketing app genuinely
+needed them. That app was retired on 3 August, so nothing had needed them since.
+
+Nothing changes for anyone using the portal. Every form in the app, including the
+version embedded on external pages, already submits through `/api/submit`, which uses
+a privileged server-side connection and is unaffected. This was verified both ways
+against production before and after the change: an anonymous write is now rejected,
+a legitimate one still succeeds, and the public form pages still load normally.
+
 ## 2026-08-18 — The weekly report gets an edition number
 
 Changes ship most days, which made "what went out this week" hard to talk about and impossible to
