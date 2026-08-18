@@ -8,7 +8,7 @@ import type { Ticket, TicketNote, TicketNoteAttachment, Employee } from '@/lib/s
 import { updateTicket } from '../actions'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import dynamic from 'next/dynamic'
-import { DetailShell, Card, CardHead, Field } from '@/components/admin/detail-ui'
+import { DetailShell, Card, Field } from '@/components/admin/detail-ui'
 import PageChrome from '@/app/admin/PageChrome'
 import { isInlineViewable, AttachmentViewerModal } from '@/components/shared/AttachmentViewer'
 import DeleteRecordButton from '@/components/admin/DeleteRecordButton'
@@ -64,17 +64,71 @@ function HeroFact({ label, mono, title, children }: {
 
 const dash = <span className="text-zinc-300 dark:text-zinc-600">—</span>
 
-/** A titled card whose body is padded — used for the read-only info sections. */
+/** A titled card whose body is padded — used for the read-only info sections.
+    Collapsible like every other card on this page; see CollapsibleCard. */
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Card>
-      <CardHead title={title} icon={icon} />
-      <div className="px-5 py-2.5">{children}</div>
+    <CollapsibleCard title={title} icon={icon} bodyClassName="px-5 py-2.5">
+      {children}
+    </CollapsibleCard>
+  )
+}
+
+/** A Card whose body folds away, with the title row as the toggle.
+ *
+ *  Open by DEFAULT: arriving at a ticket should show the whole ticket, so nothing
+ *  is missed because it was hidden. Collapsing is for tidying up once you know
+ *  what you're looking at, and it deliberately does not persist — reopening the
+ *  ticket gives you the full picture again.
+ *
+ *  Native <details open> rather than useState: the open/closed state has no
+ *  consequences beyond the eye, `open` gives the right default for free, and the
+ *  disclosure stays keyboard- and screen-reader-accessible with no ARIA wiring.
+ *
+ *  `action` renders inside <summary>, so its click must be stopped from reaching
+ *  the disclosure — otherwise pressing "Update Ticket" would also fold the card
+ *  shut on the fields you were just editing. It stays reachable while collapsed,
+ *  since the summary row is always visible.
+ *
+ *  Lives here rather than in components/admin/detail-ui.tsx because that file is
+ *  documented as hook-free and server-safe, and the stopPropagation handler makes
+ *  this client-only. Promote it there (behind a 'use client' split) if a second
+ *  detail page needs it.
+ */
+function CollapsibleCard({
+  title, icon, subtitle, action, className = '', bodyClassName = 'px-5 py-4', children,
+}: {
+  title: string
+  icon?: React.ReactNode
+  subtitle?: string
+  action?: React.ReactNode
+  className?: string
+  bodyClassName?: string
+  children: React.ReactNode
+}) {
+  return (
+    <Card className={className}>
+      <details className="group" open>
+        <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none list-none marker:content-none [&::-webkit-details-marker]:hidden">
+          {icon && <span className="text-zinc-400 dark:text-zinc-500 flex-shrink-0">{icon}</span>}
+          <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">{title}</h3>
+          {subtitle && (
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate hidden sm:inline">{subtitle}</span>
+          )}
+          <span className="ml-auto flex items-center gap-2 flex-shrink-0">
+            {action && <span onClick={(e) => e.stopPropagation()}>{action}</span>}
+            <ChevronDown size={14} className="text-zinc-400 transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className={`border-t border-zinc-200/70 dark:border-zinc-800/80 ${bodyClassName}`}>
+          {children}
+        </div>
+      </details>
     </Card>
   )
 }
 
-/** A borderless titled group used inside the collapsed "Intake details" card — a
+/** A borderless titled group used inside the "Intake details" card — a
     lighter Section (no card chrome) so the folded diagnostic echoes read as one card. */
 function IntakeGroup({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -489,11 +543,12 @@ export default function TicketDetailClient({
             facts plus the unit, so keeping both would just be the page saying
             everything twice. Cells sit in a gap-px grid over a hairline-coloured
             background so separators stay correct however the grid wraps. */}
-        <Card className="overflow-hidden">
-          <CardHead
-            title="Customer & Unit"
-            icon={<User size={14} />}
-            action={
+        <CollapsibleCard
+          className="overflow-hidden"
+          bodyClassName=""
+          title="Customer & Unit"
+          icon={<User size={14} />}
+          action={
               <a
                 href={emailCustomerHref}
                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg transition-colors"
@@ -501,8 +556,8 @@ export default function TicketDetailClient({
               >
                 <Mail size={13} /> Email customer
               </a>
-            }
-          />
+          }
+        >
           <div className="grid grid-cols-1 gap-px bg-zinc-200 dark:bg-zinc-800 sm:grid-cols-2 xl:grid-cols-3">
           <HeroFact label="Customer" title={ticket.customer_name || undefined}>
             {ticket.customer_name || dash}
@@ -531,7 +586,7 @@ export default function TicketDetailClient({
             {ticket.model_number || dash}
           </HeroFact>
           </div>
-        </Card>
+        </CollapsibleCard>
 
         <div className="flex flex-col xl:flex-row gap-4 items-start">
           {/* ── Main column ───────────────────────────────────────── */}
@@ -543,7 +598,86 @@ export default function TicketDetailClient({
               </div>
             )}
 
-            {/* Problem — the primary content, promoted to the top of the reading column */}
+            {/* Intake details — the read-only diagnostic-form echoes. Sits FIRST in
+                the column: it is what staff triage from, and it used to be folded
+                shut at the bottom of the page where the serial and checklist were
+                effectively invisible. Now open like everything else. */}
+            <CollapsibleCard
+              title="Intake details"
+              icon={<ClipboardCheck size={14} />}
+              subtitle="Equipment & diagnostic checklist"
+              bodyClassName="pb-2"
+            >
+                <div>
+                  {/* Equipment */}
+                  <IntakeGroup title="Equipment" icon={<Wrench size={14} />}>
+                    <Field label="Serial Number">{ticket.serial_number}</Field>
+                    <Field label="Model Number">{ticket.model_number}</Field>
+                    <Field label="Voltage">{ticket.voltage}</Field>
+                    {equipmentId && (
+                      <Link href={`/admin/equipment/${equipmentId}`} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline mt-3">
+                        <ExternalLink size={12} />View unit in registry
+                      </Link>
+                    )}
+                  </IntakeGroup>
+
+                  {/* Current Status */}
+                  {(ticket.unit_running !== null || ticket.has_alarms !== null) && (
+                    <IntakeGroup title="Current Status" icon={<Activity size={14} />}>
+                      <Field label="Unit running"><YesNo val={ticket.unit_running} /></Field>
+                      <Field label="Active alarms"><YesNo val={ticket.has_alarms} /></Field>
+                      {ticket.alarm_details && <Field label="Alarm details">{ticket.alarm_details}</Field>}
+                    </IntakeGroup>
+                  )}
+
+                  {/* Cooling */}
+                  <IntakeGroup title="Cooling Systems" icon={<Snowflake size={14} />}>
+                    <Field label="Pre cooling installed"><YesNo val={ticket.pre_cooling} /></Field>
+                    {ticket.pre_cooling && <>
+                      <Field label="Pre cooling type">{ticket.pre_cooling_type || '—'}</Field>
+                      <Field label="Pre cooling working"><YesNo val={ticket.pre_cooling_working} /></Field>
+                    </>}
+                    <Field label="Post cooling installed"><YesNo val={ticket.post_cooling} /></Field>
+                    {ticket.post_cooling && <>
+                      <Field label="Post cooling type">{ticket.post_cooling_type || '—'}</Field>
+                      <Field label="Post cooling working"><YesNo val={ticket.post_cooling_working} /></Field>
+                    </>}
+                  </IntakeGroup>
+
+                  {/* Airflow & Reactivation */}
+                  <IntakeGroup title="Airflow & Reactivation" icon={<Wind size={14} />}>
+                    <Field label="Airflows balanced"><YesNo val={ticket.airflow_balanced} /></Field>
+                    {ticket.process_airflow_cfm && <Field label="Process airflow">{ticket.process_airflow_cfm} CFM</Field>}
+                    {ticket.react_airflow_cfm && <Field label="React airflow">{ticket.react_airflow_cfm} CFM</Field>}
+                    {ticket.react_temp_f && <Field label="Reactivation temp">{ticket.react_temp_f} °F</Field>}
+                    <Field label="React heat working"><YesNo val={ticket.react_heat_working} /></Field>
+                    {ticket.react_heat_setpoint !== null && (
+                      <Field label="Maintaining setpoint (285°F)"><YesNo val={ticket.react_heat_setpoint} /></Field>
+                    )}
+                  </IntakeGroup>
+
+                  {/* Wheel & Seals */}
+                  <IntakeGroup title="Wheel & Seals" icon={<ClipboardCheck size={14} />}>
+                    {ticket.wheel_rotating && <Field label="Wheel rotating"><span className="capitalize">{ticket.wheel_rotating}</span></Field>}
+                    {ticket.seal_light_leakage && <Field label="Seal light leakage"><span className="capitalize">{ticket.seal_light_leakage}</span></Field>}
+                    <Field label="Seals good"><YesNo val={ticket.seals_good} /></Field>
+                  </IntakeGroup>
+
+                  {/* External Factors */}
+                  {ticket.external_factors && ticket.external_factors.length > 0 && (
+                    <IntakeGroup title="External Factors" icon={<FileText size={14} />}>
+                      <ul className="py-1 space-y-1">
+                        {ticket.external_factors.map((f, i) => (
+                          <li key={i} className="text-[13px] text-zinc-700 dark:text-zinc-200">• {f}</li>
+                        ))}
+                      </ul>
+                    </IntakeGroup>
+                  )}
+                </div>
+            </CollapsibleCard>
+
+            {/* Problem — the customer's own account, read straight after the intake
+                checklist above it. */}
             <Section title="Problem Description" icon={<FileText size={14} />}>
               <p className="text-[13px] text-zinc-700 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap py-1">
                 {ticket.problem_description}
@@ -558,21 +692,20 @@ export default function TicketDetailClient({
             </Section>
 
             {/* Status + Priority editor */}
-            <Card>
-              <CardHead
-                title="Status & Priority"
-                icon={<SlidersHorizontal size={14} />}
-                action={hasUnsavedChanges ? (
-                  <button
-                    onClick={saveTicket}
-                    disabled={updating || resolvedReasonRequired || closingNoteRequired}
-                    className="text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {updating ? 'Saving…' : 'Update Ticket'}
-                  </button>
-                ) : undefined}
-              />
-              <div className="px-5 py-4">
+            <CollapsibleCard
+              title="Status & Priority"
+              icon={<SlidersHorizontal size={14} />}
+              action={hasUnsavedChanges ? (
+                <button
+                  onClick={saveTicket}
+                  disabled={updating || resolvedReasonRequired || closingNoteRequired}
+                  className="text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {updating ? 'Saving…' : 'Update Ticket'}
+                </button>
+              ) : undefined}
+            >
+              <div>
                 <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-2">Status</p>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {STATUS_OPTIONS.map(opt => (
@@ -674,90 +807,10 @@ export default function TicketDetailClient({
                   </div>
                 )}
               </div>
-            </Card>
+            </CollapsibleCard>
 
             {/* Contact used to live here — now the "Customer & Unit" strip at the
                 top of the page, alongside the serial number. */}
-
-            {/* Intake details — the read-only diagnostic-form echoes, folded into one
-                progressively-disclosed card (collapsed by default to calm the page). */}
-            <Card>
-              <details className="group">
-                <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none list-none marker:content-none [&::-webkit-details-marker]:hidden">
-                  <ClipboardCheck size={14} className="text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
-                  <h3 className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Intake details</h3>
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Equipment &amp; diagnostic checklist</span>
-                  <ChevronDown size={14} className="ml-auto text-zinc-400 transition-transform group-open:rotate-180" />
-                </summary>
-
-                <div className="border-t border-zinc-200/70 dark:border-zinc-800/80 pb-2">
-                  {/* Equipment */}
-                  <IntakeGroup title="Equipment" icon={<Wrench size={14} />}>
-                    <Field label="Serial Number">{ticket.serial_number}</Field>
-                    <Field label="Model Number">{ticket.model_number}</Field>
-                    <Field label="Voltage">{ticket.voltage}</Field>
-                    {equipmentId && (
-                      <Link href={`/admin/equipment/${equipmentId}`} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline mt-3">
-                        <ExternalLink size={12} />View unit in registry
-                      </Link>
-                    )}
-                  </IntakeGroup>
-
-                  {/* Current Status */}
-                  {(ticket.unit_running !== null || ticket.has_alarms !== null) && (
-                    <IntakeGroup title="Current Status" icon={<Activity size={14} />}>
-                      <Field label="Unit running"><YesNo val={ticket.unit_running} /></Field>
-                      <Field label="Active alarms"><YesNo val={ticket.has_alarms} /></Field>
-                      {ticket.alarm_details && <Field label="Alarm details">{ticket.alarm_details}</Field>}
-                    </IntakeGroup>
-                  )}
-
-                  {/* Cooling */}
-                  <IntakeGroup title="Cooling Systems" icon={<Snowflake size={14} />}>
-                    <Field label="Pre cooling installed"><YesNo val={ticket.pre_cooling} /></Field>
-                    {ticket.pre_cooling && <>
-                      <Field label="Pre cooling type">{ticket.pre_cooling_type || '—'}</Field>
-                      <Field label="Pre cooling working"><YesNo val={ticket.pre_cooling_working} /></Field>
-                    </>}
-                    <Field label="Post cooling installed"><YesNo val={ticket.post_cooling} /></Field>
-                    {ticket.post_cooling && <>
-                      <Field label="Post cooling type">{ticket.post_cooling_type || '—'}</Field>
-                      <Field label="Post cooling working"><YesNo val={ticket.post_cooling_working} /></Field>
-                    </>}
-                  </IntakeGroup>
-
-                  {/* Airflow & Reactivation */}
-                  <IntakeGroup title="Airflow & Reactivation" icon={<Wind size={14} />}>
-                    <Field label="Airflows balanced"><YesNo val={ticket.airflow_balanced} /></Field>
-                    {ticket.process_airflow_cfm && <Field label="Process airflow">{ticket.process_airflow_cfm} CFM</Field>}
-                    {ticket.react_airflow_cfm && <Field label="React airflow">{ticket.react_airflow_cfm} CFM</Field>}
-                    {ticket.react_temp_f && <Field label="Reactivation temp">{ticket.react_temp_f} °F</Field>}
-                    <Field label="React heat working"><YesNo val={ticket.react_heat_working} /></Field>
-                    {ticket.react_heat_setpoint !== null && (
-                      <Field label="Maintaining setpoint (285°F)"><YesNo val={ticket.react_heat_setpoint} /></Field>
-                    )}
-                  </IntakeGroup>
-
-                  {/* Wheel & Seals */}
-                  <IntakeGroup title="Wheel & Seals" icon={<ClipboardCheck size={14} />}>
-                    {ticket.wheel_rotating && <Field label="Wheel rotating"><span className="capitalize">{ticket.wheel_rotating}</span></Field>}
-                    {ticket.seal_light_leakage && <Field label="Seal light leakage"><span className="capitalize">{ticket.seal_light_leakage}</span></Field>}
-                    <Field label="Seals good"><YesNo val={ticket.seals_good} /></Field>
-                  </IntakeGroup>
-
-                  {/* External Factors */}
-                  {ticket.external_factors && ticket.external_factors.length > 0 && (
-                    <IntakeGroup title="External Factors" icon={<FileText size={14} />}>
-                      <ul className="py-1 space-y-1">
-                        {ticket.external_factors.map((f, i) => (
-                          <li key={i} className="text-[13px] text-zinc-700 dark:text-zinc-200">• {f}</li>
-                        ))}
-                      </ul>
-                    </IntakeGroup>
-                  )}
-                </div>
-              </details>
-            </Card>
 
             {/* Photos */}
             {ticket.photo_urls && ticket.photo_urls.length > 0 && (
@@ -788,9 +841,8 @@ export default function TicketDetailClient({
             )}
 
             {/* Admin Notes Log */}
-            <Card>
-              <CardHead title="Notes" icon={<MessageSquare size={14} />} />
-              <div className="px-5 py-4">
+            <CollapsibleCard title="Notes" icon={<MessageSquare size={14} />}>
+              <div>
                 {/* Legacy note from old system */}
                 {ticket.notes && (
                   <div className="mb-4 pb-4 border-b border-zinc-100 dark:border-zinc-800/50">
@@ -877,7 +929,7 @@ export default function TicketDetailClient({
                 )}
                 <RichTextEditor onSubmit={addNote} disabled={savingNote} onUpload={uploadAttachment} seed={draftSeed} seedNonce={draftNonce} />
               </div>
-            </Card>
+            </CollapsibleCard>
 
           </main>
 
@@ -894,9 +946,8 @@ export default function TicketDetailClient({
             />
 
             {/* AI Recommendations */}
-            <Card>
-              <CardHead title="AI Recommendations" icon={<Lightbulb size={14} />} />
-              <div className="px-5 py-4">
+            <CollapsibleCard title="AI Recommendations" icon={<Lightbulb size={14} />}>
+              <div>
                 {ticket.ai_recommendations && ticket.ai_recommendations.length > 0 ? (
                   <div className="space-y-3">
                     {ticket.ai_recommendations.map((rec, i) => (
@@ -915,12 +966,11 @@ export default function TicketDetailClient({
                   <p className="text-[12px] text-zinc-400 dark:text-zinc-600">No recommendations generated for this ticket.</p>
                 )}
               </div>
-            </Card>
+            </CollapsibleCard>
 
             {/* Knowledge base articles the customer viewed before submitting */}
-            <Card>
-              <CardHead title="KB Articles Viewed" icon={<BookOpen size={14} />} />
-              <div className="px-5 py-4">
+            <CollapsibleCard title="KB Articles Viewed" icon={<BookOpen size={14} />}>
+              <div>
                 {ticket.viewed_kb_articles && ticket.viewed_kb_articles.length > 0 ? (
                   <div className="space-y-3">
                     {ticket.viewed_kb_articles.map(v => (
@@ -944,7 +994,7 @@ export default function TicketDetailClient({
                   </p>
                 )}
               </div>
-            </Card>
+            </CollapsibleCard>
 
           </aside>
         </div>

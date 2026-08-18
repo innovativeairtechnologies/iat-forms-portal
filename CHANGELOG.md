@@ -8,6 +8,35 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-18 — Ticket numbers carry the unit, and the ticket page opens up
+
+**Ticket numbers now read `IAT-SSSS-NNNN`**, where `SSSS` is the last four characters
+of the unit's serial number. Customers quote a serial on every support request now, so
+putting it in the number means staff can tell which machine a ticket is about from a
+list, an email subject, or a phone call, without opening anything.
+
+The second half is a running count, and it is doing all the real work. A number built
+only from the unit and the year would repeat the moment the same machine had a second
+problem in the same calendar year — and because ticket numbers must be unique, that
+repeat would not produce a duplicate, it would refuse the customer's submission
+outright. The count never resets, so that cannot happen. It was also started above
+every number already issued, so no new ticket can land on an old one.
+
+Numbers therefore jump from the ~2950 range to just above 9000, because a test record
+sitting at 9001 set the floor. Existing tickets keep the numbers they already have.
+
+**Every card on the ticket page now opens and closes**, not just Intake details. All of
+them are expanded when a ticket is opened, so nothing is hidden behind a fold on
+arrival; collapse whichever ones you have finished with. That state is deliberately not
+remembered — reopening a ticket gives you the whole thing again.
+
+**Intake details moved to the top** of the page. It was previously folded shut at the
+bottom, which meant the serial number and the diagnostic checklist — the things you
+triage from — were the hardest things on the page to reach.
+
+Pressing **Update Ticket** no longer risks folding the card shut on the fields you were
+editing, and the button stays reachable even when the card is collapsed.
+
 ## 2026-08-18 — Closing the last open door into the database
 
 Public form submissions could, until today, be written straight into the database
