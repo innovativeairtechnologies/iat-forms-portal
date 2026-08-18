@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, ChevronDown, Cog, Download,
-  DoorOpen, Droplets, Factory, Gauge, Layers, Loader2, type LucideIcon, Mail, PanelsTopLeft,
+  DoorOpen, Droplets, Factory, Gauge, Layers, Loader2, type LucideIcon, Mail, MapPin, PanelsTopLeft,
   Ruler, Send, Sparkles, Thermometer, Users, Wind,
 } from 'lucide-react'
 
@@ -43,12 +43,20 @@ const STEPS: Record<StepKey, { title: string; kicker: string; icon: LucideIcon; 
   airstream:   { title: 'The airstream',            kicker: 'How much air, and where it comes from',        icon: Gauge, tone: 'violet' },
   entering:    { title: 'Entering conditions',      kicker: 'What the unit has to work against',            icon: Thermometer, tone: 'amber' },
   unit:        { title: 'The unit',                 kicker: 'Utilities, construction, filtration',          icon: Cog, tone: 'sky' },
-  about:       { title: 'About you',                kicker: 'Where the quote should go',                    icon: Mail, tone: 'violet' },
+  about:       { title: 'You and the project',      kicker: 'Who to send the quote to, and where it is going', icon: Mail, tone: 'violet' },
   review:      { title: 'Review and send',          kicker: 'One last look before it reaches our desk',     icon: CheckCircle2, tone: 'emerald' },
 }
 
-const ROOM_FLOW: StepKey[] = ['application', 'target', 'space', 'shell', 'openings', 'inside', 'unit', 'about', 'review']
-const PROCESS_FLOW: StepKey[] = ['application', 'leaving', 'airstream', 'entering', 'unit', 'about', 'review']
+// `about` leads. It was the second-to-last step, which meant a customer answered
+// nine engineering questions before telling us who they were — so an abandoned
+// survey left us nothing to follow up on. Site location lives here too, because
+// elevation is an input to every psychrometric number the rest of the wizard
+// shows; asked last, those numbers were computed at sea level until the very end.
+//
+// `about` and `application` occupy indices 0 and 1 in BOTH flows on purpose:
+// switching track mid-survey keeps the current index meaningful.
+const ROOM_FLOW: StepKey[] = ['about', 'application', 'target', 'space', 'shell', 'openings', 'inside', 'unit', 'review']
+const PROCESS_FLOW: StepKey[] = ['about', 'application', 'leaving', 'airstream', 'entering', 'unit', 'review']
 
 // Tone recipes. DESIGN.md §2.4 keeps chroma to the Tone set and to meaning; on
 // this one customer-facing surface each step owns a tone so the wizard reads as
@@ -781,85 +789,41 @@ function Readout({
 
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Live readout</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+        Typical Industry Conditions
+      </p>
 
+      {/* Grains and dew point ONLY.
+          The estimated moisture load, its per-source breakdown, the dry-air cfm and
+          the process water-removal figures were all shown here and are now withheld
+          from the customer view (owner's call, 2026-08-18): they read as a quotable
+          selection when they are a rough planning estimate off partial inputs. They
+          are still calculated — estimateLoad/estimateProcess are unchanged and both
+          still reach our desk on submission — just not displayed to the person
+          filling the form. Restoring them is deleting this comment and putting the
+          blocks back; nothing was ripped out of the model. */}
       {isRoom ? (
-        <>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <Stat label="Grains" value={t || rh ? fmtGrains(grains(t, rh, elev)) : '—'} unit="gr/lb" />
-            <Stat label="Dew point" value={t || rh ? fmtDewPoint(dewPointF(t, rh, elev)) : '—'} />
-          </div>
-          {load.complete ? (
-            <>
-              <div className="mt-4 border-t border-hairline-soft pt-4">
-                <Stat label="Estimated moisture load" value={fmt(load.totalLbPerHr, 1)} unit="lb/hr" big />
-                <p className="mt-1 text-[11.5px] text-ink-muted">
-                  ≈ {fmt(load.totalPintsPerDay)} pints of water a day
-                </p>
-              </div>
-              <div className="mt-4 space-y-2">
-                {[...load.lines].sort((a, b) => b.grainsPerHour - a.grainsPerHour).slice(0, 4).map(l => {
-                  const total = load.lines.reduce((s, x) => s + x.grainsPerHour, 0) || 1
-                  const w = Math.max((l.grainsPerHour / total) * 100, 1)
-                  return (
-                    <div key={l.key}>
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="truncate text-[11.5px] text-ink-secondary">{shortLabel(l.label)}</span>
-                        <span className="flex-shrink-0 text-[11px] tabular-nums text-ink-muted">{Math.round((l.grainsPerHour / total) * 100)}%</span>
-                      </div>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-strong">
-                        <div className={`h-full rounded-full ${LINE_BAR[l.key] ?? 'bg-emerald-500'}`} style={{ width: `${w}%` }} />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="mt-4 border-t border-hairline-soft pt-3">
-                <Stat label="Dry air needed" value={fmt(load.dryAirCfm)} unit="cfm" />
-              </div>
-            </>
-          ) : (
-            <p className="mt-4 border-t border-hairline-soft pt-4 text-[12px] leading-relaxed text-ink-muted">
-              Add the room dimensions and we&apos;ll estimate the moisture load here as you go.
-            </p>
-          )}
-        </>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Stat label="Grains" value={t || rh ? fmtGrains(grains(t, rh, elev)) : '—'} unit="gr/lb" />
+          <Stat label="Dew point" value={t || rh ? fmtDewPoint(dewPointF(t, rh, elev)) : '—'} />
+        </div>
       ) : (
-        <>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <Stat label="Leaving grains" value={data.leavingGrains ? fmtGrains(proc.leavingGrains) : '—'} unit="gr/lb" />
-            <Stat label="Dew point" value={data.leavingGrains ? fmtDewPoint(proc.leavingDewPointF) : '—'} />
-          </div>
-          {proc.complete ? (
-            <div className="mt-4 space-y-3 border-t border-hairline-soft pt-4">
-              <Stat label="Water removed" value={fmt(proc.lbPerHr, 1)} unit="lb/hr" big />
-              <Stat label="Grain depression" value={fmtGrains(proc.depression)} unit="gr/lb" />
-              <Stat label="Entering air" value={fmtGrains(proc.enteringGrains)} unit="gr/lb" />
-            </div>
-          ) : (
-            <p className="mt-4 border-t border-hairline-soft pt-4 text-[12px] leading-relaxed text-ink-muted">
-              Add your leaving-air spec and airflow and we&apos;ll size the drying job here as you go.
-            </p>
-          )}
-        </>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Stat label="Leaving grains" value={data.leavingGrains ? fmtGrains(proc.leavingGrains) : '—'} unit="gr/lb" />
+          <Stat label="Dew point" value={data.leavingGrains ? fmtDewPoint(proc.leavingDewPointF) : '—'} />
+        </div>
       )}
 
       <p className="mt-4 border-t border-hairline-soft pt-3 text-[10.5px] leading-relaxed text-ink-faint">
-        Preliminary — for discussion, not for equipment selection.
+        Indicative figures for the conditions entered — for discussion, not for equipment selection.
       </p>
     </div>
   )
 }
 
-const LINE_BAR: Record<string, string> = {
-  doors: 'bg-amber-500',
-  infiltration: 'bg-sky-500',
-  permeation: 'bg-teal-500',
-  people: 'bg-violet-500',
-  product: 'bg-emerald-500',
-  gas: 'bg-rose-500',
-  wet: 'bg-blue-600',
-}
+// LINE_BAR (the per-source colour ramp for the load breakdown bars) was removed
+// with the breakdown itself. Restore it alongside those bars if the moisture load
+// ever comes back to the customer view.
 
 function Stat({ label, value, unit, big }: { label: string; value: string; unit?: string; big?: boolean }) {
   return (
@@ -1021,23 +985,9 @@ function StepSpace({ data, set, load }: { data: RfqData; set: SetFn; load: Retur
         </div>
       )}
 
-      <Grid>
-        <TextField
-          label="Project location"
-          hint="City and state — it sets the weather we design against."
-          value={data.location}
-          onChange={v => set('location', v)}
-          placeholder="Covington, GA"
-        />
-        <TextField
-          label="Elevation"
-          hint="Leave blank if you don't know — we'll look it up."
-          value={data.elevationFt}
-          onChange={v => set('elevationFt', v)}
-          type="number"
-          suffix="ft ASL"
-        />
-      </Grid>
+      {/* Project location + elevation moved to the first step (`about`): elevation
+          feeds grains and dew point, so it has to be known before any of the
+          numbers this wizard shows mean anything. */}
 
       <Callout tone="violet">
         If the space isn&apos;t a simple box, give us the overall footprint and mention the shape in the notes
@@ -1388,10 +1338,7 @@ function StepEntering({
         />
       </div>
 
-      <Grid>
-        <TextField label="Project location" value={data.location} onChange={v => set('location', v)} placeholder="Covington, GA" />
-        <TextField label="Elevation" value={data.elevationFt} onChange={v => set('elevationFt', v)} type="number" suffix="ft ASL" />
-      </Grid>
+      {/* Location + elevation now live on the first step — see ROOM_FLOW. */}
     </div>
   )
 }
@@ -1485,6 +1432,89 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
   )
 }
 
+/**
+ * Site location + elevation, with elevation looked up from what they typed.
+ *
+ * The lookup is a CONVENIENCE, never a dependency: the field stays hand-editable,
+ * a lookup failure says so quietly and changes nothing, and a value the customer
+ * has typed themselves is never overwritten. Elevation feeds grains and dew point,
+ * so a wrong number here is wrong everywhere downstream — which is exactly why the
+ * server resolves it from geodetic surveys rather than guessing.
+ */
+function SiteLocation({ data, set }: { data: RfqData; set: SetFn }) {
+  const [state, setState] = useState<'idle' | 'looking' | 'done' | 'failed'>('idle')
+  const [matched, setMatched] = useState('')
+  const [source, setSource] = useState('')
+
+  const lookup = useCallback(async () => {
+    const q = data.location.trim()
+    if (q.length < 2) return
+    setState('looking')
+    setMatched('')
+    try {
+      const res = await fetch(`/api/rfq/elevation?q=${encodeURIComponent(q)}`)
+      const j = await res.json()
+      if (!res.ok || !j?.ok || typeof j.elevationFt !== 'number') {
+        setState('failed')
+        return
+      }
+      set('elevationFt', String(j.elevationFt))
+      setMatched(String(j.matched ?? ''))
+      setSource(String(j.source ?? ''))
+      setState('done')
+    } catch {
+      setState('failed')
+    }
+  }, [data.location, set])
+
+  const canLookUp = data.location.trim().length >= 2 && state !== 'looking'
+
+  return (
+    <div className="rounded-xl border border-hairline bg-surface-soft p-4">
+      <p className="mb-3 text-[12.5px] font-medium text-ink-secondary">Where the equipment is going</p>
+      <Grid>
+        <TextField
+          label="Project location"
+          hint="City and state, or a ZIP — it sets the weather we design against."
+          value={data.location}
+          onChange={v => { set('location', v); setState('idle') }}
+          placeholder="Covington, GA"
+        />
+        <div>
+          <TextField
+            label="Elevation"
+            hint="Type it, or fill it from the location."
+            value={data.elevationFt}
+            onChange={v => { set('elevationFt', v); setState('idle') }}
+            type="number"
+            suffix="ft ASL"
+          />
+          <button
+            type="button"
+            onClick={lookup}
+            disabled={!canLookUp}
+            className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 text-[12px] font-medium text-ink-secondary transition-colors hover:bg-surface-strong disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            {state === 'looking'
+              ? <><Loader2 size={13} className="animate-spin" /> Looking up…</>
+              : <><MapPin size={13} /> Look up elevation</>}
+          </button>
+          {state === 'done' && (
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
+              {matched ? `${matched} · ` : ''}from {source || 'survey data'}. Edit it if you know better.
+            </p>
+          )}
+          {state === 'failed' && (
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
+              Couldn&apos;t find that one — type the elevation, or leave it and we&apos;ll confirm it with you.
+            </p>
+          )}
+        </div>
+      </Grid>
+    </div>
+  )
+}
+
 function StepAbout({ data, set }: { data: RfqData; set: SetFn }) {
   return (
     <div className="space-y-5">
@@ -1503,6 +1533,8 @@ function StepAbout({ data, set }: { data: RfqData; set: SetFn }) {
           hint="A quote is a conversation — we will almost always need to ask you something."
         />
       </Grid>
+
+      <SiteLocation data={data} set={set} />
 
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
         <p className="mb-3 text-[12.5px] font-medium text-ink-secondary">The project</p>
@@ -1558,17 +1590,21 @@ function StepReview({
           Your survey in one line
         </p>
         <p className="mt-2 text-[16px] font-semibold leading-snug tracking-tight text-ink">
+          {/* The lb/hr water figure used to close both of these sentences. Withheld
+              from the customer for the same reason it left the readout — it reads as
+              a selection when it is a planning estimate. Still calculated and still
+              sent to our desk in `summary`. */}
           {isRoom
             ? load.complete
-              ? `Hold ${fmt(load.volumeCuFt)} cu.ft at ${fmt(numOf(data.targetTempF))}°F / ${fmt(numOf(data.targetRhPct))}% rh — about ${fmt(load.totalLbPerHr, 1)} lb of water an hour.`
+              ? `Hold ${fmt(load.volumeCuFt)} cu.ft at ${fmt(numOf(data.targetTempF))}°F / ${fmt(numOf(data.targetRhPct))}% rh.`
               : `Hold ${applicationLabel(data)} at ${fmt(numOf(data.targetTempF))}°F / ${fmt(numOf(data.targetRhPct))}% rh.`
             : proc.complete
-              ? `Dry ${fmt(proc.cfm)} cfm to ${fmtGrains(proc.leavingGrains)} gr/lb — ${fmtDewPoint(proc.leavingDewPointF)} dew point, about ${fmt(proc.lbPerHr, 1)} lb of water an hour.`
+              ? `Dry ${fmt(proc.cfm)} cfm to ${fmtGrains(proc.leavingGrains)} gr/lb — ${fmtDewPoint(proc.leavingDewPointF)} dew point.`
               : `Deliver ${fmtGrains(proc.leavingGrains)} gr/lb leaving air for ${applicationLabel(data)}.`}
         </p>
         {isRoom && load.dominant && load.complete && (
           <p className="mt-2 text-[12.5px] leading-relaxed text-ink-secondary">
-            Most of that comes from <strong className="font-medium text-ink">{shortLabel(load.dominant.label).toLowerCase()}</strong>.
+            The biggest driver is <strong className="font-medium text-ink">{shortLabel(load.dominant.label).toLowerCase()}</strong>.
             {load.dominant.key === 'doors' && ' Tightening door discipline is usually the cheapest capacity you will ever buy.'}
           </p>
         )}

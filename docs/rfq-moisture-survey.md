@@ -9,9 +9,45 @@ branded PDF. The survey lands in `rfq_requests` and pings the sales desk.
 
 ---
 
+## Step 1 is `about` — contact, project, and site location
+
+`about` used to sit second-to-last, so a customer answered nine engineering questions before
+telling us who they were, and an abandoned survey left us nothing to follow up on. It now
+leads both flows.
+
+**Project location and elevation moved here** from the `target` step (room) and `entering`
+step (process). Elevation is an input to `grains()` and `dewPointF()`, so asked last it meant
+every psychrometric number the wizard displayed was computed at sea level until the final
+screens.
+
+`about` and `application` are indices 0 and 1 in **both** flows on purpose — switching track
+mid-survey leaves the current index meaningful.
+
+### Elevation lookup — `GET /api/rfq/elevation?q=`
+
+Fills the elevation field from a typed "City, ST" or a 5-digit ZIP.
+
+**Deliberately not an LLM.** Elevation feeds the psychrometrics, so a plausible-but-wrong
+number is worse than a blank field: it is wrong quietly, somewhere nobody thinks to check.
+Every source is a public geodetic service returning a measured value:
+
+| Step | Service | Notes |
+|---|---|---|
+| ZIP → lat/lon | Zippopotam | free, keyless |
+| City → lat/lon | Open-Meteo geocoding | free, keyless; state matched against `admin1` so "Covington, GA" is not the Louisiana one |
+| lat/lon → feet | **USGS EPQS (3DEP)** | the authority; Open-Meteo's own elevation is the fallback |
+
+The two elevation sources agreed within 4 ft on the first point tested. Verified against known
+values: Covington GA → 745 ft, Denver CO → 5,276 ft (the city is 5,280).
+
+Failure is **always soft** — the field stays hand-editable, a miss says so quietly and changes
+nothing, and a value the customer typed is never overwritten. Every one of these services can
+be down and the wizard still works. Nothing here is ASHRAE data; that set is licensed and
+cannot be redistributed from our servers.
+
 ## The fork
 
-The first screen asks the one question that reshapes everything after it:
+The application step asks the one question that reshapes everything after it:
 
 | Track | When | What we size on |
 |---|---|---|
@@ -55,12 +91,27 @@ rather than a fill-in. Every seeded value stays editable, and each one carries a
 `Typical: 40% rh — use it` chip. Presets live in `ROOM_PRESETS` / `PROCESS_PRESETS`
 (`lib/rfq.ts`) — adding an application is adding one object there.
 
-## The live readout
+## The readout — "Typical Industry Conditions"
 
-The right rail computes as you type: grains, dew point, the running load estimate, a bar
-breakdown by source and the dry-air cfm. This is the engagement moment — it also quietly
-teaches the customer that **relative humidity alone cannot size a dehumidifier**, which is the
-single most useful thing a first-time buyer can learn.
+The right rail computes as you type. It shows **grains and dew point only**. This is the
+engagement moment — it also quietly teaches the customer that **relative humidity alone
+cannot size a dehumidifier**, which is the single most useful thing a first-time buyer can
+learn.
+
+⚠️ **The moisture-load figures are deliberately withheld from the customer** (owner's call,
+2026-08-18). The running load estimate, the pints-per-day line, the per-source bar breakdown,
+the dry-air cfm and the process water-removal figures were all shown here and are now hidden,
+because they read as a quotable selection when they are a rough planning estimate off partial
+inputs. The one-line summary on the review step lost its `lb/hr` clause for the same reason.
+
+**Nothing was removed from the model.** `estimateLoad` / `estimateProcess` are unchanged, and
+the full `summary` payload — load totals, breakdown, dry-air cfm — still reaches our desk on
+every submission. This is a display decision, reversible by putting the blocks back.
+
+⚠️ **The takeaway PDF still prints all of it** — headline stat cards, the calculation
+walkthrough, and the narrative. If the intent is that a customer never sees these numbers, the
+PDF is the remaining surface, and it is a layout-sensitive change (see "Four rules for editing
+the PDF").
 
 ---
 

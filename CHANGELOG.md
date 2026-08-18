@@ -8,6 +8,33 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-18 — The quote request asks who you are first, and looks up your elevation
+
+**"About you" is now step 1** of the quote request, not step 8. A customer previously answered
+nine engineering questions before telling us their name, so anyone who gave up partway left us
+nothing to follow up on.
+
+**Project location and elevation moved onto that first screen.** They were buried mid-survey,
+which mattered more than it looked: elevation is part of how grains and dew point are
+calculated, so every number the form showed was being worked out at sea level until nearly the
+end.
+
+**The form can now fill in elevation from the location.** Type "Covington, GA" or a ZIP code,
+press the button, and the elevation appears. It is looked up from US Geological Survey ground
+survey data — not guessed by an AI, which for this field would produce confident wrong answers
+in a number that feeds the rest of the calculation. Checked against known values while
+building: Denver comes back 5,276 ft against an actual 5,280. The field stays editable, and if
+the lookup cannot find somewhere it says so and changes nothing.
+
+**The live figures panel is now "Typical Industry Conditions"** and shows grains and dew point
+only. The estimated moisture load, the pints-per-day figure, the breakdown bars and the dry-air
+airflow are no longer shown to customers — they read as a firm selection when they are a rough
+planning estimate from partial information. The same figure was removed from the review page
+summary.
+
+Those numbers are still calculated and still arrive with every request, so nothing is lost on
+our side. Note the downloadable PDF still contains them.
+
 ## 2026-08-18 — Ticket numbers carry the unit, and the ticket page opens up
 
 **Ticket numbers now read `IAT-SSSS-NNNN`**, where `SSSS` is the last four characters
