@@ -46,7 +46,7 @@ export async function sendLeadershipUpdate(update: LeadershipUpdate, docx: Buffe
   <tr><td style="background:#0a2e1e;padding:24px 32px;">
     <p style="margin:0;color:#fff;font-size:13px;opacity:0.7;letter-spacing:0.05em;text-transform:uppercase;">Innovative Air Technologies</p>
     <h1 style="margin:4px 0 0;color:#fff;font-size:22px;font-weight:700;">IAT Portal &mdash; Weekly Update</h1>
-    <p style="margin:4px 0 0;color:#cfd8d3;font-size:13px;">Week ending ${esc(update.weekEnding)}</p>
+    <p style="margin:4px 0 0;color:#cfd8d3;font-size:13px;">${esc(update.edition.label)} &middot; ${esc(update.edition.range)}</p>
   </td></tr>
   <tr><td style="padding:28px 32px;">
     <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">
@@ -67,12 +67,14 @@ export async function sendLeadershipUpdate(update: LeadershipUpdate, docx: Buffe
 </td></tr></table>
 </body></html>`
 
-  const filename = `IAT-Portal-Weekly-Update-${new Date().toISOString().slice(0, 10)}.docx`
+  // Named by edition, not by send date: the report IS the edition, and two
+  // rebuilds of the same week must not produce two differently-named files.
+  const filename = `IAT-Portal-Edition-${update.edition.id}.docx`
 
   const results = await Promise.all(recipients.map(to => resend.emails.send({
     from: FROM,
     to,
-    subject: `IAT Portal — Weekly Update, week ending ${update.weekEnding}`,
+    subject: `IAT Portal — ${update.edition.label} (${update.edition.range})`,
     html,
     attachments: [{ filename, content: docx.toString('base64') }],
   })))

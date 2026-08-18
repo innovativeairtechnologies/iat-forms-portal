@@ -54,9 +54,16 @@ failure being chased.
 | # | Trigger | Who is told | When |
 |---|---|---|---|
 | 18 | Daily admin digest | Admin roster, minus `DIGEST_OPT_OUT_DEFAULT` | Daily 16:30 ET |
-| 19 | Weekly leadership update | `LEADERSHIP_UPDATE_EMAIL` | **Mondays 17:00 ET** |
+| 19 | Weekly leadership update | `LEADERSHIP_UPDATE_EMAIL` → currently **lee.childers@** only | **Mondays 17:00 ET** |
 | 20 | PTO accrual run | — (no mail; a scheduled data job) | Mondays 08:00 UTC |
 | 21 | Form submissions, PTO requests, approvals | Per-form recipients | Immediately |
+
+The weekly update covers one **edition** — a Monday-to-Sunday work week named
+after its Monday (`lib/edition.ts`), e.g. **Edition 2026.08.17** for 17–23 August.
+Sent Monday evening, it reports the edition that closed the night before; that
+Monday's own work belongs to the edition just starting and appears next week.
+Rebuild any past week with `?edition=YYYY-MM-DD` — any date inside it resolves to
+that week's Monday.
 
 ---
 

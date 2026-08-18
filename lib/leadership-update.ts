@@ -1,11 +1,19 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { anthropic } from './anthropic'
+import { previousEdition, type Edition } from './edition'
 
 // ─── The weekly leadership update ────────────────────────────────────────────
 //
-// Turns the last seven days of CHANGELOG.md into a one-page summary a director
-// can read in about two minutes, and mails it as a Word attachment.
+// Turns one EDITION of CHANGELOG.md — a Monday-to-Sunday work week, named after
+// its Monday (see lib/edition.ts) — into a one-page summary a director can read
+// in about two minutes, and mails it as a Word attachment with the engineering
+// detail appended.
+//
+// The job runs on a Monday and reports the edition that CLOSED the day before,
+// so every change is reported exactly once. A rolling "last seven days from now"
+// window used to decide membership by the hour the job happened to fire, which
+// meant an entry could land in two consecutive reports or in neither.
 //
 // Length is a deliberate setting, not an accident: the brief targets 16-22 lines
 // of at most two short sentences each. An earlier pass at ~11 terse lines read in
@@ -30,7 +38,8 @@ import { anthropic } from './anthropic'
 export type UpdateSection = { title: string; items: string[] }
 
 export type LeadershipUpdate = {
-  weekEnding: string
+  /** Which edition this report covers — see lib/edition.ts. */
+  edition: { id: string; label: string; range: string }
   /** Part 1 — the non-technical read. Two minutes, a director's vocabulary. */
   sections: UpdateSection[]
   /**
@@ -48,11 +57,16 @@ export type LeadershipUpdate = {
 const CHANGELOG = path.join(process.cwd(), 'CHANGELOG.md')
 
 /**
- * Changelog entries dated within `days` of `asOf`. Entries are `## YYYY-MM-DD — title`
- * and newest-first, so we take from the top until one falls out of range.
+ * Changelog entries belonging to one edition — dated on or after its Monday and
+ * before the next. Entries are `## YYYY-MM-DD — title` and newest-first, so we
+ * skip past anything newer and stop once one falls below the start.
+ *
+ * Replaced a rolling "last 7 days from now" window. That window depended on the
+ * hour the job happened to run, so an entry could appear in two consecutive
+ * reports or in neither, and a report could never honestly claim to BE an
+ * edition. A closed Monday-to-Sunday range covers each change exactly once.
  */
-export function recentEntries(markdown: string, asOf: Date, days = 7): { heading: string; body: string }[] {
-  const cutoff = new Date(asOf.getTime() - days * 864e5)
+export function entriesForEdition(markdown: string, edition: Edition): { heading: string; body: string }[] {
   const parts = markdown.split(/^## /m).slice(1)
   const out: { heading: string; body: string }[] = []
 
@@ -63,7 +77,10 @@ export function recentEntries(markdown: string, asOf: Date, days = 7): { heading
     if (!dateMatch) continue
     // Midday avoids a timezone shift pushing an entry over the boundary.
     const entryDate = new Date(`${dateMatch[1]}T12:00:00Z`)
-    if (entryDate < cutoff) break
+    if (entryDate < edition.start) break
+    // Newer than this edition — a later week's work, seen first because the file
+    // is newest-first. Skip rather than break, or nothing older would be reached.
+    if (entryDate >= edition.end) continue
     out.push({ heading, body: newline === -1 ? '' : part.slice(newline + 1).trim() })
   }
   return out
@@ -143,14 +160,21 @@ function offenders(sections: UpdateSection[]): string[] {
   )
 }
 
-/** Build the update. Throws rather than emitting a half-empty report. */
-export async function buildLeadershipUpdate(asOf = new Date()): Promise<LeadershipUpdate> {
+/**
+ * Build the update for one edition. Defaults to the LAST COMPLETE one — the job
+ * runs on a Monday, and that Monday's own work belongs to the edition just
+ * beginning, not the one being reported. Pass an edition explicitly to rebuild
+ * an older week.
+ */
+export async function buildLeadershipUpdate(
+  edition: Edition = previousEdition(new Date()),
+): Promise<LeadershipUpdate> {
   const markdown = await readFile(CHANGELOG, 'utf8')
-  const entries = recentEntries(markdown, asOf)
+  const entries = entriesForEdition(markdown, edition)
 
-  const weekEnding = asOf.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const ed = { id: edition.id, label: edition.label, range: edition.range }
   if (!entries.length) {
-    return { weekEnding, sections: [], technical: [], sourceEntries: [] }
+    return { edition: ed, sections: [], technical: [], sourceEntries: [] }
   }
 
   const source = entries.map(e => `## ${e.heading}\n${e.body}`).join('\n\n')
@@ -227,5 +251,5 @@ export async function buildLeadershipUpdate(asOf = new Date()): Promise<Leadersh
     console.error('[leadership] technical half failed — sending the leadership summary alone:', err)
   }
 
-  return { weekEnding, sections, technical, sourceEntries: entries.map(e => e.heading) }
+  return { edition: ed, sections, technical, sourceEntries: entries.map(e => e.heading) }
 }

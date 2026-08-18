@@ -3,10 +3,11 @@ import { buildLeadershipUpdate } from '@/lib/leadership-update'
 import { renderLeadershipDocx } from '@/lib/leadership-docx'
 import { sendLeadershipUpdate, leadershipRecipients } from '@/lib/resend-leadership'
 import { getNyWallClock } from '@/lib/admin-digest'
+import { parseEdition, previousEdition } from '@/lib/edition'
 
 /* Weekly leadership update — Mondays at 5pm Eastern.
  *
- * Reads the last seven days of CHANGELOG.md, has Claude rewrite it into a
+ * Reads one edition of CHANGELOG.md, has Claude rewrite it into a
  * non-technical leadership read AND a longer technical read, renders a Word
  * document and emails it to LEADERSHIP_UPDATE_EMAIL.
  *
@@ -31,9 +32,15 @@ import { getNyWallClock } from '@/lib/admin-digest'
  * because the two entries sit a full hour apart — so it can absorb a late
  * invocation without ever letting both through.
  *
+ * WHAT IT COVERS: the edition that closed yesterday — one Monday-to-Sunday week,
+ * named after its Monday (lib/edition.ts). Monday's own work belongs to the
+ * edition just starting and is reported next week, so nothing is counted twice.
+ *
  * `?dry=1` builds everything and returns the summary WITHOUT sending, which is
  * how to check the wording before a Monday. `?force=1` sends outside the
- * window. Neither is subject to the hour check; both still require the secret.
+ * window. `?edition=2026-08-17` rebuilds a specific past week — any date inside
+ * it resolves to that week's Monday. None are subject to the hour check; all
+ * still require the secret.
  */
 
 export const maxDuration = 60   // the model call plus docx render exceeds the default
@@ -52,6 +59,14 @@ export async function GET(req: NextRequest) {
   const dryRun = req.nextUrl.searchParams.get('dry') === '1'
   const force = req.nextUrl.searchParams.get('force') === '1'
 
+  // Any date inside the wanted week resolves to that week's Monday, so a caller
+  // never has to work out which day the edition is named after.
+  const editionParam = req.nextUrl.searchParams.get('edition')
+  const edition = editionParam ? parseEdition(editionParam) : previousEdition(new Date())
+  if (!edition) {
+    return NextResponse.json({ error: 'Bad edition — use YYYY-MM-DD' }, { status: 400 })
+  }
+
   // One of the two Monday entries is an hour off for the season — drop it here.
   // A dry run and an explicit force both bypass this, so the preview command in
   // docs/ still works on a Wednesday afternoon.
@@ -60,13 +75,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const update = await buildLeadershipUpdate()
+    const update = await buildLeadershipUpdate(edition)
     const lineCount = update.sections.reduce((n, s) => n + s.items.length, 0)
     const technicalLines = update.technical.reduce((n, s) => n + s.items.length, 0)
 
     if (dryRun) {
       return NextResponse.json({
-        ok: true, dryRun: true, lineCount, technicalLines,
+        ok: true, dryRun: true, edition: edition.id, lineCount, technicalLines,
         recipients: leadershipRecipients(),
         sourceEntries: update.sourceEntries,
         update,
@@ -78,8 +93,8 @@ export async function GET(req: NextRequest) {
     const docx = await renderLeadershipDocx(update)
     const sent = await sendLeadershipUpdate(update, docx)
 
-    console.log(`[cron/leadership-update] ${lineCount} summary + ${technicalLines} technical lines from ${update.sourceEntries.length} entries → ${sent.length} recipient(s)`)
-    return NextResponse.json({ ok: true, lineCount, technicalLines, sent, sourceEntries: update.sourceEntries })
+    console.log(`[cron/leadership-update] ${edition.label}: ${lineCount} summary + ${technicalLines} technical lines from ${update.sourceEntries.length} entries → ${sent.length} recipient(s)`)
+    return NextResponse.json({ ok: true, edition: edition.id, lineCount, technicalLines, sent, sourceEntries: update.sourceEntries })
   } catch (err) {
     console.error('[cron/leadership-update] failed:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })

@@ -73,7 +73,7 @@ export async function renderLeadershipDocx(update: LeadershipUpdate): Promise<Bu
           border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: RULE, space: 6 } },
           spacing: { after: 130 },
           children: [new TextRun({
-            text: `Week ending ${update.weekEnding}  ·  all items live in production`,
+            text: `${update.edition.label}  ·  ${update.edition.range}  ·  all items live in production`,
             size: 17, color: MUTED,
           })],
         }),
