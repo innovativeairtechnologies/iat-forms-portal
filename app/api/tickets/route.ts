@@ -7,6 +7,7 @@ import { verifyRecaptcha } from '@/lib/recaptcha'
 import { generateTroubleshootingTips } from '@/lib/troubleshooting-ai'
 import { sendTicketNotificationToSupportDesk } from '@/lib/resend-tickets'
 import { sendTicketConfirmationToCustomer } from '@/lib/resend-customer-tickets'
+import { formatTicketNumber, fallbackTicketSeq } from '@/lib/ticket-number'
 
 // A support submission sends a heads-up to the support desk so they know a ticket
 // came through (decision 2026-08-03). The admin roster is deliberately NOT mailed —
@@ -101,18 +102,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Ticket number: IAT-YYYY-NNNN, sequential per year (migration 029). The DB
-    // generates the next value atomically so concurrent tickets can't collide. If
-    // the RPC isn't there yet (migration not run) we fall back to a timestamp-based
-    // number so a ticket is never lost — it just won't be sequential until applied.
-    const year = new Date().getFullYear()
+    // Ticket number: IAT-SSSS-NNNN — last 4 of the unit serial, then a global
+    // counter (migration 092). The DB issues NNNN atomically via a sequence, and
+    // ALL uniqueness rests on it: the serial tag is context only, since one unit
+    // files many tickets and two units can share their last four characters.
+    // If the RPC isn't there yet (migration not run) we fall back to a
+    // timestamp-based number so a ticket is never lost.
     let ticket_number: string
-    const { data: seq, error: seqError } = await supabaseAdmin.rpc('next_ticket_number', { p_year: year })
+    const { data: seq, error: seqError } = await supabaseAdmin.rpc('next_ticket_seq')
     if (seqError || typeof seq !== 'number') {
-      console.error('[tickets] next_ticket_number RPC failed — using fallback number:', seqError)
-      ticket_number = `IAT-${year}-${Date.now().toString().slice(-5)}`
+      console.error('[tickets] next_ticket_seq RPC failed — using fallback number:', seqError)
+      ticket_number = formatTicketNumber(body.serial_number, fallbackTicketSeq())
     } else {
-      ticket_number = `IAT-${year}-${String(seq).padStart(4, '0')}`
+      ticket_number = formatTicketNumber(body.serial_number, seq)
     }
 
     // KB articles the customer viewed before submitting (recorded in their

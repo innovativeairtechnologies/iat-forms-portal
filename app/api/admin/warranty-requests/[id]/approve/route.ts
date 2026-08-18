@@ -3,6 +3,7 @@ import { getAdminUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
 import { sendWarrantyDecisionEmail } from '@/lib/resend-customer'
+import { formatTicketNumber, fallbackTicketSeq } from '@/lib/ticket-number'
 import type { Customer, Equipment } from '@/lib/supabase'
 
 // Approves a pending warranty claim: opens a real ticket (request_type='warranty')
@@ -36,15 +37,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const eq = equipment as Equipment
   const cust = customer as Customer
 
-  // Ticket number: IAT-YYYY-NNNN, same sequential RPC app/api/tickets/route.ts uses.
-  const year = new Date().getFullYear()
+  // Ticket number: IAT-SSSS-NNNN, same sequence RPC app/api/tickets/route.ts uses.
+  // The serial comes off the equipment record here rather than a form, so the tag
+  // is always populated on this path.
   let ticket_number: string
-  const { data: seq, error: seqError } = await supabaseAdmin.rpc('next_ticket_number', { p_year: year })
+  const { data: seq, error: seqError } = await supabaseAdmin.rpc('next_ticket_seq')
   if (seqError || typeof seq !== 'number') {
-    console.error('[warranty-requests/approve] next_ticket_number RPC failed — using fallback number:', seqError)
-    ticket_number = `IAT-${year}-${Date.now().toString().slice(-5)}`
+    console.error('[warranty-requests/approve] next_ticket_seq RPC failed — using fallback number:', seqError)
+    ticket_number = formatTicketNumber(eq.serial_number, fallbackTicketSeq())
   } else {
-    ticket_number = `IAT-${year}-${String(seq).padStart(4, '0')}`
+    ticket_number = formatTicketNumber(eq.serial_number, seq)
   }
 
   const { data: ticket, error: ticketError } = await supabaseAdmin

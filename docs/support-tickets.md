@@ -315,9 +315,33 @@ confirmation email. The page routes on the reference prefix:
 
 | Prefix | Table | Resolver |
 |---|---|---|
-| `IAT-YYYY-NNNN` | `tickets` | `POST /api/tickets/status` |
+| `IAT-SSSS-NNNN` | `tickets` | `POST /api/tickets/status` |
 | `TSC-…` | `troubleshooting_intakes` | `POST /api/troubleshooting/status` |
 | `RFQ-YYYY-NNNN` | `rfq_requests` | `POST /api/rfq/status` |
+
+### Ticket numbers: `IAT-SSSS-NNNN` (migration 092, 2026-08-18)
+
+`SSSS` is the last four characters of the unit's serial number, so staff can see
+which unit a ticket concerns without opening it. `NNNN` is a **global, never
+resetting** counter from `next_ticket_seq()`.
+
+⚠️ **All of the uniqueness lives in `NNNN`.** `SSSS` identifies nothing — two units
+can share their last four characters, and one unit files many tickets over its life.
+Never look a ticket up by `SSSS`, and never treat two numbers sharing it as the same
+unit.
+
+The counter is global rather than per-year for a specific reason: the format has no
+year in it, so a counter that reset each January would reissue `IAT-4821-0007` every
+year. `tickets.ticket_number` is `UNIQUE`, so the repeat would not create a duplicate
+— it would **fail to insert, and the customer would lose their support request**. The
+sequence was seeded above every number already issued, so a unit whose serial ends
+`2026` can never be handed a number that collides with a legacy `IAT-2026-####`.
+
+Both generation sites (`POST /api/tickets` and warranty-claim approval) build the
+number through `lib/ticket-number.ts`, so the format can only change in one place.
+A ticket with no serial gets tag `0000` — still unique, because `NNNN` carries it.
+The support wizard requires a serial, but `/api/tickets` does not enforce one, and
+losing a ticket over a missing serial would be worse than an unhelpful tag.
 
 Anything unrecognised falls through to the ticket resolver. All three return the
 **same response shape**, so the page needs no per-kind result plumbing — only the
