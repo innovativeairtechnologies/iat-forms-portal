@@ -32,19 +32,22 @@ type StepKey =
 
 type Tone = 'emerald' | 'sky' | 'amber' | 'rose' | 'violet'
 
-const STEPS: Record<StepKey, { title: string; kicker: string; icon: LucideIcon; tone: Tone }> = {
-  application: { title: 'What are we protecting?', kicker: 'Pick the closest match — it fills in the rest', icon: Sparkles, tone: 'emerald' },
-  target:      { title: 'Your target condition',   kicker: 'The condition you need held inside',           icon: Thermometer, tone: 'sky' },
-  space:       { title: 'The space',                kicker: 'Rough dimensions are fine',                    icon: Ruler, tone: 'violet' },
-  shell:       { title: 'The shell around it',      kicker: 'What the room is built from',                  icon: Layers, tone: 'amber' },
-  openings:    { title: 'Doors and openings',       kicker: 'Usually the single biggest load',              icon: DoorOpen, tone: 'rose' },
-  inside:      { title: "What's happening inside",  kicker: 'People, product, water, ventilation',          icon: Users, tone: 'emerald' },
-  leaving:     { title: 'Leaving air you need',     kicker: 'The condition off the dehumidifier',           icon: Wind, tone: 'sky' },
-  airstream:   { title: 'The airstream',            kicker: 'How much air, and where it comes from',        icon: Gauge, tone: 'violet' },
-  entering:    { title: 'Entering conditions',      kicker: 'What the unit has to work against',            icon: Thermometer, tone: 'amber' },
-  unit:        { title: 'The unit',                 kicker: 'Utilities, construction, filtration',          icon: Cog, tone: 'sky' },
-  about:       { title: 'You and the project',      kicker: 'Who to send the quote to, and where it is going', icon: Mail, tone: 'violet' },
-  review:      { title: 'Review and send',          kicker: 'One last look before it reaches our desk',     icon: CheckCircle2, tone: 'emerald' },
+// `short` is the 1-2 word label printed under each segment of the progress rail,
+// so a step can be recognised and jumped to directly instead of clicking Back
+// repeatedly. `title` remains the full heading shown on the step itself.
+const STEPS: Record<StepKey, { short: string; title: string; kicker: string; icon: LucideIcon; tone: Tone }> = {
+  application: { short: 'Application', title: 'What are we protecting?', kicker: 'Pick the closest match — it fills in the rest', icon: Sparkles, tone: 'emerald' },
+  target:      { short: 'Target', title: 'Your target condition',   kicker: 'The condition you need held inside',           icon: Thermometer, tone: 'sky' },
+  space:       { short: 'Space', title: 'The space',                kicker: 'Rough dimensions are fine',                    icon: Ruler, tone: 'violet' },
+  shell:       { short: 'Shell', title: 'The shell around it',      kicker: 'What the room is built from',                  icon: Layers, tone: 'amber' },
+  openings:    { short: 'Openings', title: 'Doors and openings',       kicker: 'Usually the single biggest load',              icon: DoorOpen, tone: 'rose' },
+  inside:      { short: 'Inside', title: "What's happening inside",  kicker: 'People, product, water, ventilation',          icon: Users, tone: 'emerald' },
+  leaving:     { short: 'Leaving air', title: 'Leaving air you need',     kicker: 'The condition off the dehumidifier',           icon: Wind, tone: 'sky' },
+  airstream:   { short: 'Airstream', title: 'The airstream',            kicker: 'How much air, and where it comes from',        icon: Gauge, tone: 'violet' },
+  entering:    { short: 'Entering', title: 'Entering conditions',      kicker: 'What the unit has to work against',            icon: Thermometer, tone: 'amber' },
+  unit:        { short: 'Unit', title: 'The unit',                 kicker: 'Utilities, construction, filtration',          icon: Cog, tone: 'sky' },
+  about:       { short: 'About you', title: 'You and the project',      kicker: 'Who to send the quote to, and where it is going', icon: Mail, tone: 'violet' },
+  review:      { short: 'Review', title: 'Review and send',          kicker: 'One last look before it reaches our desk',     icon: CheckCircle2, tone: 'emerald' },
 }
 
 // `about` leads. It was the second-to-last step, which meant a customer answered
@@ -401,6 +404,18 @@ export default function RfqWizard() {
   const [stage, setStage] = useState<Stage>('fork')
   const [data, setData] = useState<RfqData>(emptyRfq)
   const [index, setIndex] = useState(0)
+  /**
+   * Furthest step reached, so the rail can offer a jump FORWARD as well as back.
+   *
+   * Without it the rail could only reach `index`, which meant going back from
+   * Review to fix one field stranded you: the only way forward again was clicking
+   * Continue through every intervening step. The high-water mark is what makes
+   * "jump back, edit, jump straight to Review" possible.
+   *
+   * It never decreases while a survey is open — a step you have already satisfied
+   * stays reachable even if you are currently standing behind it.
+   */
+  const [maxIndex, setMaxIndex] = useState(0)
   const [direction, setDirection] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [reference, setReference] = useState('')
@@ -420,7 +435,11 @@ export default function RfqWizard() {
 
   const go = useCallback((delta: number) => {
     setDirection(delta)
-    setIndex(i => Math.min(Math.max(i + delta, 0), flow.length - 1))
+    setIndex(i => {
+      const next = Math.min(Math.max(i + delta, 0), flow.length - 1)
+      setMaxIndex(m => Math.max(m, next))
+      return next
+    })
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [flow.length])
 
@@ -437,6 +456,7 @@ export default function RfqWizard() {
     setData(d => ({ ...emptyRfq(), ...d, track }))
     setStage('form')
     setIndex(0)
+    setMaxIndex(0)
   }
 
   const buildPdf = useCallback(async (submitted: boolean, ref: string) => {
@@ -545,7 +565,7 @@ export default function RfqWizard() {
               </Link>
               <button
                 type="button"
-                onClick={() => { setData(emptyRfq()); setIndex(0); setStage('fork'); setReference(''); setError(null) }}
+                onClick={() => { setData(emptyRfq()); setIndex(0); setMaxIndex(0); setStage('fork'); setReference(''); setError(null) }}
                 className="text-[13px] font-medium text-brand-ink transition-colors hover:text-brand"
               >
                 Start another request
@@ -566,7 +586,7 @@ export default function RfqWizard() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl px-5 pb-24 pt-8">
-        <Rail flow={flow} index={index} onJump={i => { setDirection(i > index ? 1 : -1); setIndex(i) }} />
+        <Rail flow={flow} index={index} maxIndex={maxIndex} onJump={i => { setDirection(i > index ? 1 : -1); setIndex(i); setMaxIndex(m => Math.max(m, i)) }} />
 
         <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_290px]">
           {/* Step column */}
@@ -769,24 +789,59 @@ function Fork({ onPick }: { onPick: (t: Track) => void }) {
   )
 }
 
-function Rail({ flow, index, onJump }: { flow: StepKey[]; index: number; onJump: (i: number) => void }) {
+/**
+ * Progress rail — a labelled, clickable map of the survey.
+ *
+ * Reachability is `maxIndex`, the furthest step visited, NOT the current index.
+ * That is the whole point: from Review you can drop back to fix one answer and
+ * then jump straight to Review again, instead of clicking Continue through every
+ * step in between. Steps never visited stay disabled, because letting someone
+ * skip ahead into a step whose inputs depend on earlier answers produces a form
+ * that looks filled in but is not.
+ *
+ * The label is what makes it usable — a bare bar tells you nothing about which
+ * step is which, so you would have to walk back one at a time to find the one you
+ * wanted. Labels are hidden below `sm`, where twelve of them would not fit; the
+ * bars stay tappable and keep their title tooltip.
+ */
+function Rail({ flow, index, maxIndex, onJump }: {
+  flow: StepKey[]; index: number; maxIndex: number; onJump: (i: number) => void
+}) {
   return (
-    <div className="flex items-center gap-1.5" role="navigation" aria-label="Progress">
+    <div className="flex items-start gap-1.5" role="navigation" aria-label="Progress">
       {flow.map((k, i) => {
         const done = i < index
         const now = i === index
+        const reachable = i <= maxIndex
         return (
           <button
             key={k}
             type="button"
-            onClick={() => i <= index && onJump(i)}
-            disabled={i > index}
-            title={STEPS[k].title}
+            onClick={() => reachable && onJump(i)}
+            disabled={!reachable}
+            title={reachable ? `Go to: ${STEPS[k].title}` : STEPS[k].title}
             aria-current={now ? 'step' : undefined}
-            className={`h-1.5 flex-1 rounded-full transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-              now ? TONE[STEPS[k].tone].bar : done ? 'bg-brand' : 'bg-surface-strong'
-            } ${i <= index ? 'cursor-pointer' : 'cursor-default'}`}
-          />
+            className={`group flex flex-1 flex-col gap-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+              reachable ? 'cursor-pointer' : 'cursor-default'
+            }`}
+          >
+            <span
+              className={`h-1.5 w-full rounded-full transition-all duration-200 ${
+                now ? TONE[STEPS[k].tone].bar : done ? 'bg-brand' : 'bg-surface-strong'
+              } ${reachable && !now ? 'group-hover:bg-brand-hover' : ''}`}
+            />
+            <span
+              className={`hidden truncate text-[10.5px] leading-tight transition-colors sm:block ${
+                now
+                  ? 'font-semibold text-ink'
+                  : reachable
+                    ? 'text-ink-muted group-hover:text-ink-secondary'
+                    : 'text-ink-faint'
+              }`}
+            >
+              {STEPS[k].short}
+            </span>
+          </button>
         )
       })}
     </div>

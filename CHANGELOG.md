@@ -8,6 +8,24 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-19 — Quote request: the progress bar is now a way to get around
+
+The bar across the top of the quote request was decoration — it showed how far along
+you were and nothing else. It now **labels every step** (About you, Application,
+Target, Space, Shell, Openings, Inside, Unit, Review) and **each label is clickable**.
+
+Two things this fixes. You can jump straight to the step you want to change instead
+of pressing Back repeatedly to find it. And once you have changed it, you can jump
+**straight back to Review** rather than clicking Continue through every step in
+between — previously the bar would only take you as far as the step you were
+standing on, so going back to fix one answer meant walking all the way forward again.
+
+Steps you have not reached yet stay locked, since later questions are shaped by
+earlier answers and skipping ahead would produce a survey that looks complete but
+is not.
+
+Labels are hidden on phones, where nine of them will not fit; the bar stays tappable.
+
 ## 2026-08-19 — Quote request: fewer questions, and the optional ones tucked away
 
 Changes to the last two steps of the quote request, all at the owner's direction.
