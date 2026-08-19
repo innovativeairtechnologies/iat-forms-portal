@@ -20,9 +20,10 @@ The Hub is anchored to the week of 17 August being Clean is King. **If that does
 meeting, it is a one-line correction** — tell us which week was Clean is King and the whole
 rotation lines up from there.
 
-**Each value now has its own icon**, shown as a row of nine under the banner, with the current
-week's highlighted. Clicking one magnifies it — a larger icon and the full wording — without
-leaving the Hub or opening a new page.
+**Each value now shows the company's own icon** — the commissioned artwork, one per value — as a
+row of nine under the banner, with the current week's highlighted and the rest dimmed. Clicking
+one magnifies it to three times the size alongside the full wording, without leaving the Hub or
+opening a new page.
 
 Two values were renamed to match how they are said in the meeting: "Integrity is Key" is now
 "Integrity Matters", and "This Company is a Team" is now "Teamwork".

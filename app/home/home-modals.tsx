@@ -1,24 +1,22 @@
 'use client'
 
 import { useState, useEffect, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import {
-  Compass, CalendarDays, X, PartyPopper, Sparkles, Lightbulb, BadgeCheck,
-  Puzzle, ShieldCheck, HeartHandshake, BookOpen, Users, type LucideIcon,
-} from 'lucide-react'
-import { CORE_VALUES, CORE_VALUES_INTRO, type CoreValue, type CoreValueIcon } from '@/lib/home-content'
+import { Compass, CalendarDays, X, PartyPopper } from 'lucide-react'
+import { CORE_VALUES, CORE_VALUES_INTRO, type CoreValue } from '@/lib/home-content'
 
-/** Icon key -> glyph. Lives here, not in lib/home-content.ts, because that module
- *  is shared with server components and must stay free of React components. */
-const VALUE_ICON: Record<CoreValueIcon, LucideIcon> = {
-  clean: Sparkles,
-  innovate: Lightbulb,
-  quality: BadgeCheck,
-  solve: Puzzle,
-  integrity: ShieldCheck,
-  fun: PartyPopper,
-  golden: HeartHandshake,
-  scripture: BookOpen,
-  team: Users,
+/**
+ * The company's own core-value artwork, from public/core-values/.
+ *
+ * Plain <img>, matching the reasoning already used in home-ui.tsx: these are small
+ * local PNGs and next/image buys nothing here. `object-contain` is NOT optional —
+ * the nine files each have their own aspect ratio, so a fixed square box without it
+ * stretches the crown and squashes the panda.
+ *
+ * alt="" because the title is always rendered beside or beneath the icon; naming
+ * the value twice is noise for a screen reader.
+ */
+function ValueArt({ value, className }: { value: CoreValue; className: string }) {
+  return <img src={value.icon} alt="" aria-hidden className={`${className} object-contain`} />
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -109,7 +107,6 @@ export function CoreValuesBand({ current, index, total }: {
           <p className="mb-3 text-[12.5px] italic leading-relaxed text-stone-500 dark:text-stone-400">{CORE_VALUES_INTRO}</p>
           <ul className="space-y-2.5">
             {CORE_VALUES.map((v, i) => {
-              const Icon = VALUE_ICON[v.icon]
               return (
                 <li
                   key={v.title}
@@ -120,7 +117,7 @@ export function CoreValuesBand({ current, index, total }: {
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Icon size={14} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <ValueArt value={v} className="h-5 w-5 flex-shrink-0" />
                     <p className="text-[13px] font-bold text-stone-900 dark:text-white">{v.title}</p>
                     {i === index && (
                       <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">This week</span>
@@ -152,7 +149,6 @@ function CoreValueIcons({ index, onPick }: { index: number; onPick: (i: number) 
   return (
     <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-9">
       {CORE_VALUES.map((v, i) => {
-        const Icon = VALUE_ICON[v.icon]
         const now = i === index
         return (
           <button
@@ -167,11 +163,11 @@ function CoreValueIcons({ index, onPick }: { index: number; onPick: (i: number) 
                 : 'border-stone-200/70 bg-white hover:border-emerald-200 dark:border-stone-800 dark:bg-stone-900/40 dark:hover:border-emerald-500/30'
             }`}
           >
-            <Icon
-              size={20}
-              className={now
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-stone-400 transition-colors group-hover:text-emerald-600 dark:text-stone-500 dark:group-hover:text-emerald-400'}
+            {/* The art carries its own colour, so the off-week tiles are dimmed
+                rather than recoloured — a greyed crown still reads as a crown. */}
+            <ValueArt
+              value={v}
+              className={`h-8 w-8 transition-opacity ${now ? '' : 'opacity-55 group-hover:opacity-100'}`}
             />
             <span className={`line-clamp-2 text-center text-[9.5px] font-medium leading-tight ${
               now ? 'text-emerald-800 dark:text-emerald-300' : 'text-stone-500 dark:text-stone-400'
@@ -193,12 +189,11 @@ function CoreValueIcons({ index, onPick }: { index: number; onPick: (i: number) 
 function CoreValueZoom({ value, isThisWeek, onClose }: {
   value: CoreValue; isThisWeek: boolean; onClose: () => void
 }) {
-  const Icon = VALUE_ICON[value.icon]
   return (
-    <ModalShell title={value.title} icon={<Icon size={16} />} onClose={onClose}>
+    <ModalShell title={value.title} icon={<ValueArt value={value} className="h-4 w-4" />} onClose={onClose}>
       <div className="flex flex-col items-center px-2 py-3 text-center">
-        <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10">
-          <Icon size={52} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
+        <span className="flex h-32 w-32 items-center justify-center rounded-2xl bg-stone-50 p-4 dark:bg-stone-800/40">
+          <ValueArt value={value} className="h-full w-full" />
         </span>
         {isThisWeek && (
           <span className="mt-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-white">

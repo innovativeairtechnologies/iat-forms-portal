@@ -66,15 +66,15 @@ export type PersonEvent = {
 }
 
 /**
- * `icon` is a KEY, not a component — this module is imported by server and client
- * alike, and a React component here would drag the icon library across that line.
- * app/home/home-modals.tsx maps the key to the actual glyph.
+ * `icon` is a path under public/core-values/ — the company's own commissioned
+ * artwork, one per value, not a generic glyph. A path rather than a component
+ * because this module is imported by server and client alike.
+ *
+ * The art is not square (each is roughly 150-175px on its long side, with its own
+ * aspect ratio), so every render site must use object-contain inside a fixed box
+ * or the crown and the panda will both come out stretched.
  */
-export type CoreValue = { title: string; body: string; icon: CoreValueIcon }
-
-export type CoreValueIcon =
-  | 'clean' | 'innovate' | 'quality' | 'solve' | 'integrity'
-  | 'fun' | 'golden' | 'scripture' | 'team'
+export type CoreValue = { title: string; body: string; icon: string }
 
 // ── Defaults (fallbacks shown until a table has rows) ─────────────────────────
 
@@ -171,15 +171,15 @@ export const CORE_VALUES_INTRO = 'We believe in something bigger, something grea
  * value and every subsequent week shifts — re-check ROTATION_ANCHOR if you do.
  */
 export const CORE_VALUES: CoreValue[] = [
-  { title: 'Clean is King', icon: 'clean', body: 'A clean workspace is an efficient workspace.' },
-  { title: 'Innovative Thinking', icon: 'innovate', body: 'We are committed to building a company full of 3-dimensional thinkers.' },
-  { title: 'Quality Matters', icon: 'quality', body: 'If our equipment doesn’t perform, then we’re not solving problems — we’re creating them.' },
-  { title: 'Solve Problems', icon: 'solve', body: 'We exist to solve our customers’ problems and enrich the lives of others. We are a customer-service company — we just happen to build dehumidifiers.' },
-  { title: 'Integrity Matters', icon: 'integrity', body: 'We believe that character matters, all the time.' },
-  { title: 'Have Fun', icon: 'fun', body: 'A career doesn’t have to be work.' },
-  { title: 'Golden Rule', icon: 'golden', body: 'Treat others — including the company and the customer — the way you’d want to be treated.' },
-  { title: 'Colossians 3:23', icon: 'scripture', body: 'We work hard, and we play hard, for the Lord.' },
-  { title: 'Teamwork', icon: 'team', body: 'We win together, we lose together. We work together as a team to accomplish remarkable things that we could not do alone.' },
+  { title: 'Clean is King', icon: '/core-values/value-clean-is-king.png', body: 'A clean workspace is an efficient workspace.' },
+  { title: 'Innovative Thinking', icon: '/core-values/value-innovative-thinking.png', body: 'We are committed to building a company full of 3-dimensional thinkers.' },
+  { title: 'Quality Matters', icon: '/core-values/value-quality-matters.png', body: 'If our equipment doesn’t perform, then we’re not solving problems — we’re creating them.' },
+  { title: 'Solve Problems', icon: '/core-values/value-solve-problems.png', body: 'We exist to solve our customers’ problems and enrich the lives of others. We are a customer-service company — we just happen to build dehumidifiers.' },
+  { title: 'Integrity Matters', icon: '/core-values/value-integrity.png', body: 'We believe that character matters, all the time.' },
+  { title: 'Have Fun', icon: '/core-values/value-have-fun.png', body: 'A career doesn’t have to be work.' },
+  { title: 'Golden Rule', icon: '/core-values/value-golden-rule.png', body: 'Treat others — including the company and the customer — the way you’d want to be treated.' },
+  { title: 'Colossians 3:23', icon: '/core-values/value-colossians-323.png', body: 'We work hard, and we play hard, for the Lord.' },
+  { title: 'Teamwork', icon: '/core-values/value-teamwork.png', body: 'We win together, we lose together. We work together as a team to accomplish remarkable things that we could not do alone.' },
 ]
 
 /**

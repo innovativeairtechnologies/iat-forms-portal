@@ -125,10 +125,20 @@ reason to agree with the meeting, and it didn't. The anchor is what actually kee
 whose staff-meeting value was "Clean is King". Nothing else needs touching. Adding or removing a
 value shifts every subsequent week, so re-check the anchor if you do.
 
-Each value carries an `icon` **key** (not a component — `lib/home-content.ts` is imported by
-server components and must stay free of React). `app/home/home-modals.tsx` maps the key to the
-glyph in `VALUE_ICON`. The nine icons render as tiles under the ribbon; clicking one magnifies it
-in place (52px against the tile's 20px) rather than navigating away, which is what was asked for.
+Each value carries an `icon` **path** into `public/core-values/` — the company's own commissioned
+artwork, one PNG per value, filename matching the value (`value-clean-is-king.png` and so on).
+A path rather than a component because `lib/home-content.ts` is imported by server components and
+must stay free of React.
+
+⚠️ **The nine files are not square** (roughly 150–175px on their long side, each with its own
+aspect ratio), so every render site boxes them with `object-contain`. Drop that and the crown
+stretches and the panda squashes. `ValueArt` in `app/home/home-modals.tsx` is the only place that
+renders one — go through it.
+
+The nine render as tiles under the ribbon; clicking one magnifies it in place (3× the tile size)
+rather than navigating away, which is what was asked for. Off-week tiles are dimmed with opacity
+rather than recoloured, because the artwork carries its own colour and a greyed crown still reads
+as a crown.
 
 ### The `home_content` permission
 
