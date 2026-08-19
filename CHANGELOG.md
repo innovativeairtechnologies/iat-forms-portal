@@ -28,6 +28,7 @@ when they return, so nothing they typed is ever hidden from them.
 - The **natural gas** question is gone.
 - **Package preference** is removed entirely.
 - **Final filter** no longer offers "Not sure" and defaults to **Not required**.
+- **Cooling** no longer offers "Not sure" and defaults to **Not required**.
 
 The two removed questions were also taken off the admin view and the PDF, rather than
 leaving them to report a default nobody actually chose.

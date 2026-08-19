@@ -498,7 +498,10 @@ export const CONSTRUCTIONS = ['Galvanized (standard)', 'Painted galvanized', 'Al
 // defer to us on the form.
 export const REGEN_SOURCES = ['Electric', 'Natural gas', 'Steam', 'Hot water', 'Propane']
 export const AIR_SOURCES = ['100% return air', '100% outdoor air', 'Mixed — describe below']
-export const COOLING_TYPES = ['Not required', 'Chilled water', 'DX — condensing unit by IAT', 'DX — condensing unit by others', 'Not sure']
+// 'Not sure' removed and 'Not required' is the default (owner, 2026-08-19): most
+// units have no cooling, and an unanswered cooling question is a quoting ambiguity
+// where 'not required' is an actual answer. Same reasoning as the final filter.
+export const COOLING_TYPES = ['Not required', 'Chilled water', 'DX — condensing unit by IAT', 'DX — condensing unit by others']
 export const HEATING_TYPES = ['Not required', 'Electric', 'Natural gas', 'Hot water', 'Steam', 'Not sure']
 export const RUNTIMES = ['Seasonal', 'Year-round, normal hours', 'Year-round, 24/7/365']
 export const MERV_OPTIONS = ['MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final', 'Not sure']
@@ -636,7 +639,7 @@ export function emptyRfq(): RfqData {
     regenSource: 'Electric', regenAirSource: 'Outdoor', regenIndoorConditions: '',
     environmentClean: 'Clean', contaminants: '',
     prefilterMerv: 'MERV 8 (standard)', finalMerv: 'Not required',
-    coolingType: 'Not sure', heatingType: 'Not required',
+    coolingType: 'Not required', heatingType: 'Not required',
     runtime: 'Year-round, normal hours',
     sensibleLoadBtuh: '', notes: '',
   }
