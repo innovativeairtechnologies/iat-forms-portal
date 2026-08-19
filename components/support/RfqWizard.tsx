@@ -77,15 +77,32 @@ const inputCx =
 // Every control is explicitly wired to its <label> and hint via useId, so the
 // label is a click target, screen readers announce the hint, and the fields are
 // addressable by accessible name in tests.
-function Label({ id, children, hint, hintId, required }: { id: string; children: React.ReactNode; hint?: string; hintId: string; required?: boolean }) {
+/**
+ * Field label. The hint deliberately does NOT live here — see Hint below.
+ */
+function Label({ id, children, required }: { id: string; children: React.ReactNode; required?: boolean }) {
   return (
-    <div className="mb-1.5">
-      <label htmlFor={id} className="block text-[12.5px] font-medium text-ink-secondary">
-        {children}{required && <span className="ml-0.5 text-rose-400" aria-hidden="true">*</span>}
-      </label>
-      {hint && <p id={hintId} className="mt-0.5 text-[11.5px] leading-relaxed text-ink-muted">{hint}</p>}
-    </div>
+    <label htmlFor={id} className="mb-1.5 block text-[12.5px] font-medium text-ink-secondary">
+      {children}{required && <span className="ml-0.5 text-rose-400" aria-hidden="true">*</span>}
+    </label>
   )
+}
+
+/**
+ * Helper text, rendered BELOW the control.
+ *
+ * It used to sit between the label and the input, which quietly broke every 2-up
+ * row where one field had a hint and its neighbour did not: the hint made one
+ * label block taller and pushed that field's input down, so the two inputs no
+ * longer lined up. The Email/Phone pair on step 1 was the visible case — Phone
+ * carries a two-line hint, Email carries none.
+ *
+ * Below the control, a hint can be any length and the inputs stay level, because
+ * the height it adds falls beneath the row's shared baseline instead of above it.
+ * `aria-describedby` still resolves by id, so nothing changes for screen readers.
+ */
+function Hint({ id, children }: { id: string; children: React.ReactNode }) {
+  return <p id={id} className="mt-1 text-[11.5px] leading-relaxed text-ink-muted">{children}</p>
 }
 
 function TextField({
@@ -98,7 +115,7 @@ function TextField({
   const hintId = `${id}-hint`
   return (
     <div>
-      <Label id={id} hint={hint} hintId={hintId} required={required}>{label}</Label>
+      <Label id={id} required={required}>{label}</Label>
       <div className="relative">
         <input
           id={id}
@@ -118,6 +135,7 @@ function TextField({
           </span>
         )}
       </div>
+      {hint && <Hint id={hintId}>{hint}</Hint>}
     </div>
   )
 }
@@ -131,7 +149,7 @@ function TextArea({
   const hintId = `${id}-hint`
   return (
     <div>
-      <Label id={id} hint={hint} hintId={hintId}>{label}</Label>
+      <Label id={id}>{label}</Label>
       <textarea
         id={id}
         value={value}
@@ -141,6 +159,7 @@ function TextArea({
         aria-describedby={hint ? hintId : undefined}
         className={`${inputCx} resize-none leading-relaxed`}
       />
+      {hint && <Hint id={hintId}>{hint}</Hint>}
     </div>
   )
 }
@@ -154,7 +173,7 @@ function SelectField({
   const hintId = `${id}-hint`
   return (
     <div>
-      <Label id={id} hint={hint} hintId={hintId}>{label}</Label>
+      <Label id={id}>{label}</Label>
       <div className="relative">
         <select
           id={id}
@@ -167,6 +186,7 @@ function SelectField({
         </select>
         <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint" />
       </div>
+      {hint && <Hint id={hintId}>{hint}</Hint>}
     </div>
   )
 }
