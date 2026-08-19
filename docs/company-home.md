@@ -91,7 +91,7 @@ looks complete on day one and the moment HR authors a row, that row takes over.
 | New Employee | `employee_spotlights` (`kind='welcome'`) → else newest `employees.hire_date` | Auto-derives the newest hire if no curated welcome row. |
 | Employee Spotlight | `employee_spotlights` (`kind='spotlight'`, active) | Curated; falls back to the default sample until a row exists. |
 | Company Suggestions | writes `company_suggestions` | Server action `app/home/actions.ts`; private inbox (admins read via service role). |
-| Core Value of the Week | code (`CORE_VALUES` in `lib/home-content.ts`) | Shows ONE value, auto-rotating weekly via `coreValueOfWeek()` — advances each Monday (ET), holds all week, cycles all 9. Manual "pin for the week" override = planned follow-up. |
+| Core Value of the Week | code (`CORE_VALUES` in `lib/home-content.ts`) | Shows ONE value, auto-rotating weekly via `coreValueOfWeek()` — advances each Monday (ET), holds all week, cycles all 9. **Synchronised with the weekly staff meeting — see below.** Manual "pin for the week" override = planned follow-up. |
 | Fun Fact / IT Support | code (`lib/home-content.ts`) | Brand copy, not DB data. |
 
 ### Editing content
@@ -107,6 +107,28 @@ looks complete on day one and the moment HR authors a row, that row takes over.
 - **The KPI row**: "Teammates" is the live active-staff `headcount` (`lib/home-data.ts`); the
   "days incident-free" counter auto-increments from `SAFETY.since` in `lib/home-content.ts` — edit
   that date whenever the streak resets.
+
+### Core values: the rotation is synchronised with the staff meeting
+
+Leadership asked for the Hub to show the same value the weekly staff meeting is covering, so
+two things now matter and both live in `lib/home-content.ts`:
+
+1. **`CORE_VALUES` order is load-bearing.** It is the staff-meeting rotation, not an arbitrary
+   list. Reordering it silently desynchronises the Hub from the room.
+2. **`ROTATION_ANCHOR_MONDAY`** pins one known Monday to `CORE_VALUES[0]` ("Clean is King").
+   Everything else counts forward from there.
+
+The rotation used to be `weekNumber % 9` counted from the Unix epoch — stable, but with no
+reason to agree with the meeting, and it didn't. The anchor is what actually keeps them in step.
+
+**If the Hub drifts out of sync, change one line:** set `ROTATION_ANCHOR_MONDAY` to any Monday
+whose staff-meeting value was "Clean is King". Nothing else needs touching. Adding or removing a
+value shifts every subsequent week, so re-check the anchor if you do.
+
+Each value carries an `icon` **key** (not a component — `lib/home-content.ts` is imported by
+server components and must stay free of React). `app/home/home-modals.tsx` maps the key to the
+glyph in `VALUE_ICON`. The nine icons render as tiles under the ribbon; clicking one magnifies it
+in place (52px against the tile's 20px) rather than navigating away, which is what was asked for.
 
 ### The `home_content` permission
 

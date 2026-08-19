@@ -8,6 +8,25 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-19 — The Hub's core value now matches the one in the staff meeting
+
+The Hub has always featured a core value of the week, but it picked one on its own schedule —
+so the value on the screen and the value being discussed in the Monday staff meeting were
+rarely the same one. They now follow the same rotation, in the order leadership uses:
+Clean is King, Innovative Thinking, Quality Matters, Solve Problems, Integrity Matters, Have
+Fun, Golden Rule, Colossians 3:23, Teamwork.
+
+The Hub is anchored to the week of 17 August being Clean is King. **If that does not match the
+meeting, it is a one-line correction** — tell us which week was Clean is King and the whole
+rotation lines up from there.
+
+**Each value now has its own icon**, shown as a row of nine under the banner, with the current
+week's highlighted. Clicking one magnifies it — a larger icon and the full wording — without
+leaving the Hub or opening a new page.
+
+Two values were renamed to match how they are said in the meeting: "Integrity is Key" is now
+"Integrity Matters", and "This Company is a Team" is now "Teamwork".
+
 ## 2026-08-18 — The quote request asks who you are first, and looks up your elevation
 
 **"About you" is now step 1** of the quote request, not step 8. A customer previously answered

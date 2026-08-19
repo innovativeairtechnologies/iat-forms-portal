@@ -65,7 +65,16 @@ export type PersonEvent = {
   when: string
 }
 
-export type CoreValue = { title: string; body: string }
+/**
+ * `icon` is a KEY, not a component — this module is imported by server and client
+ * alike, and a React component here would drag the icon library across that line.
+ * app/home/home-modals.tsx maps the key to the actual glyph.
+ */
+export type CoreValue = { title: string; body: string; icon: CoreValueIcon }
+
+export type CoreValueIcon =
+  | 'clean' | 'innovate' | 'quality' | 'solve' | 'integrity'
+  | 'fun' | 'golden' | 'scripture' | 'team'
 
 // ── Defaults (fallbacks shown until a table has rows) ─────────────────────────
 
@@ -155,17 +164,37 @@ export const FUN_FACTS: string[] = [
 // stable so the weekly rotation is predictable.
 export const CORE_VALUES_INTRO = 'We believe in something bigger, something greater than ourselves.'
 
+/**
+ * ⚠️ ORDER IS LOAD-BEARING. This is the rotation used in the weekly staff
+ * meeting, and the Hub exists to show the same value the room is discussing that
+ * week. Reordering this array silently desynchronises the two. Add or remove a
+ * value and every subsequent week shifts — re-check ROTATION_ANCHOR if you do.
+ */
 export const CORE_VALUES: CoreValue[] = [
-  { title: 'Innovative Thinking', body: 'We are committed to building a company full of 3-dimensional thinkers.' },
-  { title: 'Clean is King', body: 'A clean workspace is an efficient workspace.' },
-  { title: 'Solve Problems', body: 'We exist to solve our customers’ problems and enrich the lives of others. We are a customer-service company — we just happen to build dehumidifiers.' },
-  { title: 'Quality Matters', body: 'If our equipment doesn’t perform, then we’re not solving problems — we’re creating them.' },
-  { title: 'Integrity is Key', body: 'We believe that character matters, all the time.' },
-  { title: 'Golden Rule Mentality', body: 'Treat others — including the company and the customer — the way you’d want to be treated.' },
-  { title: 'Colossians 3:23', body: 'We work hard, and we play hard, for the Lord.' },
-  { title: 'Have Fun', body: 'A career doesn’t have to be work.' },
-  { title: 'This Company is a Team', body: 'We win together, we lose together. We work together as a team to accomplish remarkable things that we could not do alone.' },
+  { title: 'Clean is King', icon: 'clean', body: 'A clean workspace is an efficient workspace.' },
+  { title: 'Innovative Thinking', icon: 'innovate', body: 'We are committed to building a company full of 3-dimensional thinkers.' },
+  { title: 'Quality Matters', icon: 'quality', body: 'If our equipment doesn’t perform, then we’re not solving problems — we’re creating them.' },
+  { title: 'Solve Problems', icon: 'solve', body: 'We exist to solve our customers’ problems and enrich the lives of others. We are a customer-service company — we just happen to build dehumidifiers.' },
+  { title: 'Integrity Matters', icon: 'integrity', body: 'We believe that character matters, all the time.' },
+  { title: 'Have Fun', icon: 'fun', body: 'A career doesn’t have to be work.' },
+  { title: 'Golden Rule', icon: 'golden', body: 'Treat others — including the company and the customer — the way you’d want to be treated.' },
+  { title: 'Colossians 3:23', icon: 'scripture', body: 'We work hard, and we play hard, for the Lord.' },
+  { title: 'Teamwork', icon: 'team', body: 'We win together, we lose together. We work together as a team to accomplish remarkable things that we could not do alone.' },
 ]
+
+/**
+ * The week that shows CORE_VALUES[0] ("Clean is King"), as a Monday in
+ * America/New_York. Every other week counts forward from here.
+ *
+ * WHY AN ANCHOR AT ALL: the rotation used to be `weekNumber % 9` counted from the
+ * Unix epoch, which is stable but arbitrary — it had no reason to agree with the
+ * staff meeting, and didn't. Pinning one known week to one known value is what
+ * actually keeps the Hub and the meeting in step.
+ *
+ * TO RESYNC: if the Hub is showing the wrong value, set this to any Monday whose
+ * staff-meeting value was "Clean is King". Nothing else needs to change.
+ */
+export const ROTATION_ANCHOR_MONDAY = '2026-08-17'
 
 /**
  * The core value to feature this week. Deterministic weekly rotation: the index
@@ -173,13 +202,27 @@ export const CORE_VALUES: CoreValue[] = [
  * value stays up for the week. When the manual "pin one for the week" control is
  * built, it will override this. Pure (no server deps) — safe to call anywhere.
  */
+/** Monday-based week number for a Y/M/D, counted from the epoch. */
+function weekNumber(y: number, m: number, d: number): number {
+  const days = Math.floor(Date.UTC(y, m - 1, d) / 86400000)
+  return Math.floor((days + 3) / 7) // 1970-01-01 was a Thursday; +3 starts weeks on Monday
+}
+
 export function coreValueOfWeek(now: Date): { value: CoreValue; index: number; total: number } {
   const total = CORE_VALUES.length
+
+  // Read the date in Eastern time so the value turns over on the office's Monday,
+  // not UTC's.
   const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
   const g = (t: string) => parseInt(p.find((x) => x.type === t)!.value, 10)
-  const days = Math.floor(Date.UTC(g('year'), g('month') - 1, g('day')) / 86400000)
-  const week = Math.floor((days + 3) / 7) // 1970-01-01 was a Thursday; +3 starts weeks on Monday
-  const index = ((week % total) + total) % total
+  const thisWeek = weekNumber(g('year'), g('month'), g('day'))
+
+  const [ay, am, ad] = ROTATION_ANCHOR_MONDAY.split('-').map(Number)
+  const anchorWeek = weekNumber(ay, am, ad)
+
+  // Weeks elapsed since the anchor, wrapped. The double modulo keeps it correct
+  // for dates BEFORE the anchor, where the difference is negative.
+  const index = (((thisWeek - anchorWeek) % total) + total) % total
   return { value: CORE_VALUES[index], index, total }
 }
 

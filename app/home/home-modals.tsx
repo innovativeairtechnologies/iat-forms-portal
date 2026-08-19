@@ -1,8 +1,25 @@
 'use client'
 
 import { useState, useEffect, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { Compass, CalendarDays, X, PartyPopper } from 'lucide-react'
-import { CORE_VALUES, CORE_VALUES_INTRO, type CoreValue } from '@/lib/home-content'
+import {
+  Compass, CalendarDays, X, PartyPopper, Sparkles, Lightbulb, BadgeCheck,
+  Puzzle, ShieldCheck, HeartHandshake, BookOpen, Users, type LucideIcon,
+} from 'lucide-react'
+import { CORE_VALUES, CORE_VALUES_INTRO, type CoreValue, type CoreValueIcon } from '@/lib/home-content'
+
+/** Icon key -> glyph. Lives here, not in lib/home-content.ts, because that module
+ *  is shared with server components and must stay free of React components. */
+const VALUE_ICON: Record<CoreValueIcon, LucideIcon> = {
+  clean: Sparkles,
+  innovate: Lightbulb,
+  quality: BadgeCheck,
+  solve: Puzzle,
+  integrity: ShieldCheck,
+  fun: PartyPopper,
+  golden: HeartHandshake,
+  scripture: BookOpen,
+  team: Users,
+}
 
 /* ────────────────────────────────────────────────────────────────────────────
    Interactive pieces of the Company Home (/home):
@@ -56,6 +73,7 @@ export function CoreValuesBand({ current, index, total }: {
   current: CoreValue; index: number; total: number
 }) {
   const [open, setOpen] = useState(false)
+  const [zoom, setZoom] = useState<number | null>(null)
   return (
     <>
       <div
@@ -81,32 +99,119 @@ export function CoreValuesBand({ current, index, total }: {
         </div>
       </div>
 
+      {/* The nine values as icons. This is the "see them all" view now — the tiles
+          say more at a glance than the old text list did, and each one magnifies
+          rather than navigating away, so nobody loses their place on the Hub. */}
+      <CoreValueIcons index={index} onPick={setZoom} />
+
       {open && (
         <ModalShell title="Our Core Values" icon={<Compass size={16} />} onClose={() => setOpen(false)}>
           <p className="mb-3 text-[12.5px] italic leading-relaxed text-stone-500 dark:text-stone-400">{CORE_VALUES_INTRO}</p>
           <ul className="space-y-2.5">
-            {CORE_VALUES.map((v, i) => (
-              <li
-                key={v.title}
-                className={`rounded-xl border px-3.5 py-2.5 ${
-                  i === index
-                    ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10'
-                    : 'border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-800/30'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <p className="text-[13px] font-bold text-stone-900 dark:text-white">{v.title}</p>
-                  {i === index && (
-                    <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">This week</span>
-                  )}
-                </div>
-                <p className="mt-0.5 text-[12px] leading-relaxed text-stone-600 dark:text-stone-300">{v.body}</p>
-              </li>
-            ))}
+            {CORE_VALUES.map((v, i) => {
+              const Icon = VALUE_ICON[v.icon]
+              return (
+                <li
+                  key={v.title}
+                  className={`rounded-xl border px-3.5 py-2.5 ${
+                    i === index
+                      ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10'
+                      : 'border-stone-200/70 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-800/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon size={14} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <p className="text-[13px] font-bold text-stone-900 dark:text-white">{v.title}</p>
+                    {i === index && (
+                      <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">This week</span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-stone-600 dark:text-stone-300">{v.body}</p>
+                </li>
+              )
+            })}
           </ul>
         </ModalShell>
       )}
+
+      {zoom !== null && (
+        <CoreValueZoom value={CORE_VALUES[zoom]} isThisWeek={zoom === index} onClose={() => setZoom(null)} />
+      )}
     </>
+  )
+}
+
+/**
+ * The nine values as a row of icon tiles. This week's tile is filled so the
+ * rotation is readable at a glance without opening anything.
+ *
+ * Real <button>s, so tab and Enter work without the role/tabIndex/onKeyActivate
+ * dance the block-level cards on this page need.
+ */
+function CoreValueIcons({ index, onPick }: { index: number; onPick: (i: number) => void }) {
+  return (
+    <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-9">
+      {CORE_VALUES.map((v, i) => {
+        const Icon = VALUE_ICON[v.icon]
+        const now = i === index
+        return (
+          <button
+            key={v.title}
+            type="button"
+            onClick={() => onPick(i)}
+            title={v.title}
+            aria-label={`${v.title}${now ? ' — this week' : ''}`}
+            className={`group flex flex-col items-center gap-1.5 rounded-xl border px-1.5 py-2.5 transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+              now
+                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10'
+                : 'border-stone-200/70 bg-white hover:border-emerald-200 dark:border-stone-800 dark:bg-stone-900/40 dark:hover:border-emerald-500/30'
+            }`}
+          >
+            <Icon
+              size={20}
+              className={now
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-stone-400 transition-colors group-hover:text-emerald-600 dark:text-stone-500 dark:group-hover:text-emerald-400'}
+            />
+            <span className={`line-clamp-2 text-center text-[9.5px] font-medium leading-tight ${
+              now ? 'text-emerald-800 dark:text-emerald-300' : 'text-stone-500 dark:text-stone-400'
+            }`}>
+              {v.title}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * One value, magnified. Deliberately a modal rather than a route: leadership asked
+ * for the icon to grow in place and say a little more, not to take anyone off the
+ * Hub and make them navigate back.
+ */
+function CoreValueZoom({ value, isThisWeek, onClose }: {
+  value: CoreValue; isThisWeek: boolean; onClose: () => void
+}) {
+  const Icon = VALUE_ICON[value.icon]
+  return (
+    <ModalShell title={value.title} icon={<Icon size={16} />} onClose={onClose}>
+      <div className="flex flex-col items-center px-2 py-3 text-center">
+        <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10">
+          <Icon size={52} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
+        </span>
+        {isThisWeek && (
+          <span className="mt-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-white">
+            This week
+          </span>
+        )}
+        <p className="mt-3 text-[17px] font-bold leading-tight text-stone-900 dark:text-white">{value.title}</p>
+        <p className="mt-2 text-[13px] leading-relaxed text-stone-600 dark:text-stone-300">{value.body}</p>
+        <p className="mt-4 border-t border-stone-100 pt-3 text-[11.5px] italic leading-relaxed text-stone-400 dark:border-stone-800 dark:text-stone-500">
+          {CORE_VALUES_INTRO}
+        </p>
+      </div>
+    </ModalShell>
   )
 }
 
