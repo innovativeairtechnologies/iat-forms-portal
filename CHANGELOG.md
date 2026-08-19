@@ -8,6 +8,24 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-19 — An extra update tonight, and the customer portal's blank screen explained
+
+**A one-off update goes out at 6:00pm this evening** covering this week's work, rather
+than waiting for Monday. It reads the same way as the Monday one — a short leadership
+read, then a longer technical read. Monday's regular update still goes out and will
+cover the full week.
+
+**The customer portal's blank screen after signing in is fixed.** It was never an
+outage. A login that is not yet connected to a company was being bounced back and
+forth between two pages, and the browser gave up before drawing anything. It now says
+plainly that the account is not linked yet. Two other pages had the same fault and
+were fixed at the same time.
+
+Separately, that portal's database had paused itself after a week of no activity — a
+cost-saving behaviour of the free plan. It has been restarted. Expect it to recur
+until customers are actually using the portal, and note the symptom is always "I can't
+log in" while every dashboard looks healthy.
+
 ## 2026-08-19 — Quote request: shell step trimmed, and two figures off the customer PDF
 
 **Step 5 (the shell).** "Not sure" is gone from the walls, roof/ceiling and floor

@@ -448,3 +448,24 @@ a human on `/support/equipment-support`. After a real submission, confirm:
 1. `tickets.photo_urls` is a populated array, not `NULL`.
 2. Resend shows a `delivered` event to whatever `SUPPORT_NOTIFICATION_EMAIL` points at.
 3. Vercel runtime logs contain no `dropped N of M photo URL(s)` warning.
+
+### Ticket-number rollout state (2026-08-19)
+
+Migration `092` is **applied**. The sequence was seeded above every number already
+issued, which mattered more than expected: a test ticket at `IAT-2026-9001` sits well
+above the real numbering (which ran `IAT-2026-2941`–`2950`), so live numbers now start
+at **9004** rather than ~2951. That is the seeding working, not a bug — without it a
+unit whose serial ends `2026` could have been handed a number that already existed.
+
+Consequence: roughly 1,000 tickets before the counter widens to five digits and the
+number stops being a strict `IAT-XXXX-XXXX`. Reseeding lower is possible but reopens
+the collision the seeding closed, so it is a deliberate trade rather than an oversight.
+
+⚠️ `next_ticket_number(p_year)` from `029` is still in the database and unused. It was
+left deliberately — dropping it in the same deploy as the code change would have broken
+ticket creation for the seconds between the migration landing and the new build going
+live. Safe to drop now, in its own change.
+
+**Not yet exercised end to end:** no ticket has actually been created since the format
+changed. The sequence was tested directly in SQL and the helper unit-tested against
+literals, but the first real submission is still the first real submission.
