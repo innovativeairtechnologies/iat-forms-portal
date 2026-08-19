@@ -74,6 +74,10 @@ It reads the same way as the Monday one — a short leadership read, then a long
 technical read. It covers 18 and 19 August only; see the entry above for why, and note
 that Monday's regular update still goes out and still covers the full week.
 
+It went out at 6:42pm rather than 6:00 — Vercel runs scheduled jobs on this project 14 to 42
+minutes late, which is worth knowing before anyone schedules something to the minute. The
+one-off entry has been removed now that it has fired.
+
 **The customer portal's blank screen after signing in is fixed.** It was never an
 outage. A login that is not yet connected to a company was being bounced back and
 forth between two pages, and the browser gave up before drawing anything. It now says

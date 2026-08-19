@@ -84,7 +84,11 @@ look exactly like the right ones.
 **Vintage** is one constant, `ASHRAE_VERSION`, currently **`2025`** — the newest published,
 observation period 1999–2023 against 2021's 1994–2019. Coverage was checked across eight US sites
 before switching (all resolve; Covington GA moves to a nearer station; Houston shifts 143.9 →
-147.9 gr/lb where the newer period genuinely moved). The site also serves 2009, 2013 and 2017. ⚠️ The point of this integration is that a quote and a DryWare check
+147.9 gr/lb where the newer period genuinely moved). The site also serves 2009, 2013 and 2017.
+
+**DryWare does not track an ASHRAE vintage** (confirmed by the owner, 2026-08-19), so there is no
+version to match and 2025 stands on being the newest. Take the newest the site offers when a
+later one appears. ⚠️ The point of this integration is that a quote and a DryWare check
 agree — **confirm which vintage DryWare reads** and match it, or the two will differ in the
 first decimal with no visible reason.
 

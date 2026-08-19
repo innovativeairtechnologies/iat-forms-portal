@@ -60,10 +60,9 @@ const BASE = 'https://ashrae-meteo.info/v3.0'
  * 134.1 → 134.4 gr/lb — except where the newer period genuinely moved, as at
  * Houston, 143.9 → 147.9.
  *
- * ⚠️ The POINT of this integration is that a quote and a DryWare check agree. If
- * DryWare is reading a different vintage, change this to match it — the numbers
- * will otherwise differ and nobody will know why. DryWare's vintage is still
- * UNCONFIRMED; its /calculators page carries no ASHRAE string to read it from.
+ * DryWare does NOT track an ASHRAE vintage (owner, 2026-08-19), so there is no
+ * version to stay in step with — this is simply the newest available. When a later
+ * one appears, take it, after checking coverage the way 2025 was checked.
  */
 export const ASHRAE_VERSION = '2025'
 

@@ -51,16 +51,18 @@ import { interimPeriod, parseEdition, previousEdition } from '@/lib/edition'
  *
  * None of these bypass the secret; only `dry` and `force` bypass the hour check.
  *
- * ⚠️ ONE-OFF SEND REGISTERED IN vercel.json (2026-08-19, remove after):
+ * ── The 2026-08-19 one-off (SENT, entry since removed) ──────────────────────
+ * A one-off ran as `?force=1&from=2026-08-18&to=2026-08-19` on `0 22 19 8 *`, and
+ * its vercel.json entry was deleted afterwards. Kept here as the worked example,
+ * because cron has no notion of a one-off and pinning day-of-month + month is the
+ * trick — and because of what it measured:
  *
- *     { "path": "/api/cron/leadership-update?force=1&from=2026-08-18&to=2026-08-19",
- *       "schedule": "0 22 19 8 *" }
- *
- * Owner asked for an extra update tonight rather than waiting for Monday, covering
- * only the last two days. Cron has no notion of a one-off, so the day-of-month and
- * month fields pin it to 19 August — it fires once at 22:00 UTC (6pm EDT) today and
- * then not again until the same date next year. DELETE THE ENTRY once it has gone
- * out; it is dead weight otherwise, and it hard-codes dates wrong for any later run.
+ * ⚠️ VERCEL CRONS ON THIS PROJECT RUN 14–42 MINUTES LATE. That send was scheduled
+ * 22:00 UTC and delivered 22:42. Others: 13:00 -> 13:41, 21:30 -> 22:03. Any guard
+ * that checks the clock must therefore be at least an hour wide, which is exactly
+ * why is5pmEastern() below tests the hour and not the minute. A ten-minute window
+ * cannot survive this — see isDigestTime() in lib/admin-digest.ts, which has never
+ * once let the daily digest through.
  *
  * Monday 24 August still sends edition 8.17.26 in FULL, including 18 and 19 August.
  * That repetition is deliberate. The weekly edition stays the complete record, and
