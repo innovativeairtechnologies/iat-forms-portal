@@ -513,7 +513,13 @@ export const AIR_SOURCES = ['100% return air', '100% outdoor air', 'Mixed — de
 // units have no cooling, and an unanswered cooling question is a quoting ambiguity
 // where 'not required' is an actual answer. Same reasoning as the final filter.
 export const COOLING_TYPES = ['Not required', 'Chilled water', 'DX — condensing unit by IAT', 'DX — condensing unit by others']
-export const HEATING_TYPES = ['Not required', 'Electric', 'Natural gas', 'Hot water', 'Steam', 'Not sure']
+// 'Not sure' removed (owner, 2026-08-19), matching cooling and the final filter.
+// Safe to DELETE rather than retire, unlike the material lists: heatingType is a
+// spec field that only ever gets displayed — the admin detail view and the PDF —
+// and never feeds estimateLoad(), so no unmatched label can fall through to a
+// neighbouring row and change a number. Stored records still holding 'Not sure'
+// keep rendering it, which is correct: it is what that customer actually answered.
+export const HEATING_TYPES = ['Not required', 'Electric', 'Natural gas', 'Hot water', 'Steam']
 export const RUNTIMES = ['Seasonal', 'Year-round, normal hours', 'Year-round, 24/7/365']
 export const MERV_OPTIONS = ['MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final', 'Not sure']
 // Final filter is its own list: most units do not have one, so 'Not required' leads
