@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { anthropic } from './anthropic'
-import { previousEdition, type Edition } from './edition'
+import { previousEdition, type ReportPeriod } from './edition'
 
 // ─── The weekly leadership update ────────────────────────────────────────────
 //
@@ -38,8 +38,8 @@ import { previousEdition, type Edition } from './edition'
 export type UpdateSection = { title: string; items: string[] }
 
 export type LeadershipUpdate = {
-  /** Which edition this report covers — see lib/edition.ts. */
-  edition: { id: string; label: string; range: string }
+  /** Which period this report covers — an edition, or an interim range. See lib/edition.ts. */
+  period: { id: string; label: string; range: string; kind: 'edition' | 'interim' }
   /** Part 1 — the non-technical read. Two minutes, a director's vocabulary. */
   sections: UpdateSection[]
   /**
@@ -66,7 +66,7 @@ const CHANGELOG = path.join(process.cwd(), 'CHANGELOG.md')
  * reports or in neither, and a report could never honestly claim to BE an
  * edition. A closed Monday-to-Sunday range covers each change exactly once.
  */
-export function entriesForEdition(markdown: string, edition: Edition): { heading: string; body: string }[] {
+export function entriesForPeriod(markdown: string, period: ReportPeriod): { heading: string; body: string }[] {
   const parts = markdown.split(/^## /m).slice(1)
   const out: { heading: string; body: string }[] = []
 
@@ -77,16 +77,27 @@ export function entriesForEdition(markdown: string, edition: Edition): { heading
     if (!dateMatch) continue
     // Midday avoids a timezone shift pushing an entry over the boundary.
     const entryDate = new Date(`${dateMatch[1]}T12:00:00Z`)
-    if (entryDate < edition.start) break
+    if (entryDate < period.start) break
     // Newer than this edition — a later week's work, seen first because the file
     // is newest-first. Skip rather than break, or nothing older would be reached.
-    if (entryDate >= edition.end) continue
+    if (entryDate >= period.end) continue
     out.push({ heading, body: newline === -1 ? '' : part.slice(newline + 1).trim() })
   }
   return out
 }
 
-const SYSTEM = `You write the weekly one-page update for the leadership team of Innovative Air Technologies, an industrial dehumidification manufacturer. Your input is the engineering changelog for the past week.
+// ── The prompts are period-aware in exactly three places ────────────────────
+// What the input is, what the report is called, and how long it should run to.
+// An interim covers a couple of days, so a brief still saying "the past week"
+// would have the model writing a weekly summary over partial input — and, worse,
+// producing lines that say "this week" to a reader holding two days of it.
+//
+// For an EDITION every string below is identical to what it has always been, so
+// the Monday report is unchanged by the interim path existing at all.
+
+const isWeek = (p: ReportPeriod) => p.kind === 'edition'
+
+const SYSTEM = (p: ReportPeriod) => `You write the ${isWeek(p) ? 'weekly' : 'interim'} one-page update for the leadership team of Innovative Air Technologies, an industrial dehumidification manufacturer. Your input is the engineering changelog for ${isWeek(p) ? 'the past week' : `${p.range} — a few days, not a full week`}.
 
 Your reader is a director or owner. They are NOT technical. They will give this about two minutes.
 
@@ -98,10 +109,11 @@ WHAT TO WRITE
 - Never how it was built. No file names, no error codes, no percentages of anything technical, no product model numbers, no words like: endpoint, cron, idempotency, server, API, environment variable, reCAPTCHA, migration, bisection, canonical, permissions, round-trip.
 - Problems found and fixed belong here, stated plainly and without blame or drama.
 - When something was broken, say what it COST — how long it ran, or what was missed. "Six customer tickets went unseen for ten days" earns its words; "alerts now deliver reliably" hides the story leadership needs.
-- Invent NOTHING. Every line must trace to the input. A quiet week gets fewer lines, not padding.
+- Invent NOTHING. Every line must trace to the input. A quiet ${isWeek(p) ? 'week' : 'stretch'} gets fewer lines, not padding.
 - NEVER state a number, duration or date that is not explicitly in the input. If the input says "had never run since it was built", write that — do not compute or guess how long that was. A figure a director might repeat in a meeting must be one we actually wrote down.
 - Never name a customer, a customer's company, or a competitor. Say "a customer".
-- Plain business English. No marketing language, no exclamation marks, no emoji.
+- Plain business English. No marketing language, no exclamation marks, no emoji.${isWeek(p) ? '' : `
+- This update covers ${p.range} ONLY, which is part of a week and not a whole one. Never write "this week", "the week", or "last week" — say "these past few days", or simply state what changed without dating it.`}
 
 EXAMPLES
 
@@ -119,12 +131,12 @@ GOOD: "Every quote request now has a named owner and a permanent note history. N
 
 SHAPE
 At most 4 sections, titles in capitals (NEW, FIXED, IMPROVED are usually right).
-BETWEEN 16 AND 22 lines in total across all sections — enough that a reader finishes with the full picture of the week, not so many that it stops being a summary. Merge closely related items rather than listing every one.
+BETWEEN ${isWeek(p) ? '16 AND 22' : '12 AND 18'} lines in total across all sections — enough that a reader finishes with the full picture of ${isWeek(p) ? 'the week' : 'these few days'}, not so many that it stops being a summary. Merge closely related items rather than listing every one.
 
 Return ONLY valid JSON, no prose around it:
 {"sections":[{"title":"NEW","items":["...","..."]}]}`
 
-const TECHNICAL_SYSTEM = `You write the engineering half of a weekly report for the person who maintains the IAT Portal. Your input is the engineering changelog for the past week.
+const TECHNICAL_SYSTEM = (p: ReportPeriod) => `You write the engineering half of ${isWeek(p) ? 'a weekly report' : 'an interim report'} for the person who maintains the IAT Portal. Your input is the engineering changelog for ${isWeek(p) ? 'the past week' : `${p.range} — a few days, not a full week`}.
 
 Your reader BUILT this system. They want the detail the leadership summary deliberately drops, as notes they can act on months later.
 
@@ -140,8 +152,8 @@ WHAT NOT TO WRITE
 - Never a customer name, a customer's company, or a competitor name. Suppliers are fine.
 
 LENGTH
-Sections titled in capitals. Group by theme — SECURITY, FIXES, FEATURES, INFRASTRUCTURE, GAPS are usually right, but follow the week.
-Up to 6 sections and up to 30 lines total. Each line at most 45 words. One sentence is usually enough; two is the ceiling.
+Sections titled in capitals. Group by theme — SECURITY, FIXES, FEATURES, INFRASTRUCTURE, GAPS are usually right, but follow ${isWeek(p) ? 'the week' : 'the material'}.
+Up to 6 sections and up to ${isWeek(p) ? '30' : '24'} lines total. Each line at most 45 words. One sentence is usually enough; two is the ceiling.
 The last section should be GAPS or OPEN — what is unverified, unfinished, or waiting on a decision.
 
 Return ONLY this JSON:
@@ -161,20 +173,21 @@ function offenders(sections: UpdateSection[]): string[] {
 }
 
 /**
- * Build the update for one edition. Defaults to the LAST COMPLETE one — the job
- * runs on a Monday, and that Monday's own work belongs to the edition just
- * beginning, not the one being reported. Pass an edition explicitly to rebuild
- * an older week.
+ * Build the update for one period. Defaults to the LAST COMPLETE EDITION — the
+ * job runs on a Monday, and that Monday's own work belongs to the edition just
+ * beginning, not the one being reported. Pass an edition explicitly to rebuild an
+ * older week, or an interimPeriod() to cover a few days without disturbing the
+ * edition that contains them.
  */
 export async function buildLeadershipUpdate(
-  edition: Edition = previousEdition(new Date()),
+  period: ReportPeriod = previousEdition(new Date()),
 ): Promise<LeadershipUpdate> {
   const markdown = await readFile(CHANGELOG, 'utf8')
-  const entries = entriesForEdition(markdown, edition)
+  const entries = entriesForPeriod(markdown, period)
 
-  const ed = { id: edition.id, label: edition.label, range: edition.range }
+  const ed = { id: period.id, label: period.label, range: period.range, kind: period.kind }
   if (!entries.length) {
-    return { edition: ed, sections: [], technical: [], sourceEntries: [] }
+    return { period: ed, sections: [], technical: [], sourceEntries: [] }
   }
 
   const source = entries.map(e => `## ${e.heading}\n${e.body}`).join('\n\n')
@@ -191,7 +204,7 @@ export async function buildLeadershipUpdate(
     const res = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 2000,
-      system: SYSTEM,
+      system: SYSTEM(period),
       messages,
     })
     const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
@@ -219,7 +232,7 @@ export async function buildLeadershipUpdate(
       { role: 'assistant', content: text },
       {
         role: 'user',
-        content: `These lines break the brief — each is over 28 words, runs to three or more sentences, or uses banned technical vocabulary:\n\n${bad.map(b => `- ${b}`).join('\n')}\n\nRewrite the WHOLE response. Same facts, same JSON shape, but every line at most two short sentences a director would read aloud in a meeting. Between 16 and 22 lines total.`,
+        content: `These lines break the brief — each is over 28 words, runs to three or more sentences, or uses banned technical vocabulary:\n\n${bad.map(b => `- ${b}`).join('\n')}\n\nRewrite the WHOLE response. Same facts, same JSON shape, but every line at most two short sentences a director would read aloud in a meeting. Between ${isWeek(period) ? '16 and 22' : '12 and 18'} lines total.`,
       },
     )
   }
@@ -235,7 +248,7 @@ export async function buildLeadershipUpdate(
     const res = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
       max_tokens: 3000,
-      system: TECHNICAL_SYSTEM,
+      system: TECHNICAL_SYSTEM(period),
       messages: [{ role: 'user', content: source.slice(0, 60000) }],
     })
     const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
@@ -251,5 +264,5 @@ export async function buildLeadershipUpdate(
     console.error('[leadership] technical half failed — sending the leadership summary alone:', err)
   }
 
-  return { edition: ed, sections, technical, sourceEntries: entries.map(e => e.heading) }
+  return { period: ed, sections, technical, sourceEntries: entries.map(e => e.heading) }
 }

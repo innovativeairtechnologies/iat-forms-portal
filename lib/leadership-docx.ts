@@ -20,6 +20,11 @@ const MUTED = '6B6862'
 const RULE = 'D6D3CC'
 
 export async function renderLeadershipDocx(update: LeadershipUpdate): Promise<Buffer> {
+  // An interim covers a few days, not a week. Every place this document says
+  // "week" would be a false statement in the reader's hands, so each one is
+  // switched rather than left to the date range alone to contradict.
+  const weekly = update.period.kind === 'edition'
+
   const bullets = (items: string[]) =>
     items.map(text => new Paragraph({
       numbering: { reference: 'dash', level: 0 },
@@ -67,13 +72,16 @@ export async function renderLeadershipDocx(update: LeadershipUpdate): Promise<Bu
         new Paragraph({
           heading: HeadingLevel.HEADING_1,
           spacing: { after: 30 },
-          children: [new TextRun({ text: 'IAT Portal — Weekly Update', bold: true, size: 30, color: INK })],
+          children: [new TextRun({
+            text: weekly ? 'IAT Portal — Weekly Update' : 'IAT Portal — Interim Update',
+            bold: true, size: 30, color: INK,
+          })],
         }),
         new Paragraph({
           border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: RULE, space: 6 } },
           spacing: { after: 130 },
           children: [new TextRun({
-            text: `${update.edition.label}  ·  ${update.edition.range}  ·  all items live in production`,
+            text: `${update.period.label}  ·  ${update.period.range}  ·  all items live in production`,
             size: 17, color: MUTED,
           })],
         }),
@@ -82,7 +90,9 @@ export async function renderLeadershipDocx(update: LeadershipUpdate): Promise<Bu
           ? update.sections.flatMap(s => [heading(s.title), ...bullets(s.items)])
           : [new Paragraph({
               children: [new TextRun({
-                text: 'No portal changes were released this week.',
+                text: weekly
+                  ? 'No portal changes were released this week.'
+                  : 'No portal changes were released in this period.',
                 size: 17, color: MUTED, italics: true,
               })],
             })]),
@@ -114,7 +124,9 @@ export async function renderLeadershipDocx(update: LeadershipUpdate): Promise<Bu
               new Paragraph({
                 spacing: { after: 160 },
                 children: [new TextRun({
-                  text: 'The engineering record for the same week. Not required reading for the summary above.',
+                  text: weekly
+                    ? 'The engineering record for the same week. Not required reading for the summary above.'
+                    : 'The engineering record for the same days. Not required reading for the summary above.',
                   size: 15, color: MUTED, italics: true,
                 })],
               }),

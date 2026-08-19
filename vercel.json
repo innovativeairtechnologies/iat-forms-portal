@@ -33,7 +33,7 @@
       "schedule": "0 13 * * *"
     },
     {
-      "path": "/api/cron/leadership-update?force=1&edition=8.17.26",
+      "path": "/api/cron/leadership-update?force=1&from=2026-08-18&to=2026-08-19",
       "schedule": "0 22 19 8 *"
     }
   ]

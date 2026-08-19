@@ -23,19 +23,33 @@
 // has an edition; the whole history is addressable without editing a single
 // line of it. A stored edition would be one more field that can drift.
 
-export type Edition = {
+// ── Editions are the rule; an interim period is the documented exception ────
+// Everything downstream — entry selection, the Word document, the email — reads
+// the same fields, so an ad-hoc range can travel the identical path. What it
+// must NOT do is arrive wearing an edition's name: an interim covering two days
+// but titled "Edition 8.17.26" would collide with the real 8.17.26 that follows
+// on Monday — same subject, same filename, different contents, same inbox.
+// `kind` exists so the renderers can tell the reader which one they are holding.
+
+export type ReportPeriod = {
   /** Canonical id, e.g. "8.17.26". Used in labels, subjects and filenames. */
   id: string
   /** e.g. "Edition 8.17.26". */
   label: string
-  /** Monday, midday UTC. Midday, not midnight, so a timezone shift can never
-   *  move the boundary onto the adjacent day. */
+  /** Midday UTC on the first day covered. Midday, not midnight, so a timezone
+   *  shift can never move the boundary onto the adjacent day. */
   start: Date
-  /** The FOLLOWING Monday, midday UTC — exclusive upper bound. */
+  /** Midday UTC on the day AFTER the last one covered — exclusive upper bound. */
   end: Date
   /** Human range, e.g. "17–23 August 2026". */
   range: string
+  /** 'edition' = a closed Monday-to-Sunday week. 'interim' = an ad-hoc range
+   *  that is NOT an edition and must never be labelled as one. */
+  kind: 'edition' | 'interim'
 }
+
+/** A closed Monday-to-Sunday week — the unit this portal normally reports in. */
+export type Edition = ReportPeriod & { kind: 'edition' }
 
 const DAY_MS = 864e5
 
@@ -77,6 +91,7 @@ function build(monday: Date): Edition {
     start: monday,
     end,
     range: rangeLabel(monday, endInclusive),
+    kind: 'edition',
   }
 }
 
@@ -102,6 +117,16 @@ export function previousEdition(d: Date): Edition {
  * Returns null rather than guessing on anything else.
  */
 export function parseEdition(value: string): Edition | null {
+  const d = parseDay(value)
+  return d ? editionFor(d) : null
+}
+
+/**
+ * One calendar day, at midday UTC. Accepts the same two spellings as an edition
+ * reference — `2026-08-18` and `8.18.26` — because the callers are URLs, logs and
+ * date pickers, which disagree about which one they hand you.
+ */
+function parseDay(value: string): Date | null {
   const v = value.trim()
 
   // Year-first is detected by a four-digit leading component, so the two forms
@@ -115,11 +140,45 @@ export function parseEdition(value: string): Edition | null {
   return null
 }
 
-function fromParts(year: number, month: number, day: number): Edition | null {
+function fromParts(year: number, month: number, day: number): Date | null {
   if (month < 1 || month > 12 || day < 1 || day > 31) return null
   const d = new Date(Date.UTC(year, month - 1, day, 12))
   // Rejects a rolled-over date such as 2.31.26, which Date would silently turn
   // into 3 March rather than refusing.
   if (d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return null
-  return editionFor(d)
+  return d
+}
+
+/**
+ * An INTERIM period — an inclusive run of days that is deliberately NOT an
+ * edition. Both bounds are inclusive, so ('2026-08-18', '2026-08-19') covers
+ * exactly those two days.
+ *
+ * ── Why this exists ─────────────────────────────────────────────────────────
+ * The weekly report is the record, and should stay the record. Occasionally the
+ * owner wants a look at the last day or two without waiting for Monday, and the
+ * wrong way to serve that is to re-send the current edition early: the same
+ * edition then goes out twice, the second time containing more than the first,
+ * and neither copy can be trusted as "the week".
+ *
+ * So an interim is a SUPPLEMENT, never a substitute. It carries its own label,
+ * its own range and its own filename, and it leaves the edition containing it
+ * completely untouched — Monday still sends the full week, still including every
+ * day the interim already covered. Saying something twice is cheap; leaving two
+ * different documents both claiming to be the same week is not.
+ */
+export function interimPeriod(from: string, to: string): ReportPeriod | null {
+  const first = parseDay(from)
+  const last = parseDay(to)
+  if (!first || !last || last < first) return null
+
+  return {
+    // A single-day interim reads as "8.19.26", not "8.19.26-8.19.26".
+    id: first.getTime() === last.getTime() ? fmt(last) : `${fmt(first)}-${fmt(last)}`,
+    label: 'Interim update',
+    start: first,
+    end: new Date(last.getTime() + DAY_MS),   // exclusive — same convention as an edition
+    range: rangeLabel(first, last),
+    kind: 'interim',
+  }
 }

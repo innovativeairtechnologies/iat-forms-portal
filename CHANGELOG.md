@@ -6,14 +6,40 @@ Notable changes to the IAT Forms Portal, newest first. Dates are deploy dates.
 is one Monday-to-Sunday work week named after its Monday — the entries below dated
 17–23 August are **Edition 8.17.26**. Nothing here is tagged by hand: an entry's
 edition is derived from its date, so the whole history is already addressable and
-nothing can drift out of step. The weekly report covers exactly one edition.
+nothing can drift out of step. The weekly report covers exactly one edition. An
+occasional *interim* update can cover a few days between Mondays; it is labelled and
+filed as an interim, and never replaces the edition it sits inside.
+
+## 2026-08-19 — Tonight's extra update covers two days, not the whole week
+
+Tonight's 6pm update was going to send **Edition 8.17.26** — the full week of 17–23
+August — five days before Monday sends that same edition again. Two documents, the same
+name, the same claimed week, different contents, both landing in one inbox.
+
+It now covers **18 and 19 August only**, and says so. It is an *interim* update, with its
+own title, its own date range and its own attachment name
+(`IAT-Portal-Interim-8.18.26-8.19.26.docx`). A supplement, not a substitute.
+
+**Monday 24 August still sends the complete Edition 8.17.26**, including the two days
+tonight already covered. The repetition is deliberate. Fifteen of that edition's
+twenty-five entries are dated 17 August and have never been mailed to anyone, so trimming
+Monday to avoid the overlap would not remove a duplicate — it would drop most of the week.
+Saying two days twice is much the cheaper mistake.
+
+The format is unchanged: page one for leadership, page two for engineering. The wording
+adapts, because a two-day report that still said "this week" would be wrong in the
+reader's hands.
+
+The weekly job itself is untouched. Any run can now be pointed at a date range with
+`?from=2026-08-18&to=2026-08-19` instead of an edition; passing both is refused rather
+than quietly reconciled.
 
 ## 2026-08-19 — An extra update tonight, and the customer portal's blank screen explained
 
-**A one-off update goes out at 6:00pm this evening** covering this week's work, rather
-than waiting for Monday. It reads the same way as the Monday one — a short leadership
-read, then a longer technical read. Monday's regular update still goes out and will
-cover the full week.
+**A one-off update goes out at 6:00pm this evening**, rather than waiting for Monday.
+It reads the same way as the Monday one — a short leadership read, then a longer
+technical read. It covers 18 and 19 August only; see the entry above for why, and note
+that Monday's regular update still goes out and still covers the full week.
 
 **The customer portal's blank screen after signing in is fixed.** It was never an
 outage. A login that is not yet connected to a company was being bounced back and
