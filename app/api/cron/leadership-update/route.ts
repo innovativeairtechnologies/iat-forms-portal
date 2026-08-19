@@ -42,6 +42,26 @@ import { parseEdition, previousEdition } from '@/lib/edition'
  * window. `?edition=8.17.26` rebuilds a specific past week — 2026-08-17 is also
  * accepted, and any date inside the week resolves to that week's Monday. None are
  * subject to the hour check; all still require the secret.
+ *
+ * ⚠️ ONE-OFF SEND REGISTERED IN vercel.json (2026-08-19, remove after):
+ *
+ *     { "path": "/api/cron/leadership-update?force=1&edition=8.17.26",
+ *       "schedule": "0 22 19 8 *" }
+ *
+ * Owner asked for an extra update tonight rather than waiting for Monday. Cron has
+ * no notion of a one-off, so the day-of-month and month fields pin it to 19 August
+ * — it fires once at 22:00 UTC (6pm EDT) today and then not again until the same
+ * date next year. DELETE THE ENTRY once it has gone out; it is dead weight
+ * otherwise, and it hard-codes an edition that will be wrong for any later run.
+ *
+ * It goes through Vercel Cron rather than a hand-rolled call precisely so nobody
+ * has to handle CRON_SECRET: Vercel supplies the Authorization header itself. The
+ * secret cannot be read back locally anyway — `vercel env pull` returns it empty.
+ *
+ * ⚠️ IT READS CHANGELOG.md FROM THE DEPLOYED BUNDLE (process.cwd()), not from git.
+ * Anything written to the changelog after the last deploy is invisible to it, so a
+ * change must be COMMITTED AND DEPLOYED before the cron fires to appear in the
+ * email.
  */
 
 export const maxDuration = 60   // the model call plus docx render exceeds the default

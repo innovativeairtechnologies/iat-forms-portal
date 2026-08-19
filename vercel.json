@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/ticket-reminders",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/leadership-update?force=1&edition=8.17.26",
+      "schedule": "0 22 19 8 *"
     }
   ]
 }
