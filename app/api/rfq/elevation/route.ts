@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { designForSite } from '@/lib/ashrae'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,8 +24,18 @@ export const dynamic = 'force-dynamic'
  * the point is outside its coverage; the two agreed to within 4 ft on the first
  * point tested, which is far inside the tolerance this number needs.
  *
- * Every source is free, keyless and public. Nothing here is ASHRAE data — that is
- * licensed and cannot be redistributed from our servers.
+ * Elevation itself comes only from free, keyless, public geodetic services.
+ *
+ * ── ASHRAE design conditions (added 2026-08-19) ─────────────────────────────
+ * The response also carries the outdoor DESIGN conditions for the site, from the
+ * nearest ASHRAE weather station (lib/ashrae.ts). This route previously said no
+ * ASHRAE data would ever pass through it, because the dataset is licensed and sold
+ * by ASHRAE; the owner reviewed that on 2026-08-19 and chose to serve it, for
+ * consistency with the DryWare calculators. lib/ashrae.ts carries the reasoning.
+ *
+ * The two halves are independent. Elevation still resolves from USGS and does NOT
+ * take the station's figure — a station is typically an airport tens of miles off,
+ * and its elevation is not the site's.
  *
  * Failure is ALWAYS soft. The field stays hand-editable and the wizard must work
  * with every one of these services down; this endpoint is a convenience, never a
@@ -128,15 +139,42 @@ export async function GET(req: Request) {
   const geo = zip ? await geocodeZip(zip) : await geocodeName(q)
   if (!geo) return NextResponse.json({ ok: false, reason: 'not_found' })
 
-  const usgs = await usgsElevationFt(geo.lat, geo.lon)
-  const elevationFt = usgs ?? geo.elevationFtFallback
+  // Elevation and design conditions are independent lookups against different
+  // services, so they run together — the slow one should not wait on the other.
+  const [usgs, design] = await Promise.all([
+    usgsElevationFt(geo.lat, geo.lon),
+    designForSite(geo.lat, geo.lon),
+  ])
+
+  // ELEVATION STAYS USGS. The ASHRAE record carries its station's elevation, but
+  // that is the airport's, not the site's: Covington, GA is 745 ft and its nearest
+  // station is 29 miles away at 943 ft. Elevation feeds every psychrometric number
+  // here and USGS resolves the actual coordinates, so it wins whenever it answers.
+  // The station figure is returned alongside as context, never as the value.
+  const elevationFt = usgs ?? geo.elevationFtFallback ?? design?.elevationFt ?? null
   if (elevationFt === null) return NextResponse.json({ ok: false, reason: 'no_elevation' })
 
   return NextResponse.json({
     ok: true,
     elevationFt,
     matched: geo.label,
-    source: usgs !== null ? 'USGS 3DEP' : 'Open-Meteo',
+    source: usgs !== null ? 'USGS 3DEP' : geo.elevationFtFallback !== null ? 'Open-Meteo' : 'ASHRAE station',
+    // Absent whenever the lookup failed or no station was close enough. A caller
+    // must treat this as optional and leave its fields alone when it is missing.
+    design: design && {
+      station: design.station.place,
+      wmo: design.station.wmo,
+      distanceMi: Math.round(design.station.distanceMi),
+      version: design.version,
+      period: design.period,
+      stationElevationFt: design.elevationFt,
+      dehumDewPointF: design.dehumDewPointF,
+      dehumGrains: design.dehumGrains,
+      dehumMcdbF: design.dehumMcdbF,
+      coolingDbF: design.coolingDbF,
+      coolingMcwbF: design.coolingMcwbF,
+      heatingDbF: design.heatingDbF,
+    },
   })
 }
 

@@ -572,6 +572,16 @@ export type RfqData = {
   outdoorRhPct: string
   outdoorMoistureMode: MoistureMode
   outdoorMoistureValue: string
+  /**
+   * Where the outdoor design condition came from, e.g.
+   * "ASHRAE 2021 · FULTON COUNTY AP, GA, USA · 8 mi".
+   *
+   * Empty means nobody looked it up and the figures are whatever the customer
+   * typed, or the defaults below. That distinction is the whole reason the field
+   * exists: a looked-up design condition and a template default look identical on
+   * the page, and only one of them describes the customer's actual weather.
+   */
+  outdoorSource: string
   surroundTempF: string
   surroundRhPct: string
   surroundMoistureMode: MoistureMode
@@ -638,7 +648,12 @@ export function emptyRfq(): RfqData {
     leavingTempF: '', leavingGrains: '', leavingMoistureMode: 'gr', leavingMoistureValue: '',
     processCfm: '',
     airSource: '100% return air', mixOutdoorPct: '',
+    // A national placeholder, NOT a design condition — roughly 100 gr/lb, which is
+    // wrong almost everywhere. Step 1's location lookup replaces it with the site's
+    // real ASHRAE design point (lib/ashrae.ts); this is what stands if that fails,
+    // or if nobody ever typed a location.
     outdoorTempF: '95', outdoorRhPct: '55', outdoorMoistureMode: 'rh', outdoorMoistureValue: '55',
+    outdoorSource: '',
     surroundTempF: '', surroundRhPct: '', surroundMoistureMode: 'rh', surroundMoistureValue: '',
     roomL: '', roomW: '', roomH: '',
     wallMaterial: 'Insulated metal panel',

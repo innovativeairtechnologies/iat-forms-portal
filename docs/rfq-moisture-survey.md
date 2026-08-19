@@ -23,9 +23,9 @@ screens.
 `about` and `application` are indices 0 and 1 in **both** flows on purpose — switching track
 mid-survey leaves the current index meaningful.
 
-### Elevation lookup — `GET /api/rfq/elevation?q=`
+### Site lookup — `GET /api/rfq/elevation?q=`
 
-Fills the elevation field from a typed "City, ST" or a 5-digit ZIP.
+Fills the elevation field **and the outdoor design conditions** from a typed "City, ST" or a 5-digit ZIP.
 
 **Deliberately not an LLM.** Elevation feeds the psychrometrics, so a plausible-but-wrong
 number is worse than a blank field: it is wrong quietly, somewhere nobody thinks to check.
@@ -40,10 +40,47 @@ Every source is a public geodetic service returning a measured value:
 The two elevation sources agreed within 4 ft on the first point tested. Verified against known
 values: Covington GA → 745 ft, Denver CO → 5,276 ft (the city is 5,280).
 
-Failure is **always soft** — the field stays hand-editable, a miss says so quietly and changes
-nothing, and a value the customer typed is never overwritten. Every one of these services can
-be down and the wizard still works. Nothing here is ASHRAE data; that set is licensed and
-cannot be redistributed from our servers.
+Failure is **always soft** — the fields stay hand-editable, a miss says so quietly and changes
+nothing, and every one of these services can be down with the wizard still working.
+
+### Outdoor design conditions (added 2026-08-19)
+
+The same lookup returns the site’s **ASHRAE 0.4% dehumidification design point** — dew point,
+humidity ratio in grains, and the mean coincident dry bulb — plus the cooling and heating
+design points for reference. `lib/ashrae.ts` owns it.
+
+| Step | Endpoint | Notes |
+|---|---|---|
+| lat/lon → 10 nearest stations | `request_places.php` | rejects any `number` but **10**; its `elev` is **metres** |
+| WMO → design record | `request_meteo_parametres.php` | `si_ip=IP` for feet/°F; 599 fields; `elev` is **feet** here |
+
+Both need a `Referer` of the site itself or they return 500. Responses carry a UTF-8 BOM that
+`JSON.parse` rejects.
+
+**Why it matters.** `emptyRfq()` seeded outdoor design at 95°F / 55%rh — roughly 100 gr/lb —
+and the room flow never asked. `estimateLoad()` computes ventilation and infiltration from it,
+so every room quote was priced against a national placeholder. Atlanta designs to ~134 gr/lb.
+
+**Elevation is still USGS**, deliberately. The station record carries its own elevation, but a
+station is usually an airport tens of miles away: Covington, GA is 745 ft and its nearest
+station is 29 miles out at 943 ft.
+
+**A station beyond 100 miles is refused** (`MAX_STATION_MI`). The endpoint always answers with
+its ten nearest however far that is — asked about a mid-Atlantic point it returns an island 314
+miles away. Design conditions from the wrong climate are the worst output here because they
+look exactly like the right ones.
+
+**Vintage** is one constant, `ASHRAE_VERSION`, currently `2021`. The site also serves 2009,
+2013, 2017 and 2025. ⚠️ The point of this integration is that a quote and a DryWare check
+agree — **confirm which vintage DryWare reads** and match it, or the two will differ in the
+first decimal with no visible reason.
+
+**Licensing.** ASHRAE’s Climatic Design Conditions are copyrighted and sold by ASHRAE, and
+`ashrae-meteo.info` is an unaffiliated republisher. An earlier pass declined to build on it for
+that reason. The owner reviewed the position on 2026-08-19 and chose to serve the values to
+customers, for consistency with DryWare. Every figure is labelled with its station and vintage
+wherever it appears — page, PDF and admin view — and `lib/ashrae.ts` is the only file that
+would have to go if the position changes.
 
 ## The fork
 

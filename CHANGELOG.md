@@ -10,6 +10,34 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labelled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-19 — The quote request now designs against your weather, not a placeholder
+
+Step 1 already looked up your elevation from the location you type. It now also fills
+the **outdoor design conditions** — the summer temperature and moisture the equipment
+has to work against — from the nearest weather station to the site.
+
+**This changes the numbers a quote request produces, and it should.** Every survey ever
+submitted was costed against 95°F and 55% relative humidity: a placeholder that shipped
+in the template, that the room questionnaire never asked about, and that is wrong almost
+everywhere. Ventilation and infiltration load are calculated from it. Atlanta actually
+designs to about 134 grains of moisture per pound of air against the placeholder’s ~100,
+so humid-climate jobs were being under-estimated; dry-climate jobs were being over-
+estimated by a similar margin.
+
+The figures are **shown on the page**, not filled in quietly — the station, how far away
+it is, and which ASHRAE edition it came from. A station can be thirty miles from the
+site, and a customer who knows their plant runs wetter than the airport can only say so
+if they can see what we assumed. The same attribution prints on the PDF and shows on the
+admin view, so no one downstream has to guess whether a number was looked up or typed.
+
+**Elevation is unchanged** and still comes from the US Geological Survey, which resolves
+the actual site rather than the airport: Covington, GA is 745 ft, and its nearest station
+is 29 miles away at 943 ft.
+
+If the lookup fails, or there is no station within 100 miles, nothing is filled in and
+the survey behaves exactly as it did before. A station from the wrong climate is the one
+genuinely dangerous output here, because it looks identical to the right one.
+
 ## 2026-08-19 — Tonight's extra update covers two days, not the whole week
 
 Tonight's 6pm update was going to send **Edition 8.17.26** — the full week of 17–23

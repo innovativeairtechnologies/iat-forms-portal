@@ -127,6 +127,7 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                   <Field label="Outdoor design">
                     {d.outdoorTempF || '—'}°F / {d.outdoorRhPct || '—'}% rh
                     <Entered data={d} conditionKey="outdoor" />
+                    <OutdoorSource data={d} />
                   </Field>
                   <Field label="Elevation">{d.elevationFt ? `${d.elevationFt} ft ASL` : 'Not given'}</Field>
                 </div>
@@ -174,7 +175,10 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                 <Field label="Process airflow">{d.processCfm ? `${d.processCfm} cfm` : '—'}</Field>
                 <Field label="Air source">{d.airSource}{d.mixOutdoorPct ? ` — ${d.mixOutdoorPct}% OA` : ''}</Field>
                 <Field label="Return / room air">{d.surroundTempF || '—'}°F / {d.surroundRhPct || '—'}% rh</Field>
-                <Field label="Outdoor design">{d.outdoorTempF || '—'}°F / {d.outdoorRhPct || '—'}% rh</Field>
+                <Field label="Outdoor design">
+                  {d.outdoorTempF || '—'}°F / {d.outdoorRhPct || '—'}% rh
+                  <OutdoorSource data={d} />
+                </Field>
                 <Field label="Entering air (estimated)">{s.entering_grains != null ? `${s.entering_grains} gr/lb` : '—'}</Field>
               </div>
             </Card>
@@ -297,6 +301,22 @@ function Entered({ data, conditionKey }: { data: RfqData; conditionKey: Conditio
   return (
     <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
       entered as {entered}
+    </span>
+  )
+}
+
+/**
+ * Where the outdoor design condition came from.
+ *
+ * Rendered only when it was actually looked up. Silence means the figures are the
+ * customer's own or the seeded default — and a quote priced against a template
+ * default should not look identical to one priced against the site's real weather.
+ */
+function OutdoorSource({ data }: { data: RfqData }) {
+  if (!data.outdoorSource) return null
+  return (
+    <span className="ml-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">
+      {data.outdoorSource}
     </span>
   )
 }

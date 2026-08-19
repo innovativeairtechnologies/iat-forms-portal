@@ -265,7 +265,7 @@ function spacePage(ctx: Ctx) {
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
     rows, [0.4, 0.15, 0.15, 0.15, 0.15])
   y += 3
-  y = note(doc, 'Loads scale with the difference in grains between inside and out — not with relative humidity, which means a different amount of water at every temperature.', M, y, CW)
+  y = note(doc, `Loads scale with the difference in grains between inside and out — not with relative humidity, which means a different amount of water at every temperature.${sourceNote(data)}`, M, y, CW)
   y += 6
 
   // Envelope
@@ -332,7 +332,7 @@ function processPage(ctx: Ctx) {
       condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev, conditionEntered(data, 'outdoor')),
     ], [0.4, 0.15, 0.15, 0.15, 0.15])
   y += 3
-  y = note(doc, 'A desiccant wheel is sized on the grain depression it has to deliver, not on relative humidity. Where a specification is written as a dew point, that is the number we design to.', M, y, CW)
+  y = note(doc, `A desiccant wheel is sized on the grain depression it has to deliver, not on relative humidity. Where a specification is written as a dew point, that is the number we design to.${sourceNote(data)}`, M, y, CW)
   y += 6
 
   if (data.purpose || data.notes) {
@@ -1196,6 +1196,19 @@ function stampEveryPage(doc: Doc, meta: RfqPdfMeta) {
  * %rh, their own reading is appended to the label — their document should show
  * the number they typed, not only our conversion of it.
  */
+/**
+ * Where the outdoor design condition came from, as a sentence to append to the
+ * design-conditions note. Empty when nobody looked it up — in which case the
+ * figures are the customer's own or the template default, and claiming a source
+ * would be worse than claiming none.
+ */
+function sourceNote(data: RfqData): string {
+  return data.outdoorSource
+    // The middot reads as a separator on screen and as noise in a sentence.
+    ? ` Outdoor design conditions are ${san(data.outdoorSource.replace(/s*·s*/g, ", "))}.`
+    : ''
+}
+
 function condRow(label: string, t: number, rh: number, elev: number, entered?: string): string[] {
   if (!t && !rh) return [label, '—', '—', '—', '—']
   const shown = entered && !entered.endsWith('% rh') ? `${label} (entered ${entered})` : label

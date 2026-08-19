@@ -939,7 +939,7 @@ function StepBody({
     case 'airstream':   return <StepAirstream data={data} set={set} />
     case 'entering':    return <StepEntering data={data} set={set} setData={setData} />
     case 'unit':        return <StepUnit data={data} set={set} />
-    case 'about':       return <StepAbout data={data} set={set} />
+    case 'about':       return <StepAbout data={data} set={set} setData={setData} />
     case 'review':      return <StepReview data={data} load={load} proc={proc} onDownloadPreview={onDownloadPreview} downloading={downloading} />
   }
 }
@@ -1554,24 +1554,56 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
 }
 
 /**
- * Site location + elevation, with elevation looked up from what they typed.
- *
- * The lookup is a CONVENIENCE, never a dependency: the field stays hand-editable,
- * a lookup failure says so quietly and changes nothing, and a value the customer
- * has typed themselves is never overwritten. Elevation feeds grains and dew point,
- * so a wrong number here is wrong everywhere downstream — which is exactly why the
- * server resolves it from geodetic surveys rather than guessing.
+ * The `design` block returned by /api/rfq/elevation — the ASHRAE record for the
+ * station nearest the site. Absent whenever no station was within range or the
+ * lookup failed, which is why every consumer treats it as optional.
  */
-function SiteLocation({ data, set }: { data: RfqData; set: SetFn }) {
+type DesignLookup = {
+  station: string
+  wmo: string
+  distanceMi: number
+  version: string
+  period: string
+  stationElevationFt: number
+  dehumDewPointF: number
+  dehumGrains: number
+  dehumMcdbF: number
+  coolingDbF: number | null
+  coolingMcwbF: number | null
+  heatingDbF: number | null
+}
+
+/**
+ * Site location, elevation and outdoor design conditions, all resolved from what
+ * they typed.
+ *
+ * The lookup is a CONVENIENCE, never a dependency: the fields stay hand-editable
+ * and a failure says so quietly and changes nothing. Elevation feeds grains and dew
+ * point, so a wrong number here is wrong everywhere downstream — which is exactly
+ * why the server resolves it from geodetic surveys rather than guessing.
+ *
+ * It also fills the OUTDOOR DESIGN CONDITION, which until now was seeded at
+ * 95°F/55%rh for every survey ever submitted and never asked about on the room
+ * track — a national placeholder quietly setting the ventilation and infiltration
+ * load on every quote. It is now the site's own ASHRAE 0.4% dehumidification
+ * design point, and it is shown on the page rather than filled in silently: it
+ * moves the quoted load, and it comes from a station that may be tens of miles
+ * away, so the customer needs to be able to see it to disagree with it.
+ */
+function SiteLocation({ data, set, setData }: {
+  data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>
+}) {
   const [state, setState] = useState<'idle' | 'looking' | 'done' | 'failed'>('idle')
   const [matched, setMatched] = useState('')
   const [source, setSource] = useState('')
+  const [design, setDesign] = useState<DesignLookup | null>(null)
 
   const lookup = useCallback(async () => {
     const q = data.location.trim()
     if (q.length < 2) return
     setState('looking')
     setMatched('')
+    setDesign(null)
     try {
       const res = await fetch(`/api/rfq/elevation?q=${encodeURIComponent(q)}`)
       const j = await res.json()
@@ -1579,14 +1611,39 @@ function SiteLocation({ data, set }: { data: RfqData; set: SetFn }) {
         setState('failed')
         return
       }
-      set('elevationFt', String(j.elevationFt))
+
+      // The design half is optional and independent: no station within range, or
+      // the site being unreachable, must still leave a working elevation lookup.
+      const d: DesignLookup | null =
+        j.design && typeof j.design.dehumGrains === 'number' && typeof j.design.dehumMcdbF === 'number'
+          ? j.design as DesignLookup
+          : null
+
+      setData(prev => {
+        // ONE update, elevation first. setCondition converts between grains and
+        // rh AT an elevation, so applying the outdoor condition against the old
+        // elevation and then moving the elevation underneath it would store a
+        // humidity that was never true anywhere.
+        const withElev = { ...prev, elevationFt: String(j.elevationFt) }
+        if (!d) return withElev
+        return {
+          ...setCondition(withElev, 'outdoor', {
+            tempF: String(d.dehumMcdbF),
+            value: String(d.dehumGrains),
+            mode: 'gr',
+          }),
+          outdoorSource: `ASHRAE ${d.version} · ${d.station} · ${d.distanceMi} mi`,
+        }
+      })
+
       setMatched(String(j.matched ?? ''))
       setSource(String(j.source ?? ''))
+      setDesign(d)
       setState('done')
     } catch {
       setState('failed')
     }
-  }, [data.location, set])
+  }, [data.location, setData])
 
   const canLookUp = data.location.trim().length >= 2 && state !== 'looking'
 
@@ -1618,11 +1675,11 @@ function SiteLocation({ data, set }: { data: RfqData; set: SetFn }) {
           >
             {state === 'looking'
               ? <><Loader2 size={13} className="animate-spin" /> Looking up…</>
-              : <><MapPin size={13} /> Look up elevation</>}
+              : <><MapPin size={13} /> Look up site conditions</>}
           </button>
           {state === 'done' && (
             <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
-              {matched ? `${matched} · ` : ''}from {source || 'survey data'}. Edit it if you know better.
+              {matched ? `${matched} · ` : ''}elevation from {source || 'survey data'}. Edit it if you know better.
             </p>
           )}
           {state === 'failed' && (
@@ -1632,11 +1689,39 @@ function SiteLocation({ data, set }: { data: RfqData; set: SetFn }) {
           )}
         </div>
       </Grid>
+
+      {/* The design conditions are stated outright rather than filled in silently.
+          They move the quoted load, they come from a station that may be tens of
+          miles away, and a customer who knows their site is wetter than the airport
+          can only say so if they can see what we assumed. */}
+      {state === 'done' && design && (
+        <div className="mt-3 rounded-lg border border-hairline bg-surface p-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+            Outdoor design conditions
+          </p>
+          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1.5">
+            <Stat label="Summer design" value={fmt(design.dehumMcdbF, 1)} unit="°F db" />
+            <Stat label="Moisture" value={fmt(design.dehumGrains, 1)} unit="gr/lb" />
+            <Stat label="Dew point" value={fmt(design.dehumDewPointF, 1)} unit="°F" />
+            {typeof design.heatingDbF === 'number' && (
+              <Stat label="Winter design" value={fmt(design.heatingDbF, 1)} unit="°F db" />
+            )}
+          </div>
+          <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
+            ASHRAE {design.version} 0.4% design, {design.station.toLowerCase()} — {design.distanceMi} miles away
+            {design.period ? `, ${design.period} observations` : ''}. This is what the estimate is sized
+            against. Tell us if your site runs wetter.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
 
-function StepAbout({ data, set }: { data: RfqData; set: SetFn }) {
+
+function StepAbout({ data, set, setData }: {
+  data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>
+}) {
   return (
     <div className="space-y-5">
       <Grid>
@@ -1655,7 +1740,7 @@ function StepAbout({ data, set }: { data: RfqData; set: SetFn }) {
         />
       </Grid>
 
-      <SiteLocation data={data} set={set} />
+      <SiteLocation data={data} set={set} setData={setData} />
 
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
         <p className="mb-3 text-[12.5px] font-medium text-ink-secondary">The project</p>
