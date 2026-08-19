@@ -405,7 +405,18 @@ export const PROCESS_PRESETS: ProcessPreset[] = [
 // standard building-material set from ASHRAE Fundamentals, matched to the
 // material list in IAT's moisture-load workbook.
 
-export type MaterialOption = { label: string; perm: number; permSealed: number }
+/**
+ * `retired` hides an option from the dropdowns while KEEPING it in the table.
+ *
+ * These arrays are two things at once: the choices a customer sees, and the
+ * permeance data the load calculation reads. permOf() falls back to the LAST
+ * entry when a stored label no longer matches, so the retired "Not sure" rows
+ * must stay put and stay last — delete them and that fallback silently becomes
+ * the most vapour-open material in each list (fabric/tent at 116 perm), which
+ * would inflate the permeation load of any older record instead of failing
+ * loudly.
+ */
+export type MaterialOption = { label: string; perm: number; permSealed: number; retired?: boolean }
 
 export const WALL_MATERIALS: MaterialOption[] = [
   { label: 'Insulated metal panel', perm: 0.16, permSealed: 0.16 },
@@ -418,7 +429,7 @@ export const WALL_MATERIALS: MaterialOption[] = [
   { label: 'Wood frame + insulation', perm: 5.3, permSealed: 0.45 },
   { label: 'Tilt-up concrete panel', perm: 0.4, permSealed: 0.21 },
   { label: 'Fabric / tent structure', perm: 116, permSealed: 1.2 },
-  { label: 'Not sure', perm: 1.0, permSealed: 0.35 },
+  { label: 'Not sure', perm: 1.0, permSealed: 0.35, retired: true },
 ]
 
 export const CEILING_MATERIALS: MaterialOption[] = [
@@ -428,7 +439,7 @@ export const CEILING_MATERIALS: MaterialOption[] = [
   { label: 'Gypsum board, painted', perm: 50, permSealed: 0.45 },
   { label: 'Suspended tile (open plenum)', perm: 116, permSealed: 1.6 },
   { label: 'Open to structure', perm: 116, permSealed: 1.6 },
-  { label: 'Not sure', perm: 1.0, permSealed: 0.35 },
+  { label: 'Not sure', perm: 1.0, permSealed: 0.35, retired: true },
 ]
 
 export const FLOOR_MATERIALS: MaterialOption[] = [
@@ -437,7 +448,7 @@ export const FLOOR_MATERIALS: MaterialOption[] = [
   { label: 'Concrete over vapour barrier', perm: 0.16, permSealed: 0.06 },
   { label: 'Elevated concrete deck', perm: 0.4, permSealed: 0.21 },
   { label: 'Wood / raised floor', perm: 5.3, permSealed: 0.45 },
-  { label: 'Not sure', perm: 0.4, permSealed: 0.21 },
+  { label: 'Not sure', perm: 0.4, permSealed: 0.21, retired: true },
 ]
 
 /**

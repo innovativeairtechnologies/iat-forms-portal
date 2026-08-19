@@ -175,7 +175,6 @@ function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts
     ? [
         { label: 'Target condition', value: `${fmt(numOf(data.targetTempF))}°F`, sub: `${enteredPrefix(data, 'target')}${fmt(numOf(data.targetRhPct))}% rh · ${fmtGrains(load.roomGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
         { label: 'Estimated load', value: load.complete ? `${fmt(load.totalLbPerHr, 1)}` : '—', unit: 'lb/hr', sub: load.complete ? `About ${fmt(load.totalPintsPerDay)} pints of water a day` : 'Need room dimensions', tone: C.blue, soft: C.blueSoft },
-        { label: 'Dry air needed', value: load.complete ? fmt(load.dryAirCfm) : '—', unit: 'cfm', sub: load.complete ? `${fmt(load.airChangesPerHour, 1)} air changes per hour` : 'Preliminary', tone: C.violet, soft: C.violetSoft },
         { label: 'Biggest driver', value: load.dominant ? shortDriver(load.dominant.label) : '—', sub: load.dominant && load.complete ? `${pct(load.dominant.grainsPerHour, load.lines.reduce((s, l) => s + l.grainsPerHour, 0))} of the room load` : 'Preliminary', tone: C.amber, soft: C.amberSoft, small: true },
       ]
     : proc
@@ -278,7 +277,6 @@ function spacePage(ctx: Ctx) {
     ['Roof / ceiling', data.ceilingMaterial],
     ['Floor', data.floorMaterial],
     ['Vapour barrier', data.vaporBarrier],
-    ['Envelope tightness', data.tightness],
   ], [0.34, 0.66])
   y += 9
 

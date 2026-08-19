@@ -1079,10 +1079,10 @@ function StepShell({
   return (
     <div className="space-y-5">
       <Grid>
-        <SelectField label="Walls" value={data.wallMaterial} onChange={v => set('wallMaterial', v)} options={WALL_MATERIALS.map(m => m.label)} />
-        <SelectField label="Roof / ceiling" value={data.ceilingMaterial} onChange={v => set('ceilingMaterial', v)} options={CEILING_MATERIALS.map(m => m.label)} />
+        <SelectField label="Walls" value={data.wallMaterial} onChange={v => set('wallMaterial', v)} options={WALL_MATERIALS.filter(m => !m.retired).map(m => m.label)} />
+        <SelectField label="Roof / ceiling" value={data.ceilingMaterial} onChange={v => set('ceilingMaterial', v)} options={CEILING_MATERIALS.filter(m => !m.retired).map(m => m.label)} />
       </Grid>
-      <SelectField label="Floor" value={data.floorMaterial} onChange={v => set('floorMaterial', v)} options={FLOOR_MATERIALS.map(m => m.label)} />
+      <SelectField label="Floor" value={data.floorMaterial} onChange={v => set('floorMaterial', v)} options={FLOOR_MATERIALS.filter(m => !m.retired).map(m => m.label)} />
 
       <Segmented<VaporBarrier>
         label="Is there a vapour barrier?"
@@ -1093,6 +1093,16 @@ function StepShell({
         options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }, { value: 'Not sure', label: 'Not sure' }]}
       />
 
+      {/* "How tight is the building?" is HIDDEN, not deleted (owner, 2026-08-19 —
+          may come back). Restoring it is uncommenting this block; nothing else was
+          touched.
+
+          ⚠️ The field is still live. data.tightness stays in RfqData at its default
+          of 'Average', and estimateLoad() still reads TIGHTNESS_RATES from it to
+          compute infiltration — so every survey is now costed at average leakage
+          rather than at nothing. That is the sane default, but it IS an assumption
+          nobody is being asked to confirm. It was also dropped from the customer
+          PDF, so we no longer print a tightness the customer never chose.
       <div>
         <Segmented<Tightness>
           label="How tight is the building?"
@@ -1108,6 +1118,7 @@ function StepShell({
         />
         <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{TIGHTNESS_HELP[data.tightness]}</p>
       </div>
+      */}
 
       <div className="space-y-4 rounded-xl border border-hairline bg-surface-soft p-4">
         <ConditionField

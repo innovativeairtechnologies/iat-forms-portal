@@ -8,6 +8,21 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-19 — Quote request: shell step trimmed, and two figures off the customer PDF
+
+**Step 5 (the shell).** "Not sure" is gone from the walls, roof/ceiling and floor
+dropdowns — the customer picks the closest real material instead.
+
+**"How tight is the building?" is hidden** for now, and may come back. Worth knowing:
+the calculation still assumes *average* leakage, which is the sensible middle, but it
+is now an assumption rather than something the customer confirmed. It has been taken
+off the PDF as well, so we no longer print a tightness nobody chose.
+
+**Two figures removed from the customer PDF** — the "dry air needed" airflow in cfm,
+and the envelope tightness. Consistent with taking the moisture-load figures off the
+on-screen readout earlier this week: they read as a firm selection when they are a
+planning estimate. Both are still calculated and still reach our desk.
+
 ## 2026-08-19 — Quote request: the progress bar is now a way to get around
 
 The bar across the top of the quote request was decoration — it showed how far along
