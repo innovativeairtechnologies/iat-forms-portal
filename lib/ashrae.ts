@@ -7,11 +7,21 @@
 //
 // ── Why this exists ─────────────────────────────────────────────────────────
 // Before this, `emptyRfq()` seeded every survey with outdoor design 95°F / 55%rh
-// and the room flow never asked. That is roughly 100 gr/lb — a national guess that
-// happened to be the number in the template. Atlanta's 0.4% dehumidification
-// design is 132.6 gr/lb, about a third more moisture, and Phoenix is far less.
-// Ventilation and infiltration load are computed from it (see estimateLoad), so
-// every room quote was being costed against weather nobody chose.
+// and the room flow never asked. Ventilation and infiltration load are computed
+// from it (see estimateLoad), so every room quote was costed against weather
+// nobody chose.
+//
+// That placeholder is WET — about a 78°F dew point, ~140 gr/lb near sea level and
+// MORE at altitude, because a fixed %rh converts to more grains as pressure drops.
+// Measured against real design conditions it overstated outdoor moisture almost
+// everywhere, and by wildly different amounts:
+//
+//     Seattle    +189%      Phoenix     +31%      Atlanta   +10%
+//     Denver     +166%      Minneapolis +16%      Houston    -7%
+//
+// (grain depression against a 70°F/45%rh room). So the old estimate generally
+// OVERSIZED, worst at dry high-elevation sites, and understated only on the Gulf
+// coast. The error was not a constant bias anyone could have corrected for by eye.
 //
 // ── Where the data comes from, and the position on it ───────────────────────
 // ashrae-meteo.info is an unaffiliated site that republishes ASHRAE's Climatic
@@ -39,16 +49,23 @@ const BASE = 'https://ashrae-meteo.info/v3.0'
 /**
  * Which ASHRAE vintage to read.
  *
- * The site serves 2009, 2013, 2017, 2021 and 2025. 2021 is the default because it
- * is the vintage current design practice quotes from; 2025 exists and is a drop-in
- * change to this one constant (it reports a 1999–2023 observation period against
- * 2021's 1994–2019, and moves Atlanta's design dew point by about 0.1°F).
+ * The site serves 2009, 2013, 2017, 2021 and 2025. **2025** is the default: it is
+ * the newest published vintage, and its observation period is 1999–2023 against
+ * 2021's 1994–2019 — a quarter-century of newer weather, which matters for exactly
+ * the trend a dehumidification design is exposed to.
+ *
+ * Coverage was checked before switching, not assumed: eight US sites spanning
+ * Seattle to Houston to Bangor all resolve under 2025, to the same stations as
+ * 2021 (Covington, GA moves to a nearer one). Differences are small — Atlanta
+ * 134.1 → 134.4 gr/lb — except where the newer period genuinely moved, as at
+ * Houston, 143.9 → 147.9.
  *
  * ⚠️ The POINT of this integration is that a quote and a DryWare check agree. If
  * DryWare is reading a different vintage, change this to match it — the numbers
- * will otherwise differ in the first decimal and nobody will know why.
+ * will otherwise differ and nobody will know why. DryWare's vintage is still
+ * UNCONFIRMED; its /calculators page carries no ASHRAE string to read it from.
  */
-export const ASHRAE_VERSION = '2021'
+export const ASHRAE_VERSION = '2025'
 
 /** The station list endpoint rejects any `number` but 10. Not a tunable. */
 const STATION_COUNT = 10

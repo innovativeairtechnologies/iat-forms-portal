@@ -57,9 +57,20 @@ design points for reference. `lib/ashrae.ts` owns it.
 Both need a `Referer` of the site itself or they return 500. Responses carry a UTF-8 BOM that
 `JSON.parse` rejects.
 
-**Why it matters.** `emptyRfq()` seeded outdoor design at 95°F / 55%rh — roughly 100 gr/lb —
-and the room flow never asked. `estimateLoad()` computes ventilation and infiltration from it,
-so every room quote was priced against a national placeholder. Atlanta designs to ~134 gr/lb.
+**Why it matters.** `emptyRfq()` seeded outdoor design at 95°F / 55%rh and the room flow never
+asked, while `estimateLoad()` computes ventilation and infiltration from it — so every room quote
+was priced against a national placeholder.
+
+That placeholder is **wet**: ~78°F dew point, ~140 gr/lb near sea level and *more* at altitude,
+since a fixed %rh converts to more grains as pressure falls. It **overstated** outdoor moisture
+almost everywhere and by inconsistent amounts — grain depression against a 70°F/45%rh room:
+
+| | Seattle | Denver | Phoenix | Minneapolis | Atlanta | Houston |
+|---|---|---|---|---|---|---|
+| placeholder vs real | +189% | +166% | +31% | +16% | +10% | −7% |
+
+So the old estimate generally **oversized**, worst at dry high-elevation sites, and understated
+only on the Gulf coast.
 
 **Elevation is still USGS**, deliberately. The station record carries its own elevation, but a
 station is usually an airport tens of miles away: Covington, GA is 745 ft and its nearest
@@ -70,8 +81,10 @@ its ten nearest however far that is — asked about a mid-Atlantic point it retu
 miles away. Design conditions from the wrong climate are the worst output here because they
 look exactly like the right ones.
 
-**Vintage** is one constant, `ASHRAE_VERSION`, currently `2021`. The site also serves 2009,
-2013, 2017 and 2025. ⚠️ The point of this integration is that a quote and a DryWare check
+**Vintage** is one constant, `ASHRAE_VERSION`, currently **`2025`** — the newest published,
+observation period 1999–2023 against 2021's 1994–2019. Coverage was checked across eight US sites
+before switching (all resolve; Covington GA moves to a nearer station; Houston shifts 143.9 →
+147.9 gr/lb where the newer period genuinely moved). The site also serves 2009, 2013 and 2017. ⚠️ The point of this integration is that a quote and a DryWare check
 agree — **confirm which vintage DryWare reads** and match it, or the two will differ in the
 first decimal with no visible reason.
 

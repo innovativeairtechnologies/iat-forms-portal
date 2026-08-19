@@ -17,12 +17,17 @@ the **outdoor design conditions** — the summer temperature and moisture the eq
 has to work against — from the nearest weather station to the site.
 
 **This changes the numbers a quote request produces, and it should.** Every survey ever
-submitted was costed against 95°F and 55% relative humidity: a placeholder that shipped
-in the template, that the room questionnaire never asked about, and that is wrong almost
-everywhere. Ventilation and infiltration load are calculated from it. Atlanta actually
-designs to about 134 grains of moisture per pound of air against the placeholder’s ~100,
-so humid-climate jobs were being under-estimated; dry-climate jobs were being over-
-estimated by a similar margin.
+submitted was costed against 95°F and 55% relative humidity — a placeholder that shipped in
+the template and that the room questionnaire never asked about. Ventilation and infiltration
+load are calculated from it.
+
+That placeholder is a very wet condition, and it was wrong by different amounts in different
+places rather than by a constant anyone could have allowed for. Against the real design
+conditions it overstated the moisture load in most of the country — by about 10% in Atlanta,
+30% in Phoenix, and by more than 150% in Denver and Seattle, where the air is genuinely dry —
+while understating it by around 7% on the Gulf coast. **Most quotes were therefore sized
+against more moisture than the site actually sees**, and dry high-altitude jobs were the
+furthest out.
 
 The figures are **shown on the page**, not filled in quietly — the station, how far away
 it is, and which ASHRAE edition it came from. A station can be thirty miles from the

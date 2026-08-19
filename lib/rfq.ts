@@ -574,7 +574,7 @@ export type RfqData = {
   outdoorMoistureValue: string
   /**
    * Where the outdoor design condition came from, e.g.
-   * "ASHRAE 2021 · FULTON COUNTY AP, GA, USA · 8 mi".
+   * "ASHRAE 2025 · FULTON COUNTY AP, GA, USA · 8 mi".
    *
    * Empty means nobody looked it up and the figures are whatever the customer
    * typed, or the defaults below. That distinction is the whole reason the field
