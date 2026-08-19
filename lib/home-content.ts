@@ -186,15 +186,19 @@ export const CORE_VALUES: CoreValue[] = [
  * The week that shows CORE_VALUES[0] ("Clean is King"), as a Monday in
  * America/New_York. Every other week counts forward from here.
  *
+ * CONFIRMED AGAINST THE STAFF MEETING (owner, 2026-08-19): the week beginning
+ * Monday 2026-08-17 is "Innovative Thinking" — index 1 — so index 0 belongs to the
+ * week before it. 08-24 is "Quality Matters", and so on down the list.
+ *
  * WHY AN ANCHOR AT ALL: the rotation used to be `weekNumber % 9` counted from the
  * Unix epoch, which is stable but arbitrary — it had no reason to agree with the
  * staff meeting, and didn't. Pinning one known week to one known value is what
  * actually keeps the Hub and the meeting in step.
  *
- * TO RESYNC: if the Hub is showing the wrong value, set this to any Monday whose
- * staff-meeting value was "Clean is King". Nothing else needs to change.
+ * TO RESYNC: set this to any Monday whose staff-meeting value was "Clean is King".
+ * Nothing else needs to change.
  */
-export const ROTATION_ANCHOR_MONDAY = '2026-08-17'
+export const ROTATION_ANCHOR_MONDAY = '2026-08-10'
 
 /**
  * The core value to feature this week. Deterministic weekly rotation: the index

@@ -16,9 +16,11 @@ rarely the same one. They now follow the same rotation, in the order leadership 
 Clean is King, Innovative Thinking, Quality Matters, Solve Problems, Integrity Matters, Have
 Fun, Golden Rule, Colossians 3:23, Teamwork.
 
-The Hub is anchored to the week of 17 August being Clean is King. **If that does not match the
-meeting, it is a one-line correction** — tell us which week was Clean is King and the whole
-rotation lines up from there.
+Confirmed against the meeting: the week of **17 August is Innovative Thinking**, 24 August moves
+to Quality Matters, and it carries on down the list from there. The value changes at midnight
+Eastern on Monday, so it is already the new one when the meeting starts, and it holds all week.
+The changeover follows the office clock through the daylight-saving switches rather than drifting
+an hour in November.
 
 **Each value now shows the company's own icon** — the commissioned artwork, one per value — as a
 row of nine under the banner, with the current week's highlighted and the rest dimmed. Clicking
