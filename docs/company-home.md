@@ -181,3 +181,28 @@ environments just run the current `058_company_home.sql`.)
 1. `npm run build` (the `check-perm-seed` prebuild gate must pass), deploy, verify the Vercel prod alias updated.
 2. Add the changelog line (`CHANGELOG.md` + `docs/06-changelog.md`).
 3. (Optional) point `IT_SUPPORT.email` at the real IT inbox; author content via `/admin/home-content`.
+
+### Jerry in the hero
+
+Jerry stands at the left of the greeting hero and speaks the greeting from a speech
+bubble. Two things about this are easy to break:
+
+**The asset is trimmed, and must stay trimmed.** `public/jerry-bobble.webp` is the
+master: a 512×512 square in which the figure occupies only 177×450, with ~165px of
+transparent padding either side. Point the hero at the master directly and the box
+sizes the empty canvas rather than Jerry — he renders 44px wide and floats above the
+floor. `public/jerry-hero.webp` is the trimmed derivative; the regeneration command
+lives in a comment above `JERRY_HERO_SRC` in `app/home/HomeContent.tsx`.
+
+He is **sized by height, not width**. At an aspect of 0.39 a width-driven box makes
+him taller than the hero itself. Source width is 177px, so ~196px tall is the
+resolution ceiling before he softens.
+
+**The greeting is still the page `<h1>`**, just rendered inside the bubble — the
+document outline is unchanged. Don't add a second heading outside it.
+
+⚠️ The bubble and its tail must carry the **same** background value, or the tail
+shows as a lighter wedge. And use a real Tailwind opacity step: `bg-emerald-50/94`
+is not generated, so the class silently does not exist and the bubble computes to
+fully transparent. `/95` works. Verify the computed `background-color` after any
+change rather than trusting the class name.

@@ -79,6 +79,27 @@ const PARTICLE_CSS = `
 .iat-particle{animation-timing-function:ease-in-out;animation-iteration-count:infinite;will-change:transform}
 @media (prefers-reduced-motion:reduce){.iat-particle{animation:none!important}}
 `
+/**
+ * Jerry, greeting people from the left of the hero.
+ *
+ * Derived from public/jerry-bobble.webp, which is the master — but TRIMMED, and
+ * that matters. The master is a 512x512 square in which the figure occupies only
+ * 177x450, leaving ~165px of transparent padding either side. Pointed at the
+ * master directly, a 128px box renders Jerry 44px wide and floating 7px off the
+ * floor, because the box is sizing empty canvas rather than him.
+ *
+ * Regenerate after any art change:
+ *   sharp('public/jerry-bobble.webp')
+ *     .trim({ background: { r:0, g:0, b:0, alpha:0 }, threshold: 10 })
+ *     .webp({ quality: 90, alphaQuality: 100 })
+ *     .toFile('public/jerry-hero.webp')
+ *
+ * He is SIZED BY HEIGHT, not width: at aspect 0.39 a width-driven box would make
+ * him taller than the hero itself. Source is 177px wide, so he is near his
+ * resolution ceiling around 190px tall — going much larger will soften him.
+ */
+const JERRY_HERO_SRC = '/jerry-hero.webp'
+
 const PARTICLES = [
   { left: '6%',  top: '14%', w: 22, o: 0.08, a: 1, d: '12s', dl: '0s' },
   { left: '17%', top: '60%', w: 18, o: 0.06, a: 3, d: '15s', dl: '1.2s' },
@@ -340,16 +361,65 @@ export function HomeContent({
               ))}
             </div>
 
-            <div className="relative z-10">
+            {/* Jerry stands at the left, delivering the greeting and presenting the
+                links to his right. Bottom-aligned so he stands ON the hero floor
+                rather than floating in it, and `items-end` on the row is what does
+                that — not a magic offset.
+
+                Hidden below `sm`: at phone width he would eat the greeting, and the
+                greeting is the part that has to survive. */}
+            <div className="relative z-10 flex items-end gap-4 sm:gap-5">
+              <img
+                src={JERRY_HERO_SRC}
+                alt=""
+                aria-hidden
+                className="hidden h-[150px] w-auto flex-shrink-0 select-none self-end object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.30)] sm:block md:h-[176px] lg:h-[196px]"
+              />
+
+              <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-100">{dateET}</p>
-              <h1 className="mt-1.5 text-[25px] font-bold leading-tight tracking-tight text-white sm:text-[27px]">
-                {greeting}{firstName ? `, ${firstName}` : ''}
-              </h1>
-              <p className="mt-2 max-w-[60ch] text-[13px] leading-relaxed text-emerald-50/90">
-                Here&apos;s what&apos;s happening around IAT today
-                {outCount > 0 ? <> — <span className="font-semibold text-white">{outCount}</span> teammate{outCount === 1 ? '' : 's'} out this week</> : null}
-                {nh ? <>, and {nh.name} is {daysUntil(nh.date)}</> : null}.
-              </p>
+
+              {/* Jerry's speech bubble. The greeting stays the page's <h1> — it is
+                  still the heading of the page, it is simply him saying it, so the
+                  document outline is unchanged for screen readers and search.
+
+                  The tail is a rotated square sharing the bubble's background rather
+                  than a bordered triangle, so it picks up light and dark from the
+                  same token and can never end up a different white. It is hidden
+                  below `sm` alongside Jerry himself — a tail pointing at nobody
+                  reads as a rendering fault. */}
+              {/* w-fit + a max-width so the bubble hugs its text instead of
+                  stretching the full width of the hero — a flex child fills its
+                  track by default, which is what made it run edge to edge.
+
+                  emerald-50 at 94% rather than pure white: the hero is a green
+                  gradient, and a hard #fff punched a hole in it. The tint lets a
+                  little green through so the bubble sits ON the panel. Both the
+                  bubble and its tail must carry the SAME value or the tail shows as
+                  a lighter wedge. */}
+              <div className="relative mt-2 w-fit max-w-[36ch] rounded-2xl rounded-bl-md bg-emerald-50/95 px-4 py-3 shadow-[0_6px_18px_rgba(0,0,0,0.16)] sm:px-5 sm:py-3.5">
+                <span
+                  aria-hidden
+                  className="absolute -left-1.5 bottom-5 hidden h-4 w-4 rotate-45 rounded-[3px] bg-emerald-50/95 sm:block"
+                />
+                <h1 className="text-[20px] font-bold leading-tight tracking-tight text-stone-900 sm:text-[22px]">
+                  {greeting}{firstName ? `, ${firstName}` : ''}!
+                </h1>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-stone-600">
+                  I&apos;m Jerry — have a look around and see what&apos;s happening here at IAT.
+                </p>
+              </div>
+
+              {/* The day's actual facts sit outside the bubble: Jerry gives the
+                  welcome, the page gives the data. Dropped the old "Here's what's
+                  happening around IAT today" opener, which now duplicates his line. */}
+              {(outCount > 0 || nh) && (
+                <p className="mt-2.5 max-w-[60ch] text-[13px] leading-relaxed text-emerald-50/90">
+                  {outCount > 0 ? <><span className="font-semibold text-white">{outCount}</span> teammate{outCount === 1 ? '' : 's'} out this week</> : null}
+                  {outCount > 0 && nh ? ', and ' : null}
+                  {nh ? <>{nh.name} is {daysUntil(nh.date)}</> : null}.
+                </p>
+              )}
               <div className="mt-4 flex flex-wrap gap-2.5">
                 <HeroLink href={self.timeOff} icon={CalendarClock} label="Request time off" primary />
                 <HeroLink href={self.forms} icon={FileText} label="Submit a form" />
@@ -359,6 +429,7 @@ export function HomeContent({
               </div>
               <div className="mt-4">
                 <FunFact facts={FUN_FACTS} initialIndex={funIdx} />
+              </div>
               </div>
             </div>
           </section>

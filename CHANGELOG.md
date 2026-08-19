@@ -8,6 +8,19 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-19 — Jerry welcomes you to the Hub
+
+Jerry now stands at the left of the Hub's green banner and greets you by name from a
+speech bubble — *"Good morning, [your name]! I'm Jerry — have a look around and see
+what's happening here at IAT."* The name is whoever is signed in.
+
+The greeting itself has not moved or changed; it is the same line the Hub always
+showed, now spoken by Jerry rather than sitting on its own. The old opener,
+"Here's what's happening around IAT today," was removed because Jerry now says it,
+leaving the day's actual facts — who is out, the next holiday — beneath the bubble.
+
+Jerry is hidden on phones, where he would crowd out the greeting on a narrow screen.
+
 ## 2026-08-19 — The Hub's core value now matches the one in the staff meeting
 
 The Hub has always featured a core value of the week, but it picked one on its own schedule —
