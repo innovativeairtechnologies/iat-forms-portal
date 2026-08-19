@@ -493,13 +493,19 @@ export const DOOR_TYPES: { label: string; widthFt: number; heightFt: number; sec
 
 export const VOLTAGES = ['208V / 3ph / 60Hz', '230V / 3ph / 60Hz', '460V / 3ph / 60Hz', '575V / 3ph / 60Hz', '120V / 1ph / 60Hz', '400V / 3ph / 50Hz']
 export const CONSTRUCTIONS = ['Galvanized (standard)', 'Painted galvanized', 'Aluminum', 'Stainless steel', 'Let IAT recommend']
-export const REGEN_SOURCES = ['Natural gas', 'Electric', 'Steam', 'Hot water', 'Propane', 'Let IAT recommend']
+// Electric leads because it is the default. 'Let IAT recommend' was removed at the
+// owner's request — regeneration heat is a decision the customer makes, not one to
+// defer to us on the form.
+export const REGEN_SOURCES = ['Electric', 'Natural gas', 'Steam', 'Hot water', 'Propane']
 export const AIR_SOURCES = ['100% return air', '100% outdoor air', 'Mixed — describe below']
 export const COOLING_TYPES = ['Not required', 'Chilled water', 'DX — condensing unit by IAT', 'DX — condensing unit by others', 'Not sure']
 export const HEATING_TYPES = ['Not required', 'Electric', 'Natural gas', 'Hot water', 'Steam', 'Not sure']
-export const PACKAGE_PREFS = ['Skid-mounted package', 'Split system', 'Let IAT recommend']
 export const RUNTIMES = ['Seasonal', 'Year-round, normal hours', 'Year-round, 24/7/365']
 export const MERV_OPTIONS = ['MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final', 'Not sure']
+// Final filter is its own list: most units do not have one, so 'Not required' leads
+// and is the default, and 'Not sure' is gone — an unanswered final filter is a
+// quoting ambiguity, whereas 'not required' is an answer.
+export const FINAL_FILTER_OPTIONS = ['Not required', 'MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final']
 export const INSTALL_LOCATIONS = ['Indoor', 'Outdoor (weatherproof)', 'Rooftop', 'Mezzanine / platform', 'Not sure']
 
 // ─── Form data ────────────────────────────────────────────────────────────────
@@ -584,7 +590,6 @@ export type RfqData = {
   sizeRestrictions: string
   construction: string
   voltage: string
-  gasAvailable: boolean
   chilledWaterEwt: string
   hotWaterEwt: string
   steamPsi: string
@@ -597,7 +602,6 @@ export type RfqData = {
   finalMerv: string
   coolingType: string
   heatingType: string
-  packagePref: string
   runtime: string
   sensibleLoadBtuh: string
   notes: string
@@ -627,13 +631,13 @@ export function emptyRfq(): RfqData {
     productLoadLbHr: '', productDescription: '', gasCfh: '', wetAreaSqFt: '', wetWaterTempF: '70',
     ventCfm: '', exhaustCfm: '',
     installLocation: 'Indoor', sizeRestrictions: '', construction: 'Galvanized (standard)',
-    voltage: '460V / 3ph / 60Hz', gasAvailable: false,
+    voltage: '460V / 3ph / 60Hz',
     chilledWaterEwt: '', hotWaterEwt: '', steamPsi: '',
-    regenSource: 'Let IAT recommend', regenAirSource: 'Outdoor', regenIndoorConditions: '',
+    regenSource: 'Electric', regenAirSource: 'Outdoor', regenIndoorConditions: '',
     environmentClean: 'Clean', contaminants: '',
-    prefilterMerv: 'MERV 8 (standard)', finalMerv: 'Not sure',
+    prefilterMerv: 'MERV 8 (standard)', finalMerv: 'Not required',
     coolingType: 'Not sure', heatingType: 'Not required',
-    packagePref: 'Let IAT recommend', runtime: 'Year-round, normal hours',
+    runtime: 'Year-round, normal hours',
     sensibleLoadBtuh: '', notes: '',
   }
 }

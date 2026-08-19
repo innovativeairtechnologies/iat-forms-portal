@@ -8,6 +8,34 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition.
 
+## 2026-08-19 — Quote request: fewer questions, and the optional ones tucked away
+
+Changes to the last two steps of the quote request, all at the owner's direction.
+
+**Step 7 ("What's happening inside")** now asks two questions — how many people, and
+what they are doing — with everything else behind an **Advanced** button beneath
+them. Moisture from product or process, open water surface, and ventilation and
+exhaust are all in there. Most rooms never need any of it, and the step used to open
+with nine fields.
+
+If a customer has already filled anything in that section, it opens automatically
+when they return, so nothing they typed is ever hidden from them.
+
+**Step 8 ("The unit")**:
+
+- **Regeneration heat** no longer offers "Let IAT recommend" and defaults to
+  **Electric**.
+- The **natural gas** question is gone.
+- **Package preference** is removed entirely.
+- **Final filter** no longer offers "Not sure" and defaults to **Not required**.
+
+The two removed questions were also taken off the admin view and the PDF, rather than
+leaving them to report a default nobody actually chose.
+
+The people count and activity fields at the top of step 7 now line up properly; one
+carried a "typical value" chip and the other a calculation note, which had been
+pulling them out of alignment.
+
 ## 2026-08-19 — Jerry welcomes you to the Hub
 
 Jerry now stands at the left of the Hub's green banner and greets you by name from a

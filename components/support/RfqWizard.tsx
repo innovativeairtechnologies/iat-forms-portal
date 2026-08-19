@@ -14,8 +14,8 @@ import ThemeToggle from '@/components/ThemeToggle'
 import { getRecaptchaToken } from '@/components/use-recaptcha'
 import {
   AIR_SOURCES, CEILING_MATERIALS, CONSTRUCTIONS, COOLING_TYPES, DOOR_TYPES, FLOOR_MATERIALS,
-  HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
-  PACKAGE_PREFS, PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES,
+  HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, FINAL_FILTER_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
+  PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES,
   TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
   estimateProcess, fmt, fmtDewPoint, fmtGrains, grains, normalizeMode, presetFor, setCondition,
@@ -1186,9 +1186,24 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
 function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
   const preset = presetFor(data) as RoomPreset | undefined
   const people = numOf(data.occupants)
+
+  // Open the advanced block on arrival if any of its fields already carry a value,
+  // so a returning customer is never shown a step that silently hides what they
+  // typed. The initialiser runs once per mount, which is exactly the moment we
+  // want to decide — typing inside the block must not re-evaluate and fight them.
+  const advancedFilled = [
+    data.productLoadLbHr, data.productDescription, data.wetAreaSqFt,
+    data.gasCfh, data.ventCfm, data.exhaustCfm,
+  ].some(v => (v ?? '').trim() !== '')
+  const [advancedOpen, setAdvancedOpen] = useState(advancedFilled)
+
   return (
     <div className="space-y-5">
-      <Grid>
+      {/* items-start, because the left cell carries a "typical" chip under its input
+          and the right cell a conditional hint under its select. Left to stretch,
+          the two cells matched heights and the fields drifted out of line with each
+          other as those extras appeared and disappeared. */}
+      <div className="grid items-start gap-4 sm:grid-cols-2">
         <div>
           <TextField label="How many people, typically?" value={data.occupants} onChange={v => set('occupants', v)} type="number" suffix="people" autoFocus />
           {preset && (
@@ -1206,8 +1221,32 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
           onChange={v => set('activity', v as ActivityLevel)}
           options={Object.keys(PEOPLE_LOADS)}
         />
-      </Grid>
+      </div>
 
+      {/* Everything below is optional detail that most rooms never need. Folded
+          behind one control so the step reads as two questions rather than nine.
+          A real <button> with aria-expanded/aria-controls, not a styled div, so it
+          announces its state. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen(o => !o)}
+          aria-expanded={advancedOpen}
+          aria-controls="rfq-inside-advanced"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3.5 text-[12.5px] font-medium text-ink-secondary transition-colors hover:bg-surface-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <ChevronDown size={14} className={`transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+          Advanced
+          {!advancedOpen && (
+            <span className="text-[11.5px] text-ink-muted">
+              product moisture, open water, ventilation
+            </span>
+          )}
+        </button>
+      </div>
+
+      {advancedOpen && (
+      <div id="rfq-inside-advanced" className="space-y-5">
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
         <p className="text-[12.5px] font-medium text-ink-secondary">Moisture from product or process</p>
         <p className="mt-0.5 mb-3 text-[11.5px] leading-relaxed text-ink-muted">
@@ -1250,6 +1289,8 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
           <TextField label="Air exhausted" value={data.exhaustCfm} onChange={v => set('exhaustCfm', v)} type="number" suffix="cfm" />
         </Grid>
       </div>
+      </div>
+      )}
 
       <Callout tone="emerald">
         Nothing here applies? Leave it all blank. An empty field is an honest answer and we&apos;ll say so on
@@ -1377,15 +1418,8 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
           <SelectField label="Electrical service" value={data.voltage} onChange={v => set('voltage', v)} options={VOLTAGES} />
           <SelectField label="Regeneration heat" value={data.regenSource} onChange={v => set('regenSource', v)} options={REGEN_SOURCES} />
         </Grid>
-        <div className="mt-3">
-          <Segmented
-            label="Natural gas available?"
-            tone="sky"
-            value={data.gasAvailable ? 'yes' : 'no'}
-            onChange={v => set('gasAvailable', v === 'yes')}
-            options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
-          />
-        </div>
+        {/* "Natural gas available?" removed at the owner's request — the field went
+            with it rather than being left to record a default nobody chose. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <TextField label="Chilled water" value={data.chilledWaterEwt} onChange={v => set('chilledWaterEwt', v)} type="number" suffix="°F EWT" />
           <TextField label="Hot water" value={data.hotWaterEwt} onChange={v => set('hotWaterEwt', v)} type="number" suffix="°F EWT" />
@@ -1408,14 +1442,15 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
         />
       )}
 
+      {/* "Package preference" removed entirely (owner, 2026-08-19), so Heating pairs
+          with Pre-filter here rather than leaving a half-empty row. */}
       <Grid>
         <SelectField label="Heating" value={data.heatingType} onChange={v => set('heatingType', v)} options={HEATING_TYPES} />
-        <SelectField label="Package preference" value={data.packagePref} onChange={v => set('packagePref', v)} options={PACKAGE_PREFS} />
+        <SelectField label="Pre-filter" value={data.prefilterMerv} onChange={v => set('prefilterMerv', v)} options={MERV_OPTIONS} />
       </Grid>
 
       <Grid>
-        <SelectField label="Pre-filter" value={data.prefilterMerv} onChange={v => set('prefilterMerv', v)} options={MERV_OPTIONS} />
-        <SelectField label="Final filter" value={data.finalMerv} onChange={v => set('finalMerv', v)} options={MERV_OPTIONS} />
+        <SelectField label="Final filter" value={data.finalMerv} onChange={v => set('finalMerv', v)} options={FINAL_FILTER_OPTIONS} />
       </Grid>
 
       <Segmented

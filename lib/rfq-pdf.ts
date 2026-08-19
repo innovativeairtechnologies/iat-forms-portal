@@ -414,14 +414,12 @@ function equipmentPage(ctx: Ctx) {
   const left: [string, string][] = [
     ['Install location', data.installLocation],
     ['Cabinet construction', data.construction],
-    ['Package preference', data.packagePref],
     ['Size / weight limits', data.sizeRestrictions || 'None stated'],
     ['Operating schedule', data.runtime],
     ['Environment', data.environmentClean + (data.contaminants ? ` — ${data.contaminants}` : '')],
   ]
   const right: [string, string][] = [
     ['Electrical', data.voltage],
-    ['Natural gas', data.gasAvailable ? 'Available' : 'Not available'],
     ['Chilled water', data.chilledWaterEwt ? `${data.chilledWaterEwt}°F entering` : 'Not available'],
     ['Hot water', data.hotWaterEwt ? `${data.hotWaterEwt}°F entering` : 'Not available'],
     ['Steam', data.steamPsi ? `${data.steamPsi} psi` : 'Not available'],

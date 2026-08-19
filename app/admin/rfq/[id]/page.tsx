@@ -185,9 +185,7 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
             <div className="px-5 py-1">
               <Field label="Install location">{d.installLocation}</Field>
               <Field label="Construction">{d.construction}</Field>
-              <Field label="Package">{d.packagePref}</Field>
               <Field label="Electrical">{d.voltage}</Field>
-              <Field label="Natural gas">{d.gasAvailable ? 'Available' : 'Not available'}</Field>
               <Field label="Chilled water">{d.chilledWaterEwt ? `${d.chilledWaterEwt}°F EWT` : 'Not available'}</Field>
               <Field label="Hot water">{d.hotWaterEwt ? `${d.hotWaterEwt}°F EWT` : 'Not available'}</Field>
               <Field label="Steam">{d.steamPsi ? `${d.steamPsi} psi` : 'Not available'}</Field>
