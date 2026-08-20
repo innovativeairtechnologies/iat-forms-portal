@@ -1,9 +1,9 @@
 import { Resend } from 'resend'
 import type { Ticket } from './supabase'
-import { EMAIL_FROM } from './email-from'
+import { EMAIL_FROM, internalFrom } from './email-from'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = EMAIL_FROM.SUPPORT
+const FROM = internalFrom(EMAIL_FROM.SUPPORT)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL
   || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
 
@@ -78,7 +78,7 @@ export async function sendTicketNotificationToSupportDesk(ticket: Ticket, recipi
 
   const results = await Promise.all(
     recipients.map((to) =>
-      resend.emails.send({ from: FROM, to, subject, html: shell('#1a1a2e', 'New Support Ticket', body) })
+      resend.emails.send({ from: FROM, replyTo: EMAIL_FROM.SUPPORT, to, subject, html: shell('#1a1a2e', 'New Support Ticket', body) })
     )
   )
   results.forEach((r, i) => {
@@ -116,6 +116,7 @@ export async function sendCustomerMessageAlert(
   const results = await Promise.all(
     recipients.map(to => resend.emails.send({
       from: FROM,
+      replyTo: EMAIL_FROM.SUPPORT,
       to,
       subject: `Customer reply on ${ticket_number}${customer_name ? ` (${customer_name})` : ''}`,
       html: shell('#1a1a2e', 'Customer Reply', body),
@@ -157,6 +158,7 @@ export async function sendCustomerResolvedAlert(
   const results = await Promise.all(
     recipients.map(to => resend.emails.send({
       from: FROM,
+      replyTo: EMAIL_FROM.SUPPORT,
       to,
       subject: `Verify before closing: ${ticket_number}${customer_name ? ` (${customer_name})` : ''}`,
       html: shell('#1a1a2e', 'Customer Marked Resolved', body),

@@ -10,6 +10,29 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — Staff alert emails can send from their own domain
+
+Alerts to the team — a new ticket, a customer reply, the daily digest, a form submission, a
+time-off request — were being quarantined as spam before anyone saw them. Customer replies sat
+unanswered because nobody knew they had arrived.
+
+The cause was not the mail itself, which is signed and authenticates correctly. It was the route it
+takes coming back into our own tenant: the envelope sender is stripped along the way, so by the time
+our filtering sees the message there is nothing left to verify it with. All it can tell is that
+something claims to be from our domain and cannot prove it, which reads as impersonation. Our
+filtering will not let anyone add their own domain to an allow list, and rightly so — that is
+exactly the hole an attacker would want. So there was no setting that could fix it.
+
+Staff-bound mail can now send from its own subdomain instead, set through `RESEND_FROM_INTERNAL`. A
+domain that is not ours-claiming-to-be-ours is not impersonation, so the verdict does not apply, and
+it can be allow-listed the ordinary way — the same shape as the other outside services that already
+send us mail.
+
+Mail to customers is deliberately unchanged and still comes from the main domain, where it works and
+where the familiar name is worth more than the routing.
+
+With the variable unset nothing changes at all, so this was safe to ship ahead of the DNS.
+
 ## 2026-08-20 — One colour scheme across the whole quote request
 
 The quote request used five accent colours, a different one per step, so the same kind of note

@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 import type { Submission, Form, FormField, NotificationRule } from './supabase'
-import { EMAIL_FROM } from './email-from'
+import { EMAIL_FROM, internalFrom } from './email-from'
 
 export const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -105,7 +105,7 @@ export async function sendSubmissionEmail(
 </html>`
 
   await resend.emails.send({
-    from: EMAIL_FROM.FORMS,
+    from: internalFrom(EMAIL_FROM.FORMS),
     to: rule.recipient_email,
     subject,
     html,

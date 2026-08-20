@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { EMAIL_FROM } from './email-from'
+import { EMAIL_FROM, internalFrom } from './email-from'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = EMAIL_FROM.PORTAL
@@ -124,7 +124,7 @@ export async function sendCustomerContactEmail(opts: {
     <p style="margin:0;color:#333;font-size:15px;line-height:1.55;white-space:pre-wrap;">${esc(message)}</p>`
 
   const result = await resend.emails.send({
-    from: FROM,
+    from: internalFrom(FROM),
     to: CONTACT_TO,
     subject: `[${department}] Portal message — ${companyName}`,
     html: shell('New Portal Message', body),

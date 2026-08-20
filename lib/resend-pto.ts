@@ -1,9 +1,9 @@
 import { Resend } from 'resend'
 import type { Employee, TimeOffRequest } from './supabase'
-import { EMAIL_FROM } from './email-from'
+import { EMAIL_FROM, internalFrom } from './email-from'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = EMAIL_FROM.PORTAL
+const FROM = internalFrom(EMAIL_FROM.PORTAL)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL
   || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
 

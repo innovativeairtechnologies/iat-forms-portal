@@ -124,9 +124,34 @@ logs failures without failing the ticket. Six tickets, nobody notified.
 | `RESEND_FROM_SUPPORT` | `IAT Technical Support <iatsupport@dehumidifiers.com>` |
 | `RESEND_FROM_PORTAL` | `IAT Portal <noreply@dehumidifiers.com>` |
 | `RESEND_FROM_FORMS` | `IAT Forms <noreply@dehumidifiers.com>` |
+| `RESEND_FROM_INTERNAL` | staff-bound alerts only — see below |
 
-Ticket mail carries no separate reply-to, so **replies land on the SUPPORT sender**.
-That is why it is `iatsupport@` — a real, monitored, shared mailbox.
+Desk alerts now carry an explicit `replyTo` of the SUPPORT sender, so **replies still land on
+`iatsupport@`** — a real, monitored, shared mailbox — whatever address they were sent from.
+Before 2026-08-20 that came for free from the From address; it is now stated outright, because
+the From address can differ.
+
+### `RESEND_FROM_INTERNAL` — why staff mail sends from a subdomain
+
+Mail to IAT staff comes back into our own tenant, and the route it takes strips the envelope
+sender. By the time our filtering sees it, SPF evaluates as None and DKIM/DMARC as N/A: the
+message claims to be from `dehumidifiers.com` and can prove nothing, which scores as domain
+spoofing and quarantines. Our filtering will not allow-list our own domain — that would be a
+genuine spoofing hole — so no allow entry or filter rule fixes it.
+
+Setting `RESEND_FROM_INTERNAL` (e.g. `IAT Portal <noreply@portal.dehumidifiers.com>`) moves
+staff-bound alerts onto a subdomain that is **not** a protected domain. The spoofing verdict
+stops applying, and the subdomain can be allow-listed the ordinary way.
+
+It covers ticket desk alerts, the admin digest, troubleshooting alerts, form-submission
+notifications, time-off requests, and the portal contact relay. **Customer-facing mail is
+deliberately excluded** and still sends from `dehumidifiers.com`.
+
+⚠️ Never register `portal.dehumidifiers.com` as a protected domain in the mail filter.
+Doing so re-creates the exact problem this works around.
+
+Unset, `internalFrom()` returns each caller's existing address and nothing changes.
+
 
 ### Recipients — shared mailboxes only, never individuals
 

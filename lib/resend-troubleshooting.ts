@@ -1,9 +1,9 @@
 import { Resend } from 'resend'
 import type { TroubleshootingIntake } from './supabase'
-import { EMAIL_FROM } from './email-from'
+import { EMAIL_FROM, internalFrom } from './email-from'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = EMAIL_FROM.SUPPORT
+const FROM = internalFrom(EMAIL_FROM.SUPPORT)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL
   || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
 
@@ -110,7 +110,7 @@ export async function sendTroubleshootingCsAlert(t: TroubleshootingIntake, recip
   const subject = `New Troubleshooting Case ${t.reference_number} — ${t.customer_name}${t.customer_company ? ` (${t.customer_company})` : ''}`
 
   const results = await Promise.all(
-    recipients.map(to => resend.emails.send({ from: FROM, to, subject, html: shell('#1a1a2e', 'New Troubleshooting Case', body) }))
+    recipients.map(to => resend.emails.send({ from: FROM, replyTo: EMAIL_FROM.SUPPORT, to, subject, html: shell('#1a1a2e', 'New Troubleshooting Case', body) }))
   )
   results.forEach((r, i) => {
     if (r.error) console.error(`[resend] troubleshooting alert failed to ${recipients[i]}:`, r.error)
