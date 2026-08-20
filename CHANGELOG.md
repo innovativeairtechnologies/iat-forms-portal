@@ -10,6 +10,25 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labelled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — Quote request: Celsius, wall pictures, and fewer ways to answer "I don’t know"
+
+**Temperatures can be entered in Celsius.** A small °F/°C control sits on the temperature box and
+switches the whole survey, including dew point and wet bulb where those are the unit chosen.
+Everything is still stored and quoted in Fahrenheit — switching is a way of reading and typing,
+not a change to the numbers, and flipping back and forth never alters what was entered.
+
+**Step 5 opens with three pictures** — Good, Better and Best wall build-ups, left to right. The
+envelope questions are the ones customers guess at most; a picture to point at gets a better
+answer than a longer explanation.
+
+**"Not sure" is gone** from the vapor barrier question, the pre-filter, and where the unit goes.
+Cabinet construction drops **"Painted galvanized"** and **"Let IAT recommend"**. That completes a
+pass across the whole form: every remaining choice is an answer, not a way of declining to give
+one. Where a customer genuinely does not know, the sensible option is already the default.
+
+Also: spellings across the form and its documents are now consistently American — "vapor" rather
+than "vapour", and the same for a handful of others.
+
 ## 2026-08-20 — The quote request says who the weather came from, not which edition
 
 The design conditions on a quote request were labelled with the ASHRAE edition year and the
@@ -1423,7 +1442,7 @@ admin-only by design). Marketing stays parked.
 
 Sales asked for panel training that isn't a digital textbook. The centerpiece is a **faithful
 simulator of the pGD terminal** (`lib/cpco/`): a 22×8 character-grid LCD in the panel's real
-colours, the six buttons, and the editing grammar taken keystroke-for-keystroke from IAT's own
+colors, the six buttons, and the editing grammar taken keystroke-for-keystroke from IAT's own
 "How to setup the BACnet instance" procedure — Enter walks the cursor field to field and digit by
 digit, Up/Down edit under it, a protocol change forces the reboot prompt, and Alarm+Enter held
 three seconds drops into the CAREL system menu. Trainees are **graded on doing the task** (set the
@@ -1459,7 +1478,7 @@ Facts trace to the CAREL manual, IAT's BACnet procedure, and the point-list expo
 **defects found in that export** are surfaced in the explorer rather than hidden (instances 25/26
 labelled "Pre" instead of "Post"; 14/15 descriptions swapped) — flagged to engineering.
 
-The LCD's hex colours are a deliberate token-system exception (a physical part, not a themed
+The LCD's hex colors are a deliberate token-system exception (a physical part, not a themed
 surface) — documented in the one `globals.css` block the design grep excludes. Also live at
 `/admin/tools/panel` as an untracked workbench behind the `tools` perm; the tracked course is the
 front door, so the workbench is deliberately not in the launchers.
@@ -3143,7 +3162,7 @@ entry, and on-page surfacing of map-engine errors.
 Map theme polish: the basemaps are near-monochrome by design (colour comes from the
 translucent territory fills), so a theme change briefly drops the fills while the basemap
 reloads. Removed the avoidable version of this — the map used to boot on the light basemap
-and then swap to dark for dark-mode users (a "colours → black-and-white → colours" flash on
+and then swap to dark for dark-mode users (a "colors → black-and-white → colors" flash on
 every load); it now initialises on the correct basemap. Dark-mode fills are also more opaque
 so territories stay clearly coloured on the near-black map.
 

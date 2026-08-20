@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
@@ -15,12 +16,14 @@ import { getRecaptchaToken } from '@/components/use-recaptcha'
 import {
   AIR_SOURCES, CEILING_MATERIALS, CONSTRUCTIONS, COOLING_TYPES, DOOR_TYPES, FLOOR_MATERIALS,
   HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, FINAL_FILTER_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
-  PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES,
+  PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES, TEMP_UNITS,
   TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
-  estimateProcess, fmt, fmtDewPoint, fmtGrains, grains, normalizeMode, presetFor, setCondition,
+  estimateProcess, fmt, fmtDewPoint, fmtGrains, grains, modeIsTemperature, normalizeMode,
+  presetFor, setCondition, tempFromDisplay, tempToDisplay,
   type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
-  type ProcessPreset, type RfqData, type RoomPreset, type Tightness, type Track, type VaporBarrier,
+  type ProcessPreset, type RfqData, type RoomPreset, type TempUnit, type Tightness, type Track,
+  type VaporBarrier,
 } from '@/lib/rfq'
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
@@ -33,7 +36,7 @@ type StepKey =
 type Tone = 'emerald' | 'sky' | 'amber' | 'rose' | 'violet'
 
 // `short` is the 1-2 word label printed under each segment of the progress rail,
-// so a step can be recognised and jumped to directly instead of clicking Back
+// so a step can be recognized and jumped to directly instead of clicking Back
 // repeatedly. `title` remains the full heading shown on the step itself.
 const STEPS: Record<StepKey, { short: string; title: string; kicker: string; icon: LucideIcon; tone: Tone }> = {
   application: { short: 'Application', title: 'What are we protecting?', kicker: 'Pick the closest match — it fills in the rest', icon: Sparkles, tone: 'emerald' },
@@ -205,7 +208,7 @@ function Segmented<T extends string>({
   const hintId = `${groupId}-hint`
   return (
     <div>
-      {/* A radiogroup has no single labellable control, so it is labelled by its
+      {/* A radiogroup has no single labelable control, so it is labeled by its
           heading element rather than by a <label for>. */}
       {label && (
         <div className="mb-1.5">
@@ -243,6 +246,70 @@ function Segmented<T extends string>({
   )
 }
 
+/** '°F dp' → '°C dp' when the survey is in Celsius. Leaves '% rh' and 'gr/lb' alone. */
+const unitLabel = (label: string, unit: TempUnit): string =>
+  unit === 'C' ? label.replace('°F', '°C') : label
+
+/**
+ * A number input that stores °F while the customer types °C.
+ *
+ * ⚠️ IT KEEPS A LOCAL TEXT BUFFER, and that is not optional. Converting on every
+ * keystroke and feeding the result back as the input's value destroys typing: type
+ * "20." in Celsius and it parses to 20, stores 68°F, redisplays "20" — the dot is
+ * gone, and the next digit turns 20 into 205. The buffer holds exactly what was
+ * typed and only re-derives when the stored value changes from OUTSIDE (a preset,
+ * the site lookup, or a unit flip).
+ *
+ * ⚠️ A UNIT FLIP MUST NEVER WRITE. It re-renders this field in the other scale and
+ * leaves storage alone. Tenths of °C and tenths of °F do not line up — 105°F shows
+ * as 40.6°C, which would re-enter as 105.1°F — so a toggle that wrote back would
+ * quietly edit a survey every time someone looked at it in the other unit.
+ */
+function TempInput({
+  id, valueF, unit, onChangeF, autoFocus, className, ariaDescribedBy,
+}: {
+  id?: string
+  valueF: string
+  unit: TempUnit
+  onChangeF: (nextF: string) => void
+  autoFocus?: boolean
+  className?: string
+  ariaDescribedBy?: string
+}) {
+  const [raw, setRaw] = useState(() => tempToDisplay(valueF, unit))
+  // What this field last pushed upward, so an echo of our own write is not mistaken
+  // for an external one and does not clobber the buffer mid-word.
+  const pushed = useRef(valueF)
+  const lastUnit = useRef(unit)
+
+  useEffect(() => {
+    if (valueF !== pushed.current || unit !== lastUnit.current) {
+      pushed.current = valueF
+      lastUnit.current = unit
+      setRaw(tempToDisplay(valueF, unit))
+    }
+  }, [valueF, unit])
+
+  return (
+    <input
+      id={id}
+      type="number"
+      inputMode="decimal"
+      value={raw}
+      autoFocus={autoFocus}
+      aria-describedby={ariaDescribedBy}
+      onChange={e => {
+        const text = e.target.value
+        setRaw(text)
+        const f = tempFromDisplay(text, unit)
+        pushed.current = f
+        onChangeF(f)
+      }}
+      className={className}
+    />
+  )
+}
+
 /**
  * A dry-bulb + moisture pair, where the moisture unit is the customer's choice.
  * Room specs arrive as %rh, dry rooms as a dew point, process wheels as grains,
@@ -267,8 +334,10 @@ function ConditionField({
   tone?: Tone
 }) {
   const tempId = useId()
+  const tempUnitId = useId()
   const valueId = useId()
   const modeId = useId()
+  const unit = data.tempUnit ?? 'F'
   const hintId = `${valueId}-hint`
 
   const tempF = (data[`${conditionKey}TempF` as keyof RfqData] as string) ?? ''
@@ -292,31 +361,53 @@ function ConditionField({
         <div>
           <label htmlFor={tempId} className="mb-1 block text-[11px] text-ink-muted">{tempLabel}</label>
           <div className="relative">
-            <input
+            <TempInput
               id={tempId}
-              type="number"
-              inputMode="decimal"
-              value={tempF}
+              valueF={tempF}
+              unit={unit}
               autoFocus={autoFocus}
-              onChange={e => onChange(setCondition(data, conditionKey, { tempF: e.target.value }))}
-              className={`${inputCx} pr-10 tabular-nums`}
+              onChangeF={next => onChange(setCondition(data, conditionKey, { tempF: next }))}
+              className={`${inputCx} pr-[68px] tabular-nums`}
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-ink-muted">°F</span>
+            {/* Sets the unit for the WHOLE survey and writes no temperature. */}
+            <label htmlFor={tempUnitId} className="sr-only">Temperature unit</label>
+            <select
+              id={tempUnitId}
+              value={unit}
+              onChange={e => onChange({ ...data, tempUnit: e.target.value as TempUnit })}
+              className="absolute right-1.5 top-1/2 h-7 -translate-y-1/2 cursor-pointer appearance-none rounded-md border border-hairline bg-surface-soft pl-2 pr-5 text-[12px] text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+            >
+              {TEMP_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+            </select>
+            <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint" />
           </div>
         </div>
 
         <div>
           <label htmlFor={valueId} className="mb-1 block text-[11px] text-ink-muted">Moisture</label>
           <div className="flex gap-1.5">
-            <input
-              id={valueId}
-              type="number"
-              inputMode="decimal"
-              value={value}
-              aria-describedby={hint ? hintId : undefined}
-              onChange={e => onChange(setCondition(data, conditionKey, { value: e.target.value }))}
-              className={`${inputCx} min-w-0 flex-1 tabular-nums`}
-            />
+            {modeIsTemperature(mode) ? (
+              // Dew point and wet bulb ARE temperatures. Leaving them in °F beside a
+              // °C dry bulb is how someone types 15 meaning 15°C into a 15°F field.
+              <TempInput
+                id={valueId}
+                valueF={value}
+                unit={unit}
+                ariaDescribedBy={hint ? hintId : undefined}
+                onChangeF={next => onChange(setCondition(data, conditionKey, { value: next }))}
+                className={`${inputCx} min-w-0 flex-1 tabular-nums`}
+              />
+            ) : (
+              <input
+                id={valueId}
+                type="number"
+                inputMode="decimal"
+                value={value}
+                aria-describedby={hint ? hintId : undefined}
+                onChange={e => onChange(setCondition(data, conditionKey, { value: e.target.value }))}
+                className={`${inputCx} min-w-0 flex-1 tabular-nums`}
+              />
+            )}
             <div className="relative flex-shrink-0">
               <label htmlFor={modeId} className="sr-only">Moisture unit for {label}</label>
               <select
@@ -325,7 +416,9 @@ function ConditionField({
                 onChange={e => onChange(setCondition(data, conditionKey, { mode: e.target.value as MoistureMode }))}
                 className={`${inputCx} w-[104px] cursor-pointer appearance-none pl-2.5 pr-7 text-[12.5px]`}
               >
-                {MOISTURE_MODES.map(m => <option key={m.value} value={m.value}>{m.short}</option>)}
+                {MOISTURE_MODES.map(m => (
+                  <option key={m.value} value={m.value}>{unitLabel(m.short, unit)}</option>
+                ))}
               </select>
               <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint" />
             </div>
@@ -337,7 +430,9 @@ function ConditionField({
 
       {typical && (
         <Typical
-          label={`${typical.tempF}°F / ${typical.value}${MOISTURE_SUFFIX[typical.mode].replace('°F', '°F').replace('% rh', '% rh')}`}
+          label={`${tempToDisplay(String(typical.tempF), unit)}${unitLabel('°F', unit)} / ${
+            modeIsTemperature(typical.mode) ? tempToDisplay(String(typical.value), unit) : typical.value
+          }${unitLabel(MOISTURE_SUFFIX[typical.mode], unit)}`}
           used={typicalUsed}
           onUse={() => onChange(setCondition(
             setCondition(data, conditionKey, { tempF: String(typical.tempF) }),
@@ -351,16 +446,20 @@ function ConditionField({
 }
 
 /** Every way of saying the same air — the payoff for the unit selector. */
-function ConditionReadout({ tempF, rhPct, elevationFt, tone = 'sky' }: {
-  tempF: number; rhPct: number; elevationFt: number; tone?: Tone
+function ConditionReadout({ tempF, rhPct, elevationFt, unit = 'F', tone = 'sky' }: {
+  tempF: number; rhPct: number; elevationFt: number; unit?: TempUnit; tone?: Tone
 }) {
   if (!tempF || !rhPct) return null
+  // Both temperatures follow the survey's unit — a °C dry bulb above a °F dew point
+  // here is the same confusion the input fields were fixed for. Grains and %rh are
+  // unitless in this sense and never convert.
+  const asUnit = (f: number) => `${tempToDisplay(String(f), unit)}${unit === 'C' ? '°C' : '°F'}`
   return (
     <div className={`grid grid-cols-2 gap-3 rounded-xl p-4 sm:grid-cols-4 ${TONE[tone].softBg}`}>
-      <Stat label="Temperature" value={`${fmt(tempF)}°F`} />
+      <Stat label="Temperature" value={asUnit(tempF)} />
       <Stat label="Relative humidity" value={`${fmt(rhPct, rhPct < 10 ? 1 : 0)}%`} />
       <Stat label="Grains" value={fmtGrains(grains(tempF, rhPct, elevationFt))} unit="gr/lb" />
-      <Stat label="Dew point" value={fmtDewPoint(dewPointF(tempF, rhPct, elevationFt))} />
+      <Stat label="Dew point" value={asUnit(dewPointF(tempF, rhPct, elevationFt))} />
     </div>
   )
 }
@@ -494,7 +593,7 @@ export default function RfqWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           data,
-          summary: data.track === 'room' ? summariseRoom(load) : summariseProcess(proc),
+          summary: data.track === 'room' ? summarizeRoom(load) : summarizeProcess(proc),
           ...(recaptcha_token ? { recaptcha_token } : {}),
         }),
       })
@@ -790,7 +889,7 @@ function Fork({ onPick }: { onPick: (t: Track) => void }) {
 }
 
 /**
- * Progress rail — a labelled, clickable map of the survey.
+ * Progress rail — a labeled, clickable map of the survey.
  *
  * Reachability is `maxIndex`, the furthest step visited, NOT the current index.
  * That is the whole point: from Review you can drop back to fix one answer and
@@ -896,7 +995,7 @@ function Readout({
   )
 }
 
-// LINE_BAR (the per-source colour ramp for the load breakdown bars) was removed
+// LINE_BAR (the per-source color ramp for the load breakdown bars) was removed
 // with the breakdown itself. Restore it alongside those bars if the moisture load
 // ever comes back to the customer view.
 
@@ -1029,7 +1128,12 @@ function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<
         typical={preset ? { tempF: preset.tempF, value: preset.rhPct, mode: 'rh' } : undefined}
       />
 
-      <ConditionReadout tempF={numOf(data.targetTempF)} rhPct={numOf(data.targetRhPct)} elevationFt={elev} />
+      <ConditionReadout
+        tempF={numOf(data.targetTempF)}
+        rhPct={numOf(data.targetRhPct)}
+        elevationFt={elev}
+        unit={data.tempUnit ?? 'F'}
+      />
 
       {preset?.note && <Callout tone="sky">{preset.note}</Callout>}
 
@@ -1072,12 +1176,72 @@ function StepSpace({ data, set, load }: { data: RfqData; set: SetFn; load: Retur
   )
 }
 
+/**
+ * Three wall build-ups, shown before the material dropdowns.
+ *
+ * Envelope questions are the ones customers guess at — most people know what their
+ * building looks like and not what a permeance rating is. A picture they can point
+ * at gets a better answer than a longer hint would.
+ *
+ * ⚠️ Order is Good → Better → Best and comes from the FILE NAMES, which do not match
+ * the order the images were sent: 'Good' is the brick build-up, 'Best' is the
+ * insulated metal panel. Verified by opening each file. Do not reorder from memory.
+ *
+ * Sources are 1448x1086 PNGs (~1.2MB each) in the owner's Downloads; these are
+ * 900px webp derivatives at 24-36KB, generated with sharp.
+ */
+const SHELL_EXAMPLES = [
+  {
+    label: 'Good',
+    src: '/rfq/shell-good.webp',
+    alt: 'Cut-away of a brick wall: brick veneer, a black vapor barrier, wood sheathing, insulated wood studs, and an inner face carrying two coats of vapor proof paint.',
+  },
+  {
+    label: 'Better',
+    src: '/rfq/shell-better.webp',
+    alt: 'Cut-away of a metal-clad wall: corrugated steel siding, insulated steel studs, and an inner face carrying two coats of vapor proof paint.',
+  },
+  {
+    label: 'Best',
+    src: '/rfq/shell-best.webp',
+    alt: 'Cut-away of a metal-clad wall: corrugated steel siding, insulated steel studs, and an insulated metal panel (IMP) forming the inner face.',
+  },
+] as const
+
 function StepShell({
   data, set, setData,
 }: { data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
   const preset = presetFor(data) as RoomPreset | undefined
   return (
     <div className="space-y-5">
+      <div>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+          Typical wall build-ups
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {SHELL_EXAMPLES.map(x => (
+            <figure key={x.label} className="overflow-hidden rounded-xl border border-hairline bg-surface">
+              {/* The artwork is drawn on white and stays on white in dark mode —
+                  inverting it would misrepresent the materials. */}
+              <Image
+                src={x.src}
+                alt={x.alt}
+                width={900}
+                height={675}
+                sizes="(max-width: 640px) 100vw, 33vw"
+                className="h-auto w-full bg-white"
+              />
+              <figcaption className="border-t border-hairline px-3 py-2 text-[12px] font-medium text-ink-secondary">
+                {x.label}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
+          Pick the closest match below — these are the three we see most often.
+        </p>
+      </div>
+
       <Grid>
         <SelectField label="Walls" value={data.wallMaterial} onChange={v => set('wallMaterial', v)} options={WALL_MATERIALS.filter(m => !m.retired).map(m => m.label)} />
         <SelectField label="Roof / ceiling" value={data.ceilingMaterial} onChange={v => set('ceilingMaterial', v)} options={CEILING_MATERIALS.filter(m => !m.retired).map(m => m.label)} />
@@ -1085,12 +1249,12 @@ function StepShell({
       <SelectField label="Floor" value={data.floorMaterial} onChange={v => set('floorMaterial', v)} options={FLOOR_MATERIALS.filter(m => !m.retired).map(m => m.label)} />
 
       <Segmented<VaporBarrier>
-        label="Is there a vapour barrier?"
+        label="Is there a vapor barrier?"
         hint="Class I is polyethylene · Class II is kraft-faced batt · Class III is latex-painted gypsum."
         tone="amber"
         value={data.vaporBarrier}
         onChange={v => set('vaporBarrier', v)}
-        options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }, { value: 'Not sure', label: 'Not sure' }]}
+        options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
       />
 
       {/* "How tight is the building?" is HIDDEN, not deleted (owner, 2026-08-19 —
@@ -1938,7 +2102,7 @@ function slug(s: string): string {
 }
 
 /** Compact numbers stored alongside the record so the desk can triage at a glance. */
-function summariseRoom(load: ReturnType<typeof estimateLoad>) {
+function summarizeRoom(load: ReturnType<typeof estimateLoad>) {
   return {
     track: 'room' as const,
     complete: load.complete,
@@ -1956,7 +2120,7 @@ function summariseRoom(load: ReturnType<typeof estimateLoad>) {
   }
 }
 
-function summariseProcess(proc: ReturnType<typeof estimateProcess>) {
+function summarizeProcess(proc: ReturnType<typeof estimateProcess>) {
   return {
     track: 'process' as const,
     complete: proc.complete,

@@ -95,7 +95,7 @@ first decimal with no visible reason.
 **Licensing.** ASHRAE’s Climatic Design Conditions are copyrighted and sold by ASHRAE, and
 `ashrae-meteo.info` is an unaffiliated republisher. An earlier pass declined to build on it for
 that reason. The owner reviewed the position on 2026-08-19 and chose to serve the values to
-customers, for consistency with DryWare. Every figure is labelled with its source wherever it
+customers, for consistency with DryWare. Every figure is labeled with its source wherever it
 appears — page, PDF and admin view — and `lib/ashrae.ts` is the only file that would have to go
 if the position changes.
 
@@ -152,7 +152,7 @@ as the canonical one, so those rows still render. The reading is echoed back on 
 ## Typical values are the whole trick
 
 Picking an application seeds the target condition, the surrounding space, occupancy and door
-activity with numbers a person in that industry recognises, so most steps are a glance-and-next
+activity with numbers a person in that industry recognizes, so most steps are a glance-and-next
 rather than a fill-in. Every seeded value stays editable, and each one carries a one-tap
 `Typical: 40% rh — use it` chip. Presets live in `ROOM_PRESETS` / `PROCESS_PRESETS`
 (`lib/rfq.ts`) — adding an application is adding one object there.
@@ -184,7 +184,7 @@ the PDF").
 ## The maths
 
 `lib/rfq-psych.ts` — ASHRAE Fundamentals moist-air properties (saturation pressure over
-water and ice, humidity ratio, dew point, vapour pressure, density). Checked against the
+water and ice, humidity ratio, dew point, vapor pressure, density). Checked against the
 published points at sea level: 70°F/30%rh → 32.5 gr/lb, 70°F/20%rh → 21.6, 75°F/40%rh → 51.6,
 80°F/50%rh → 76.5.
 
@@ -192,7 +192,7 @@ published points at sea level: 70°F/30%rh → 32.5 gr/lb, 70°F/20%rh → 21.6,
 
 | Source | Equation |
 |---|---|
-| Permeation | `area × permeance × Δ vapour pressure` |
+| Permeation | `area × permeance × Δ vapor pressure` |
 | Shell air leakage | `envelope area × tightness rate × density × Δ grains` |
 | Doors & openings | `open area × velocity × min/hr × density × Δ grains` |
 | People | `count × gr/hr by activity` |
@@ -254,7 +254,7 @@ IAT's required wording, applied by `stampEveryPage()` after all content is laid 
    `WATERMARK_OPACITY` — **0.10** since 2026-08-17, raised from 0.07 because the stamp came
    through a printer as very nearly nothing. Screen contrast flatters it and toner does not, so
    judge any change from a rendered page rather than from the number. Nudge that constant rather
-   than the grey, so there is one thing to reason about.
+   than the gray, so there is one thing to reason about.
 
 ### Verifying a PDF change
 
@@ -301,7 +301,7 @@ would be worse than no page.
   The survey is committed **before** any send is attempted, so a refused email never costs us
   the request.
 - **No customer confirmation email.** They already downloaded the PDF, which is a better
-  artefact than a receipt.
+  artifact than a receipt.
 
 ## Admin
 
@@ -353,7 +353,7 @@ behind as a tombstone; drop it in a later migration once nothing has read it for
 **The trail is no longer internal-only.** A customer can add a message to their own request from
 `/support/status` (`POST /api/rfq/status/message`), and it lands here as a row with
 `author_type = 'customer'` — migration **089**, defaulting to `staff` so every pre-existing row and
-every staff note is correctly labelled without touching either. The admin trail gives those entries
+every staff note is correctly labeled without touching either. The admin trail gives those entries
 a sky wash and a **Customer** badge; the heading is *"Notes & messages"* and the privacy line moved
 onto the composer, which is the only place *"the customer never sees this"* is still true.
 

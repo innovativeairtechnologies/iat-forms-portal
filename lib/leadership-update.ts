@@ -23,7 +23,7 @@ import { previousEdition, type ReportPeriod } from './edition'
 // ── Why the changelog is the source ─────────────────────────────────────────
 // Because it is already written, already accurate, and already updated on every
 // deploy (a standing rule). Deriving the update from git subjects instead would
-// mean summarising commit messages, which describe code; the changelog entries
+// mean summarizing commit messages, which describe code; the changelog entries
 // describe what changed for the business, which is what leadership is asking
 // about. It also means this report cannot drift from reality — if nothing was
 // written to the changelog, nothing is claimed.

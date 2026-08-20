@@ -49,6 +49,58 @@ export type Track = 'room' | 'process'
 // Rows written before this existed have no mode at all; `normalizeMode()` treats
 // a missing mode as the canonical one, so those submissions still render.
 
+/**
+ * Which unit the customer types temperatures in.
+ *
+ * EVERYTHING IS STORED IN °F. This is a display-and-entry choice only: every
+ * psychrometric function here takes °F, `setCondition()` is canonical in °F, and
+ * the stored record, the PDF and the admin view are all °F. Celsius is converted
+ * at the input and converted straight back — nothing downstream ever sees it.
+ *
+ * ⚠️ Dew point and wet bulb are TEMPERATURES too. A survey showing a °C dry bulb
+ * beside a °F dew point is not a cosmetic problem — it is someone typing 15
+ * meaning 15°C into a field that stores 15°F. Both follow this unit.
+ */
+export type TempUnit = 'F' | 'C'
+
+export const TEMP_UNITS: { value: TempUnit; label: string }[] = [
+  { value: 'F', label: '°F' },
+  { value: 'C', label: '°C' },
+]
+
+export const fToC = (f: number): number => (f - 32) * 5 / 9
+export const cToF = (c: number): number => c * 9 / 5 + 32
+
+/** Canonical °F string → what the customer sees. Blank stays blank. */
+export function tempToDisplay(f: string, unit: TempUnit): string {
+  if (unit === 'F') return f ?? ''
+  const n = num(f, NaN)
+  if (!Number.isFinite(n)) return ''
+  // One decimal: enough that 71.6°F reads as 22°C, not so much that it looks measured.
+  return String(Math.round(fToC(n) * 10) / 10)
+}
+
+/** What the customer typed → canonical °F string. Blank stays blank. */
+export function tempFromDisplay(shown: string, unit: TempUnit): string {
+  if (unit === 'F') return shown ?? ''
+  const t = String(shown ?? '').trim()
+  if (t === '') return ''
+  const n = num(t, NaN)
+  if (!Number.isFinite(n)) return ''
+  // One decimal. A value TYPED in Celsius survives a round trip exactly, which is
+  // the case that matters — 21.7C -> 71.1F -> 21.7C.
+  //
+  // ⚠️ The reverse is NOT exact and cannot be: 0.1°C is 0.18°F, so tenths in the
+  // two scales do not line up (105F displays as 40.6C, which re-enters as 105.1F).
+  // That is harmless ONLY because flipping the unit is a VIEW change that writes
+  // nothing — storage keeps the °F the customer typed, and a conversion is applied
+  // for display alone. Never write a converted value back on a unit toggle.
+  return String(Math.round(cToF(n) * 10) / 10)
+}
+
+/** True when this moisture unit is itself a temperature and must follow TempUnit. */
+export const modeIsTemperature = (m: MoistureMode): boolean => m === 'dp' || m === 'wb'
+
 export type MoistureMode = 'rh' | 'dp' | 'gr' | 'wb'
 
 export const MOISTURE_MODES: { value: MoistureMode; label: string; short: string; suffix: string; hint: string }[] = [
@@ -103,7 +155,7 @@ export function roundForMode(mode: MoistureMode, n: number): number {
 // ─── Application presets ──────────────────────────────────────────────────────
 // The heart of "typical values at each stage": picking an application seeds the
 // target condition, the surrounding space, occupancy and door activity with
-// numbers a person in that industry would recognise. Every seeded value stays
+// numbers a person in that industry would recognize. Every seeded value stays
 // editable — the preset is a starting point, never an answer.
 
 export type RoomPreset = {
@@ -144,7 +196,7 @@ export type ActivityLevel =
   | 'Heavy Work'
   | 'Athletics'
 
-/** gr/hr of water vapour released per person, by activity (IAT people-load table). */
+/** gr/hr of water vapor released per person, by activity (IAT people-load table). */
 export const PEOPLE_LOADS: Record<ActivityLevel, number> = {
   Seated: 1050,
   Standing: 1875,
@@ -195,7 +247,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     key: 'dry-room',
     label: 'Battery / lithium dry room',
     blurb: 'Cell assembly, electrode handling and anhydrous processes.',
-    driver: 'Lithium reacting with water vapour',
+    driver: 'Lithium reacting with water vapor',
     tempF: 68, rhPct: 1, surroundTempF: 75, surroundRhPct: 50,
     occupants: 4, activity: 'Light Work', doorOpensPerHour: 6,
     // 1%rh at 68°F is a −30.2°F dew point (this said −20°F until it was checked
@@ -401,7 +453,7 @@ export const PROCESS_PRESETS: ProcessPreset[] = [
 ]
 
 // ─── Construction & envelope reference ────────────────────────────────────────
-// Permeance in gr/hr/sq.ft/inHg of vapour-pressure difference. Values are the
+// Permeance in gr/hr/sq.ft/inHg of vapor-pressure difference. Values are the
 // standard building-material set from ASHRAE Fundamentals, matched to the
 // material list in IAT's moisture-load workbook.
 
@@ -412,11 +464,21 @@ export const PROCESS_PRESETS: ProcessPreset[] = [
  * permeance data the load calculation reads. permOf() falls back to the LAST
  * entry when a stored label no longer matches, so the retired "Not sure" rows
  * must stay put and stay last — delete them and that fallback silently becomes
- * the most vapour-open material in each list (fabric/tent at 116 perm), which
+ * the most vapor-open material in each list (fabric/tent at 116 perm), which
  * would inflate the permeation load of any older record instead of failing
  * loudly.
  */
 export type MaterialOption = { label: string; perm: number; permSealed: number; retired?: boolean }
+
+/**
+ * Material labels that were renamed after surveys had already stored the old text.
+ *
+ * permOf() matches on the label itself, so a rename without an entry here drops
+ * every historical record onto the fallback row and quietly changes its quote.
+ */
+export const LEGACY_MATERIAL_LABELS: Record<string, string> = {
+  'Concrete over vapour barrier': 'Concrete over vapor barrier',
+}
 
 export const WALL_MATERIALS: MaterialOption[] = [
   { label: 'Insulated metal panel', perm: 0.16, permSealed: 0.16 },
@@ -445,7 +507,7 @@ export const CEILING_MATERIALS: MaterialOption[] = [
 export const FLOOR_MATERIALS: MaterialOption[] = [
   { label: 'Concrete slab on grade', perm: 0.4, permSealed: 0.21 },
   { label: 'Concrete slab, sealed / coated', perm: 0.21, permSealed: 0.16 },
-  { label: 'Concrete over vapour barrier', perm: 0.16, permSealed: 0.06 },
+  { label: 'Concrete over vapor barrier', perm: 0.16, permSealed: 0.06 },
   { label: 'Elevated concrete deck', perm: 0.4, permSealed: 0.21 },
   { label: 'Wood / raised floor', perm: 5.3, permSealed: 0.45 },
   { label: 'Not sure', perm: 0.4, permSealed: 0.21, retired: true },
@@ -464,13 +526,16 @@ export const TIGHTNESS_RATES: Record<Tightness, number> = {
   'Not sure': 0.6,
 }
 export const TIGHTNESS_HELP: Record<Tightness, string> = {
-  Tight: 'Purpose-built envelope — sealed penetrations, gasketed doors, taped vapour barrier.',
+  Tight: 'Purpose-built envelope — sealed penetrations, gasketed doors, taped vapor barrier.',
   Average: 'Newer building, normal construction. No deliberate sealing programme.',
   Loose: 'Older or industrial shell — visible daylight at joints, unsealed conduit, worn door seals.',
   'Not sure': "We'll assume average construction and confirm during the survey.",
 }
 
-export type VaporBarrier = 'Yes' | 'No' | 'Not sure'
+// 'Not sure' removed (owner, 2026-08-20), matching cooling, heating and the final
+// filter. Safe for the calculation: estimateLoad only ever tests `=== 'Yes'`, so
+// 'No' and 'Not sure' already behaved identically — this changes no stored result.
+export type VaporBarrier = 'Yes' | 'No'
 
 // Airflow velocity through an open door, fpm. Chapter 5's guidance: assume the
 // local wind speed for a door to the weather, 50 fpm for a door to another
@@ -503,7 +568,9 @@ export const DOOR_TYPES: { label: string; widthFt: number; heightFt: number; sec
 // ─── Equipment & utility option lists (mirrors the paper quote request) ────────
 
 export const VOLTAGES = ['208V / 3ph / 60Hz', '230V / 3ph / 60Hz', '460V / 3ph / 60Hz', '575V / 3ph / 60Hz', '120V / 1ph / 60Hz', '400V / 3ph / 50Hz']
-export const CONSTRUCTIONS = ['Galvanized (standard)', 'Painted galvanized', 'Aluminum', 'Stainless steel', 'Let IAT recommend']
+// 'Painted galvanized' and 'Let IAT recommend' removed (owner, 2026-08-20). Cabinet
+// construction is the customer's decision, not one to hand back to us on a form.
+export const CONSTRUCTIONS = ['Galvanized (standard)', 'Aluminum', 'Stainless steel']
 // Electric leads because it is the default. 'Let IAT recommend' was removed at the
 // owner's request — regeneration heat is a decision the customer makes, not one to
 // defer to us on the form.
@@ -521,12 +588,14 @@ export const COOLING_TYPES = ['Not required', 'Chilled water', 'DX — condensin
 // keep rendering it, which is correct: it is what that customer actually answered.
 export const HEATING_TYPES = ['Not required', 'Electric', 'Natural gas', 'Hot water', 'Steam']
 export const RUNTIMES = ['Seasonal', 'Year-round, normal hours', 'Year-round, 24/7/365']
-export const MERV_OPTIONS = ['MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final', 'Not sure']
+// 'Not sure' removed (owner, 2026-08-20). Default is MERV 8, an actual answer.
+export const MERV_OPTIONS = ['MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final']
 // Final filter is its own list: most units do not have one, so 'Not required' leads
 // and is the default, and 'Not sure' is gone — an unanswered final filter is a
 // quoting ambiguity, whereas 'not required' is an answer.
 export const FINAL_FILTER_OPTIONS = ['Not required', 'MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final']
-export const INSTALL_LOCATIONS = ['Indoor', 'Outdoor (weatherproof)', 'Rooftop', 'Mezzanine / platform', 'Not sure']
+// 'Not sure' removed (owner, 2026-08-20). Default is Indoor.
+export const INSTALL_LOCATIONS = ['Indoor', 'Outdoor (weatherproof)', 'Rooftop', 'Mezzanine / platform']
 
 // ─── Form data ────────────────────────────────────────────────────────────────
 
@@ -584,6 +653,12 @@ export type RfqData = {
    * CUSTOMER-FACING — it appears in the wizard and on their PDF, so it deliberately
    * carries no edition year. See outdoorVintage.
    */
+  /**
+   * Unit the customer types temperatures in. ONE setting for the whole survey —
+   * somebody who thinks in Celsius thinks in it for every field, and a per-field
+   * unit would let one survey mix the two. Storage stays °F regardless.
+   */
+  tempUnit: TempUnit
   outdoorSource: string
   /**
    * The ASHRAE edition behind those figures, e.g. "ASHRAE 2025, 2004-2023
@@ -669,13 +744,13 @@ export function emptyRfq(): RfqData {
     // real ASHRAE design point (lib/ashrae.ts); this is what stands if that fails,
     // or if nobody ever typed a location.
     outdoorTempF: '95', outdoorRhPct: '55', outdoorMoistureMode: 'rh', outdoorMoistureValue: '55',
-    outdoorSource: '', outdoorVintage: '',
+    tempUnit: 'F', outdoorSource: '', outdoorVintage: '',
     surroundTempF: '', surroundRhPct: '', surroundMoistureMode: 'rh', surroundMoistureValue: '',
     roomL: '', roomW: '', roomH: '',
     wallMaterial: 'Insulated metal panel',
     ceilingMaterial: 'Insulated metal panel',
     floorMaterial: 'Concrete slab on grade',
-    vaporBarrier: 'Not sure',
+    vaporBarrier: 'No',
     tightness: 'Average',
     doors: [],
     occupants: '', activity: 'Light Work',
@@ -901,7 +976,13 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   const floorArea = L * W
   const sealed = data.vaporBarrier === 'Yes'
   const permOf = (list: MaterialOption[], label: string) => {
-    const m = list.find(x => x.label === label) ?? list[list.length - 1]
+    // ⚠️ Renaming a material label silently re-prices every survey that stored the
+    // old one: the lookup is an exact string match and misses fall through to the
+    // LAST entry, which is the neutral retired row. "Concrete over vapour barrier"
+    // was respelled on 2026-08-20 and is 0.16 perm; the fallback is 0.4. Any future
+    // rename needs an entry here, not just a new label.
+    const want = LEGACY_MATERIAL_LABELS[label] ?? label
+    const m = list.find(x => x.label === want) ?? list[list.length - 1]
     return sealed ? m.permSealed : m.perm
   }
   const wallPerm = permOf(WALL_MATERIALS, data.wallMaterial)
@@ -919,7 +1000,7 @@ export function estimateLoad(data: RfqData): LoadEstimate {
       key: 'permeation',
       label: 'Permeation through walls, roof and floor',
       grainsPerHour: permeation,
-      detail: `${fmt(wallArea + ceilArea + floorArea)} sq.ft of envelope${sealed ? ', vapour barrier credited' : ', no vapour barrier'}`,
+      detail: `${fmt(wallArea + ceilArea + floorArea)} sq.ft of envelope${sealed ? ', vapor barrier credited' : ', no vapor barrier'}`,
     })
   }
 

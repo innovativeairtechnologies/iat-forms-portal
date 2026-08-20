@@ -78,7 +78,7 @@ const TIMEOUT_MS = 7000
  * about a point in the mid-Atlantic it cheerfully returns an island 314 miles away.
  * Design conditions from the wrong climate are the worst possible output here,
  * because they look exactly like the right ones: a plausible dew point, correctly
- * labelled, quietly sizing the wrong machine. Past this radius the honest answer
+ * labeled, quietly sizing the wrong machine. Past this radius the honest answer
  * is no answer, and the survey falls back to being asked.
  *
  * 100 miles is loose enough for rural US sites — Covington, GA resolves to a

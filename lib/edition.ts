@@ -44,7 +44,7 @@ export type ReportPeriod = {
   /** Human range, e.g. "17–23 August 2026". */
   range: string
   /** 'edition' = a closed Monday-to-Sunday week. 'interim' = an ad-hoc range
-   *  that is NOT an edition and must never be labelled as one. */
+   *  that is NOT an edition and must never be labeled as one. */
   kind: 'edition' | 'interim'
 }
 

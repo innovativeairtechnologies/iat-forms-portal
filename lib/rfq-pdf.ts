@@ -85,7 +85,7 @@ export async function generateRfqPdf(data: RfqData, meta: RfqPdfMeta): Promise<B
   const proc = !isRoom ? estimateProcess(data) : null
 
   // Only the white mark is drawn — every band it sits on is pine. The
-  // full-colour mark was fetched here too until the takeaway page stopped using
+  // full-color mark was fetched here too until the takeaway page stopped using
   // it; re-add it if a light-background placement ever needs it.
   const logoLight = await loadLogo('/iat-logo-white.png')
 
@@ -1155,7 +1155,7 @@ const CONTENT_BOTTOM = FOOTER_BAND_TOP - 4
  * flatters it, toner does not. This is the ceiling worth having: it has to stay
  * legible over white without competing with the body text sitting on top of it,
  * and it must still disappear into the dark pine bands rather than smearing them.
- * Nudge this constant rather than the colour, so there is one number to reason
+ * Nudge this constant rather than the color, so there is one number to reason
  * about if it is ever wrong again.
  */
 const WATERMARK_OPACITY = 0.10
