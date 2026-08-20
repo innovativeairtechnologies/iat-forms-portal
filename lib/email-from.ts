@@ -45,7 +45,7 @@ export const EMAIL_FROM = {
 // dehumidifiers.com, where it works fine and where the recognizable domain is
 // worth more than the routing convenience.
 //
-// Unset, internalFrom() returns the caller's existing address, so behaviour is
+// Unset, internalFrom() returns the caller's existing address, so behavior is
 // byte-identical to before this existed. It is safe to deploy long before any
 // DNS record exists.
 export function internalFrom(fallback: string): string {
