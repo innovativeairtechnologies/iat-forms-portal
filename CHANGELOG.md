@@ -10,6 +10,23 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — The portal greets you by your name, not your login
+
+**Nobody is greeted by an email address any more.** The home page said "Good afternoon, Jacob" to
+one person and "Good afternoon, first.last" to the next, and the difference was invisible from
+the outside: whoever set up each account typed something different into the name box, and the
+portal printed it back verbatim. Names are now cleaned up wherever the portal shows them —
+`first.last` reads as "First Last", a lowercase single name gets its capital letter, and an email
+address that slipped into a name field is trimmed down to the person behind it.
+
+Names that were typed properly are left completely alone, including the ones with real punctuation
+in them — "Robert A. Smith" stays as written, and capitalization inside a surname is never
+flattened. The cleanup happens at the moment of display rather than by rewriting records, so a
+rushed invite can't reintroduce the problem months from now.
+
+The same rule covers the profile menu, the Learn greeting, the employee home and board, ticket
+note authors, audit entries and the sign-in trail — anywhere a person's name appears.
+
 ## 2026-08-20 — Quote request: Celsius, wall pictures, and fewer ways to answer "I don’t know"
 
 **Temperatures can be entered in Celsius.** A small °F/°C control sits on the temperature box and

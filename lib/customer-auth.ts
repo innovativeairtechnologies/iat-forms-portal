@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js'
 import { createSupabaseServer } from './supabase-server'
 import { supabaseAdmin } from './supabase-admin'
+import { prettyName } from './display-name'
 import type { Customer } from './supabase'
 
 export type CustomerUser = {
@@ -42,11 +43,10 @@ export async function getCustomerUser(): Promise<CustomerUser | null> {
     user,
     customerId: profile.customer_id,
     customer: customer as Customer,
-    displayName:
-      profile.display_name ||
-      (customer as Customer).primary_contact_name ||
-      user.email?.split('@')[0] ||
+    displayName: prettyName(
+      profile.display_name || (customer as Customer).primary_contact_name || user.email,
       'Customer',
+    ),
   }
 }
 

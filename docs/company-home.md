@@ -147,6 +147,32 @@ omission** from `DEFAULT_ROLE_PERMS`, so it needs **no migration/seed** and does
 `check-perm-seed.mjs` prebuild gate. It's left out of `NON_DELEGATABLE_PERMS`, so an admin can
 hand it to a scoped role from `/admin/permissions` (which writes a `role_permissions` row).
 
+## The greeting name
+
+The hero greets people by first name. That name is resolved from the portal's own database —
+never from Microsoft 365, and never from Vercel. The admin shell reads `profiles.display_name`
+(via `getAdminSurfaceUser()`); the employee shell reads `employees.name`. Either falls back to the
+email address when blank.
+
+Because `display_name` is typed by whoever sends the invite, it has historically been filled in
+with the email local part, which then rendered verbatim as a person's name. Every name the portal
+puts on screen is therefore normalized at render time by `prettyName()` in `lib/display-name.ts`:
+
+| stored | shown |
+| --- | --- |
+| `first.last` | First Last |
+| `first.last@dehumidifiers.com` | First Last |
+| `crystal` | Crystal |
+| `Jacob Younker` | Jacob Younker (untouched) |
+
+Two rules keep it from mangling real names: the dot/underscore split only runs when the string
+contains **no whitespace** (so `Robert A. Smith` and `St. John` pass through), and a token is only
+capitalized when it is **entirely lowercase** (so `McDonald` and `DeAngelo` survive). Normalizing
+at render rather than on write means a badly typed invite can never surface a dotted name later.
+
+Applied at every name source: `lib/admin-auth.ts`, `lib/customer-auth.ts`, both shell home pages,
+`app/home/HomePage.tsx`, the Learn and employee-profile greetings, and the login-events trail.
+
 ## Files
 
 - Per-shell pages: `app/admin/home/page.tsx` and `app/employee/(protected)/home/page.tsx` — thin;

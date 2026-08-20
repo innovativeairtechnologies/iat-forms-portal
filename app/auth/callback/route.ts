@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { prettyName } from '@/lib/display-name'
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase-admin'
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
     await logLoginEvent({
       userId,
       email: userEmail,
-      name: profile?.display_name ?? userEmail ?? null,
+      name: prettyName(profile?.display_name || userEmail) || null,
       role: profile?.role ?? null,
       portal: role === 'customer' ? 'customer' : role === 'production' ? 'employee' : 'admin',
       method,

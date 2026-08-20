@@ -7,6 +7,7 @@ import SubjectLibrary from '@/components/learn/SubjectLibrary'
 import WeekChart from '@/components/learn/WeekChart'
 import UpNextList from '@/components/learn/UpNextList'
 import LearnPageShell from './LearnPageShell'
+import { firstNameOf } from '@/lib/display-name'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,7 +47,7 @@ export default async function LearnHomePage() {
   ])
   const { stats } = data
 
-  const firstName = (profileRes?.data?.display_name || user.email?.split('@')[0] || '').split(' ')[0]
+  const firstName = firstNameOf(profileRes?.data?.display_name || user.email)
   const hourET = parseInt(
     new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }), 10,
   )

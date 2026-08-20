@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { HomePage } from '@/app/home/HomePage'
+import { prettyName } from '@/lib/display-name'
 
 /* Company Home for base employees — the shared intranet landing rendered INSIDE
    the employee shell (app/employee/(protected)/layout.tsx supplies the sidebar). */
@@ -18,5 +19,5 @@ export default async function EmployeeHome() {
 
   // The home renders its own top bar; the employee shell suppresses its
   // PortalTopBar on this route so there's just one (see EmployeeShell).
-  return <HomePage name={(emp?.name || user.email || '').trim()} profileHref="/employee/profile/edit" userId={user.id} />
+  return <HomePage name={prettyName(emp?.name || user.email)} profileHref="/employee/profile/edit" userId={user.id} />
 }

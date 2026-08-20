@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { prettyName } from '@/lib/display-name'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logLoginEvent, type LoginMethod } from '@/lib/login-events'
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     await logLoginEvent({
       userId: user.id,
       email: user.email ?? null,
-      name: profile?.display_name ?? user.email ?? null,
+      name: prettyName(profile?.display_name || user.email) || null,
       role: profile?.role ?? null,
       portal,
       method,

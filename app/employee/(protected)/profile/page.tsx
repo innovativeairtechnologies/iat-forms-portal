@@ -9,6 +9,7 @@ import {
   GraduationCap, Flame, ArrowRight, Sparkles, UserCog,
 } from 'lucide-react'
 import type { Employee, TimeOffRequest } from '@/lib/supabase'
+import { firstNameOf } from '@/lib/display-name'
 
 /* Employee home — dashboard-first (mirrors /admin): a dark greeting band, a KPI
    row, the employee's own time-off + learning progress, and quick links. The
@@ -66,7 +67,7 @@ export default async function EmployeeHome() {
   const dateET = new Date().toLocaleDateString('en-US', {
     timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric',
   })
-  const firstName = emp.name?.trim().split(' ')[0] || ''
+  const firstName = firstNameOf(emp.name)
   const hasLearn = !!learn && learn.totalLessons > 0
 
   return (

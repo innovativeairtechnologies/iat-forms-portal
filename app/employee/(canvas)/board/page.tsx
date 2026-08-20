@@ -5,6 +5,7 @@ import { getUserLearnStats } from '@/lib/learn'
 import type { Employee } from '@/lib/supabase'
 import { normalizeState, type BoardState } from './board-config'
 import BoardClient, { type BoardCardData } from './BoardClient'
+import { firstNameOf } from '@/lib/display-name'
 
 /* Employee "My Board" — the full-screen whiteboard view of the employee portal.
    No shell, no hero: the greeting is written on the board itself in marker. Same
@@ -67,7 +68,7 @@ export default async function BoardPage() {
   const dateET = new Date().toLocaleDateString('en-US', {
     timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric',
   })
-  const firstName = emp.name?.trim().split(' ')[0] || ''
+  const firstName = firstNameOf(emp.name)
 
   return (
     <BoardClient
