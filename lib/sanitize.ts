@@ -39,6 +39,36 @@ export function noteHasContent(cleanHtml: string): boolean {
   return text.length > 0 || /<img\b/i.test(cleanHtml)
 }
 
+/**
+ * Flatten a sanitized note to plain text for a notification email.
+ *
+ * Alert bodies escape whatever they are given and render it in a
+ * white-space:pre-wrap block, so handing them HTML would show the reader literal
+ * <p> tags. Block boundaries become newlines first so sentences don't run
+ * together, then tags are dropped and the handful of entities sanitize-html
+ * produces are decoded. Bounded because an alert is a nudge to go read the
+ * ticket, not a copy of it.
+ */
+export function noteHtmlToText(cleanHtml: string, maxLength = 2000): string {
+  const text = cleanHtml
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote)>/gi, '\n')
+    .replace(/<li\b[^>]*>/gi, '• ')
+    .replace(/<img\b[^>]*>/gi, '[image]')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&') // last, so "&amp;lt;" does not decode twice into "<"
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  return text.length > maxLength ? text.slice(0, maxLength).trimEnd() + '…' : text
+}
+
 export type NoteAttachment = { path: string; name: string; type: string; size: number }
 
 /**

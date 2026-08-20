@@ -167,6 +167,42 @@ leave, or someone leaving the company. The hardcoded fallbacks in
 `app/api/rfq/route.ts` were changed from `crystal@` / `jacob@` to
 `iatsupport@` on 2026-08-14 for the same reason: even the floor should be shared.
 
+### The assigned owner also gets a copy (2026-08-20)
+
+The rule above governs what the **environment variables** may point at, and it still holds:
+never configure one to a person. What changed is that the ticket's assigned owner is now added
+to the recipient list **on top of** the desk, resolved at send time from `tickets.owner_id`.
+
+The desk is never replaced and never dropped. An unassigned ticket alerts exactly as before.
+That is the whole point — the shared mailbox is the safety net that survives someone being on
+leave, and the owner's inbox is what stops a reply from being everybody's problem and therefore
+nobody's.
+
+One helper does this for every path: `ticketAlertRecipients(ownerId)` in `lib/ticket-recipients.ts`.
+It applies to:
+
+| Path | Event |
+|---|---|
+| `app/api/tickets/status/message` | customer replies from `/support/status` |
+| `app/api/bridge/ticket-note` | customer replies from the customer portal |
+| `app/api/customer/tickets/[id]/resolve` | customer marks resolved, portal |
+| `app/api/bridge/ticket-resolve` | customer marks resolved, customer app |
+
+⚠️ `app/api/bridge/ticket-note` sent **no alert at all** before this date. A customer replying
+through the customer portal landed a note in the thread and nobody was told. If you add a new way
+for a customer to write on a ticket, wire it to `ticketAlertRecipients` or it will be silent in
+exactly the same way.
+
+The owner lookup is deliberately conservative, because these alerts quote the customer verbatim
+and a misdelivery is a disclosure rather than just noise:
+
+- **`is_active` is required.** A deactivated person stops receiving customer content immediately,
+  even on tickets they still own.
+- **A non-empty email is required.** The `employees` table is not staff-only — every customer
+  invite adds a row — so a blank address is treated as "no owner to notify", never guessed at.
+- **Any lookup failure falls back to the desk alone.** Losing the desk alert is the exact failure
+this path exists to prevent, so it must never be caused by a problem resolving the owner.
+
 `RFQ_NOTIFICATION_EMAIL` is now set **explicitly** rather than inheriting
 `SUPPORT_NOTIFICATION_EMAIL`. Previously the RFQ route fell through to whatever
 tickets used, so changing the ticket recipient silently moved quote requests too.

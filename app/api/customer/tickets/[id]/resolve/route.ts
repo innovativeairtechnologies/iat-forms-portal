@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getCustomerUser } from '@/lib/customer-auth'
 import { sendCustomerResolvedAlert } from '@/lib/resend-tickets'
+import { ticketAlertRecipients } from '@/lib/ticket-recipients'
 
 /** Floor for the customer's "why do you think it is fixed" note. Their word
  *  starts a verification, so it has to say enough to verify against. */
@@ -89,11 +90,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     try {
       const { data: full } = await supabaseAdmin
         .from('tickets')
-        .select('ticket_number, customer_name')
+        .select('ticket_number, customer_name, owner_id')
         .eq('id', params.id)
         .maybeSingle()
-      const recipients = (process.env.SUPPORT_NOTIFICATION_EMAIL || 'iatsupport@dehumidifiers.com')
-        .split(',').map(s => s.trim()).filter(Boolean)
+      const recipients = await ticketAlertRecipients(full?.owner_id as string | null)
       if (full && recipients.length) {
         await sendCustomerResolvedAlert(
           {

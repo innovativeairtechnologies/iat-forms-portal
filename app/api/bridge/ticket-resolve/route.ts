@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireBridgeAuth, requireString } from '@/lib/bridge-auth'
 import { getBridgeTicket } from '@/lib/bridge-ticket-access'
 import { sendCustomerResolvedAlert } from '@/lib/resend-tickets'
+import { ticketAlertRecipients } from '@/lib/ticket-recipients'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,11 +72,10 @@ export async function POST(request: Request) {
       // are read here rather than widening a helper three other routes share.
       const { data: full } = await supabaseAdmin
         .from('tickets')
-        .select('ticket_number, customer_name')
+        .select('ticket_number, customer_name, owner_id')
         .eq('id', ticketId)
         .maybeSingle()
-      const recipients = (process.env.SUPPORT_NOTIFICATION_EMAIL || 'iatsupport@dehumidifiers.com')
-        .split(',').map(s => s.trim()).filter(Boolean)
+      const recipients = await ticketAlertRecipients(full?.owner_id as string | null)
       if (full && recipients.length) {
         await sendCustomerResolvedAlert(
           {

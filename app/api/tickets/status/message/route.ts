@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendCustomerMessageAlert } from '@/lib/resend-tickets'
+import { ticketAlertRecipients } from '@/lib/ticket-recipients'
 
 /* Lets a customer who is NOT signed in add a message to their own ticket.
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
     // either field cannot be used to walk other people's tickets.
     const { data: ticket } = await supabaseAdmin
       .from('tickets')
-      .select('id, ticket_number, customer_name, customer_email, status')
+      .select('id, ticket_number, customer_name, customer_email, status, owner_id')
       .ilike('ticket_number', escapeLike(ticketNumber))
       .ilike('customer_email', escapeLike(email))
       .maybeSingle()
@@ -127,11 +128,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'We could not save your message. Please try again.' }, { status: 500 })
     }
 
-    // Tell the desk. Awaited so Vercel cannot kill the function mid-send, but a
-    // mail failure never fails the request — the message is already on the
-    // ticket and visible in /admin/tickets either way.
-    const recipients = (process.env.SUPPORT_NOTIFICATION_EMAIL || 'iatsupport@dehumidifiers.com')
-      .split(',').map(s => s.trim()).filter(Boolean)
+    // Tell the desk AND whoever owns the ticket. The shared mailbox on its own
+    // is how a customer reply gets seen by everyone and actioned by nobody; the
+    // owner's own inbox is what makes it somebody's job. Unassigned tickets fall
+    // back to the desk alone, which is why the desk is never dropped.
+    //
+    // Awaited so Vercel cannot kill the function mid-send, but a mail failure
+    // never fails the request — the message is already on the ticket and visible
+    // in /admin/tickets either way.
+    const recipients = await ticketAlertRecipients(ticket.owner_id)
     if (recipients.length) {
       await sendCustomerMessageAlert(
         { ticket_number: ticket.ticket_number, customer_name: ticket.customer_name, message },

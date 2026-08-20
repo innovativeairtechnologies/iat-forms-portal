@@ -10,6 +10,28 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — A customer reply now reaches the person who owns the ticket
+
+When a customer wrote back, the alert went to the shared support mailbox and nowhere else.
+Everyone could see it and nobody owned it, which is how a reply sits for a day with three people
+each assuming somebody else has it.
+
+Now it goes to two places: the shared mailbox, as before, and the inbox of whoever the ticket is
+assigned to. Both, not either — the mailbox keeps the record and covers unassigned tickets, and
+the owner gets the nudge that makes it their job. An unassigned ticket still alerts the desk
+exactly as it did.
+
+Replying from the customer portal used to send **no alert at all**. The note landed in the thread
+and nobody was told it existed, so the same action was either seen or invisible depending on which
+door the customer came in through. That path now alerts too.
+
+The same rule applies when a customer marks their own ticket as resolved, from either door. That
+claim starts a verification someone has to do, so it goes to the owner as well as the desk.
+
+Two details worth stating. A deactivated person stops receiving customer messages the moment they
+are deactivated, even on tickets they still own. And a reply sent with only a file attached now
+says so, instead of arriving as an empty quote that reads like a bug.
+
 ## 2026-08-20 — Staff alert emails can send from their own domain
 
 Alerts to the team — a new ticket, a customer reply, the daily digest, a form submission, a
