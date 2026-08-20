@@ -7,7 +7,7 @@ is one Monday-to-Sunday work week named after its Monday — the entries below d
 17–23 August are **Edition 8.17.26**. Nothing here is tagged by hand: an entry's
 edition is derived from its date, so the whole history is already addressable and
 nothing can drift out of step. The weekly report covers exactly one edition. An
-occasional *interim* update can cover a few days between Mondays; it is labelled and
+occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
 ## 2026-08-20 — Quote request: Celsius, wall pictures, and fewer ways to answer "I don’t know"
@@ -21,17 +21,18 @@ not a change to the numbers, and flipping back and forth never alters what was e
 envelope questions are the ones customers guess at most; a picture to point at gets a better
 answer than a longer explanation.
 
-**"Not sure" is gone** from the vapor barrier question, the pre-filter, and where the unit goes.
-Cabinet construction drops **"Painted galvanized"** and **"Let IAT recommend"**. That completes a
-pass across the whole form: every remaining choice is an answer, not a way of declining to give
-one. Where a customer genuinely does not know, the sensible option is already the default.
+**“Not sure” is gone** from the vapor barrier question, the pre-filter, and where the unit goes.
+Cabinet construction drops **“Painted galvanized”** and **“Let IAT recommend”**, and regeneration
+air source drops **“Let IAT recommend”** as well. That completes a pass across the whole form:
+every remaining choice is an answer, not a way of declining to give one. Where a customer genuinely
+does not know, the sensible option is already the default.
 
 Also: spellings across the form and its documents are now consistently American — "vapor" rather
-than "vapour", and the same for a handful of others.
+than "vapor", and the same for a handful of others.
 
 ## 2026-08-20 — The quote request says who the weather came from, not which edition
 
-The design conditions on a quote request were labelled with the ASHRAE edition year and the
+The design conditions on a quote request were labeled with the ASHRAE edition year and the
 range of years the readings were taken over — "ASHRAE 2025 … 2004-2023 observations". Neither
 told a customer anything they could act on, and both invited the wrong question: is this data
 from 2025, or for 2025, and why does it mention 2004?
@@ -83,7 +84,7 @@ how last night’s update went out with page one and no page two, and nothing an
 
 Both halves now retry, and a report that arrives with a missing half says so in the log rather
 than shipping quietly. The report was also being cut off partway through when a stretch had an
-unusually large number of entries; it now has room for roughly twice as much and recognises
+unusually large number of entries; it now has room for roughly twice as much and recognizes
 that particular failure instead of retrying blindly into it.
 
 Nothing changes about what the report says or who receives it.
@@ -163,7 +164,7 @@ plainly that the account is not linked yet. Two other pages had the same fault a
 were fixed at the same time.
 
 Separately, that portal's database had paused itself after a week of no activity — a
-cost-saving behaviour of the free plan. It has been restarted. Expect it to recur
+cost-saving behavior of the free plan. It has been restarted. Expect it to recur
 until customers are actually using the portal, and note the symptom is always "I can't
 log in" while every dashboard looks healthy.
 
@@ -410,7 +411,7 @@ Who gets told what, and when, is now one page: [docs/notifications.md](docs/noti
 
 ## 2026-08-17 — The weekly update becomes two reads, and moves to 5pm
 
-It went out at noon on a Monday, summarising a week that included a Monday morning which had barely
+It went out at noon on a Monday, summarizing a week that included a Monday morning which had barely
 happened — so anything shipped that day missed the report it belonged in. It now sends at 5pm
 Eastern, when the day it describes is actually over.
 
@@ -463,7 +464,7 @@ with, a message, and it lands on the request.
 **Where it lands is the interesting part.** Sales notes on a quote request were built as a strictly
 internal trail — the card above them says the customer never sees this — and a customer message
 dropped into that same list would be indistinguishable from a colleague's note except by a name you
-have to recognise. Someone skims, mistakes their words for ours, and replies as though the customer
+have to recognize. Someone skims, mistakes their words for ours, and replies as though the customer
 cannot read what was said around it. So every entry now records **who wrote it**: customer messages
 carry a badge and their own tint, and the "internal" promise moved off the heading and onto the box
 you type into, which is the only place it is still true.
@@ -523,7 +524,7 @@ Three fields the support form asked for politely, it now requires: **company / o
 The description floor is the substantive one. A ticket reading "unit not working" costs the desk a
 full round trip — email the customer, wait, re-read — before anyone can even decide who should look
 at it. The Problem step shows a live character count and says exactly how far short you are, because
-a "Next" button that greys out with no explanation reads as a broken form rather than an unfinished
+a "Next" button that grays out with no explanation reads as a broken form rather than an unfinished
 one. The phone check is deliberately loose — ten digits after punctuation is stripped — since it is
 confirming a number was really given, not that it can be dialled.
 
@@ -532,13 +533,13 @@ a public unauthenticated endpoint and cannot trust that the browser did its job.
 
 ## 2026-08-17 — The serial number stops hiding at the bottom of the ticket
 
-Opening a support ticket in the admin showed you the customer's name and company as a grey run-on
+Opening a support ticket in the admin showed you the customer's name and company as a gray run-on
 line under the ticket number, and the serial number of the actual unit **inside a collapsed section**
 below the problem, the status editor and the contact card. The two things you need before reading
 anything else were the two hardest to find.
 
 Both now sit in a **Customer & Unit** strip directly under the ticket number: customer, organization,
-phone, email, serial and model, each labelled, with the phone and email click-to-contact and the
+phone, email, serial and model, each labeled, with the phone and email click-to-contact and the
 serial linking straight into the equipment registry when we have the unit on file. The old Contact
 card is gone rather than duplicated — it carried a subset of the same facts one screen further down.
 
@@ -637,7 +638,7 @@ changelog**, has Claude rewrite it for a non-technical reader, renders a one-pag
 and emails it to `LEADERSHIP_UPDATE_EMAIL` (currently Lee Childers).
 
 **Why the changelog is the source.** It is already written, already accurate, and already
-updated on every deploy. Summarising git subjects instead would mean summarising commit
+updated on every deploy. Summarising git subjects instead would mean summarizing commit
 messages, which describe code; changelog entries describe what changed for the business. It also
 means the report cannot drift from reality — if nothing was written down, nothing is claimed.
 
@@ -865,7 +866,7 @@ switch is offered only on the application step, before anything branch-specific 
 
 **Typical values are the whole trick.** Picking one of 18 room applications or 11 process
 applications seeds the target condition, surrounding space, occupancy and door activity with
-numbers someone in that industry recognises. Every one stays editable and carries a one-tap
+numbers someone in that industry recognizes. Every one stays editable and carries a one-tap
 "typical" chip, which is how a technically complete survey still finishes in about three minutes.
 
 **The numbers build as you type.** A live rail computes grains, dew point, the running load
@@ -907,7 +908,7 @@ set means RFQ alerts arrive with no new Vercel config, and both senders revert t
 defaults together the day that stopgap is deleted. The survey is committed **before** any send is
 attempted, so a refused email never costs us the request; it is in `/admin/rfq` either way.
 
-No customer confirmation email: they already have the PDF, which is the better artefact.
+No customer confirmation email: they already have the PDF, which is the better artifact.
 
 See [`docs/rfq-moisture-survey.md`](docs/rfq-moisture-survey.md).
 
@@ -922,7 +923,7 @@ looking up one of those was offered a reply that could never land. Not a securit
 promise the portal could not keep.
 
 **reCAPTCHA now fails CLOSED on that endpoint, at a 0.7 score threshold.** `verifyRecaptcha` takes
-options; every other caller keeps the existing fail-open behaviour, which is correct for customer
+options; every other caller keeps the existing fail-open behavior, which is correct for customer
 submissions — a missing env var or a bad day at Google must never be why a real support ticket is
 lost. An anonymous *write into an existing record* is the opposite case: reCAPTCHA is the only
 control gating it, so failing open would mean one missing `RECAPTCHA_SECRET_KEY` silently turns it
@@ -958,7 +959,7 @@ are unchanged and still go to `iatsupport@`.
 **The link needed somewhere to land.** `/support/status` was read-only, and every route touching
 `ticket_notes` was authentication-gated — there was no write path for an anonymous customer at all.
 Telling people not to reply while giving them nowhere to write would have been worse than the
-behaviour it replaced, so the two ship together: a **message box on the status page**, backed by
+behavior it replaced, so the two ship together: a **message box on the status page**, backed by
 `POST /api/tickets/status/message`.
 
 A stranger is allowed to write to a ticket by proving the same pair the status lookup already
@@ -1098,8 +1099,8 @@ course reads as the syllabus it is instead of an alphabet soup. The whole librar
 at 1280 wide — under three screens, all of it vertical, with a **"jump to" row** across the six
 shelves at the top.
 
-**The colour got better, not worse.** Every subject still wears its category's Tone (the DESIGN.md
-§2.4 dashboard exception), but a shelf is now one colour block rather than six tones shuffled
+**The color got better, not worse.** Every subject still wears its category's Tone (the DESIGN.md
+§2.4 dashboard exception), but a shelf is now one color block rather than six tones shuffled
 together, so the wash finally reads as "this part of the library" — which is what it always claimed
 to mean.
 
@@ -1132,7 +1133,7 @@ because break-glass sign-in happens during an outage, under pressure, possibly o
 toggle carries `aria-expanded`/`aria-controls`, is reachable in two Tab presses, opens on Enter,
 and moves focus to the email field.
 
-Two behaviours worth keeping if this is ever restyled: the `?error=` banner moved **outside** the
+Two behaviors worth keeping if this is ever restyled: the `?error=` banner moved **outside** the
 collapsible (a callback error arrives with the panel closed, and rendering it inside would hide
 the only explanation the user gets), and `sso_failed` is the one error code that starts the panel
 open, since its message tells the user to fall back to email.
@@ -1149,7 +1150,7 @@ Air-Foil Control Damper**. It rebuilds an externally-written selection calculato
 handle on it: a blade-angle slider drives a live section view and a face view, and free area,
 pressure drop, loss coefficient and the ΔP→CFM K-factor all move together. The face view is the
 honest one — the open fraction you see *is* α, checked in-browser at 0.8999 drawn against 0.9000
-modelled.
+modeled.
 
 Two modes off one physics core. **Select** sizes the damper. **Measure** treats it as a flow element:
 lock a blade angle, get the K for `CFM = K√ΔP`, fit a real K from field-measured points (least
@@ -1170,7 +1171,7 @@ per-size values for all three profiles and resolves to the tested size nearest y
 - **TAMCO's WP number is not the damper.** The WP table is a plenum test. The column a coefficient
   derives from is dominated by the opening's own entry loss, and TAMCO's own "Damper Only" column is
   **negative in all thirty published rows** — the air-foil blades cost less than the bare hole. The
-  readout is labelled damper + plenum opening.
+  readout is labeled damper + plenum opening.
 - **Leakage is a closed-damper property**, so it is evaluated at the system design static pressure
   (a new input, defaulting to the 1 in. w.g. AMCA rating basis), not at the damper's own open
   pressure drop. The maths is derived rather than fitted: every AMCA class is exactly `base × √ΔP`
@@ -1187,7 +1188,7 @@ checked `w > 60 || h > 75`, so a 60 × 70 passed when TAMCO does not allow it.
 The Measure side refuses to hand over a constant it cannot stand behind. Calibration points are
 **stamped with the geometry and blade angle** they were measured at, so moving the blades retires the
 fitted K instead of silently relabelling it. The fit is judged on **worst-point error, not R²** —
-for a fit forced through the origin a centred R² does not decompose, and a tap with a constant offset
+for a fit forced through the origin a centered R² does not decompose, and a tap with a constant offset
 scores R² 0.985 while being 12% out. A shut damper exports no constant at all rather than a
 plausible-looking `K_FLOW := 0.0`.
 
@@ -1200,7 +1201,7 @@ with its provenance tags as plain text. That panel is the deliverable as much as
 was built to be argued with by people who know dampers better than the model does.
 
 Verified in headed Playwright runs — the size-resolved coefficient at all five tested sizes, drawn
-free area 0.8999 against 0.9000 modelled, keyboard entry into the calibration table, the tap-offset
+free area 0.8999 against 0.9000 modeled, keyboard entry into the calibration table, the tap-offset
 case, stamp invalidation, the crossover solve, density scaling of both ΔP and K, and a NaN sweep from
 3×3 to 200×200. The tool was then put through a ten-agent adversarial audit against the source PDFs,
 which confirmed all 30 WP values, the leakage identity, every geometry constant and the core algebra
@@ -1235,7 +1236,7 @@ and EPA 608. It arrived as a single self-contained HTML file and has been rebuil
 content — same lesson reader, same progress and XP, same quiz engine, same Quiet Precision surface.
 
 **The interactive parts came across as components, not as an iframe.** Twenty-four of them: six
-WebGL models on react-three-fiber (the vapour-compression cycle, reciprocating and scroll
+WebGL models on react-three-fiber (the vapor-compression cycle, reciprocating and scroll
 compressors, a TXV that responds to a superheat slider, phase-change particles, refrigerant
 molecules, and one air-coil model that serves both the condenser and evaporator subjects with a
 fault toggle), five click-to-explore diagrams, six calculators, and six practice drills including
@@ -1254,7 +1255,7 @@ Three decisions worth recording:
   congratulate someone the report lists as overdue.
 - **The course is generated, not hand-written.** `scripts/gen-hvacr-course.mjs` turns the source data
   into both migrations, and asserts every marker it writes exists in `lib/learn-blocks.ts` — the
-  catalogue that also *types* the widget registry. A block named in the seed but not wired up is now
+  catalog that also *types* the widget registry. A block named in the seed but not wired up is now
   a compile error rather than a lesson that quietly renders "isn't available".
 
 Two bugs caught in browser verification that no type-check could see. `next/dynamic` requires a
@@ -1431,7 +1432,7 @@ restore, and the navigation effect — and the footer's Self-service group share
 
 ## 2026-08-06 — Training nav un-parked
 
-The Training group in the admin rail goes live (it was parked — greyed with a "Soon" chip — since
+The Training group in the admin rail goes live (it was parked — grayed with a "Soon" chip — since
 the `/learn` port), together with its four ⌘K palette entries. **No permission work was needed for
 sales**: learner pages (`/admin/learn/*`) are in `OPEN_ADMIN_PREFIXES` and deliberately carry no
 perm, so every staff role — sales included — has Browse / My Learning / Leaderboard the moment the
@@ -1476,7 +1477,7 @@ unitless-export caveat), the fault-injection alarm lab (panel and BACnet Summary
 together), remote access (web pGD / tERA / BAS), and two service tasks (pLAN address, static IP).
 Facts trace to the CAREL manual, IAT's BACnet procedure, and the point-list export. Three
 **defects found in that export** are surfaced in the explorer rather than hidden (instances 25/26
-labelled "Pre" instead of "Post"; 14/15 descriptions swapped) — flagged to engineering.
+labeled "Pre" instead of "Post"; 14/15 descriptions swapped) — flagged to engineering.
 
 The LCD's hex colors are a deliberate token-system exception (a physical part, not a themed
 surface) — documented in the one `globals.css` block the design grep excludes. Also live at
@@ -1484,7 +1485,7 @@ surface) — documented in the one `globals.css` block the design grep excludes.
 front door, so the workbench is deliberately not in the launchers.
 
 Not yet in the course (blocked on the SOO + captures): the unit schematic with real sensor
-positions, setpoint behaviour, the full IAT menu tree, and the capstone quiz.
+positions, setpoint behavior, the full IAT menu tree, and the capstone quiz.
 
 ## 2026-08-05 — Proposals: a sizing selection becomes a submittal-ready PDF (migration 079)
 
@@ -1808,7 +1809,7 @@ empty `alt=""`. The only drift is cosmetic: 12 of the 133 captions contain HTML 
 had never contained an image at all, so this is the first time a block node is selectable or
 reachable here: selected images get a brand outline, and the **gap cursor is styled**, without
 which an image at the end of a lesson leaves you no visible way to put the caret after it
-(TipTap ships the behaviour but no CSS).
+(TipTap ships the behavior but no CSS).
 
 Not covered: pasting rich HTML from a web page still brings that page's `<img>` tags in as
 external hotlinks. Unchanged from before, but worth knowing given everything else here is
@@ -1880,7 +1881,7 @@ don't exist has been rewritten — that page renders all three.
 
 `/admin/forms` already had a **Specialized forms** card for custom-coded forms that aren't rows in
 the `forms` table — SRV was its only entry. Equipment Support now sits beside it, linking to
-`/admin/support-content`. So the Forms tab finally shows the whole catalogue rather than just the
+`/admin/support-content`. So the Forms tab finally shows the whole catalog rather than just the
 builder-backed part of it.
 
 - Entries are a data list filtered by perm rather than hand-written markup: SRV needs `srv`,
@@ -1987,7 +1988,7 @@ the reference design's "Mandatory" tab, finally real rather than faked, and hidd
 required. Company Home's training strip now leads with outstanding and overdue counts.
 
 Verified with a 21-assertion harness against the live schema: audience resolution for all four
-kinds, customer exclusion, blank-department normalisation, category fan-out, earliest-due-date-wins
+kinds, customer exclusion, blank-department normalization, category fan-out, earliest-due-date-wins
 on overlapping assignments, overdue only counting when someone is actually behind, least-done-first
 ordering, and cascade cleanup. One assertion failed first time and it was the *test* that was wrong:
 it assumed customer profiles still existed here. The Phase-2 split moved them to their own project,
@@ -2027,7 +2028,7 @@ trusts don't move. What the portal adds:
 
 One deliberate fidelity note: the workbook's Total is the sum of whatever is filled in,
 always out of 20 — so a rep judged on three signals reads the same as one judged on ten.
-That behaviour is kept (changing it would move every number), but the scored count now
+That behavior is kept (changing it would move every number), but the scored count now
 shows beside the total (`4/10`) and the drawer header says so, since a low score that
 just means "we haven't looked yet" was previously indistinguishable from a bad one.
 
@@ -2122,7 +2123,7 @@ Model: `claude-sonnet-5`. The older AI features are still on `claude-sonnet-4-6`
 
 ## 2026-07-31 — Five invisible backgrounds: the token-opacity trap, swept
 
-Semantic colour tokens are registered as bare `var(--x)` strings, so an opacity modifier on one
+Semantic color tokens are registered as bare `var(--x)` strings, so an opacity modifier on one
 (`bg-surface-strong/50`) produces **no CSS rule at all** — the element silently has no background.
 DESIGN.md §2.5 documents this and two files already carried warning comments about it, but five
 live instances had slipped in. Verified by grepping the compiled stylesheet, not the source:
@@ -2135,7 +2136,7 @@ all four class variants were absent from `.next/static/css/*.css`; the plain tok
 - Department-dashboard briefing divider (`DepartmentDashboard.tsx:86`) → `border-hairline-soft`.
 - Form-builder section-header rules (`FormBuilder.tsx:461,463`) — the two 1px lines flanking a
   section label rendered as empty gaps. Now `bg-hairline`; the `text-brand-ink` label still carries
-  the colour signal, and a decorative brand-tinted rule would have been §2.3 misuse anyway.
+  the color signal, and a decorative brand-tinted rule would have been §2.3 misuse anyway.
 
 Re-verified after the fix: each replacement emits a real rule, and the four broken variants appear
 zero times.
@@ -2144,7 +2145,7 @@ zero times.
 
 `/admin/learn` was a greeting band over five category tiles. It's now a proper library dashboard,
 built from a reference design Jacob supplied: a **level band** (ring, title, XP, XP-to-next,
-streak), a horizontal **deck of the 14 subjects** washed in their category's colour with lesson
+streak), a horizontal **deck of the 14 subjects** washed in their category's color with lesson
 count, run time and progress, a **week chart** of content completed per day with a vs-last-week
 delta and four stat tiles, and an **Up next** panel — a 7-day activity strip plus the actual next
 lessons to open, resuming a started subject before offering a fresh one.
@@ -2154,7 +2155,7 @@ rendered quietly. This surfaces it.
 
 **Colour is the DESIGN.md §2.4 dashboard exception, not a fork.** Every wash is a Tone from the
 sanctioned table (emerald / sky / amber / violet / rose / slate); no off-system pastels were
-introduced. A subject inherits its *category's* tone, so colour means "this part of the library"
+introduced. A subject inherits its *category's* tone, so color means "this part of the library"
 rather than decoration — Onboarding is emerald, Safety amber, Technical violet, and so on.
 
 **Nothing on the page is invented.** The reference leaned on due dates, a Mandatory filter, "hours
@@ -2219,7 +2220,7 @@ natatorium and pharmaceutical-coating figures too. Switching applications redraw
 it asks before discarding edits.
 
 Everything on the drawing is editable in place. Click a value card, a label or a piece of
-equipment and the right-hand rail fills in with its settings — title, colour, rows of
+equipment and the right-hand rail fills in with its settings — title, color, rows of
 value + unit, card width, leader line on/off. Cards and labels drag to reposition, and a selected
 card's leader dot drags to re-point it. Cards and labels can be added and deleted. The figure
 header (figure number, title, eyebrow), the footer keys, the equipment labels and the AHU section
@@ -2405,9 +2406,9 @@ or a button, and after each add the form keeps the date/channel/owner so a week 
 run. Clicking a day shows that day; clicking a chip shows the record with inline edit, one-click
 status, and delete.
 
-Chips are coloured by **channel** (social/email/blog/event/ad/pr), not status — that's the axis
+Chips are colored by **channel** (social/email/blog/event/ad/pr), not status — that's the axis
 you scan a content calendar on; status only marks the chip when it changes the read (published ✓,
-cancelled struck through). Channel/status/platform lists live in `lib/marketing.ts` with no DB
+canceled struck through). Channel/status/platform lists live in `lib/marketing.ts` with no DB
 CHECK behind them, so adding "TikTok" is a one-line edit — `app/api/admin/marketing/validate.ts`
 is the enforcement.
 
@@ -2424,13 +2425,13 @@ already enforces (`requireCaseStudiesAuth({ approve })` is marketing/admin) — 
 be a Marketing nav item to be a marketing responsibility.
 
 **Marketing and Training are parked** — "nice to haves one day". New `NavParent.parked` renders a
-group greyed, non-interactive and un-expandable with a "Soon" chip, distinct from `hidden` (gone
+group grayed, non-interactive and un-expandable with a "Soon" chip, distinct from `hidden` (gone
 entirely): the roadmap stays visible on the rail, it just can't be opened. Parked groups are also
 excluded from `activeParent`, so reaching one by URL can't force-open a group with no rollout.
 
 The ⌘K palette entries went with them (Marketing Calendar + the four Training ones, commented out
 in place with restore instructions) — leaving them would have made the palette a back door into a
-tab we just greyed out. Their `Megaphone`/`GraduationCap` imports were dropped alongside.
+tab we just grayed out. Their `Megaphone`/`GraduationCap` imports were dropped alongside.
 
 **Routes are NOT gated** — this is a nav affordance only. `/admin/marketing`, `/admin/learn` and
 friends still serve anyone with the URL or a bookmark, which keeps parking cheap and reversible
@@ -2528,7 +2529,7 @@ not on a defect. The slider harness used to dial it in lives in `claude-design/m
 
 One finding worth keeping from that work: **`smoothstep(a, a, x)` divides by zero, which is
 undefined in GLSL** — it renders "correctly" on some drivers, NaNs on others, and was observed
-changing behaviour under an unrelated refactor of neighbouring lines. Guard the branch and write
+changing behavior under an unrelated refactor of neighbouring lines. Guard the branch and write
 the intended value explicitly if a tunable feeding a `smoothstep` edge can reach 0. Nothing in
 the current tree does this.
 
@@ -2646,7 +2647,7 @@ below sm rather than relying on z-index, verified by hit-testing every pixel of
 the button in headless Chromium (97.2% reachable at every width, 375→1440).
 `onStartPaint` also collapses the panel on phones, as `startPlace` already did.
 The map-failure banner moved to z-50 so the "screenshot this" diagnostic can't
-be half-covered, and the shared tab strip scrolls horizontally — four labelled
+be half-covered, and the shared tab strip scrolls horizontally — four labeled
 tabs don't fit a 380px panel.
 
 `TerritoriesClient` · `RepPanel` · `RepDetail` (new) · `RepDrawer` (removed) ·
@@ -2654,7 +2655,7 @@ tabs don't fit a 380px panel.
 
 ## 2026-07-29 — Floating record drawer: the deal modal goes tabbed, and reps become clickable
 
-Clicking a kanban card used to throw a centre modal over the board and bury
+Clicking a kanban card used to throw a center modal over the board and bury
 everything in one ~88vh scroll. It's now a **floating right-hand drawer** —
 inset from all four edges so the board stays visible beside it — with the
 content split across **four tabs**: Overview (money, stage, fields), Comments
@@ -2722,7 +2723,7 @@ Cosmetic/layout only — data, drag-drop, and the lane/card design are unchanged
 Restyled the kanban to match the portal's warm bento look. Each **stage lane** now carries its own
 tone (a colored dot + a soft-tinted header band + count pill + lane total) — Lead slate · Quoted sky
 · Follow-up amber · Verbal violet · Won emerald · Lost rose — so the pipeline reads as a real
-left-to-right progression instead of six identical grey wells. **Deal cards** gained a confidence
+left-to-right progression instead of six identical gray wells. **Deal cards** gained a confidence
 meter (a thin tinted bar), a rep initials avatar in place of the blocky uppercase group tag, a more
 prominent amount, and a quiet days-in-stage chip that appears (amber past 30 days) as deals age.
 Purely cosmetic — drag-and-drop, the collapsed Lost rail, and the won/lost reason prompt are
@@ -2750,7 +2751,7 @@ to 270°/90°. Same 3:1, stated properly, and the difference matters as soon as 
 sector exists.
 
 - **Sectors are now degrees.** Airflow through each sector is proportional to its angle at
-  a common face velocity, so 270/90 reproduces the previous behaviour *exactly* (asserted,
+  a common face velocity, so 270/90 reproduces the previous behavior *exactly* (asserted,
   so no existing job silently re-sizes) while any other split works correctly. Sectors must
   cover the face: anything not totalling 360° is scaled proportionally and the scaling is
   disclosed rather than quietly producing airflow ratios no real machine has.
@@ -2853,7 +2854,7 @@ stating wrongly.
   the depth, i.e. roughly double the air-to-desiccant contact time.
 - **Reactivation is 285 °F**, DryWare's own default and what the training material teaches.
   This said 270. Steam and hot water remain unconfirmed planning figures and are now
-  labelled as such.
+  labeled as such.
 
 Every unit now carries its real `wheelDiameterMm`, `wheelDepthMm` and `effectiveAreaFt2`,
 which makes a design rule measurable instead of assumed: **face velocity**. Every rotor from
@@ -2870,7 +2871,7 @@ each trip several failures. Reactivation now lands at ~2,246 BTU/lb (was ~2,068)
 mid-band of the 1,500–2,500 that desiccant systems run.
 
 Still preliminary: the API gives geometry, not performance curves, so `predictLeavingState()`
-remains the one place wheel behaviour is approximated. See `docs/sizing-studio.md`.
+remains the one place wheel behavior is approximated. See `docs/sizing-studio.md`.
 
 ## 2026-07-28 — Fix: SRV review audit log claimed customers were emailed when they weren't
 
@@ -2995,7 +2996,7 @@ Three layers, each replaceable on its own:
   reactivation duty. Altitude is honoured throughout — the chart's own curves shift with it.
 
 **The psychrometrics are exact; the wheel performance is not.** IAT's real rotor curves live in
-the DryWare calculator, not this repo, so wheel behaviour uses planning coefficients (80%/90%
+the DryWare calculator, not this repo, so wheel behavior uses planning coefficients (80%/90%
 removal, derated by reactivation temperature). Every result is stamped **Preliminary** in the UI
 and in the copied summary, and engineering confirms rotor performance before a submittal. When
 the real curves land, `predictLeavingState()` is the only function that changes.
@@ -3159,12 +3160,12 @@ container to `position: relative` after Tailwind loads, collapsing it to 0 heigh
 container positioning is now inline styles. Also: panel search overflow fix, breadcrumb
 entry, and on-page surfacing of map-engine errors.
 
-Map theme polish: the basemaps are near-monochrome by design (colour comes from the
+Map theme polish: the basemaps are near-monochrome by design (color comes from the
 translucent territory fills), so a theme change briefly drops the fills while the basemap
 reloads. Removed the avoidable version of this — the map used to boot on the light basemap
 and then swap to dark for dark-mode users (a "colors → black-and-white → colors" flash on
 every load); it now initialises on the correct basemap. Dark-mode fills are also more opaque
-so territories stay clearly coloured on the near-black map.
+so territories stay clearly colored on the near-black map.
 
 Panel scrolling fixed: the rep list is tall, and the admin shell root grows with
 content (`min-h-screen`), so scrolling the list scrolled the whole page (map and all)
@@ -3172,7 +3173,7 @@ instead of just the list. The panel now renders out of page flow (`absolute inse
 inside a positioned `<aside>`, the same technique the map canvas uses) so it scrolls
 internally and the page stays put.
 
-Camera behaviour fixed too: clicking a pin used to re-frame the map to the firm's whole
+Camera behavior fixed too: clicking a pin used to re-frame the map to the firm's whole
 multi-state footprint (jumping a couple of states away, and zooming *out* because
 `fitBounds` caps at zoom 7). Pin clicks now zoom **in** on the clicked pin, fill clicks
 identify the owner without moving the camera, and re-framing a whole footprint is an
@@ -3478,7 +3479,7 @@ See `docs/list-views.md`.
 ## 2026-07-22 — Performance list: pagination + a livelier, one-card redesign
 
 The Performance list (`/admin/projected-sales`, ~340 projects) ran on forever with no
-pagination and read as a flat wall of grey text. Rebuilt it as the **template** for our
+pagination and read as a flat wall of gray text. Rebuilt it as the **template** for our
 list views:
 
 - **Pagination** — a page-size selector (**default 10**, plus 25 / 50 / 100), windowed page
@@ -3488,7 +3489,7 @@ list views:
   pagination) lives in a single card on the warm canvas page; every band shares one left
   and right edge, so it reads as one aligned unit instead of scattered rows.
 - **Life, with meaning** — colored salesperson avatars, project-type tone pills, a
-  confidence meter (emerald ≥70 / amber ≥45 / grey below), close-date urgency (amber
+  confidence meter (emerald ≥70 / amber ≥45 / gray below), close-date urgency (amber
   within 30 days, rose if overdue), and a weighted-magnitude bar. Both meters are kept
   short (`w-14`, `h-1`) so they don't crowd the row. Plus search, a rep-filter dropdown,
   and click-to-sort columns (Project / Confidence / Est. close / Quote / Weighted).

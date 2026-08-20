@@ -1658,7 +1658,7 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
       </div>
 
       <Grid>
-        <SelectField label="Regeneration air source" value={data.regenAirSource} onChange={v => set('regenAirSource', v)} options={['Outdoor', 'Indoor', 'Let IAT recommend']} />
+        <SelectField label="Regeneration air source" value={data.regenAirSource} onChange={v => set('regenAirSource', v)} options={['Outdoor', 'Indoor']} />
         <SelectField label="Cooling" value={data.coolingType} onChange={v => set('coolingType', v)} options={COOLING_TYPES} />
       </Grid>
 
