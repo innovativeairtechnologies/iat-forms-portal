@@ -134,7 +134,9 @@ At most 4 sections, titles in capitals (NEW, FIXED, IMPROVED are usually right).
 BETWEEN ${isWeek(p) ? '16 AND 22' : '12 AND 18'} lines in total across all sections — enough that a reader finishes with the full picture of ${isWeek(p) ? 'the week' : 'these few days'}, not so many that it stops being a summary. Merge closely related items rather than listing every one.
 
 Return ONLY valid JSON, no prose around it:
-{"sections":[{"title":"NEW","items":["...","..."]}]}`
+{"sections":[{"title":"NEW","items":["...","..."]}]}
+
+NEVER put a double quote inside a line. The examples above quote phrases; write those with single quotes instead. A single unescaped double quote makes the whole response unparseable and costs the entire report.`
 
 const TECHNICAL_SYSTEM = (p: ReportPeriod) => `You write the engineering half of ${isWeek(p) ? 'a weekly report' : 'an interim report'} for the person who maintains the IAT Portal. Your input is the engineering changelog for ${isWeek(p) ? 'the past week' : `${p.range} — a few days, not a full week`}.
 
@@ -157,7 +159,61 @@ Up to 6 sections and up to ${isWeek(p) ? '30' : '24'} lines total. Each line at 
 The last section should be GAPS or OPEN — what is unverified, unfinished, or waiting on a decision.
 
 Return ONLY this JSON:
-{"sections":[{"title":"SECURITY","items":["...","..."]}]}`
+{"sections":[{"title":"SECURITY","items":["...","..."]}]}
+
+NEVER put a double quote inside a line. The examples above quote phrases; write those with single quotes instead. A single unescaped double quote makes the whole response unparseable and costs the entire report.`
+
+/**
+ * The model's JSON, or null if it did not produce any.
+ *
+ * ⚠️ THE FAILURE THIS EXISTS FOR: a line containing a quoted phrase — a customer
+ * who pressed the button got 'no ticket found' — arrives as unescaped double
+ * quotes inside a JSON string, and JSON.parse throws. It is not exotic: the brief
+ * is written in quoted examples, so the model reaches for that punctuation.
+ *
+ * Unhandled it cost the whole report. The leadership half threw straight out of
+ * buildLeadershipUpdate and the route answered 500, so NOTHING sent. The technical
+ * half sat inside a try/catch and came back silently empty — which is how the
+ * 2026-08-19 send went out with page 1, no page 2, and no alarm anywhere.
+ *
+ * Returning null instead lets both halves retry with the fault named.
+ */
+function parseSections(text: string): UpdateSection[] | null {
+  // A stray code fence is the one wrapper worth tolerating rather than throwing
+  // the report away.
+  const json = /\{[\s\S]*\}/.exec(text)
+  if (!json) return null
+  try {
+    const parsed = JSON.parse(json[0]) as { sections?: UpdateSection[] }
+    return (parsed.sections ?? []).filter(
+      s => s && typeof s.title === 'string' && Array.isArray(s.items) && s.items.length,
+    )
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Token ceilings. Raised from 2000/3000 on 2026-08-20: a three-day stretch with 27
+ * changelog entries (38k characters of source) ran the summary past 2000 tokens and
+ * the reply stopped MID-JSON, so every parse failed identically on every retry.
+ * Truncation is deterministic — retrying the same call cannot fix it, which is why
+ * it has to be detected rather than retried blindly.
+ */
+const MAX_TOKENS_SUMMARY = 4000
+const MAX_TOKENS_TECHNICAL = 4000
+
+/** Why a response would not parse. The two causes need opposite corrections. */
+function repairPrompt(truncated: boolean): string {
+  return truncated
+    ? 'Your reply was cut off before the JSON closed — it was too long. Send the '
+      + 'whole thing again, materially SHORTER: merge related items aggressively and '
+      + 'stay at the low end of the line count you were given.'
+    : 'That was not valid JSON — a line contained an unescaped double quote. Send '
+      + 'the whole response again, same facts and same shape, using single quotes '
+      + 'inside a line and never a double quote.'
+}
+
 
 /**
  * Lines that break the brief, so a bad generation can be caught and retried.
@@ -200,31 +256,37 @@ export async function buildLeadershipUpdate(
     { role: 'user', content: source.slice(0, 60000) },
   ]
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const LAST = 2
+  for (let attempt = 0; attempt <= LAST; attempt++) {
     const res = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 2000,
+      max_tokens: MAX_TOKENS_SUMMARY,
       system: SYSTEM(period),
       messages,
     })
     const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
 
-    // Told to return bare JSON, but a stray code fence is the one failure worth
-    // tolerating rather than throwing the week's report away.
-    const json = /\{[\s\S]*\}/.exec(text)
-    if (!json) throw new Error('leadership update: model returned no JSON')
-
-    const parsed = JSON.parse(json[0]) as { sections?: UpdateSection[] }
-    sections = (parsed.sections ?? []).filter(
-      s => s && typeof s.title === 'string' && Array.isArray(s.items) && s.items.length,
-    )
+    const parsed = parseSections(text)
+    if (!parsed) {
+      const truncated = res.stop_reason === 'max_tokens'
+      console.warn(`[leadership] attempt ${attempt + 1}: unparseable JSON (${truncated ? 'CUT OFF at max_tokens' : 'bad escaping'})`)
+      if (attempt === LAST) {
+        throw new Error(`leadership update: model never returned valid JSON (last stop_reason: ${res.stop_reason})`)
+      }
+      messages.push(
+        { role: 'assistant', content: text },
+        { role: 'user', content: repairPrompt(truncated) },
+      )
+      continue
+    }
+    sections = parsed
     if (!sections.length) throw new Error('leadership update: model returned no sections')
 
     const bad = offenders(sections)
     if (!bad.length) break
-    if (attempt === 1) {
-      // Second pass still over-long. Ship it rather than send nothing — a wordy
-      // update beats a silent Monday — but say so in the log.
+    if (attempt === LAST) {
+      // Still over-long. Ship it rather than send nothing — a wordy update beats
+      // a silent Monday — but say so in the log.
       console.warn(`[leadership] ${bad.length} line(s) still over the brief after a retry`)
       break
     }
@@ -238,28 +300,39 @@ export async function buildLeadershipUpdate(
   }
 
   // ── Part 2: the engineering read ──
-  // A separate call, and deliberately NOT retried or gated by offenders(): that
-  // validator exists to stop the leadership half reverting to engineering
-  // vocabulary, which is precisely what this half is supposed to use. Wrapped so
-  // a failure here costs the technical notes only — leadership still gets their
-  // summary, which is the half with a deadline.
+  // A separate call, and deliberately NOT gated by offenders(): that validator
+  // exists to stop the leadership half reverting to engineering vocabulary, which
+  // is precisely what this half is supposed to use. Wrapped so a failure here
+  // costs the technical notes only — leadership still gets their summary, which
+  // is the half with a deadline.
   let technical: UpdateSection[] = []
   try {
-    const res = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 3000,
-      system: TECHNICAL_SYSTEM(period),
-      messages: [{ role: 'user', content: source.slice(0, 60000) }],
-    })
-    const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
-    const json = /\{[\s\S]*\}/.exec(text)
-    if (json) {
-      const parsed = JSON.parse(json[0]) as { sections?: UpdateSection[] }
-      technical = (parsed.sections ?? []).filter(
-        s => s && typeof s.title === 'string' && Array.isArray(s.items) && s.items.length,
+    const msgs: { role: 'user' | 'assistant'; content: string }[] = [
+      { role: 'user', content: source.slice(0, 60000) },
+    ]
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: MAX_TOKENS_TECHNICAL,
+        system: TECHNICAL_SYSTEM(period),
+        messages: msgs,
+      })
+      const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
+      const parsed = parseSections(text)
+      if (parsed?.length) { technical = parsed; break }
+      const truncated = res.stop_reason === 'max_tokens'
+      console.warn(`[leadership] technical half attempt ${attempt + 1}: ${parsed ? 'no sections' : truncated ? 'CUT OFF at max_tokens' : 'bad escaping'}`)
+      msgs.push(
+        { role: 'assistant', content: text },
+        { role: 'user', content: repairPrompt(truncated) },
       )
     }
-    if (!technical.length) console.warn('[leadership] technical half came back empty')
+    // ERROR, not warn. This half vanishing is invisible from outside — the only
+    // tell in the delivered email is one clause of one sentence — and it shipped
+    // exactly that way on 2026-08-19 with nobody noticing.
+    if (!technical.length) {
+      console.error('[leadership] TECHNICAL HALF EMPTY — report ships with part 1 only')
+    }
   } catch (err) {
     console.error('[leadership] technical half failed — sending the leadership summary alone:', err)
   }

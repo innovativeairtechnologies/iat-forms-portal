@@ -10,6 +10,21 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labelled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — The weekly report can no longer fail silently
+
+The Monday leadership report is written by Claude from this changelog, and it asks for the
+result as structured data. If the reply came back even slightly malformed, the whole report
+was abandoned and **no email went out at all** — a failure that looks exactly like a quiet
+week. The engineering half had the opposite problem: it failed softly and vanished, which is
+how last night’s update went out with page one and no page two, and nothing anywhere said so.
+
+Both halves now retry, and a report that arrives with a missing half says so in the log rather
+than shipping quietly. The report was also being cut off partway through when a stretch had an
+unusually large number of entries; it now has room for roughly twice as much and recognises
+that particular failure instead of retrying blindly into it.
+
+Nothing changes about what the report says or who receives it.
+
 ## 2026-08-19 — The quote request now designs against your weather, not a placeholder
 
 Step 1 already looked up your elevation from the location you type. It now also fills
