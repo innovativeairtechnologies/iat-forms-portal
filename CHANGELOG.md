@@ -25,6 +25,10 @@ worth arguing with, and those stay.
 between editions, so when a quote and a later engineering check disagree, that is the line that
 explains it. It simply is not the customer’s problem.
 
+The **Look up site conditions** button has also moved under the project location, where it used
+to sit under the elevation box. It reads the location and fills several things, so sitting under
+elevation made it look like an elevation-only control — which is all it was when it was built.
+
 Also fixed: the attribution line on the customer PDF was printing stray spaces around its commas.
 
 ## 2026-08-20 — The daily management digest is finally actually sending

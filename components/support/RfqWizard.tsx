@@ -1654,21 +1654,18 @@ function SiteLocation({ data, set, setData }: {
     <div className="rounded-xl border border-hairline bg-surface-soft p-4">
       <p className="mb-3 text-[12.5px] font-medium text-ink-secondary">Where the equipment is going</p>
       <Grid>
-        <TextField
-          label="Project location"
-          hint="City and state, or a ZIP — it sets the weather we design against."
-          value={data.location}
-          onChange={v => { set('location', v); setState('idle') }}
-          placeholder="Covington, GA"
-        />
+        {/* The button and its result sit under PROJECT LOCATION, not under elevation
+            (moved 2026-08-20). Location is what it reads, and elevation is only one
+            of the things it fills — the design conditions below are the rest. Under
+            the elevation field it looked like an elevation-only control, which is
+            what it used to be. */}
         <div>
           <TextField
-            label="Elevation"
-            hint="Type it, or fill it from the location."
-            value={data.elevationFt}
-            onChange={v => { set('elevationFt', v); setState('idle') }}
-            type="number"
-            suffix="ft ASL"
+            label="Project location"
+            hint="City and state, or a ZIP — it sets the weather we design against."
+            value={data.location}
+            onChange={v => { set('location', v); setState('idle') }}
+            placeholder="Covington, GA"
           />
           <button
             type="button"
@@ -1682,7 +1679,8 @@ function SiteLocation({ data, set, setData }: {
           </button>
           {state === 'done' && (
             <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
-              {matched ? `${matched} · ` : ''}elevation from {source || 'survey data'}. Edit it if you know better.
+              {matched ? `${matched} · ` : ''}elevation from {source || 'survey data'}. Edit the
+              elevation if you know better.
             </p>
           )}
           {state === 'failed' && (
@@ -1691,6 +1689,14 @@ function SiteLocation({ data, set, setData }: {
             </p>
           )}
         </div>
+        <TextField
+          label="Elevation"
+          hint="Type it, or fill it from the location."
+          value={data.elevationFt}
+          onChange={v => { set('elevationFt', v); setState('idle') }}
+          type="number"
+          suffix="ft ASL"
+        />
       </Grid>
 
       {/* The design conditions are stated outright rather than filled in silently.
