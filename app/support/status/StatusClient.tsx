@@ -86,7 +86,7 @@ const TICKET_STATUS_META: Record<StatusKey, StatusMeta> = {
 const RFQ_STATUS_META: Record<StatusKey, StatusMeta> = {
   open:        { label: 'Received',  blurb: "We've received your request and it's with our sales engineering team.", step: 0 },
   in_progress: { label: 'In Review', blurb: 'Our team is sizing equipment for your application.', step: 1 },
-  resolved:    { label: 'Quoted',    blurb: 'A quote has been prepared — check your email, or contact us if it has not arrived.', step: 2 },
+  resolved:    { label: 'Quoted',    blurb: 'A quote has been prepared. Check your email, or contact us if it has not arrived.', step: 2 },
   closed:      { label: 'Closed',    blurb: 'This request is closed.', step: 2 },
 }
 
@@ -274,8 +274,8 @@ export default function StatusClient({ customerContext = null }: { customerConte
           <div className="text-center mb-7">
             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight mb-1.5">Check your request status</h1>
             <p className="text-[14px] text-gray-400 leading-relaxed">
-              Enter the reference number from your confirmation email — a support ticket
-              (IAT-…) or a quote request (RFQ-…) — along with the email you submitted
+              Enter the reference number from your confirmation email, either a support ticket
+              (IAT-…) or a quote request (RFQ-…), along with the email you submitted
               with, to see the latest update.
             </p>
           </div>
@@ -287,7 +287,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                 <p className="text-[12px] font-bold text-gray-700 dark:text-gray-200">Your requests</p>
                 <span className="ml-auto max-w-[45%] truncate text-[11px] text-gray-400">{customerContext.email}</span>
               </div>
-              <p className="text-[11.5px] text-gray-400 mb-3">Tap one to see its latest status — or look up any reference below.</p>
+              <p className="text-[11.5px] text-gray-400 mb-3">Tap one to see its latest status, or look up any reference below.</p>
               <div className="flex flex-col gap-1.5">
                 {customerContext.requests.map((r) => (
                   <button
@@ -445,7 +445,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
                     <div className="bg-[#089447]/5 border border-[#089447]/15 rounded-xl px-4 py-3 flex items-start gap-2.5">
                       <CheckCircle size={15} className="text-[#089447] mt-0.5 flex-shrink-0" />
                       <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                        Thanks — your message is on your {isRfq ? 'request' : 'ticket'} and our team has been notified.
+                        Thanks. Your message is on your {isRfq ? 'request' : 'ticket'} and our team has been notified.
                       </p>
                     </div>
                   ) : (

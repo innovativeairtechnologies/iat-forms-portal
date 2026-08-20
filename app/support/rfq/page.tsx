@@ -10,7 +10,7 @@ import RfqWizard from '@/components/support/RfqWizard'
 // /support is not in the middleware matcher, so nothing here is gated.
 
 export const metadata: Metadata = {
-  title: 'Request for Quote — IAT',
+  title: 'Request for Quote | IAT',
   description:
     'A guided moisture survey for room and process dehumidification. Three minutes, typical values filled in as you go, and a branded PDF of the whole survey at the end.',
 }

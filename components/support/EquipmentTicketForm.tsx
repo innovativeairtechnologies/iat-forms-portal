@@ -211,11 +211,11 @@ function airflowRatio(processStr: string, reactStr: string): { label: string; ba
   const ratio = p / r
   const rounded = Math.round(ratio * 10) / 10
   let band: string
-  if (ratio < 2.5)       band = 'lower than the usual ~3:1 — worth double-checking the readings'
+  if (ratio < 2.5)       band = 'lower than the usual ~3:1, worth double-checking the readings'
   else if (ratio <= 3.5) band = 'right in the typical ~3:1 range for most applications'
   else if (ratio <= 5.5) band = 'typical for lower-grain applications (4–5:1)'
   else if (ratio <= 7.5) band = 'typical only for very low-grain applications (6–7:1)'
-  else                   band = 'higher than usual (>7:1) — worth double-checking the readings'
+  else                   band = 'higher than usual (>7:1), worth double-checking the readings'
   return { label: `${rounded}:1`, band }
 }
 
@@ -534,7 +534,7 @@ function CustomerEquipmentCard({
       </div>
       <p className="text-[11.5px] text-gray-400 mb-3">
         {ctx.units.length
-          ? 'Pick a unit to fill in its details — you can still edit anything below.'
+          ? 'Pick a unit to fill in its details. You can still edit anything below.'
           : 'Your contact details are filled in below.'}
       </p>
       {ctx.units.length > 0 && (
@@ -646,7 +646,7 @@ export default function EquipmentTicketForm({
       setRecommendations(Array.isArray(json.recommendations) ? json.recommendations : [])
       setAnalyzed(true)
     } catch {
-      setAnalyzeError('We could not generate suggestions right now — you can still submit and our team will follow up.')
+      setAnalyzeError('We could not generate suggestions right now. You can still submit and our team will follow up.')
     } finally {
       setAnalyzing(false)
     }
@@ -708,7 +708,7 @@ export default function EquipmentTicketForm({
       }
       if (failed.length) {
         setError(
-          `We couldn't upload ${failed.length} of ${photos.length} photo${photos.length === 1 ? '' : 's'} (${failed.join(', ')}). Please retry, or remove ${failed.length === 1 ? 'it' : 'them'} to continue — the rest of your details are saved.`
+          `We couldn't upload ${failed.length} of ${photos.length} photo${photos.length === 1 ? '' : 's'} (${failed.join(', ')}). Please retry, or remove ${failed.length === 1 ? 'it' : 'them'} to continue. The rest of your details are saved.`
         )
         setStage('form')
         return
@@ -1166,7 +1166,7 @@ function StepEquipment({ form, set }: { form: FormData; set: SetFn }) {
 
       if (got.length) {
         setScanState('done')
-        setScanMsg(`Filled ${got.join(', ')} from your photo — please double-check the values below.`)
+        setScanMsg(`Filled ${got.join(', ')} from your photo. Please double-check the values below.`)
       } else {
         setScanState('error')
         setScanMsg("Couldn't read the label clearly. Please enter the details manually.")
@@ -1233,7 +1233,7 @@ function StepProblem({ form, set }: { form: FormData; set: SetFn }) {
 
   return (
     <div className="space-y-4">
-      <StepHeader title="Describe the Problem" sub="Be specific — what's happening, when it started, and any error codes or unusual behavior." />
+      <StepHeader title="Describe the Problem" sub="Be specific: what's happening, when it started, and any error codes or unusual behavior." />
       <TextareaField
         label="What's happening?"
         value={form.problem_description}
@@ -1242,13 +1242,13 @@ function StepProblem({ form, set }: { form: FormData; set: SetFn }) {
         required
         rows={6}
         autoFocus
-        hint="Please give us at least a couple of sentences — the more detail, the faster we can help."
+        hint="Please give us at least a couple of sentences. The more detail, the faster we can help."
       />
       <div className="flex items-center justify-between gap-3 -mt-2">
         <p className={`text-[12px] leading-relaxed ${short ? 'text-amber-600 dark:text-amber-400' : 'text-[#089447]'}`}>
           {short
             ? `${MIN_PROBLEM_CHARS - len} more character${MIN_PROBLEM_CHARS - len === 1 ? '' : 's'} needed`
-            : 'Thanks — that gives our team something to work with.'}
+            : 'Thanks. That gives our team something to work with.'}
         </p>
         <p className="text-[12px] tabular-nums text-gray-400 flex-shrink-0">{len} / {MIN_PROBLEM_CHARS}</p>
       </div>
@@ -1260,7 +1260,7 @@ function StepProblem({ form, set }: { form: FormData; set: SetFn }) {
 function StepOnset({ form, set }: { form: FormData; set: SetFn }) {
   return (
     <div className="space-y-5">
-      <StepHeader title="Sudden or Gradual?" sub="This is the single most useful clue — it points us at very different causes." />
+      <StepHeader title="Sudden or Gradual?" sub="This is the single most useful clue. It points us at very different causes." />
       <ChoiceField
         label="Did performance drop suddenly, or fade gradually?"
         value={form.onset}
@@ -1271,10 +1271,10 @@ function StepOnset({ form, set }: { form: FormData; set: SetFn }) {
           { value: 'unsure', label: 'Not sure', tone: 'unsure' },
         ]}
       />
-      <InputField label="Anything change right before it started?" value={form.what_changed} onChange={v => set('what_changed', v)} placeholder="e.g. New process line, power outage, weather, filter change…" hint="Optional — even small changes can matter." />
+      <InputField label="Anything change right before it started?" value={form.what_changed} onChange={v => set('what_changed', v)} placeholder="e.g. New process line, power outage, weather, filter change…" hint="Optional, but even small changes can matter." />
       <Coaching label="What sudden vs. gradual usually points to">
-        <p><strong className="text-gray-600 dark:text-gray-300">Sudden</strong> → heater failure · fan failure · power outage · control or sensor issue · VFD fault.</p>
-        <p><strong className="text-gray-600 dark:text-gray-300">Gradual</strong> → dirty filters · desiccant wheel aging · airflow drift · seal wear · coil fouling · a changed room/process load.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Sudden</strong> → heater failure, fan failure, power outage, control or sensor issue, VFD fault.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Gradual</strong> → dirty filters, desiccant wheel aging, airflow drift, seal wear, coil fouling · a changed room/process load.</p>
       </Coaching>
     </div>
   )
@@ -1322,7 +1322,7 @@ function StepCooling({ form, set }: { form: FormData; set: SetFn }) {
 function StepAirflow({ form, set }: { form: FormData; set: SetFn }) {
   return (
     <div className="space-y-5">
-      <StepHeader title="Airflow & Reactivation" sub="Record current readings where you can — they help a lot." />
+      <StepHeader title="Airflow & Reactivation" sub="Record current readings where you can. They help a lot." />
       <TriBoolField
         label="Are the process and react airflows balanced?"
         value={form.airflow_balanced}
@@ -1337,10 +1337,10 @@ function StepAirflow({ form, set }: { form: FormData; set: SetFn }) {
       <InputField label="Reactivation temperature (°F)" value={form.react_temp_f} onChange={v => set('react_temp_f', v)} placeholder="e.g. 285" type="number" hint="Usually shown on the controller display." />
       {(() => {
         const r = airflowRatio(form.process_airflow_cfm, form.react_airflow_cfm)
-        return r ? <CoachNote tone="sky">Process : React airflow ≈ <strong>{r.label}</strong> — {r.band}.</CoachNote> : null
+        return r ? <CoachNote tone="sky">Process : React airflow ≈ <strong>{r.label}</strong>, {r.band}.</CoachNote> : null
       })()}
       {Number(form.react_temp_f) > 320 && (
-        <CoachNote>A reactivation temp above ~320°F often points to an airflow restriction — worth checking filters and process airflow.</CoachNote>
+        <CoachNote>A reactivation temp above ~320°F often points to an airflow restriction, so check filters and process airflow.</CoachNote>
       )}
       <BoolField label="Is the react heat zone working?" value={form.react_heat_working} onChange={v => set('react_heat_working', v)} />
       <Coaching label="What good airflow & reactivation look like">
@@ -1404,21 +1404,21 @@ function StepSeals({ form, set, photos }: { form: FormData; set: SetFn; photos: 
         value={form.seal_light_leakage}
         onChange={v => set('seal_light_leakage', v as Tri)}
         options={[
-          { value: 'yes', label: 'Yes — light visible', tone: 'bad' },
+          { value: 'yes', label: 'Yes, light visible', tone: 'bad' },
           { value: 'no', label: 'No leakage', tone: 'good' },
           { value: 'unsure', label: 'Not sure', tone: 'unsure' },
         ]}
       />
       {form.wheel_rotating === 'no' && (
-        <CoachNote>If the wheel isn&apos;t turning, the unit can&apos;t dry the air — the drive motor, belt, and chain/coupling are the first things to check.</CoachNote>
+        <CoachNote>If the wheel isn&apos;t turning, the unit can&apos;t dry the air. The drive motor, belt, and chain/coupling are the first things to check.</CoachNote>
       )}
       {form.seal_light_leakage === 'yes' && (
-        <CoachNote>Visible light means process air is bypassing the wheel instead of being dried — the seals likely need adjustment or replacement.</CoachNote>
+        <CoachNote>Visible light means process air is bypassing the wheel instead of being dried. The seals likely need adjustment or replacement.</CoachNote>
       )}
-      <Coaching label="Wheel & seal health — what to look for">
+      <Coaching label="Wheel & seal health: what to look for">
         <p><strong className="text-gray-600 dark:text-gray-300">Rotation:</strong> the wheel should turn steadily without slipping, ideally at the speed on your submittal/design data.</p>
-        <p><strong className="text-gray-600 dark:text-gray-300">Desiccant age:</strong> wheels are the opposite of fine wine — the media slowly degrades with age, which gradually cuts drying capacity.</p>
-        <p><strong className="text-gray-600 dark:text-gray-300">Seals (business-card test):</strong> a card should <em>barely</em> slide through — too loose means leakage. Standard units have 6 seals; purge units have 8.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Desiccant age:</strong> wheels are the opposite of fine wine. The media slowly degrades with age, which gradually cuts drying capacity.</p>
+        <p><strong className="text-gray-600 dark:text-gray-300">Seals (business-card test):</strong> a card should <em>barely</em> slide through. Too loose means leakage. Standard units have 6 seals; purge units have 8.</p>
       </Coaching>
     </div>
   )
@@ -1453,13 +1453,13 @@ function AirflowHelp() {
         <p className="text-[13px] font-semibold text-gray-800 dark:text-gray-100">How to check airflow balance</p>
       </div>
       <ol className="list-decimal space-y-1.5 pl-4 text-[12.5px] leading-relaxed text-gray-600 dark:text-gray-300">
-        <li>Find the process and reactivation (react) airflow readings — many units display these on the control panel, or you can measure at the duct with an anemometer.</li>
+        <li>Find the process and reactivation (react) airflow readings. Many units display these on the control panel, or you can measure at the duct with an anemometer.</li>
         <li>Look up the design CFM for each on your unit&apos;s spec label or original submittal.</li>
         <li>Compare measured vs. design: airflows are balanced when each is within about 10% of its design CFM and the process/react split matches spec.</li>
         <li>If a reading looks off, check for closed or blocked dampers, dirty filters, and a loose or slipping blower belt.</li>
       </ol>
       <p className="mt-2.5 text-[11px] text-gray-400">
-        General guidance — Compact, rotor, and IDP units can differ. Still unsure? Leave this as “Not Sure” and our support team will walk you through it.
+        General guidance. Compact, rotor, and IDP units can differ. Still unsure? Leave this as “Not Sure” and our support team will walk you through it.
       </p>
     </motion.div>
   )
@@ -1547,7 +1547,7 @@ function StepAiAnalysis({
         <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
           <Lightbulb size={18} className="text-amber-500" /> AI Quick Analysis
         </h2>
-        <p className="text-[13px] text-gray-400">Based on your answers — a few safe things you can check now while our team reviews your case.</p>
+        <p className="text-[13px] text-gray-400">Based on your answers, a few safe things you can check now while our team reviews your case.</p>
       </div>
 
       {analyzing && (
@@ -1572,13 +1572,13 @@ function StepAiAnalysis({
               <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed">{rec}</p>
             </div>
           ))}
-          <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-1">AI-generated suggestions — if unsure, wait for your service technician. Submit below and our team will follow up.</p>
+          <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-1">AI-generated suggestions. If unsure, wait for your service technician. Submit below and our team will follow up.</p>
         </div>
       )}
 
       {!analyzing && !error && analyzed && recommendations.length === 0 && (
         <div className="text-[13px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/40 border border-gray-100 dark:border-zinc-800 rounded-xl px-4 py-4">
-          No specific automated suggestions for this combination — our team will review your details and follow up. Go ahead and submit.
+          No specific automated suggestions for this combination. Our team will review your details and follow up. Go ahead and submit.
         </div>
       )}
     </div>

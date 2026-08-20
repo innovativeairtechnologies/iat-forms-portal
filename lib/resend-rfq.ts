@@ -44,10 +44,10 @@ export async function sendRfqNotificationToSalesDesk(
   const headline = isRoom
     ? summary.complete
       ? `${summary.total_lb_per_hr} lb/hr · ${summary.dry_air_cfm} cfm of dry air`
-      : 'Room survey — load not yet calculable'
+      : 'Room survey, load not yet calculable'
     : summary.complete
       ? `${summary.cfm} cfm to ${summary.leaving_grains} gr/lb (${summary.leaving_dew_point_f}°F dp)`
-      : 'Process survey — spec incomplete'
+      : 'Process survey, spec incomplete'
 
   const detail = isRoom
     ? [
@@ -74,7 +74,7 @@ export async function sendRfqNotificationToSalesDesk(
     </div>
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:18px;">
       ${row('Company', data.company || '—')}
-      ${row('Contact', `${data.contactName || '—'} · ${data.email || '—'}${data.phone ? ` · ${data.phone}` : ''}`)}
+      ${row('Contact', `${data.contactName || '—'}, ${data.email || '—'}${data.phone ? `, ${data.phone}` : ''}`)}
       ${row('Project', data.projectName || '—')}
       ${row('Location', data.location || '—')}
       ${row('Quote needed by', data.dateRequired || 'Not stated')}
@@ -83,7 +83,7 @@ export async function sendRfqNotificationToSalesDesk(
     ${data.purpose ? `<p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;"><strong style="color:#333;">In their words:</strong> ${esc(data.purpose)}</p>` : ''}
     <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Open the full survey</a>`
 
-  const subject = `New RFQ ${reference} — ${data.company || data.contactName || 'Unknown'}${data.projectName ? ` (${data.projectName})` : ''}`
+  const subject = `New RFQ ${reference}: ${data.company || data.contactName || 'Unknown'}${data.projectName ? ` (${data.projectName})` : ''}`
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f8f9fa;font-family:Inter,Arial,sans-serif;">
@@ -148,13 +148,13 @@ export async function sendRfqConfirmationToCustomer(
     </table>
     <div style="background:#f0faf4;border:1px solid rgba(8,148,71,0.25);border-radius:10px;padding:18px 20px;margin:24px 0 0;">
       <p style="margin:0 0 12px;color:#333;font-size:14px;line-height:1.6;">
-        Anything changed, or something to add? Use the link below — it keeps everything on your
+        Anything changed, or something to add? Use the link below. It keeps everything on your
         request where our team will see it.
       </p>
       <a href="${esc(APP_URL + '/support/status?ticket=' + encodeURIComponent(reference))}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View your request &amp; send a message</a>
     </div>
     <p style="margin:18px 0 0;color:#999;font-size:12px;line-height:1.5;">
-      Please do not reply to this email — it is sent from an unmonitored address and replies are not read.
+      Please do not reply to this email. It is sent from an unmonitored address and replies are not read.
     </p>`
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
@@ -179,7 +179,7 @@ export async function sendRfqConfirmationToCustomer(
     // note in lib/resend-customer-tickets.ts.
     from: EMAIL_FROM.PORTAL,
     to: data.email,
-    subject: `We've received your request — ${reference}`,
+    subject: `We've received your request: ${reference}`,
     html,
   })
   if (result.error) console.error(`[resend] rfq confirmation failed to ${data.email}:`, result.error)

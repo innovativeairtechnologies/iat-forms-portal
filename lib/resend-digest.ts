@@ -82,10 +82,10 @@ export async function sendAdminDigestEmail(opts: DigestEmailOpts) {
     <p style="margin:0 0 8px;color:#333;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Newly Assigned to You</p>
     ${ticketList(assignedTickets, 'No new tickets assigned to you in the last 24 hours.')}
 
-    <p style="margin:0 0 8px;color:#333;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Needs Attention — Aging (3+ days)</p>
+    <p style="margin:0 0 8px;color:#333;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Needs Attention: Aging (3+ days)</p>
     ${ticketList(agingTickets, 'No aging tickets on your queue.')}
 
-    <p style="margin:0 0 8px;color:#c0392b;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Needs Attention — Overdue (7+ days)</p>
+    <p style="margin:0 0 8px;color:#c0392b;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Needs Attention: Overdue (7+ days)</p>
     ${ticketList(overdueTickets, 'No overdue tickets on your queue.')}
 
     <a href="${esc(dashboardUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;margin-top:4px;">Open Admin Dashboard</a>`
@@ -93,7 +93,7 @@ export async function sendAdminDigestEmail(opts: DigestEmailOpts) {
   const result = await resend.emails.send({
     from: FROM,
     to,
-    subject: `Your daily digest — ${assignedTickets.length} new, ${overdueTickets.length} overdue`,
+    subject: `Your daily digest: ${assignedTickets.length} new, ${overdueTickets.length} overdue`,
     html: shell('Daily Admin Digest', body),
   })
   if (result.error) console.error(`[resend] admin digest failed to ${to}:`, result.error)

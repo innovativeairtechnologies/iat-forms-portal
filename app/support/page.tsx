@@ -48,7 +48,7 @@ export default function SupportPortal() {
               Having trouble with your&nbsp;equipment?
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-ink-secondary">
-              Open a support request and we&apos;ll walk you through it — pre-screening your unit
+              Open a support request and we&apos;ll walk you through it, pre-screening your unit
               so our service team arrives prepared.
             </p>
           </div>
@@ -66,7 +66,7 @@ export default function SupportPortal() {
                 Start a support request
               </span>
               <p className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">
-                Report an equipment issue and walk the guided checks — about 3 minutes.
+                Report an equipment issue and walk the guided checks, about 3 minutes.
               </p>
             </div>
             <ArrowRight
@@ -85,10 +85,10 @@ export default function SupportPortal() {
             </span>
             <div className="min-w-0 flex-1">
               <span className="text-[18px] font-semibold tracking-tight text-ink">
-                RFQ — Request for Quote
+                RFQ: Request for Quote
               </span>
               <p className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">
-                A guided moisture survey for a room or a process — typical values filled in as you go,
+                A guided moisture survey for a room or a process, with typical values filled in as you go,
                 and a branded PDF of the whole thing at the end. About 3 minutes.
               </p>
             </div>

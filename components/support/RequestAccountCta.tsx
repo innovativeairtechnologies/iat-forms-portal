@@ -52,7 +52,7 @@ export default function RequestAccountCta({
       <div className={`flex items-center gap-2.5 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/40 px-4 py-3 ${className}`}>
         <LogIn size={15} className="text-gray-400 flex-shrink-0" />
         <p className="text-[12.5px] text-gray-500 dark:text-gray-400">
-          This ticket is linked to a portal account —{' '}
+          This ticket is linked to a portal account, so{' '}
           <Link href="/login" className="font-semibold text-[#089447] hover:text-[#077a3c]">log in</Link> to see it there.
         </p>
       </div>
@@ -64,7 +64,7 @@ export default function RequestAccountCta({
       <div className={`flex items-center gap-2.5 rounded-xl border border-[#089447]/20 bg-[#089447]/5 px-4 py-3 ${className}`}>
         <Clock size={15} className="text-[#089447] flex-shrink-0" />
         <p className="text-[12.5px] text-gray-600 dark:text-gray-300">
-          Portal access requested — we&apos;ll review it and email you once it&apos;s approved.
+          Portal access requested. We&apos;ll review it and email you once it&apos;s approved.
         </p>
       </div>
     )
@@ -73,7 +73,7 @@ export default function RequestAccountCta({
   return (
     <div className={`flex items-center justify-between gap-3 rounded-xl border border-[#089447]/20 bg-[#089447]/5 px-4 py-3 ${className}`}>
       <div className="min-w-0">
-        <p className="text-[12.5px] font-semibold text-gray-800 dark:text-gray-100">See this — and all your equipment — in one place</p>
+        <p className="text-[12.5px] font-semibold text-gray-800 dark:text-gray-100">See this and all your equipment in one place</p>
         {error && <p className="text-[11.5px] text-red-500 mt-0.5">{error}</p>}
       </div>
       <button

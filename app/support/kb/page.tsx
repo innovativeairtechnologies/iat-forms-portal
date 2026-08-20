@@ -49,7 +49,7 @@ export default async function KbIndexPage() {
           <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight">Knowledge Base</h1>
         </div>
         <p className="text-[14px] text-gray-400 mb-8 leading-relaxed">
-          Troubleshooting guides for IAT equipment. Try these before submitting a ticket — and they&apos;ll help
+          Troubleshooting guides for IAT equipment. Try these before submitting a ticket, and they&apos;ll help
           our team pick up right where you left off.
         </p>
 

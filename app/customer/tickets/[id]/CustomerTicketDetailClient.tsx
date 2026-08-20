@@ -111,12 +111,12 @@ export default function CustomerTicketDetailClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setResolveError(data.error || 'Something went wrong — please try again.')
+        setResolveError(data.error || 'Something went wrong. Please try again.')
         return
       }
       setMarkedResolved(!!data.customer_marked_resolved)
     } catch {
-      setResolveError('Something went wrong — please try again.')
+      setResolveError('Something went wrong. Please try again.')
     } finally {
       setResolving(false)
     }
@@ -244,7 +244,7 @@ export default function CustomerTicketDetailClient({
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <div className="flex-1">
-                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Thanks — you marked this resolved.</p>
+                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Thanks. You marked this resolved.</p>
                     <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                       Our team will close it out. Still having trouble?{' '}
                       <button
@@ -273,7 +273,7 @@ export default function CustomerTicketDetailClient({
                   />
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                     <p className="text-[11.5px] text-zinc-400 dark:text-zinc-500">
-                      This does not close the ticket on its own — our team confirms it first.
+                      This does not close the ticket on its own. Our team confirms it first.
                     </p>
                     <button
                       onClick={() => markResolved(true)}

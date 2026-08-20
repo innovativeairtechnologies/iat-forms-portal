@@ -19,7 +19,7 @@ import {
   PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES, TEMP_UNITS,
   TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
-  estimateProcess, fmt, fmtDewPoint, fmtGrains, grains, modeIsTemperature, normalizeMode,
+  estimateProcess, fmt, fmtDewPoint, fmtGrains, fToC, grains, modeIsTemperature, normalizeMode,
   presetFor, setCondition, tempFromDisplay, tempToDisplay,
   type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
   type ProcessPreset, type RfqData, type RoomPreset, type TempUnit, type Tightness, type Track,
@@ -39,7 +39,7 @@ type Tone = 'emerald' | 'sky' | 'amber' | 'rose' | 'violet'
 // so a step can be recognized and jumped to directly instead of clicking Back
 // repeatedly. `title` remains the full heading shown on the step itself.
 const STEPS: Record<StepKey, { short: string; title: string; kicker: string; icon: LucideIcon; tone: Tone }> = {
-  application: { short: 'Application', title: 'What are we protecting?', kicker: 'Pick the closest match — it fills in the rest', icon: Sparkles, tone: 'emerald' },
+  application: { short: 'Application', title: 'What are we protecting?', kicker: 'Pick the closest match and it fills in the rest', icon: Sparkles, tone: 'emerald' },
   target:      { short: 'Target', title: 'Your target condition',   kicker: 'The condition you need held inside',           icon: Thermometer, tone: 'sky' },
   space:       { short: 'Space', title: 'The space',                kicker: 'Rough dimensions are fine',                    icon: Ruler, tone: 'violet' },
   shell:       { short: 'Shell', title: 'The shell around it',      kicker: 'What the room is built from',                  icon: Layers, tone: 'amber' },
@@ -453,7 +453,13 @@ function ConditionReadout({ tempF, rhPct, elevationFt, unit = 'F', tone = 'sky' 
   // Both temperatures follow the survey's unit — a °C dry bulb above a °F dew point
   // here is the same confusion the input fields were fixed for. Grains and %rh are
   // unitless in this sense and never convert.
-  const asUnit = (f: number) => `${tempToDisplay(String(f), unit)}${unit === 'C' ? '°C' : '°F'}`
+  // WHOLE DEGREES. dewPointF() is a bisection result like 49.0556..., and this
+  // readout is where it is shown. It used to run through fmtDewPoint(), which
+  // rounded; the unit-aware rewrite on 2026-08-20 swapped in tempToDisplay(),
+  // which returns the raw value untouched in Fahrenheit, and the full float
+  // reached the page. fmt() rounds and also renders a non-finite value as a dash.
+  const asUnit = (f: number) =>
+    !Number.isFinite(f) ? '—' : unit === 'C' ? `${fmt(fToC(f))}°C` : `${fmt(f)}°F`
   return (
     <div className={`grid grid-cols-2 gap-3 rounded-xl p-4 sm:grid-cols-4 ${TONE[tone].softBg}`}>
       <Stat label="Temperature" value={asUnit(tempF)} />
@@ -477,7 +483,7 @@ function Typical({ label, onUse, used }: { label: string; onUse: () => void; use
       }`}
     >
       {used ? <Check size={11} strokeWidth={2.5} /> : <Sparkles size={11} />}
-      {used ? `Using typical: ${label}` : `Typical: ${label} — use it`}
+      {used ? `Using typical: ${label}` : `Use typical: ${label}`}
     </button>
   )
 }
@@ -577,7 +583,7 @@ export default function RfqWizard() {
       setTimeout(() => URL.revokeObjectURL(url), 4000)
     } catch (e) {
       console.error('[rfq] pdf generation failed:', e)
-      setError('We could not build the PDF in this browser. Your details are safe — try again, or send the request and we will generate it on our side.')
+      setError('We could not build the PDF in this browser. Your details are safe. Try again, or send the request and we will generate it on our side.')
     } finally {
       setDownloading(false)
     }
@@ -630,12 +636,12 @@ export default function RfqWizard() {
                 Request received
               </p>
               <h1 className="mt-1 text-[26px] font-semibold tracking-tight text-ink">
-                Thanks — we have everything we need to start.
+                Thanks. We have everything we need to start.
               </h1>
               <p className="mt-3 text-[14px] leading-relaxed text-ink-secondary">
                 Your request is with our application engineering team. Reference{' '}
                 <strong className="font-semibold tabular-nums text-ink">{reference}</strong>. We&apos;ll come back
-                to <strong className="font-semibold text-ink">{data.email}</strong> — and if anything in your
+                to <strong className="font-semibold text-ink">{data.email}</strong>. If anything in your
                 survey needs a second look, that&apos;s the conversation we&apos;ll start with.
               </p>
             </div>
@@ -810,7 +816,7 @@ function Fork({ onPick }: { onPick: (t: Track) => void }) {
       track: 'room',
       icon: PanelsTopLeft,
       title: 'A room or building',
-      lede: 'You need a space held at a condition — a warehouse, cold store, dry room, production hall.',
+      lede: 'You need a space held at a condition: a warehouse, cold store, dry room or production hall.',
       bullets: ['You know the temperature and humidity you want inside', 'People, product or equipment live in that space', 'We calculate the moisture load from the room itself'],
       tone: 'emerald',
     },
@@ -838,7 +844,7 @@ function Fork({ onPick }: { onPick: (t: Track) => void }) {
             Let&apos;s find the right dehumidifier for your&nbsp;job.
           </h1>
           <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-secondary">
-            A few guided questions — about three minutes. We fill in typical values as you go, show you
+            A few guided questions, about three minutes. We fill in typical values as you go, show you
             the numbers as they build, and you leave with a PDF of the whole survey.
           </p>
 
@@ -879,7 +885,7 @@ function Fork({ onPick }: { onPick: (t: Track) => void }) {
           </div>
 
           <p className="mt-6 text-[12.5px] leading-relaxed text-ink-muted">
-            Not sure? Pick <strong className="font-medium text-ink-secondary">a room or building</strong> — it&apos;s
+            Not sure? Pick <strong className="font-medium text-ink-secondary">a room or building</strong>. It&apos;s
             the more common of the two, and you can switch on the next screen.
           </p>
         </motion.div>
@@ -989,7 +995,7 @@ function Readout({
       )}
 
       <p className="mt-4 border-t border-hairline-soft pt-3 text-[10.5px] leading-relaxed text-ink-faint">
-        Indicative figures for the conditions entered — for discussion, not for equipment selection.
+        Indicative figures for the conditions entered. For discussion, not for equipment selection.
       </p>
     </div>
   )
@@ -1095,14 +1101,14 @@ function StepApplication({
       {chosen && (
         <Callout tone="emerald">
           <strong className="font-semibold">What we&apos;re protecting:</strong> {chosen.driver}. We&apos;ve
-          pre-filled typical values for this application — change anything that doesn&apos;t match your site.
+          pre-filled typical values for this application. Change anything that doesn&apos;t match your site.
         </Callout>
       )}
 
       {chosen?.key.startsWith('other') && (
         <TextField
           label="Tell us what it is"
-          hint="A sentence is plenty — what the space or process does, and what the moisture is hurting."
+          hint="A sentence is plenty: what the space or process does, and what the moisture is hurting."
           value={data.applicationOther}
           onChange={v => set('applicationOther', v)}
           placeholder="e.g. Ammunition primer assembly room"
@@ -1138,7 +1144,7 @@ function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<
       {preset?.note && <Callout tone="sky">{preset.note}</Callout>}
 
       <Callout tone="amber">
-        Answer in whichever unit your spec is written in — the four above are the same air, and we convert
+        Answer in whichever unit your spec is written in. The four above are the same air, and we convert
         as you type. Grains and dew point are what actually size equipment:{' '}
         <strong className="font-semibold">30% rh</strong> is a very different amount of water at 50°F than
         at 90°F, while a dew point does not move when the temperature does.
@@ -1268,7 +1274,7 @@ function StepShell({
           ))}
         </div>
         <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
-          Pick the closest match below — these are the three we see most often.
+          Pick the closest match below. These are the three we see most often.
           <span className="hidden sm:inline"> Hover over one to enlarge it.</span>
         </p>
       </div>
@@ -1311,7 +1317,7 @@ function StepShell({
         <div id="rfq-shell-advanced" className="space-y-5">
           <Segmented<VaporBarrier>
             label="Is there a vapor barrier?"
-            hint="Class I is polyethylene · Class II is kraft-faced batt · Class III is latex-painted gypsum."
+            hint="Class I is polyethylene, Class II is kraft-faced batt, Class III is latex-painted gypsum."
             tone="amber"
             value={data.vaporBarrier}
             onChange={v => set('vaporBarrier', v)}
@@ -1339,7 +1345,7 @@ function StepShell({
       <div className="space-y-4 rounded-xl border border-hairline bg-surface-soft p-4">
         <ConditionField
           label="The space around the room"
-          hint="Moisture pushes in from whatever is on the other side of the wall — usually the rest of the plant, not the weather."
+          hint="Moisture pushes in from whatever is on the other side of the wall, usually the rest of the plant rather than the weather."
           tempLabel="Surrounding temperature"
           data={data}
           conditionKey="surround"
@@ -1383,7 +1389,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
     <div className="space-y-5">
       <Callout tone="rose">
         In most real buildings this one step outweighs walls, people and product combined. Every time a door
-        opens, a slug of wet air walks in. Rough numbers are fine — a guess beats a blank.
+        opens, a slug of wet air walks in. Rough numbers are fine. A guess beats a blank.
       </Callout>
 
       <div className="space-y-3">
@@ -1441,7 +1447,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
         </div>
         {!data.doors.length && (
           <p className="mt-3 text-[12px] text-ink-muted">
-            No openings? That&apos;s unusual but perfectly valid for a sealed vessel or vault — carry on.
+            No openings? That&apos;s unusual but perfectly valid for a sealed vessel or vault. Carry on.
           </p>
         )}
       </div>
@@ -1498,7 +1504,7 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
         </div>
         <SelectField
           label="What are they doing?"
-          hint={people > 0 ? `${fmt(PEOPLE_LOADS[data.activity])} gr/hr each — ${fmt(people * PEOPLE_LOADS[data.activity])} gr/hr in total.` : undefined}
+          hint={people > 0 ? `${fmt(PEOPLE_LOADS[data.activity])} gr/hr each, ${fmt(people * PEOPLE_LOADS[data.activity])} gr/hr in total.` : undefined}
           value={data.activity}
           onChange={v => set('activity', v as ActivityLevel)}
           options={Object.keys(PEOPLE_LOADS)}
@@ -1648,7 +1654,7 @@ function StepAirstream({ data, set }: { data: RfqData; set: SetFn }) {
       )}
 
       <Callout tone="violet">
-        Don&apos;t know the airflow yet? Put in your best guess and say so in the notes — we&apos;ll work it
+        Don&apos;t know the airflow yet? Put in your best guess and say so in the notes. We&apos;ll work it
         back from the drying job once we talk.
       </Callout>
     </div>
@@ -1745,7 +1751,7 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
       {data.environmentClean === 'Dirty' && (
         <TextField
           label="What's in the air?"
-          hint="Corrosive chemicals, fumes, dust, salt — it changes the cabinet and the wheel."
+          hint="Corrosive chemicals, fumes, dust or salt all change the cabinet and the wheel."
           value={data.contaminants}
           onChange={v => set('contaminants', v)}
           placeholder="Chlorine wash-down, flour dust…"
@@ -1878,7 +1884,7 @@ function SiteLocation({ data, set, setData }: {
         <div>
           <TextField
             label="Project location"
-            hint="City and state, or a ZIP — it sets the weather we design against."
+            hint="City and state, or a ZIP. It sets the weather we design against."
             value={data.location}
             onChange={v => { set('location', v); setState('idle') }}
             placeholder="Covington, GA"
@@ -1901,7 +1907,7 @@ function SiteLocation({ data, set, setData }: {
           )}
           {state === 'failed' && (
             <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
-              Couldn&apos;t find that one — type the elevation, or leave it and we&apos;ll confirm it with you.
+              Couldn&apos;t find that one. Type the elevation, or leave it and we&apos;ll confirm it with you.
             </p>
           )}
         </div>
@@ -1933,7 +1939,7 @@ function SiteLocation({ data, set, setData }: {
             )}
           </div>
           <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
-            ASHRAE 0.4% design, {design.station.toLowerCase()} — {design.distanceMi} miles away. This is
+            ASHRAE 0.4% design, {design.station.toLowerCase()}, {design.distanceMi} miles away. This is
             what the estimate is sized against. Tell us if your site runs wetter.
           </p>
         </div>
@@ -1960,7 +1966,7 @@ function StepAbout({ data, set, setData }: {
           onChange={v => set('phone', v)}
           type="tel"
           required
-          hint="A quote is a conversation — we will almost always need to ask you something."
+          hint="A quote is a conversation, and we will almost always need to ask you something."
         />
       </Grid>
 
@@ -2029,7 +2035,7 @@ function StepReview({
               ? `Hold ${fmt(load.volumeCuFt)} cu.ft at ${fmt(numOf(data.targetTempF))}°F / ${fmt(numOf(data.targetRhPct))}% rh.`
               : `Hold ${applicationLabel(data)} at ${fmt(numOf(data.targetTempF))}°F / ${fmt(numOf(data.targetRhPct))}% rh.`
             : proc.complete
-              ? `Dry ${fmt(proc.cfm)} cfm to ${fmtGrains(proc.leavingGrains)} gr/lb — ${fmtDewPoint(proc.leavingDewPointF)} dew point.`
+              ? `Dry ${fmt(proc.cfm)} cfm to ${fmtGrains(proc.leavingGrains)} gr/lb, a ${fmtDewPoint(proc.leavingDewPointF)} dew point.`
               : `Deliver ${fmtGrains(proc.leavingGrains)} gr/lb leaving air for ${applicationLabel(data)}.`}
         </p>
         {isRoom && load.dominant && load.complete && (
@@ -2053,7 +2059,7 @@ function StepReview({
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
         <p className="text-[12.5px] font-medium text-ink-secondary">Take a look before you send</p>
         <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-muted">
-          Builds the full PDF — every answer, plus a one-page summary of your numbers.
+          Builds the full PDF: every answer, plus a one-page summary of your numbers.
         </p>
         <button
           type="button"

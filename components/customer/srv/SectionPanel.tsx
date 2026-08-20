@@ -250,7 +250,7 @@ export default function SectionPanel({
                 Recommended photos <span className="ml-1 normal-case tracking-normal text-zinc-300 dark:text-zinc-600">{prog.photosDone}/{prog.photosTotal}</span>
               </h3>
               <p className="mb-2.5 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
-                Highly recommended, but optional — some sites don&apos;t permit photography on campus. Upload what you can.
+                Highly recommended, but optional, since some sites don&apos;t permit photography on campus. Upload what you can.
               </p>
               <div className="grid grid-cols-3 gap-2.5">
                 {section.photos.map((p) => (
@@ -268,7 +268,7 @@ export default function SectionPanel({
               <textarea
                 value={answers.notes || ''}
                 onChange={(e) => onChange((a) => ({ ...a, notes: e.target.value }))}
-                placeholder="Briefly describe what's outstanding — this is what we'll help you resolve before start-up."
+                placeholder="Briefly describe what's outstanding. This is what we'll help you resolve before start-up."
                 rows={2}
                 className="w-full rounded-lg border border-red-200 bg-white p-2.5 text-[13px] text-zinc-700 outline-none placeholder:text-zinc-400 focus:border-red-400 dark:border-red-900/50 dark:bg-zinc-900 dark:text-zinc-200"
               />
@@ -288,8 +288,8 @@ export default function SectionPanel({
             }`}
           >
             {prog.complete
-              ? 'Section complete — back to unit'
-              : `${prog.answered + prog.readingsDone + prog.failPhotosDone}/${prog.total + prog.readingsTotal + prog.failPhotosNeeded} done — back to unit`}
+              ? 'Section complete, back to unit'
+              : `${prog.answered + prog.readingsDone + prog.failPhotosDone}/${prog.total + prog.readingsTotal + prog.failPhotosNeeded} done, back to unit`}
           </button>
         </div>
       </motion.div>

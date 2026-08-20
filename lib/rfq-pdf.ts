@@ -265,7 +265,7 @@ function spacePage(ctx: Ctx) {
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
     rows, [0.4, 0.15, 0.15, 0.15, 0.15])
   y += 3
-  y = note(doc, `Loads scale with the difference in grains between inside and out — not with relative humidity, which means a different amount of water at every temperature.${sourceNote(data)}`, M, y, CW)
+  y = note(doc, `Loads scale with the difference in grains between inside and out, not with relative humidity, which means a different amount of water at every temperature.${sourceNote(data)}`, M, y, CW)
   y += 6
 
   // Envelope
@@ -315,7 +315,7 @@ function processPage(ctx: Ctx) {
   y += 4
   y = table(doc, M, y, CW, ['Parameter', 'Value'], [
     ['Process airflow', data.processCfm ? `${fmt(numOf(data.processCfm))} cfm` : '—'],
-    ['Air source', data.airSource + (data.mixOutdoorPct ? ` — ${data.mixOutdoorPct}% outdoor air` : '')],
+    ['Air source', data.airSource + (data.mixOutdoorPct ? ` (${data.mixOutdoorPct}% outdoor air)` : '')],
     ['Entering air (estimated)', proc ? `${fmtGrains(proc.enteringGrains)} gr/lb` : '—'],
     ['Grain depression required', proc ? `${fmtGrains(proc.depression)} gr/lb` : '—'],
     ['Water removed (estimated)', proc?.complete ? `${fmt(proc.lbPerHr, 1)} lb/hr  ·  ${fmt(proc.lbPerHr * 24 * 0.9586)} pints per day` : '—'],
@@ -371,7 +371,7 @@ function loadsPage(ctx: Ctx) {
   y += 4
   y = table(doc, M, y, CW, ['Source', 'What you told us'], [
     ['People', data.occupants ? `${data.occupants} × ${data.activity.toLowerCase()}` : 'None recorded'],
-    ['Product / process moisture', data.productLoadLbHr ? `${data.productLoadLbHr} lb of water per hour${data.productDescription ? ` — ${data.productDescription}` : ''}` : 'None recorded'],
+    ['Product / process moisture', data.productLoadLbHr ? `${data.productLoadLbHr} lb of water per hour${data.productDescription ? ` (${data.productDescription})` : ''}` : 'None recorded'],
     ['Unvented combustion', data.gasCfh ? `${data.gasCfh} cu.ft/hr of gas` : 'None recorded'],
     ['Open water / wet surfaces', data.wetAreaSqFt ? `${data.wetAreaSqFt} sq.ft at ${data.wetWaterTempF}°F` : 'None recorded'],
     ['Ventilation air in', data.ventCfm ? `${fmt(numOf(data.ventCfm))} cfm` : 'None recorded'],
@@ -414,7 +414,7 @@ function equipmentPage(ctx: Ctx) {
     ['Cabinet construction', data.construction],
     ['Size / weight limits', data.sizeRestrictions || 'None stated'],
     ['Operating schedule', data.runtime],
-    ['Environment', data.environmentClean + (data.contaminants ? ` — ${data.contaminants}` : '')],
+    ['Environment', data.environmentClean + (data.contaminants ? ` (${data.contaminants})` : '')],
   ]
   const right: [string, string][] = [
     ['Electrical', data.voltage],
@@ -432,7 +432,7 @@ function equipmentPage(ctx: Ctx) {
   overline(doc, 'AIR TREATMENT', M, y, C.inkMuted)
   y += 4
   y = table(doc, M, y, CW, ['Item', 'Selection'], [
-    ['Regeneration air source', data.regenAirSource + (data.regenIndoorConditions ? ` — ${data.regenIndoorConditions}` : '')],
+    ['Regeneration air source', data.regenAirSource + (data.regenIndoorConditions ? ` (${data.regenIndoorConditions})` : '')],
     ['Pre-filter', data.prefilterMerv],
     ['Final filter', data.finalMerv],
     ['Cooling', data.coolingType],
@@ -451,7 +451,7 @@ function equipmentPage(ctx: Ctx) {
 
   // Standing engineering notes carried over from IAT's paper quote request.
   const notes: [string, string][] = [
-    ['Freeze protection', 'Chilled-water, hot-water and steam coils exposed to freezing air need a cold-weather mitigation strategy — gas or electric pre-heat, and/or drainable coils. All water coils should be externally piped so they can be isolated and drained.'],
+    ['Freeze protection', 'Chilled-water, hot-water and steam coils exposed to freezing air need a cold-weather mitigation strategy: gas or electric pre-heat, and/or drainable coils. All water coils should be externally piped so they can be isolated and drained.'],
     ['DX vs chilled water', 'Where DX cooling is selected over chilled water, some variation in leaving-air or space conditions may be experienced.'],
     ['Vapour retarder classes', 'Class I is polyethylene. Class II is kraft-faced fibreglass batt. Class III is latex-painted gypsum board.'],
     ['Drawings help', 'A plan or sketch showing dimensions, door locations and openings lets us skip a round of questions.'],
@@ -514,9 +514,9 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
       ? `You need ${fmt(proc.cfm)} cfm dried to ${fmtGrains(proc.leavingGrains)} gr/lb`
       : 'Here is what you told us'
   const sub = isRoom && load?.complete
-    ? `That is about ${fmt(load.totalPintsPerDay)} pints a day — and ${load.dominant ? shortDriver(load.dominant.label).toLowerCase() : 'the envelope'} is where most of it comes from.`
+    ? `That is about ${fmt(load.totalPintsPerDay)} pints a day, and ${load.dominant ? shortDriver(load.dominant.label).toLowerCase() : 'the envelope'} is where most of it comes from.`
     : proc?.complete
-      ? `That is a ${fmtGrains(proc.depression)} gr/lb depression — about ${fmt(proc.lbPerHr, 1)} lb of water an hour off the airstream.`
+      ? `That is a ${fmtGrains(proc.depression)} gr/lb depression, about ${fmt(proc.lbPerHr, 1)} lb of water an hour off the airstream.`
       : 'Add room dimensions or process airflow and we can put a number on it.'
 
   softPanel(doc, M, y, CW, T.headline, C.amberSoft)
@@ -553,7 +553,7 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   })
   wrapped(doc,
     isRoom
-      ? 'Four ways of saying the same thing. Grains and dew point are the two that size equipment — relative humidity on its own cannot.'
+      ? 'Four ways of saying the same thing. Grains and dew point are the two that size equipment. Relative humidity on its own cannot.'
       : 'A process is specified by the air leaving the dehumidifier. Dew point is the honest unit: it does not move when the temperature does.',
     M + 7, y + 41, halfW - 14, { size: 6.8, color: C.inkMuted, leading: 2.9, maxLines: 2 })
 
@@ -593,9 +593,9 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   } else {
     panelHead(doc, M, y, CW, T.bars, '4', 'THE FIVE KINDS OF DESICCANT SYSTEM', C.teal, C.tealSoft)
     const kinds: [string, string][] = [
-      ['Passive storage', 'Archives, vaults, layup — doors rarely open'],
-      ['Active storage', 'Warehouses, cold storage — heavy door traffic'],
-      ['Commercial HVAC', 'Supermarkets, rinks, pools — comfort plus humidity'],
+      ['Passive storage', 'Archives, vaults, layup (doors rarely open)'],
+      ['Active storage', 'Warehouses, cold storage (heavy door traffic)'],
+      ['Commercial HVAC', 'Supermarkets, rinks, pools (comfort plus humidity)'],
       ['Industrial HVAC', 'Tight tolerance, 24/7, high-value process'],
       ['Product drying', 'Removing water from the product, not the room'],
     ]
@@ -651,7 +651,7 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   // Chapter-7 design procedure, in the customer's language.
   panelHead(doc, nextX, y, nextW, T.ref, '6', 'WHAT HAPPENS NEXT', C.green, C.greenSoft)
   const steps = [
-    'Confirm the purpose — what the humidity is hurting.',
+    'Confirm the purpose: what the humidity is hurting.',
     'Agree the control level and its tolerance.',
     'Calculate the heat and moisture loads.',
     'Select, size and position the components.',

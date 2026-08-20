@@ -24,7 +24,7 @@ export function SampleLabelThumb() {
             className="aspect-[4/3] w-full object-cover transition-opacity hover:opacity-90"
           />
         </button>
-        <figcaption className="mt-1.5 text-[11px] text-gray-400">Sample label — tap to enlarge</figcaption>
+        <figcaption className="mt-1.5 text-[11px] text-gray-400">Sample label, tap to enlarge</figcaption>
       </figure>
 
       {zoom && (

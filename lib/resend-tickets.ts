@@ -48,7 +48,7 @@ function aiRecsBlock(recs: string[] | null) {
     <ol style="margin:0 0 6px;padding-left:20px;color:#555;font-size:14px;line-height:1.6;">
       ${recs.map(r => `<li style="margin-bottom:6px;">${esc(r)}</li>`).join('')}
     </ol>
-    <p style="margin:0;color:#999;font-size:12px;">These are AI-generated suggestions — if you're unsure, wait for your service technician.</p>`
+    <p style="margin:0;color:#999;font-size:12px;">These are AI-generated suggestions. If you're unsure, wait for your service technician.</p>`
 }
 
 // ── Support-desk notification on new ticket ───────────────────────────────────
@@ -74,7 +74,7 @@ export async function sendTicketNotificationToSupportDesk(ticket: Ticket, recipi
     ${aiRecsBlock(ticket.ai_recommendations)}
     <a href="${esc(ticketUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;margin-top:20px;">View Ticket in Admin Portal</a>`
 
-  const subject = `New Support Ticket ${ticket.ticket_number} — ${ticket.customer_name}${ticket.customer_company ? ` (${ticket.customer_company})` : ''}`
+  const subject = `New Support Ticket ${ticket.ticket_number}: ${ticket.customer_name}${ticket.customer_company ? ` (${ticket.customer_company})` : ''}`
 
   const results = await Promise.all(
     recipients.map((to) =>
@@ -117,7 +117,7 @@ export async function sendCustomerMessageAlert(
     recipients.map(to => resend.emails.send({
       from: FROM,
       to,
-      subject: `Customer reply on ${ticket_number}${customer_name ? ` — ${customer_name}` : ''}`,
+      subject: `Customer reply on ${ticket_number}${customer_name ? ` (${customer_name})` : ''}`,
       html: shell('#1a1a2e', 'Customer Reply', body),
     }))
   )
@@ -150,7 +150,7 @@ export async function sendCustomerResolvedAlert(
     </div>
     <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;">
       <strong>The ticket is still open.</strong> Confirm what they describe actually matches a fixed
-      unit, then close it here — their word starts the check, it does not end it.
+      unit, then close it here. Their word starts the check, it does not end it.
     </p>
     <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Review and close the ticket</a>`
 
@@ -158,7 +158,7 @@ export async function sendCustomerResolvedAlert(
     recipients.map(to => resend.emails.send({
       from: FROM,
       to,
-      subject: `Verify before closing: ${ticket_number}${customer_name ? ` — ${customer_name}` : ''}`,
+      subject: `Verify before closing: ${ticket_number}${customer_name ? ` (${customer_name})` : ''}`,
       html: shell('#1a1a2e', 'Customer Marked Resolved', body),
     }))
   )

@@ -253,7 +253,7 @@ export default function SrvExperience({
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Submission failed — please try again.')
+      if (!res.ok) throw new Error(data.error || 'Submission failed. Please try again.')
       try { localStorage.removeItem(draftKey) } catch { /* noop */ }
       setStage('done')
     } catch (e) {
@@ -310,11 +310,11 @@ export default function SrvExperience({
             <h1 className="text-[26px] font-bold tracking-tight text-zinc-900 dark:text-white">Start-Up Readiness Verification</h1>
             <p className="mt-2 max-w-[560px] text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-300">
               We know one more checklist is the last thing you want before start-up. But a few minutes here is what lets
-              our technician arrive fully prepared and get your unit running right the first time — no wasted trips, no
+              our technician arrive fully prepared and get your unit running right the first time, with no wasted trips, no
               surprise delays.
             </p>
             <p className="mt-2 max-w-[560px] text-[14px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Walk around a 3D model of your unit and verify each system — most items are a single tap. Photos are
+              Walk around a 3D model of your unit and verify each system. Most items are a single tap. Photos are
               strongly recommended where site rules allow, but optional. It takes about 15 minutes at the unit.
             </p>
           </div>
@@ -322,7 +322,7 @@ export default function SrvExperience({
           {resumed && (
             <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
               <p className="flex items-center gap-2 text-[13px] font-medium text-emerald-800 dark:text-emerald-300">
-                <RotateCcw size={14} /> Welcome back — your earlier progress was saved{serverDraft ? ' to your account' : ' on this device'}.
+                <RotateCcw size={14} /> Welcome back. Your earlier progress was saved{serverDraft ? ' to your account' : ' on this device'}.
               </p>
               <button
                 type="button"
@@ -340,7 +340,7 @@ export default function SrvExperience({
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
             <strong>Important:</strong> start-up services are not scheduled until this completed verification is received
-            by IAT — a minimum of <strong>7 calendar days</strong> before your requested start-up date. Photos are
+            by IAT, a minimum of <strong>7 calendar days</strong> before your requested start-up date. Photos are
             strongly recommended (some sites restrict on-campus photography). Incomplete items may result in delays,
             additional trip charges, or rescheduling.
           </div>
@@ -374,7 +374,7 @@ export default function SrvExperience({
             <h2 className="mb-2 text-[13px] font-bold text-zinc-900 dark:text-white">Project information</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {([
-                ['project_name', 'Project name', 'e.g. Line 3 dehumidifier — Building B'],
+                ['project_name', 'Project name', 'e.g. Line 3 dehumidifier, Building B'],
                 ['customer', 'Customer / company', ''],
                 ['model_number', 'Unit model number', 'From the unit nameplate'],
                 ['serial_number', 'Unit serial number', 'From the unit nameplate'],
@@ -388,7 +388,7 @@ export default function SrvExperience({
                 return (
                   <label key={key} className={key === 'installation_address' ? 'sm:col-span-2' : ''}>
                     <span className={`mb-1 block text-[11px] font-semibold ${missing ? 'text-red-500' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                      {label}{missing ? ' — required' : ''}
+                      {label}{missing ? ' (required)' : ''}
                     </span>
                     <input
                       type={key === 'date_inspected' ? 'date' : key === 'email' ? 'email' : 'text'}
@@ -408,7 +408,7 @@ export default function SrvExperience({
           {/* Unit configuration */}
           <div className="mt-6">
             <h2 className="mb-1 text-[13px] font-bold text-zinc-900 dark:text-white">Unit configuration</h2>
-            <p className="mb-2.5 text-[12px] text-zinc-400">Only the systems your unit actually has are verified — this keeps the checklist short.</p>
+            <p className="mb-2.5 text-[12px] text-zinc-400">Only the systems your unit actually has are verified, which keeps the checklist short.</p>
             <div className="space-y-2">
               {SRV_CONFIG_QUESTIONS.map((q) => {
                 const section = sectionDefs.find((s) => s.conditional?.key === q.key)
@@ -460,7 +460,7 @@ export default function SrvExperience({
             <div className="border-b border-amber-200 bg-amber-50 px-5 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/30">
               <div className="mx-auto max-w-[1200px]">
                 <p className="text-[12px] font-bold text-amber-800 dark:text-amber-300">
-                  Revision {revision.revisionNumber} — IAT returned your verification with notes:
+                  Revision {revision.revisionNumber}: IAT returned your verification with notes:
                 </p>
                 <p className="mt-0.5 whitespace-pre-wrap text-[12px] leading-relaxed text-amber-700 dark:text-amber-400/90">
                   {revision.reviewerNotes || 'Update the flagged items below, then re-sign and resubmit.'}
@@ -470,7 +470,7 @@ export default function SrvExperience({
           )}
           {listMode ? (
             <div className="mx-auto w-full max-w-[760px] flex-1 px-5 py-6">
-              <p className="mb-4 text-[13px] text-zinc-400">Complete each section below — tap to open.</p>
+              <p className="mb-4 text-[13px] text-zinc-400">Complete each section below. Tap to open.</p>
               <div className="space-y-2">
                 {applicable.map((s) => {
                   const p = sectionProgress(s, sections[s.key])
@@ -592,7 +592,7 @@ export default function SrvExperience({
 
           {totalFailures > 0 && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-              You can still submit with failed items — IAT will review them with you and confirm what must be
+              You can still submit with failed items. IAT will review them with you and confirm what must be
               resolved before your start-up is scheduled.
             </div>
           )}
@@ -688,8 +688,8 @@ export default function SrvExperience({
           </h1>
           <p className="mt-2 text-[14px] leading-relaxed text-zinc-500 dark:text-zinc-400">
             {revision
-              ? 'Thank you — IAT will re-review the updated items and confirm your start-up date, or follow up if anything is still outstanding.'
-              : 'Thank you — IAT will review your responses and photos and confirm your start-up date, or contact you about any outstanding items. Start-up is scheduled only after this review is complete.'}
+              ? 'Thank you. IAT will re-review the updated items and confirm your start-up date, or follow up if anything is still outstanding.'
+              : 'Thank you. IAT will review your responses and photos and confirm your start-up date, or contact you about any outstanding items. Start-up is scheduled only after this review is complete.'}
           </p>
           <Link
             href="/customer"

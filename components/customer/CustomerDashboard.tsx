@@ -74,7 +74,7 @@ function warrantyMeta(w: UnitView['warranty']) {
     }
   }
   return {
-    label: 'Warranty —',
+    label: 'Warranty',
     sub: 'No ship date on file',
     cls: 'bg-zinc-100 text-zinc-500 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700',
   }
@@ -357,7 +357,7 @@ export default function CustomerDashboard({
             <JerryWidget
               apiEndpoint="/api/customer/assistant"
               suggestions={CUSTOMER_JERRY_SUGGESTIONS}
-              idleSubtitle={`Ask about ${companyName}'s equipment or IAT's documentation — I answer from the manuals and show you the page.`}
+              idleSubtitle={`Ask about ${companyName}'s equipment or IAT's documentation. I answer from the manuals and show you the page.`}
               footerNote="Jerry can make mistakes. For service or orders, use Submit a request or Contact Us."
             />
 
@@ -575,7 +575,7 @@ function Tracker({ unit }: { unit: UnitView }) {
               key={m.id}
               type="button"
               onClick={() => setOpenIdx(i)}
-              aria-label={`${m.stage} — view details`}
+              aria-label={`${m.stage}, view details`}
               className="absolute h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               style={{ left: pct(pos[i].x, VBW), top: pct(pos[i].y, VBH) }}
             />
@@ -746,7 +746,7 @@ function ContactCard() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(json.error || 'Could not send — please try again.')
+        setError(json.error || 'Could not send. Please try again.')
         return
       }
       setSent(true)
@@ -765,7 +765,7 @@ function ContactCard() {
       <div className="space-y-3 px-5 py-4">
         {sent ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-[12.5px] text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <CheckCircle2 size={14} /> Thanks — your message is on its way to our {department} team.
+            <CheckCircle2 size={14} /> Thanks. Your message is on its way to our {department} team.
           </div>
         ) : (
           <>

@@ -106,7 +106,7 @@ export type MoistureMode = 'rh' | 'dp' | 'gr' | 'wb'
 export const MOISTURE_MODES: { value: MoistureMode; label: string; short: string; suffix: string; hint: string }[] = [
   { value: 'rh', label: 'Relative humidity', short: '% rh', suffix: '% rh', hint: 'The everyday unit. Means a different amount of water at every temperature.' },
   { value: 'dp', label: 'Dew point', short: '°F dp', suffix: '°F dp', hint: 'The temperature at which this air starts to condense. Does not move when the dry bulb does.' },
-  { value: 'gr', label: 'Grains', short: 'gr/lb', suffix: 'gr/lb', hint: 'Grains of water per pound of dry air — what equipment is actually sized on.' },
+  { value: 'gr', label: 'Grains', short: 'gr/lb', suffix: 'gr/lb', hint: 'Grains of water per pound of dry air. This is what equipment is actually sized on.' },
   { value: 'wb', label: 'Wet bulb', short: '°F wb', suffix: '°F wb', hint: "What a sling psychrometer reads. Handy if that's the instrument you have." },
 ]
 
@@ -214,7 +214,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Stopping rust and re-work on polished surfaces',
     tempF: 75, rhPct: 40, surroundTempF: 85, surroundRhPct: 55,
     occupants: 2, activity: 'Moderate Work', doorOpensPerHour: 8,
-    note: 'Below 40%rh, corrosion effectively stops on most steels — which is why 40% is the classic warehouse spec.',
+    note: 'Below 40%rh, corrosion effectively stops on most steels, which is why 40% is the classic warehouse spec.',
   },
   {
     key: 'cold-storage',
@@ -223,7 +223,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Killing fog, frost on coils and slippery floors',
     tempF: 38, rhPct: 60, surroundTempF: 80, surroundRhPct: 60,
     occupants: 2, activity: 'Moderate Work', doorOpensPerHour: 20,
-    note: 'Cold rooms are dominated by door traffic — every opening dumps warm wet air onto cold surfaces.',
+    note: 'Cold rooms are dominated by door traffic. Every opening dumps warm wet air onto cold surfaces.',
   },
   {
     key: 'freezer',
@@ -232,7 +232,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Frost on evaporators, ceilings and door tracks',
     tempF: 0, rhPct: 70, surroundTempF: 45, surroundRhPct: 70,
     occupants: 1, activity: 'Moderate Work', doorOpensPerHour: 12,
-    note: 'Below freezing a desiccant unit is usually the only practical way to dry the air — cooling coils just make ice.',
+    note: 'Below freezing a desiccant unit is usually the only practical way to dry the air, because cooling coils just make ice.',
   },
   {
     key: 'pharma',
@@ -241,7 +241,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Tablet hardness, powder flow and product stability',
     tempF: 72, rhPct: 25, surroundTempF: 75, surroundRhPct: 50,
     occupants: 6, activity: 'Light Work', doorOpensPerHour: 12,
-    note: 'Tight tolerance work — a ±3%rh band is common, and that band drives the control strategy as much as the load.',
+    note: 'Tight tolerance work. A ±3%rh band is common, and that band drives the control strategy as much as the load.',
   },
   {
     key: 'dry-room',
@@ -252,7 +252,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     occupants: 4, activity: 'Light Work', doorOpensPerHour: 6,
     // 1%rh at 68°F is a −30.2°F dew point (this said −20°F until it was checked
     // against the psychrometrics; −20°F dp is 1.8%rh).
-    note: 'Usually specified as a dew point rather than %rh — switch the unit on the humidity field. 1%rh at 68°F is about a −30°F dew point, and many cell lines ask for −40°F or drier.',
+    note: 'Usually specified as a dew point rather than %rh, so switch the unit on the humidity field. 1%rh at 68°F is about a −30°F dew point, and many cell lines ask for −40°F or drier.',
   },
   {
     key: 'food',
@@ -261,7 +261,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Condensation over open product, mould and sanitation holds',
     tempF: 50, rhPct: 55, surroundTempF: 80, surroundRhPct: 60,
     occupants: 12, activity: 'Moderate Work', doorOpensPerHour: 20,
-    note: 'Washdown adds a large periodic load — tell us the wet floor area and we size for the recovery, not the average.',
+    note: 'Washdown adds a large periodic load. Tell us the wet floor area and we size for the recovery, not the average.',
   },
   {
     key: 'candy',
@@ -278,7 +278,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Fog over the ice, ceiling drip and soft ice',
     tempF: 50, rhPct: 40, surroundTempF: 85, surroundRhPct: 60,
     occupants: 40, activity: 'Seated', doorOpensPerHour: 15,
-    note: 'Spectator load swings enormously between practice and game day — give us both if you can.',
+    note: 'Spectator load swings enormously between practice and game day, so give us both if you can.',
   },
   {
     key: 'water-treatment',
@@ -296,7 +296,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Mould, foxing and dimensional movement in organics',
     tempF: 68, rhPct: 45, surroundTempF: 75, surroundRhPct: 55,
     occupants: 1, activity: 'Light Work', doorOpensPerHour: 2,
-    note: 'A passive space — the loads are small, so envelope leakage and stability of control dominate the design.',
+    note: 'A passive space. The loads are small, so envelope leakage and stability of control dominate the design.',
   },
   {
     key: 'military',
@@ -314,7 +314,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Mould, terpene loss and an even dry-down curve',
     tempF: 62, rhPct: 55, surroundTempF: 78, surroundRhPct: 55,
     occupants: 3, activity: 'Light Work', doorOpensPerHour: 6,
-    note: 'The plant material itself is the load, and it decays over the cycle — tell us the wet weight loaded per batch.',
+    note: 'The plant material itself is the load, and it decays over the cycle. Tell us the wet weight loaded per batch.',
   },
   {
     key: 'seed',
@@ -331,7 +331,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Structural condensation and swimmer comfort',
     tempF: 82, rhPct: 55, surroundTempF: 90, surroundRhPct: 60,
     occupants: 25, activity: 'Athletics', doorOpensPerHour: 10,
-    note: 'The pool surface is the dominant load — we need the water surface area and water temperature.',
+    note: 'The pool surface is the dominant load, so we need the water surface area and water temperature.',
   },
   {
     key: 'electronics',
@@ -356,13 +356,13 @@ export const ROOM_PRESETS: RoomPreset[] = [
     driver: 'Drying the structure fast enough to stop mould',
     tempF: 80, rhPct: 35, surroundTempF: 85, surroundRhPct: 60,
     occupants: 2, activity: 'Moderate Work', doorOpensPerHour: 6,
-    note: 'Temporary duty — tell us the target completion date and we will quote rental as well as purchase.',
+    note: 'Temporary duty. Tell us the target completion date and we will quote rental as well as purchase.',
   },
   {
     key: 'other-room',
     label: 'Something else',
     blurb: "Describe it in your own words and we'll work from that.",
-    driver: 'Your call — tell us what the humidity is hurting',
+    driver: 'Your call. Tell us what the humidity is hurting',
     tempF: 70, rhPct: 45, surroundTempF: 85, surroundRhPct: 55,
     occupants: 2, activity: 'Light Work', doorOpensPerHour: 6,
   },
@@ -392,7 +392,7 @@ export const PROCESS_PRESETS: ProcessPreset[] = [
     blurb: 'Drying hygroscopic resin before it reaches the screw.',
     driver: 'Splay, voids and lost tensile strength in the part',
     leavingTempF: 150, leavingGrains: 1, cfm: 800,
-    note: 'Resin drying runs hot and very dry — the leaving dew point matters far more than the temperature.',
+    note: 'Resin drying runs hot and very dry. The leaving dew point matters far more than the temperature.',
   },
   {
     key: 'candy-process',
@@ -447,7 +447,7 @@ export const PROCESS_PRESETS: ProcessPreset[] = [
     key: 'other-process',
     label: 'Something else',
     blurb: "Describe the process and we'll work from that.",
-    driver: 'Your call — tell us what the moisture is hurting',
+    driver: 'Your call. Tell us what the moisture is hurting',
     leavingTempF: 70, leavingGrains: 20, cfm: 2000,
   },
 ]
@@ -530,9 +530,9 @@ export const TIGHTNESS_RATES: Record<Tightness, number> = {
   Loose: 1.5,
 }
 export const TIGHTNESS_HELP: Record<Tightness, string> = {
-  Tight: 'Purpose-built envelope — sealed penetrations, gasketed doors, taped vapor barrier.',
+  Tight: 'Purpose-built envelope: sealed penetrations, gasketed doors, taped vapor barrier.',
   Average: 'Newer building, normal construction. No deliberate sealing programme.',
-  Loose: 'Older or industrial shell — visible daylight at joints, unsealed conduit, worn door seals.',
+  Loose: 'Older or industrial shell: visible daylight at joints, unsealed conduit, worn door seals.',
 }
 
 // 'Not sure' removed (owner, 2026-08-20), matching cooling, heating and the final
@@ -578,11 +578,11 @@ export const CONSTRUCTIONS = ['Galvanized (standard)', 'Aluminum', 'Stainless st
 // owner's request — regeneration heat is a decision the customer makes, not one to
 // defer to us on the form.
 export const REGEN_SOURCES = ['Electric', 'Natural gas', 'Steam', 'Hot water', 'Propane']
-export const AIR_SOURCES = ['100% return air', '100% outdoor air', 'Mixed — describe below']
+export const AIR_SOURCES = ['100% return air', '100% outdoor air', 'Mixed (describe below)']
 // 'Not sure' removed and 'Not required' is the default (owner, 2026-08-19): most
 // units have no cooling, and an unanswered cooling question is a quoting ambiguity
 // where 'not required' is an actual answer. Same reasoning as the final filter.
-export const COOLING_TYPES = ['Not required', 'Chilled water', 'DX — condensing unit by IAT', 'DX — condensing unit by others']
+export const COOLING_TYPES = ['Not required', 'Chilled water', 'DX (condensing unit by IAT)', 'DX (condensing unit by others)']
 // 'Not sure' removed (owner, 2026-08-19), matching cooling and the final filter.
 // Safe to DELETE rather than retire, unlike the material lists: heatingType is a
 // spec field that only ever gets displayed — the admin detail view and the PDF —

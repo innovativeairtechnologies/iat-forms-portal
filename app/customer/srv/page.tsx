@@ -11,7 +11,7 @@ import SrvExperience, { type SrvUnitOption, type SrvRevision, type SrvServerDraf
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Start-Up Readiness Verification — IAT',
+  title: 'Start-Up Readiness Verification | IAT',
 }
 
 export default async function SrvPage(props: { searchParams: Promise<{ resume?: string }> }) {
