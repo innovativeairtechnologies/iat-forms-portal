@@ -1254,7 +1254,20 @@ function StepShell({
                 'transition-transform duration-200 ease-out',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
                 'sm:hover:z-20 sm:hover:scale-[2] sm:focus-visible:z-20 sm:focus-visible:scale-[2]',
-                i === 0 ? 'sm:origin-left' : i === SHELL_EXAMPLES.length - 1 ? 'sm:origin-right' : 'sm:origin-center',
+                // Where each card grows FROM at 2x. transform-origin names the point that
+                // stays put, so the growth goes the other way: origin-left pins the left
+                // edge and expands rightward.
+                //
+                // The outer two lean OUTWARD a quarter of the extra width and inward for
+                // the rest (owner, 2026-08-20) — Good spreads left, Best spreads right,
+                // Better stays centered. Pure origin-left/right would send them fully
+                // inward across their neighbours, which is what they did at first.
+                //
+                // A quarter of one card is roughly 55px past the panel edge; no ancestor
+                // sets overflow-hidden, so it is visible rather than clipped.
+                i === 0 ? 'sm:origin-[25%_50%]'
+                  : i === SHELL_EXAMPLES.length - 1 ? 'sm:origin-[75%_50%]'
+                    : 'sm:origin-center',
               ].join(' ')}
             >
               {/* The artwork is drawn on white and stays on white in dark mode —
