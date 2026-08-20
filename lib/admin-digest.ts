@@ -56,13 +56,45 @@ export function getNyWallClock(): { hour: number; minute: number; dateISO: strin
   return { hour, minute, dateISO }
 }
 
-/** True inside the ~10-minute window around 4:30pm America/New_York. The two
- *  cron entries in vercel.json fire 60 minutes apart (one for EDT, one for
- *  EST), so only one of them ever lands inside this window on a given day —
- *  the other is a harmless no-op. */
+/**
+ * Which NY hours a digest invocation may send in.
+ *
+ * ⚠️ THIS WAS A TEN-MINUTE WINDOW (`hour === 16 && minute 25..34`) AND IT NEVER
+ * ONCE LET THE DIGEST THROUGH. `digest_runs` sat empty from the day migration 038
+ * created it. The cause was not the missing CRON_SECRET that got the blame in
+ * August — that was real, but fixing it only moved the failure. Vercel fires crons
+ * on this project 14 to 42 minutes late (measured from Resend send timestamps:
+ * 13:00→13:41, 21:30→22:03, 22:00→22:42), so the 20:30 UTC entry — 16:30 NY on the
+ * dot — always landed at 16:44 or later. Even the BEST observed delay missed.
+ *
+ * Widening to `hour === 16` is NOT enough either: the entry runs at :30 past, so a
+ * delay over thirty minutes crosses into 17:xx and misses again. (The weekly
+ * leadership report survives on a bare hour check only because it is scheduled at
+ * :00, so its whole delay budget fits inside the hour.)
+ *
+ * ── Why 16..18, and why excluding 15 matters ────────────────────────────────
+ * Correctness now rests on `digest_runs`' UNIQUE index on run_date, not on hitting
+ * a narrow time: the first invocation of the NY day claims the run and any later
+ * one no-ops. The hour range is only a sanity bound, so a wildly misfired
+ * invocation cannot mail everyone at 3am.
+ *
+ * Dropping 15 is what keeps the send at ~4:30pm in BOTH seasons, because the
+ * earliest eligible entry is the one that claims:
+ *
+ *              20:30 UTC          21:30 UTC          sends
+ *   EDT        16:30 NY  CLAIMS   17:30 NY  no-op    ~4:30-4:45pm
+ *   EST        15:30 NY  skipped  16:30 NY  CLAIMS   ~4:30-4:45pm
+ *
+ * Tolerates roughly ninety minutes of lateness in either season, against a worst
+ * observed forty-two. No seasonal maintenance, and vercel.json is unchanged.
+ */
+export function withinDigestWindow(hour: number): boolean {
+  return hour >= 16 && hour <= 18
+}
+
+/** True if this invocation may claim and send today's digest. */
 export function isDigestTime(): boolean {
-  const { hour, minute } = getNyWallClock()
-  return hour === 16 && minute >= 25 && minute <= 34
+  return withinDigestWindow(getNyWallClock().hour)
 }
 
 /**

@@ -10,6 +10,29 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labelled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — The daily management digest is finally actually sending
+
+The daily digest — the afternoon email giving each manager their new, ageing and overdue
+tickets — **has never once arrived since it was built.** A missing password was found and fixed
+on 17 August, and that was a real problem, but it was not the only one. The digest still did not
+send on any day afterwards, and nothing anywhere said so.
+
+Scheduled jobs on our hosting run late — measured this week at between fourteen and forty-two
+minutes past their time. The digest would only send if it started inside a ten-minute window, so
+it missed every single day, including on its best day. It has now been given a window wide enough
+to absorb that, and it still cannot send twice in a day.
+
+It should arrive around 4:30pm from today, and continue to at the same time through the winter
+clock change.
+
+**Three people are still held back from receiving it** — Jacob Younker, Tyler Bell and Jo Evans —
+a hold put in place on 17 August so the format could be reviewed before it went to everyone.
+Crystal, Kacy and Lee receive it. Removing the hold is a one-line change whenever you want it.
+
+The same failure was worth learning from: a scheduled job that quietly does nothing looks exactly
+like a scheduled job with nothing to do. Both this and the weekly report now say so in their logs
+when they come up empty.
+
 ## 2026-08-20 — The weekly report can no longer fail silently
 
 The Monday leadership report is written by Claude from this changelog, and it asks for the
@@ -606,6 +629,10 @@ attaches the bearer header when that variable exists — so every scheduled invo
 
 `digest_runs` was **empty**. The daily admin digest has never sent, not once, since the day it
 was built. Weekly PTO accrual (`/api/cron/accrue-pto`) had never run either.
+
+> **Follow-up, 20 August.** Setting the secret was necessary but not sufficient: the digest still
+> never landed, for a second and unrelated reason. See the 20 August entry — nothing below should
+> be read as saying the daily digest started arriving.
 
 The secret is now set (48 bytes of CSPRNG, base64url, Production only) and the project
 redeployed so the functions pick it up. Verified against production: anonymous → 401, wrong

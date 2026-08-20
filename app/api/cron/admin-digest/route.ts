@@ -79,11 +79,13 @@ export async function GET(req: NextRequest) {
   }
   const runId = claimed[0].id
 
+  // Hoisted out of the try so the failure path can tell "nothing went out" from
+  // "some already did" — the two need opposite handling.
+  let sent = 0
   try {
     const { briefing, generatedAt } = await getSharedBriefing()
     const admins = await getDigestRecipients()
 
-    let sent = 0
     for (const admin of admins) {
       if (!admin.email) continue
       try {
@@ -108,6 +110,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ sent, briefing_generated_at: generatedAt })
   } catch (err) {
     console.error('[cron/admin-digest] run failed:', err)
+
+    // Release today's claim, but ONLY if nothing was mailed.
+    //
+    // The claim is taken before the first send so two invocations cannot double
+    // up — but that also means a failure while fetching the briefing or the
+    // recipient list burns the day: the row stays, the second cron entry no-ops
+    // against it, and nobody gets a digest until tomorrow. Releasing lets the
+    // later entry actually retry, which is the whole reason two are registered.
+    //
+    // Guarded on sent === 0 because retrying after a partial send would mail
+    // those admins twice. Per-admin failures are caught inside the loop, so
+    // reaching here with sent > 0 means real mail already went out.
+    if (sent === 0) {
+      await supabaseAdmin.from('digest_runs').delete().eq('id', runId)
+      console.error(`[cron/admin-digest] released the claim for ${dateISO} so a later run can retry`)
+    }
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
