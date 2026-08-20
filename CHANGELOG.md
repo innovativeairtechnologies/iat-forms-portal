@@ -10,6 +10,23 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labelled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — The quote request says who the weather came from, not which edition
+
+The design conditions on a quote request were labelled with the ASHRAE edition year and the
+range of years the readings were taken over — "ASHRAE 2025 … 2004-2023 observations". Neither
+told a customer anything they could act on, and both invited the wrong question: is this data
+from 2025, or for 2025, and why does it mention 2004?
+
+The customer now sees the source and the weather station, and nothing else: *ASHRAE 0.4% design,
+monroe walton county ap, ga, usa — 16 miles away.* The station and the distance are the parts
+worth arguing with, and those stay.
+
+**The edition is still recorded**, on the internal view of the request. Design figures do move
+between editions, so when a quote and a later engineering check disagree, that is the line that
+explains it. It simply is not the customer’s problem.
+
+Also fixed: the attribution line on the customer PDF was printing stray spaces around its commas.
+
 ## 2026-08-20 — The daily management digest is finally actually sending
 
 The daily digest — the afternoon email giving each manager their new, ageing and overdue

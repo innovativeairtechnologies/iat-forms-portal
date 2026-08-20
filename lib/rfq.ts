@@ -574,14 +574,30 @@ export type RfqData = {
   outdoorMoistureValue: string
   /**
    * Where the outdoor design condition came from, e.g.
-   * "ASHRAE 2025 · FULTON COUNTY AP, GA, USA · 8 mi".
+   * "ASHRAE · FULTON COUNTY AP, GA, USA · 8 mi".
    *
    * Empty means nobody looked it up and the figures are whatever the customer
    * typed, or the defaults below. That distinction is the whole reason the field
    * exists: a looked-up design condition and a template default look identical on
    * the page, and only one of them describes the customer's actual weather.
+   *
+   * CUSTOMER-FACING — it appears in the wizard and on their PDF, so it deliberately
+   * carries no edition year. See outdoorVintage.
    */
   outdoorSource: string
+  /**
+   * The ASHRAE edition behind those figures, e.g. "ASHRAE 2025, 2004-2023
+   * observations". STAFF ONLY — shown on the admin detail view and nowhere else.
+   *
+   * Split out from outdoorSource on 2026-08-20 at the owner's request: the year
+   * told a customer nothing they could act on and read as ambiguous (data year? a
+   * forecast?), while the observation window read as though the figures were two
+   * decades old. It is kept on the record because the numbers genuinely move
+   * between editions — Houston is 143.9 gr/lb under 2021 and 147.9 under 2025 — so
+   * when a quote and a later check disagree, this is the only thing that explains
+   * why. Empty on records created before the split.
+   */
+  outdoorVintage: string
   surroundTempF: string
   surroundRhPct: string
   surroundMoistureMode: MoistureMode
@@ -653,7 +669,7 @@ export function emptyRfq(): RfqData {
     // real ASHRAE design point (lib/ashrae.ts); this is what stands if that fails,
     // or if nobody ever typed a location.
     outdoorTempF: '95', outdoorRhPct: '55', outdoorMoistureMode: 'rh', outdoorMoistureValue: '55',
-    outdoorSource: '',
+    outdoorSource: '', outdoorVintage: '',
     surroundTempF: '', surroundRhPct: '', surroundMoistureMode: 'rh', surroundMoistureValue: '',
     roomL: '', roomW: '', roomH: '',
     wallMaterial: 'Insulated metal panel',

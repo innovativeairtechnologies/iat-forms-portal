@@ -1205,7 +1205,7 @@ function stampEveryPage(doc: Doc, meta: RfqPdfMeta) {
 function sourceNote(data: RfqData): string {
   return data.outdoorSource
     // The middot reads as a separator on screen and as noise in a sentence.
-    ? ` Outdoor design conditions are ${san(data.outdoorSource.replace(/s*·s*/g, ", "))}.`
+    ? ` Outdoor design conditions are ${san(data.outdoorSource.replace(/\s*·\s*/g, ", "))}.`
     : ''
 }
 

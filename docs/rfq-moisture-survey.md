@@ -95,9 +95,21 @@ first decimal with no visible reason.
 **Licensing.** ASHRAE’s Climatic Design Conditions are copyrighted and sold by ASHRAE, and
 `ashrae-meteo.info` is an unaffiliated republisher. An earlier pass declined to build on it for
 that reason. The owner reviewed the position on 2026-08-19 and chose to serve the values to
-customers, for consistency with DryWare. Every figure is labelled with its station and vintage
-wherever it appears — page, PDF and admin view — and `lib/ashrae.ts` is the only file that
-would have to go if the position changes.
+customers, for consistency with DryWare. Every figure is labelled with its source wherever it
+appears — page, PDF and admin view — and `lib/ashrae.ts` is the only file that would have to go
+if the position changes.
+
+**Attribution is split in two (2026-08-20).** `RfqData.outdoorSource` is the CUSTOMER-facing
+string and deliberately carries no edition year — `ASHRAE · MONROE WALTON COUNTY AP, GA, USA ·
+16 mi`. `RfqData.outdoorVintage` carries `ASHRAE 2025, 2004-2023 observations` and is rendered
+**only** on the admin detail view.
+
+Owner's call: the year told a customer nothing actionable and read as ambiguous (data year? a
+forecast?), and the observation window read as though the figures were two decades old. It stays
+on the record because the numbers genuinely move between editions — Houston is 143.9 gr/lb under
+2021 and 147.9 under 2025 — so when a quote and a later check disagree, the vintage is the only
+thing that explains why. Records created before the split carry the year inside `outdoorSource`
+and no `outdoorVintage`; the admin view simply omits the second pill.
 
 ## The fork
 

@@ -314,10 +314,20 @@ function Entered({ data, conditionKey }: { data: RfqData; conditionKey: Conditio
  */
 function OutdoorSource({ data }: { data: RfqData }) {
   if (!data.outdoorSource) return null
+  // The edition year is deliberately absent from the customer's wizard and PDF and
+  // present here: staff are the ones who need it when a quote and a later check
+  // disagree. Older records carry no vintage and simply do not show the second pill.
   return (
-    <span className="ml-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">
-      {data.outdoorSource}
-    </span>
+    <>
+      <span className="ml-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[11px] text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">
+        {data.outdoorSource}
+      </span>
+      {data.outdoorVintage && (
+        <span className="ml-1.5 rounded bg-surface-soft px-1.5 py-0.5 text-[11px] text-ink-muted">
+          {data.outdoorVintage}
+        </span>
+      )}
+    </>
   )
 }
 

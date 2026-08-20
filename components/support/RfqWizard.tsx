@@ -1632,7 +1632,10 @@ function SiteLocation({ data, set, setData }: {
             value: String(d.dehumGrains),
             mode: 'gr',
           }),
-          outdoorSource: `ASHRAE ${d.version} · ${d.station} · ${d.distanceMi} mi`,
+          // No edition year here: this string is what the customer reads, in the
+          // wizard and on their PDF. The vintage rides on its own field for staff.
+          outdoorSource: `ASHRAE · ${d.station} · ${d.distanceMi} mi`,
+          outdoorVintage: `ASHRAE ${d.version}${d.period ? `, ${d.period} observations` : ''}`,
         }
       })
 
@@ -1708,9 +1711,8 @@ function SiteLocation({ data, set, setData }: {
             )}
           </div>
           <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
-            ASHRAE {design.version} 0.4% design, {design.station.toLowerCase()} — {design.distanceMi} miles away
-            {design.period ? `, ${design.period} observations` : ''}. This is what the estimate is sized
-            against. Tell us if your site runs wetter.
+            ASHRAE 0.4% design, {design.station.toLowerCase()} — {design.distanceMi} miles away. This is
+            what the estimate is sized against. Tell us if your site runs wetter.
           </p>
         </div>
       )}
