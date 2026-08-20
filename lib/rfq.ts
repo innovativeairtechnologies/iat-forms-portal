@@ -518,18 +518,21 @@ export const FLOOR_MATERIALS: MaterialOption[] = [
  * "Method A" shorthand — a single tightness band instead of totalling every
  * crack, which is the only realistic thing to ask a customer for.
  */
-export type Tightness = 'Tight' | 'Average' | 'Loose' | 'Not sure'
+// 'Not sure' removed (owner, 2026-08-20) along with every other list. Free of
+// consequence here: its rate was 0.6, IDENTICAL to Average, and estimateLoad reads
+// `TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average` — so a stored survey
+// holding 'Not sure' now misses the lookup, takes that fallback, and lands on the
+// same 0.6 it always used. Nothing re-prices.
+export type Tightness = 'Tight' | 'Average' | 'Loose'
 export const TIGHTNESS_RATES: Record<Tightness, number> = {
   Tight: 0.25,
   Average: 0.6,
   Loose: 1.5,
-  'Not sure': 0.6,
 }
 export const TIGHTNESS_HELP: Record<Tightness, string> = {
   Tight: 'Purpose-built envelope — sealed penetrations, gasketed doors, taped vapor barrier.',
   Average: 'Newer building, normal construction. No deliberate sealing programme.',
   Loose: 'Older or industrial shell — visible daylight at joints, unsealed conduit, worn door seals.',
-  'Not sure': "We'll assume average construction and confirm during the survey.",
 }
 
 // 'Not sure' removed (owner, 2026-08-20), matching cooling, heating and the final

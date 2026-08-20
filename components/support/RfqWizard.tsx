@@ -1212,6 +1212,16 @@ function StepShell({
   data, set, setData,
 }: { data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
   const preset = presetFor(data) as RoomPreset | undefined
+
+  // Open on arrival if either answer has been moved off its default, so a returning
+  // customer is never shown a step that hides what they already chose. Same
+  // reasoning as the Advanced block on step 7, but these are Segmented controls with
+  // real defaults rather than text inputs, so "touched" means "differs from the
+  // default" rather than "not empty". Runs once per mount on purpose — deciding
+  // again mid-edit would fight the customer.
+  const advancedTouched = data.vaporBarrier !== 'No' || data.tightness !== 'Average'
+  const [advancedOpen, setAdvancedOpen] = useState(advancedTouched)
+
   return (
     <div className="space-y-5">
       <div>
@@ -1269,41 +1279,62 @@ function StepShell({
       </Grid>
       <SelectField label="Floor" value={data.floorMaterial} onChange={v => set('floorMaterial', v)} options={FLOOR_MATERIALS.filter(m => !m.retired).map(m => m.label)} />
 
-      <Segmented<VaporBarrier>
-        label="Is there a vapor barrier?"
-        hint="Class I is polyethylene · Class II is kraft-faced batt · Class III is latex-painted gypsum."
-        tone="amber"
-        value={data.vaporBarrier}
-        onChange={v => set('vaporBarrier', v)}
-        options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
-      />
+      {/* Vapor barrier and tightness are the two envelope questions a customer is
+          least sure about, and both have a sane default, so they sit behind one
+          control rather than in front of everybody. A real <button> with
+          aria-expanded/aria-controls, matching the Advanced block on step 7.
 
-      {/* "How tight is the building?" is HIDDEN, not deleted (owner, 2026-08-19 —
-          may come back). Restoring it is uncommenting this block; nothing else was
-          touched.
-
-          ⚠️ The field is still live. data.tightness stays in RfqData at its default
-          of 'Average', and estimateLoad() still reads TIGHTNESS_RATES from it to
-          compute infiltration — so every survey is now costed at average leakage
-          rather than at nothing. That is the sane default, but it IS an assumption
-          nobody is being asked to confirm. It was also dropped from the customer
-          PDF, so we no longer print a tightness the customer never chose.
+          ⚠️ TIGHTNESS IS NO LONGER HIDDEN (owner, 2026-08-20). It was commented out
+          on 2026-08-19 while `data.tightness` stayed live at 'Average' and
+          estimateLoad kept costing infiltration from it — every survey priced at
+          average leakage as an assumption nobody was asked to confirm. Asking again
+          closes that gap, so do not re-hide it without also dealing with the term. */}
       <div>
-        <Segmented<Tightness>
-          label="How tight is the building?"
-          tone="amber"
-          value={data.tightness}
-          onChange={v => set('tightness', v)}
-          options={[
-            { value: 'Tight', label: 'Tight' },
-            { value: 'Average', label: 'Average' },
-            { value: 'Loose', label: 'Loose' },
-            { value: 'Not sure', label: 'Not sure' },
-          ]}
-        />
-        <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{TIGHTNESS_HELP[data.tightness]}</p>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen(o => !o)}
+          aria-expanded={advancedOpen}
+          aria-controls="rfq-shell-advanced"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3.5 text-[12.5px] font-medium text-ink-secondary transition-colors hover:bg-surface-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <ChevronDown size={14} className={`transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+          Advanced
+          {!advancedOpen && (
+            <span className="text-[11.5px] text-ink-muted">
+              vapor barrier, building tightness
+            </span>
+          )}
+        </button>
       </div>
-      */}
+
+      {advancedOpen && (
+        <div id="rfq-shell-advanced" className="space-y-5">
+          <Segmented<VaporBarrier>
+            label="Is there a vapor barrier?"
+            hint="Class I is polyethylene · Class II is kraft-faced batt · Class III is latex-painted gypsum."
+            tone="amber"
+            value={data.vaporBarrier}
+            onChange={v => set('vaporBarrier', v)}
+            options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
+          />
+
+          <div>
+            <Segmented<Tightness>
+              label="How tight is the building?"
+              tone="amber"
+              value={data.tightness}
+              onChange={v => set('tightness', v)}
+              options={[
+                { value: 'Tight', label: 'Tight' },
+                { value: 'Average', label: 'Average' },
+                { value: 'Loose', label: 'Loose' },
+              ]}
+            />
+            <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{TIGHTNESS_HELP[data.tightness]}</p>
+          </div>
+        </div>
+      )}
+
 
       <div className="space-y-4 rounded-xl border border-hairline bg-surface-soft p-4">
         <ConditionField

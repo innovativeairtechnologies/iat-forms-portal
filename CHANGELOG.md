@@ -10,6 +10,21 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-20 — The building-tightness question is back, with both envelope details tucked away
+
+**“How tight is the building?” is being asked again.** It was hidden a day earlier while the
+calculation quietly kept using it — every quote was priced at *average* leakage as an assumption
+nobody had confirmed. Asking the question closes that gap: the figure behind a quote is now one
+the customer actually chose.
+
+It sits with **“Is there a vapor barrier?”** behind a single **Advanced** button under the floor
+material. Both have sensible defaults and both are the questions people are least certain about,
+so the step now reads as three material choices rather than five questions. If either has been
+answered already, the section opens by itself so nothing a customer chose is ever hidden from them.
+
+Tightness also drops its **“Not sure”** option, matching the rest of the form. It changes no
+numbers — that option always used the same leakage rate as *Average*.
+
 ## 2026-08-20 — The portal greets you by your name, not your login
 
 **Nobody is greeted by an email address any more.** The home page said "Good afternoon, Jacob" to
