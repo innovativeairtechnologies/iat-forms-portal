@@ -1218,9 +1218,29 @@ function StepShell({
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
           Typical wall build-ups
         </p>
+        {/* Hover magnifies to 2x so the callouts on the artwork are readable — at a
+            third of the row they render around 7px and simply cannot be. The whole
+            FIGURE scales, not the image inside it: the figure owns the rounded clip,
+            so scaling the image alone would just crop it.
+
+            transform-origin is pinned per column so the outer two grow INWARD rather
+            than off the edge of the panel. Enabled from the sm breakpoint up only —
+            there is no hover on touch, and at phone width these are already
+            full-bleed. tabIndex + focus-visible gives the same magnification to
+            anyone using a keyboard. */}
         <div className="grid gap-3 sm:grid-cols-3">
-          {SHELL_EXAMPLES.map(x => (
-            <figure key={x.label} className="overflow-hidden rounded-xl border border-hairline bg-surface">
+          {SHELL_EXAMPLES.map((x, i) => (
+            <figure
+              key={x.label}
+              tabIndex={0}
+              className={[
+                'group relative z-0 overflow-hidden rounded-xl border border-hairline bg-surface',
+                'transition-transform duration-200 ease-out',
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                'sm:hover:z-20 sm:hover:scale-[2] sm:focus-visible:z-20 sm:focus-visible:scale-[2]',
+                i === 0 ? 'sm:origin-left' : i === SHELL_EXAMPLES.length - 1 ? 'sm:origin-right' : 'sm:origin-center',
+              ].join(' ')}
+            >
               {/* The artwork is drawn on white and stays on white in dark mode —
                   inverting it would misrepresent the materials. */}
               <Image
@@ -1239,6 +1259,7 @@ function StepShell({
         </div>
         <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
           Pick the closest match below — these are the three we see most often.
+          <span className="hidden sm:inline"> Hover over one to enlarge it.</span>
         </p>
       </div>
 

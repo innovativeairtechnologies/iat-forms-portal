@@ -594,8 +594,13 @@ export const MERV_OPTIONS = ['MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14
 // and is the default, and 'Not sure' is gone — an unanswered final filter is a
 // quoting ambiguity, whereas 'not required' is an answer.
 export const FINAL_FILTER_OPTIONS = ['Not required', 'MERV 8 (standard)', 'MERV 11', 'MERV 13', 'MERV 14', 'HEPA final']
-// 'Not sure' removed (owner, 2026-08-20). Default is Indoor.
-export const INSTALL_LOCATIONS = ['Indoor', 'Outdoor (weatherproof)', 'Rooftop', 'Mezzanine / platform']
+// Cut to two (owner, 2026-08-20). Rooftop and mezzanine are each already indoor or
+// outdoor as far as the unit is concerned, and weatherproofing follows from Outdoor
+// rather than needing to be spelled out in the label. The free-text "size
+// restrictions" field on the same step is where anything unusual gets said.
+// Display-only: installLocation is rendered on the admin view and the PDF and is
+// never compared against or looked up, so changing these labels is safe.
+export const INSTALL_LOCATIONS = ['Indoor', 'Outdoor']
 
 // ─── Form data ────────────────────────────────────────────────────────────────
 

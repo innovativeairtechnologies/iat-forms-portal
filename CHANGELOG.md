@@ -17,8 +17,9 @@ switches the whole survey, including dew point and wet bulb where those are the 
 Everything is still stored and quoted in Fahrenheit — switching is a way of reading and typing,
 not a change to the numbers, and flipping back and forth never alters what was entered.
 
-**Step 5 opens with three pictures** — Good, Better and Best wall build-ups, left to right. The
-envelope questions are the ones customers guess at most; a picture to point at gets a better
+**Step 5 opens with three pictures** — Good, Better and Best wall build-ups, left to right, and
+hovering over one enlarges it to twice the size so the labels on the drawing can actually be read.
+The envelope questions are the ones customers guess at most; a picture to point at gets a better
 answer than a longer explanation.
 
 **“Not sure” is gone** from the vapor barrier question, the pre-filter, and where the unit goes.
@@ -26,6 +27,10 @@ Cabinet construction drops **“Painted galvanized”** and **“Let IAT recomme
 air source drops **“Let IAT recommend”** as well. That completes a pass across the whole form:
 every remaining choice is an answer, not a way of declining to give one. Where a customer genuinely
 does not know, the sensible option is already the default.
+
+**Where the unit goes** is now just Indoor or Outdoor. Rooftop and mezzanine are each already
+one or the other as far as the equipment is concerned, and the free-text note on the same step
+covers anything unusual about the spot.
 
 Also: spellings across the form and its documents are now consistently American — "vapor" rather
 than "vapor", and the same for a handful of others.
