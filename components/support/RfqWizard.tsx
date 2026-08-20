@@ -33,24 +33,34 @@ type StepKey =
   | 'leaving' | 'airstream' | 'entering'
   | 'unit' | 'about' | 'review'
 
-type Tone = 'emerald' | 'sky' | 'amber' | 'rose' | 'violet'
+/**
+ * TWO tones, deliberately (owner, 2026-08-20). Sky carries ordinary information;
+ * amber marks the one thing on a step worth stopping at. Rose, violet and emerald
+ * were deleted rather than left unused — a fourth colour is otherwise one commit
+ * away, and the survey goes back to looking like a paint chart.
+ *
+ * Dropping emerald also puts this in line with the house rule that brand green
+ * belongs to the single primary action on a view. Here that is Continue and the
+ * site-conditions lookup, and nothing else.
+ */
+type Tone = 'sky' | 'amber'
 
 // `short` is the 1-2 word label printed under each segment of the progress rail,
 // so a step can be recognized and jumped to directly instead of clicking Back
 // repeatedly. `title` remains the full heading shown on the step itself.
 const STEPS: Record<StepKey, { short: string; title: string; kicker: string; icon: LucideIcon; tone: Tone }> = {
-  application: { short: 'Application', title: 'What are we protecting?', kicker: 'Pick the closest match and it fills in the rest', icon: Sparkles, tone: 'emerald' },
+  application: { short: 'Application', title: 'What are we protecting?', kicker: 'Pick the closest match and it fills in the rest', icon: Sparkles, tone: 'sky' },
   target:      { short: 'Target', title: 'Your target condition',   kicker: 'The condition you need held inside',           icon: Thermometer, tone: 'sky' },
-  space:       { short: 'Space', title: 'The space',                kicker: 'Rough dimensions are fine',                    icon: Ruler, tone: 'violet' },
-  shell:       { short: 'Shell', title: 'The shell around it',      kicker: 'What the room is built from',                  icon: Layers, tone: 'amber' },
-  openings:    { short: 'Openings', title: 'Doors and openings',       kicker: 'Usually the single biggest load',              icon: DoorOpen, tone: 'rose' },
-  inside:      { short: 'Inside', title: "What's happening inside",  kicker: 'People, product, water, ventilation',          icon: Users, tone: 'emerald' },
+  space:       { short: 'Space', title: 'The space',                kicker: 'Rough dimensions are fine',                    icon: Ruler, tone: 'sky' },
+  shell:       { short: 'Shell', title: 'The shell around it',      kicker: 'What the room is built from',                  icon: Layers, tone: 'sky' },
+  openings:    { short: 'Openings', title: 'Doors and openings',       kicker: 'Usually the single biggest load',              icon: DoorOpen, tone: 'sky' },
+  inside:      { short: 'Inside', title: "What's happening inside",  kicker: 'People, product, water, ventilation',          icon: Users, tone: 'sky' },
   leaving:     { short: 'Leaving air', title: 'Leaving air you need',     kicker: 'The condition off the dehumidifier',           icon: Wind, tone: 'sky' },
-  airstream:   { short: 'Airstream', title: 'The airstream',            kicker: 'How much air, and where it comes from',        icon: Gauge, tone: 'violet' },
-  entering:    { short: 'Entering', title: 'Entering conditions',      kicker: 'What the unit has to work against',            icon: Thermometer, tone: 'amber' },
+  airstream:   { short: 'Airstream', title: 'The airstream',            kicker: 'How much air, and where it comes from',        icon: Gauge, tone: 'sky' },
+  entering:    { short: 'Entering', title: 'Entering conditions',      kicker: 'What the unit has to work against',            icon: Thermometer, tone: 'sky' },
   unit:        { short: 'Unit', title: 'The unit',                 kicker: 'Utilities, construction, filtration',          icon: Cog, tone: 'sky' },
-  about:       { short: 'About you', title: 'You and the project',      kicker: 'Who to send the quote to, and where it is going', icon: Mail, tone: 'violet' },
-  review:      { short: 'Review', title: 'Review and send',          kicker: 'One last look before it reaches our desk',     icon: CheckCircle2, tone: 'emerald' },
+  about:       { short: 'About you', title: 'You and the project',      kicker: 'Who to send the quote to, and where it is going', icon: Mail, tone: 'sky' },
+  review:      { short: 'Review', title: 'Review and send',          kicker: 'One last look before it reaches our desk',     icon: CheckCircle2, tone: 'sky' },
 }
 
 // `about` leads. It was the second-to-last step, which meant a customer answered
@@ -68,11 +78,8 @@ const PROCESS_FLOW: StepKey[] = ['about', 'application', 'leaving', 'airstream',
 // this one customer-facing surface each step owns a tone so the wizard reads as
 // a journey rather than nine identical forms.
 const TONE: Record<Tone, { chip: string; ring: string; dot: string; bar: string; text: string; softBg: string }> = {
-  emerald: { chip: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', ring: 'ring-emerald-200 dark:ring-emerald-500/30', dot: 'bg-emerald-500', bar: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', softBg: 'bg-emerald-50/60 dark:bg-emerald-500/5' },
-  sky:     { chip: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400',                 ring: 'ring-sky-200 dark:ring-sky-500/30',         dot: 'bg-sky-500',     bar: 'bg-sky-500',     text: 'text-sky-700 dark:text-sky-400',         softBg: 'bg-sky-50/60 dark:bg-sky-500/5' },
-  amber:   { chip: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',         ring: 'ring-amber-200 dark:ring-amber-500/30',     dot: 'bg-amber-500',   bar: 'bg-amber-500',   text: 'text-amber-700 dark:text-amber-400',     softBg: 'bg-amber-50/60 dark:bg-amber-500/5' },
-  rose:    { chip: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',             ring: 'ring-rose-200 dark:ring-rose-500/30',       dot: 'bg-rose-500',    bar: 'bg-rose-500',    text: 'text-rose-700 dark:text-rose-400',       softBg: 'bg-rose-50/60 dark:bg-rose-500/5' },
-  violet:  { chip: 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400',     ring: 'ring-violet-200 dark:ring-violet-500/30',   dot: 'bg-violet-500',  bar: 'bg-violet-500',  text: 'text-violet-700 dark:text-violet-400',   softBg: 'bg-violet-50/60 dark:bg-violet-500/5' },
+  sky:   { chip: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400',         ring: 'ring-sky-200 dark:ring-sky-500/30',     dot: 'bg-sky-500',   bar: 'bg-sky-500',   text: 'text-sky-700 dark:text-sky-400',     softBg: 'bg-sky-50/60 dark:bg-sky-500/5' },
+  amber: { chip: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400', ring: 'ring-amber-200 dark:ring-amber-500/30', dot: 'bg-amber-500', bar: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-400', softBg: 'bg-amber-50/60 dark:bg-amber-500/5' },
 }
 
 // ─── Field primitives ─────────────────────────────────────────────────────────
@@ -199,7 +206,7 @@ function SelectField({
 
 /** Segmented control — the fastest possible answer for a short option set. */
 function Segmented<T extends string>({
-  label, hint, value, onChange, options, tone = 'emerald',
+  label, hint, value, onChange, options, tone = 'sky',
 }: {
   label?: string; hint?: string; value: T; onChange: (v: T) => void
   options: { value: T; label: string }[]; tone?: Tone
@@ -818,7 +825,7 @@ function Fork({ onPick }: { onPick: (t: Track) => void }) {
       title: 'A room or building',
       lede: 'You need a space held at a condition: a warehouse, cold store, dry room or production hall.',
       bullets: ['You know the temperature and humidity you want inside', 'People, product or equipment live in that space', 'We calculate the moisture load from the room itself'],
-      tone: 'emerald',
+      tone: 'sky',
     },
     {
       track: 'process',
@@ -1099,7 +1106,7 @@ function StepApplication({
       </div>
 
       {chosen && (
-        <Callout tone="emerald">
+        <Callout tone="sky">
           <strong className="font-semibold">What we&apos;re protecting:</strong> {chosen.driver}. We&apos;ve
           pre-filled typical values for this application. Change anything that doesn&apos;t match your site.
         </Callout>
@@ -1162,8 +1169,11 @@ function StepSpace({ data, set, load }: { data: RfqData; set: SetFn; load: Retur
         <TextField label="Height" value={data.roomH} onChange={v => set('roomH', v)} type="number" suffix="ft" />
       </Grid>
 
+      {/* Same wash as every other readout on the survey. It was hardcoded violet
+          rather than going through TONE, which is how it survived the palette being
+          cut down. */}
       {load.volumeCuFt > 0 && (
-        <div className="grid grid-cols-2 gap-3 rounded-xl bg-violet-50/60 p-4 dark:bg-violet-500/5 sm:grid-cols-3">
+        <div className={`grid grid-cols-2 gap-3 rounded-xl p-4 sm:grid-cols-3 ${TONE.sky.softBg}`}>
           <Stat label="Floor area" value={fmt(numOf(data.roomL) * numOf(data.roomW))} unit="sq.ft" />
           <Stat label="Volume" value={fmt(load.volumeCuFt)} unit="cu.ft" />
           <Stat label="Wall area" value={fmt(2 * (numOf(data.roomL) + numOf(data.roomW)) * numOf(data.roomH))} unit="sq.ft" />
@@ -1174,7 +1184,7 @@ function StepSpace({ data, set, load }: { data: RfqData; set: SetFn; load: Retur
           feeds grains and dew point, so it has to be known before any of the
           numbers this wizard shows mean anything. */}
 
-      <Callout tone="violet">
+      <Callout tone="sky">
         If the space isn&apos;t a simple box, give us the overall footprint and mention the shape in the notes
         at the end. We&apos;d rather start from a rough number than no number.
       </Callout>
@@ -1331,7 +1341,7 @@ function StepShell({
           <Segmented<VaporBarrier>
             label="Is there a vapor barrier?"
             hint="Class I is polyethylene, Class II is kraft-faced batt, Class III is latex-painted gypsum."
-            tone="amber"
+            tone="sky"
             value={data.vaporBarrier}
             onChange={v => set('vaporBarrier', v)}
             options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
@@ -1340,7 +1350,7 @@ function StepShell({
           <div>
             <Segmented<Tightness>
               label="How tight is the building?"
-              tone="amber"
+              tone="sky"
               value={data.tightness}
               onChange={v => set('tightness', v)}
               options={[
@@ -1400,7 +1410,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
 
   return (
     <div className="space-y-5">
-      <Callout tone="rose">
+      <Callout tone="amber">
         In most real buildings this one step outweighs walls, people and product combined. Every time a door
         opens, a slug of wet air walks in. Rough numbers are fine. A guess beats a blank.
       </Callout>
@@ -1431,7 +1441,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
             </div>
             <div className="mt-3">
               <Segmented<Exposure>
-                tone="rose"
+                tone="sky"
                 value={door.exposure}
                 onChange={v => update(door.id, { exposure: v })}
                 options={[
@@ -1593,7 +1603,7 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
       </div>
       )}
 
-      <Callout tone="emerald">
+      <Callout tone="sky">
         Nothing here applies? Leave it all blank. An empty field is an honest answer and we&apos;ll say so on
         the survey rather than inventing a number.
       </Callout>
@@ -1656,7 +1666,7 @@ function StepAirstream({ data, set }: { data: RfqData; set: SetFn }) {
 
       <Segmented
         label="Where does that air come from?"
-        tone="violet"
+        tone="sky"
         value={data.airSource}
         onChange={v => set('airSource', v)}
         options={AIR_SOURCES.map(a => ({ value: a, label: a }))}
@@ -1666,7 +1676,7 @@ function StepAirstream({ data, set }: { data: RfqData; set: SetFn }) {
         <TextField label="Outdoor air fraction" value={data.mixOutdoorPct} onChange={v => set('mixOutdoorPct', v)} type="number" suffix="% OA" />
       )}
 
-      <Callout tone="violet">
+      <Callout tone="sky">
         Don&apos;t know the airflow yet? Put in your best guess and say so in the notes. We&apos;ll work it
         back from the drying job once we talk.
       </Callout>
@@ -1830,7 +1840,6 @@ function SiteLocation({ data, set, setData }: {
 }) {
   const [state, setState] = useState<'idle' | 'looking' | 'done' | 'failed'>('idle')
   const [matched, setMatched] = useState('')
-  const [source, setSource] = useState('')
   const [design, setDesign] = useState<DesignLookup | null>(null)
 
   const lookup = useCallback(async () => {
@@ -1875,7 +1884,6 @@ function SiteLocation({ data, set, setData }: {
       })
 
       setMatched(String(j.matched ?? ''))
-      setSource(String(j.source ?? ''))
       setDesign(d)
       setState('done')
     } catch {
@@ -1906,7 +1914,7 @@ function SiteLocation({ data, set, setData }: {
             type="button"
             onClick={lookup}
             disabled={!canLookUp}
-            className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 text-[12px] font-medium text-ink-secondary transition-colors hover:bg-surface-strong disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-brand-soft px-3 text-[12px] font-medium text-brand-ink transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:border-emerald-500/30 dark:hover:bg-emerald-500/20"
           >
             {state === 'looking'
               ? <><Loader2 size={13} className="animate-spin" /> Looking up…</>
@@ -1914,8 +1922,8 @@ function SiteLocation({ data, set, setData }: {
           </button>
           {state === 'done' && (
             <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
-              {matched ? `${matched} · ` : ''}elevation from {source || 'survey data'}. Edit the
-              elevation if you know better.
+              {matched ? `${matched}. ` : ''}Elevation filled in from survey data. Edit it if you
+              know better.
             </p>
           )}
           {state === 'failed' && (
