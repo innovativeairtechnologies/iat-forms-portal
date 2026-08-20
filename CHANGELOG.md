@@ -43,23 +43,6 @@ Internal notes and developer comments were left alone. Nobody outside sees them.
 (49.05563453465). It reads as a whole number again. That crept in with the Celsius work, which
 replaced the rounding step without putting one back.
 
-## 2026-08-20 — Plainer wording across everything a customer reads
-
-The customer-facing wording has been rewritten to a plainer punctuation style. Long dashes are
-gone from every description, hint, button, confirmation screen and outgoing email, replaced with
-ordinary sentences, commas and colons. Around 160 pieces of copy across the quote request, the
-support forms, the status page, the customer portal, the quote PDF and the notification emails.
-
-Every one was rewritten by hand rather than swapped by a script: a long dash does three different
-jobs in a sentence, and a blanket find-and-replace would have produced run-on sentences in some
-places and clipped ones in others. Nothing about what the words say has changed.
-
-Internal notes and developer comments were left alone. Nobody outside sees them.
-
-**Also fixed:** the dew point on the target-condition step was showing a dozen decimal places
-(49.05563453465). It reads as a whole number again. That crept in with the Celsius work, which
-replaced the rounding step without putting one back.
-
 ## 2026-08-20 — The building-tightness question is back, with both envelope details tucked away
 
 **“How tight is the building?” is being asked again.** It was hidden a day earlier while the
