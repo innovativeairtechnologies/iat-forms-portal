@@ -144,13 +144,13 @@ export async function sendRfqAssignmentNotice(
     </p>
     <p style="margin:10px 0 0;color:#555;font-size:14px;line-height:1.6;">
       Move it to <strong>Reviewing</strong> once you have had a look. That is all it takes to stop
-      the reminders — otherwise a nudge follows in 24 hours.
+      the reminders. Otherwise a nudge follows in 24 hours.
     </p>
     ${table([row])}
     ${cta('Open the request', `${APP_URL}/admin/rfq/${row.id}`)}`
 
   const subject = `Quote request ${row.reference} is yours`
-    + (row.company ? ` — ${row.company}` : '')
+    + (row.company ? ` (${row.company})` : '')
 
   const res = await resend.emails.send({
     from: FROM, to, subject,
@@ -203,13 +203,13 @@ export async function sendRfqCustomerMessageAlert(
       <tr><td style="padding:16px 20px;color:#333;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</td></tr>
     </table>
     <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;">
-      It is on the request's note trail, marked as coming from them. Reply by email or phone —
+      It is on the request's note trail, marked as coming from them. Reply by email or phone;
       the portal does not send your answer back to them.
     </p>
     ${cta('Open the request', `${APP_URL}/admin/rfq/${id}`)}`
 
   const subject = `${who} replied on quote request ${reference}`
-    + (company ? ` — ${company}` : '')
+    + (company ? ` (${company})` : '')
 
   const results = await Promise.all(
     recipients.map(to => resend.emails.send({
@@ -237,7 +237,7 @@ export async function sendRfqAssigneeNudge(to: string, name: string, rows: Remin
     <p style="margin:0;color:#333;font-size:15px;line-height:1.6;">
       ${many ? `${rows.length} quote requests are` : 'A quote request is'} assigned to you and still sitting at
       <strong>New</strong>. If you have ${many ? 'them' : 'it'} in hand, move ${many ? 'them' : 'it'} to
-      <strong>Reviewing</strong> — that is all it takes to stop these reminders.
+      <strong>Reviewing</strong>. That is all it takes to stop these reminders.
     </p>
     ${table(rows)}
     ${cta(many ? 'Open the quote queue' : 'Open the request', href)}`
@@ -273,14 +273,14 @@ export async function sendRfqUnclaimedReminder(rows: ReminderRow[]): Promise<voi
       The oldest has been waiting <strong>${oldest} day${oldest === 1 ? '' : 's'}</strong>.
     </p>
     <p style="margin:10px 0 0;color:#555;font-size:14px;line-height:1.6;">
-      Assign ${many ? 'each one' : 'it'} to someone in the portal — that is what stops this reminder and
+      Assign ${many ? 'each one' : 'it'} to someone in the portal. That is what stops this reminder and
       starts the clock on the person who owns it.
     </p>
     ${table(rows)}
     ${cta('Assign in the portal', `${APP_URL}/admin/rfq`)}`
 
   const subject = `REMINDER: ${rows.length} quote request${many ? 's' : ''} waiting to be picked up`
-    + (oldest > 0 ? ` — oldest ${oldest} day${oldest === 1 ? '' : 's'} old` : '')
+    + (oldest > 0 ? `, oldest ${oldest} day${oldest === 1 ? '' : 's'} old` : '')
 
   const results = await Promise.all(
     recipients.map(to => resend.emails.send({

@@ -48,7 +48,7 @@ function aiRecsBlock(recs: string[] | null) {
     <ol style="margin:0 0 6px;padding-left:20px;color:#555;font-size:14px;line-height:1.6;">
       ${recs.map(r => `<li style="margin-bottom:6px;">${esc(r)}</li>`).join('')}
     </ol>
-    <p style="margin:0;color:#999;font-size:12px;">These are AI-generated suggestions — if you're unsure, wait for your service technician.</p>`
+    <p style="margin:0;color:#999;font-size:12px;">These are AI-generated suggestions. If you're unsure, wait for your service technician.</p>`
 }
 
 const yn = (v: boolean | null) => (v === true ? 'Yes' : v === false ? 'No' : 'Not reported')
@@ -68,7 +68,7 @@ function diagnosticRows(t: TroubleshootingIntake) {
     row('Onset', onsetLabel(t.onset)),
     t.what_changed ? row('Changed before', esc(t.what_changed)) : '',
     row('Unit running', yn(t.unit_running)),
-    row('Active alarms', yn(t.has_alarms) + (t.alarm_details ? ` — ${esc(t.alarm_details)}` : '')),
+    row('Active alarms', yn(t.has_alarms) + (t.alarm_details ? ` (${esc(t.alarm_details)})` : '')),
     row('Process airflow', t.process_airflow_cfm ? `${esc(t.process_airflow_cfm)} CFM` : 'Not reported'),
     row('React airflow', t.react_airflow_cfm ? `${esc(t.react_airflow_cfm)} CFM` : 'Not reported'),
     row('React temp', t.react_temp_f ? `${esc(t.react_temp_f)} °F` : 'Not reported'),
@@ -105,9 +105,9 @@ export async function sendTroubleshootingCsAlert(t: TroubleshootingIntake, recip
     </table>
     ${photosBlock(t.photo_urls)}
     ${aiRecsBlock(t.ai_recommendations)}
-    <p style="margin:20px 0 0;color:#999;font-size:12px;">Manage this case in the <a href="${esc(APP_URL + '/admin/troubleshooting')}" style="color:#089447;">admin Troubleshooting queue</a> — this email carries the full case for quick reference.</p>`
+    <p style="margin:20px 0 0;color:#999;font-size:12px;">Manage this case in the <a href="${esc(APP_URL + '/admin/troubleshooting')}" style="color:#089447;">admin Troubleshooting queue</a>. This email carries the full case for quick reference.</p>`
 
-  const subject = `New Troubleshooting Case ${t.reference_number} — ${t.customer_name}${t.customer_company ? ` (${t.customer_company})` : ''}`
+  const subject = `New Troubleshooting Case ${t.reference_number}: ${t.customer_name}${t.customer_company ? ` (${t.customer_company})` : ''}`
 
   const results = await Promise.all(
     recipients.map(to => resend.emails.send({ from: FROM, replyTo: EMAIL_FROM.SUPPORT, to, subject, html: shell('#1a1a2e', 'New Troubleshooting Case', body) }))

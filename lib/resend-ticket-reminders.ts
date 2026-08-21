@@ -139,7 +139,7 @@ export async function sendTicketAssigneeNudge(to: string, name: string, rows: Ti
       ${n === 1 ? 'has' : 'have'} had no activity for over 24 hours.
     </p>
     <p style="margin:10px 0 0;color:#555;font-size:14px;line-height:1.6;">
-      Adding a note is enough to stop the reminder — even "waiting on parts" or "customer has not
+      Adding a note is enough to stop the reminder. Even "waiting on parts" or "customer has not
       called back". The trail is what tells everyone else the ticket is alive.
     </p>
     ${table(rows, r => ageLabel(r.last_activity_at))}

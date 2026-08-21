@@ -46,13 +46,13 @@ function replyBlock(reference: string, verb: string) {
   return `
     <div style="background:#f0faf4;border:1px solid rgba(8,148,71,0.25);border-radius:10px;padding:18px 20px;margin:24px 0 0;">
       <p style="margin:0 0 12px;color:#333;font-size:14px;line-height:1.6;">
-        Need to add something, or ${esc(verb)}? Use the link below — it keeps everything on your ticket
+        Need to add something, or ${esc(verb)}? Use the link below. It keeps everything on your ticket
         where our team will see it.
       </p>
       <a href="${esc(portalLink(reference))}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">View your ticket &amp; send a message</a>
     </div>
     <p style="margin:18px 0 0;color:#999;font-size:12px;line-height:1.5;">
-      Please do not reply to this email — it is sent from an unmonitored address and replies are not read.
+      Please do not reply to this email. It is sent from an unmonitored address and replies are not read.
     </p>`
 }
 
@@ -93,7 +93,7 @@ function aiRecsBlock(recs: string[] | null) {
     <ol style="margin:0 0 6px;padding-left:20px;color:#555;font-size:14px;line-height:1.6;">
       ${recs.map(r => `<li style="margin-bottom:6px;">${esc(r)}</li>`).join('')}
     </ol>
-    <p style="margin:0;color:#999;font-size:12px;">These are automated suggestions — if you're unsure, wait for your service technician.</p>`
+    <p style="margin:0;color:#999;font-size:12px;">These are automated suggestions. If you're unsure, wait for your service technician.</p>`
 }
 
 // ── Confirmation to the customer when a ticket is created ─────────────────────
@@ -118,7 +118,7 @@ export async function sendTicketConfirmationToCustomer(ticket: Ticket): Promise<
   const result = await resend.emails.send({
     from: FROM,
     to: ticket.customer_email,
-    subject: `We've received your request — ticket ${ticket.ticket_number}`,
+    subject: `We've received your request: ticket ${ticket.ticket_number}`,
     html: shell('Support Request Received', body),
   })
   if (result.error) console.error(`[resend] customer ticket confirmation failed to ${ticket.customer_email}:`, result.error)
@@ -156,7 +156,7 @@ export async function sendTicketStatusChangeToCustomer(
     <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
     <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
       There is an update on your support ticket. It is now
-      <strong>${esc(words.label)}</strong> — ${esc(words.blurb)}
+      <strong>${esc(words.label)}</strong>: ${esc(words.blurb)}
     </p>
     ${ticketChip(ticket.ticket_number)}
     ${replyBlock(ticket.ticket_number, 'have a question')}`
@@ -201,7 +201,7 @@ export async function sendTicketClosedToCustomer(
     </table>
     ${resolvedReason ? `<p style="margin:0 0 18px;color:#777;font-size:13px;">Resolution: ${esc(resolvedReason)}</p>` : ''}
     <p style="margin:0 0 4px;color:#555;font-size:14px;line-height:1.6;">
-      If this is not fixed, or the problem comes back, use the link below and tell us — it reopens
+      If this is not fixed, or the problem comes back, use the link below and tell us. It reopens
       the conversation on the same ticket rather than starting again from scratch.
     </p>
     ${replyBlock(ticket.ticket_number, 'need to reopen this')}`

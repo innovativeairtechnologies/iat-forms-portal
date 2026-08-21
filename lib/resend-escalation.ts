@@ -158,7 +158,7 @@ export async function sendUnassignedEscalation(items: EscalationItem[]): Promise
       raised again in 48 hours.
     </p>`
 
-  const subject = `Unassigned after 24 hours — ${parts}`
+  const subject = `Unassigned after 24 hours: ${parts}`
 
   // Sent one at a time, each addressed to a single person. Failures are collected
   // rather than short-circuited: one bad address must not stop the other person

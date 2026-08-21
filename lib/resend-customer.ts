@@ -50,8 +50,8 @@ export async function sendCustomerWelcomeEmail(opts: {
   const body = `
     <p style="margin:0 0 16px;color:#333;font-size:15px;">${contactName ? `Hi ${esc(contactName)},` : 'Hello,'}</p>
     <p style="margin:0 0 20px;color:#333;font-size:15px;">
-      Innovative Air Technologies has set up a customer portal for <strong>${esc(companyName)}</strong> —
-      your home for unit details, build &amp; shipping status, warranty, and support. Sign in with the
+      Innovative Air Technologies has set up a customer portal for <strong>${esc(companyName)}</strong>.
+      It is your home for unit details, build &amp; shipping status, warranty, and support. Sign in with the
       temporary credentials below; you'll choose your own password right after.
     </p>
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;overflow:hidden;margin-bottom:20px;">
@@ -67,7 +67,7 @@ export async function sendCustomerWelcomeEmail(opts: {
     <a href="${esc(loginUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:600;font-size:15px;">Sign In</a>
     <p style="margin:20px 0 0;color:#333;font-size:14px;line-height:1.6;">
       Once you're in, you'll see your equipment, build &amp; shipping status, and can submit a
-      support or warranty request any time — no need to call or email first.
+      support or warranty request any time, with no need to call or email first.
     </p>
     <p style="margin:14px 0 0;color:#333;font-size:14px;line-height:1.6;">
       Questions before then? Reach us at <a href="mailto:${CONTACT_TO}" style="color:#089447;">${CONTACT_TO}</a>
@@ -126,7 +126,7 @@ export async function sendCustomerContactEmail(opts: {
   const result = await resend.emails.send({
     from: internalFrom(FROM),
     to: CONTACT_TO,
-    subject: `[${department}] Portal message — ${companyName}`,
+    subject: `[${department}] Portal message from ${companyName}`,
     html: shell('New Portal Message', body),
   })
   if (result.error) console.error(`[resend] customer contact failed from ${contactEmail}:`, result.error)
@@ -160,7 +160,7 @@ export async function sendWarrantyDecisionEmail(opts: {
       ? `
     <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
     <p style="margin:0 0 20px;color:#333;font-size:15px;">
-      Good news — the warranty claim you filed for unit <strong>${esc(serialNumber)}</strong> has been
+      Good news. The warranty claim you filed for unit <strong>${esc(serialNumber)}</strong> has been
       <strong style="color:#089447;">approved</strong>. We've opened ticket
       ${ticketNumber ? `<strong>${esc(ticketNumber)}</strong>` : 'a support ticket'} to handle it from here.
     </p>
@@ -195,7 +195,7 @@ export async function sendWarrantyDecisionEmail(opts: {
   const result = await resend.emails.send({
     from: FROM,
     to,
-    subject: outcome === 'approved' ? `Warranty claim approved — ${serialNumber}` : `Update on your warranty claim — ${serialNumber}`,
+    subject: outcome === 'approved' ? `Warranty claim approved: ${serialNumber}` : `Update on your warranty claim: ${serialNumber}`,
     html: shell(outcome === 'approved' ? 'Warranty Claim Approved' : 'Warranty Claim Update', body),
   })
   if (result.error) console.error(`[resend] warranty decision (${outcome}) failed to ${to}:`, result.error)

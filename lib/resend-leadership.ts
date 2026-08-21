@@ -87,7 +87,7 @@ export async function sendLeadershipUpdate(update: LeadershipUpdate, docx: Buffe
   const results = await Promise.all(recipients.map(to => resend.emails.send({
     from: FROM,
     to,
-    subject: `IAT Portal — ${update.period.label} (${update.period.range})`,
+    subject: `IAT Portal: ${update.period.label} (${update.period.range})`,
     html,
     attachments: [{ filename, content: docx.toString('base64') }],
   })))
