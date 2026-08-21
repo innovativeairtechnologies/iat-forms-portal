@@ -110,6 +110,90 @@ that week's Monday.
 
 ---
 
+## The two scheduled reports, and which is which (2026-08-21)
+
+They are often confused, so: **one is an email, one is a document.**
+
+| | Daily admin digest | Leadership update |
+|---|---|---|
+| Format | HTML email | Word document, attached |
+| When | **every day**, ~16:30 ET | **Mon / Wed / Fri**, 18:00 ET |
+| To | admins, minus `DIGEST_OPT_OUT_EMAILS` | `LEADERSHIP_UPDATE_EMAIL` |
+| Built from | live tickets + quote requests | `CHANGELOG.md` |
+| Route | `/api/cron/admin-digest` | `/api/cron/leadership-update` |
+
+### The digest now covers quote requests too
+
+Three RFQ sections mirroring the ticket ones: newly assigned to you, yours aging past 3 days, and
+unclaimed.
+
+⚠️ **Unclaimed is ORG-WIDE while everything else is per-person**, and the asymmetry is deliberate.
+An unclaimed request belongs to nobody, so a strictly per-owner digest is precisely the shape that
+never mentions one. Checked 2026-08-21: all ten live requests were unassigned, so a per-owner-only
+view would have shown every admin an empty section while ten sat there.
+
+`rfq_requests` has a real `assigned_at`, so "newly assigned" is genuinely when it became theirs —
+unlike the ticket half, which approximates with `created_at` because tickets carry no separate
+assignment timestamp. The RFQ read **degrades rather than throws**: losing the ticket half is a bug,
+losing the RFQ half should still deliver the tickets.
+
+### Leadership: three times a week, and what each run covers
+
+Changed 2026-08-21 from Mondays at 5pm. Each run covers **only the days since the previous run**:
+
+| Run | Covers |
+|---|---|
+| Monday | Saturday, Sunday, Monday |
+| Wednesday | Tuesday, Wednesday |
+| Friday | Thursday, Friday |
+
+Every day exactly once, nothing twice.
+
+🔴 **EVERY SCHEDULED SEND IS NOW AN INTERIM — there is no automatic weekly edition.** Adding a
+Monday full-week edition back alongside these would re-send Tuesday-to-Friday content that already
+went out on Wednesday and Friday. `?edition=8.17.26` still rebuilds any past week by hand.
+
+⚠️ **The hour check had to widen, and a claim had to come with it.** `is5pmEastern()` tested
+`hour === 17` and survived only because exactly one cron entry could ever land inside that hour.
+Crons here run **up to 63 minutes late**, so a 6pm entry arriving at 19:03 would have silently sent
+nothing — the identical failure that stopped the daily digest sending for months. The window is now
+18:00–20:00, and `leadership_last_sent` in `app_settings` claims the NY day so a wide window cannot
+send several copies.
+
+DST is handled by window + claim rather than by one entry being wrong for the season:
+
+|  | 22:00 UTC | 23:00 UTC |
+|---|---|---|
+| EDT | 18:00 ET **sends** | 19:00 ET in window, day claimed, no-op |
+| EST | 17:00 ET outside window | 18:00 ET **sends** |
+
+⚠️ The claim is read-then-write, not an atomic upsert on a unique index. The entries sit an hour
+apart, so the race needs a 60-minute delay landing on the exact second of the other run. A real
+`leadership_runs` table with a UNIQUE index on the date is the correct fix once migrations are
+available (the Supabase CLI was unauthorized on 2026-08-21 and DDL cannot go through PostgREST).
+
+### ⚠️ Setting LEADERSHIP_UPDATE_EMAIL
+
+Use `--value` **and `--no-sensitive`**:
+
+```
+npx vercel env add LEADERSHIP_UPDATE_EMAIL production --value "a@x.com,b@x.com" --no-sensitive --yes
+```
+
+CLI 54 defaults new Production variables to **sensitive**, and a sensitive value pulls back EMPTY —
+so it cannot be verified afterwards, and a silently-empty recipient list means nobody gets the
+report. The first attempt on 2026-08-21 stored `""` exactly this way. Always confirm with
+`vercel env pull` and read the value back.
+
+### ⚠️ CHANGELOG.md ordering is load-bearing
+
+`entriesForPeriod()` walks newest-first and **breaks on the first entry older than the period
+start**, so one out-of-order entry silently truncates a report. Audited 2026-08-21: four entries are
+out of order at positions 86–137 (late July / early August). Harmless for the Mon/Wed/Fri runs, which
+only ever reach back two or three days — but a manual `?edition=` covering those weeks will
+truncate. Fix the ordering before trusting a rebuild of that period.
+
+
 ## The escalation ladder
 
 Three steps, each existing because the one before it can fail:
