@@ -591,6 +591,10 @@ export default function EquipmentTicketForm({
   const router = useRouter()
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [step, setStep] = useState(1)
+  // High-water mark: the furthest step reached. Every step up to here has been
+  // visited, so its circle in the progress header is clickable — jump back to
+  // change/check something, or jump forward to a step already filled out.
+  const [maxStep, setMaxStep] = useState(1)
   const [dir, setDir] = useState(1)
   const [form, setForm] = useState<FormData>(() => seedForm(customerContext))
   const [photos, setPhotos] = useState<File[]>([])
@@ -674,6 +678,7 @@ export default function EquipmentTicketForm({
   const go = (next: number) => {
     setDir(next > step ? 1 : -1)
     setStep(next)
+    setMaxStep(m => Math.max(m, next))
   }
   const handleNext = () => { if (canAdvance() && step < totalSteps) go(step + 1) }
   const handleBack = () => { if (step > 1) go(step - 1) }
@@ -860,7 +865,7 @@ export default function EquipmentTicketForm({
 
             <div className="px-8 py-5 flex items-center justify-between gap-4">
               <button
-                onClick={() => { setForm(seedForm(customerContext)); setPhotos([]); setStep(1); setStage('form'); setRecommendations([]); setAnalyzed(false); setAnalyzeError(null) }}
+                onClick={() => { setForm(seedForm(customerContext)); setPhotos([]); setStep(1); setMaxStep(1); setStage('form'); setRecommendations([]); setAnalyzed(false); setAnalyzeError(null) }}
                 className="flex items-center gap-2 text-[13px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 <RotateCcw size={14} />
@@ -947,13 +952,22 @@ export default function EquipmentTicketForm({
           <div className="flex items-center justify-between mb-2">
             {steps.map((key, i) => {
               const n = i + 1
-              const done = n < step
               const active = n === step
+              const reached = n <= maxStep          // visited → its circle is navigable
+              const done = reached && !active
+              const clickable = reached && !active
               return (
-                <div key={key} className="flex flex-col items-center gap-1.5 flex-1">
+                <button
+                  key={key}
+                  type="button"
+                  onClick={clickable ? () => go(n) : undefined}
+                  disabled={!clickable}
+                  aria-label={clickable ? `Go to ${STEP_LABELS[key]}` : undefined}
+                  className={`group flex flex-col items-center gap-1.5 flex-1 min-w-0 ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
+                >
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all ${
                     done
-                      ? 'bg-[#089447] text-white'
+                      ? 'bg-[#089447] text-white group-hover:ring-2 group-hover:ring-[#089447]/30'
                       : active
                         ? 'bg-[#089447]/10 dark:bg-[#089447]/20 text-[#089447] border-2 border-[#089447]'
                         : 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-gray-600'
@@ -961,9 +975,9 @@ export default function EquipmentTicketForm({
                     {done ? <CheckCircle size={12} strokeWidth={3} /> : n}
                   </div>
                   <span className={`text-[10px] font-medium hidden sm:block transition-colors ${
-                    active ? 'text-[#089447]' : done ? 'text-gray-400' : 'text-gray-300 dark:text-gray-600'
+                    active ? 'text-[#089447]' : done ? 'text-gray-400 group-hover:text-[#089447]' : 'text-gray-300 dark:text-gray-600'
                   }`}>{STEP_LABELS[key]}</span>
-                </div>
+                </button>
               )
             })}
           </div>

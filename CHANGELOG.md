@@ -10,6 +10,14 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Support ticket: the progress steps are clickable
+
+The equipment support form's header shows a circle per step (Contact, Equipment, Problem … Analysis).
+They were display-only, so changing or re-checking an earlier answer meant clicking Back down the whole
+stack. Every step you've already reached is now a button — click its circle to jump straight there,
+backward or forward, among the steps you've visited. Steps not yet reached stay locked, so required
+fields still can't be skipped. A `maxStep` high-water mark tracks how far you've gotten.
+
 ## 2026-08-21 — Support ticket: the Contact step's email and phone fields line up
 
 On step 1 of the equipment support form, Email and Phone share a two-up row, but only Phone carried a
