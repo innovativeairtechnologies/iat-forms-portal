@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
+import { useId, useMemo, useState } from 'react'
+import { ChevronDown, Download } from 'lucide-react'
 // ⚠️ From ticket-report-TYPES, never ticket-report. That module imports
 // supabase-admin, and RANGES is a VALUE import, so pulling it from there ships
 // the service-role client to the browser and hydration dies with
@@ -51,14 +51,60 @@ function BarRow({ label, count, max, note }: { label: string; count: number; max
   )
 }
 
-function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+/**
+ * A collapsible block of the report.
+ *
+ * The headline tiles above are NOT one of these on purpose — they are the answer
+ * to "how are we doing", and a report whose headline you have to open first is a
+ * worse report. Everything below them is detail you go looking for, so it starts
+ * shut and the page opens as a summary rather than a wall.
+ *
+ * `summary` is what makes collapsing safe rather than merely tidy: a shut
+ * section still says how much is inside it, so nothing becomes invisible just
+ * because it is closed.
+ *
+ * A real <button> with aria-expanded/aria-controls, not a styled div — same
+ * disclosure idiom as the Advanced blocks in the RFQ wizard — so it announces
+ * its state to a screen reader and works from the keyboard.
+ *
+ * Open/shut is per mount and deliberately not persisted: the range tabs
+ * re-render this from the server, and a remembered layout that survives a range
+ * change would show yesterday's choices against today's numbers.
+ */
+function Section({
+  title, sub, summary, defaultOpen = false, children,
+}: {
+  title: string
+  sub?: string
+  summary?: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const id = useId()
+
   return (
     <div className="border-t border-hairline">
-      <div className="px-5 pb-1 pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">{title}</p>
-        {sub && <p className="mt-0.5 text-[11.5px] text-ink-muted">{sub}</p>}
-      </div>
-      <div className="pb-3">{children}</div>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-controls={id}
+        className="flex w-full items-center gap-2 px-5 py-3.5 text-left transition-colors hover:bg-surface-soft focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+      >
+        <ChevronDown
+          size={14}
+          className={`flex-shrink-0 text-ink-muted transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">{title}</span>
+          {sub && open && <span className="mt-0.5 block text-[11.5px] font-normal normal-case tracking-normal text-ink-muted">{sub}</span>}
+        </span>
+        {summary && (
+          <span className="flex-shrink-0 text-[11.5px] tabular-nums text-ink-faint">{summary}</span>
+        )}
+      </button>
+      {open && <div id={id} className="pb-3">{children}</div>}
     </div>
   )
 }
@@ -180,11 +226,16 @@ export default function TicketReportClient({ report }: { report: TicketReport })
           <Tile label="Reopened" value={String(t.reopenedInRange)} sub="tickets that came back" />
         </div>
 
-        <Section title="Open tickets by age" sub="Anything not closed, by how long it has been waiting.">
+        <Section
+          title="Open tickets by age"
+          sub="Anything not closed, by how long it has been waiting."
+          summary={`${t.openNow} open`}
+          defaultOpen
+        >
           {report.aging.map(b => <BarRow key={b.label} label={b.label} count={b.count} max={agingMax} />)}
         </Section>
 
-        <Section title="Opened vs closed by month">
+        <Section title="Opened vs closed by month" summary={`${report.monthly.length} ${report.monthly.length === 1 ? 'month' : 'months'}`}>
           {report.monthly.length === 0
             ? <p className="px-5 py-3 text-[12.5px] text-ink-muted">Nothing in this range.</p>
             : report.monthly.map(m => (
@@ -195,7 +246,7 @@ export default function TicketReportClient({ report }: { report: TicketReport })
               ))}
         </Section>
 
-        <Section title="By owner" sub="Assigned in total, closed, and the median days they take.">
+        <Section title="By owner" sub="Assigned in total, closed, and the median days they take." summary={`${report.byOwner.length} ${report.byOwner.length === 1 ? 'person' : 'people'}`}>
           {report.byOwner.map(o => (
             <BarRow
               key={o.owner}
@@ -207,15 +258,15 @@ export default function TicketReportClient({ report }: { report: TicketReport })
           ))}
         </Section>
 
-        <Section title="By customer" sub={`Opened ${report.rangeLabel.toLowerCase()}. Top 15.`}>
+        <Section title="By customer" sub={`Opened ${report.rangeLabel.toLowerCase()}. Top 15.`} summary={`${report.byCompany.length} shown`}>
           {report.byCompany.map(c => <BarRow key={c.label} label={c.label} count={c.count} max={companyMax} />)}
         </Section>
 
-        <Section title="By equipment model" sub="Which machines generate the support. Top 15.">
+        <Section title="By equipment model" sub="Which machines generate the support. Top 15." summary={`${report.byModel.length} shown`}>
           {report.byModel.map(m => <BarRow key={m.label} label={m.label} count={m.count} max={modelMax} />)}
         </Section>
 
-        <Section title="How they were resolved" sub={`Tickets closed ${report.rangeLabel.toLowerCase()}.`}>
+        <Section title="How they were resolved" sub={`Tickets closed ${report.rangeLabel.toLowerCase()}.`} summary={`${report.byReason.length} ${report.byReason.length === 1 ? 'reason' : 'reasons'}`}>
           {report.byReason.length === 0
             ? <p className="px-5 py-3 text-[12.5px] text-ink-muted">Nothing closed in this range.</p>
             : report.byReason.map(r => <BarRow key={r.label} label={r.label} count={r.count} max={reasonMax} />)}
