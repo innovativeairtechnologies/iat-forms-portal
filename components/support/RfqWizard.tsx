@@ -54,7 +54,7 @@ const STEPS: Record<StepKey, { short: string; title: string; kicker: string; ico
   application: { short: 'Application', title: 'What is the application', kicker: 'Pick the closest match and it fills in the rest', icon: Sparkles, tone: 'sky' },
   target:      { short: 'Target', title: 'Target conditions',   kicker: 'The condition you need held inside',           icon: Thermometer, tone: 'sky' },
   space:       { short: 'Space', title: 'The space',                kicker: 'Rough dimensions are fine',                    icon: Ruler, tone: 'sky' },
-  shell:       { short: 'Shell', title: 'Space construction',      kicker: 'Tell us about your building materials',                  icon: Layers, tone: 'sky' },
+  shell:       { short: 'Construction', title: 'Space construction',      kicker: 'Tell us about your building materials',                  icon: Layers, tone: 'sky' },
   openings:    { short: 'Openings', title: 'Doors and openings',       kicker: 'Usually the single biggest load',              icon: DoorOpen, tone: 'sky' },
   inside:      { short: 'Inside', title: "What's happening inside",  kicker: 'People, product, water, ventilation',          icon: Users, tone: 'sky' },
   leaving:     { short: 'Leaving air', title: 'Leaving air you need',     kicker: 'The condition off the dehumidifier',           icon: Wind, tone: 'sky' },
