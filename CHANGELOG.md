@@ -10,6 +10,15 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — The leadership update now goes out three times a week
+
+Monday, Wednesday and Friday at 6pm Eastern, instead of Mondays at 5pm. Each edition covers only
+the days since the previous one — Monday picks up the weekend, Wednesday covers Tuesday and
+Wednesday, Friday covers Thursday and Friday — so the three together cover every day once and
+nothing is reported twice.
+
+It goes to Lee, Kacy and Crystal.
+
 ## 2026-08-21 — Four more reports
 
 Reports now covers **Quote Requests**, **Sales Pipeline**, **Installed Base** and **Portal

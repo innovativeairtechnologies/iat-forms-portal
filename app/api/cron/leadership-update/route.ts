@@ -3,9 +3,31 @@ import { buildLeadershipUpdate } from '@/lib/leadership-update'
 import { renderLeadershipDocx } from '@/lib/leadership-docx'
 import { sendLeadershipUpdate, leadershipRecipients } from '@/lib/resend-leadership'
 import { getNyWallClock } from '@/lib/admin-digest'
-import { interimPeriod, parseEdition, previousEdition } from '@/lib/edition'
+import { interimPeriod, parseEdition } from '@/lib/edition'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
-/* Weekly leadership update — Mondays at 5pm Eastern.
+/* Leadership update — MONDAY, WEDNESDAY and FRIDAY at 6pm Eastern.
+ *
+ * ── Changed 2026-08-21, and what it replaced ────────────────────────────────
+ * Was Mondays at 5pm covering the whole edition that closed the day before.
+ * Now three times a week at 6pm, each run covering only the days since the
+ * previous run (scheduledSpan below). ⚠️ EVERY SCHEDULED SEND IS NOW AN INTERIM;
+ * there is no automatic weekly edition. Putting a Monday full-week edition back
+ * alongside these would re-send Tuesday-to-Friday content that already went out
+ * on Wednesday and Friday, which is the duplication the interim concept exists
+ * to avoid. `?edition=8.17.26` still rebuilds any past week by hand.
+ *
+ * DST is handled by registering 22:00 AND 23:00 UTC and letting the window plus
+ * the day-claim sort it out, rather than by one entry being wrong for a season:
+ *
+ *            22:00 UTC          23:00 UTC
+ *   EDT      18:00 ET  SENDS    19:00 ET  in window, day already claimed -> no-op
+ *   EST      17:00 ET  skipped  18:00 ET  SENDS
+ *
+ * Exactly one send in both directions. The old build relied on only one entry
+ * ever landing inside a one-hour check; that cannot survive a wide window, and a
+ * wide window is required because the crons run up to 63 minutes late.
+ *
  *
  * Reads one edition of CHANGELOG.md, has Claude rewrite it into a
  * non-technical leadership read AND a longer technical read, renders a Word
@@ -83,9 +105,83 @@ import { interimPeriod, parseEdition, previousEdition } from '@/lib/edition'
 
 export const maxDuration = 60   // the model call plus docx render exceeds the default
 
-/** True anywhere inside the 5pm hour, America/New_York. */
-function is5pmEastern(): boolean {
-  return getNyWallClock().hour === 17
+/**
+ * The send window, America/New_York.
+ *
+ * ⚠️ WIDE ON PURPOSE, and the width is the point. Vercel fires crons on this
+ * project 14 to 63 MINUTES LATE (measured). A 6pm entry landing at 19:03 against
+ * an `hour === 18` check would silently send nothing — which is exactly how the
+ * daily digest managed never to send once from the day it was built.
+ *
+ * 18..20 absorbs the worst observed delay with an hour to spare. The day-claim
+ * below is what keeps a wide window to one send instead of three.
+ */
+function withinSendWindow(hour: number): boolean {
+  return hour >= 18 && hour <= 20
+}
+
+const SEND_MARKER = 'leadership_last_sent'
+
+/**
+ * Claim the day, so a wide window cannot mail several copies.
+ *
+ * Same shape as digest_runs, borrowed rather than rebuilt: the FIRST invocation
+ * of the NY day writes the marker and every later one no-ops. It lives in
+ * app_settings because that table already exists and this needed no migration —
+ * the Supabase CLI was unauthorized on 2026-08-21 and DDL cannot go through
+ * PostgREST.
+ *
+ * ⚠️ Read-then-write, not an atomic upsert against a UNIQUE index, so two
+ * invocations landing in the same instant could both claim. The cron entries sit
+ * an hour apart, so that race needs a 60-minute delay hitting the exact second of
+ * another run. Accepted knowingly; a real `leadership_runs` table with a unique
+ * index on the date is the correct fix once migrations are available.
+ */
+async function claimDay(dateISO: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('app_settings')
+    .select('value')
+    .eq('key', SEND_MARKER)
+    .maybeSingle()
+
+  if (data?.value === dateISO) return false
+
+  const { error } = await supabaseAdmin
+    .from('app_settings')
+    .upsert({ key: SEND_MARKER, value: dateISO, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+
+  if (error) {
+    // Never block the send on bookkeeping. A missing marker risks a second copy;
+    // a blocked send risks silence, and silence is the failure this job has
+    // already suffered twice.
+    console.error('[leadership-update] day claim failed, sending anyway:', error.message)
+  }
+  return true
+}
+
+/**
+ * What a scheduled run covers: EVERY DAY SINCE THE PREVIOUS SCHEDULED RUN,
+ * today included.
+ *
+ * Mon/Wed/Fri at 6pm, so working backwards from the weekday:
+ *   Monday    -> Saturday, Sunday, Monday   (Friday's run ended at Friday)
+ *   Wednesday -> Tuesday, Wednesday         (Monday's run ended at Monday)
+ *   Friday    -> Thursday, Friday           (Wednesday's run ended at Wednesday)
+ *
+ * Complete coverage, no gaps, nothing said twice — the rule the 08-21 handoff
+ * settled on when a one-off interim overlapped an edition.
+ *
+ * ⚠️ THIS REPLACES THE WEEKLY EDITION. Every scheduled send is now an interim.
+ * Adding a Monday full-week edition back alongside these would re-send Tuesday
+ * through Friday content that already went out on Wednesday and Friday.
+ * `?edition=8.17.26` still rebuilds any past week by hand.
+ */
+function scheduledSpan(dateISO: string): { from: string; to: string } {
+  const day = new Date(dateISO + 'T12:00:00Z').getUTCDay()   // 0 Sun .. 6 Sat
+  const back = day === 1 ? 2 : 1                             // Monday reaches back over the weekend
+  const first = new Date(dateISO + 'T12:00:00Z')
+  first.setUTCDate(first.getUTCDate() - back)
+  return { from: first.toISOString().slice(0, 10), to: dateISO }
 }
 
 export async function GET(req: NextRequest) {
@@ -113,11 +209,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'from and to must be given together' }, { status: 400 })
   }
 
+  // A scheduled run with no parameters covers the span since the previous
+  // scheduled run — see scheduledSpan(). previousEdition() is no longer the
+  // default: the job runs three times a week now, and a full week every Monday
+  // on top of Wednesday and Friday interims would repeat most of itself.
+  const scheduled = scheduledSpan(getNyWallClock().dateISO)
   const period = from && to
     ? interimPeriod(from, to)
     : editionParam
       ? parseEdition(editionParam)
-      : previousEdition(new Date())
+      : interimPeriod(scheduled.from, scheduled.to)
   if (!period) {
     return NextResponse.json(
       { error: 'Bad edition or range — use 8.17.26 or 2026-08-17, and from must not be after to' },
@@ -125,11 +226,18 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  // One of the two Monday entries is an hour off for the season — drop it here.
-  // A dry run and an explicit force both bypass this, so the preview command in
-  // docs/ still works on a Wednesday afternoon.
-  if (!dryRun && !force && !is5pmEastern()) {
-    return NextResponse.json({ skipped: true, reason: 'not 5pm (NY)' })
+  // One of the two entries is an hour off for the season, and either can arrive
+  // late — hence a window rather than an hour, and a day-claim rather than luck.
+  // A dry run and an explicit force both bypass BOTH, so the preview command in
+  // docs/ still works on a Wednesday afternoon and a missed day can be re-run.
+  const nyDate = getNyWallClock().dateISO
+  if (!dryRun && !force) {
+    if (!withinSendWindow(getNyWallClock().hour)) {
+      return NextResponse.json({ skipped: true, reason: 'outside the 18:00-20:00 NY window' })
+    }
+    if (!(await claimDay(nyDate))) {
+      return NextResponse.json({ skipped: true, reason: `already sent on ${nyDate}` })
+    }
   }
 
   try {
