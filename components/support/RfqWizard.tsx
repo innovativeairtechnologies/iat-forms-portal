@@ -25,6 +25,8 @@ import {
   type ProcessPreset, type RfqData, type RoomPreset, type TempUnit, type Tightness, type Track,
   type VaporBarrier,
 } from '@/lib/rfq'
+import { renderAsset, renderAssetUrl } from '@/lib/render-assets'
+import { renderKeyForPreset } from '@/lib/rfq-renders'
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
@@ -782,9 +784,10 @@ export default function RfqWizard() {
             </div>
           </div>
 
-          {/* Live readout */}
+          {/* Live readout, then the picture of the application they picked */}
           <div className="lg:sticky lg:top-[76px] lg:self-start">
             <Readout data={data} load={load} proc={proc} />
+            <ApplicationRender data={data} />
           </div>
         </div>
       </div>
@@ -1005,6 +1008,52 @@ function Readout({
         Indicative figures for the conditions entered. For discussion, not for equipment selection.
       </p>
     </div>
+  )
+}
+
+/**
+ * The room the customer is describing, under the readout in the right rail.
+ *
+ * Picked on step 2 and then held for the rest of the survey, so there is a
+ * constant picture of the space while they answer questions about its walls,
+ * doors and contents. It sits in the rail rather than the step column on purpose:
+ * the rail is outside the AnimatePresence that swaps steps, so the image is not
+ * unmounted and re-fetched on every Continue, and it does not re-animate.
+ *
+ * Renders nothing when the application is unpicked or unmapped. `natatorium` has
+ * no pool artwork, so an indoor-pool survey shows no picture — deliberate, see
+ * lib/rfq-renders.ts. Showing the wrong room would be worse than showing none.
+ *
+ * `sizes` is the rail width, not the intrinsic 1920 — without it next/image
+ * requests a full-width source for a 290px slot.
+ */
+function ApplicationRender({ data }: { data: RfqData }) {
+  const preset = presetFor(data)
+  const asset = renderAsset('rooms', renderKeyForPreset(preset?.key) ?? '')
+  if (!asset) return null
+
+  const label = applicationLabel(data)
+
+  return (
+    <figure className="mt-4 overflow-hidden rounded-2xl border border-hairline bg-surface">
+      <Image
+        src={renderAssetUrl(asset)}
+        alt={`Cutaway illustration of a typical ${label.toLowerCase()} space`}
+        width={asset.width}
+        height={asset.height}
+        sizes="(min-width: 1024px) 290px, 100vw"
+        className="block h-auto w-full"
+      />
+      <figcaption className="border-t border-hairline-soft px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+          Your application
+        </p>
+        <p className="mt-1 text-[12.5px] leading-snug text-ink-secondary">{label}</p>
+        <p className="mt-2 text-[10.5px] leading-relaxed text-ink-faint">
+          A typical layout for this application, not a drawing of your site.
+        </p>
+      </figcaption>
+    </figure>
   )
 }
 

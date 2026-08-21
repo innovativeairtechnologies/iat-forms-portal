@@ -10,6 +10,22 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — The quote request shows you the room you are describing
+
+Pick your application on step 2 of the quote request and a cutaway illustration of that kind of
+space now appears in the panel on the right, under Typical Industry Conditions. It stays there for
+the rest of the survey, so there is always a picture of the room on screen while you answer
+questions about its walls, its doors and what happens inside it.
+
+Twenty-eight of the twenty-nine applications have a picture. Each one was paired by looking at the
+artwork rather than by matching names, because the two vocabularies had drifted: the survey says
+"battery / lithium dry room" where the illustration is filed as "battery", and a name-based match
+would have quietly shown some people the wrong room. Indoor pool has no illustration in the set, so
+that one shows no picture at all, which is the right answer until a pool render exists.
+
+The caption says it is a typical layout rather than a drawing of their site, so nobody reads it as a
+proposal.
+
 ## 2026-08-21 — Plainer wording in every email the portal sends
 
 Yesterday’s wording pass covered the quote request, the support forms and the customer portal, but
