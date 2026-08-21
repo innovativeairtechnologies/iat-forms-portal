@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — The quote request draws your room as you describe it
+
+The illustration in the right-hand panel now does more than sit there.
+
+**Hover it and it enlarges**, and tilts slightly in 3D as you move the pointer, so you can look
+into the corners of the room rather than squinting at a thumbnail. That works on every step from
+the application onward.
+
+**Type your dimensions on step 4 and they appear on the picture**, live, as you type. Length runs
+along the bottom, width along the top and height up the left side, each one appearing as soon as
+you fill that box in. It is the same drawing convention the quote PDF uses, so the two read the
+same way.
+
+**The picture and its dimensions now print in the quote PDF too**, in place of the abstract box
+that used to stand in for the room on the space page. Applications with no illustration, and any
+case where the picture cannot be fetched, still get the drawn box exactly as before.
+
+**Step 7 explains why people matter.** The question about headcount and activity now sits beside
+an illustration of the two ways a person adds water to a room, breathing and perspiring. People
+are the load customers most often assume is negligible.
+
+Also corrected three British spellings that reached the customer PDF: "vapour barrier", "vapour
+retarder classes" and "fibreglass".
+
 ## 2026-08-21 — The quote request shows you the room you are describing
 
 Pick your application on step 2 of the quote request and a cutaway illustration of that kind of

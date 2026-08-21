@@ -1012,6 +1012,160 @@ function Readout({
 }
 
 /**
+ * True only where a magnify-on-hover is meaningful: a fine pointer that can
+ * actually hover, on a viewport wide enough for the enlarged copy to land
+ * somewhere useful. Touch reports `hover: none`, and a 2x panel on a phone would
+ * cover the form it is meant to annotate.
+ */
+function useCanHover() {
+  const [can, setCan] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px) and (hover: hover) and (pointer: fine)')
+    const apply = () => setCan(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  return can
+}
+
+/**
+ * Hover to enlarge, with a slight 3D tilt that follows the pointer.
+ *
+ * The tilt is what makes a flat render feel like an object rather than a photo,
+ * and these are isometric cutaways, so a few degrees reads as "turning it to
+ * look" rather than as a gimmick. Capped low on purpose: past about 12° the
+ * perspective distortion starts to fight the artwork's own fixed isometric
+ * projection and it looks broken rather than dimensional.
+ *
+ * `origin` matters more than it looks. In the right rail the element sits
+ * against the right edge of the page, so it must grow LEFTWARD (origin
+ * '100% 50%') or the enlarged copy runs off-screen. Centered content gets
+ * 'center'.
+ *
+ * Reduced motion keeps the magnify — it is a functional zoom, not decoration —
+ * but drops the tilt and the transition, so it snaps instead of animating.
+ *
+ * The transition is deliberately shorter while active (120ms) than on exit
+ * (180ms): the same easing that feels right for the enlargement makes the
+ * pointer-tracked tilt feel like it is dragging behind the cursor.
+ */
+function HoverMagnify({
+  children, scale = 2, origin = '100% 50%', tiltDeg = 9, className = '', label,
+}: {
+  children: React.ReactNode
+  scale?: number
+  origin?: string
+  tiltDeg?: number
+  className?: string
+  label?: string
+}) {
+  const reduce = useReducedMotion()
+  const canHover = useCanHover()
+  const [on, setOn] = useState(false)
+  const [rot, setRot] = useState({ x: 0, y: 0 })
+  const ref = useRef<HTMLDivElement>(null)
+
+  const rest = () => { setOn(false); setRot({ x: 0, y: 0 }) }
+
+  const onMove = (e: React.PointerEvent) => {
+    if (!canHover || reduce || !tiltDeg) return
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    // -0.5..0.5 from the center of the element, so the tilt leans toward the cursor.
+    const px = (e.clientX - r.left) / r.width - 0.5
+    const py = (e.clientY - r.top) / r.height - 0.5
+    setRot({ x: -py * tiltDeg * 2, y: px * tiltDeg * 2 })
+  }
+
+  const active = canHover && on
+  const transform = active
+    ? `scale(${scale}) rotateX(${rot.x.toFixed(2)}deg) rotateY(${rot.y.toFixed(2)}deg)`
+    : 'scale(1)'
+
+  return (
+    <div className={className} style={{ perspective: '1100px' }}>
+      <div
+        ref={ref}
+        onPointerEnter={() => setOn(true)}
+        onPointerLeave={rest}
+        onPointerMove={onMove}
+        onFocus={() => setOn(true)}
+        onBlur={rest}
+        tabIndex={canHover ? 0 : -1}
+        aria-label={label}
+        style={{
+          transform,
+          transformOrigin: origin,
+          transformStyle: 'preserve-3d',
+          transition: reduce ? 'none' : `transform ${active ? 120 : 180}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+          position: 'relative',
+          // Under the sticky header (z-30) on purpose, over the step card.
+          zIndex: active ? 20 : undefined,
+        }}
+        className="rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Geometry for the dimensioned render, in one coordinate system so the callout
+// lines and the image cannot drift apart. The image is a fixed 16:9 (every asset
+// in the `rooms` set is 1920x1080), so the padded box is computable and the SVG
+// overlay and the <Image> can both be positioned from these numbers as
+// percentages. Getting this wrong by a pixel is very visible: the lines stop
+// touching the corners.
+const DIM = { padL: 34, padR: 12, padT: 26, padB: 30, imgW: 320, imgH: 180 }
+const DIM_W = DIM.padL + DIM.imgW + DIM.padR
+const DIM_H = DIM.padT + DIM.imgH + DIM.padB
+const pct = (n: number, total: number) => `${(n / total) * 100}%`
+
+/**
+ * Length, width and height called out around the picture, drawn live from the
+ * step-4 inputs.
+ *
+ * ⚠️ The convention is length along the BOTTOM, width along the TOP, height up
+ * the LEFT — three unambiguous edges. The PDF's abstract box puts width on the
+ * isometric depth edge instead, which works there because that box HAS a depth
+ * edge; a photograph does not, so lib/rfq-pdf.ts switches to this same
+ * three-edge convention whenever it draws the render in place of the box. The
+ * two must agree: a customer reads them side by side.
+ *
+ * Each edge appears only once its own field has a value, so the drawing builds
+ * up as they type rather than flashing three "0 ft" labels.
+ */
+function DimensionOverlay({ L, W, H }: { L: number; W: number; H: number }) {
+  const x0 = DIM.padL, x1 = DIM.padL + DIM.imgW
+  const y0 = DIM.padT, y1 = DIM.padT + DIM.imgH
+  const midX = (x0 + x1) / 2, midY = (y0 + y1) / 2
+  const bottomY = y1 + 11, topY = y0 - 11, leftX = x0 - 13
+
+  const tickV = (x: number, y: number, k: string) => <line key={k} x1={x} y1={y - 3.5} x2={x} y2={y + 3.5} />
+  const tickH = (x: number, y: number, k: string) => <line key={k} x1={x - 3.5} y1={y} x2={x + 3.5} y2={y} />
+
+  return (
+    <svg
+      viewBox={`0 0 ${DIM_W} ${DIM_H}`}
+      className={`pointer-events-none absolute inset-0 h-full w-full ${TONE.sky.text}`}
+      aria-hidden="true"
+    >
+      <g stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round">
+        {L > 0 && [<line key="l" x1={x0} y1={bottomY} x2={x1} y2={bottomY} />, tickV(x0, bottomY, 'l0'), tickV(x1, bottomY, 'l1')]}
+        {W > 0 && [<line key="w" x1={x0} y1={topY} x2={x1} y2={topY} />, tickV(x0, topY, 'w0'), tickV(x1, topY, 'w1')]}
+        {H > 0 && [<line key="h" x1={leftX} y1={y0} x2={leftX} y2={y1} />, tickH(leftX, y0, 'h0'), tickH(leftX, y1, 'h1')]}
+      </g>
+      <g fill="currentColor" fontSize="14" fontWeight="600" textAnchor="middle">
+        {L > 0 && <text x={midX} y={bottomY + 16}>{fmt(L)} ft long</text>}
+        {W > 0 && <text x={midX} y={topY - 7}>{fmt(W)} ft wide</text>}
+        {H > 0 && <text x={leftX - 5} y={midY} transform={`rotate(-90 ${leftX - 5} ${midY})`}>{fmt(H)} ft high</text>}
+      </g>
+    </svg>
+  )
+}
+
+/**
  * The room the customer is describing, under the readout in the right rail.
  *
  * Picked on step 2 and then held for the rest of the survey, so there is a
@@ -1033,27 +1187,47 @@ function ApplicationRender({ data }: { data: RfqData }) {
   if (!asset) return null
 
   const label = applicationLabel(data)
+  const L = numOf(data.roomL), W = numOf(data.roomW), H = numOf(data.roomH)
+  // Process surveys have no room geometry to call out, so they never dimension.
+  const dims = data.track === 'room' && (L > 0 || W > 0 || H > 0)
+
+  // Both branches place the image absolutely inside a box whose aspect ratio is
+  // known, so switching to the dimensioned layout does not reflow the rail.
+  const box = dims
+    ? { left: pct(DIM.padL, DIM_W), top: pct(DIM.padT, DIM_H), width: pct(DIM.imgW, DIM_W), height: pct(DIM.imgH, DIM_H) }
+    : { left: '0%', top: '0%', width: '100%', height: '100%' }
 
   return (
-    <figure className="mt-4 overflow-hidden rounded-2xl border border-hairline bg-surface">
-      <Image
-        src={renderAssetUrl(asset)}
-        alt={`Cutaway illustration of a typical ${label.toLowerCase()} space`}
-        width={asset.width}
-        height={asset.height}
-        sizes="(min-width: 1024px) 290px, 100vw"
-        className="block h-auto w-full"
-      />
-      <figcaption className="border-t border-hairline-soft px-4 py-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-          Your application
-        </p>
-        <p className="mt-1 text-[12.5px] leading-snug text-ink-secondary">{label}</p>
-        <p className="mt-2 text-[10.5px] leading-relaxed text-ink-faint">
-          A typical layout for this application, not a drawing of your site.
-        </p>
-      </figcaption>
-    </figure>
+    <HoverMagnify
+      className="mt-4"
+      origin="100% 50%"
+      label={`Enlarge the ${label.toLowerCase()} illustration`}
+    >
+      <figure className="overflow-hidden rounded-2xl border border-hairline bg-surface">
+        <div className="relative" style={{ aspectRatio: dims ? `${DIM_W} / ${DIM_H}` : '16 / 9' }}>
+          <div className={`absolute overflow-hidden ${dims ? 'rounded-md' : ''}`} style={box}>
+            <Image
+              src={renderAssetUrl(asset)}
+              alt={`Cutaway illustration of a typical ${label.toLowerCase()} space`}
+              fill
+              sizes="(min-width: 1024px) 580px, 100vw"
+              className="object-cover"
+            />
+          </div>
+          {dims && <DimensionOverlay L={L} W={W} H={H} />}
+        </div>
+        <figcaption className="border-t border-hairline-soft px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+            Your application
+          </p>
+          <p className="mt-1 text-[12.5px] leading-snug text-ink-secondary">{label}</p>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-ink-faint">
+            A typical layout for this application, not a drawing of your site.
+            {' '}Hover to enlarge.
+          </p>
+        </figcaption>
+      </figure>
+    </HoverMagnify>
   )
 }
 
@@ -1581,6 +1755,48 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
           onChange={v => set('activity', v as ActivityLevel)}
           options={Object.keys(PEOPLE_LOADS)}
         />
+      </div>
+
+      {/* Why the two questions above are worth asking. People are the load
+          customers most often wave off as negligible, and a number in gr/hr does
+          not land the way a sweating panda does. The artwork carries its own
+          callouts, so it needs to be readable — hence hover-to-enlarge, the same
+          idiom as the wall build-ups on step 5 and the render in the rail.
+          Centered origin here: this sits mid-column with room on both sides. */}
+      <div className="flex items-center gap-5 rounded-xl border border-hairline bg-surface-soft p-4">
+        <HoverMagnify
+          scale={2.4}
+          origin="center"
+          tiltDeg={7}
+          className="flex-shrink-0"
+          label="Enlarge the illustration of how people add moisture"
+        >
+          <Image
+            src="/rfq/panda-moisture.webp"
+            alt="Illustration: people give off moisture both by exhaling and by perspiring, the amount depending on their activity level and the conditions around them."
+            width={900}
+            height={1200}
+            sizes="(min-width: 640px) 320px, 40vw"
+            className="block w-[112px] rounded-lg sm:w-[132px]"
+          />
+        </HoverMagnify>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+            Why people count
+          </p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-ink-secondary">
+            Every person in the room is a small humidifier. They add water twice over, once
+            breathing it out and again through the skin, and the harder they are working the
+            more of it there is.
+          </p>
+          <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+            A crew of ten doing moderate work puts out about{' '}
+            <strong className="font-medium text-ink-secondary">
+              {fmt(10 * PEOPLE_LOADS['Moderate Work'])} gr/hr
+            </strong>
+            , which is why the headcount above changes the answer. Hover the picture to enlarge it.
+          </p>
+        </div>
       </div>
 
       {/* Everything below is optional detail that most rooms never need. Folded

@@ -84,7 +84,7 @@ export function humidityRatioFromVaporPressure(pw: number, p: number): number {
   return (MW_RATIO * safePw) / (p - safePw)
 }
 
-/** Vapour pressure from humidity ratio (inverse of the above). */
+/** Vapor pressure from humidity ratio (inverse of the above). */
 export function vaporPressureFromHumidityRatio(W: number, p: number): number {
   return (p * W) / (MW_RATIO + W)
 }

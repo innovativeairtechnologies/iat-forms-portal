@@ -269,6 +269,74 @@ image loaded, all rendered 288x162, and the tokens resolved to a white card on w
 a 1px hairline and no shadow in light, and the dark surface ladder in dark. That page was
 deleted before commit.
 
+
+### Hover to magnify, and the 3D tilt (2026-08-21)
+
+`HoverMagnify` wraps anything that needs enlarging on hover and adds a few degrees of
+pointer-tracked 3D tilt. Used by the rail render and by the people illustration on step 7.
+
+- **`origin` is load-bearing.** The rail sits against the right edge of the page, so it magnifies
+  from `100% 50%` and grows LEFTWARD. Measured: 290px → 569px with the right edge moving 3px.
+  Centered content (step 7) uses `center`.
+- **Tilt is capped at 9°.** These renders are fixed isometric projections; past roughly 12° the
+  CSS perspective fights the artwork's own projection and it reads as broken rather than
+  dimensional.
+- **Reduced motion keeps the magnify and drops the tilt and the transition.** A zoom is a function,
+  not an ornament; the motion around it is the part to suppress.
+- **Touch is excluded** via `useCanHover()` — `(hover: hover) and (pointer: fine)` and ≥640px. A 2x
+  panel on a phone covers the form it is annotating.
+- The transition is 120ms while active and 180ms on exit. One duration for both made the
+  pointer-tracked tilt feel like it was lagging the cursor.
+
+⚠️ **Verifying it in an automated browser needs a trick.** The pane does not run animation frames,
+so a CSS transition never advances and `getComputedStyle().transform` reports the START value —
+an identity matrix — for a transform that is actually applied correctly. Set
+`element.style.transition = 'none'` first, then read the computed transform. Without that the
+feature looks broken when it is not. Same root cause as the `AnimatePresence` stall.
+
+### Live L/W/H on the picture (2026-08-21)
+
+`DimensionOverlay` draws the step-4 dimensions around the render as they are typed. Length along
+the bottom, width along the top, height up the left — each edge appearing only once its own field
+has a value.
+
+**One coordinate system, or the lines drift.** `DIM` holds the padding and the image box in SVG
+user units; the `<Image>` is positioned from the same numbers as percentages. Because every asset
+in the `rooms` set is 1920x1080, the padded box has a fixed aspect ratio and the two cannot
+disagree. Verified on screen: the rules span exactly the image's 252x142 box and sit 8–10px
+outside it.
+
+Room track only. A process survey has no room geometry, so it never dimensions even if the fields
+carry values from an earlier switch of track.
+
+### The render in the PDF (2026-08-21)
+
+`roomDiagram()` in `lib/rfq-pdf.ts` takes an optional image. With one it draws the render and calls
+the sizes out around it; without one it falls back to the abstract isometric box that was there
+first — which is what an unmapped application and any failed fetch still get.
+
+⚠️ **The two modes use different conventions for width, deliberately.** The box has a real
+isometric depth edge, so width belongs on it. A photograph does not, so the render mode matches the
+on-screen overlay: length bottom, width top, height left. A customer reads the screen and the page
+side by side, so they must agree.
+
+Three things in `loadRoomRender()` are not optional:
+
+1. **JPEG, not PNG.** `loadLogo` emits PNG because a flat two-color mark compresses to nothing that
+   way. The same treatment on a photographic render costs about a megabyte per PDF.
+2. **`crossOrigin = 'anonymous'`.** The bucket is a different origin; without it the canvas taints
+   and `toDataURL()` throws instead of returning. The bucket does send
+   `Access-Control-Allow-Origin: *` — verified, not assumed.
+3. **jsPDF cannot read webp**, so the canvas hop is required anyway; it is the same hop that
+   re-encodes to JPEG.
+
+The ROOM DIMENSIONS card grew from 62mm to 76mm to give the picture somewhere to sit. That came out
+of this page's slack; the envelope section below still calls `ensure()`, so a long survey spills to
+a continuation page exactly as before. Verified against the generated file: one `/DCTDecode` stream,
+the image placed at 68.7 × 38.6 mm, all three callout labels present in the content streams, and
+still five pages.
+
+
 ---
 
 ## The maths

@@ -30,6 +30,8 @@ import {
   grains,
   presetFor,
 } from './rfq'
+import { renderAsset, renderAssetUrl } from './render-assets'
+import { renderKeyForPreset } from './rfq-renders'
 
 type RGB = [number, number, number]
 
@@ -89,7 +91,14 @@ export async function generateRfqPdf(data: RfqData, meta: RfqPdfMeta): Promise<B
   // it; re-add it if a light-background placement ever needs it.
   const logoLight = await loadLogo('/iat-logo-white.png')
 
-  const ctx: Ctx = { doc, data, meta, load, proc, logoLight, isRoom }
+  // The application render, so the space page shows the room rather than only an
+  // abstract box. Fetched in parallel with nothing else because it is the only
+  // remote asset; it resolves to null for an unmapped application (indoor pool
+  // has no artwork) and for any network or CORS failure, and every consumer
+  // falls back to the drawn box. A picture must never cost someone their PDF.
+  const roomImage = isRoom ? await loadRoomRender(data) : null
+
+  const ctx: Ctx = { doc, data, meta, load, proc, logoLight, isRoom, roomImage }
 
   // The takeaway leads. It used to close the document, but the person opening
   // this wants their own numbers first — the detail pages behind it are the
@@ -113,6 +122,8 @@ type Ctx = {
   proc: ProcessEstimate | null
   logoLight: string | null
   isRoom: boolean
+  /** JPEG data URL of the application render, or null. See loadRoomRender. */
+  roomImage: string | null
 }
 
 // ─── Page 1 · Cover ───────────────────────────────────────────────────────────
@@ -228,18 +239,27 @@ function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts
 // ─── Page 2 · The space (room track) ──────────────────────────────────────────
 
 function spacePage(ctx: Ctx) {
-  const { doc, data, load } = ctx
+  const { doc, data, load, roomImage } = ctx
   newPage(ctx, 'The space', 'Geometry, envelope and design conditions')
   let y = 46
 
-  // Room diagram + facts, side by side
+  // Room diagram + facts, side by side.
+  //
+  // The card grew from 62mm to 76mm when the render went in: at 46mm of drawing
+  // height the picture fits to 52mm wide and reads as a thumbnail, at 60mm it
+  // fills the column width instead and the callouts have somewhere to sit. The
+  // 14mm comes out of this page's slack, which had roughly 60mm of it; the
+  // envelope section below still calls ensure(), so an unusually long survey
+  // spills to a continuation page exactly as before rather than overrunning.
   const diagW = CW * 0.52
   const factsX = M + diagW + 6
   const factsW = CW - diagW - 6
+  const cardH = 76
 
-  card(doc, M, y, diagW, 62)
+  card(doc, M, y, diagW, cardH)
   overline(doc, 'ROOM DIMENSIONS', M + 6, y + 8, C.inkMuted)
-  roomDiagram(doc, M + 6, y + 12, diagW - 12, 46, numOf(data.roomL), numOf(data.roomW), numOf(data.roomH))
+  roomDiagram(doc, M + 6, y + 12, diagW - 12, 60,
+    numOf(data.roomL), numOf(data.roomW), numOf(data.roomH), roomImage)
 
   const vol = load?.volumeCuFt ?? 0
   const floorArea = numOf(data.roomL) * numOf(data.roomW)
@@ -249,8 +269,8 @@ function spacePage(ctx: Ctx) {
     ['Wall area', wallArea ? `${fmt(wallArea)} sq.ft` : ''],
     ['Volume', vol ? `${fmt(vol)} cu.ft` : ''],
     ['Envelope total', floorArea ? `${fmt(wallArea + floorArea * 2)} sq.ft` : ''],
-  ], factsX, y, factsW, 62)
-  y += 70
+  ], factsX, y, factsW, cardH)
+  y += cardH + 8
 
   // Design conditions — the table an engineer looks for first
   overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
@@ -276,7 +296,7 @@ function spacePage(ctx: Ctx) {
     ['Walls', data.wallMaterial],
     ['Roof / ceiling', data.ceilingMaterial],
     ['Floor', data.floorMaterial],
-    ['Vapour barrier', data.vaporBarrier],
+    ['Vapor barrier', data.vaporBarrier],
   ], [0.34, 0.66])
   y += 9
 
@@ -453,7 +473,7 @@ function equipmentPage(ctx: Ctx) {
   const notes: [string, string][] = [
     ['Freeze protection', 'Chilled-water, hot-water and steam coils exposed to freezing air need a cold-weather mitigation strategy: gas or electric pre-heat, and/or drainable coils. All water coils should be externally piped so they can be isolated and drained.'],
     ['DX vs chilled water', 'Where DX cooling is selected over chilled water, some variation in leaving-air or space conditions may be experienced.'],
-    ['Vapour retarder classes', 'Class I is polyethylene. Class II is kraft-faced fibreglass batt. Class III is latex-painted gypsum board.'],
+    ['Vapor retarder classes', 'Class I is polyethylene. Class II is kraft-faced fiberglass batt. Class III is latex-painted gypsum board.'],
     ['Drawings help', 'A plan or sketch showing dimensions, door locations and openings lets us skip a round of questions.'],
   ]
   const bodyOpts = { size: 7.8, color: C.inkMuted, leading: 3.6 }
@@ -913,7 +933,29 @@ function miniBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
 }
 
 /** Isometric room box with L / W / H callouts. */
-function roomDiagram(doc: Doc, x: number, y: number, w: number, h: number, L: number, W: number, H: number) {
+/**
+ * The room, dimensioned.
+ *
+ * Two modes. With `image` it draws the application render and calls the sizes out
+ * around it; without one it falls back to the abstract isometric box that was
+ * here first, which is still what an unmapped application (indoor pool) and any
+ * failed fetch get.
+ *
+ * ⚠️ The two modes use DIFFERENT conventions for width, on purpose. The box has a
+ * real isometric depth edge, so width belongs on it. A photograph has no such
+ * edge, so the render mode puts width along the TOP and keeps length on the
+ * bottom and height up the left — the same three-edge convention the wizard's
+ * on-screen overlay uses (see DimensionOverlay in RfqWizard.tsx). A customer
+ * reads the screen and this page side by side; they must not disagree.
+ */
+function roomDiagram(
+  doc: Doc, x: number, y: number, w: number, h: number,
+  L: number, W: number, H: number, image?: string | null,
+) {
+  if (image) {
+    roomPhotoDiagram(doc, x, y, w, h, L, W, H, image)
+    return
+  }
   const pad = 12
   const bx = x + pad
   const by = y + 6
@@ -956,6 +998,59 @@ function roomDiagram(doc: Doc, x: number, y: number, w: number, h: number, L: nu
   text(doc, W ? `${fmt(W)} ft` : 'width', bx + fw + d + 3, fy - d - 1, { size: 7.2, weight: 'bold', color: C.green })
 
   doc.setGState(new g.GState({ opacity: 1 }))
+}
+
+/** Render mode for roomDiagram: the picture, with L/W/H called out around it. */
+function roomPhotoDiagram(
+  doc: Doc, x: number, y: number, w: number, h: number,
+  L: number, W: number, H: number, image: string,
+) {
+  // Room for the callouts. Left is widest because the height label is rotated
+  // upright there rather than laid along the line.
+  const padL = 12, padR = 5, padT = 7, padB = 10
+  const availW = w - padL - padR
+  const availH = h - padT - padB
+
+  // Every asset in the `rooms` set is 1920x1080, so the fit is a fixed 16:9.
+  const iw = Math.min(availW, availH * (16 / 9))
+  const ih = iw * (9 / 16)
+  const ix = x + padL + (availW - iw) / 2
+  const iy = y + padT + (availH - ih) / 2
+
+  doc.addImage(image, 'JPEG', ix, iy, iw, ih)
+  stroke(doc, C.hair)
+  doc.setLineWidth(0.3)
+  doc.rect(ix, iy, iw, ih, 'S')
+
+  stroke(doc, C.green)
+  doc.setLineWidth(0.4)
+
+  // Length across the bottom
+  if (L) {
+    const ly = iy + ih + 3.6
+    doc.line(ix, ly, ix + iw, ly)
+    tick(doc, ix, ly)
+    tick(doc, ix + iw, ly)
+    text(doc, `${fmt(L)} ft long`, ix + iw / 2, ly + 4.2, { size: 7, weight: 'bold', color: C.green, align: 'center' })
+  }
+  // Width across the top
+  if (W) {
+    const wy = iy - 3.6
+    doc.line(ix, wy, ix + iw, wy)
+    tick(doc, ix, wy)
+    tick(doc, ix + iw, wy)
+    text(doc, `${fmt(W)} ft wide`, ix + iw / 2, wy - 1.8, { size: 7, weight: 'bold', color: C.green, align: 'center' })
+  }
+  // Height up the left
+  if (H) {
+    const hx = ix - 3.6
+    doc.line(hx, iy, hx, iy + ih)
+    tick(doc, hx, iy, true)
+    tick(doc, hx, iy + ih, true)
+    // Rotated so a tall room does not need a wide gutter. jsPDF measures the
+    // angle counter-clockwise from the baseline.
+    text(doc, `${fmt(H)} ft high`, hx - 1.6, iy + ih / 2, { size: 7, weight: 'bold', color: C.green, align: 'center', angle: 90 })
+  }
 }
 
 function tick(doc: Doc, x: number, y: number, horizontal = false) {
@@ -1285,6 +1380,51 @@ async function loadLogo(src: string): Promise<string | null> {
     return canvas.toDataURL('image/png')
   } catch {
     // A missing logo must never stop someone getting their PDF.
+    return null
+  }
+}
+
+/**
+ * The application render, as a JPEG data URL jsPDF can place.
+ *
+ * ⚠️ Three things here are not optional:
+ *
+ * 1. **JPEG, not PNG.** The assets are photographic 3D renders. loadLogo emits
+ *    PNG because a flat two-color mark compresses to nothing that way; the same
+ *    treatment on a render costs roughly a megabyte per PDF.
+ * 2. **crossOrigin = 'anonymous'.** These come from the public `render-assets`
+ *    bucket, a different origin. Without it the canvas is tainted and
+ *    toDataURL() throws a SecurityError instead of returning anything. The
+ *    bucket does send `Access-Control-Allow-Origin: *`, which is what makes this
+ *    work at all — verified, not assumed.
+ * 3. **jsPDF cannot read webp.** The bucket stores webp, so it has to go through
+ *    a canvas regardless; that is the same hop that re-encodes it to JPEG.
+ *
+ * 860px wide is about 250 dpi in the ~87mm slot on the space page. Past that the
+ * file grows and nothing looks better on paper.
+ */
+async function loadRoomRender(data: RfqData): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+  const asset = renderAsset('rooms', renderKeyForPreset(presetFor(data)?.key) ?? '')
+  if (!asset) return null
+  try {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = () => reject(new Error('render load failed'))
+      img.src = renderAssetUrl(asset)
+    })
+    const w = 860
+    const h = Math.round((img.height / img.width) * w)
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const cx = canvas.getContext('2d')
+    if (!cx) return null
+    cx.drawImage(img, 0, 0, w, h)
+    return canvas.toDataURL('image/jpeg', 0.82)
+  } catch {
     return null
   }
 }
