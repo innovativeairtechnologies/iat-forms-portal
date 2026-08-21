@@ -10,6 +10,18 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — The ticket queue opens on your own work
+
+**You now land on My Tickets**, showing what is still active — open, in progress, and anything a
+customer says is fixed but nobody has formally closed. An Active / Closed switch sits beside the
+search box, each side carrying its own count, so you can see whether you have closed tickets
+without leaving the view and step across when you want them.
+
+Previously the queue opened on Open, which today holds none of the fourteen live tickets — so it
+opened on an empty screen.
+
+Accounts with no matching staff record land on All instead, and do not see a My Tickets tab.
+
 ## 2026-08-21 — Ticket queue: My Tickets, Unassigned, and links that land on the ticket
 
 **"My Tickets" and "Unassigned" are now tabs in the ticket queue**, beside All, Open, In Progress,

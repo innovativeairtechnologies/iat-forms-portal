@@ -27,11 +27,13 @@ const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, med: 2, l
 
 /**
  * `mine` and `unassigned` are ownership filters, not statuses, so they cut
- * across every status rather than sitting inside one — "My Tickets" includes the
- * closed ones. That is deliberate: a filter named after a person should mean
- * every ticket that is theirs, and quietly hiding some behind a status rule is
- * the kind of thing nobody discovers until a ticket is missing. Sort by status
- * to push the closed ones down.
+ * across status rather than sitting inside one.
+ *
+ * `mine` carries its own Active/Closed switch (see MineScope) because otherwise
+ * it only ever grows: every ticket you have ever owned, forever. Active is the
+ * default because that is the working view; closed is one click away rather than
+ * hidden, which is the part that matters — nothing of yours is unreachable, it
+ * just is not in your face.
  *
  * `mine` is dropped from the ribbon when the signed-in account has no matching
  * employees row (see myEmployeeId in page.tsx) — a tab that can only ever say
@@ -47,20 +49,38 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'closed',      label: 'Closed'      },
 ]
 
+/**
+ * The Active/Closed switch inside My Tickets.
+ *
+ * "Active" is everything NOT closed — open, in progress, and resolved. Resolved
+ * belongs on the active side because a resolved ticket is not finished: a
+ * customer saying "seems fixed" raises a hand, and someone here still has to
+ * agree and close it formally (see docs/support-tickets.md). Filing it under
+ * Closed would hide exactly the tickets that still need a decision.
+ */
+type MineScope = 'active' | 'closed'
+
 /** The generic "No <label> tickets." reads wrong for the ownership tabs —
- *  "No my tickets." — so those two get their own sentence. */
-function emptyLabel(filter: Filter): string {
-  if (filter === 'mine') return 'Nothing is assigned to you.'
+ *  "No my tickets." — so those get their own sentence. */
+function emptyLabel(filter: Filter, scope: MineScope): string {
+  if (filter === 'mine') {
+    return scope === 'closed'
+      ? 'None of your tickets are closed yet.'
+      : 'Nothing open is assigned to you.'
+  }
   if (filter === 'unassigned') return 'Every ticket has an owner.'
   if (filter === 'all') return 'No tickets.'
   return `No ${FILTERS.find(f => f.value === filter)?.label.toLowerCase()} tickets.`
 }
 
-/** One predicate for the tab counts and the visible rows, so a badge can never
- *  disagree with the list under it. */
-function matchesFilter(t: TicketRow, filter: Filter, meId: string | null): boolean {
+/** One predicate for the tab counts, the scope-switch counts and the visible
+ *  rows, so a badge can never disagree with the list under it. */
+function matchesFilter(t: TicketRow, filter: Filter, meId: string | null, scope: MineScope): boolean {
   if (filter === 'all') return true
-  if (filter === 'mine') return !!meId && t.owner_id === meId
+  if (filter === 'mine') {
+    if (!meId || t.owner_id !== meId) return false
+    return scope === 'closed' ? t.status === 'closed' : t.status !== 'closed'
+  }
   if (filter === 'unassigned') return !t.owner_id
   return t.status === filter
 }
@@ -86,7 +106,12 @@ function matchesSearch(ticket: TicketRow, q: string): boolean {
 
 export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meId = null }: { tickets: TicketRow[]; warrantyBySerial?: Record<string, 'in' | 'expiring' | 'out' | 'unknown'>; meId?: string | null }) {
   const router = useRouter()
-  const [filter, setFilter]   = useState<Filter>('open')
+  // Land on your own work. Falls back to All when the account has no employees
+  // row, because `mine` is hidden then and a selected-but-absent tab shows an
+  // empty list with nothing highlighted. NOT 'open': of 14 live tickets on
+  // 2026-08-21 exactly zero were `open`, so that default opened on nothing.
+  const [filter, setFilter]   = useState<Filter>(meId ? 'mine' : 'all')
+  const [mineScope, setMineScope] = useState<MineScope>('active')
   const [search, setSearch]   = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -106,14 +131,14 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
 
   // Drop the selection when the visible set narrows (tab/search/sort) so a bulk
   // delete can never act on rows the admin can no longer see.
-  useEffect(() => { setSelected(new Set()) }, [filter, search, sortKey, sortDir])
+  useEffect(() => { setSelected(new Set()) }, [filter, mineScope, search, sortKey, sortDir])
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortKey(key); setSortDir('desc') }
   }
 
-  const byFilter = tickets.filter(t => matchesFilter(t, filter, meId))
+  const byFilter = tickets.filter(t => matchesFilter(t, filter, meId, mineScope))
   const bySearch = byFilter.filter(t => matchesSearch(t, search))
   const sorted = [...bySearch].sort((a, b) => {
     let cmp = 0
@@ -126,7 +151,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
 
   // Client-side pagination over the filtered + sorted view (default 10 per page).
   const { page, setPage, perPage, setPerPage, totalPages, start, end } =
-    usePagedList(sorted.length, { initialPerPage: 10, resetKey: `${filter}|${search}|${sortKey}|${sortDir}` })
+    usePagedList(sorted.length, { initialPerPage: 10, resetKey: `${filter}|${mineScope}|${search}|${sortKey}|${sortDir}` })
   const pageRows = sorted.slice(start, end)
 
   const toggle = (id: string) =>
@@ -172,7 +197,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
           {FILTERS
             .filter(({ value }) => value !== 'mine' || meId)
             .map(({ value, label }) => {
-              const count = tickets.filter(t => matchesFilter(t, value, meId)).length
+              const count = tickets.filter(t => matchesFilter(t, value, meId, mineScope)).length
               const active = filter === value
               const endsOwnershipGroup = value === 'unassigned'
               return (
@@ -205,6 +230,33 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
               </button>
             )}
           </div>
+
+          {/* Active / Closed, only inside My Tickets. Carries its own counts so
+              "have I got anything closed?" is answerable without switching. */}
+          {filter === 'mine' && (
+            <div role="group" aria-label="Which of my tickets" className="flex items-center gap-0.5 rounded-lg border border-hairline bg-surface-soft p-0.5">
+              {([
+                { value: 'active' as MineScope, label: 'Active' },
+                { value: 'closed' as MineScope, label: 'Closed' },
+              ]).map(({ value, label }) => {
+                const on = mineScope === value
+                const n = tickets.filter(t => matchesFilter(t, 'mine', meId, value)).length
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setMineScope(value)}
+                    aria-pressed={on}
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12.5px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                      on ? 'bg-surface text-ink shadow-none' : 'text-ink-muted hover:text-ink-secondary'
+                    }`}
+                  >
+                    {label}
+                    <span className={`tabular-nums text-[11px] ${on ? 'text-ink-muted' : 'text-ink-faint'}`}>{n}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </Toolbar>
 
         {/* Table — CardTable bakes in the overflow-x-auto/overflow-y-hidden fix */}
@@ -230,7 +282,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
             <div className="px-5 py-16 text-center border-b border-hairline-soft">
               <Ticket size={28} className="text-ink-faint mx-auto mb-3" />
               <p className="text-[13px] text-ink-muted">
-                {search ? `No tickets match "${search}"` : emptyLabel(filter)}
+                {search ? `No tickets match "${search}"` : emptyLabel(filter, mineScope)}
               </p>
             </div>
           ) : (

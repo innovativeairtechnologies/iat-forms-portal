@@ -375,14 +375,24 @@ an error. Never re-create it.
 | Tab | Predicate |
 |---|---|
 | All | everything |
-| **My Tickets** | `owner_id === meId` |
+| **My Tickets** | `owner_id === meId`, then Active (not closed) / Closed |
 | **Unassigned** | `!owner_id` |
 | Open / In Progress / Resolved / Closed | `status === value` |
 
-**Ownership cuts across status, on purpose.** "My Tickets" includes closed ones. A filter named
-after a person should mean every ticket that is theirs — quietly hiding some behind a status rule
-is the kind of thing nobody discovers until a ticket is missing. Sort by Status to push closed
-down.
+**My Tickets carries its own Active / Closed switch**, in the toolbar beside the search box, and
+defaults to Active. Without it the tab only ever grows: every ticket you have ever owned, forever.
+Closed is one click away rather than hidden — nothing of yours is unreachable, it just is not in
+your face — and both sides show their count, so "have I got anything closed?" is answerable
+without switching.
+
+**"Active" means NOT closed** — open, in progress *and resolved*. Resolved belongs on the active
+side because a resolved ticket is not finished: a customer saying "seems fixed" raises a hand, and
+someone here still has to agree and close it formally. Filing it under Closed would hide exactly
+the tickets still awaiting a decision.
+
+The switch renders only on the `mine` tab, and `mineScope` feeds the row filter, the tab badge, the
+switch's own counts, the selection reset and the pagination reset key — so nothing can disagree
+with anything else.
 
 **One predicate, `matchesFilter()`, feeds both the tab counts and the rows**, so a badge can never
 disagree with the list underneath it.
@@ -395,12 +405,14 @@ auth user and the employee row are related by address alone. `myEmployeeId()` in
 duplicate address is possible and `maybeSingle()` throws rather than degrades. Active rows sort
 first. No match → the tab is hidden rather than shown permanently empty.
 
-### ⚠️ The default tab is Open, and Open is usually empty
+### The default tab is My Tickets (changed 2026-08-21)
 
-Checked 2026-08-21: of 14 live tickets, **zero** were `open` — 9 in progress, 2 resolved, 3 closed.
-The queue defaults to Open, so landing on `/admin/tickets` cold shows an empty list. That is
-existing behavior and was left alone, but it is why a link into the bare queue was never a useful
-place to arrive.
+It used to be Open — and of 14 live tickets on 2026-08-21, **zero** were `open` (9 in progress, 2
+resolved, 3 closed), so the queue opened on an empty screen. It now lands on `mine` / Active.
+
+⚠️ **The fallback matters.** `meId` is null for any account with no matching `employees` row, and
+`mine` is hidden in that case, so the default falls back to **All** — a selected-but-absent tab
+renders an empty list with nothing highlighted, which looks broken.
 
 ## Ticket alerts link to the ticket, not the queue
 
