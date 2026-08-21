@@ -270,23 +270,20 @@ a 1px hairline and no shadow in light, and the dark surface ladder in dark. That
 deleted before commit.
 
 
-### Hover to magnify, and the 3D tilt (2026-08-21)
+### Hover to magnify, drag to turn (2026-08-21)
 
-`HoverMagnify` wraps anything that needs enlarging on hover and adds a few degrees of
-pointer-tracked 3D tilt. Used by the rail render and by the people illustration on step 7.
+`HoverMagnify` wraps anything that needs enlarging, and separates two gestures: **hover magnifies
+and nothing else**, **press-and-drag turns it in 3D**. Used by the rail render and by the people
+illustration on step 7.
 
 - **`origin` is load-bearing.** The rail sits against the right edge of the page, so it magnifies
   from `100% 50%` and grows LEFTWARD. Measured: 290px → 569px with the right edge moving 3px.
   Centered content (step 7) uses `center`.
-- **Tilt is capped at 9°.** These renders are fixed isometric projections; past roughly 12° the
-  CSS perspective fights the artwork's own projection and it reads as broken rather than
-  dimensional.
-- **Reduced motion keeps the magnify and drops the tilt and the transition.** A zoom is a function,
-  not an ornament; the motion around it is the part to suppress.
+- **Reduced motion keeps the magnify AND the drag**, and only drops the transition. Both are direct
+  manipulation, not autonomous motion; there is nothing to suppress but the easing.
 - **Touch is excluded** via `useCanHover()` — `(hover: hover) and (pointer: fine)` and ≥640px. A 2x
   panel on a phone covers the form it is annotating.
-- The transition is 120ms while active and 180ms on exit. One duration for both made the
-  pointer-tracked tilt feel like it was lagging the cursor.
+- The transition is 180ms, and **none at all while dragging**, or the picture lags the hand.
 
 ⚠️ **Verifying it in an automated browser needs a trick.** The pane does not run animation frames,
 so a CSS transition never advances and `getComputedStyle().transform` reports the START value —
@@ -308,6 +305,40 @@ outside it.
 
 Room track only. A process survey has no room geometry, so it never dimensions even if the fields
 carry values from an earlier switch of track.
+
+#### Corrections, 2026-08-21 (same day)
+
+**Hover no longer tilts. Do not re-add it.** The first build leaned the picture toward the pointer
+as it crossed the image. It was rejected on sight: a picture that shifts under an uncommitted
+cursor reads as drift, not control. The two gestures are now separate — hover magnifies and does
+nothing else, and a deliberate press-and-drag turns it. `HoverMagnify` follows the portal's pointer
+idiom (see `DiagramCanvas`): drag state in a ref, `setPointerCapture` on pointerdown so the gesture
+survives the pointer leaving the element, and the move handler reads the ref rather than state.
+
+Rotation is clamped to ±38° / ±52° at 0.4°/px. These are flat images: near 90° you are looking at
+the back of a plane and the artwork mirrors, which reads as a bug. The pose survives pointerup, on
+purpose — the point is to leave it where you put it — and resets when the picture shrinks back.
+
+**🔴 `unoptimized` on both images is deliberate. Removing it silently softens them.**
+`next/image` re-encodes AND downscales to the layout width, at a default quality of 75. Measured on
+the live site: a 61 KB 1920×1080 source came back as a **13 KB 640px JPEG**. That is invisible at
+rest and obvious at 2×, which is the entire point of the magnifier. The `rooms` assets were already
+resized and compressed once, deliberately, by the upload script; a second pass is pure loss. Served
+as built, the room render is 7.6× oversampled at rest and 3.8× when magnified.
+
+The panda is stored at 760×1013 / q92 for the same reason, sized to about 1.2× the device pixels it
+needs at full magnification. It carries its own callout text, and text is what a second lossy pass
+destroys first.
+
+**Label clearance.** `padT` 26 put the top of "25 ft wide" at −3 in the viewBox — outside it, and
+visibly clipped. 34/30 fixed the top but left only 1.5px at the bottom, which is not a margin. Now
+40/38, measured at 6.3px clear on top and 4.6px at the bottom.
+
+⚠️ **Measure label clipping in SCREEN space, not with `getBBox()`.** `getBBox()` ignores an
+element's own transform, so it reports the rotated height label as starting at x = −14.8 and
+therefore clipped, when the rendered box actually starts at +1.6. Use `getBoundingClientRect()`
+relative to the SVG.
+
 
 ### The render in the PDF (2026-08-21)
 

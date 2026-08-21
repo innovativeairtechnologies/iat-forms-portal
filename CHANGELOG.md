@@ -10,6 +10,23 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Sharper pictures, and you turn them by dragging
+
+Three corrections to this morning's illustration work.
+
+**The pictures are sharp now.** They were being resized down and re-compressed a second time on
+their way to the page, on top of the compression they already had, which showed up as softness and
+was worst at full magnification — exactly where detail matters. They are now served as built. The
+room illustration carries about four times the pixels it needs even when enlarged.
+
+**Hovering no longer moves the picture.** It only enlarges. To turn it, press and drag: the room
+rotates on both axes and stays where you leave it until you move away. Moving the pointer across a
+picture you have not clicked on does nothing, which is the way round it should have been.
+
+**The width measurement is no longer clipped.** The figure above the picture was running off the
+top edge and losing the top of its digits. Both the top and bottom measurements now have room to
+spare.
+
 ## 2026-08-21 — The quote request draws your room as you describe it
 
 The illustration in the right-hand panel now does more than sit there.

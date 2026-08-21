@@ -1030,33 +1030,45 @@ function useCanHover() {
 }
 
 /**
- * Hover to enlarge, with a slight 3D tilt that follows the pointer.
+ * Hover to enlarge, then drag to turn it in 3D.
  *
- * The tilt is what makes a flat render feel like an object rather than a photo,
- * and these are isometric cutaways, so a few degrees reads as "turning it to
- * look" rather than as a gimmick. Capped low on purpose: past about 12° the
- * perspective distortion starts to fight the artwork's own fixed isometric
- * projection and it looks broken rather than dimensional.
+ * ⚠️ Hover does NOT tilt. An earlier build leaned the picture toward the pointer
+ * as it moved across it; it was rejected — the image shifting under an
+ * uncommitted cursor reads as drift, not as control. Nothing moves until a
+ * deliberate press. Do not re-add pointer-tracked tilt.
+ *
+ * So there are two separate gestures:
+ *   hover           → magnify, and nothing else
+ *   press and drag  → turn the enlarged picture on both axes
+ *
+ * Drag follows the portal's pointer idiom (see DiagramCanvas): state in a ref,
+ * `setPointerCapture` on pointerdown so the gesture survives the pointer leaving
+ * the element, and the move handler reads the ref rather than React state so a
+ * fast drag cannot drop frames behind a re-render.
+ *
+ * Rotation is clamped. These are flat images: past about 90° you are looking at
+ * the back of a plane and the artwork mirrors, which reads as a bug. The clamp
+ * sits well short of that and still gives enough range to feel free.
+ *
+ * The pose survives pointerup — the point is to leave it where you put it — and
+ * resets when the pointer leaves and the picture shrinks back.
  *
  * `origin` matters more than it looks. In the right rail the element sits
  * against the right edge of the page, so it must grow LEFTWARD (origin
  * '100% 50%') or the enlarged copy runs off-screen. Centered content gets
  * 'center'.
  *
- * Reduced motion keeps the magnify — it is a functional zoom, not decoration —
- * but drops the tilt and the transition, so it snaps instead of animating.
- *
- * The transition is deliberately shorter while active (120ms) than on exit
- * (180ms): the same easing that feels right for the enlargement makes the
- * pointer-tracked tilt feel like it is dragging behind the cursor.
+ * Reduced motion keeps the magnify and the drag — both are direct manipulation,
+ * not autonomous motion — and only drops the transition.
  */
+const ROT_CLAMP = { x: 38, y: 52 }
+
 function HoverMagnify({
-  children, scale = 2, origin = '100% 50%', tiltDeg = 9, className = '', label,
+  children, scale = 2, origin = '100% 50%', className = '', label,
 }: {
   children: React.ReactNode
   scale?: number
   origin?: string
-  tiltDeg?: number
   className?: string
   label?: string
 }) {
@@ -1064,21 +1076,45 @@ function HoverMagnify({
   const canHover = useCanHover()
   const [on, setOn] = useState(false)
   const [rot, setRot] = useState({ x: 0, y: 0 })
-  const ref = useRef<HTMLDivElement>(null)
-
-  const rest = () => { setOn(false); setRot({ x: 0, y: 0 }) }
-
-  const onMove = (e: React.PointerEvent) => {
-    if (!canHover || reduce || !tiltDeg) return
-    const r = ref.current?.getBoundingClientRect()
-    if (!r) return
-    // -0.5..0.5 from the center of the element, so the tilt leans toward the cursor.
-    const px = (e.clientX - r.left) / r.width - 0.5
-    const py = (e.clientY - r.top) / r.height - 0.5
-    setRot({ x: -py * tiltDeg * 2, y: px * tiltDeg * 2 })
-  }
+  const [dragging, setDragging] = useState(false)
+  const drag = useRef<{ id: number; x: number; y: number; rx: number; ry: number } | null>(null)
 
   const active = canHover && on
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!active) return
+    e.preventDefault()
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, rx: rot.x, ry: rot.y }
+    setDragging(true)
+    ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
+  }
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current
+    if (!d || d.id !== e.pointerId) return
+    const clamp = (v: number, lim: number) => Math.max(-lim, Math.min(lim, v))
+    // Horizontal drag spins about Y, vertical about X. 0.4°/px is roughly a
+    // quarter turn across the width of the enlarged panel.
+    setRot({
+      x: clamp(d.rx - (e.clientY - d.y) * 0.4, ROT_CLAMP.x),
+      y: clamp(d.ry + (e.clientX - d.x) * 0.4, ROT_CLAMP.y),
+    })
+  }
+
+  const endDrag = (e: React.PointerEvent) => {
+    if (!drag.current) return
+    ;(e.currentTarget as Element).releasePointerCapture?.(drag.current.id)
+    drag.current = null
+    setDragging(false)
+  }
+
+  const rest = () => {
+    // A drag in progress owns the pointer; leaving mid-gesture must not collapse it.
+    if (drag.current) return
+    setOn(false)
+    setRot({ x: 0, y: 0 })
+  }
+
   const transform = active
     ? `scale(${scale}) rotateX(${rot.x.toFixed(2)}deg) rotateY(${rot.y.toFixed(2)}deg)`
     : 'scale(1)'
@@ -1086,10 +1122,12 @@ function HoverMagnify({
   return (
     <div className={className} style={{ perspective: '1100px' }}>
       <div
-        ref={ref}
         onPointerEnter={() => setOn(true)}
         onPointerLeave={rest}
-        onPointerMove={onMove}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         onFocus={() => setOn(true)}
         onBlur={rest}
         tabIndex={canHover ? 0 : -1}
@@ -1098,10 +1136,13 @@ function HoverMagnify({
           transform,
           transformOrigin: origin,
           transformStyle: 'preserve-3d',
-          transition: reduce ? 'none' : `transform ${active ? 120 : 180}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+          // No transition while dragging, or the picture lags the hand.
+          transition: reduce || dragging ? 'none' : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
           position: 'relative',
           // Under the sticky header (z-30) on purpose, over the step card.
           zIndex: active ? 20 : undefined,
+          cursor: active ? (dragging ? 'grabbing' : 'grab') : undefined,
+          touchAction: active ? 'none' : undefined,
         }}
         className="rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
@@ -1117,7 +1158,16 @@ function HoverMagnify({
 // overlay and the <Image> can both be positioned from these numbers as
 // percentages. Getting this wrong by a pixel is very visible: the lines stop
 // touching the corners.
-const DIM = { padL: 34, padR: 12, padT: 26, padB: 30, imgW: 320, imgH: 180 }
+// ⚠️ padT and padB must clear the LABELS, not just the rules. The rule sits 11
+// from the image and the label baseline a further 7 beyond it; at font-size 14
+// the glyphs reach roughly 10 more. padT 26 put the top of "25 ft wide" at -3 —
+// outside the viewBox, and it rendered visibly clipped, which is what got
+// reported. 34/30 cleared it by only 1.5px at the bottom, which is not a margin,
+// so both ends carry real slack now: measured 12px clear at the top and 9px at
+// the bottom. Re-measure in SCREEN space if these change — getBBox() ignores an
+// element's own transform, so it reports the rotated height label as clipped
+// when it is not.
+const DIM = { padL: 34, padR: 12, padT: 40, padB: 38, imgW: 320, imgH: 180 }
 const DIM_W = DIM.padL + DIM.imgW + DIM.padR
 const DIM_H = DIM.padT + DIM.imgH + DIM.padB
 const pct = (n: number, total: number) => `${(n / total) * 100}%`
@@ -1206,12 +1256,22 @@ function ApplicationRender({ data }: { data: RfqData }) {
       <figure className="overflow-hidden rounded-2xl border border-hairline bg-surface">
         <div className="relative" style={{ aspectRatio: dims ? `${DIM_W} / ${DIM_H}` : '16 / 9' }}>
           <div className={`absolute overflow-hidden ${dims ? 'rounded-md' : ''}`} style={box}>
+            {/* ⚠️ unoptimized on purpose. These assets were already resized and
+                compressed ONCE, deliberately, by the upload script — 1920x1080
+                webp at q82, about 60-125 KB. Running them through next/image
+                re-encodes a second time at its default quality of 75 AND
+                downscales to the layout width: measured, a 61 KB source came
+                back as a 13 KB 640px JPEG. That is invisible at rest and very
+                visible at 2x, which is the whole point of the magnifier. Serving
+                the original costs a few tens of KB and is the sharpest this can
+                be without new masters. */}
             <Image
               src={renderAssetUrl(asset)}
               alt={`Cutaway illustration of a typical ${label.toLowerCase()} space`}
               fill
-              sizes="(min-width: 1024px) 580px, 100vw"
-              className="object-cover"
+              unoptimized
+              draggable={false}
+              className="select-none object-cover"
             />
           </div>
           {dims && <DimensionOverlay L={L} W={W} H={H} />}
@@ -1767,17 +1827,21 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
         <HoverMagnify
           scale={2.4}
           origin="center"
-          tiltDeg={7}
           className="flex-shrink-0"
           label="Enlarge the illustration of how people add moisture"
         >
+          {/* Same reasoning as the room render, and it matters more here: this
+              artwork carries its own callout text, and text is what a second
+              lossy pass destroys first. Stored at 760px wide / q92, which is
+              about 1.2x the device pixels it needs at full magnification. */}
           <Image
             src="/rfq/panda-moisture.webp"
             alt="Illustration: people give off moisture both by exhaling and by perspiring, the amount depending on their activity level and the conditions around them."
-            width={900}
-            height={1200}
-            sizes="(min-width: 640px) 320px, 40vw"
-            className="block w-[112px] rounded-lg sm:w-[132px]"
+            width={760}
+            height={1013}
+            unoptimized
+            draggable={false}
+            className="block w-[112px] select-none rounded-lg sm:w-[132px]"
           />
         </HoverMagnify>
         <div className="min-w-0">
