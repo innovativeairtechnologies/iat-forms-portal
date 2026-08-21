@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin-auth'
-import { getAdminTicketDigest, getSharedBriefing } from '@/lib/admin-digest'
+import { getAdminTicketDigest, getAdminRfqDigest, getSharedBriefing } from '@/lib/admin-digest'
 import { sendAdminDigestEmail } from '@/lib/resend-digest'
 
 /* On-demand test-send of the admin digest email — lets a logged-in admin
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     // Test-send always uses the calling admin's own ticket ownership, even if
     // sending to a different "to" address for review purposes.
     const { assigned, aging, overdue } = await getAdminTicketDigest(admin.user.id)
+    const rfq = await getAdminRfqDigest(admin.user.id)
 
     await sendAdminDigestEmail({
       to,
@@ -46,6 +47,9 @@ export async function POST(req: NextRequest) {
       assignedTickets: assigned,
       agingTickets: aging,
       overdueTickets: overdue,
+      assignedRfqs: rfq.assigned,
+      agingRfqs: rfq.aging,
+      unclaimedRfqs: rfq.unclaimed,
     })
 
     return NextResponse.json({ ok: true, sent_to: to })

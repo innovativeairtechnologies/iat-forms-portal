@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import type { DigestTicket } from '@/lib/admin-digest'
+import type { DigestRfq, DigestTicket } from '@/lib/admin-digest'
 import { EMAIL_FROM, internalFrom } from '@/lib/email-from'
 
 // Internal admin email (daily digest + on-demand test-send). Kept separate
@@ -56,6 +56,31 @@ function ticketList(tickets: DigestTicket[], emptyText: string): string {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:20px;">${rows}</table>`
 }
 
+/** The quote-request equivalent of ticketList — same table, same link colour,
+ *  same empty-state sentence, so the two halves read as one email rather than
+ *  two reports stapled together. The right-hand cell carries the application and
+ *  the age, which is what decides whether a request needs picking up. */
+function rfqList(items: DigestRfq[], emptyText: string): string {
+  if (!items.length) {
+    return `<p style="margin:0 0 20px;color:#999;font-size:13px;">${esc(emptyText)}</p>`
+  }
+  const rows = items.map(r => {
+    const url = `${APP_URL}/admin/rfq/${r.id}`
+    const age = r.ageDays === 0 ? 'today' : r.ageDays === 1 ? '1 day old' : `${r.ageDays} days old`
+    return `<tr>
+      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;vertical-align:top;width:30%;">
+        <a href="${esc(url)}" style="color:#089447;font-weight:600;font-family:monospace;text-decoration:none;">${esc(r.reference)}</a>
+      </td>
+      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;color:#555;vertical-align:top;">
+        ${r.company ? `<strong style="color:#333;">${esc(r.company)}</strong><br/>` : ''}
+        <span style="font-size:13px;">${esc(r.application || 'Application not specified')} · ${esc(age)}</span>
+      </td>
+    </tr>`
+  }).join('')
+
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:20px;">${rows}</table>`
+}
+
 export type DigestEmailOpts = {
   to: string
   adminName: string
@@ -63,12 +88,19 @@ export type DigestEmailOpts = {
   assignedTickets: DigestTicket[]
   agingTickets: DigestTicket[]
   overdueTickets: DigestTicket[]
+  assignedRfqs: DigestRfq[]
+  agingRfqs: DigestRfq[]
+  unclaimedRfqs: DigestRfq[]
 }
 
 /** Sends one admin's daily digest email: the shared AI briefing paragraph,
  *  tickets recently assigned to them, and their aging/overdue open tickets. */
 export async function sendAdminDigestEmail(opts: DigestEmailOpts) {
-  const { to, adminName, briefing, assignedTickets, agingTickets, overdueTickets } = opts
+  const {
+    to, adminName, briefing,
+    assignedTickets, agingTickets, overdueTickets,
+    assignedRfqs, agingRfqs, unclaimedRfqs,
+  } = opts
   const dashboardUrl = `${APP_URL}/admin`
 
   const body = `
@@ -88,12 +120,26 @@ export async function sendAdminDigestEmail(opts: DigestEmailOpts) {
     <p style="margin:0 0 8px;color:#c0392b;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Needs Attention: Overdue (7+ days)</p>
     ${ticketList(overdueTickets, 'No overdue tickets on your queue.')}
 
+    <!-- Quote requests. Same treatment as the tickets above, under one rule to
+         mark the change of subject — a customer waiting on a number is the same
+         kind of debt as a customer waiting on a repair. -->
+    <hr style="border:0;border-top:1px solid #eee;margin:28px 0 24px;" />
+
+    <p style="margin:0 0 8px;color:#333;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Quote Requests Assigned to You</p>
+    ${rfqList(assignedRfqs, 'No new quote requests assigned to you in the last 24 hours.')}
+
+    <p style="margin:0 0 8px;color:#333;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Your Quote Requests: Aging (3+ days)</p>
+    ${rfqList(agingRfqs, 'No aging quote requests on your queue.')}
+
+    <p style="margin:0 0 8px;color:#c0392b;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Unclaimed Quote Requests</p>
+    ${rfqList(unclaimedRfqs, 'Every quote request has an owner.')}
+
     <a href="${esc(dashboardUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;margin-top:4px;">Open Admin Dashboard</a>`
 
   const result = await resend.emails.send({
     from: FROM,
     to,
-    subject: `Your daily digest: ${assignedTickets.length} new, ${overdueTickets.length} overdue`,
+    subject: `Your daily digest: ${assignedTickets.length} new, ${overdueTickets.length} overdue, ${unclaimedRfqs.length} unclaimed quote${unclaimedRfqs.length === 1 ? '' : 's'}`,
     html: shell('Daily Admin Digest', body),
   })
   if (result.error) console.error(`[resend] admin digest failed to ${to}:`, result.error)

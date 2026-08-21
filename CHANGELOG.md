@@ -10,6 +10,16 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Quote requests join the daily digest
+
+The daily digest already covered tickets newly assigned to you, plus your aging and overdue ones.
+It now does the same for quote requests: newly assigned to you, yours that are getting old, and —
+across the whole company rather than just yours — **any request nobody has claimed**.
+
+Unclaimed is company-wide on purpose. A request with no owner belongs to nobody, so a strictly
+personal digest is exactly the one that would never mention it, and an unclaimed quote request is a
+customer waiting on a number.
+
 ## 2026-08-21 — The leadership update now goes out three times a week
 
 Monday, Wednesday and Friday at 6pm Eastern, instead of Mondays at 5pm. Each edition covers only

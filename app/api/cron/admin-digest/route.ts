@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getNyWallClock, isDigestTime, getDigestRecipients, getAdminTicketDigest, getSharedBriefing } from '@/lib/admin-digest'
+import { getNyWallClock, isDigestTime, getDigestRecipients, getAdminTicketDigest, getAdminRfqDigest, getSharedBriefing } from '@/lib/admin-digest'
 import { sendAdminDigestEmail } from '@/lib/resend-digest'
 import { runRfqReminders } from '@/lib/rfq-reminders'
 
@@ -90,6 +90,7 @@ export async function GET(req: NextRequest) {
       if (!admin.email) continue
       try {
         const { assigned, aging, overdue } = await getAdminTicketDigest(admin.id)
+        const rfq = await getAdminRfqDigest(admin.id)
         await sendAdminDigestEmail({
           to: admin.email,
           adminName: admin.name || admin.email.split('@')[0],
@@ -97,6 +98,9 @@ export async function GET(req: NextRequest) {
           assignedTickets: assigned,
           agingTickets: aging,
           overdueTickets: overdue,
+          assignedRfqs: rfq.assigned,
+          agingRfqs: rfq.aging,
+          unclaimedRfqs: rfq.unclaimed,
         })
         sent++
       } catch (perAdminErr) {

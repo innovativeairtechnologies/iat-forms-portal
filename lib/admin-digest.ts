@@ -186,6 +186,81 @@ export async function getAdminTicketDigest(adminId: string): Promise<AdminTicket
   return { assigned, aging, overdue }
 }
 
+// ── Quote requests ───────────────────────────────────────────────────────────
+
+export type DigestRfq = {
+  id: string
+  reference: string
+  company: string
+  application: string
+  ageDays: number
+}
+
+export type AdminRfqDigest = {
+  /** Assigned to this person in the last 24h. */
+  assigned: DigestRfq[]
+  /** Theirs, and getting old. */
+  aging: DigestRfq[]
+  /** ⚠️ ORG-WIDE, not theirs — see below. */
+  unclaimed: DigestRfq[]
+}
+
+/**
+ * One admin's slice of the quote-request digest, mirroring the ticket sections.
+ *
+ * ⚠️ `unclaimed` IS DELIBERATELY ORG-WIDE while everything else is per-person.
+ * An unclaimed request belongs to nobody, so a strictly per-owner digest is
+ * exactly the shape that never mentions it — and unclaimed is the state that
+ * matters most, because a quote request nobody picks up is a customer waiting on
+ * a number. Checked 2026-08-21: all ten live requests were unassigned, so a
+ * per-owner-only view would have shown every admin an empty section while ten
+ * requests sat there.
+ *
+ * `rfq_requests` has a real `assigned_at`, unlike tickets — so "newly assigned"
+ * here is genuinely when it became theirs rather than the created_at
+ * approximation getAdminTicketDigest has to make do with.
+ */
+export async function getAdminRfqDigest(adminId: string): Promise<AdminRfqDigest> {
+  const now = Date.now()
+  const agingCutoff = new Date(now - AGING_DAYS * 864e5).toISOString()
+  const recentAssignCutoff = new Date(now - RECENTLY_ASSIGNED_HOURS * 3600e3).toISOString()
+
+  const { data, error } = await supabaseAdmin
+    .from('rfq_requests')
+    .select('id, reference, company, application_label, application, status, assignee_id, assigned_at, created_at')
+    .neq('status', 'closed')
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    // A digest that loses its ticket half is a bug; one that loses its RFQ half
+    // should still send the tickets. Degrade, never throw.
+    console.error('[admin-digest] rfq read failed:', error.message)
+    return { assigned: [], aging: [], unclaimed: [] }
+  }
+
+  const rows = (data ?? []).map(r => ({
+    id: r.id as string,
+    reference: (r.reference as string) ?? '',
+    company: ((r.company as string) ?? '').trim(),
+    application: ((r.application_label as string) || (r.application as string) || '').trim(),
+    ageDays: Math.floor((now - new Date(r.created_at as string).getTime()) / 864e5),
+    assigneeId: (r.assignee_id as string) ?? null,
+    assignedAt: (r.assigned_at as string) ?? null,
+    createdAt: r.created_at as string,
+  }))
+
+  const strip = ({ id, reference, company, application, ageDays }: (typeof rows)[number]): DigestRfq =>
+    ({ id, reference, company, application, ageDays })
+
+  const mine = rows.filter(r => r.assigneeId === adminId)
+
+  return {
+    assigned: mine.filter(r => r.assignedAt && r.assignedAt >= recentAssignCutoff).map(strip),
+    aging: mine.filter(r => r.createdAt < agingCutoff).map(strip),
+    unclaimed: rows.filter(r => !r.assigneeId).map(strip),
+  }
+}
+
 /** The one shared briefing paragraph for the day (same generator the
  *  dashboard widget uses) — generated once per digest run, not once per
  *  admin, to keep this to a single Claude call. */
