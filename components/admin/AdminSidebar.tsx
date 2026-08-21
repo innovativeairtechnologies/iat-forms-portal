@@ -203,6 +203,10 @@ const NAV_PARENTS: NavParent[] = [
     icon: BarChart3,
     children: [
       { href: '/admin/reports/tickets', label: 'Support Tickets', perm: 'reports' },
+      { href: '/admin/reports/rfq', label: 'Quote Requests', perm: 'reports' },
+      { href: '/admin/reports/sales', label: 'Sales Pipeline', perm: 'reports' },
+      { href: '/admin/reports/warranty', label: 'Installed Base', perm: 'reports' },
+      { href: '/admin/reports/adoption', label: 'Portal Adoption', perm: 'reports' },
     ],
   },
   {

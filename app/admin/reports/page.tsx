@@ -2,19 +2,46 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { LifeBuoy, ArrowRight } from 'lucide-react'
+import { LifeBuoy, FileText, TrendingUp, Package, Users, ArrowRight } from 'lucide-react'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { ListCardPage, ListCard, CardHead } from '@/components/admin/list-card'
 
-/* /admin/reports — the index. One report today; the section exists so the next
-   one is an entry in this array rather than another nav restructure. */
+/* /admin/reports — the index. Adding a report is an entry here plus a child in
+   the sidebar's Reports group; the section exists so neither needs a restructure.
+
+   Each blurb says what the report ANSWERS, not what it contains. "Volume,
+   backlog, timings" tells a reader nothing about whether to open it. */
 
 const REPORTS = [
   {
     href: '/admin/reports/tickets',
     icon: LifeBuoy,
     title: 'Support Tickets',
-    blurb: 'Volume, backlog, how long tickets take to close, how often they come back, and which equipment keeps generating them.',
+    blurb: 'Is the backlog growing, how long do customers wait, how often does work come back, and which equipment keeps generating it.',
+  },
+  {
+    href: '/admin/reports/rfq',
+    icon: FileText,
+    title: 'Quote Requests',
+    blurb: 'What people are asking us to solve, how fast we pick it up, and whether anything is sitting unclaimed.',
+  },
+  {
+    href: '/admin/reports/sales',
+    icon: TrendingUp,
+    title: 'Sales Pipeline',
+    blurb: 'What is quoted, what it is worth once weighted by confidence, whose it is, and when it is expected to land.',
+  },
+  {
+    href: '/admin/reports/warranty',
+    icon: Package,
+    title: 'Installed Base',
+    blurb: 'What is out there, what is still covered, and which units come off warranty in the next 90 days.',
+  },
+  {
+    href: '/admin/reports/adoption',
+    icon: Users,
+    title: 'Portal Adoption',
+    blurb: 'Who actually uses what we built, who has never signed in, and how the move to Microsoft sign-in is going.',
   },
 ]
 

@@ -1,20 +1,19 @@
-/* Shapes and constants for the support-ticket report.
-   ⚠️ THIS FILE MUST NEVER IMPORT A SERVER MODULE. It is imported by
-   TicketReportClient, a 'use client' component. lib/ticket-report.ts imports
-   supabase-admin, so a VALUE import from there (RANGES, not just a type) drags
-   the service-role client into the browser bundle and the page dies at hydration
-   with "supabaseKey is required" — while tsc and the server render both pass.
-   That is exactly how this file came to exist. Types are erased and would have
-   been fine; the constant was not. */
+/* Shapes for the support-ticket report.
 
-export type RangeKey = '30d' | '90d' | '12m' | 'all'
+   🔴 MUST NEVER IMPORT A SERVER MODULE — it is imported by TicketReportClient,
+   a 'use client' component. See lib/report-shared.ts for the full story; the
+   short version is that a VALUE import from lib/ticket-report.ts ships
+   supabase-admin to the browser and kills the page at hydration, past tsc and
+   past a green server render.
 
-export const RANGES: { key: RangeKey; label: string; days: number | null }[] = [
-  { key: '30d', label: 'Last 30 days', days: 30 },
-  { key: '90d', label: 'Last 90 days', days: 90 },
-  { key: '12m', label: 'Last 12 months', days: 365 },
-  { key: 'all', label: 'All time', days: null },
-]
+   RangeKey/RANGES now live in lib/report-shared.ts so all five reports share one
+   definition and their range tabs cannot drift apart. Re-exported here so the
+   ticket report's existing imports keep working. */
+
+import type { Bucket, RangeKey } from '@/lib/report-shared'
+
+export { RANGES } from '@/lib/report-shared'
+export type { Bucket, RangeKey }
 
 export type ReportRow = {
   id: string
@@ -37,7 +36,6 @@ export type ReportRow = {
   resolvedReason: string
 }
 
-export type Bucket = { label: string; count: number }
 export type OwnerStat = { owner: string; assigned: number; closed: number; medianDaysToClose: number | null }
 export type MonthPoint = { month: string; opened: number; closed: number }
 

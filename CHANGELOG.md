@@ -10,6 +10,23 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Four more reports
+
+Reports now covers **Quote Requests**, **Sales Pipeline**, **Installed Base** and **Portal
+Adoption** alongside Support Tickets. Each opens as a summary with its detail collapsed, and each
+exports the whole underlying table to CSV.
+
+- **Quote Requests** — what people are asking us to solve, how quickly we pick it up, and whether
+  anything is sitting unclaimed.
+- **Sales Pipeline** — quoted value, weighted forecast, by rep, by project type, and by the month
+  each deal is expected to land.
+- **Installed Base** — what is out there, what is still covered, and a call list of units coming off
+  warranty in the next 90 days.
+- **Portal Adoption** — who uses the portal, who has an account but has never signed in, and how the
+  move to Microsoft sign-in is progressing.
+
+Reporting stays restricted to full admins and can be granted to a role from Permissions.
+
 ## 2026-08-21 — Plainer headings in the quote request
 
 Wording only, no behavior change.
