@@ -123,6 +123,18 @@ function phoneOk(v: string): boolean {
   return (v.match(/\d/g) || []).length >= 10
 }
 
+// Signature of everything the AI analysis depends on — the whole form EXCEPT the
+// contact fields (who's asking doesn't change the diagnosis). Compared before vs.
+// after to tell when a finished analysis has gone stale and should be regenerated.
+function diagnosticSignature(form: FormData): string {
+  const rest: Record<string, unknown> = { ...form }
+  delete rest.customer_name
+  delete rest.customer_email
+  delete rest.customer_phone
+  delete rest.customer_company
+  return JSON.stringify(rest)
+}
+
 // reCAPTCHA v3 (invisible, score-based) — scoped to this form only for now. Unset
 // in env until the user adds it, at which point the script loads + a token is
 // sent with the submission; the server (lib/recaptcha.ts) fails open either way.
@@ -606,6 +618,9 @@ export default function EquipmentTicketForm({
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzed, setAnalyzed] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+  // Signature of the answers the last successful analysis was based on. Lets us
+  // detect when a finished analysis is stale (see diagnosticSignature).
+  const [analyzedSig, setAnalyzedSig] = useState<string | null>(null)
 
   const steps = form.brand === 'us_rotors' ? ROTOR_STEPS : IAT_STEPS
   const totalSteps = steps.length
@@ -649,6 +664,7 @@ export default function EquipmentTicketForm({
       const json = await res.json()
       setRecommendations(Array.isArray(json.recommendations) ? json.recommendations : [])
       setAnalyzed(true)
+      setAnalyzedSig(diagnosticSignature(form))
     } catch {
       setAnalyzeError('We could not generate suggestions right now. You can still submit and our team will follow up.')
     } finally {
@@ -656,8 +672,22 @@ export default function EquipmentTicketForm({
     }
   }, [form])
 
-  // Auto-run once when they land on the Analysis step. The analyzeError guard
-  // prevents an auto-retry loop on persistent failure (manual retry clears it).
+  // A finished analysis goes stale the moment a diagnostic answer changes. Drop it
+  // (and its recommendations) so the auto-run below regenerates it — once, the next
+  // time they land on Analysis, not on every keystroke. Contact-field edits are
+  // excluded from the signature, so fixing an email/phone never burns an AI call.
+  const diagnosticSig = diagnosticSignature(form)
+  useEffect(() => {
+    if (analyzed && diagnosticSig !== analyzedSig) {
+      setAnalyzed(false)
+      setRecommendations([])
+      setAnalyzeError(null)
+    }
+  }, [diagnosticSig, analyzed, analyzedSig])
+
+  // Auto-run when they land on Analysis and no current analysis exists. The
+  // analyzeError guard prevents an auto-retry loop on persistent failure (manual
+  // retry clears it); the staleness effect above re-arms it after an answer changes.
   useEffect(() => {
     if (stepKey === 'analysis' && !analyzed && !analyzing && !analyzeError) analyze()
   }, [stepKey, analyzed, analyzing, analyzeError, analyze])

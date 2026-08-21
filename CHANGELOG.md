@@ -10,6 +10,15 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Support ticket: the AI analysis refreshes when answers change
+
+Now that any step is reachable, someone can jump back, change an answer, and return to the AI Quick
+Analysis — which used to keep showing the suggestions from the original answers. A finished analysis
+is now invalidated the moment a diagnostic answer changes, so it regenerates against the new answers
+the next time they land on that step. Deliberately lazy: it re-runs once on return, not on every
+keystroke, and edits to the contact fields (name/email/phone/company) don't trigger it — those don't
+change the diagnosis, so no AI call is wasted. Implemented with a signature of the non-contact fields.
+
 ## 2026-08-21 — Support ticket: the progress steps are clickable
 
 The equipment support form's header shows a circle per step (Contact, Equipment, Problem … Analysis).
