@@ -15,7 +15,7 @@ import type { ExecData } from '@/lib/exec-dashboard-data'
 import { getMyRfqs, type MyRfqSummary } from '@/lib/rfq-mine'
 import {
   FormsPerformanceCard, TopFormsCard, TopSubmittersCard, ActivityCard,
-  FormStatusCard, NeedsAttentionCard, LiveActivityCard, AdminActivityCard,
+  FormStatusCard, NeedsAttentionCard, LiveActivityCard, AdminActivityCard, AttentionRow,
 } from '@/components/dashboards/exec-cards'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -38,7 +38,15 @@ export type QuickLink = { href: string; label: string; perm: string }
 export type LayoutItem = { id: string; span: Span }
 // userId added 2026-08-15 for the 'my_rfqs' card — the first card that shows
 // the VIEWER their own work rather than a department-wide roll-up.
-export type CardCtx = { role: DeptRole; can: (p: Perm) => boolean; headcount: number; quickLinks: QuickLink[]; userId: string; execData?: ExecData }
+export type CardCtx = {
+  role: DeptRole; can: (p: Perm) => boolean; headcount: number; quickLinks: QuickLink[]
+  userId: string
+  /** employees.id for the signed-in person, or null when their account has no
+   *  matching row. Resolved once in DepartmentDashboard — see lib/my-employee.ts
+   *  for why email is the only join. */
+  myEmployeeId: string | null
+  execData?: ExecData
+}
 
 export type CardDef = {
   id: string
@@ -323,6 +331,103 @@ async function loadTicketStatus() {
   return { open: open ?? 0, prog: prog ?? 0, res: res ?? 0 }
 }
 
+// ── Morning ticket alerts ────────────────────────────────────────────────────
+//
+// Two cards, deliberately separate rather than one merged list:
+//
+//   my_tickets    — what is YOURS and waiting. The first thing to look at.
+//   ticket_alerts — what is nobody's, or old enough that leadership should know.
+//
+// Merging them would produce a list where "3 overdue" could mean yours or the
+// company's, and a number you cannot act on is worse than no number.
+//
+// Every row links into the queue pre-filtered, so the card is a way in rather
+// than a read-only stat. Counts come from HEAD requests — no rows are fetched.
+
+const AGING_DAYS_CARD = 3
+const OVERDUE_DAYS_CARD = 7
+const REOPEN_LOOKBACK_DAYS = 7
+
+const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toISOString()
+
+/** The signed-in person's own queue. Returns null when their account has no
+ *  matching employees row — the card then hides rather than showing four zeros
+ *  that look like "all clear" when they actually mean "we cannot tell". */
+async function loadMyTickets(employeeId: string | null) {
+  if (!employeeId) return null
+  const OPEN: readonly string[] = ['open', 'in_progress']
+  const [{ count: mine }, { count: aging }, { count: overdue }, { count: myRfqs }] = await Promise.all([
+    supabaseAdmin.from('tickets').select('*', HEAD).eq('owner_id', employeeId).in('status', OPEN),
+    supabaseAdmin.from('tickets').select('*', HEAD).eq('owner_id', employeeId).in('status', OPEN)
+      .lt('created_at', daysAgo(AGING_DAYS_CARD)).gte('created_at', daysAgo(OVERDUE_DAYS_CARD)),
+    supabaseAdmin.from('tickets').select('*', HEAD).eq('owner_id', employeeId).in('status', OPEN)
+      .lt('created_at', daysAgo(OVERDUE_DAYS_CARD)),
+    supabaseAdmin.from('rfq_requests').select('*', HEAD).eq('assignee_id', employeeId).neq('status', 'closed'),
+  ])
+  return { mine: mine ?? 0, aging: aging ?? 0, overdue: overdue ?? 0, myRfqs: myRfqs ?? 0 }
+}
+
+/** The company-wide ones worth a manager's attention first thing. */
+async function loadTicketAlerts() {
+  const OPEN: readonly string[] = ['open', 'in_progress']
+  const [{ count: unassigned }, { count: overdue }, { count: unclaimedRfqs }, { data: reopens }] = await Promise.all([
+    supabaseAdmin.from('tickets').select('*', HEAD).is('owner_id', null).in('status', OPEN),
+    supabaseAdmin.from('tickets').select('*', HEAD).in('status', OPEN).lt('created_at', daysAgo(OVERDUE_DAYS_CARD)),
+    supabaseAdmin.from('rfq_requests').select('*', HEAD).is('assignee_id', null).neq('status', 'closed'),
+    // ⚠️ Reopens come from the audit trail: there is no reopen counter on the
+    // ticket. `metadata->>from = closed` is the transition OUT of closed, which
+    // is what a reopen IS — see lib/ticket-history.ts.
+    supabaseAdmin.from('audit_log').select('id, metadata')
+      .eq('action', 'ticket.status').gte('created_at', daysAgo(REOPEN_LOOKBACK_DAYS)).limit(500),
+  ])
+  const reopened = (reopens ?? []).filter(r => (r.metadata as { from?: string } | null)?.from === 'closed').length
+  return { unassigned: unassigned ?? 0, overdue: overdue ?? 0, unclaimedRfqs: unclaimedRfqs ?? 0, reopened }
+}
+
+function MyTicketsCard({ d }: { d: { mine: number; aging: number; overdue: number; myRfqs: number } }) {
+  const total = d.mine + d.overdue + d.myRfqs
+  return (
+    <Card className="h-full">
+      <CardHead title="My Tickets" icon={<Ticket size={13} />} iconTone="sky" action="Open queue" href="/admin/tickets" />
+      <div className="p-2">
+        <AttentionRow icon={<Ticket size={15} />} color={TONE_HEX.sky} label="Open and assigned to me" value={d.mine} href="/admin/tickets" />
+        <AttentionRow icon={<Clock size={15} />} color={TONE_HEX.amber} label={`Aging (${AGING_DAYS_CARD}+ days)`} value={d.aging} href="/admin/tickets" />
+        <AttentionRow icon={<AlertCircle size={15} />} color={TONE_HEX.rose} label={`Overdue (${OVERDUE_DAYS_CARD}+ days)`} value={d.overdue} href="/admin/tickets" />
+        <AttentionRow icon={<FileText size={15} />} color={TONE_HEX.violet} label="Quote requests assigned to me" value={d.myRfqs} href="/admin/rfq" />
+      </div>
+      {total === 0 && (
+        <div className="px-5 pb-4 -mt-1">
+          <div className="flex items-center gap-2 text-[12px] text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={14} /> Nothing waiting on you.
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function TicketAlertsCard({ d }: { d: { unassigned: number; overdue: number; unclaimedRfqs: number; reopened: number } }) {
+  const total = d.unassigned + d.overdue + d.unclaimedRfqs + d.reopened
+  return (
+    <Card className="h-full">
+      <CardHead title="Ticket Alerts" icon={<AlertCircle size={13} />} iconTone="amber" action="Open queue" href="/admin/tickets" />
+      <div className="p-2">
+        <AttentionRow icon={<Inbox size={15} />} color={TONE_HEX.rose} label="Unassigned — nobody owns these" value={d.unassigned} href="/admin/tickets" />
+        <AttentionRow icon={<Clock size={15} />} color={TONE_HEX.amber} label={`Overdue company-wide (${OVERDUE_DAYS_CARD}+ days)`} value={d.overdue} href="/admin/tickets" />
+        <AttentionRow icon={<ArrowRight size={15} />} color={TONE_HEX.violet} label={`Reopened by a customer (${REOPEN_LOOKBACK_DAYS}d)`} value={d.reopened} href="/admin/reports/tickets" />
+        <AttentionRow icon={<FileText size={15} />} color={TONE_HEX.sky} label="Quote requests nobody has claimed" value={d.unclaimedRfqs} href="/admin/rfq" />
+      </div>
+      {total === 0 && (
+        <div className="px-5 pb-4 -mt-1">
+          <div className="flex items-center gap-2 text-[12px] text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={14} /> Nothing needs chasing.
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 const recentCard = (key: 'tickets' | 'submissions' | 'timeoff' | 'presentations', title: string, perm: Perm): CardDef => ({
   id: `recent_${key}`,
   title,
@@ -434,6 +539,21 @@ export const CARD_REGISTRY: CardDef[] = [
   recentCard('timeoff', 'Recent Time Off', 'pto'),
   recentCard('presentations', 'Recent Presentations', 'presentations'),
   {
+    id: 'my_tickets', title: 'My Tickets', perm: 'tickets', defaultSpan: 1, sizes: [1, 2],
+    // Hidden outright when the account has no employees row: a card that can
+    // only ever show zeros reads as "all clear" when it means "cannot tell".
+    available: (ctx) => ctx.can('tickets') && !!ctx.myEmployeeId,
+    Component: async (ctx) => {
+      const d = await loadMyTickets(ctx.myEmployeeId)
+      return d ? <MyTicketsCard d={d} /> : null
+    },
+  },
+  {
+    id: 'ticket_alerts', title: 'Ticket Alerts', perm: 'tickets', defaultSpan: 1, sizes: [1, 2],
+    available: (ctx) => ctx.can('tickets'),
+    Component: async () => <TicketAlertsCard d={await loadTicketAlerts()} />,
+  },
+  {
     id: 'tickets_donut', title: 'Tickets by Status', perm: 'tickets', defaultSpan: 1, sizes: [1, 2],
     available: (ctx) => ctx.can('tickets'),
     Component: async () => <TicketsDonutCard status={await loadTicketStatus()} />,
@@ -472,6 +592,9 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
       // cannot do the job it exists for — surfacing a quote request nobody owns.
       { id: 'my_rfqs', span: 1 },
       { id: 'exec_forms_performance', span: 2 }, { id: 'tickets_donut', span: 1 },
+      // Morning alerts lead the exec dashboard: what is yours, then what is
+      // nobody's. Everything below is analysis you go looking for.
+      { id: 'my_tickets', span: 1 }, { id: 'ticket_alerts', span: 1 },
       { id: 'exec_top_forms', span: 1 }, { id: 'exec_top_submitters', span: 1 }, { id: 'exec_needs_attention', span: 1 },
       { id: 'exec_activity', span: 2 }, { id: 'recent_submissions', span: 1 },
       { id: 'recent_tickets', span: 2 }, { id: 'exec_form_status', span: 1 },
@@ -490,7 +613,14 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
   items.push({ id: 'my_rfqs', span: 1 })
 
   if (ctx.can('tickets')) {
-    items.push({ id: 'tickets_donut', span: 1 }, { id: 'quick_links', span: 2 }, { id: 'snapshot', span: 1 })
+    // Engineering and production_manager work the queue daily, so their morning
+    // alerts lead here too — ahead of the status donut, which is a picture of the
+    // whole queue rather than anything asking for them. `my_tickets` drops out via
+    // the trailing .filter() when the account has no employees row.
+    items.push(
+      { id: 'my_tickets', span: 1 }, { id: 'ticket_alerts', span: 1 },
+      { id: 'tickets_donut', span: 1 }, { id: 'quick_links', span: 2 }, { id: 'snapshot', span: 1 },
+    )
   } else {
     items.push({ id: 'snapshot', span: 1 }, { id: 'quick_links', span: 3 })
   }

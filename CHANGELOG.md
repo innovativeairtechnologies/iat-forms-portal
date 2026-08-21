@@ -10,6 +10,20 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Morning ticket alerts on the dashboard, and a tools report
+
+**Two alert cards now open the admin dashboard.** *My Tickets* shows what is yours and waiting —
+open, aging, overdue, and any quote requests assigned to you. *Ticket Alerts* shows what nobody
+owns or what has gone quiet: unassigned tickets, anything overdue company-wide, tickets a customer
+has reopened this week, and unclaimed quote requests. Every line links straight into the queue.
+
+They are separate cards on purpose. Merging them would give you a number where "3 overdue" could
+mean yours or the company's, and a number you cannot act on is worse than no number.
+
+**Tools & Inventory joins the Reports section** — what is checked out and to whom, what is past its
+due date, and how long each item has been off the shelf, longest first. Right now six of seven
+tools are out, the longest for thirty days.
+
 ## 2026-08-21 — Quote requests join the daily digest
 
 The daily digest already covered tickets newly assigned to you, plus your aging and overdue ones.

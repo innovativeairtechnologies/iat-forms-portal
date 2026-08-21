@@ -103,7 +103,7 @@ function RankRow({ rank, label, value, pct: barPct, color }: { rank: number; lab
   )
 }
 
-function AttentionRow({ icon, color, label, value, href }: { icon: React.ReactNode; color: string; label: string; value: number; href: string }) {
+export function AttentionRow({ icon, color, label, value, href }: { icon: React.ReactNode; color: string; label: string; value: number; href: string }) {
   const has = value > 0
   return (
     <Link href={href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-soft transition-colors group">

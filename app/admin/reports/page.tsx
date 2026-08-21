@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { LifeBuoy, FileText, TrendingUp, Package, Users, ArrowRight } from 'lucide-react'
+import { LifeBuoy, FileText, TrendingUp, Package, Users, Wrench, ArrowRight } from 'lucide-react'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { ListCardPage, ListCard, CardHead } from '@/components/admin/list-card'
 
@@ -36,6 +36,12 @@ const REPORTS = [
     icon: Package,
     title: 'Installed Base',
     blurb: 'What is out there, what is still covered, and which units come off warranty in the next 90 days.',
+  },
+  {
+    href: '/admin/reports/tools',
+    icon: Wrench,
+    title: 'Tools & Inventory',
+    blurb: 'What is checked out and to whom, what is past due, and how long things have been off the shelf.',
   },
   {
     href: '/admin/reports/adoption',
