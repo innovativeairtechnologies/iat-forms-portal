@@ -51,10 +51,10 @@ type Tone = 'sky' | 'amber'
 // so a step can be recognized and jumped to directly instead of clicking Back
 // repeatedly. `title` remains the full heading shown on the step itself.
 const STEPS: Record<StepKey, { short: string; title: string; kicker: string; icon: LucideIcon; tone: Tone }> = {
-  application: { short: 'Application', title: 'What are we protecting?', kicker: 'Pick the closest match and it fills in the rest', icon: Sparkles, tone: 'sky' },
-  target:      { short: 'Target', title: 'Your target condition',   kicker: 'The condition you need held inside',           icon: Thermometer, tone: 'sky' },
+  application: { short: 'Application', title: 'What is the application', kicker: 'Pick the closest match and it fills in the rest', icon: Sparkles, tone: 'sky' },
+  target:      { short: 'Target', title: 'Target conditions',   kicker: 'The condition you need held inside',           icon: Thermometer, tone: 'sky' },
   space:       { short: 'Space', title: 'The space',                kicker: 'Rough dimensions are fine',                    icon: Ruler, tone: 'sky' },
-  shell:       { short: 'Shell', title: 'The shell around it',      kicker: 'What the room is built from',                  icon: Layers, tone: 'sky' },
+  shell:       { short: 'Shell', title: 'Space construction',      kicker: 'Tell us about your building materials',                  icon: Layers, tone: 'sky' },
   openings:    { short: 'Openings', title: 'Doors and openings',       kicker: 'Usually the single biggest load',              icon: DoorOpen, tone: 'sky' },
   inside:      { short: 'Inside', title: "What's happening inside",  kicker: 'People, product, water, ventilation',          icon: Users, tone: 'sky' },
   leaving:     { short: 'Leaving air', title: 'Leaving air you need',     kicker: 'The condition off the dehumidifier',           icon: Wind, tone: 'sky' },
@@ -980,7 +980,7 @@ function Readout({
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-        Typical Industry Conditions
+        Typical Conditions
       </p>
 
       {/* Grains and dew point ONLY.

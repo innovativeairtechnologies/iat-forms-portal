@@ -373,7 +373,7 @@ export const CLASSIFY_SETS: Record<string, ClassifySet> = {
         options: ['Yes, dehumidify', "No, it's fine"],
         correct: 0,
         explain:
-          '75% RH is well above the ~60–70% threshold where mould risk rises — this space needs dehumidification.',
+          '75% RH is well above the ~60–70% threshold where mold risk rises — this space needs dehumidification.',
       },
       {
         prompt: 'An office space reads 72°F and 45% RH.',

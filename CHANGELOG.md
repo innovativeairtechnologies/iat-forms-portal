@@ -10,6 +10,18 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Plainer headings in the quote request
+
+Wording only, no behavior change.
+
+- Step 2 asks "What is the application" rather than "What are we protecting?"
+- Step 3 is "Target conditions"
+- Step 5 is "Space construction", and asks you to tell us about your building materials
+- The panel on the right is "Typical Conditions"
+
+Also corrected the spelling of "mold" everywhere it appeared — the cannabis, food, museum,
+restoration and plastics descriptions all carried the British spelling.
+
 ## 2026-08-21 — Reports, assignment emails, and a limit on reopening old tickets
 
 **There is a Reports section now**, in the left navigation between the working sections and

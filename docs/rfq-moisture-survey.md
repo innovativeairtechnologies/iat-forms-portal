@@ -207,7 +207,7 @@ rather than a fill-in. Every seeded value stays editable, and each one carries a
 `Typical: 40% rh — use it` chip. Presets live in `ROOM_PRESETS` / `PROCESS_PRESETS`
 (`lib/rfq.ts`) — adding an application is adding one object there.
 
-## The readout — "Typical Industry Conditions"
+## The readout — "Typical Conditions"
 
 The right rail computes as you type. It shows **grains and dew point only**. This is the
 engagement moment — it also quietly teaches the customer that **relative humidity alone
