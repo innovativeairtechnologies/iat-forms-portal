@@ -1124,7 +1124,15 @@ function StepContact({ form, set }: { form: FormData; set: SetFn }) {
       <InputField label="Full Name" value={form.customer_name} onChange={v => set('customer_name', v)} placeholder="Jane Smith" required autoFocus />
       <InputField label="Company / Organization" value={form.customer_company} onChange={v => set('customer_company', v)} placeholder="Acme Corp" required />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <InputField label="Email Address" value={form.customer_email} onChange={v => set('customer_email', v)} placeholder="jane@acme.com" type="email" required />
+        <InputField
+          label="Email Address"
+          value={form.customer_email}
+          onChange={v => set('customer_email', v)}
+          placeholder="jane@acme.com"
+          type="email"
+          required
+          hint="We'll send your ticket confirmation and status updates here."
+        />
         <InputField
           label="Phone Number"
           value={form.customer_phone}

@@ -10,6 +10,13 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Support ticket: the Contact step's email and phone fields line up
+
+On step 1 of the equipment support form, Email and Phone share a two-up row, but only Phone carried a
+helper line — and since a field's hint renders *above* its input, Phone's input sat lower than
+Email's, so the two boxes didn't line up. Email now carries a matching one-liner ("we'll send your
+ticket confirmation and status updates here"), which both evens the row and says something useful.
+
 ## 2026-08-20 — A customer reply now reaches the person who owns the ticket
 
 When a customer wrote back, the alert went to the shared support mailbox and nowhere else.
