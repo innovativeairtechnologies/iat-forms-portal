@@ -37,27 +37,13 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
  * may call this. Do not relax to `if (SECRET && ...)` — that form skips the
  * check entirely when the variable is unset, and this route sends mail.
  *
- * WHY 5PM AND NOT NOON (changed 2026-08-17): at noon the update went out
- * covering a Monday that had barely happened, and anything shipped that morning
- * missed the report it belonged in. Sending at the end of the day means the week
- * it describes is actually over.
+ * WHY 6PM: at noon the update covered a day that had barely happened, and
+ * anything shipped that morning missed the report it belonged in. Late in the
+ * day means the period it describes is actually over.
  *
- * DST: Vercel Cron is UTC and does not shift, so vercel.json registers BOTH
- * 21:00 and 22:00 UTC on Mondays and is5pmEastern() below discards whichever one
- * is wrong for the season. Exactly one survives, in both directions:
- *
- *            21:00 UTC        22:00 UTC
- *   EDT      17:00 ET  SEND   18:00 ET  skip
- *   EST      16:00 ET  skip   17:00 ET  SEND
- *
- * The window is the whole 17:00 hour, not a narrow band around the minute,
- * because the two entries sit a full hour apart — so it can absorb a late
- * invocation without ever letting both through.
- *
- * WHAT IT COVERS: the edition that closed yesterday — one Monday-to-Sunday week,
- * named after its Monday in M.D.YY form, e.g. 8.17.26 (lib/edition.ts). Monday's
- * own work belongs to the edition just starting and is reported next week, so
- * nothing is counted twice.
+ * ⚠️ VERCEL CRONS ON THIS PROJECT RUN 14-63 MINUTES LATE (measured: 22:00 -> 22:42,
+ * 13:00 -> 13:41, 21:30 -> 22:03, and the digest at 20:30 -> 21:33). Any guard that
+ * checks the clock must be at least an hour wide — see withinSendWindow().
  *
  * ── Parameters ──────────────────────────────────────────────────────────────
  * `?dry=1` builds everything and returns the summary WITHOUT sending, which is
@@ -79,18 +65,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
  * because cron has no notion of a one-off and pinning day-of-month + month is the
  * trick — and because of what it measured:
  *
- * ⚠️ VERCEL CRONS ON THIS PROJECT RUN 14–42 MINUTES LATE. That send was scheduled
- * 22:00 UTC and delivered 22:42. Others: 13:00 -> 13:41, 21:30 -> 22:03. Any guard
- * that checks the clock must therefore be at least an hour wide, which is exactly
- * why is5pmEastern() below tests the hour and not the minute. A ten-minute window
- * cannot survive this — see isDigestTime() in lib/admin-digest.ts, which has never
- * once let the daily digest through.
- *
- * Monday 24 August still sends edition 8.17.26 in FULL, including 18 and 19 August.
- * That repetition is deliberate. The weekly edition stays the complete record, and
- * the fifteen entries dated 17 August — which this interim deliberately excludes —
- * have never been mailed to anyone; narrowing Monday to avoid the overlap would
- * drop them permanently.
+ * ⚠️ It measured the delay: scheduled 22:00 UTC, delivered 22:42. See
+ * withinSendWindow() for why that dictates the width of the guard.
  *
  * It goes through Vercel Cron rather than a hand-rolled call precisely so nobody
  * has to handle CRON_SECRET: Vercel supplies the Authorization header itself. The
@@ -121,6 +97,37 @@ function withinSendWindow(hour: number): boolean {
 }
 
 const SEND_MARKER = 'leadership_last_sent'
+const TRACE_MARKER = 'leadership_last_invocation'
+
+/**
+ * A breadcrumb written on EVERY authenticated invocation, before any early
+ * return, recording what happened and why.
+ *
+ * 🔴 THIS EXISTS BECAUSE OF 2026-08-21. The 18:00 send did not arrive, and there
+ * was NO WAY TO TELL WHY: the send marker is only written once a run gets past
+ * the window check, so its absence is equally consistent with "the cron never
+ * fired", "the secret was rejected", and "the period failed to build". Vercel's
+ * runtime logs are empty on this project — twelve hours of them, with functions
+ * demonstrably running — so they answer nothing either.
+ *
+ * That is the same shape as the daily digest, which quietly did nothing for
+ * months. A scheduled job that leaves no trace when it declines to act is
+ * indistinguishable from one that was never called, and the whole point of the
+ * digest post-mortem was to stop shipping those.
+ *
+ * Best-effort and never allowed to block a send.
+ */
+async function trace(outcome: string, detail?: Record<string, unknown>) {
+  try {
+    await supabaseAdmin.from('app_settings').upsert({
+      key: TRACE_MARKER,
+      value: JSON.stringify({ at: new Date().toISOString(), outcome, ...detail }),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' })
+  } catch (err) {
+    console.error('[leadership-update] trace write failed:', err)
+  }
+}
 
 /**
  * Claim the day, so a wide window cannot mail several copies.
@@ -190,6 +197,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const clock = getNyWallClock()
+  await trace('invoked', { nyHour: clock.hour, nyDate: clock.dateISO })
+
   const dryRun = req.nextUrl.searchParams.get('dry') === '1'
   const force = req.nextUrl.searchParams.get('force') === '1'
 
@@ -220,6 +230,7 @@ export async function GET(req: NextRequest) {
       ? parseEdition(editionParam)
       : interimPeriod(scheduled.from, scheduled.to)
   if (!period) {
+    await trace('bad-period', { from: scheduled.from, to: scheduled.to })
     return NextResponse.json(
       { error: 'Bad edition or range — use 8.17.26 or 2026-08-17, and from must not be after to' },
       { status: 400 },
@@ -232,10 +243,12 @@ export async function GET(req: NextRequest) {
   // docs/ still works on a Wednesday afternoon and a missed day can be re-run.
   const nyDate = getNyWallClock().dateISO
   if (!dryRun && !force) {
-    if (!withinSendWindow(getNyWallClock().hour)) {
+    if (!withinSendWindow(clock.hour)) {
+      await trace('skipped-window', { nyHour: clock.hour })
       return NextResponse.json({ skipped: true, reason: 'outside the 18:00-20:00 NY window' })
     }
     if (!(await claimDay(nyDate))) {
+      await trace('skipped-already-sent', { nyDate })
       return NextResponse.json({ skipped: true, reason: `already sent on ${nyDate}` })
     }
   }
