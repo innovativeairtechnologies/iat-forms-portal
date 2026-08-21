@@ -10,6 +10,17 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Plainer wording in every email the portal sends
+
+Yesterday’s wording pass covered the quote request, the support forms and the customer portal, but
+it missed most of the outgoing email. Long dashes are now gone from ticket confirmations,
+status-change notices, resolved-ticket follow-ups, portal invitations, warranty decisions, and the
+reminder and escalation mail that goes to staff. Twenty-six lines in all.
+
+They were missed because the first pass worked from a hand-written list of three files when there
+were eleven. The gap showed up in the send log rather than in any check, which is the lesson worth
+keeping: check the list against the folder, not against memory.
+
 ## 2026-08-21 — Support ticket: the AI analysis refreshes when answers change
 
 Now that any step is reachable, someone can jump back, change an answer, and return to the AI Quick
@@ -33,6 +44,29 @@ On step 1 of the equipment support form, Email and Phone share a two-up row, but
 helper line — and since a field's hint renders *above* its input, Phone's input sat lower than
 Email's, so the two boxes didn't line up. Email now carries a matching one-liner ("we'll send your
 ticket confirmation and status updates here"), which both evens the row and says something useful.
+
+## 2026-08-20 — A picture library for the quote request and what comes after
+
+Eighty-six room renders are now hosted and ready to be referenced by name: a photo-real view of each
+room type, a cut-out version of the same room with no background, and labelled layers that can sit
+over a cut-out to point out doors, people, dimensions and product.
+
+They are held outside the codebase and reduced from 275 MB to 8.5 MB, which keeps pages fast and
+leaves room in our storage plan for the photos customers attach to tickets. The originals stay in
+SharePoint.
+
+Nothing uses them yet. This is the groundwork so that a later build can say **show this picture when
+someone picks that room** without any further plumbing.
+
+**Known limits, so nobody is surprised later:** the labelled layers line up on 16 of the 37 rooms.
+The rest were exported trimmed to their edges, so a layer would sit slightly out of place — those
+rooms need re-exporting before they can carry one. Only two rooms have layers drawn so far, and one
+of those two is a trimmed one.
+
+## 2026-08-20 — The wall pictures enlarge outward instead of over each other
+
+Hovering a wall build-up on the quote request magnifies it, but the first and last were growing
+inward across their neighbours. They now spread outward from the row.
 
 ## 2026-08-20 — A customer reply now reaches the person who owns the ticket
 

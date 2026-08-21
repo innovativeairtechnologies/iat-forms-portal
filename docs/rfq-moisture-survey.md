@@ -111,6 +111,56 @@ on the record because the numbers genuinely move between editions — Houston is
 thing that explains why. Records created before the split carry the year inside `outdoorSource`
 and no `outdoorVintage`; the admin view simply omits the second pill.
 
+## Temperatures can be entered in Celsius (2026-08-20)
+
+A °F/°C control sits on the temperature box and sets `RfqData.tempUnit` for the whole
+survey. **Everything is stored in °F** — `setCondition`, the psychrometrics, the record,
+the PDF and the admin view. Celsius is converted at the input and straight back.
+
+Three things that are not obvious and must not be "simplified":
+
+1. **Dew point and wet bulb follow the unit too.** They are temperatures. A °C dry bulb
+   beside a °F dew point is how someone types 15 meaning 15°C into a field storing 15°F.
+2. **`TempInput` keeps a local text buffer.** Converting on each keystroke and feeding
+   the result back as the input's value destroys typing: `"20."` parses to 20, stores
+   68°F, redisplays `"20"`, and the next digit makes **205**.
+3. **A unit flip writes NOTHING.** Tenths of °C and °F do not line up — 105°F displays as
+   40.6°C, which re-enters as 105.1°F — so a toggle that wrote back would edit a survey
+   every time somebody looked at it in the other scale.
+
+⚠️ The readout must round. `fmtDewPoint()` used to; the unit-aware rewrite briefly
+replaced it with `tempToDisplay()`, which returns the raw value untouched in Fahrenheit,
+and `49.05563453465°F` reached the page before it was caught.
+
+## Step 5 — wall build-ups and the Advanced block (2026-08-20)
+
+Three images sit above the material dropdowns: **Good, Better, Best**, from
+`public/rfq/shell-*.webp`. Hovering magnifies the *figure* to 2× — the figure owns the
+rounded clip, so scaling the image inside it would crop rather than enlarge. The outer
+two use `origin-[25%_50%]` and `origin-[75%_50%]` so they lean outward instead of
+growing across their neighbours.
+
+⚠️ Their order comes from the **file names** and does not match the order they were
+supplied: *Good* is the brick build-up, *Best* is the insulated metal panel.
+
+**Vapor barrier and building tightness** sit behind one **Advanced** control under Floor,
+matching the disclosure on step 7. It opens on arrival if either answer differs from its
+default, so a returning customer is never shown a step that hides what they chose.
+
+⚠️ **Tightness is asked again.** It was hidden on 2026-08-19 while `data.tightness`
+stayed at `'Average'` and `estimateLoad()` kept costing infiltration from it — every
+survey priced at average leakage as an assumption nobody confirmed. Do not re-hide it
+without also dealing with that term.
+
+## Two tones, and only two (2026-08-20)
+
+`Tone` is `'sky' | 'amber'`. Sky carries ordinary information; amber marks the one thing
+on a step worth stopping at — the unit-conversion badge on the target step and the doors
+note. Rose, violet and emerald were **deleted from the type**, not left unused.
+
+Red survives only where it means something: the required-field asterisk, error text, and
+the hover on Remove.
+
 ## The fork
 
 The application step asks the one question that reshapes everything after it:

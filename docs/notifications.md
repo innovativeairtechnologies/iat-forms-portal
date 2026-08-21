@@ -53,10 +53,53 @@ failure being chased.
 
 | # | Trigger | Who is told | When |
 |---|---|---|---|
-| 18 | Daily admin digest | Admin roster, minus `DIGEST_OPT_OUT_DEFAULT` | Daily 16:30 ET |
+| 18 | Daily admin digest | Admin roster, minus `DIGEST_OPT_OUT_DEFAULT` | Daily, lands ~16:30–17:45 ET |
 | 19 | Weekly leadership update | `LEADERSHIP_UPDATE_EMAIL` → currently **lee.childers@** only | **Mondays 17:00 ET** |
 | 20 | PTO accrual run | — (no mail; a scheduled data job) | Mondays 08:00 UTC |
 | 21 | Form submissions, PTO requests, approvals | Per-form recipients | Immediately |
+
+### The digest had never sent, and why (fixed 2026-08-20)
+
+`digest_runs` held **zero rows from the day migration 038 created it**. The missing
+`CRON_SECRET` found on 2026-08-17 was real but was not the whole cause — fixing it
+only moved the failure somewhere quieter.
+
+**Vercel fires crons on this project 14 to 63 minutes late.** Measured from Resend
+send timestamps: 13:00→13:41, 21:30→22:03, 22:00→22:42, and the digest itself at
+20:30→21:33. `isDigestTime()` accepted a **ten-minute** window (16:25–16:34 NY)
+against an entry scheduled for 16:30 exactly, so every invocation arrived after it
+had closed.
+
+⚠️ **Widening to `hour === 16` is NOT enough.** The entry runs at :30 past, so any
+delay over thirty minutes crosses into 17:xx. The weekly leadership report survives
+on a bare hour check only because it is scheduled at :00, so its whole delay budget
+fits inside one hour.
+
+**What shipped:** correctness rests on `digest_runs`' unique index on `run_date` —
+the first invocation of the NY day claims it, later ones no-op — with
+`withinDigestWindow(hour) = hour >= 16 && hour <= 18` kept only as a sanity bound so
+a wildly misfired run cannot mail everyone at 3am.
+
+**Excluding hour 15 is load-bearing.** It makes the correct entry win in each season,
+because the earliest *eligible* invocation is the one that claims:
+
+|  | 20:30 UTC | 21:30 UTC | sends |
+|---|---|---|---|
+| EDT | 16:30 NY **claims** | 17:30 NY no-op | ~4:30–4:45pm |
+| EST | 15:30 NY *skipped* | 16:30 NY **claims** | ~4:30–4:45pm |
+
+Same commit: the route claimed the day **before** sending and never released it, so a
+failure fetching the briefing or the recipient list burned the whole day silently. The
+claim is now released when `sent === 0`, guarded so a partial send can never be
+retried into duplicates.
+
+**First successful send: 2026-08-20, 3 recipients.** It fired 63 minutes late and
+landed in hour 17 — `hour === 16` would have missed again.
+
+⚠️ Vercel's runtime logs are useless for confirming a cron ran here: wide queries time
+out, historical ones return `ExceedsBillingLimitError`, and cron invocations did not
+appear even when they demonstrably ran. Check the side effects instead — `digest_runs`
+and the Resend send list.
 
 The weekly update covers one **edition** — a Monday-to-Sunday work week named
 after its Monday (`lib/edition.ts`), e.g. **Edition 8.17.26** for 17–23 August.
