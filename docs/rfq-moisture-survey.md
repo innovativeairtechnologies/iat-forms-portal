@@ -270,20 +270,30 @@ a 1px hairline and no shadow in light, and the dark surface ladder in dark. That
 deleted before commit.
 
 
-### Hover to magnify, drag to turn (2026-08-21)
+### Hover to magnify (2026-08-21)
 
-`HoverMagnify` wraps anything that needs enlarging, and separates two gestures: **hover magnifies
-and nothing else**, **press-and-drag turns it in 3D**. Used by the rail render and by the people
+`HoverMagnify` enlarges on hover. That is all it does. Used by the rail render and by the people
 illustration on step 7.
+
+⛔ **Two interaction ideas have been tried here and BOTH were rejected. Do not add a third without
+asking.**
+
+1. **Tilt following the pointer on hover** — the picture moved under an uncommitted cursor, which
+   reads as drift rather than control.
+2. **Press-and-drag to turn it in 3D** — "missed the mark"; the owner is finding a reference for
+   what they actually want.
+
+`perspective` and `preserve-3d` went with the rotation rather than being left behind. A dormant 3D
+context on a purely 2D scale is an invitation to "just add a small rotate" to it.
 
 - **`origin` is load-bearing.** The rail sits against the right edge of the page, so it magnifies
   from `100% 50%` and grows LEFTWARD. Measured: 290px → 569px with the right edge moving 3px.
   Centered content (step 7) uses `center`.
-- **Reduced motion keeps the magnify AND the drag**, and only drops the transition. Both are direct
-  manipulation, not autonomous motion; there is nothing to suppress but the easing.
+- **Reduced motion keeps the magnify** — a zoom is a function, not an ornament — and drops only
+  the transition, so it snaps.
 - **Touch is excluded** via `useCanHover()` — `(hover: hover) and (pointer: fine)` and ≥640px. A 2x
   panel on a phone covers the form it is annotating.
-- The transition is 180ms, and **none at all while dragging**, or the picture lags the hand.
+- The transition is 180ms ease-out.
 
 ⚠️ **Verifying it in an automated browser needs a trick.** The pane does not run animation frames,
 so a CSS transition never advances and `getComputedStyle().transform` reports the START value —
@@ -308,16 +318,18 @@ carry values from an earlier switch of track.
 
 #### Corrections, 2026-08-21 (same day)
 
-**Hover no longer tilts. Do not re-add it.** The first build leaned the picture toward the pointer
-as it crossed the image. It was rejected on sight: a picture that shifts under an uncommitted
-cursor reads as drift, not control. The two gestures are now separate — hover magnifies and does
-nothing else, and a deliberate press-and-drag turns it. `HoverMagnify` follows the portal's pointer
-idiom (see `DiagramCanvas`): drag state in a ref, `setPointerCapture` on pointerdown so the gesture
-survives the pointer leaving the element, and the move handler reads the ref rather than state.
+**Hover no longer tilts.** The first build leaned the picture toward the pointer as it crossed the
+image. It was rejected on sight: a picture that shifts under an uncommitted cursor reads as drift,
+not control.
 
-Rotation is clamped to ±38° / ±52° at 0.4°/px. These are flat images: near 90° you are looking at
-the back of a plane and the artwork mirrors, which reads as a bug. The pose survives pointerup, on
-purpose — the point is to leave it where you put it — and resets when the picture shrinks back.
+**The press-and-drag replacement was ALSO rejected, later the same day** ("missed the mark"), and
+has been removed. See the section above — this subsection is kept as the record of what was tried,
+not as a description of what the code does. Nothing here rotates today.
+
+If a third attempt is ever commissioned, the drag build is in git and followed the portal's pointer
+idiom (see `DiagramCanvas`): state in a ref, `setPointerCapture` on pointerdown so the gesture
+survives the pointer leaving the element, move handler reading the ref rather than state, rotation
+clamped to ±38° / ±52° at 0.4°/px because a flat image mirrors near 90°.
 
 **🔴 `unoptimized` on both images is deliberate. Removing it silently softens them.**
 `next/image` re-encodes AND downscales to the layout width, at a default quality of 75. Measured on

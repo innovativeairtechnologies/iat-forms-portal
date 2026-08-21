@@ -10,6 +10,21 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Ticket queue: My Tickets, Unassigned, and links that land on the ticket
+
+**"My Tickets" and "Unassigned" are now tabs in the ticket queue**, beside All, Open, In Progress,
+Resolved and Closed. My Tickets shows everything assigned to you whatever its status, so nothing of
+yours is ever hidden behind a status rule; sort by Status to push the closed ones down. Unassigned
+shows the tickets nobody has picked up, which is the queue worth watching.
+
+**A customer-reply alert now opens that ticket.** Clicking through from the email used to drop you
+on the whole queue, defaulted to Open, and leave you to find the ticket you had just been told
+about. Every other ticket alert already linked straight to the ticket; this one was the exception.
+It works from a signed-out inbox too, arriving on the ticket after you sign in.
+
+**The picture in the quote request only magnifies again.** The turn-it-in-3D behavior is withdrawn
+pending a clearer idea of what it should do.
+
 ## 2026-08-21 — Sharper pictures, and you turn them by dragging
 
 Three corrections to this morning's illustration work.

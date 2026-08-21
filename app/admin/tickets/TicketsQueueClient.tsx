@@ -17,19 +17,53 @@ import {
 import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
 type TicketRow = TicketType & { owner?: { id: string; name: string } | null }
-type Filter  = 'all' | 'open' | 'in_progress' | 'resolved' | 'closed'
+type Status  = 'open' | 'in_progress' | 'resolved' | 'closed'
+/** Two kinds of tab share one ribbon: by STATUS, and by WHO OWNS IT. */
+type Filter  = 'all' | 'mine' | 'unassigned' | Status
 type SortKey = 'created_at' | 'customer_name' | 'priority' | 'status'
 type SortDir = 'asc' | 'desc'
 
 const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, med: 2, low: 3 }
 
+/**
+ * `mine` and `unassigned` are ownership filters, not statuses, so they cut
+ * across every status rather than sitting inside one — "My Tickets" includes the
+ * closed ones. That is deliberate: a filter named after a person should mean
+ * every ticket that is theirs, and quietly hiding some behind a status rule is
+ * the kind of thing nobody discovers until a ticket is missing. Sort by status
+ * to push the closed ones down.
+ *
+ * `mine` is dropped from the ribbon when the signed-in account has no matching
+ * employees row (see myEmployeeId in page.tsx) — a tab that can only ever say
+ * zero is worse than no tab.
+ */
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all',         label: 'All'         },
+  { value: 'mine',        label: 'My Tickets'  },
+  { value: 'unassigned',  label: 'Unassigned'  },
   { value: 'open',        label: 'Open'        },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'resolved',    label: 'Resolved'    },
   { value: 'closed',      label: 'Closed'      },
 ]
+
+/** The generic "No <label> tickets." reads wrong for the ownership tabs —
+ *  "No my tickets." — so those two get their own sentence. */
+function emptyLabel(filter: Filter): string {
+  if (filter === 'mine') return 'Nothing is assigned to you.'
+  if (filter === 'unassigned') return 'Every ticket has an owner.'
+  if (filter === 'all') return 'No tickets.'
+  return `No ${FILTERS.find(f => f.value === filter)?.label.toLowerCase()} tickets.`
+}
+
+/** One predicate for the tab counts and the visible rows, so a badge can never
+ *  disagree with the list under it. */
+function matchesFilter(t: TicketRow, filter: Filter, meId: string | null): boolean {
+  if (filter === 'all') return true
+  if (filter === 'mine') return !!meId && t.owner_id === meId
+  if (filter === 'unassigned') return !t.owner_id
+  return t.status === filter
+}
 
 // Mobile keeps the audit-log trio (identity / status / age); assignee, priority,
 // checkbox and kebab appear at sm+ so the row never scrolls sideways on a phone.
@@ -50,7 +84,7 @@ function matchesSearch(ticket: TicketRow, q: string): boolean {
   )
 }
 
-export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: { tickets: TicketRow[]; warrantyBySerial?: Record<string, 'in' | 'expiring' | 'out' | 'unknown'> }) {
+export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meId = null }: { tickets: TicketRow[]; warrantyBySerial?: Record<string, 'in' | 'expiring' | 'out' | 'unknown'>; meId?: string | null }) {
   const router = useRouter()
   const [filter, setFilter]   = useState<Filter>('open')
   const [search, setSearch]   = useState('')
@@ -79,8 +113,8 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
     else { setSortKey(key); setSortDir('desc') }
   }
 
-  const byStatus = filter === 'all' ? tickets : tickets.filter(t => t.status === filter)
-  const bySearch = byStatus.filter(t => matchesSearch(t, search))
+  const byFilter = tickets.filter(t => matchesFilter(t, filter, meId))
+  const bySearch = byFilter.filter(t => matchesSearch(t, search))
   const sorted = [...bySearch].sort((a, b) => {
     let cmp = 0
     if      (sortKey === 'created_at')    cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -130,18 +164,27 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
           count={`${sorted.length} ${sorted.length === 1 ? 'ticket' : 'tickets'}`}
         />
 
-        {/* Status tabs — the primary filter, with per-status counts */}
+        {/* Filter tabs. Ownership (My Tickets / Unassigned) and status share one
+            ribbon; counts come from the SAME predicate as the rows, so a badge
+            cannot disagree with the list under it. A thin divider separates the
+            two kinds so the ribbon does not read as one flat list of statuses. */}
         <div className="flex items-center gap-1 px-3 border-b border-hairline overflow-x-auto scrollbar-hide">
-          {FILTERS.map(({ value, label }) => {
-            const count = value === 'all' ? tickets.length : tickets.filter(t => t.status === value).length
-            const active = filter === value
-            return (
-              <button key={value} onClick={() => setFilter(value)} className={tabCx(active)}>
-                {label}
-                <span className={tabCountCx(active)}>{count}</span>
-              </button>
-            )
-          })}
+          {FILTERS
+            .filter(({ value }) => value !== 'mine' || meId)
+            .map(({ value, label }) => {
+              const count = tickets.filter(t => matchesFilter(t, value, meId)).length
+              const active = filter === value
+              const endsOwnershipGroup = value === 'unassigned'
+              return (
+                <div key={value} className="flex items-center">
+                  <button onClick={() => setFilter(value)} className={tabCx(active)}>
+                    {label}
+                    <span className={tabCountCx(active)}>{count}</span>
+                  </button>
+                  {endsOwnershipGroup && <span className="mx-1.5 h-4 w-px flex-shrink-0 bg-hairline" aria-hidden="true" />}
+                </div>
+              )
+            })}
         </div>
 
         {/* Search */}
@@ -187,7 +230,7 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {} }: {
             <div className="px-5 py-16 text-center border-b border-hairline-soft">
               <Ticket size={28} className="text-ink-faint mx-auto mb-3" />
               <p className="text-[13px] text-ink-muted">
-                {search ? `No tickets match "${search}"` : `No ${filter !== 'all' ? FILTERS.find(f => f.value === filter)?.label.toLowerCase() : ''} tickets.`}
+                {search ? `No tickets match "${search}"` : emptyLabel(filter)}
               </p>
             </div>
           ) : (

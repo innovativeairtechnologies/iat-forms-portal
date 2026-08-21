@@ -93,12 +93,18 @@ export async function sendTicketNotificationToSupportDesk(ticket: Ticket, recipi
 // app/api/tickets/status/message/route.ts). Without this alert their reply would
 // land silently in the thread and nobody would know to look, which is exactly
 // the failure mode the whole no-reply redesign exists to prevent.
+// ⚠️ `ticketId` is required, and the link goes to the TICKET, not the queue.
+// This alert used to land you on /admin/tickets — the whole queue, defaulted to
+// Open — so the one thing you were told about was something you then had to go
+// and find. Every other ticket alert already deep-linked; this was the outlier.
+// The middleware's toLogin() preserves the path, so the link still works from a
+// signed-out inbox: you sign in and arrive on the ticket.
 export async function sendCustomerMessageAlert(
-  args: { ticket_number: string; customer_name: string | null; message: string },
+  args: { ticket_number: string; customer_name: string | null; message: string; ticketId: string },
   recipients: string[],
 ) {
-  const { ticket_number, customer_name, message } = args
-  const url = `${APP_URL}/admin/tickets`
+  const { ticket_number, customer_name, message, ticketId } = args
+  const url = `${APP_URL}/admin/tickets/${ticketId}`
 
   const body = `
     ${ticketChip(ticket_number)}
@@ -111,7 +117,7 @@ export async function sendCustomerMessageAlert(
     <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;">
       It is already on the ticket thread. Reply from the ticket so the whole conversation stays in one place.
     </p>
-    <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Open the ticket queue</a>`
+    <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Open ${esc(ticket_number)}</a>`
 
   const results = await Promise.all(
     recipients.map(to => resend.emails.send({

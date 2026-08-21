@@ -368,6 +368,54 @@ deleted on 2026-08-14. It belonged on `send`, and as an apex backup it was a rou
 to a server that does not accept mail for the domain. Microsoft was flagging it as
 an error. Never re-create it.
 
+## The queue's filter ribbon (2026-08-21)
+
+`/admin/tickets` filters on two different axes through one row of tabs:
+
+| Tab | Predicate |
+|---|---|
+| All | everything |
+| **My Tickets** | `owner_id === meId` |
+| **Unassigned** | `!owner_id` |
+| Open / In Progress / Resolved / Closed | `status === value` |
+
+**Ownership cuts across status, on purpose.** "My Tickets" includes closed ones. A filter named
+after a person should mean every ticket that is theirs — quietly hiding some behind a status rule
+is the kind of thing nobody discovers until a ticket is missing. Sort by Status to push closed
+down.
+
+**One predicate, `matchesFilter()`, feeds both the tab counts and the rows**, so a badge can never
+disagree with the list underneath it.
+
+⚠️ **`meId` is an `employees.id`, and EMAIL IS THE ONLY JOIN.** `tickets.owner_id` references
+`employees`, and there is no `user_id` on that table (check the type in `lib/supabase.ts`) — the
+auth user and the employee row are related by address alone. `myEmployeeId()` in
+`app/admin/tickets/page.tsx` therefore matches case-insensitively and does **not** use
+`.maybeSingle()`: the employees table is not staff-only (every customer invite adds a row), so a
+duplicate address is possible and `maybeSingle()` throws rather than degrades. Active rows sort
+first. No match → the tab is hidden rather than shown permanently empty.
+
+### ⚠️ The default tab is Open, and Open is usually empty
+
+Checked 2026-08-21: of 14 live tickets, **zero** were `open` — 9 in progress, 2 resolved, 3 closed.
+The queue defaults to Open, so landing on `/admin/tickets` cold shows an empty list. That is
+existing behavior and was left alone, but it is why a link into the bare queue was never a useful
+place to arrive.
+
+## Ticket alerts link to the ticket, not the queue
+
+Every desk alert deep-links to `/admin/tickets/<id>`. `sendCustomerMessageAlert` was the exception
+— it linked to the bare queue, which defaults to Open, so the reply you had just been told about
+was something you then had to go and find. It now takes a required `ticketId`.
+
+The middleware's `toLogin()` copies the pathname into `?redirect=`, so these links work from a
+signed-out inbox: you sign in and land on the ticket.
+
+The only remaining links to the bare queue are in `lib/resend-ticket-reminders.ts`, and both are
+correct — they fire when the mail covers **several** tickets, where the queue genuinely is the
+destination. The single-ticket branch of the same email already deep-links.
+
+
 ## `/support/status` resolves three kinds of reference
 
 Three different intakes hand a customer a reference number, each one living in its

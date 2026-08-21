@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
     const recipients = await ticketAlertRecipients(ticket.owner_id)
     if (recipients.length) {
       await sendCustomerMessageAlert(
-        { ticket_number: ticket.ticket_number, customer_name: ticket.customer_name, message },
+        { ticket_number: ticket.ticket_number, customer_name: ticket.customer_name, message, ticketId: ticket.id },
         recipients,
       ).catch(err => console.error('[status/message] desk alert failed:', err))
     }

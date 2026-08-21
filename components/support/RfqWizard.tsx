@@ -1030,39 +1030,29 @@ function useCanHover() {
 }
 
 /**
- * Hover to enlarge, then drag to turn it in 3D.
+ * Hover to enlarge. That is the whole behavior.
  *
- * ⚠️ Hover does NOT tilt. An earlier build leaned the picture toward the pointer
- * as it moved across it; it was rejected — the image shifting under an
- * uncommitted cursor reads as drift, not as control. Nothing moves until a
- * deliberate press. Do not re-add pointer-tracked tilt.
+ * ⚠️ TWO interaction ideas have now been tried here and BOTH were rejected by the
+ * owner. Do not reach for a third without asking.
  *
- * So there are two separate gestures:
- *   hover           → magnify, and nothing else
- *   press and drag  → turn the enlarged picture on both axes
+ *   1. Tilt following the pointer on hover. The picture moved under an
+ *      uncommitted cursor, which reads as drift rather than control.
+ *   2. Press-and-drag to turn it in 3D. Rejected as "missed the mark"; the owner
+ *      is finding a reference for what they actually want.
  *
- * Drag follows the portal's pointer idiom (see DiagramCanvas): state in a ref,
- * `setPointerCapture` on pointerdown so the gesture survives the pointer leaving
- * the element, and the move handler reads the ref rather than React state so a
- * fast drag cannot drop frames behind a re-render.
- *
- * Rotation is clamped. These are flat images: past about 90° you are looking at
- * the back of a plane and the artwork mirrors, which reads as a bug. The clamp
- * sits well short of that and still gives enough range to feel free.
- *
- * The pose survives pointerup — the point is to leave it where you put it — and
- * resets when the pointer leaves and the picture shrinks back.
+ * So this magnifies and does nothing else, on purpose, until there is a concrete
+ * example to build against. `perspective` and `preserve-3d` are deliberately
+ * gone with the rotation — leaving a 3D context behind for a purely 2D scale
+ * invites the next person to "just add a small rotate" to it.
  *
  * `origin` matters more than it looks. In the right rail the element sits
  * against the right edge of the page, so it must grow LEFTWARD (origin
  * '100% 50%') or the enlarged copy runs off-screen. Centered content gets
  * 'center'.
  *
- * Reduced motion keeps the magnify and the drag — both are direct manipulation,
- * not autonomous motion — and only drops the transition.
+ * Reduced motion keeps the magnify — a zoom is a function, not an ornament — and
+ * drops only the transition, so it snaps.
  */
-const ROT_CLAMP = { x: 38, y: 52 }
-
 function HoverMagnify({
   children, scale = 2, origin = '100% 50%', className = '', label,
 }: {
@@ -1075,74 +1065,24 @@ function HoverMagnify({
   const reduce = useReducedMotion()
   const canHover = useCanHover()
   const [on, setOn] = useState(false)
-  const [rot, setRot] = useState({ x: 0, y: 0 })
-  const [dragging, setDragging] = useState(false)
-  const drag = useRef<{ id: number; x: number; y: number; rx: number; ry: number } | null>(null)
-
   const active = canHover && on
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (!active) return
-    e.preventDefault()
-    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, rx: rot.x, ry: rot.y }
-    setDragging(true)
-    ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
-  }
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = drag.current
-    if (!d || d.id !== e.pointerId) return
-    const clamp = (v: number, lim: number) => Math.max(-lim, Math.min(lim, v))
-    // Horizontal drag spins about Y, vertical about X. 0.4°/px is roughly a
-    // quarter turn across the width of the enlarged panel.
-    setRot({
-      x: clamp(d.rx - (e.clientY - d.y) * 0.4, ROT_CLAMP.x),
-      y: clamp(d.ry + (e.clientX - d.x) * 0.4, ROT_CLAMP.y),
-    })
-  }
-
-  const endDrag = (e: React.PointerEvent) => {
-    if (!drag.current) return
-    ;(e.currentTarget as Element).releasePointerCapture?.(drag.current.id)
-    drag.current = null
-    setDragging(false)
-  }
-
-  const rest = () => {
-    // A drag in progress owns the pointer; leaving mid-gesture must not collapse it.
-    if (drag.current) return
-    setOn(false)
-    setRot({ x: 0, y: 0 })
-  }
-
-  const transform = active
-    ? `scale(${scale}) rotateX(${rot.x.toFixed(2)}deg) rotateY(${rot.y.toFixed(2)}deg)`
-    : 'scale(1)'
-
   return (
-    <div className={className} style={{ perspective: '1100px' }}>
+    <div className={className}>
       <div
         onPointerEnter={() => setOn(true)}
-        onPointerLeave={rest}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerLeave={() => setOn(false)}
         onFocus={() => setOn(true)}
-        onBlur={rest}
+        onBlur={() => setOn(false)}
         tabIndex={canHover ? 0 : -1}
         aria-label={label}
         style={{
-          transform,
+          transform: active ? `scale(${scale})` : 'scale(1)',
           transformOrigin: origin,
-          transformStyle: 'preserve-3d',
-          // No transition while dragging, or the picture lags the hand.
-          transition: reduce || dragging ? 'none' : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: reduce ? 'none' : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
           position: 'relative',
           // Under the sticky header (z-30) on purpose, over the step card.
           zIndex: active ? 20 : undefined,
-          cursor: active ? (dragging ? 'grabbing' : 'grab') : undefined,
-          touchAction: active ? 'none' : undefined,
         }}
         className="rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >

@@ -86,6 +86,7 @@ export async function POST(request: Request) {
             // An attachment-only reply still needs to say something, or the alert
             // arrives with an empty quote and reads like a bug.
             message: text || `Sent ${attachments.length} attachment${attachments.length === 1 ? '' : 's'} with no message.`,
+            ticketId,
           },
           recipients,
         )
