@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-21 — Reports, assignment emails, and a limit on reopening old tickets
+
+**There is a Reports section now**, in the left navigation between the working sections and
+System. Support Tickets is the first report: how many came in and went out, whether the backlog is
+growing, how long tickets actually take to close, how often they come back, which customers
+generate the most, and which equipment models keep appearing. Anything over 30, 90 or 365 days, or
+all time, and the whole table exports to CSV for a spreadsheet.
+
+Reporting is restricted to full admins to begin with. It can be granted to a specific role from
+Permissions without a code change.
+
+**Assigning a ticket now emails the person you assigned it to.** Assignment used to be silent: a
+ticket landed in someone's name and the only way they found out was opening the queue and looking.
+Assigning to yourself sends nothing, and the shared support mailbox is deliberately left out of it.
+
+**A customer replying to a closed ticket reopens it, and we hear about it.** Until now that reply
+landed in the thread and the ticket stayed closed, so it was invisible in every queue view. It now
+goes back to Open, keeps its owner, and sends an alert that says it was reopened rather than that
+somebody wrote in.
+
+**Closed conversations end after 30 days.** Past that a customer is asked to open a new ticket
+rather than add to an old one, with a link to do it. A fault that returns two months later is a new
+fault, and burying it under an old diagnosis helps nobody. Inside the window nothing changes.
+
 ## 2026-08-21 — The ticket queue opens on your own work
 
 **You now land on My Tickets**, showing what is still active — open, in progress, and anything a

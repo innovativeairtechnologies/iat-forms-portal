@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
-import { sendCustomerMessageAlert } from '@/lib/resend-tickets'
+import { sendCustomerMessageAlert, sendTicketReopenedAlert } from '@/lib/resend-tickets'
 import { ticketAlertRecipients } from '@/lib/ticket-recipients'
+import { REOPEN_WINDOW_DAYS, reopenDecision } from '@/lib/ticket-history'
+import { logAudit } from '@/lib/audit'
 
 /* Lets a customer who is NOT signed in add a message to their own ticket.
 
@@ -102,6 +104,27 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // ── The reopen window ──
+    // A closed ticket accepts a reply for REOPEN_WINDOW_DAYS after it was closed;
+    // past that the customer is asked to raise a fresh one. A machine that fails
+    // again two months later is a new fault with new symptoms, and appending it
+    // to a closed thread buries that under an old diagnosis.
+    //
+    // Checked BEFORE the note is written, so a blocked customer does not leave a
+    // message nobody will read. reopenDecision fails open on every uncertainty —
+    // see lib/ticket-history.ts.
+    const reopen = await reopenDecision(ticket.id, ticket.status)
+    if (!reopen.allowed) {
+      return NextResponse.json(
+        {
+          error: `This ticket was closed ${reopen.daysSinceClose} days ago, and we close conversations after ${REOPEN_WINDOW_DAYS} days. Please open a new ticket and describe what is happening now — it helps to include the current symptoms, since they may have changed.`,
+          code: 'reopen_window_closed',
+          newTicketUrl: '/support/equipment-support',
+        },
+        { status: 409 }
+      )
+    }
+
     // visibility/author_type are hardcoded, NOT taken from the body — a customer
     // note is always public and always attributed to the customer.
     const insert: Record<string, unknown> = {
@@ -136,12 +159,67 @@ export async function POST(req: NextRequest) {
     // Awaited so Vercel cannot kill the function mid-send, but a mail failure
     // never fails the request — the message is already on the ticket and visible
     // in /admin/tickets either way.
+    // ── Reopen, if this landed on a closed ticket ──
+    // Inside the window a reply puts the ticket back to OPEN rather than leaving
+    // it closed with a message hanging off it — which is what used to happen, and
+    // meant the reply was invisible in every queue view.
+    //
+    // Back to `open`, not `in_progress`: it is work that needs triage, and it
+    // should surface in Open/Unassigned rather than looking like something
+    // already in hand. The owner is deliberately KEPT, so the ticket stays with
+    // whoever knows it and no assignment alert re-fires.
+    //
+    // ⚠️ The audit row is not decoration — lib/ticket-history.ts derives the whole
+    // lifecycle (close time, reopen count, and therefore the 30-day gate itself)
+    // from these rows. Skip it and this ticket's next reopen check reads the
+    // ORIGINAL close date.
+    const wasClosed = ticket.status === 'closed'
+    if (wasClosed) {
+      const { error: reopenErr } = await supabaseAdmin
+        .from('tickets')
+        .update({ status: 'open' })
+        .eq('id', ticket.id)
+
+      if (reopenErr) {
+        console.error('[status/message] reopen failed:', reopenErr)
+      } else {
+        await logAudit({
+          actor: { id: null, name: ticket.customer_name || 'Customer' },
+          action: 'ticket.status',
+          entityType: 'ticket',
+          entityId: ticket.id,
+          summary: `Ticket ${ticket.ticket_number} reopened by the customer`,
+          metadata: { from: 'closed', to: 'open', via: 'status-page-reply' },
+        })
+      }
+    }
+
+    // Tell the desk AND whoever owns the ticket. The shared mailbox on its own
+    // is how a customer reply gets seen by everyone and actioned by nobody; the
+    // owner's own inbox is what makes it somebody's job. Unassigned tickets fall
+    // back to the desk alone, which is why the desk is never dropped.
+    //
+    // Awaited so Vercel cannot kill the function mid-send, but a mail failure
+    // never fails the request — the message is already on the ticket and visible
+    // in /admin/tickets either way.
     const recipients = await ticketAlertRecipients(ticket.owner_id)
     if (recipients.length) {
-      await sendCustomerMessageAlert(
-        { ticket_number: ticket.ticket_number, customer_name: ticket.customer_name, message, ticketId: ticket.id },
-        recipients,
-      ).catch(err => console.error('[status/message] desk alert failed:', err))
+      const send = wasClosed
+        ? sendTicketReopenedAlert(
+            {
+              ticket_number: ticket.ticket_number,
+              ticketId: ticket.id,
+              customer_name: ticket.customer_name,
+              message,
+              closedAt: reopen.closedAt ?? null,
+            },
+            recipients,
+          )
+        : sendCustomerMessageAlert(
+            { ticket_number: ticket.ticket_number, customer_name: ticket.customer_name, message, ticketId: ticket.id },
+            recipients,
+          )
+      await send.catch(err => console.error('[status/message] desk alert failed:', err))
     }
 
     return NextResponse.json({ success: true })

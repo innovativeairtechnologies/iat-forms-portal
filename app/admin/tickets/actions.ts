@@ -9,6 +9,7 @@ import {
   sendTicketClosedToCustomer,
   sendTicketStatusChangeToCustomer,
 } from '@/lib/resend-customer-tickets'
+import { sendTicketAssignedAlert } from '@/lib/resend-tickets'
 
 /** Statuses a customer experiences as "done". Both require closing remarks, and
  *  both send those remarks to the person who raised the ticket. */
@@ -34,7 +35,7 @@ export async function updateTicket(
   // Snapshot prior values so we only log genuine transitions (status / priority / owner).
   const { data: prior } = await supabaseAdmin
     .from('tickets')
-    .select('status, priority, owner_id, ticket_number, customer_name, customer_email, assigned_at')
+    .select('status, priority, owner_id, ticket_number, customer_name, customer_email, assigned_at, customer_company, problem_description')
     .eq('id', ticketId)
     .single()
 
@@ -127,6 +128,55 @@ export async function updateTicket(
         summary: `Reassigned ticket ${tkt} (${who}) from ${fromName} to ${toName}`,
         metadata: { from: prior.owner_id, to: data.owner_id },
       })
+
+      // ── Tell the new owner ──
+      // Assignment used to be silent: a ticket landed in someone's name and the
+      // only way they found out was opening the queue and looking.
+      //
+      // Three deliberate limits:
+      //   - the NEW owner only, never the desk. The desk hears about everything
+      //     customer-facing already; "Kacy now owns this" in a shared mailbox is
+      //     noise, and noise in that mailbox is what the whole alert redesign
+      //     exists to reduce.
+      //   - nothing on UNassignment (data.owner_id null) — there is nobody to tell.
+      //   - nothing when you assign to YOURSELF. You were just there.
+      //
+      // The lookup mirrors ticketAlertRecipients' guards, and for the same
+      // reason: this mail quotes the customer's problem verbatim, so a
+      // misdelivery is a disclosure rather than noise. is_active is required and
+      // a blank address is treated as "nobody to notify" — the employees table is
+      // not staff-only, every customer invite adds a row.
+      //
+      // Never allowed to fail the update: the assignment is already committed and
+      // is what the queue reads. A lost email must not turn a saved triage
+      // decision into an error the operator has to retry.
+      if (data.owner_id) {
+        try {
+          const { data: newOwner } = await supabaseAdmin
+            .from('employees')
+            .select('email, is_active')
+            .eq('id', data.owner_id)
+            .maybeSingle()
+
+          const addr = typeof newOwner?.email === 'string' ? newOwner.email.trim() : ''
+          const selfAssigned = addr.toLowerCase() === (actor.user.email ?? '').trim().toLowerCase()
+
+          if (newOwner?.is_active && addr && !selfAssigned) {
+            await sendTicketAssignedAlert({
+              ticket_number: tkt,
+              ticketId,
+              customer_name: prior.customer_name ?? null,
+              customer_company: prior.customer_company ?? null,
+              problem_description: prior.problem_description ?? null,
+              status: String(data.status),
+              priority: data.priority ?? null,
+              assignedBy: actor.displayName,
+            }, addr)
+          }
+        } catch (err) {
+          console.error('[updateTicket] assignment alert failed:', err)
+        }
+      }
     }
 
     // ── Closing remarks onto the thread, then out to the customer ──

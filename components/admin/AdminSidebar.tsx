@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
   Users, Bot, DollarSign, Sun, Moon, Home, UserRound, Megaphone,
-  GraduationCap,
+  GraduationCap, BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -192,6 +192,17 @@ const NAV_PARENTS: NavParent[] = [
     hidden: true,
     children: [
       { href: '/admin/us-rotors/orders', label: 'Orders', badge: 'usrotors', perm: 'us_rotors' },
+    ],
+  },
+  // Reporting sits between the working sections and System on purpose: it is
+  // read-only analysis OF the work above it, not administration of the portal.
+  // Support Tickets is the first report; the group exists so the next one does
+  // not need another restructure.
+  {
+    label: 'Reports',
+    icon: BarChart3,
+    children: [
+      { href: '/admin/reports/tickets', label: 'Support Tickets', perm: 'reports' },
     ],
   },
   {

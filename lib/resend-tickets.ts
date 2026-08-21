@@ -175,3 +175,102 @@ export async function sendCustomerResolvedAlert(
     else console.log(`[resend] customer resolved alert sent to ${recipients[i]}: id=${r.data?.id}`)
   })
 }
+
+// ── "You've been given a ticket" ──────────────────────────────────────────────
+// Assignment was silent: a ticket landed in someone's name and the only way they
+// learned was by opening the queue and looking. This closes that.
+//
+// ⚠️ Sent to the NEW OWNER ONLY — not the desk. The desk already hears about
+// every customer-facing event on the ticket, and a second copy of "Kacy now owns
+// this" is noise in a shared mailbox nobody owns.
+//
+// Assigning a ticket to YOURSELF sends nothing; see the caller. You know.
+export async function sendTicketAssignedAlert(
+  args: {
+    ticket_number: string
+    ticketId: string
+    customer_name: string | null
+    customer_company: string | null
+    problem_description: string | null
+    status: string
+    priority: string | null
+    assignedBy: string
+  },
+  to: string,
+) {
+  const { ticket_number, ticketId, customer_name, customer_company, problem_description, status, priority, assignedBy } = args
+  const url = `${APP_URL}/admin/tickets/${ticketId}`
+  const who = [customer_name, customer_company].filter(Boolean).join(' · ') || 'Unknown customer'
+  const snippet = (problem_description || '').trim()
+
+  const body = `
+    ${ticketChip(ticket_number)}
+    <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">
+      ${esc(assignedBy)} assigned this to you
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0f0f0;border-radius:8px;margin:0 0 20px;">
+      ${row('Customer', esc(who))}
+      ${row('Status', esc(String(status).replace('_', ' ')))}
+      ${row('Priority', esc(priority || 'med'))}
+    </table>
+    ${snippet ? `<div style="background:#f8f9fa;border-left:3px solid #089447;border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 20px;">
+      <p style="margin:0;color:#333;font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(snippet.slice(0, 600))}${snippet.length > 600 ? '…' : ''}</p>
+    </div>` : ''}
+    <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Open ${esc(ticket_number)}</a>`
+
+  const r = await resend.emails.send({
+    from: FROM,
+    replyTo: EMAIL_FROM.SUPPORT,
+    to,
+    subject: `Assigned to you: ${ticket_number}${customer_name ? ` (${customer_name})` : ''}`,
+    html: shell('#1a1a2e', 'Ticket Assigned', body),
+  })
+  if (r.error) console.error(`[resend] assignment alert failed to ${to}:`, r.error)
+  else console.log(`[resend] assignment alert sent to ${to}: id=${r.data?.id}`)
+}
+
+// ── A customer came back to a closed ticket ───────────────────────────────────
+// Distinct from sendCustomerMessageAlert on purpose: a reply on a live ticket is
+// routine, a reply on one we had CLOSED means we called it done and the customer
+// disagrees. Same inbox, different sentence, different urgency.
+export async function sendTicketReopenedAlert(
+  args: {
+    ticket_number: string
+    ticketId: string
+    customer_name: string | null
+    message: string
+    closedAt: string | null
+  },
+  recipients: string[],
+) {
+  const { ticket_number, ticketId, customer_name, message, closedAt } = args
+  const url = `${APP_URL}/admin/tickets/${ticketId}`
+  const closedLine = closedAt
+    ? `It had been closed since ${new Date(closedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
+    : 'It had already been closed.'
+
+  const body = `
+    ${ticketChip(ticket_number)}
+    <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">
+      ${esc(customer_name || 'The customer')} reopened this ticket
+    </p>
+    <p style="margin:0 0 16px;color:#555;font-size:14px;line-height:1.6;">${esc(closedLine)} It is back to Open and needs someone.</p>
+    <div style="background:#fff8ec;border-left:3px solid #b45309;border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 20px;">
+      <p style="margin:0;color:#333;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>
+    </div>
+    <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Open ${esc(ticket_number)}</a>`
+
+  const results = await Promise.all(
+    recipients.map(to => resend.emails.send({
+      from: FROM,
+      replyTo: EMAIL_FROM.SUPPORT,
+      to,
+      subject: `Reopened: ${ticket_number}${customer_name ? ` (${customer_name})` : ''}`,
+      html: shell('#7c2d12', 'Ticket Reopened', body),
+    }))
+  )
+  results.forEach((r, i) => {
+    if (r.error) console.error(`[resend] reopen alert failed to ${recipients[i]}:`, r.error)
+    else console.log(`[resend] reopen alert sent to ${recipients[i]}: id=${r.data?.id}`)
+  })
+}

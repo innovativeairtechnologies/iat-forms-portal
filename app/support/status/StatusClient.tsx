@@ -134,12 +134,15 @@ export default function StatusClient({ customerContext = null }: { customerConte
   const [msgSending, setMsgSending] = useState(false)
   const [msgSent, setMsgSent] = useState(false)
   const [msgError, setMsgError] = useState<string | null>(null)
+  // Set when the ticket is past the reopen window, so the error can offer the
+  // way forward instead of only naming the rule.
+  const [msgErrorAction, setMsgErrorAction] = useState<string | null>(null)
 
   const sendMessage = async () => {
     const text = message.trim()
     if (!text) return
     setMsgSending(true)
-    setMsgError(null)
+    setMsgError(null); setMsgErrorAction(null)
     try {
       // Same best-effort reCAPTCHA pattern as the ticket form: a grecaptcha
       // hiccup must never stop a real customer from reaching us.
@@ -168,7 +171,10 @@ export default function StatusClient({ customerContext = null }: { customerConte
         }),
       })
       const json = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(json?.error || 'We could not send your message. Please try again.')
+      if (!res.ok) {
+        if (json?.code === 'reopen_window_closed' && json?.newTicketUrl) setMsgErrorAction(String(json.newTicketUrl))
+        throw new Error(json?.error || 'We could not send your message. Please try again.')
+      }
       setMsgSent(true)
       setMessage('')
     } catch (err) {
@@ -197,7 +203,7 @@ export default function StatusClient({ customerContext = null }: { customerConte
     // message they never wrote on this ticket.
     setMessage('')
     setMsgSent(false)
-    setMsgError(null)
+    setMsgError(null); setMsgErrorAction(null)
     try {
       // Route by reference prefix — every resolver returns the same shape.
       const kind = refKind(ref)
@@ -461,7 +467,17 @@ export default function StatusClient({ customerContext = null }: { customerConte
                         className="w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2.5 text-[13px] text-gray-700 dark:text-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#089447]/30 focus:border-[#089447] resize-y"
                       />
                       {msgError && (
-                        <p className="mt-2 text-[12px] text-rose-500">{msgError}</p>
+                        <p className="mt-2 text-[12px] text-rose-500">
+                          {msgError}
+                          {msgErrorAction && (
+                            <>
+                              {' '}
+                              <a href={msgErrorAction} className="font-medium text-brand underline underline-offset-2">
+                                Open a new ticket
+                              </a>
+                            </>
+                          )}
+                        </p>
                       )}
                       <button
                         onClick={sendMessage}

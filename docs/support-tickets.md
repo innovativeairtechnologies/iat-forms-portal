@@ -428,6 +428,101 @@ correct — they fire when the mail covers **several** tickets, where the queue 
 destination. The single-ticket branch of the same email already deep-links.
 
 
+## Assignment, reopening, and the 30-day window (2026-08-21)
+
+### Assigning a ticket emails the new owner
+
+`updateTicket()` already detected owner changes for the audit trail; the alert hangs off the same
+branch. Three deliberate limits:
+
+- **The new owner only, never the desk.** The desk hears every customer-facing event already, and
+  "Kacy now owns this" in a shared mailbox is noise — the thing the whole alert redesign exists to
+  reduce.
+- **Nothing on unassignment.** There is nobody to tell.
+- **Nothing when you assign to yourself.** You were just there.
+
+The lookup mirrors `ticketAlertRecipients`' guards (`is_active`, non-empty address) for the same
+reason: this mail quotes the customer's problem verbatim, so a misdelivery is a disclosure. A send
+failure is caught and logged — the assignment is already committed and is what the queue reads.
+
+### A customer reply to a CLOSED ticket reopens it
+
+Previously the reply landed in the thread and the ticket stayed closed, i.e. invisible in every
+queue view. Now, inside the window, it goes back to **`open`** — not `in_progress`, because it needs
+triage and should surface in Open/Unassigned rather than looking like something already in hand.
+The **owner is kept**, so it stays with whoever knows it and no assignment alert re-fires.
+
+`sendTicketReopenedAlert` is a separate email from `sendCustomerMessageAlert` on purpose: a reply on
+a live ticket is routine, a reply on one we closed means we called it done and the customer
+disagrees.
+
+⚠️ **The reopen writes a `ticket.status` audit row, and that is load-bearing, not decoration.**
+`lib/ticket-history.ts` derives the entire lifecycle — close time, reopen count, and therefore the
+30-day gate itself — from those rows. Skip it and the ticket's next reopen check reads the
+*original* close date.
+
+### The 30-day window
+
+`REOPEN_WINDOW_DAYS = 30`, in `lib/ticket-history.ts`. Checked BEFORE the note is written, so a
+blocked customer does not leave a message nobody will read. A 409 carries `code:
+'reopen_window_closed'` and a `newTicketUrl`, and the status page turns that into a real link
+rather than only naming the rule.
+
+🔴 **`reopenDecision` FAILS OPEN in three separate ways, all deliberate:** a ticket that is not
+closed, a closed ticket with no close row, and an unreadable audit trail are all allowed. The cost
+of wrongly allowing is one ticket to triage. The cost of wrongly blocking is a customer with a
+broken dehumidifier being turned away by a rule they cannot see or argue with. Do not "tighten"
+this.
+
+⚠️ **There is no `closed_at` column.** The tickets table records `created_at`,
+`customer_resolved_at`, and the reminder/escalation stamps from migration 090 — nothing for when
+staff closed it. Every close date here comes from `audit_log`. Verified 2026-08-21: 8 close events
+on record covering all then-closed tickets exactly. The intended end state is a real column with
+this as the backfill; it was not built only because the Supabase CLI was unauthorized that day and
+DDL cannot go through PostgREST.
+
+## Reports (2026-08-21)
+
+`/admin/reports` — new sidebar group, `Support Tickets` its first entry.
+
+**Access: the `reports` perm, admin-only BY OMISSION.** It is granted to no scoped role in
+`DEFAULT_ROLE_PERMS`, so `hasPermission()` returns true only for `admin` and no `role_permissions`
+seed or migration is needed — the same pattern as `srv` and `sizing`. The `check-perm-seed`
+prebuild gate passes precisely because nothing is granted. Grant it to a role from
+`/admin/permissions` when someone specific needs it.
+
+⚠️ **Deliberately NOT reusing `tickets`.** That perm is held live by engineering and
+production_manager; reporting aggregates who closed what and how fast, which is a different question
+from working the queue. Widening the queue perm to cover it would have been invisible.
+
+Gated **twice**: `ADMIN_PATH_PERMS` maps `/admin/reports` → `reports`, and each page re-checks
+`can('reports')` and calls `notFound()`. An unmapped `/admin/*` path falls back to `dashboard`,
+which every scoped role holds, so the second check is what makes a future matcher edit fail closed
+instead of exposing the whole report.
+
+### What it measures, and why
+
+| Metric | The question behind it |
+|---|---|
+| Opened / Closed / Net | is the backlog growing |
+| Reopen rate | did we call things done that were not |
+| Median days to close | how long a customer actually waits |
+| Aging buckets | which tickets have gone quiet |
+| By owner | workload and throughput |
+| By customer | who absorbs the most support |
+| **By equipment model** | which machines keep coming back — the only one that can change what gets *built* |
+| Resolution reasons | what actually fixes these |
+
+**Medians, not means.** One ticket left open over a shutdown drags a mean into uselessness, and
+support data is full of those. Time-to-close uses the FIRST close, so a reopen does not flatter it.
+
+🔴 **`lib/ticket-report-types.ts` exists for one reason: `TicketReportClient` is a `'use client'`
+component and must not import a value from `lib/ticket-report.ts`, which imports `supabase-admin`.**
+Importing `RANGES` from there shipped the service-role client to the browser and the page died at
+hydration with `supabaseKey is required` — **past `tsc` and past a green server render**, so only
+loading the page caught it. Types are erased and would have been fine; the constant was not.
+
+
 ## `/support/status` resolves three kinds of reference
 
 Three different intakes hand a customer a reference number, each one living in its

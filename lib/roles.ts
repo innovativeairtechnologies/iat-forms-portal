@@ -88,6 +88,18 @@ export type Perm =
   | 'customer_jerry' // admin preview of the customer-facing Jerry; admin-only
   | 'permissions' // the role-permission matrix editor itself; admin-only, non-delegatable
   | 'srv' // the SRV content editor (/admin/srv); admin-only by omission
+  // /admin/reports — cross-cutting reporting (support tickets first, more to
+  // follow). Admin-only BY OMISSION from the scoped-role defaults below, exactly
+  // like 'srv' and 'sizing', so it needs no role_permissions seed and no
+  // migration: hasPermission() returns true for `admin` and the DB matrix has no
+  // row granting it to anyone else.
+  //
+  // ⚠️ Deliberately NOT reusing 'tickets'. That perm is held live by engineering
+  // and production_manager (checked 2026-08-21), and reporting is a different
+  // question from working the queue: it aggregates who closed what, how fast, and
+  // how often work came back. Widening the queue perm to cover it would have been
+  // invisible. Grant this from /admin/permissions when a specific person needs it.
+  | 'reports'
   // /admin/sizing-studio — the psychrometric dehumidifier selection engine.
   // Admin-only by omission from the scoped-role defaults below, like 'srv', so it
   // needs no role_permissions seed. Sales is the obvious next audience: grant it
@@ -168,6 +180,7 @@ export type Perm =
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
   dashboard: 'Dashboard',
+  reports: 'Reports',
   submissions: 'Submissions',
   tickets: 'Tickets',
   equipment: 'Equipment',
@@ -389,6 +402,10 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/knowledge', perm: 'knowledge' },
   { prefix: '/admin/permissions', perm: 'permissions' },
   { prefix: '/admin/srv', perm: 'srv' },
+  // MUST be listed. An unmapped /admin/* path falls back to 'dashboard', which
+  // all five scoped roles hold — omitting this would open every report to all of
+  // them rather than failing closed.
+  { prefix: '/admin/reports', perm: 'reports' },
   { prefix: '/admin/sizing-studio', perm: 'sizing' },
   { prefix: '/admin/submissions', perm: 'submissions' },
   { prefix: '/admin/tickets', perm: 'tickets' },
