@@ -448,8 +448,12 @@ export default function TicketDetailClient({
       share_closing_note: closingNow ? shareNote : undefined,
     })
     setUpdating(false)
-    setConfirmingClose(false)
+    // Dismiss the dialog only on success. A rejected close (missing owner, notes
+    // too short) must leave it open with the reason in view — closing it would
+    // drop the operator back on the page having apparently done nothing, which is
+    // the same silent-failure shape the queue had.
     if (error) { setSaveError(error); return }
+    setConfirmingClose(false)
     const owner = owners.find(o => o.id === pendingOwnerId)
     const resolvedReason = pendingStatus === 'resolved' ? pendingResolvedReason : null
     // The closing note was just written to the thread server-side; refresh so it
