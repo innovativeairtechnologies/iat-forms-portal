@@ -411,6 +411,44 @@ still five pages.
 
 ---
 
+## Two ways to give the room's size (2026-08-24)
+
+Step 4 accepts either **Dimensions** (length × width × height) or **Volume**. `roomDims()` in
+`lib/rfq.ts` is the **single definition** of the room's size — the load engine, the wizard's live
+readout, the step validation, the PDF diagram and the admin detail page all read through it, so
+they cannot disagree. **Nothing reads `roomL/roomW/roomH` directly any more.**
+
+⚠️ **Volume alone cannot size a system, and this is the reason the mode is shaped the way it is.**
+L, W and H are not just a volume here — they are the wall, ceiling and floor **areas** the
+permeation term needs (`wallArea = 2(L+W)H`, `ceiling = floor = L×W`). Two rooms of identical
+volume can have very different envelope area.
+
+So volume mode also takes a **ceiling height** — the one dimension nearly everyone knows without
+measuring — and derives a square footprint:
+
+```
+H = ceiling height (DEFAULT_CEILING_FT = 12 when blank)
+L = W = sqrt(volume / H)
+```
+
+Volume is exact, floor and ceiling area are exact, and only the footprint **shape** is assumed. A
+square is the minimum-perimeter case, so **wall area is the low end** — an elongated room has more
+wall than this predicts (a 200 × 12.5 ft room of the same volume has 53% more).
+
+Because it is an assumption, three surfaces say so rather than presenting it as measured: the
+wizard shows an amber callout with the derived footprint, the PDF heading reads `ROOM SIZE (FROM
+VOLUME)` and prints `… ft assumed`, and the admin field is labelled **Dimensions (assumed)**.
+`roomDimsAreDerived()` is what each of them tests.
+
+Scale check before worrying: permeation was **283 of 78,791 gr/hr (0.4%)** on a real survey, so a
+53% wall-area error moves the total by ~0.2%. A tight, cold room with little internal load leans
+on permeation far harder — that is the case where the wording matters.
+
+`roomSizeMode` is pinned server-side in `/api/rfq`'s `coerce()` next to the moisture modes, for the
+identical reason: it is a string union, the generic string copy would accept anything, and an
+unknown value falls through to the dimensions branch and reads fields volume mode never filled in —
+a silent zero-volume survey. Legacy rows default to `dimensions` and resolve exactly as before.
+
 ## The maths
 
 `lib/rfq-psych.ts` — ASHRAE Fundamentals moist-air properties (saturation pressure over

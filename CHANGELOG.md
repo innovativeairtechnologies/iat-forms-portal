@@ -10,6 +10,27 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — Customers can give us a room's volume instead of measuring it
+
+The quote request asked for length, width and height. Plenty of people know their building as
+"about thirty thousand cubic feet" and would have to go and measure to answer that, so the survey
+now offers a **Volume** option beside **Dimensions** and lets them answer the question they can
+actually answer.
+
+**Volume on its own is not enough to size a system, and the form says so.** Moisture comes through
+the walls, ceiling and floor, so the calculation needs their *area* — and two rooms of the same
+volume can have very different amounts of wall. Volume mode therefore also asks for the ceiling
+height, which almost everyone knows without measuring, and assumes a square floor from there. That
+gets the volume and the floor area exactly right and leaves only the shape of the footprint
+assumed.
+
+A square is the shape with the least wall, so a long narrow building has more wall than we assume
+and its real figure will be higher. Rather than bury that, the form shows the customer the
+footprint it assumed and tells them to enter dimensions if they know them; the PDF prints the
+figures marked as assumed, and the desk sees "Dimensions (assumed)" on the request. In practice
+this moves a typical estimate by a fraction of a percent — but a tight cold room leans on it
+harder, which is exactly when someone needs to notice the wording rather than trust a number.
+
 ## 2026-08-24 — The quote request now records how leaky the building is
 
 **Building tightness is printed on the survey PDF.** Step 5 of the quote request asks whether the
