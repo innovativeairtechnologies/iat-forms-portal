@@ -4,20 +4,28 @@ import {
   sendTicketUnclaimedReminder,
   type TicketReminderRow,
 } from './resend-ticket-reminders'
-import { sendUnassignedEscalation, type EscalationItem } from './resend-escalation'
+import { sendOversightEscalation, type EscalationItem } from './resend-escalation'
 
 // ─── Chasing support tickets that have stalled ───────────────────────────────
 //
-// Three sweeps, all keyed on a ticket that is still live (open or in progress):
+// Four sweeps, all keyed on a ticket that is still live (open or in progress):
 //
 //   1. Assigned, no activity in 24h → nudge the owner.
 //   2. Nobody assigned at all       → REMINDER to the shared desk.
-//   3. Nobody assigned at all       → ESCALATE to leadership, with the unassigned
+//   3. Nobody assigned at all       → ESCALATE to the admins, with the unassigned
 //                                     quote requests folded into the same email.
+//   3b. Assigned, no activity in 24h → the SAME admin email, as oversight.
 //
 // 2 and 3 fire on the same rows on purpose, and are not redundant: the desk is a
-// shared mailbox that can go unread, and the escalation names two people who can
-// decide who the work belongs to. Assigning an owner stops both.
+// shared mailbox that can go unread, and the escalation names three admins who
+// can decide who the work belongs to. Assigning an owner stops both.
+//
+// 1 and 3b fire on the same rows on purpose too. The owner is asked to act; the
+// admins are told it is sitting there. The whole point of the second is that it
+// does not depend on the first being read — or on the owner still working here.
+// A ticket owned by someone who has left was previously chased by nobody, since
+// sweep 1 needs an active roster row and sweeps 2 and 3 skip anything with an
+// owner. 3b has no such gap.
 //
 // ── "Activity" means a note, not a status change ────────────────────────────
 // The owner nudge asks whether anything has HAPPENED, and the honest record of
@@ -250,12 +258,78 @@ export async function runTicketReminders(): Promise<TicketReminderResult> {
     }
   }
 
+  // ── 3b. Assigned, but nothing has happened → the same leadership email ──
+  // The owner already got their own nudge above. This is the oversight copy, so
+  // an admin can see work that has a name against it and still is not moving.
+  //
+  // Its own query rather than reusing the sweep-1 rows on purpose: that set is
+  // gated on `assignee_nudged_at`, so a ticket nudged yesterday would drop out
+  // of it and vanish from this list too — the admin view would then depend on
+  // the owner's nudge cycle, which is precisely the thing it exists to check.
+  //
+  // Stamped with `escalated_at`, shared with the unassigned sweep above. Safe
+  // because a ticket cannot be both unassigned and assigned-but-quiet, and the
+  // column means the same thing either way: leadership was told at time T.
+  const { data: stalledRows, error: sErr } = await supabaseAdmin
+    .from('tickets')
+    .select('id, ticket_number, customer_name, customer_company, problem_description, serial_number, created_at, owner_id, assigned_at')
+    .in('status', LIVE_STATUSES)
+    .not('owner_id', 'is', null)
+    .or(`escalated_at.is.null,escalated_at.lt.${escalateRepeatBefore}`)
+
+  if (sErr) {
+    console.error('[ticket-reminders] could not load stalled assigned rows:', sErr)
+    note('stalled query failed')
+  } else {
+    const rows = (stalledRows ?? []) as Row[]
+    const activity = await lastActivityByTicket(rows.map(r => r.id))
+    const stalled = rows
+      .map(r => ({
+        r,
+        since: [r.assigned_at, activity.get(r.id), r.created_at]
+          .filter(Boolean)
+          .sort()
+          .pop() as string,
+      }))
+      .filter(x => x.since < quietBefore)
+
+    // One lookup for every owner in the batch. A missing or inactive row is not
+    // skipped — that ticket is the MOST important one here, because the owner
+    // nudge cannot reach a person who has left and nothing else would surface it.
+    const ownerIds = [...new Set(stalled.map(x => x.r.owner_id).filter(Boolean) as string[])]
+    const ownerNames = new Map<string, string>()
+    if (ownerIds.length) {
+      const { data: emps } = await supabaseAdmin
+        .from('employees')
+        .select('id, name, is_active')
+        .in('id', ownerIds)
+      for (const e of emps ?? []) {
+        if (e.is_active && e.name) ownerNames.set(e.id as string, e.name as string)
+      }
+    }
+
+    for (const { r, since } of stalled) {
+      const p = String(r.problem_description ?? '').replace(/\s+/g, ' ').trim()
+      items.push({
+        kind: 'stalled',
+        id: r.id,
+        reference: r.ticket_number,
+        who: [r.customer_name, r.customer_company].filter(Boolean).join(' · ') || '—',
+        what: p ? (p.length > 90 ? `${p.slice(0, 89)}…` : p) : (r.serial_number ? `S/N ${r.serial_number}` : ''),
+        createdAt: r.created_at,
+        owner: r.owner_id ? ownerNames.get(r.owner_id) ?? null : null,
+        quietSince: since,
+      })
+      ticketIds.push(r.id)
+    }
+  }
+
   if (items.length) {
     try {
-      await sendUnassignedEscalation(items)
+      await sendOversightEscalation(items)
       const stamp = new Date().toISOString()
       // Stamped only after a send that reached at least one person — see
-      // sendUnassignedEscalation, which throws when every recipient failed.
+      // sendOversightEscalation, which throws when every recipient failed.
       if (ticketIds.length) {
         await supabaseAdmin.from('tickets').update({ escalated_at: stamp }).in('id', ticketIds)
       }

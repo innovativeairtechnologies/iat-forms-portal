@@ -338,22 +338,34 @@ one-off for the worked example).
 
 ## The escalation ladder
 
-Three steps, each existing because the one before it can fail:
+Four steps, each existing because the one before it can fail:
 
 1. **Desk sweep** → the shared mailbox. *A mailbox can go unread.*
-2. **Owner nudge** → the person holding it. *Requires someone to be holding it.*
-3. **Leadership escalation** → Kacy and Crystal, by name.
+2. **Owner nudge** → the person holding it. *Requires someone to be holding it,
+   and requires them to read it.*
+3. **Admin escalation, unassigned** → Kacy, Crystal and Lee, by name.
+4. **Admin escalation, stalled** → the same three, in the same email.
 
-Step 3 fires precisely when neither of the first two can help: an unassigned row
-has nobody to nudge, and the desk has already been told once. It covers **tickets
-and quote requests in one email**, because they need the same decision — hand it
-to a person — and two emails minutes apart would be merged by hand anyway.
+Step 3 fires when neither of the first two can help: an unassigned row has nobody
+to nudge, and the desk has already been told once. It covers **tickets and quote
+requests in one email**, because they need the same decision — hand it to a person.
 
-**Individual sends, not a shared `To:` line.** A message addressed to two people
-is a message addressed to nobody; each assumes the other has it, which is the
-exact failure this email exists to break. Override the pair with
-`LEADERSHIP_ESCALATION_EMAIL` (comma-separated) — a name changing must not need
-a commit.
+Step 4 (added 2026-08-24) covers the opposite case: a ticket that **does** have an
+owner and still has not moved in 24 hours. The owner gets their nudge as before;
+the admins get told it is sitting there. Same email as step 3, so an admin asking
+"is anything being dropped?" reads one list rather than two.
+
+⚠️ Step 4 also closes a real hole. Sweep 1 needs an **active roster row** to reach
+anybody, and sweeps 2 and 3 skip any row that has an owner. So a ticket assigned to
+someone who has since left was chased by **nobody at all**, and nothing surfaced it.
+Step 4 does not depend on the owner being reachable — such a row appears in the
+admin list reading *"with an owner who has no active account"*.
+
+**Individual sends, not a shared `To:` line.** A message addressed to three people
+is a message addressed to nobody; each assumes another has it, which is the exact
+failure this email exists to break. Override the list with
+`LEADERSHIP_ESCALATION_EMAIL` (comma-separated) — a name changing must not need a
+commit. Unset, it defaults to the three admins.
 
 **Repeat cadence: 48 hours.** Assigning an owner stops everything for that row.
 Nothing can go permanently quiet, and nothing arrives daily.
@@ -369,7 +381,7 @@ kind, stamped when mail goes out and checked before the next send:
 | `assigned_at` | `tickets`, `rfq_requests` | The moment an owner is set |
 | `assignee_nudged_at` | both | The owner nudge |
 | `unclaimed_reminded_at` | both | The desk reminder |
-| `escalated_at` | both | The leadership escalation |
+| `escalated_at` | both | The admin escalation — unassigned **and** stalled. Safe to share: a ticket cannot be both at once, and the column means the same thing either way (leadership was told at time T) |
 
 **Deliberately not stamped when a send throws**, so a failure is retried on the
 next run rather than silently swallowed. An in-memory flag would not outlive a

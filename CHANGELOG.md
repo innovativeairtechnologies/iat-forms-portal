@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — The three admins now see anything sitting unattended
+
+Kacy, Crystal and Lee get one email covering everything that is not moving. Two changes to make
+that true.
+
+**Lee was not on the escalation list.** It named Kacy and Crystal only, so a third of the people
+accountable for the queue were not being told. All three are on it now.
+
+**A ticket with an owner was invisible to them.** The escalation only covered work nobody had
+picked up. If a ticket was assigned and then nothing happened for 24 hours, the owner got a nudge
+and that was the end of it — whether or not they read it. Those tickets now appear in the same
+admin email, marked Stalled, showing who holds it and how long it has been quiet.
+
+It is one email rather than two, because an admin asking whether anything is being dropped should
+read one list. The owner still gets their own nudge; this is the copy that says it is sitting there.
+
+That also closes a hole nobody had noticed. The owner nudge needs an active staff record to reach
+anyone, and the unassigned sweeps skip anything that has an owner. So a ticket belonging to someone
+who has left the company was chased by nobody at all, and nothing anywhere surfaced it. Those rows
+now appear in the admin list, reading "with an owner who has no active account".
+
+Assigning an owner still stops the unassigned reminders. Writing a note stops the stalled ones —
+"waiting on parts" counts. Nothing repeats more than every 48 hours.
+
 ## 2026-08-24 — Every email now has to say who it is for
 
 A full pass over every send in the codebase, after two reminders were found quarantined over the

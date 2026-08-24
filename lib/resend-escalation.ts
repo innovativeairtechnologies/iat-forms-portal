@@ -36,17 +36,28 @@ const FROM = internalFrom(EMAIL_FROM.PORTAL)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL
   || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
 
-/** The two people who decide who work belongs to. Overridable from Vercel
- *  (comma-separated) without a deploy — a name changing must not need a commit. */
-const DEFAULT_LEADERSHIP = 'kacy@dehumidifiers.com,crystal@dehumidifiers.com'
+/** The three admins who decide who work belongs to, and who are accountable for
+ *  nothing being left unattended. Overridable from Vercel (comma-separated)
+ *  without a deploy — a name changing must not need a commit. */
+const DEFAULT_LEADERSHIP =
+  'kacy@dehumidifiers.com,crystal@dehumidifiers.com,lee.childers@dehumidifiers.com'
 
 export function leadershipRecipients(): string[] {
   return (process.env.LEADERSHIP_ESCALATION_EMAIL || DEFAULT_LEADERSHIP)
     .split(',').map(s => s.trim()).filter(Boolean)
 }
 
+/* `stalled` is assigned-but-untouched, and it is here rather than in its own
+   email for a reason. The owner already gets their own nudge; this is the
+   oversight copy, and an admin asking "is anything being dropped?" wants one
+   list, not two arriving minutes apart with half the picture each.
+
+   It also closes a real hole. The owner nudge needs an active roster row to
+   reach anybody, so a ticket assigned to someone who has left was chased by
+   NOBODY — the unassigned sweeps skip it because it has an owner. This list
+   does not depend on the owner being reachable, so it surfaces regardless. */
 export type EscalationItem = {
-  kind: 'ticket' | 'rfq'
+  kind: 'ticket' | 'rfq' | 'stalled'
   id: string
   reference: string
   /** Who it is for — customer name, or company on a quote request. */
@@ -54,6 +65,10 @@ export type EscalationItem = {
   /** One line of what it is: the problem, or the size of the job. */
   what: string
   createdAt: string
+  /** `stalled` only — who holds it, so an admin can see where it is stuck. */
+  owner?: string | null
+  /** `stalled` only — when it last had any activity, which is what "quiet" means. */
+  quietSince?: string | null
 }
 
 function esc(s: string): string {
@@ -73,24 +88,34 @@ function ageLabel(iso: string): string {
 const TH = 'padding:8px 14px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;text-align:left;'
 const TD = 'padding:10px 14px;border-top:1px solid #f0f0f0;font-size:13px;color:#555;vertical-align:top;'
 
+const PILL: Record<EscalationItem['kind'], { label: string; style: string }> = {
+  ticket: { label: 'Ticket', style: 'background:#eef4ff;color:#3557b7;' },
+  rfq: { label: 'Quote', style: 'background:#f0faf4;color:#089447;' },
+  stalled: { label: 'Stalled', style: 'background:#fdf3e7;color:#8a5a00;' },
+}
+
 function table(items: EscalationItem[]): string {
   const rows = items.map(it => {
-    const href = it.kind === 'ticket'
-      ? `${APP_URL}/admin/tickets/${it.id}`
-      : `${APP_URL}/admin/rfq/${it.id}`
+    const href = it.kind === 'rfq'
+      ? `${APP_URL}/admin/rfq/${it.id}`
+      : `${APP_URL}/admin/tickets/${it.id}`
+    const pill = PILL[it.kind]
+    // For a stalled row the useful age is how long it has been QUIET, not how
+    // old the ticket is. A three-week ticket touched yesterday is fine; a
+    // two-day ticket nobody has written on since Monday is not.
+    const age = it.kind === 'stalled' ? (it.quietSince ?? it.createdAt) : it.createdAt
+    const held = it.kind === 'stalled'
+      ? `<br><span style="color:#8a5a00;font-size:12px;">with ${esc(it.owner || 'an owner who has no active account')}</span>`
+      : ''
     return `<tr>
       <td style="${TD}white-space:nowrap;">
-        <span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;${
-          it.kind === 'ticket'
-            ? 'background:#eef4ff;color:#3557b7;'
-            : 'background:#f0faf4;color:#089447;'
-        }">${it.kind === 'ticket' ? 'Ticket' : 'Quote'}</span>
+        <span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;${pill.style}">${pill.label}</span>
       </td>
       <td style="${TD}font-family:monospace;">
         <a href="${esc(href)}" style="color:#089447;text-decoration:none;">${esc(it.reference)}</a>
       </td>
-      <td style="${TD}color:#333;">${esc(it.who || '—')}<br><span style="color:#999;font-size:12px;">${esc(it.what || '')}</span></td>
-      <td style="${TD}white-space:nowrap;">${esc(ageLabel(it.createdAt))}</td>
+      <td style="${TD}color:#333;">${esc(it.who || '—')}<br><span style="color:#999;font-size:12px;">${esc(it.what || '')}</span>${held}</td>
+      <td style="${TD}white-space:nowrap;">${esc(ageLabel(age))}</td>
     </tr>`
   }).join('')
 
@@ -113,7 +138,7 @@ function shell(title: string, sub: string, inner: string): string {
   </td></tr>
   <tr><td style="padding:28px 32px;">${inner}</td></tr>
   <tr><td style="padding:16px 32px;background:#f8f9fa;border-top:1px solid #eee;">
-    <p style="margin:0;color:#aaa;font-size:12px;">IAT Portal · Sent when something has been unassigned for 24 hours. Assigning it to a person stops these.</p>
+    <p style="margin:0;color:#aaa;font-size:12px;">IAT Portal · Sent when something has gone 24 hours unassigned, or 24 hours with an owner but no activity. Assigning it, or writing a note on it, stops these.</p>
   </td></tr>
 </table>
 </td></tr></table>
@@ -128,7 +153,7 @@ function shell(title: string, sub: string, inner: string): string {
  * for courtesy mail. This message IS the mechanism; silently losing it would
  * leave the rows marked as escalated with nobody having been told.
  */
-export async function sendUnassignedEscalation(items: EscalationItem[]): Promise<void> {
+export async function sendOversightEscalation(items: EscalationItem[]): Promise<void> {
   if (!items.length) return
   const recipients = leadershipRecipients()
   if (!recipients.length) {
@@ -137,36 +162,60 @@ export async function sendUnassignedEscalation(items: EscalationItem[]): Promise
   }
 
   const tickets = items.filter(i => i.kind === 'ticket').length
-  const quotes = items.length - tickets
-  const parts = [
+  const quotes = items.filter(i => i.kind === 'rfq').length
+  const stalled = items.filter(i => i.kind === 'stalled').length
+
+  const unownedParts = [
     tickets ? `${tickets} support ticket${tickets === 1 ? '' : 's'}` : '',
     quotes ? `${quotes} quote request${quotes === 1 ? '' : 's'}` : '',
   ].filter(Boolean).join(' and ')
 
-  const inner = `
-    <p style="margin:0 0 6px;color:#333;font-size:15px;line-height:1.6;">
-      <strong>${esc(parts)}</strong> ${items.length === 1 ? 'has' : 'have'} been waiting more than
-      24 hours with <strong>nobody assigned</strong>.
-    </p>
-    <p style="margin:0;color:#555;font-size:14px;line-height:1.6;">
-      The shared desk has already been told. This is the second ask, to someone who can decide
-      who ${items.length === 1 ? 'it belongs' : 'they belong'} to.
-    </p>
-    ${table(items)}
-    <p style="margin:0;color:#777;font-size:13px;line-height:1.6;">
-      Assigning an owner stops the reminders for that row. Anything still unassigned will be
-      raised again in 48 hours.
-    </p>`
+  const subject = [
+    unownedParts ? `${tickets + quotes} unassigned` : '',
+    stalled ? `${stalled} stalled` : '',
+  ].filter(Boolean).join(', ')
 
-  const subject = `Unassigned after 24 hours: ${parts}`
+  // Unassigned first: it is the one nobody owns, so it is the one most likely to
+  // be forgotten. Stalled at least has a name against it.
+  const order: Record<EscalationItem['kind'], number> = { ticket: 0, rfq: 1, stalled: 2 }
+  const sorted = [...items].sort((a, b) => order[a.kind] - order[b.kind])
+
+  const unownedLine = unownedParts
+    ? `<p style="margin:0 0 6px;color:#333;font-size:15px;line-height:1.6;">
+        <strong>${esc(unownedParts)}</strong> ${tickets + quotes === 1 ? 'has' : 'have'} been waiting
+        more than 24 hours with <strong>nobody assigned</strong>. The shared desk has already been
+        told; this is the second ask, to someone who can decide who it belongs to.
+      </p>`
+    : ''
+
+  const stalledLine = stalled
+    ? `<p style="margin:${unownedParts ? '10px' : '0'} 0 6px;color:#333;font-size:15px;line-height:1.6;">
+        <strong>${stalled} ticket${stalled === 1 ? ' has' : 's have'}</strong> an owner but
+        <strong>no activity for 24 hours</strong>. The owner has been nudged separately. This copy is
+        so nothing sits unattended without you knowing.
+      </p>`
+    : ''
+
+  const inner = `
+    ${unownedLine}
+    ${stalledLine}
+    ${table(sorted)}
+    <p style="margin:0;color:#777;font-size:13px;line-height:1.6;">
+      Assigning an owner stops the unassigned reminders. Writing a note stops the stalled ones —
+      even "waiting on parts" counts. Anything still outstanding is raised again in 48 hours.
+    </p>`
 
   // Sent one at a time, each addressed to a single person. Failures are collected
   // rather than short-circuited: one bad address must not stop the other person
   // being told. Throws at the end only if EVERY send failed.
   const results = await Promise.all(
     recipients.map(to => resend.emails.send({
-      from: FROM, to, subject,
-      html: shell('Nobody has picked this up', 'Waiting more than 24 hours, unassigned', inner),
+      from: FROM, to, subject: `Needs attention: ${subject}`,
+      html: shell(
+        stalled && !unownedParts ? 'Nothing has happened on these' : 'Nobody has picked this up',
+        'Waiting more than 24 hours',
+        inner,
+      ),
     }).then(
       r => ({ to, error: r.error ? JSON.stringify(r.error) : null, id: r.data?.id }),
       e => ({ to, error: e instanceof Error ? e.message : String(e), id: undefined }),
