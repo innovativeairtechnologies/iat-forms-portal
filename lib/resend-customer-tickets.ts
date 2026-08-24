@@ -31,6 +31,8 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 // invite a reply: an emailed reply lands in a mailbox, not on the ticket, and the
 // thread fragments across two places nobody reconciles. Every one of these emails
 // tells the customer not to reply and links them back into the portal instead.
+// audit: all sends customer-facing — every function here mails ticket.customer_email.
+
 const FROM = EMAIL_FROM.PORTAL
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL
   || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')

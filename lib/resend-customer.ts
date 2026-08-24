@@ -75,6 +75,7 @@ export async function sendCustomerWelcomeEmail(opts: {
     </p>
     <p style="margin:22px 0 0;color:#999;font-size:12px;">For your security you'll be asked to set a new password right after signing in. If you weren't expecting this, you can safely ignore this email.</p>`
 
+  // customer-facing — welcome mail to a newly invited customer.
   const result = await resend.emails.send({
     from: FROM,
     to,
@@ -192,6 +193,7 @@ export async function sendWarrantyDecisionEmail(opts: {
     </p>
     <a href="${esc(portalUrl)}" style="display:inline-block;margin-top:16px;background:#089447;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:600;font-size:15px;">Go to the portal</a>`
 
+  // customer-facing — warranty decision to the customer who asked.
   const result = await resend.emails.send({
     from: FROM,
     to,

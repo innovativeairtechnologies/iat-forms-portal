@@ -161,6 +161,27 @@ notice that did move — the two sends in that one file intentionally use differ
 `app/api/tools/duct-traverse/email` also stays, because it mails an arbitrary address chosen by the
 staff member and can legitimately reach a customer.
 
+### Adding a new sender — this is checked, not trusted
+
+```bash
+npm run audit:email
+```
+
+Every `resend.emails.send` in `lib/` and `app/` must declare its audience, and the script fails
+the moment one does not:
+
+- **To IAT staff** — `from: internalFrom(EMAIL_FROM.PORTAL)` (or `SUPPORT` / `FORMS`)
+- **To customers** — keep `EMAIL_FROM.*` and put a comment containing `customer-facing` within
+  the three lines above the send, saying who receives it
+- **A module where every send goes to customers** can say it once near the top instead:
+  `// audit: all sends customer-facing — …`
+
+Current state: 22 staff senders, 11 customer senders, none unclassified.
+
+The point is that "who receives this" is no longer something a reviewer has to hold in their head.
+A new sender that forgets to choose fails the audit rather than quietly quarantining for four days,
+which is exactly how the reminders were lost between 2026-08-20 and 2026-08-24.
+
 ⚠️ Never register `portal.dehumidifiers.com` as a protected domain in the mail filter.
 Doing so re-creates the exact problem this works around.
 

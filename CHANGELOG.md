@@ -10,6 +10,24 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — Every email now has to say who it is for
+
+A full pass over every send in the codebase, after two reminders were found quarantined over the
+weekend. Thirty-three in total: twenty-two go to IAT staff, eleven go to customers, and none were
+left unaccounted for. All five scheduled jobs were traced end to end, as were the alerts that fire
+on an action.
+
+The reason those reminders were missed is worth stating, because it was not carelessness about any
+one file. Nobody could see, from reading a send, who was going to receive it. That fact lived in a
+person's head, and heads are where things get missed.
+
+So it now lives at the call site. Mail to staff says so in the code. Mail to a customer carries a
+short note saying who receives it and why. `npm run audit:email` checks every send and fails if one
+has not chosen — so a new alert that forgets cannot ship quietly and then go missing for four days.
+
+Nothing about what anyone receives changes today. This is about what happens the next time somebody
+adds an alert.
+
 ## 2026-08-24 — The rest of the staff email moves to the portal domain
 
 Ticket alerts started arriving reliably on 20 August. The reminders did not, and over the weekend

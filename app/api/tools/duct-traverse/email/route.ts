@@ -20,6 +20,8 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 // legacy RESEND_FROM) once the dehumidifiers.com domain is verified at
 // resend.com/domains — then reports can be emailed to outside addresses with
 // no code change. Until then, Resend test mode only delivers to the account owner.
+// audit: all sends customer-facing — mails an address the staff member types, which can be a customer.
+
 const FROM = EMAIL_FROM.PORTAL
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/

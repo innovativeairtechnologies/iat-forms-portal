@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
     let emailStatus: 'sent' | 'failed' | 'no_recipient' = to ? 'failed' : 'no_recipient'
     if (to) {
       try {
+        // customer-facing — tells the customer what to fix before start-up.
         const { error: sendError } = await resend.emails.send({
           from: EMAIL_FROM.FORMS,
           to,
