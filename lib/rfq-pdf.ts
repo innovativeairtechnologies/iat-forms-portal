@@ -1052,7 +1052,7 @@ function roomPhotoDiagram(
   const E = ROOM_RENDER_EDGES
   const pt = (p: { x: number; y: number }) => ({ x: ix + p.x * iw, y: iy + p.y * ih })
   const leftTop = pt(E.leftTop), apex = pt(E.apex), leftBot = pt(E.leftBot), floorPt = pt(E.floor)
-  const OFFSET = 0.022 * iw
+  const OFFSET = 0.0125 * iw
   const GAP = 2.4
 
   const edge = (

@@ -1107,7 +1107,7 @@ function HoverMagnify({
 // the bottom. Re-measure in SCREEN space if these change — getBBox() ignores an
 // element's own transform, so it reports the rotated height label as clipped
 // when it is not.
-const DIM = { padL: 34, padR: 12, padT: 40, padB: 38, imgW: 320, imgH: 180 }
+const DIM = { padL: 34, padR: 12, padT: 48, padB: 42, imgW: 320, imgH: 180 }
 const DIM_W = DIM.padL + DIM.imgW + DIM.padR
 const DIM_H = DIM.padT + DIM.imgH + DIM.padB
 const pct = (n: number, total: number) => `${(n / total) * 100}%`
@@ -1146,7 +1146,9 @@ function DimensionOverlay({ L, W, H }: { L: number; W: number; H: number }) {
    *  `side` is the outward perpendicular. The line is pushed OUT by OFFSET so the
    *  three callouts outline the room from outside rather than sitting on its
    *  walls — drawing them on the walls reads as graffiti on the render. */
-  const OFFSET = 7   // overlay units ≈ 0.022 of the image width, matched by eye
+  const OFFSET = 4   // overlay units. Small on purpose: the room's top corner sits
+                     // only ~5% below the image edge, so a bigger stand-off puts the
+                     // width line hard against the top of the picture.
   const edge = (
     a: { x: number; y: number }, b: { x: number; y: number },
     label: string, side: 1 | -1, key: string,

@@ -150,19 +150,25 @@ export function normalizeMode(mode: unknown, fallback: MoistureMode): MoistureMo
 // instead of as rules floating outside the picture.
 //
 // Fractions of the IMAGE BOX (not the padded overlay), so they survive any
-// scale. MEASURED, not eyeballed: candidate lines were composited onto
-// battery, cannabis-room and chemical-lab with sharp and checked by eye until
-// they hugged the edges in all three. Re-run that check if the renders are ever
-// re-exported — a new camera angle silently misaligns every line.
+// scale. MEASURED, not eyeballed: candidate lines were composited onto real
+// renders with sharp and checked by eye until they hugged the edges in all of
+// them. Re-run that check if the renders are ever re-exported — a new camera
+// angle silently misaligns every line.
+//
+// ⚠️ CHECK AGAINST `long-term-storage`, not just the first render you open. The
+// first pass was fitted to `battery` alone and looked right there while the
+// floor line ran 2.5° steep on the warehouse — enough to visibly cut into the
+// picture. The floor edge is the sensitive one; the top edge and the vertical
+// tolerate more.
 //
 //   leftTop -> apex     the wall's TOP edge, receding away to the right   (WIDTH)
 //   leftTop -> leftBot  the wall's OUTER VERTICAL edge                    (HEIGHT)
 //   leftBot -> floor    the floor's FRONT edge, advancing to the right    (LENGTH)
 export const ROOM_RENDER_EDGES = {
-  leftTop: { x: 0.180, y: 0.256 },
-  apex: { x: 0.531, y: 0.051 },
-  leftBot: { x: 0.180, y: 0.681 },
-  floor: { x: 0.524, y: 0.940 },
+  leftTop: { x: 0.178, y: 0.252 },
+  apex: { x: 0.531, y: 0.048 },
+  leftBot: { x: 0.178, y: 0.703 },
+  floor: { x: 0.523, y: 0.937 },
 } as const
 
 export type RoomSizeMode = 'dimensions' | 'volume'
