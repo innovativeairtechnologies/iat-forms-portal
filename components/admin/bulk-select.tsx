@@ -92,7 +92,22 @@ export function SelectBox({ checked, onChange, className = 'flex', indeterminate
         type="checkbox"
         checked={checked}
         readOnly
-        ref={(el) => { if (el) el.indeterminate = indeterminate && !checked }}
+        // 🔴 `el.checked = checked` is NOT redundant with the prop above. When the
+        // click lands on the INPUT ITSELF the browser toggles it, our handlers
+        // run, and then preventDefault() reverts the toggle — after which React
+        // will not re-sync, because the prop it last wrote already equals the
+        // prop it is rendering. The box then reports selected in state and
+        // unselected in pixels.
+        //
+        // This ref runs on every render, after the revert, so it is what actually
+        // makes the box agree with the selection. Verified live: clicking the
+        // wrapper worked without it, clicking the box did not — and clicking the
+        // box is what people do.
+        ref={(el) => {
+          if (!el) return
+          el.checked = checked
+          el.indeterminate = indeterminate && !checked
+        }}
         aria-label={label}
         className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer"
       />

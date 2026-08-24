@@ -6,6 +6,7 @@ import {
   Ticket, Search, X, MoreHorizontal, Clock, CheckCircle2, ExternalLink, ShieldCheck, ShieldAlert,
   AlertCircle,
 } from 'lucide-react'
+import { SelectBox } from '@/components/admin/bulk-select'
 import type { Ticket as TicketType } from '@/lib/supabase'
 import { updateTicket } from './actions'
 import {
@@ -332,18 +333,17 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
           minWidth={920}
           head={
             <>
-              <div className="hidden sm:flex items-center justify-center">
-                {/* Indeterminate when only part of the page is selected — without
-                    it a half-selected page renders identically to an empty one. */}
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  ref={el => { if (el) el.indeterminate = someSelected && !allSelected }}
-                  aria-label={allSelected ? 'Clear selection on this page' : 'Select all tickets on this page'}
-                  className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer"
-                />
-              </div>
+              {/* Shared kit, not a local copy. This list used to hand-roll its
+                  own boxes, which is precisely how it ended up with different
+                  behaviour from every other list and why the click-the-box bug
+                  was missed here. One implementation. */}
+              <SelectBox
+                className="hidden sm:flex"
+                checked={allSelected}
+                indeterminate={someSelected}
+                label={allSelected ? 'Clear selection on this page' : 'Select all tickets on this page'}
+                onChange={toggleAll}
+              />
               <SortHeader label="Customer" active={sortKey === 'customer_name'} dir={sortDir} onClick={() => toggleSort('customer_name')} />
               <span className="hidden sm:block">Assignee</span>
               <div className="hidden sm:block"><SortHeader label="Priority" active={sortKey === 'priority'} dir={sortDir} onClick={() => toggleSort('priority')} /></div>
@@ -368,14 +368,14 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
               const w = warrantyBySerial[ticket.serial_number]
               return (
                 <Row key={ticket.id} cols={COLS} href={`/admin/tickets/${ticket.id}`} selected={isSel}>
-                  {/* Checkbox — guard blocks the row link so selecting never navigates */}
-                  <div
-                    className="hidden sm:flex items-center justify-center"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(ticket.id) }}
-                  >
-                    <input type="checkbox" checked={isSel} readOnly aria-label={`Select ticket ${ticket.ticket_number}`}
-                      className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
-                  </div>
+                  {/* Checkbox — the kit's wrapper blocks the row link so selecting
+                      never navigates, and force-syncs the box after that guard. */}
+                  <SelectBox
+                    className="hidden sm:flex"
+                    checked={isSel}
+                    label={`Select ticket ${ticket.ticket_number}`}
+                    onChange={() => toggle(ticket.id)}
+                  />
                   {/* Identity — customer over ticket # · model */}
                   <div className="flex items-center gap-2.5 min-w-0">
                     <ToneAvatar name={ticket.customer_name} />
