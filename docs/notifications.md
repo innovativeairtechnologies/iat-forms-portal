@@ -338,34 +338,55 @@ one-off for the worked example).
 
 ## The escalation ladder
 
-Four steps, each existing because the one before it can fail:
+Five steps, each existing because the one before it can fail:
 
 1. **Desk sweep** → the shared mailbox. *A mailbox can go unread.*
 2. **Owner nudge** → the person holding it. *Requires someone to be holding it,
    and requires them to read it.*
 3. **Admin escalation, unassigned** → Kacy, Crystal and Lee, by name.
-4. **Admin escalation, stalled** → the same three, in the same email.
+4. **Admin escalation, stalled ticket** → the same three, same email.
+5. **Admin escalation, stalled quote** → the same email again, **plus sales**.
 
-Step 3 fires when neither of the first two can help: an unassigned row has nobody
-to nudge, and the desk has already been told once. It covers **tickets and quote
-requests in one email**, because they need the same decision — hand it to a person.
+Steps 4 and 5 were added 2026-08-24. Before them the escalation only ever covered
+work **nobody had picked up**. Anything with a name against it produced an owner
+nudge and nothing else — read or not. At the time of the change there were **zero**
+unassigned tickets and **six stalled ones, four quiet for a full week**, so the admin
+email had been sending nothing at all while a week of work sat untouched.
 
-Step 4 (added 2026-08-24) covers the opposite case: a ticket that **does** have an
-owner and still has not moved in 24 hours. The owner gets their nudge as before;
-the admins get told it is sitting there. Same email as step 3, so an admin asking
-"is anything being dropped?" reads one list rather than two.
+**One email, not three.** An admin asking "is anything being dropped?" should read one
+list. Sorted unassigned first (no name against it), then stalled; tickets before quotes.
 
-⚠️ Step 4 also closes a real hole. Sweep 1 needs an **active roster row** to reach
-anybody, and sweeps 2 and 3 skip any row that has an owner. So a ticket assigned to
-someone who has since left was chased by **nobody at all**, and nothing surfaced it.
-Step 4 does not depend on the owner being reachable — such a row appears in the
-admin list reading *"with an owner who has no active account"*.
+### Who gets it
 
-**Individual sends, not a shared `To:` line.** A message addressed to three people
-is a message addressed to nobody; each assumes another has it, which is the exact
-failure this email exists to break. Override the list with
-`LEADERSHIP_ESCALATION_EMAIL` (comma-separated) — a name changing must not need a
-commit. Unset, it defaults to the three admins.
+| | Recipients |
+|---|---|
+| Any escalation | The three admins — `LEADERSHIP_ESCALATION_EMAIL`, defaults to Kacy, Crystal, Lee |
+| **Containing a quote request** | The above **plus sales** — `SALES_ESCALATION_EMAIL`, defaults to Mike Payton and Jacob Reagan |
+
+Sales are added **only when the email actually carries a quote request**. A rep copied
+on ticket-only mail learns to skim past it, and the one time it does concern them is the
+time they will not read it.
+
+⚠️ `jacob@dehumidifiers.com` is **Jacob Reagan** (Inside Sales Engineer).
+`jacob.younker@dehumidifiers.com` is a different person. The roster holds several Jacobs
+and they must never be conflated — see the employees-table note in the project memory.
+
+⚠️ Steps 4 and 5 also close a real hole. Sweep 1 needs an **active roster row** to reach
+anybody, and steps 1–3 skip any row that has an owner. So work assigned to someone who
+has since left was chased by **nobody at all**. Steps 4 and 5 do not depend on the owner
+being reachable — those rows appear reading *"with an owner who has no active account"*.
+
+**Individual sends, not a shared `To:` line.** A message addressed to five people is a
+message addressed to nobody; each assumes another has it, which is the exact failure this
+email exists to break.
+
+### What stops each one
+
+| Row | Stops when |
+|---|---|
+| Unassigned ticket or quote | An owner is assigned |
+| Stalled ticket | **A note is written** — "waiting on parts" counts. A status change does **not** |
+| Stalled quote | Status moves off `new` — one click onto Reviewing says a human has it |
 
 **Repeat cadence: 48 hours.** Assigning an owner stops everything for that row.
 Nothing can go permanently quiet, and nothing arrives daily.

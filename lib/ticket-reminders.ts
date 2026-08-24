@@ -5,6 +5,7 @@ import {
   type TicketReminderRow,
 } from './resend-ticket-reminders'
 import { sendOversightEscalation, type EscalationItem } from './resend-escalation'
+import { UNSTARTED_STATUS } from './rfq-status'
 
 // ─── Chasing support tickets that have stalled ───────────────────────────────
 //
@@ -15,6 +16,11 @@ import { sendOversightEscalation, type EscalationItem } from './resend-escalatio
 //   3. Nobody assigned at all       → ESCALATE to the admins, with the unassigned
 //                                     quote requests folded into the same email.
 //   3b. Assigned, no activity in 24h → the SAME admin email, as oversight.
+//   3c. Quote request assigned but still `new` → the SAME email again.
+//
+// 3c exists because lib/rfq-reminders.ts nudges the rep and stops there, so a
+// quote sitting on somebody's name reached nobody else. Sales are copied on this
+// email whenever it carries a quote request — see sendOversightEscalation.
 //
 // 2 and 3 fire on the same rows on purpose, and are not redundant: the desk is a
 // shared mailbox that can go unread, and the escalation names three admins who
@@ -221,7 +227,8 @@ export async function runTicketReminders(): Promise<TicketReminderResult> {
     for (const t of escTickets ?? []) {
       const p = String(t.problem_description ?? '').replace(/\s+/g, ' ').trim()
       items.push({
-        kind: 'ticket',
+        entity: 'ticket',
+        state: 'unassigned',
         id: t.id as string,
         reference: t.ticket_number as string,
         who: [t.customer_name, t.customer_company].filter(Boolean).join(' · ') || '—',
@@ -247,7 +254,8 @@ export async function runTicketReminders(): Promise<TicketReminderResult> {
   } else {
     for (const q of escRfqs ?? []) {
       items.push({
-        kind: 'rfq',
+        entity: 'rfq',
+        state: 'unassigned',
         id: q.id as string,
         reference: q.reference as string,
         who: [q.company, q.contact_name].filter(Boolean).join(' · ') || '—',
@@ -311,7 +319,8 @@ export async function runTicketReminders(): Promise<TicketReminderResult> {
     for (const { r, since } of stalled) {
       const p = String(r.problem_description ?? '').replace(/\s+/g, ' ').trim()
       items.push({
-        kind: 'stalled',
+        entity: 'ticket',
+        state: 'stalled',
         id: r.id,
         reference: r.ticket_number,
         who: [r.customer_name, r.customer_company].filter(Boolean).join(' · ') || '—',
@@ -321,6 +330,60 @@ export async function runTicketReminders(): Promise<TicketReminderResult> {
         quietSince: since,
       })
       ticketIds.push(r.id)
+    }
+  }
+
+  // ── 3c. Quote request assigned, still not started → the same admin email ──
+  // The RFQ equivalent of 3b, and it had the same hole: lib/rfq-reminders.ts
+  // nudges the rep and stops there, so a quote sitting on a rep's name was never
+  // escalated to anybody. Sales are copied on this email whenever it contains a
+  // quote request — see sendOversightEscalation.
+  //
+  // "Not started" here is `status = new`, NOT a note trail. That is the RFQ
+  // signal by design: one click onto Reviewing says a human has it.
+  const { data: stalledRfqs, error: srErr } = await supabaseAdmin
+    .from('rfq_requests')
+    .select('id, reference, company, contact_name, application_label, project_name, created_at, assignee_id, assignee_name, assigned_at')
+    .eq('status', UNSTARTED_STATUS)
+    .not('assignee_id', 'is', null)
+    .lt('assigned_at', quietBefore)
+    .or(`escalated_at.is.null,escalated_at.lt.${escalateRepeatBefore}`)
+    .order('assigned_at')
+
+  if (srErr) {
+    console.error('[ticket-reminders] could not load stalled quote requests:', srErr)
+    note('stalled rfq query failed')
+  } else {
+    const rows = stalledRfqs ?? []
+    const ids = [...new Set(rows.map(r => r.assignee_id).filter(Boolean) as string[])]
+    const active = new Map<string, string>()
+    if (ids.length) {
+      const { data: emps } = await supabaseAdmin
+        .from('employees')
+        .select('id, name, is_active')
+        .in('id', ids)
+      for (const e of emps ?? []) {
+        if (e.is_active && e.name) active.set(e.id as string, e.name as string)
+      }
+    }
+
+    for (const q of rows) {
+      // `assignee_name` is denormalised on the row, so it survives the person
+      // leaving. Resolving against the live roster instead is what makes an
+      // owner who no longer has an account visible rather than silently normal.
+      const owner = q.assignee_id ? active.get(q.assignee_id as string) ?? null : null
+      items.push({
+        entity: 'rfq',
+        state: 'stalled',
+        id: q.id as string,
+        reference: q.reference as string,
+        who: [q.company, q.contact_name].filter(Boolean).join(' · ') || '—',
+        what: [q.application_label, q.project_name].filter(Boolean).join(' · '),
+        createdAt: q.created_at as string,
+        owner,
+        quietSince: (q.assigned_at as string) ?? (q.created_at as string),
+      })
+      rfqIds.push(q.id as string)
     }
   }
 

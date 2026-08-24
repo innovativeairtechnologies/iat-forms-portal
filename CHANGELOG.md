@@ -10,6 +10,26 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — Quote requests are chased the same way tickets are, and sales are told
+
+Following on from the admin oversight change earlier today. Two more gaps, both the same shape.
+
+**A quote request sitting on somebody's name reached nobody else.** The rep got a nudge and that
+was the end of it. Assigned quote requests still sitting at New after 24 hours now appear in the
+admin email alongside the tickets, showing who holds it and how long it has sat.
+
+**Sales were not on any of it.** Mike and Jacob Reagan are now copied on that email whenever it
+carries a quote request — and only then. A rep copied on ticket-only mail learns to skim past it,
+and the one time it does concern them is the time they will not read it.
+
+Cadence is unchanged and matches what was asked for: nothing is chased until it has sat for 24
+hours, and nothing is raised again more often than every 48.
+
+Both lists are configurable without a deploy, so a name changing does not need a code change.
+
+Nothing was narrowed. The earlier note offered to raise the threshold if six stalled tickets in one
+email felt like too many; the answer was to widen the net instead, and that is what this does.
+
 ## 2026-08-24 — The three admins now see anything sitting unattended
 
 Kacy, Crystal and Lee get one email covering everything that is not moving. Two changes to make

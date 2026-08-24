@@ -47,6 +47,17 @@ export function leadershipRecipients(): string[] {
     .split(',').map(s => s.trim()).filter(Boolean)
 }
 
+/* Sales, added only when the email actually contains a quote request.
+   ⚠️ `jacob@` is Jacob REAGAN (Inside Sales Engineer). `jacob.younker@` is a
+   different person — the roster holds several Jacobs and they must not be
+   conflated. Overridable via SALES_ESCALATION_EMAIL. */
+const DEFAULT_SALES = 'mike.payton@dehumidifiers.com,jacob@dehumidifiers.com'
+
+export function salesRecipients(): string[] {
+  return (process.env.SALES_ESCALATION_EMAIL || DEFAULT_SALES)
+    .split(',').map(s => s.trim()).filter(Boolean)
+}
+
 /* `stalled` is assigned-but-untouched, and it is here rather than in its own
    email for a reason. The owner already gets their own nudge; this is the
    oversight copy, and an admin asking "is anything being dropped?" wants one
@@ -56,8 +67,13 @@ export function leadershipRecipients(): string[] {
    reach anybody, so a ticket assigned to someone who has left was chased by
    NOBODY — the unassigned sweeps skip it because it has an owner. This list
    does not depend on the owner being reachable, so it surfaces regardless. */
+/* Two axes, deliberately separate. WHAT it is, and WHY it is here. Folding them
+   into one field worked while there were two combinations; there are now four,
+   and a single `kind` would have to spell each one out — which is how a fifth
+   gets forgotten. */
 export type EscalationItem = {
-  kind: 'ticket' | 'rfq' | 'stalled'
+  entity: 'ticket' | 'rfq'
+  state: 'unassigned' | 'stalled'
   id: string
   reference: string
   /** Who it is for — customer name, or company on a quote request. */
@@ -88,28 +104,33 @@ function ageLabel(iso: string): string {
 const TH = 'padding:8px 14px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;text-align:left;'
 const TD = 'padding:10px 14px;border-top:1px solid #f0f0f0;font-size:13px;color:#555;vertical-align:top;'
 
-const PILL: Record<EscalationItem['kind'], { label: string; style: string }> = {
-  ticket: { label: 'Ticket', style: 'background:#eef4ff;color:#3557b7;' },
-  rfq: { label: 'Quote', style: 'background:#f0faf4;color:#089447;' },
-  stalled: { label: 'Stalled', style: 'background:#fdf3e7;color:#8a5a00;' },
+const ENTITY_LABEL: Record<EscalationItem['entity'], string> = {
+  ticket: 'Ticket',
+  rfq: 'Quote',
+}
+const STATE_STYLE: Record<EscalationItem['state'], string> = {
+  unassigned: 'background:#eef4ff;color:#3557b7;',
+  stalled: 'background:#fdf3e7;color:#8a5a00;',
 }
 
 function table(items: EscalationItem[]): string {
   const rows = items.map(it => {
-    const href = it.kind === 'rfq'
+    const href = it.entity === 'rfq'
       ? `${APP_URL}/admin/rfq/${it.id}`
       : `${APP_URL}/admin/tickets/${it.id}`
-    const pill = PILL[it.kind]
+    const label = it.state === 'stalled'
+      ? `${ENTITY_LABEL[it.entity]} · stalled`
+      : ENTITY_LABEL[it.entity]
     // For a stalled row the useful age is how long it has been QUIET, not how
-    // old the ticket is. A three-week ticket touched yesterday is fine; a
-    // two-day ticket nobody has written on since Monday is not.
-    const age = it.kind === 'stalled' ? (it.quietSince ?? it.createdAt) : it.createdAt
-    const held = it.kind === 'stalled'
+    // old the row is. A three-week ticket touched yesterday is fine; a two-day
+    // ticket nobody has written on since Monday is not.
+    const age = it.state === 'stalled' ? (it.quietSince ?? it.createdAt) : it.createdAt
+    const held = it.state === 'stalled'
       ? `<br><span style="color:#8a5a00;font-size:12px;">with ${esc(it.owner || 'an owner who has no active account')}</span>`
       : ''
     return `<tr>
       <td style="${TD}white-space:nowrap;">
-        <span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;${pill.style}">${pill.label}</span>
+        <span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;${STATE_STYLE[it.state]}">${label}</span>
       </td>
       <td style="${TD}font-family:monospace;">
         <a href="${esc(href)}" style="color:#089447;text-decoration:none;">${esc(it.reference)}</a>
@@ -155,15 +176,30 @@ function shell(title: string, sub: string, inner: string): string {
  */
 export async function sendOversightEscalation(items: EscalationItem[]): Promise<void> {
   if (!items.length) return
-  const recipients = leadershipRecipients()
+
+  // Admins always. Sales only when there is actually a quote request in the
+  // email — a rep copied on ticket-only mail learns to skim past it, and the
+  // one time it does concern them is the time they will not read it.
+  const hasRfq = items.some(i => i.entity === 'rfq')
+  const seen = new Set<string>()
+  const recipients = [...leadershipRecipients(), ...(hasRfq ? salesRecipients() : [])]
+    .filter(a => {
+      const k = a.toLowerCase()
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+
   if (!recipients.length) {
     console.log('[resend] escalation: no leadership recipient configured — skipped')
     return
   }
 
-  const tickets = items.filter(i => i.kind === 'ticket').length
-  const quotes = items.filter(i => i.kind === 'rfq').length
-  const stalled = items.filter(i => i.kind === 'stalled').length
+  const unowned = items.filter(i => i.state === 'unassigned')
+  const stalledItems = items.filter(i => i.state === 'stalled')
+  const tickets = unowned.filter(i => i.entity === 'ticket').length
+  const quotes = unowned.filter(i => i.entity === 'rfq').length
+  const stalled = stalledItems.length
 
   const unownedParts = [
     tickets ? `${tickets} support ticket${tickets === 1 ? '' : 's'}` : '',
@@ -171,14 +207,16 @@ export async function sendOversightEscalation(items: EscalationItem[]): Promise<
   ].filter(Boolean).join(' and ')
 
   const subject = [
-    unownedParts ? `${tickets + quotes} unassigned` : '',
+    unowned.length ? `${unowned.length} unassigned` : '',
     stalled ? `${stalled} stalled` : '',
   ].filter(Boolean).join(', ')
 
-  // Unassigned first: it is the one nobody owns, so it is the one most likely to
-  // be forgotten. Stalled at least has a name against it.
-  const order: Record<EscalationItem['kind'], number> = { ticket: 0, rfq: 1, stalled: 2 }
-  const sorted = [...items].sort((a, b) => order[a.kind] - order[b.kind])
+  // Unassigned first: it is the work nobody owns, so it is most likely to be
+  // forgotten. Stalled at least has a name against it. Tickets before quotes
+  // within each group, so the order is stable run to run.
+  const rank = (i: EscalationItem) =>
+    (i.state === 'unassigned' ? 0 : 2) + (i.entity === 'ticket' ? 0 : 1)
+  const sorted = [...items].sort((a, b) => rank(a) - rank(b))
 
   const unownedLine = unownedParts
     ? `<p style="margin:0 0 6px;color:#333;font-size:15px;line-height:1.6;">
@@ -188,10 +226,17 @@ export async function sendOversightEscalation(items: EscalationItem[]): Promise<
       </p>`
     : ''
 
+  const st = stalledItems.filter(i => i.entity === 'ticket').length
+  const sq = stalled - st
+  const stalledParts = [
+    st ? `${st} support ticket${st === 1 ? '' : 's'}` : '',
+    sq ? `${sq} quote request${sq === 1 ? '' : 's'}` : '',
+  ].filter(Boolean).join(' and ')
+
   const stalledLine = stalled
     ? `<p style="margin:${unownedParts ? '10px' : '0'} 0 6px;color:#333;font-size:15px;line-height:1.6;">
-        <strong>${stalled} ticket${stalled === 1 ? ' has' : 's have'}</strong> an owner but
-        <strong>no activity for 24 hours</strong>. The owner has been nudged separately. This copy is
+        <strong>${esc(stalledParts)}</strong> ${stalled === 1 ? 'has' : 'have'} an owner but
+        <strong>no movement for 24 hours</strong>. The owner has been nudged separately. This copy is
         so nothing sits unattended without you knowing.
       </p>`
     : ''
