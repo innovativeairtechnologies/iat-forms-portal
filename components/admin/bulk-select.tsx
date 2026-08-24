@@ -69,14 +69,29 @@ export function SelectBox({ checked, onChange, className = 'flex', indeterminate
   label?: string
 }) {
   return (
+    // 🔴 The box is READ-ONLY and the wrapper drives it. Do not "simplify" this
+    // back to `onChange` on the input.
+    //
+    // These boxes sit inside a row <a>, so the wrapper must preventDefault() or
+    // selecting navigates. But preventDefault on a checkbox click also cancels
+    // the browser's own toggle — and React, seeing its `checked` prop unchanged
+    // between renders, does not re-sync the DOM. The result was a box that
+    // SELECTED THE ROW WITHOUT EVER APPEARING TICKED: bulk bar counting up,
+    // nothing visibly checked. Observed live on /admin/rfq 2026-08-24 —
+    // reactProps.checked true, DOM .checked false.
+    //
+    // Driving the change from the wrapper's onClick with a readOnly input makes
+    // `checked` purely a function of state, so the cancelled default action
+    // cannot desynchronise it. Same shape the tickets queue has always used,
+    // which is why that list never showed this.
     <div
       className={`${className} items-center justify-center`}
-      onClick={(e) => { e.stopPropagation(); e.preventDefault() }}
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange() }}
     >
       <input
         type="checkbox"
         checked={checked}
-        onChange={onChange}
+        readOnly
         ref={(el) => { if (el) el.indeterminate = indeterminate && !checked }}
         aria-label={label}
         className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer"
