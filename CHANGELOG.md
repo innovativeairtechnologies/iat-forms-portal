@@ -10,6 +10,33 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — Session handoff record: disaster recovery and room-size entry
+
+Business-continuity record for the session that built the stack backup and the volume option:
+[`docs/handoff/2026-08-24-session-handoff-dr-and-rfq-volume.md`](docs/handoff/2026-08-24-session-handoff-dr-and-rfq-volume.md).
+
+**Two records share today's date.** A different session, running earlier, filed
+`2026-08-24-session-handoff.md`. Read both — that one carries the finding that deploying near a
+cron's scheduled time kills that run, which is the more expensive lesson of the two.
+
+The line most worth reaching from here: **there was no backup of the database at all.** Point-in-time
+recovery was off and the backup list was empty, so everything previously protected was code and
+documents — the half that was already replaceable.
+
+## 2026-08-24 — The dimension callouts now measure the room, not the picture
+
+The quote request draws a customer's length, width and height onto a picture of a room like theirs.
+Those measurements used to sit in the margins — a rule above the image, one down the side, one
+underneath — because the picture was assumed to be just a photograph with no edges worth drawing
+along. It isn't: every room illustration is the same view from the same angle, so the callouts now
+run along the room's own edges, standing just outside it.
+
+Two rounds of correction after that, both from the owner looking at the real thing. The first fit
+was measured against three illustrations but **not the warehouse**, which is the one a warehouse
+survey actually shows — and there the length line ran a couple of degrees off and cut across the
+picture. The width line also finished a whisker from the top edge and read as running off. Both are
+fixed and checked against the warehouse this time.
+
 ## 2026-08-24 — Customers can give us a room's volume instead of measuring it
 
 The quote request asked for length, width and height. Plenty of people know their building as

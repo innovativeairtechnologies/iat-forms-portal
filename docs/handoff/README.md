@@ -19,6 +19,16 @@ Each record carries, in order:
 | Date | Session |
 |---|---|
 | [2026-08-17](2026-08-17-session-handoff.md) | Request for Quote — wizard, PDF, admin queue, triage, chasing, dashboards; `CRON_SECRET` discovery; weekly leadership update |
+| [2026-08-19](2026-08-19-session-handoff.md) | Ticket numbers, submissions RLS, edition numbering, RFQ trimming |
+| [2026-08-21](2026-08-21-session-handoff.md) | RFQ renders, reports, ticket ownership and alerts |
+| [2026-08-24](2026-08-24-session-handoff.md) | Room renders in the survey, Mon/Wed/Fri leadership report, ticket lifecycle — **and the deploys-eat-crons finding** |
+| [2026-08-24 (b)](2026-08-24-session-handoff-dr-and-rfq-volume.md) | Disaster-recovery backup of the whole stack; RFQ volume entry; dimension callouts; cron DST |
+
+> **Two records can share a date.** Sessions run concurrently in this repo, so
+> `<YYYY-MM-DD>-session-handoff.md` may already be taken by a session that finished
+> earlier the same day. Add a short descriptive suffix rather than overwriting it —
+> the existing file is somebody else's continuity record, and a handoff is the one
+> artifact that must never be silently replaced.
 
 ## Writing a new one
 

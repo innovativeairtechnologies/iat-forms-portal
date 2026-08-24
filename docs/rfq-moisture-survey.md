@@ -449,6 +449,42 @@ identical reason: it is a string union, the generic string copy would accept any
 unknown value falls through to the dimensions branch and reads fields volume mode never filled in —
 a silent zero-volume survey. Legacy rows default to `dimensions` and resolve exactly as before.
 
+## Dimension callouts on the room render (2026-08-24)
+
+The customer's L, W and H are drawn onto the application render, in the wizard's right rail and
+again on the PDF. They run **along the room's own edges**, standing just outside it — not as rules
+around the picture, which is what they were until 2026-08-24.
+
+`ROOM_RENDER_EDGES` in `lib/rfq.ts` is the **single** definition, as fractions of the image box:
+
+| Point | x | y | Edge it anchors |
+|---|---|---|---|
+| `leftTop` | 0.178 | 0.252 | wall top-left |
+| `apex` | 0.531 | 0.048 | near corner, top |
+| `leftBot` | 0.178 | 0.703 | wall base, outer left |
+| `floor` | 0.523 | 0.937 | floor's near corner |
+
+`leftTop→apex` is **width**, `leftTop→leftBot` is **height**, `leftBot→floor` is **length**.
+`lib/rfq-pdf.ts` draws the same three from the same constants — the customer reads the screen and
+the PDF side by side, so **changing one alone splits them**.
+
+⚠️ **Re-fit against `long-term-storage`, not the first render you open.** The first pass was fitted
+to `battery` and looked right there while running 2.5° steep on the warehouse (23.0° vs 20.5°),
+visibly cutting into the picture. **The floor edge is the sensitive one** — the top edge and the
+vertical tolerate far more error, which is why only the length line looked wrong.
+
+⚠️ **The outward normal is not the same sign on all three.** For the downward vertical, `-uy/ux`
+points *into* the room, so height takes `+1` where width takes `−1`. Getting it wrong puts the line
+on the wall face — which looks almost right.
+
+⚠️ **Padding does not fix a callout that crosses the picture edge.** The callouts are fractions of
+the *image* box, so they move with it; expanding the frame moves the line too and the clearance is
+unchanged. The stand-off (`OFFSET`, 4 overlay units / `0.0125 × iw` in the PDF) is the lever.
+
+To re-fit: composite candidate lines onto real renders and **look**. A thresholded silhouette tracer
+lies — one "proved" the renders were inconsistently framed when it was reading shadows and
+background gradient as room.
+
 ## The maths
 
 `lib/rfq-psych.ts` — ASHRAE Fundamentals moist-air properties (saturation pressure over
