@@ -2464,7 +2464,12 @@ function summarizeRoom(load: ReturnType<typeof estimateLoad>) {
     volume_cu_ft: Math.round(load.volumeCuFt),
     air_changes_per_hour: round(load.airChangesPerHour, 2),
     dominant: load.dominant?.label ?? null,
-    breakdown: load.lines.map(l => ({ key: l.key, label: l.label, gr_per_hr: Math.round(l.grainsPerHour) })),
+    // `detail` is the assumption behind the number — the leak rate the tightness
+    // band resolved to, whether the vapor barrier was credited, how many minutes
+    // an hour the doors stood open. Dropping it left the desk with a magnitude
+    // and no way to see what produced it. Records written before 2026-08-24 have
+    // no detail, so every reader must treat it as optional.
+    breakdown: load.lines.map(l => ({ key: l.key, label: l.label, gr_per_hr: Math.round(l.grainsPerHour), detail: l.detail })),
   }
 }
 

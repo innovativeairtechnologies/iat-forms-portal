@@ -152,6 +152,35 @@ stayed at `'Average'` and `estimateLoad()` kept costing infiltration from it —
 survey priced at average leakage as an assumption nobody confirmed. Do not re-hide it
 without also dealing with that term.
 
+### The two answers, and where each one lands (2026-08-24)
+
+Neither control changes anything on screen — the load readout was withheld from the
+customer on 2026-08-18 and both answers feed only the model. What they actually move:
+
+| Answer | What it drives | Size of the effect |
+|---|---|---|
+| **Vapor barrier** | Flips every envelope material from its `perm` column to `permSealed`, then Eq. 5.1 | Material-dependent. Insulated metal panel is 0.16 either way — **the toggle is a genuine no-op there**. Painted gypsum goes 50 → 0.45 |
+| **Tightness** | `TIGHTNESS_RATES` straight into the infiltration term | Linear, so **Loose is exactly 6× Tight**. On a 50×40×14 room at 70 °F/45 % against 95 °F/55 %, the total goes 1.76 → 7.60 lb/hr |
+
+**Tightness now prints on the PDF**, in the construction and envelope table, as
+`Loose — 1.5 cu.ft/hr per sq.ft of envelope`. Before this it was recorded nowhere on
+the document the customer keeps; it surfaced only inside a breakdown-bar caption. The
+rate is spelled out because the band name alone does not say what was assumed, and the
+`?? TIGHTNESS_RATES.Average` fallback mirrors `estimateLoad()` exactly — a survey stored
+under the retired *Not sure* band prints the 0.6 the math used rather than a blank the
+PDF and the model would disagree about.
+
+⚠️ The em dash in that row is **not** covered by `san()`, which maps en dash and minus
+but leaves `—` alone. It happens to be correct — `—` is a real WinAnsi code point
+(`0x97`) — but any new glyph in a PDF string needs checking against the shipped file,
+not against the source.
+
+**`summary.breakdown` now carries `detail`**, the assumption behind each line
+("loose construction, 1.5 cu.ft/hr per sq.ft", "vapor barrier credited", the door-open
+minutes). It renders as a caption under each bar on `/admin/rfq/[id]`. Records written
+before 2026-08-24 have no `detail`, so it is typed optional and every reader must treat
+it that way — those surveys render the bar with nothing underneath.
+
 ## Two tones, and only two (2026-08-20)
 
 `Tone` is `'sky' | 'amber'`. Sky carries ordinary information; amber marks the one thing

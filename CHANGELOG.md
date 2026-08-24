@@ -10,6 +10,28 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — The quote request now records how leaky the building is
+
+**Building tightness is printed on the survey PDF.** Step 5 of the quote request asks whether the
+building is tight, average or loose. That is not a label — it sets the air-leakage term of the
+moisture load outright, and a loose building leaks exactly six times what a tight one does. On a
+typical 50 × 40 ft room that is the difference between about 1.8 and 7.6 pounds of water an hour.
+Until today the customer's answer appeared nowhere on the document they keep; it showed up only as
+small print inside one of the breakdown bars. The construction and envelope table now carries it,
+with the leak rate written out beside it, so the assumption travels with the survey instead of
+living only in our database.
+
+**The desk can now see what produced each number.** On a submitted survey, every bar in the
+estimated breakdown gets a line underneath saying what it was calculated from — "loose
+construction, 1.5 cu.ft/hr per sq.ft", "vapor barrier credited", how many minutes an hour the doors
+stood open. Previously only the magnitude was stored, so a figure that looked wrong could not be
+questioned without re-entering the whole survey by hand. Surveys taken before today have no such
+line and are unchanged.
+
+**Nothing the customer sees on screen has changed.** The moisture-load figures are still withheld
+from the person filling in the form, as decided on 18 August. This is about what reaches the PDF
+and our own desk.
+
 ## 2026-08-24 — "Waiting on Customer", and tickets that chase themselves
 
 **A ticket can now be marked Waiting on Customer.** Use it when the ball is genuinely in their

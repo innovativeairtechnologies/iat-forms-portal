@@ -19,6 +19,7 @@ import {
   type ProcessEstimate,
   type RfqData,
   ROOM_PRESETS,
+  TIGHTNESS_RATES,
   applicationLabel,
   conditionEntered,
   dewPointF,
@@ -289,14 +290,21 @@ function spacePage(ctx: Ctx) {
   y += 6
 
   // Envelope
-  y = ensure(ctx, y, 9 + tableH(5), 'The space', 'Construction and envelope')
+  y = ensure(ctx, y, 9 + tableH(6), 'The space', 'Construction and envelope')
   overline(doc, 'CONSTRUCTION & ENVELOPE', M, y, C.inkMuted)
   y += 4
+  // Tightness sets the whole infiltration line (Loose is 6× Tight) and used to be
+  // recorded nowhere on the document — only inside a breakdown-bar caption. The
+  // rate is spelled out because the band name alone does not say what was assumed.
+  // The `??` fallback mirrors estimateLoad exactly, so a survey stored under a
+  // retired band prints the rate the math actually used rather than a blank.
+  const leakRate = TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
   y = table(doc, M, y, CW, ['Element', 'Material / rating'], [
     ['Walls', data.wallMaterial],
     ['Roof / ceiling', data.ceilingMaterial],
     ['Floor', data.floorMaterial],
     ['Vapor barrier', data.vaporBarrier],
+    ['Building tightness', `${data.tightness} — ${leakRate} cu.ft/hr per sq.ft of envelope`],
   ], [0.34, 0.66])
   y += 9
 

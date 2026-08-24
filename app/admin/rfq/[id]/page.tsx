@@ -99,7 +99,7 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
             </div>
             {Array.isArray(s.breakdown) && (s.breakdown as { label: string; gr_per_hr: number }[]).length > 0 && (
               <div className="border-t border-zinc-200/70 px-5 py-4 dark:border-zinc-800/80">
-                <Breakdown lines={s.breakdown as { key: string; label: string; gr_per_hr: number }[]} />
+                <Breakdown lines={s.breakdown as BreakdownLine[]} />
               </div>
             )}
             <p className="border-t border-zinc-200/70 px-5 py-3 text-[11px] leading-relaxed text-zinc-400 dark:border-zinc-800/80 dark:text-zinc-500">
@@ -139,7 +139,7 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                   <Field label="Walls">{d.wallMaterial}</Field>
                   <Field label="Roof / ceiling">{d.ceilingMaterial}</Field>
                   <Field label="Floor">{d.floorMaterial}</Field>
-                  <Field label="Vapour barrier">{d.vaporBarrier}</Field>
+                  <Field label="Vapor barrier">{d.vaporBarrier}</Field>
                   <Field label="Tightness">{d.tightness}</Field>
                 </div>
               </Card>
@@ -266,7 +266,15 @@ const BAR: Record<string, string> = {
   people: 'bg-violet-500', product: 'bg-emerald-500', gas: 'bg-rose-500', wet: 'bg-blue-600',
 }
 
-function Breakdown({ lines }: { lines: { key: string; label: string; gr_per_hr: number }[] }) {
+/**
+ * `detail` is the assumption the line was computed under — "average construction,
+ * 0.6 cu.ft/hr per sq.ft", "vapor barrier credited", "open 12 min per hour in
+ * total". It only started being stored on 2026-08-24, so it is optional and every
+ * survey taken before that renders the bar with no caption underneath.
+ */
+type BreakdownLine = { key: string; label: string; gr_per_hr: number; detail?: string }
+
+function Breakdown({ lines }: { lines: BreakdownLine[] }) {
   const total = lines.reduce((s, l) => s + l.gr_per_hr, 0) || 1
   return (
     <div className="space-y-2.5">
@@ -282,6 +290,9 @@ function Breakdown({ lines }: { lines: { key: string; label: string; gr_per_hr: 
             <div className={`h-full rounded-full ${BAR[l.key] ?? 'bg-emerald-500'}`}
                  style={{ width: `${Math.max((l.gr_per_hr / total) * 100, 1)}%` }} />
           </div>
+          {l.detail && (
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">{l.detail}</p>
+          )}
         </div>
       ))}
     </div>
