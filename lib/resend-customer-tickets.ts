@@ -178,10 +178,29 @@ export async function sendTicketStatusChangeToCustomer(
 //
 // `remarks` is the plain text the closing employee typed — escaped here, never
 // treated as markup.
+/**
+ * ⚠️ `shareNotes` decides whether the customer sees the engineer's closing
+ * remarks, and it is REQUIRED rather than defaulted for a reason.
+ *
+ * Until 2026-08-24 the remarks were always sent verbatim, which made the field a
+ * trap: it is the internal record of what was actually wrong and what was done,
+ * and it can contain a diagnosis, a commercial note or a candid assessment that
+ * is entirely correct internally and wrong to put in front of the customer. The
+ * person closing the ticket now chooses, per ticket, in a confirmation dialog —
+ * and the default there is NOT to send them.
+ *
+ * There is no default here on purpose: a new caller must state its intent, so
+ * this can never quietly go back to leaking notes.
+ *
+ * When false, the resolution reason is withheld too — it is one of fifteen fixed
+ * phrases chosen for internal reporting ("Replacement part installed"), which is
+ * the same category of internal vocabulary and tells the customer nothing useful.
+ */
 export async function sendTicketClosedToCustomer(
   ticket: Pick<Ticket, 'ticket_number' | 'customer_name' | 'customer_email'>,
   remarks: string,
   status: 'resolved' | 'closed',
+  shareNotes: boolean,
   resolvedReason?: string | null,
 ): Promise<void> {
   if (!customerTicketEmailsEnabled()) return
@@ -189,20 +208,36 @@ export async function sendTicketClosedToCustomer(
 
   const greeting = ticket.customer_name ? `Hi ${esc(ticket.customer_name)},` : 'Hello,'
   const word = status === 'resolved' ? 'resolved' : 'closed'
-  const body = `
-    <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
-    <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
-      Your support ticket has been <strong>${esc(word)}</strong>. Here is what our engineer recorded:
-    </p>
-    ${ticketChip(ticket.ticket_number)}
-    <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Closing notes</p>
+
+  // The notes block, and the lead-in that promises it, appear together or not at
+  // all — a "here is what our engineer recorded" with nothing under it would read
+  // as a broken email.
+  const notesBlock = shareNotes
+    ? `<p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Closing notes</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;overflow:hidden;margin-bottom:18px;">
       <tr><td style="padding:16px 20px;color:#333;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(remarks)}</td></tr>
     </table>
-    ${resolvedReason ? `<p style="margin:0 0 18px;color:#777;font-size:13px;">Resolution: ${esc(resolvedReason)}</p>` : ''}
+    ${resolvedReason ? `<p style="margin:0 0 18px;color:#777;font-size:13px;">Resolution: ${esc(resolvedReason)}</p>` : ''}`
+    : ''
+
+  const lead = shareNotes
+    ? `Your support ticket has been <strong>${esc(word)}</strong>. Here is what our engineer recorded:`
+    : `Your support ticket has been <strong>${esc(word)}</strong>. Thank you for working through it with us.`
+
+  const body = `
+    <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
+    <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
+      ${lead}
+    </p>
+    ${ticketChip(ticket.ticket_number)}
+    ${notesBlock}
     <p style="margin:0 0 4px;color:#555;font-size:14px;line-height:1.6;">
-      If this is not fixed, or the problem comes back, use the link below and tell us. It reopens
-      the conversation on the same ticket rather than starting again from scratch.
+      ${shareNotes
+        ? `If this is not fixed, or the problem comes back, use the link below and tell us. It reopens
+           the conversation on the same ticket rather than starting again from scratch.`
+        : `If the problem comes back, or you have any questions about what was done, use the link
+           below and tell us. It reopens the conversation on the same ticket rather than starting
+           again from scratch, and we are happy to talk through the details.`}
     </p>
     ${replyBlock(ticket.ticket_number, 'need to reopen this')}`
 

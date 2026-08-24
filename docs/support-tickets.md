@@ -430,6 +430,42 @@ destination. The single-ticket branch of the same email already deep-links.
 
 ## Assignment, reopening, and the 30-day window (2026-08-21)
 
+### Closing notes are NO LONGER sent to the customer by default (2026-08-24)
+
+Until now, resolving or closing a ticket emailed the engineer's closing remarks to the customer
+**verbatim, every time, with no way to opt out**. That quietly made an internal field
+customer-facing: closing notes are where the real diagnosis goes, and they can carry a commercial
+note or a candid assessment that is entirely right internally and wrong to put in front of the
+person who raised the ticket.
+
+**The remarks are still required** — they are the record of what was done. What changed is who sees
+them.
+
+Pressing the button on a terminal transition now opens a **closing dialog** instead of saving
+immediately. It names the address the mail is going to and offers two choices:
+
+| Choice | The customer gets |
+|---|---|
+| **Confirmation only** — the default | The ticket is resolved/closed, and an invitation to come back with questions or if the problem returns. No notes, **and no resolution reason** — that is one of fifteen fixed reporting phrases, the same category of internal vocabulary. |
+| **Include my closing notes** | The previous behavior: notes word for word, plus the resolution reason. The dialog shows exactly what will be sent before it goes. |
+
+Enforcement and defaults, all pointing the same way:
+
+- `sendTicketClosedToCustomer(ticket, remarks, status, shareNotes, resolvedReason?)` takes
+  `shareNotes` as a **required** parameter, so a future caller has to state its intent and this can
+  never silently revert to sending.
+- `updateTicket` reads `data.share_closing_note === true`, not a truthy check — an absent flag means
+  *do not send*, never *unspecified, so send*.
+- The dialog resets to "do not send" every time it opens; the choice is never inherited from the
+  previous ticket.
+- The `ticket.status` audit row records `notes_shared: true｜false` on a close, so "did they see
+  what I wrote?" stays answerable afterwards.
+
+⚠️ If a ticket has no customer email, or `CUSTOMER_TICKET_EMAILS` is not `on`, the dialog says so
+plainly rather than implying a send. The page resolves that gate server-side and passes it down as
+a boolean — ⛔ never import `resend-customer-tickets` into the client component, it builds the
+Resend client at module scope.
+
 ### A ticket cannot be resolved or closed while unassigned (2026-08-24)
 
 Tickets were reaching a terminal state with nobody's name on them. That loss is **unrecoverable**:

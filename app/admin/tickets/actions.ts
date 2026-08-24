@@ -11,8 +11,9 @@ import {
 } from '@/lib/resend-customer-tickets'
 import { sendTicketAssignedAlert } from '@/lib/resend-tickets'
 
-/** Statuses a customer experiences as "done". Both require closing remarks, and
- *  both send those remarks to the person who raised the ticket. */
+/** Statuses a customer experiences as "done". Both require closing remarks and an
+ *  owner; whether those remarks reach the customer is chosen per ticket — see
+ *  `share_closing_note`. */
 const TERMINAL: readonly string[] = ['resolved', 'closed']
 
 export async function updateTicket(
@@ -24,6 +25,14 @@ export async function updateTicket(
     resolved_reason?: string | null
     /** Required when moving into resolved/closed — see the guard below. */
     closing_note?: string | null
+    /**
+     * Whether the customer's close email includes the closing remarks.
+     *
+     * ⚠️ Defaults to FALSE — omitting it must never leak the notes. The closing
+     * dialog sets it explicitly; the queue's bulk actions cannot reach a terminal
+     * status at all, so they never carry it.
+     */
+    share_closing_note?: boolean
   }
 ): Promise<{ error: string | null }> {
   // Service-role write — guard the caller explicitly. Perm-scoped, not admin-only:
@@ -46,14 +55,20 @@ export async function updateTicket(
   // Closing a ticket requires saying why, in the engineer's own words.
   //
   // The resolution-reason dropdown does not cover this: it is fifteen fixed
-  // phrases chosen for reporting, and "Replacement part installed" tells the
-  // customer nothing about their machine. These remarks are what gets emailed to
-  // the person who raised the ticket, so a ticket cannot reach a terminal state
-  // without something worth sending. Enforced here rather than only in the UI
-  // because this is a server action and the client cannot be trusted to have run
-  // its own check.
+  // phrases chosen for reporting, and "Replacement part installed" records nothing
+  // about the actual machine. So a ticket cannot reach a terminal state without a
+  // real account of what happened.
+  //
+  // ⚠️ These remarks are the INTERNAL record first. Until 2026-08-24 they were
+  // always emailed to the customer verbatim, which quietly made the field
+  // customer-facing and unsafe for a candid note; that is now a per-ticket choice
+  // (`share_closing_note`) and the requirement to write them is unchanged. Do not
+  // reword this guard back into a promise about what the customer sees.
+  //
+  // Enforced here rather than only in the UI because this is a server action and
+  // the client cannot be trusted to have run its own check.
   if (closing && remarks.length < 10) {
-    return { error: 'Add closing notes before resolving or closing — the customer is sent what you write here.' }
+    return { error: 'Add closing notes before resolving or closing — they are the record of what was done.' }
   }
 
   // A ticket cannot reach a terminal state with nobody's name on it.
@@ -116,7 +131,17 @@ export async function updateTicket(
         entityType: 'ticket',
         entityId: ticketId,
         summary: `Set ticket ${tkt} (${who}) to ${String(data.status).replace('_', ' ')}`,
-        metadata: { from: prior.status, to: data.status },
+        // On a close, record whether the customer was sent the remarks. "Did they
+        // see what I wrote?" is otherwise unanswerable after the fact, and it is
+        // exactly the question that gets asked when a customer quotes something
+        // back — or when a colleague wonders why they did not.
+        //
+        // ⚠️ Only stamped on a terminal transition; `via` and `from` keep their
+        // meaning for the dashboard's customer-reopen filter, which reads these
+        // same rows (components/dashboards/dept-cards.tsx).
+        metadata: closing
+          ? { from: prior.status, to: data.status, notes_shared: data.share_closing_note === true }
+          : { from: prior.status, to: data.status },
       })
     }
 
@@ -228,8 +253,12 @@ export async function updateTicket(
       }
       try {
         if (closing) {
+          // `=== true` rather than a truthy check: an absent flag from any caller
+          // must mean "do not send the notes", never "unspecified, so send them".
           await sendTicketClosedToCustomer(
-            t, remarks, data.status as 'resolved' | 'closed', data.resolved_reason ?? null,
+            t, remarks, data.status as 'resolved' | 'closed',
+            data.share_closing_note === true,
+            data.resolved_reason ?? null,
           )
         } else {
           await sendTicketStatusChangeToCustomer(t, String(data.status))

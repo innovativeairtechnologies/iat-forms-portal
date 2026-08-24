@@ -3,6 +3,11 @@ import { notFound } from 'next/navigation'
 import { sanitizeNoteHtml, sanitizeAttachments } from '@/lib/sanitize'
 import { getEmployeesWithPerm } from '@/lib/staff'
 import { getAdminUser } from '@/lib/admin-auth'
+// Server Component — safe to read the mail gate here. ⛔ Never import this into
+// TicketDetailClient: resend-customer-tickets constructs the Resend client at
+// module scope, so a client import would ship RESEND_API_KEY to the browser.
+// The resolved boolean crosses as a plain prop instead.
+import { customerTicketEmailsEnabled } from '@/lib/resend-customer-tickets'
 import TicketDetailClient from './TicketDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -58,6 +63,7 @@ export default async function TicketDetailPage(props: { params: Promise<{ id: st
       owners={owners}
       equipmentId={equipmentId}
       canReplyToCustomer={!!admin}
+      customerEmailsEnabled={customerTicketEmailsEnabled()}
     />
   )
 }

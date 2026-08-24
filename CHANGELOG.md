@@ -10,6 +10,24 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — You now choose whether the customer sees your closing notes
+
+**Closing notes are no longer sent to the customer automatically.** Until today, resolving or
+closing a ticket emailed whatever the engineer wrote straight to the customer, word for word, with
+no way to stop it. That made an internal field customer-facing without saying so: closing notes are
+where the real diagnosis goes, and they can carry a commercial note or a frank assessment that is
+right for us and wrong for the person who raised the ticket.
+
+**Closing a ticket now asks first.** A dialog appears showing which address the email is going to,
+and offers two choices. The default is a **confirmation only** — it tells the customer their ticket
+is closed and invites them to come back if the problem returns or they have questions, and nothing
+else. If you do want them to see your notes, pick the second option and it shows you exactly what
+will be sent before it goes.
+
+The notes themselves are still required, and still go on the ticket. The resolution reason is
+treated the same way — it is an internal reporting phrase, so it only goes out alongside the notes.
+Every close records which choice was made, so "did they see what I wrote?" has an answer later.
+
 ## 2026-08-24 — A ticket now needs an owner before it can be finished
 
 **Tickets can no longer be resolved or closed while unassigned.** A few had been finished with

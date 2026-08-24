@@ -330,6 +330,7 @@ export default function TicketDetailClient({
   owners,
   equipmentId,
   canReplyToCustomer,
+  customerEmailsEnabled,
 }: {
   ticket: Ticket
   initialNotes: TicketNote[]
@@ -342,6 +343,13 @@ export default function TicketDetailClient({
    * internal whatever the client sends.
    */
   canReplyToCustomer: boolean
+  /**
+   * Whether customer-facing ticket mail is switched on at all
+   * (`CUSTOMER_TICKET_EMAILS`). Resolved on the server and passed as a plain
+   * boolean. The closing dialog states what the customer will receive, so it has
+   * to know when the honest answer is "nothing".
+   */
+  customerEmailsEnabled: boolean
 }) {
   const router = useRouter()
   const [ticket, setTicket] = useState(initial)
@@ -397,8 +405,38 @@ export default function TicketDetailClient({
   // so the disabled button says why, the same way closing notes do.
   const ownerRequired = closingNow && !pendingOwnerId
 
-  const saveTicket = async () => {
-    if (updating || !hasUnsavedChanges || resolvedReasonRequired || closingNoteRequired || ownerRequired) return
+  // ── The closing dialog ──
+  // Closing is the one irreversible-feeling action here and the only one that
+  // mails the customer, so it gets a confirmation step rather than firing off the
+  // main button. `shareClosingNote` lives here rather than beside the notes field
+  // because it is a decision about the SEND, not about the note, and it must be
+  // re-made every time — never remembered from the last ticket.
+  const [confirmingClose, setConfirmingClose] = useState(false)
+  const [shareClosingNote, setShareClosingNote] = useState(false)
+  const willEmailCustomer = customerEmailsEnabled && !!ticket.customer_email
+
+  const saveBlocked = updating || !hasUnsavedChanges || resolvedReasonRequired || closingNoteRequired || ownerRequired
+
+  /**
+   * What the Update button actually does.
+   *
+   * A terminal transition detours through the closing dialog; everything else
+   * saves straight through, because a priority tweak does not warrant a modal.
+   * The choice is reset to "do not send" on every open, so it can never be
+   * inherited from the previous ticket.
+   */
+  const requestSave = () => {
+    if (saveBlocked) return
+    if (closingNow) {
+      setShareClosingNote(false)
+      setConfirmingClose(true)
+      return
+    }
+    void saveTicket(false)
+  }
+
+  const saveTicket = async (shareNote: boolean) => {
+    if (saveBlocked) return
     setUpdating(true)
     setSaveError(null)
     const { error } = await updateTicket(ticket.id, {
@@ -407,8 +445,10 @@ export default function TicketDetailClient({
       owner_id: pendingOwnerId,
       resolved_reason: pendingStatus === 'resolved' ? pendingResolvedReason : null,
       closing_note: closingNow ? closingNote.trim() : null,
+      share_closing_note: closingNow ? shareNote : undefined,
     })
     setUpdating(false)
+    setConfirmingClose(false)
     if (error) { setSaveError(error); return }
     const owner = owners.find(o => o.id === pendingOwnerId)
     const resolvedReason = pendingStatus === 'resolved' ? pendingResolvedReason : null
@@ -703,11 +743,11 @@ export default function TicketDetailClient({
               icon={<SlidersHorizontal size={14} />}
               action={hasUnsavedChanges ? (
                 <button
-                  onClick={saveTicket}
+                  onClick={requestSave}
                   disabled={updating || resolvedReasonRequired || closingNoteRequired || ownerRequired}
                   className="text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {updating ? 'Saving…' : 'Update Ticket'}
+                  {updating ? 'Saving…' : closingNow ? `Review & ${pendingStatus === 'resolved' ? 'Resolve' : 'Close'}` : 'Update Ticket'}
                 </button>
               ) : undefined}
             >
@@ -794,11 +834,16 @@ export default function TicketDetailClient({
                   </div>
                 )}
 
-                {/* Closing remarks — required on the way into resolved/closed, and
-                    sent to the customer verbatim. Distinct from the reason
-                    dropdown above: that is fifteen fixed phrases chosen for
-                    reporting, and "Replacement part installed" tells the person
-                    whose machine broke nothing about their machine. */}
+                {/* Closing remarks — required on the way into resolved/closed.
+                    Distinct from the reason dropdown above: that is fifteen fixed
+                    phrases chosen for reporting, and "Replacement part installed"
+                    records nothing about the actual machine.
+
+                    ⚠️ These are the INTERNAL record. They used to be emailed to
+                    the customer verbatim every time; whether they are sent is now
+                    chosen in the closing dialog, and the default is not to. Write
+                    what a colleague needs to know, not what reads well to the
+                    customer — and if you do want them to see it, say so there. */}
                 {closingNow && (
                   <div className="mt-4">
                     <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-2">
@@ -819,7 +864,7 @@ export default function TicketDetailClient({
                     <p className={`mt-1.5 text-[11px] leading-relaxed ${closingNoteRequired ? 'text-rose-400' : 'text-zinc-400 dark:text-zinc-500'}`}>
                       {closingNoteRequired
                         ? `Required to ${pendingStatus === 'resolved' ? 'resolve' : 'close'} — at least ${MIN_CLOSING_NOTE} characters.`
-                        : 'This goes on the ticket thread and is emailed to the customer word for word.'}
+                        : 'The internal record of what was done. You choose whether the customer sees it on the next step.'}
                     </p>
                   </div>
                 )}
@@ -1016,6 +1061,152 @@ export default function TicketDetailClient({
           </aside>
         </div>
       </div>
+
+      {/* ── Closing dialog ──
+          The last step before a ticket is finished, and the only place the
+          decision about the customer's email is made. It states plainly what will
+          be sent, because "closing notes" gives no clue that they leave the
+          building. Default is confirmation-only. */}
+      {confirmingClose && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+          onMouseDown={() => { if (!updating) setConfirmingClose(false) }}
+        >
+          <div
+            className="bg-surface rounded-2xl border border-hairline-strong shadow-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto"
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className="text-[16px] font-semibold text-ink">
+                  {pendingStatus === 'resolved' ? 'Resolve' : 'Close'} {ticket.ticket_number}?
+                </h2>
+              </div>
+              <button
+                onClick={() => setConfirmingClose(false)}
+                disabled={updating}
+                className="text-ink-faint hover:text-ink-secondary transition-colors p-1 disabled:opacity-40"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {willEmailCustomer ? (
+              <>
+                <p className="text-[13px] text-ink-muted mb-4 leading-relaxed">
+                  {ticket.customer_name || 'The customer'} will be emailed at{' '}
+                  <strong className="text-ink-secondary font-semibold">{ticket.customer_email}</strong>.
+                  Choose what that email contains.
+                </p>
+
+                <div className="space-y-2 mb-5">
+                  <label
+                    className={`flex gap-3 items-start rounded-xl border p-3.5 cursor-pointer transition-colors ${
+                      !shareClosingNote
+                        ? 'border-emerald-500/50 bg-emerald-50/60 dark:bg-emerald-500/10'
+                        : 'border-hairline hover:border-hairline-strong'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="share-closing-note"
+                      checked={!shareClosingNote}
+                      onChange={() => setShareClosingNote(false)}
+                      disabled={updating}
+                      className="mt-0.5 accent-emerald-600"
+                    />
+                    <span>
+                      <span className="block text-[13px] font-semibold text-ink">
+                        Confirmation only
+                        <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Default</span>
+                      </span>
+                      <span className="block text-[12px] text-ink-muted leading-relaxed mt-0.5">
+                        Tells them the ticket is {pendingStatus === 'resolved' ? 'resolved' : 'closed'} and invites
+                        them to get back in touch. Your closing notes stay internal.
+                      </span>
+                    </span>
+                  </label>
+
+                  <label
+                    className={`flex gap-3 items-start rounded-xl border p-3.5 cursor-pointer transition-colors ${
+                      shareClosingNote
+                        ? 'border-emerald-500/50 bg-emerald-50/60 dark:bg-emerald-500/10'
+                        : 'border-hairline hover:border-hairline-strong'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="share-closing-note"
+                      checked={shareClosingNote}
+                      onChange={() => setShareClosingNote(true)}
+                      disabled={updating}
+                      className="mt-0.5 accent-emerald-600"
+                    />
+                    <span>
+                      <span className="block text-[13px] font-semibold text-ink">Include my closing notes</span>
+                      <span className="block text-[12px] text-ink-muted leading-relaxed mt-0.5">
+                        Sends the notes below word for word
+                        {pendingStatus === 'resolved' && pendingResolvedReason ? ', along with the resolution reason' : ''}.
+                        Read them back before choosing this.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                {shareClosingNote && (
+                  <div className="rounded-xl border border-hairline overflow-hidden mb-5">
+                    <div className="bg-surface-soft px-4 py-2 border-b border-hairline">
+                      <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">
+                        The customer will see this
+                      </p>
+                    </div>
+                    <p className="px-4 py-3 text-[13px] leading-relaxed text-ink-secondary whitespace-pre-wrap">
+                      {closingNote.trim()}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-xl border border-hairline bg-surface-soft px-4 py-3 mb-5">
+                <p className="text-[13px] text-ink-muted leading-relaxed">
+                  {!ticket.customer_email
+                    ? 'This ticket has no customer email address, so nothing will be sent.'
+                    : 'Customer ticket emails are switched off, so nothing will be sent.'}{' '}
+                  Your closing notes are recorded on the ticket either way.
+                </p>
+              </div>
+            )}
+
+            {saveError && (
+              <p className="text-[12px] text-rose-500 mb-4 leading-relaxed">{saveError}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setConfirmingClose(false)}
+                disabled={updating}
+                className="text-[12px] font-medium text-ink-secondary hover:text-ink px-3 h-9 rounded-lg transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void saveTicket(shareClosingNote)}
+                disabled={updating}
+                className="text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-9 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {updating
+                  ? 'Saving…'
+                  : willEmailCustomer && shareClosingNote
+                    ? `${pendingStatus === 'resolved' ? 'Resolve' : 'Close'} and send notes`
+                    : `${pendingStatus === 'resolved' ? 'Resolve' : 'Close'} ticket`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DetailShell>
   )
 }
