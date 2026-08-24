@@ -194,6 +194,58 @@ only ever reach back two or three days — but a manual `?edition=` covering tho
 truncate. Fix the ordering before trusting a rebuild of that period.
 
 
+## 🔴 Deploying near a cron's scheduled time makes that run vanish
+
+Measured 2026-08-21. No error, no log, no trace — indistinguishable from the job never having
+been scheduled at all.
+
+| Cron due (UTC) | Nearest production deploy | Result |
+|---|---|---|
+| 13:00 reminders | none nearby | ✅ ran 13:27 |
+| 20:30 digest | 20:24:48 — 6 min before | ❌ missed |
+| 21:30 digest | 21:31:43 — on top of it | ❌ missed |
+| 22:00 leadership | 21:57:56 — still building at 22:00 | ❌ missed |
+| 23:00 leadership | idle | ❌ missed |
+
+**Ten production deploys between 20:09 and 23:21 UTC** that evening. The control is clean:
+Saturday and Sunday had **zero** deploys and **all three** cron paths ran on **both** days.
+
+⛔ **It is NOT the plan limit.** That was the first hypothesis — the team is on `hobby` with 7
+crons defined — and it is **disproven**: three distinct cron paths ran on the same day, twice,
+over that weekend, and all 7 report `"enabled": true` under
+`vercel crons ls --format json`. Do not re-open that theory.
+
+**So:** when a scheduled job matters that day, stop deploying roughly 20 minutes either side of
+it. Windows in ET: 09:00 accrue-pto (Mon) · 09:00 reminders · 16:30 digest · 18:00 leadership
+(Mon/Wed/Fri).
+
+**And when a cron "fails", check the deploy timeline FIRST** — before the route, the guard or
+the secret. On 2026-08-21 an entire evening went into the route before anyone looked at the
+deployments.
+
+### Why this was so hard to diagnose, and what now makes it easy
+
+- **Vercel runtime logs are useless on this project.** Twelve hours of them were empty while
+  functions were demonstrably running and sending mail.
+- **`CRON_SECRET` pulls empty**, so the route cannot be invoked by hand to test it.
+- **`leadership_last_invocation`** in `app_settings` now records every invocation and every
+  early-exit reason (`invoked` / `bad-period` / `skipped-window` / `skipped-already-sent`). A
+  missing row means the route was never called; a row means it was called and says what it did.
+  That one query separates "cron never fired" from "cron fired and declined".
+
+### Triggering a cron by hand
+
+```bash
+npx vercel crons run /api/cron/leadership-update
+```
+
+Vercel supplies the `Authorization` header itself, so this works **without** `CRON_SECRET`.
+⚠️ It triggers the path as configured — it cannot pass query parameters, so it always runs the
+job's default behavior. To send a specific past range you still need the `?from=&to=` form,
+which means either the secret or a temporary dated entry in `vercel.json` (see the 2026-08-19
+one-off for the worked example).
+
+
 ## The escalation ladder
 
 Three steps, each existing because the one before it can fail:
