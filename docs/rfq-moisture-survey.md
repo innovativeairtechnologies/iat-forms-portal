@@ -478,16 +478,38 @@ around the picture, which is what they were until 2026-08-24.
 | `leftTop` | 0.178 | 0.252 | wall top-left |
 | `apex` | 0.531 | 0.048 | near corner, top |
 | `leftBot` | 0.178 | 0.703 | wall base, outer left |
-| `floor` | 0.523 | 0.937 | floor's near corner |
+| `floor` | 0.479 | 0.950 | floor's near corner |
 
 `leftTop→apex` is **width**, `leftTop→leftBot` is **height**, `leftBot→floor` is **length**.
 `lib/rfq-pdf.ts` draws the same three from the same constants — the customer reads the screen and
 the PDF side by side, so **changing one alone splits them**.
 
-⚠️ **Re-fit against `long-term-storage`, not the first render you open.** The first pass was fitted
-to `battery` and looked right there while running 2.5° steep on the warehouse (23.0° vs 20.5°),
-visibly cutting into the picture. **The floor edge is the sensitive one** — the top edge and the
-vertical tolerate far more error, which is why only the length line looked wrong.
+⚠️ **Fit the floor edge across MANY renders — it has been wrong twice for fitting too few.**
+The first pass used `battery` alone and ran 2.5° steep on the warehouse. The correction that
+followed was checked on four renders and was **still 3.9° shallow** (20.88° against a true 24.8°):
+the length line started clear of the slab on the left and had drifted onto the concrete by the
+right-hand end, so it read as balanced at one end and wrong at the other. Owner-reported, both
+times, from the wizard and the PDF. **The floor edge is the sensitive one** — the top edge and the
+vertical tolerate far more error, which is why only the length line has ever looked wrong.
+
+**How `floor` was settled (2026-08-24, second correction).** The slab's front-lower boundary was
+measured on **all 39** room renders — strongest vertical gradient per column down the edge, least-
+squares line, outliers dropped, refit. 27 fitted at rms < 1.5px and agreed tightly:
+
+| | value |
+|---|---|
+| edge angle | **24.75° – 24.98°, median 24.80°** |
+| slab far corner | x ≈ **0.4786** |
+| previous `leftBot→floor` | **20.88°** |
+
+The 12 that would not fit are renders whose floor edge is occluded by contents — a detector
+failure, not different geometry. The corrected line was composited onto those too (`automotive`,
+`aerospace`, `ice-rink`, `museum-1-glass-case`, `grow-room`) and hugs the edge on every one.
+
+`floor` is **derived, not eyeballed**: hold `leftBot` (the height callout ends there and is
+correct), run at 24.8°, stop at the slab corner → `{ 0.479, 0.950 }`. It lands ~10px outside the
+fitted edge because `leftBot` is the wall base rather than a point on the slab boundary, which is
+the right direction — the callout is meant to stand outside the room.
 
 ⚠️ **The outward normal is not the same sign on all three.** For the downward vertical, `-uy/ux`
 points *into* the room, so height takes `+1` where width takes `−1`. Getting it wrong puts the line
@@ -499,7 +521,19 @@ unchanged. The stand-off (`OFFSET`, 4 overlay units / `0.0125 × iw` in the PDF)
 
 To re-fit: composite candidate lines onto real renders and **look**. A thresholded silhouette tracer
 lies — one "proved" the renders were inconsistently framed when it was reading shadows and
-background gradient as room.
+background gradient as room. A *gradient* fit down a single known edge is trustworthy where a
+silhouette threshold is not, but only with the residual reported: the good fits here came in at
+rms 0.3px and the useless ones at rms 20–60px, and nothing but that number separates them.
+Composite the result and look regardless.
+
+⚠️ **Judge a callout along its whole length, not at one end.** An angle error and a stand-off error
+look identical where the line starts and only diverge at the far end — which is why "the width line
+finishes too close to the top" was fixed by trimming the stand-off while a 3.9° error in the length
+line sat there untouched.
+
+⚠️ **`sharp` resizes before it composites, whatever order you call them in.** Compositing a
+full-size overlay onto a render and scaling the result in one chain fails with "image to composite
+must have same dimensions or smaller". Finish the composite in its own pass, then resize.
 
 ## The maths
 

@@ -121,6 +121,24 @@ submission. A lost alert falls back to the digest.
 Only a full admin can approve or deny — that was already true and is unchanged. The approver list can
 be changed from Vercel without a deploy.
 
+## 2026-08-24 — The length callout now follows the floor, all the way along
+
+The room illustration on a quote request has the customer's length, width and height drawn onto it.
+The length line — the one along the bottom — ran at a slightly shallower angle than the floor
+itself, so it started clear of the room on the left and had wandered onto the concrete by the
+right-hand end, clipping the corner of the floor. On screen and on the PDF, since both draw from
+one set of figures.
+
+It is the second time this line has been corrected, and both times for the same underlying reason:
+the angle was fitted against a handful of illustrations. This time the floor edge was measured on
+**all thirty-nine** of them. Twenty-seven give a clean, tight answer — the floor runs at 24.8°,
+where the callout had been drawn at 20.9°. The remaining twelve are rooms whose floor edge is
+hidden behind their contents, so they cannot be measured automatically; the corrected line was
+checked against those by eye instead.
+
+The line now runs parallel to the floor with an even gap along its whole length and stops at the
+floor's far corner, which is what the other two callouts already did. Nothing else moved.
+
 ## 2026-08-24 — The quote request PDF drops a blank page
 
 Every quote request for a room came back as a six-page document, and the fourth page held one short

@@ -155,11 +155,27 @@ export function normalizeMode(mode: unknown, fallback: MoistureMode): MoistureMo
 // them. Re-run that check if the renders are ever re-exported — a new camera
 // angle silently misaligns every line.
 //
-// ⚠️ CHECK AGAINST `long-term-storage`, not just the first render you open. The
-// first pass was fitted to `battery` alone and looked right there while the
-// floor line ran 2.5° steep on the warehouse — enough to visibly cut into the
-// picture. The floor edge is the sensitive one; the top edge and the vertical
-// tolerate more.
+// ⚠️ FIT THE FLOOR EDGE ACROSS MANY RENDERS, NOT ONE — it has now been wrong
+// twice for exactly that reason. The first pass was fitted to `battery` alone and
+// ran 2.5° steep on the warehouse; the correction that followed was checked on
+// four renders and was still 3.9° shallow, so the length line started clear of
+// the slab on the left and had drifted onto the concrete by the right-hand end.
+// The floor edge is the sensitive one; the top edge and the vertical tolerate
+// far more error, which is why only this line has ever looked wrong.
+//
+// The current floor figures come from measuring the slab's front-lower boundary
+// on ALL 39 room renders (strongest vertical gradient per column, line fit,
+// outliers dropped). 27 fitted cleanly at rms < 1.5px and agreed tightly:
+// **24.75°–24.98°, median 24.80°**, with the slab's far corner at x ≈ 0.4786.
+// The 12 that did not fit are renders whose floor edge is occluded by contents —
+// a detector failure, not different geometry; the corrected line was composited
+// onto them and hugs the edge there too.
+//
+// `floor` is therefore derived rather than eyeballed: hold `leftBot` (the height
+// callout ends there and is correct), run at 24.8°, and stop at the slab corner.
+// It sits ~10px outside the fitted edge because `leftBot` is the wall base rather
+// than a point on the slab boundary — which is the right direction, since the
+// callout is meant to stand outside the room.
 //
 //   leftTop -> apex     the wall's TOP edge, receding away to the right   (WIDTH)
 //   leftTop -> leftBot  the wall's OUTER VERTICAL edge                    (HEIGHT)
@@ -168,7 +184,8 @@ export const ROOM_RENDER_EDGES = {
   leftTop: { x: 0.178, y: 0.252 },
   apex: { x: 0.531, y: 0.048 },
   leftBot: { x: 0.178, y: 0.703 },
-  floor: { x: 0.523, y: 0.937 },
+  // 24.78° from leftBot, ending at the slab corner. Was { 0.523, 0.937 } = 20.88°.
+  floor: { x: 0.479, y: 0.950 },
 } as const
 
 export type RoomSizeMode = 'dimensions' | 'volume'
