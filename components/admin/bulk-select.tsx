@@ -4,7 +4,7 @@
 // that don't trigger row navigation, a floating action bar, and a bulk-delete
 // button wired to /api/admin/bulk-delete. Pair with the list kit in ./list.
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2, Loader2, X } from 'lucide-react'
 import type { BulkEntity } from '@/lib/bulk-delete'
@@ -68,6 +68,28 @@ export function SelectBox({ checked, onChange, className = 'flex', indeterminate
   indeterminate?: boolean
   label?: string
 }) {
+  // 🔴 The box must be re-synced AFTER the click event finishes. Do not replace
+  // this with a ref callback or rely on the `checked` prop alone.
+  //
+  // These boxes render INSIDE the row's <a>, so the wrapper has to
+  // preventDefault() or selecting navigates into the record. On a checkbox that
+  // same call reverts the browser's own toggle. React flushes discrete events
+  // (a click) SYNCHRONOUSLY, so anything running during render — including a ref
+  // callback — happens BEFORE that revert and is undone by it. The box then
+  // reports selected in state and unselected in pixels.
+  //
+  // useEffect runs after the commit and after the event completes, which is the
+  // only point late enough to win. Verified live on /admin/rfq: prop-only and
+  // ref-callback versions both left DOM .checked false while reactProps.checked
+  // was true; this does not.
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.checked = checked
+    el.indeterminate = indeterminate && !checked
+  }, [checked, indeterminate])
+
   return (
     // 🔴 The box is READ-ONLY and the wrapper drives it. Do not "simplify" this
     // back to `onChange` on the input.
@@ -92,22 +114,7 @@ export function SelectBox({ checked, onChange, className = 'flex', indeterminate
         type="checkbox"
         checked={checked}
         readOnly
-        // 🔴 `el.checked = checked` is NOT redundant with the prop above. When the
-        // click lands on the INPUT ITSELF the browser toggles it, our handlers
-        // run, and then preventDefault() reverts the toggle — after which React
-        // will not re-sync, because the prop it last wrote already equals the
-        // prop it is rendering. The box then reports selected in state and
-        // unselected in pixels.
-        //
-        // This ref runs on every render, after the revert, so it is what actually
-        // makes the box agree with the selection. Verified live: clicking the
-        // wrapper worked without it, clicking the box did not — and clicking the
-        // box is what people do.
-        ref={(el) => {
-          if (!el) return
-          el.checked = checked
-          el.indeterminate = indeterminate && !checked
-        }}
+        ref={inputRef}
         aria-label={label}
         className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer"
       />
