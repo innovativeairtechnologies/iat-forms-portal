@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runTicketReminders } from '@/lib/ticket-reminders'
+import { runWaitingSweep } from '@/lib/ticket-waiting'
 
 /* Chases support tickets that have gone quiet, and escalates the unassigned ones
  * to leadership along with any unassigned quote requests — see
@@ -26,7 +27,21 @@ export async function GET(req: NextRequest) {
   try {
     const result = await runTicketReminders()
     console.log('[cron/ticket-reminders]', JSON.stringify(result))
-    return NextResponse.json({ ok: true, ...result })
+
+    // The waiting-on-customer ladder rides the same daily slot — see
+    // lib/ticket-waiting.ts. Run SEPARATELY and after, so a failure in either
+    // sweep cannot take the other down: the chase above is about tickets nobody
+    // has picked up, this one about tickets nobody outside has answered.
+    let waiting: unknown = null
+    try {
+      waiting = await runWaitingSweep()
+      console.log('[cron/ticket-reminders] waiting sweep', JSON.stringify(waiting))
+    } catch (err) {
+      console.error('[cron/ticket-reminders] waiting sweep failed:', err)
+      waiting = { error: String(err) }
+    }
+
+    return NextResponse.json({ ok: true, ...result, waiting })
   } catch (err) {
     console.error('[cron/ticket-reminders] failed:', err)
     return NextResponse.json({ error: 'Reminder sweep failed' }, { status: 500 })

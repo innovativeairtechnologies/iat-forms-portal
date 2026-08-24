@@ -260,7 +260,10 @@ export type Ticket = {
   external_factors: string[] | null
   photo_urls: string[] | null
   brand: 'iat' | 'us_rotors'
-  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  /** Mirrors the `tickets_status_check` constraint (migration 094). `waiting_on_customer`
+   *  is parked-on-the-customer: still live work, but excluded from the owner-nudge
+   *  sweep and on its own 14-day auto-resolve clock — see lib/ticket-waiting.ts. */
+  status: 'open' | 'in_progress' | 'waiting_on_customer' | 'resolved' | 'closed'
   priority: 'low' | 'med' | 'high'
   owner_id: string | null
   notes: string | null

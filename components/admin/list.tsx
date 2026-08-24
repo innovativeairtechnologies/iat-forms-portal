@@ -86,6 +86,9 @@ export const SUBMISSION_STATUS: Record<string, { label: string; tone: Tone }> = 
 export const TICKET_STATUS: Record<string, { label: string; tone: Tone }> = {
   open:        { label: 'Open',        tone: 'sky' },
   in_progress: { label: 'In Progress', tone: 'amber' },
+  // Violet, not amber: the queue should separate "we are working it" from
+  // "we are blocked on them" at a glance.
+  waiting_on_customer: { label: 'Waiting on Customer', tone: 'violet' },
   resolved:    { label: 'Resolved',    tone: 'emerald' },
   closed:      { label: 'Closed',      tone: 'slate' },
 }

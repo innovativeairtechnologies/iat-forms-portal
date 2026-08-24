@@ -18,7 +18,7 @@ import {
 import { BulkDeleteButton } from '@/components/admin/bulk-select'
 
 type TicketRow = TicketType & { owner?: { id: string; name: string } | null }
-type Status  = 'open' | 'in_progress' | 'resolved' | 'closed'
+type Status  = 'open' | 'in_progress' | 'waiting_on_customer' | 'resolved' | 'closed'
 /** Two kinds of tab share one ribbon: by STATUS, and by WHO OWNS IT. */
 type Filter  = 'all' | 'mine' | 'unassigned' | Status
 type SortKey = 'created_at' | 'customer_name' | 'priority' | 'status'
@@ -46,6 +46,10 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'unassigned',  label: 'Unassigned'  },
   { value: 'open',        label: 'Open'        },
   { value: 'in_progress', label: 'In Progress' },
+  // Parked on the customer. Counts as ACTIVE in the My Tickets switch below —
+  // "active" is everything not closed — because a ticket waiting on a reply is
+  // still yours and still on a clock (it auto-resolves at 14 days).
+  { value: 'waiting_on_customer', label: 'Waiting on Customer' },
   { value: 'resolved',    label: 'Resolved'    },
   { value: 'closed',      label: 'Closed'      },
 ]

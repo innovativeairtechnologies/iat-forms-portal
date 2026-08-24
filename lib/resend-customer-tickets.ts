@@ -132,6 +132,13 @@ export async function sendTicketConfirmationToCustomer(ticket: Ticket): Promise<
 const STATUS_WORDS: Record<string, { label: string; blurb: string }> = {
   open:        { label: 'Received',    blurb: 'Your ticket is in the queue and waiting to be picked up.' },
   in_progress: { label: 'In Progress', blurb: 'An IAT engineer has started work on your ticket.' },
+  // The one status whose whole purpose is to prompt the customer, so it asks
+  // rather than reports. The chase emails that follow (7 days, then 24 hours out)
+  // come from lib/ticket-waiting.ts; this is the first thing they hear.
+  waiting_on_customer: {
+    label: 'Waiting on You',
+    blurb: 'We need something from you before we can carry on — use the link below to reply.',
+  },
   resolved:    { label: 'Resolved',    blurb: 'Your ticket has been marked resolved.' },
   closed:      { label: 'Closed',      blurb: 'Your ticket has been closed.' },
 }
@@ -280,4 +287,79 @@ export async function sendTicketReplyToCustomer(
   })
   if (result.error) console.error(`[resend] customer ticket reply failed to ${ticket.customer_email}:`, result.error)
   else console.log(`[resend] customer ticket reply sent to ${ticket.customer_email}: id=${result.data?.id}`)
+}
+
+// ── Chasing a customer we are waiting on ──────────────────────────────────────
+//
+// Both of these are sent by the waiting sweep (lib/ticket-waiting.ts) to a ticket
+// parked in `waiting_on_customer`. They are the ONLY automated mail a customer
+// gets while a ticket is open, so they stay short and say exactly what happens
+// next — a chaser that does not name a deadline gets ignored, and one that
+// threatens without a way back is worse than silence.
+//
+// ⚠️ Neither mentions the closing notes or any internal detail. A customer being
+// chased has not been told anything about the diagnosis and must not be here.
+
+/** Day 7 of silence: a nudge, naming the date the ticket closes itself. */
+export async function sendWaitingNudgeToCustomer(
+  ticket: Pick<Ticket, 'ticket_number' | 'customer_name' | 'customer_email'>,
+  closesOn: string,
+): Promise<void> {
+  if (!customerTicketEmailsEnabled()) return
+  if (!ticket.customer_email) return
+
+  const greeting = ticket.customer_name ? `Hi ${esc(ticket.customer_name)},` : 'Hello,'
+  const body = `
+    <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
+    <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
+      We are still waiting to hear back from you on your support ticket, so it has not moved
+      forward on our side.
+    </p>
+    ${ticketChip(ticket.ticket_number)}
+    <p style="margin:0 0 4px;color:#555;font-size:14px;line-height:1.6;">
+      If you still need help, reply using the link below and we will pick it straight back up.
+      If we do not hear from you, this ticket will close automatically on
+      <strong>${esc(closesOn)}</strong> — you can always open a new one later.
+    </p>
+    ${replyBlock(ticket.ticket_number, 'want to carry on')}`
+
+  const result = await resend.emails.send({
+    from: FROM,
+    to: ticket.customer_email,
+    subject: `Still waiting on you — IAT support ticket ${ticket.ticket_number}`,
+    html: shell('Waiting on You', body),
+  })
+  if (result.error) console.error(`[resend] waiting nudge failed to ${ticket.customer_email}:`, result.error)
+  else console.log(`[resend] waiting nudge sent to ${ticket.customer_email}: id=${result.data?.id}`)
+}
+
+/** 24 hours before the auto-resolve. Last chance, and says so plainly. */
+export async function sendWaitingFinalWarningToCustomer(
+  ticket: Pick<Ticket, 'ticket_number' | 'customer_name' | 'customer_email'>,
+): Promise<void> {
+  if (!customerTicketEmailsEnabled()) return
+  if (!ticket.customer_email) return
+
+  const greeting = ticket.customer_name ? `Hi ${esc(ticket.customer_name)},` : 'Hello,'
+  const body = `
+    <p style="margin:0 0 16px;color:#333;font-size:15px;">${greeting}</p>
+    <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.6;">
+      We have not heard back about your support ticket, so it will be closed
+      <strong>tomorrow</strong> — about 24 hours from now.
+    </p>
+    ${ticketChip(ticket.ticket_number)}
+    <p style="margin:0 0 4px;color:#555;font-size:14px;line-height:1.6;">
+      If the problem is sorted, there is nothing to do; the ticket will close itself. If you do
+      still need us, reply using the link below today and it stays open.
+    </p>
+    ${replyBlock(ticket.ticket_number, 'still need help')}`
+
+  const result = await resend.emails.send({
+    from: FROM,
+    to: ticket.customer_email,
+    subject: `Closing tomorrow — IAT support ticket ${ticket.ticket_number}`,
+    html: shell('Closing Tomorrow', body),
+  })
+  if (result.error) console.error(`[resend] waiting final warning failed to ${ticket.customer_email}:`, result.error)
+  else console.log(`[resend] waiting final warning sent to ${ticket.customer_email}: id=${result.data?.id}`)
 }

@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendCustomerMessageAlert, sendTicketReopenedAlert } from '@/lib/resend-tickets'
 import { ticketAlertRecipients } from '@/lib/ticket-recipients'
-import { REOPEN_WINDOW_DAYS, reopenDecision } from '@/lib/ticket-history'
+import { REOPEN_WINDOW_DAYS, reopenDecision, WAITING_STATUS } from '@/lib/ticket-history'
 import { logAudit } from '@/lib/audit'
 
 /* Lets a customer who is NOT signed in add a message to their own ticket.
@@ -190,6 +190,45 @@ export async function POST(req: NextRequest) {
           entityId: ticket.id,
           summary: `Ticket ${ticket.ticket_number} reopened by the customer`,
           metadata: { from: 'closed', to: 'open', via: 'status-page-reply' },
+        })
+      }
+    }
+
+    // ── The customer answered a ticket we were waiting on ──
+    // This is the half of the waiting feature that makes it safe to automate the
+    // other half: the moment they reply, the 14-day auto-resolve clock has to
+    // stop. Without this a customer could answer on day 8 and still have their
+    // ticket resolved out from under them on day 14.
+    //
+    // Back to `in_progress`, NOT `open` like a reopen above: nobody needs to
+    // triage this. Someone was already working it, chose to park it, and now has
+    // their answer — it goes back to being their live work. The owner is kept for
+    // the same reason.
+    //
+    // ⚠️ The audit row is what clears `waitingSince` in lib/ticket-history.ts and
+    // what makes the sweep's "already chased" check start over if it is ever
+    // parked again. Skipping it would leave the ticket looking like it had been
+    // waiting since the original park.
+    const wasWaiting = ticket.status === WAITING_STATUS
+    if (wasWaiting) {
+      const { error: resumeErr } = await supabaseAdmin
+        .from('tickets')
+        .update({ status: 'in_progress' })
+        .eq('id', ticket.id)
+        // Only if it is still waiting — do not stamp on top of a status somebody
+        // changed while this request was in flight.
+        .eq('status', WAITING_STATUS)
+
+      if (resumeErr) {
+        console.error('[status/message] resume from waiting failed:', resumeErr)
+      } else {
+        await logAudit({
+          actor: { id: null, name: ticket.customer_name || 'Customer' },
+          action: 'ticket.status',
+          entityType: 'ticket',
+          entityId: ticket.id,
+          summary: `Ticket ${ticket.ticket_number} — the customer replied, no longer waiting on them`,
+          metadata: { from: WAITING_STATUS, to: 'in_progress', via: 'status-page-reply' },
         })
       }
     }

@@ -32,11 +32,21 @@ export type TicketLifecycle = {
   firstClosedAt: string | null
   /** Transitions OUT of 'closed'. */
   reopenCount: number
+  /**
+   * Most recent transition INTO 'waiting_on_customer', cleared the moment it
+   * leaves that state — so the 14-day clock restarts if a ticket is parked,
+   * answered, and parked again. Null for a ticket not currently waiting.
+   */
+  waitingSince: string | null
 }
 
 type StatusRow = { entity_id: string; created_at: string; metadata: { from?: string; to?: string } | null }
 
-const EMPTY: TicketLifecycle = { closedAt: null, firstClosedAt: null, reopenCount: 0 }
+const EMPTY: TicketLifecycle = { closedAt: null, firstClosedAt: null, reopenCount: 0, waitingSince: null }
+
+/** The parked-on-the-customer status. Kept here because both the close logic and
+ *  the waiting sweep key on it. */
+export const WAITING_STATUS = 'waiting_on_customer'
 
 /**
  * Lifecycle for many tickets at once. One query, then grouped in memory — the
@@ -78,6 +88,14 @@ export async function ticketLifecycles(ticketIds?: string[]): Promise<Record<str
       // Left a closed state, so it is no longer closed as of this row.
       cur.closedAt = null
     }
+
+    // Waiting is tracked the same way and INDEPENDENTLY of the close fields: rows
+    // are walked oldest-first, so the last transition in wins and any transition
+    // out clears it. A ticket parked, answered, then parked again therefore
+    // reports the SECOND park — which is the one the 14-day clock should run from.
+    if (to === WAITING_STATUS) cur.waitingSince = r.created_at
+    else if (from === WAITING_STATUS) cur.waitingSince = null
+
     out[id] = cur
   }
   return out

@@ -20,6 +20,9 @@ const RichTextEditor = dynamic(() => import('@/components/shared/RichTextEditor'
 const STATUS_OPTIONS: { value: Ticket['status']; label: string; cls: string }[] = [
   { value: 'open',        label: 'Open',        cls: 'bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-500/30' },
   { value: 'in_progress', label: 'In Progress', cls: 'bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30' },
+  // Parked on the customer. Violet keeps it visually distinct from in-progress
+  // amber: at a glance the queue should separate "we are on it" from "they are".
+  { value: 'waiting_on_customer', label: 'Waiting on Customer', cls: 'bg-violet-50 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-500/30' },
   { value: 'resolved',    label: 'Resolved',    cls: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30' },
   { value: 'closed',      label: 'Closed',      cls: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700' },
 ]

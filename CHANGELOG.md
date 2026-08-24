@@ -10,6 +10,25 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — "Waiting on Customer", and tickets that chase themselves
+
+**A ticket can now be marked Waiting on Customer.** Use it when the ball is genuinely in their
+court and you cannot move until they answer. It shows as its own state in the queue, and it stops
+the daily nudge you would otherwise get about a ticket you are correctly blocked on.
+
+**From there the ticket chases itself.** After a week of silence the customer is emailed a reminder
+that names the date the ticket will close. Six days later they get a final "closing tomorrow"
+warning. If they still have not replied, on day 14 the ticket moves to Resolved on its own.
+
+**It stops at Resolved, on purpose — it does not close itself.** Closing a ticket needs an owner and
+your closing notes, and no automatic process can write those. So the last step comes back to you:
+whoever owns the ticket gets an email saying it has been resolved, that the customer has been
+chased twice and is not expecting anything further, and that it still needs a proper close with
+notes. The link takes you straight to it.
+
+**If the customer replies at any point, everything stops.** The ticket goes back to In Progress with
+its owner intact, and the clock resets — including if you later park it a second time.
+
 ## 2026-08-24 — You now choose whether the customer sees your closing notes
 
 **Closing notes are no longer sent to the customer automatically.** Until today, resolving or

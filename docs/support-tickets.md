@@ -430,6 +430,49 @@ destination. The single-ticket branch of the same email already deep-links.
 
 ## Assignment, reopening, and the 30-day window (2026-08-21)
 
+### "Waiting on Customer", and the 14-day ladder (2026-08-24, migration 094)
+
+A fifth status for work that is genuinely parked on the customer: we asked them something and
+cannot proceed until they answer. `lib/ticket-waiting.ts` runs it down a fixed ladder from the
+existing daily ticket-reminders cron:
+
+| Day | What happens |
+|---|---|
+| 7 | Customer is nudged, **naming the date the ticket will close** |
+| 13 | Customer gets a "closing tomorrow" final warning |
+| 14 | Ticket moves to **`resolved`**, and the **owner** is emailed that it still needs a real close |
+
+**⚠️ It resolves; it does NOT close.** Closing requires an owner and closing notes written by a
+person, and a cron has neither — inventing a note to satisfy our own rule would hollow the rule
+out. So the sweep does the part it can defend and hands the last step to a named human. The
+alert says so explicitly, and links straight to the ticket.
+
+**A customer reply stops the clock.** `app/api/tickets/status/message` moves a replying ticket
+from `waiting_on_customer` back to **`in_progress`** (not `open` like a reopen — nobody needs to
+triage it; the owner was already working it and now has their answer). Without this a customer
+could answer on day 8 and still be auto-resolved on day 14.
+
+Design notes worth keeping:
+
+- **`waiting_on_customer` is deliberately NOT in `LIVE_STATUSES`** in `lib/ticket-reminders.ts`.
+  Nagging an owner daily about a ticket they are correctly blocked on is how people learn to
+  ignore the nudge entirely.
+- **It counts as ACTIVE** in the queue's My Tickets switch — "active" is everything not closed —
+  because a parked ticket is still yours and still on a clock.
+- **No new column.** "Waiting since" is derived from `audit_log` exactly like `closedAt`, and the
+  already-sent chase emails are tracked as `ticket.waiting_notice` audit rows keyed by
+  `metadata.kind` (`day7` / `final24`). Notices only count if written *after* the current wait
+  began, so a ticket parked → answered → parked again is chased again from day zero.
+- **Fails safe on an undated wait.** If there is no audit row saying when the wait started, the
+  sweep reports the ticket in `undated` and leaves it alone rather than assuming it is old and
+  resolving it out from under someone.
+- The auto-resolve `UPDATE` is guarded with `.eq('status', WAITING_STATUS)` so it cannot land on
+  top of a status a human changed while the sweep was running.
+- `resolved_reason` is left unset — none of the fifteen fixed phrases means "the customer never
+  came back", so the person who closes it picks the honest one.
+- The customer is **not** emailed a third time on auto-resolve. They were told at day 7 and again
+  24 hours before, and the warning said the ticket would close itself.
+
 ### Closing notes are NO LONGER sent to the customer by default (2026-08-24)
 
 Until now, resolving or closing a ticket emailed the engineer's closing remarks to the customer

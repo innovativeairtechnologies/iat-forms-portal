@@ -274,3 +274,65 @@ export async function sendTicketReopenedAlert(
     else console.log(`[resend] reopen alert sent to ${recipients[i]}: id=${r.data?.id}`)
   })
 }
+
+// ── A ticket auto-resolved after 14 days of customer silence ──────────────────
+// Sent to the OWNER (falling back to the desk when there is none) by the waiting
+// sweep — see lib/ticket-waiting.ts.
+//
+// Why this exists: the sweep can move a ticket to `resolved`, but it deliberately
+// CANNOT close it. Closing requires an owner and closing notes written by a
+// person (app/admin/tickets/actions.ts), and a cron has neither — inventing a
+// note to satisfy our own rule would hollow it out. So the machine does the part
+// it can defend and hands the rest to a human, naming them.
+export async function sendTicketAutoResolvedAlert(
+  args: {
+    ticket_number: string
+    ticketId: string
+    customer_name: string | null
+    customer_company: string | null
+    waitingSince: string
+    daysWaited: number
+  },
+  recipients: string[],
+) {
+  const { ticket_number, ticketId, customer_name, customer_company, waitingSince, daysWaited } = args
+  const url = `${APP_URL}/admin/tickets/${ticketId}`
+  const who = [customer_name, customer_company].filter(Boolean).join(' · ') || 'Unknown customer'
+  const since = new Date(waitingSince).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+  const body = `
+    ${ticketChip(ticket_number)}
+    <p style="margin:8px 0 6px;color:#333;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">
+      Auto-resolved — still needs closing
+    </p>
+    <p style="margin:0 0 16px;color:#555;font-size:14px;line-height:1.6;">
+      This was waiting on the customer since ${esc(since)} (${daysWaited} days) and they never came
+      back, so it has been moved to <strong>Resolved</strong>. The customer has been told twice and
+      is not expecting anything further.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0f0f0;border-radius:8px;margin:0 0 20px;">
+      ${row('Customer', esc(who))}
+      ${row('Waiting since', esc(since))}
+    </table>
+    <div style="background:#fff8ec;border-left:3px solid #b45309;border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 20px;">
+      <p style="margin:0;color:#333;font-size:14px;line-height:1.6;">
+        <strong>It is not closed.</strong> Closing needs your closing notes, so it cannot be done
+        automatically. Open it, write what happened, and close it properly.
+      </p>
+    </div>
+    <a href="${esc(url)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Close ${esc(ticket_number)}</a>`
+
+  const results = await Promise.all(
+    recipients.map(to => resend.emails.send({
+      from: FROM,
+      replyTo: EMAIL_FROM.SUPPORT,
+      to,
+      subject: `Needs closing: ${ticket_number} auto-resolved after ${daysWaited} days`,
+      html: shell('#7c2d12', 'Auto-Resolved', body),
+    }))
+  )
+  results.forEach((r, i) => {
+    if (r.error) console.error(`[resend] auto-resolved alert failed to ${recipients[i]}:`, r.error)
+    else console.log(`[resend] auto-resolved alert sent to ${recipients[i]}: id=${r.data?.id}`)
+  })
+}
