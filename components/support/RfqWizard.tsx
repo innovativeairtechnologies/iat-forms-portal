@@ -779,7 +779,7 @@ export default function RfqWizard() {
                 </button>
               )}
               {!canAdvance && (
-                <span className="text-[12px] text-ink-muted">{requirementHint(step)}</span>
+                <span className="text-[12px] text-ink-muted">{requirementHint(step, data)}</span>
               )}
             </div>
           </div>
@@ -2498,11 +2498,16 @@ function validateStep(step: StepKey, d: RfqData): boolean {
   }
 }
 
-function requirementHint(step: StepKey): string {
+/** Takes the data, not just the step: the space step asks for different things
+ *  depending on which size mode is showing, and telling someone in volume mode
+ *  to "enter length, width and height" points at fields that are not on screen. */
+function requirementHint(step: StepKey, d: RfqData): string {
   switch (step) {
     case 'application': return 'Pick an application to continue'
     case 'target':      return 'Enter a target temperature and humidity'
-    case 'space':       return 'Enter length, width and height'
+    case 'space':       return normalizeRoomSizeMode(d.roomSizeMode) === 'volume'
+      ? 'Enter the room volume'
+      : 'Enter length, width and height'
     case 'leaving':     return 'Enter the leaving air temperature and grains'
     case 'airstream':   return 'Enter the process airflow'
     case 'about':
