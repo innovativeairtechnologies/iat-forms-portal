@@ -171,10 +171,29 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
       return next
     })
 
-  // Select-all acts on the whole filtered set (not just the current page), matching
-  // the pre-pagination behavior where every filtered row was on screen at once.
-  const allSelected = sorted.length > 0 && sorted.every(t => selected.has(t.id))
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(sorted.map(t => t.id)))
+  // ⚠️ Select-all acts on the VISIBLE PAGE, not the whole filtered set.
+  //
+  // It used to take `sorted` — every row matching the filter — while the table
+  // only ever renders `pageRows`. With 17 tickets at 10 per page that meant one
+  // click ticked the header, visibly checked 10 rows, and reported "Selected: 17":
+  // seven rows nobody could see were in the selection, and the bulk bar has a
+  // DELETE button on it. A checkbox has to mean what it looks like it means.
+  //
+  // Anyone wanting the whole set can raise the per-page control; that is an
+  // explicit act with the rows on screen, which is the point.
+  const allSelected = pageRows.length > 0 && pageRows.every(t => selected.has(t.id))
+  const someSelected = pageRows.some(t => selected.has(t.id))
+  const toggleAll = () =>
+    setSelected(prev => {
+      const next = new Set(prev)
+      // Only ever adds or removes THIS page, so a selection made on page 1
+      // survives paging forward and back.
+      for (const t of pageRows) {
+        if (allSelected) next.delete(t.id)
+        else next.add(t.id)
+      }
+      return next
+    })
 
   /**
    * Inline status change from the queue.
@@ -314,8 +333,16 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
           head={
             <>
               <div className="hidden sm:flex items-center justify-center">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all tickets"
-                  className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer" />
+                {/* Indeterminate when only part of the page is selected — without
+                    it a half-selected page renders identically to an empty one. */}
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  ref={el => { if (el) el.indeterminate = someSelected && !allSelected }}
+                  aria-label={allSelected ? 'Clear selection on this page' : 'Select all tickets on this page'}
+                  className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer"
+                />
               </div>
               <SortHeader label="Customer" active={sortKey === 'customer_name'} dir={sortDir} onClick={() => toggleSort('customer_name')} />
               <span className="hidden sm:block">Assignee</span>

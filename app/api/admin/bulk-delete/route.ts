@@ -47,6 +47,21 @@ export async function POST(req: NextRequest) {
         errorMsg = error?.message ?? null
         break
       }
+      case 'rfq': {
+        // Notes first, same as tickets and submissions — rfq_notes.rfq_id has no
+        // ON DELETE CASCADE, so the parent delete would fail on the FK otherwise.
+        //
+        // ⚠️ Deleting a quote request destroys the customer's survey answers and
+        // the estimate we returned. That is the whole record of a conversation
+        // with someone outside the company, and there is no undo — hence
+        // full-admin only (the gate at the top of this route), while the RFQ page
+        // itself is open to anyone holding `deals`.
+        await supabaseAdmin.from('rfq_notes').delete().in('rfq_id', ids)
+        const { data, error } = await supabaseAdmin.from('rfq_requests').delete().in('id', ids).select('id')
+        deleted = data?.length ?? 0
+        errorMsg = error?.message ?? null
+        break
+      }
       case 'equipment': {
         const { data, error } = await supabaseAdmin.from('equipment').delete().in('id', ids).select('id')
         deleted = data?.length ?? 0

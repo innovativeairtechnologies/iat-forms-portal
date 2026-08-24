@@ -89,7 +89,6 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
     return matchesSearch && matchesTab(e, filter)
   })
 
-  const allSelected = filtered.length > 0 && filtered.every(e => sel.has(e.id))
 
   // Clear the selection when the visible set changes so a bulk delete can never
   // touch rows outside the current filter/search.
@@ -98,6 +97,10 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
   // Client-side pagination over the filtered set (reset to page 1 on filter/search).
   const paged = usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${filter}|${search}` })
   const pageRows = filtered.slice(paged.start, paged.end)
+  // Select-all is PAGE-scoped — see togglePage in components/admin/bulk-select.tsx.
+  // Using the whole filtered set silently selects off-screen rows.
+  const allSelected = pageRows.length > 0 && pageRows.every((e) => sel.has(e.id))
+  const someSelected = pageRows.some((e) => sel.has(e.id))
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault()
@@ -171,7 +174,9 @@ export default function EquipmentClient({ equipment }: { equipment: EquipmentRow
           minWidth={900}
           head={
             <>
-              <SelectBox className="hidden sm:flex" checked={allSelected} onChange={() => sel.setAll(filtered.map(e => e.id), !allSelected)} />
+              <SelectBox className="hidden sm:flex" checked={allSelected}
+                indeterminate={someSelected}
+                onChange={() => sel.togglePage(pageRows.map((e) => e.id), !allSelected)} />
               <span>Serial</span>
               <span className="hidden sm:block">Customer</span>
               <span>Warranty</span>

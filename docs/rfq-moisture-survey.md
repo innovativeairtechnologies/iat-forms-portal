@@ -722,6 +722,33 @@ than `status = 'new'` so it clears when a human has actually opened one — the 
 Submissions. Without it the only signal a survey arrived was the desk email, which is exactly
 the channel that has been unreliable; five sat unopened before the badge existed.
 
+### Multi-select and bulk actions (2026-08-24)
+
+The list carries checkboxes and the shared bulk bar from `components/admin/bulk-select.tsx` —
+the same kit as Customers, Employees, Equipment and Requests. Selecting rows offers:
+
+| Action | Who | Notes |
+|---|---|---|
+| **Reviewing** | anyone with `deals` | Moves off `new`, which is what stops the reminder sweep chasing |
+| **Close** | anyone with `deals` | The batch move people were doing one at a time |
+| **Assign to me** | anyone with `deals` **and** an `employees` row | Hidden when the account has no row — the only auth-user → employee join is the email (`lib/my-employee.ts`) |
+| **Delete** | 🔴 **full admins only** | `/api/admin/bulk-delete` calls `getAdminUser()`, but this page is gated on `deals`, which sales and engineering also hold. The button is hidden for them rather than offered and refused — a 403 reads as broken, not forbidden |
+
+**The status actions drive the EXISTING per-row `PATCH /api/admin/rfq/[id]`, once per id** —
+there is deliberately no bulk PATCH. That route already owns the perm gate, the status
+whitelist, the reminder-stamp clearing and the assignment email; a second write path would have
+to reimplement all of it and would drift. A triage queue is tens of rows, so the cost is a few
+requests.
+
+⚠️ **Failures are collected and shown above the table**, naming the references that did not move.
+A partial success that looks total is the worst outcome — the ticket queue shipped exactly that
+bug (`setStatusFor` discarded the error), and it went unnoticed because a refused action and a
+successful one looked identical.
+
+**Deleting an RFQ destroys the customer's survey answers and the estimate we sent back**, plus
+its `rfq_notes` (no `ON DELETE CASCADE`, so the child rows go first). There is no undo. That is
+the reason for the full-admin gate, not caution for its own sake.
+
 ### Triage is the only writable part
 
 `PATCH /api/admin/rfq/[id]` accepts **`status` and the assignee and nothing else**; notes go to

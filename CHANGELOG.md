@@ -276,6 +276,22 @@ line and are unchanged.
 from the person filling in the form, as decided on 18 August. This is about what reaches the PDF
 and our own desk.
 
+## 2026-08-24 — Tick boxes on quote requests, and a select-all that was lying
+
+**Quote requests can now be worked in batches.** The list at Quote Requests has tick boxes down
+the left, the same as Tickets. Select several and you can mark them Reviewing, Close them, or
+assign them to yourself in one go, instead of opening each one. Full admins can also delete a
+batch. If any row refuses, the list says which ones and why rather than quietly leaving them.
+
+**Select-all was selecting rows you could not see.** On any list with more than one page, ticking
+the box at the top of the column checked the ten rows on screen but silently added every row on
+every other page to the selection — the Tickets list showed ten ticked and reported "Selected:
+17". With a Delete button next to that count, this was the one worth fixing first.
+
+Select-all now means the page you are looking at, and the header box shows a dash when only part
+of the page is selected. Fixed on Tickets, Customers, Employees, Equipment, Requests and Quote
+Requests together — Customers and Employees mattered most, since both can delete.
+
 ## 2026-08-24 — "Waiting on Customer", and tickets that chase themselves
 
 **A ticket can now be marked Waiting on Customer.** Use it when the ball is genuinely in their

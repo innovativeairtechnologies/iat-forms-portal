@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { employeeIdForEmail } from '@/lib/my-employee'
 import RfqClient from './RfqClient'
 
 /* /admin/rfq — the inbound Request for Quote queue (migration 087).
@@ -26,5 +27,24 @@ export default async function AdminRfqPage() {
     .select('id, reference, track, application_label, company, contact_name, email, project_name, location, date_required, status, is_read, assignee_id, assignee_name, summary, created_at')
     .order('created_at', { ascending: false })
 
-  return <RfqClient rows={data ?? []} />
+  // Two capabilities the bulk bar needs, resolved here because the client cannot
+  // know either:
+  //
+  //   canDelete — /api/admin/bulk-delete is FULL-ADMIN only, but this page is
+  //     gated on `deals`, which sales and engineering also hold. Rendering Delete
+  //     for them would offer a button that 403s, which reads as broken rather
+  //     than forbidden.
+  //   myEmployeeId — "Assign to me" writes an employees.id, and the only join
+  //     from an auth user to that row is the email (see lib/my-employee.ts).
+  //     Null when the signed-in account has no employees row, which hides the
+  //     action rather than sending an assignment nowhere.
+  const myEmployeeId = await employeeIdForEmail(admin.user.email)
+
+  return (
+    <RfqClient
+      rows={data ?? []}
+      canDelete={admin.role === 'admin'}
+      myEmployeeId={myEmployeeId}
+    />
+  )
 }

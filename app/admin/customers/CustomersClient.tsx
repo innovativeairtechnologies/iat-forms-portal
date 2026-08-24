@@ -56,11 +56,14 @@ export default function CustomersClient({
   const inactiveCount = customers.filter((c) => c.status === 'inactive').length
   const totalUnits = customers.reduce((sum, c) => sum + c.unit_count, 0)
 
-  const allSelected = filtered.length > 0 && filtered.every((c) => sel.has(c.id))
 
   // Client-side pagination over the filtered set (default 10 · resets on filter/search).
   const pg = usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${filter}|${search}` })
   const pageRows = filtered.slice(pg.start, pg.end)
+  // Select-all is PAGE-scoped — see togglePage in components/admin/bulk-select.tsx.
+  // Using the whole filtered set silently selects off-screen rows.
+  const allSelected = pageRows.length > 0 && pageRows.every((c) => sel.has(c.id))
+  const someSelected = pageRows.some((c) => sel.has(c.id))
 
   const isList = filter !== 'requests' && filter !== 'warranty'
 
@@ -153,7 +156,8 @@ export default function CustomersClient({
                   <SelectBox
                     className="hidden sm:flex"
                     checked={allSelected}
-                    onChange={() => sel.setAll(filtered.map((c) => c.id), !allSelected)}
+                indeterminate={someSelected}
+                onChange={() => sel.togglePage(pageRows.map((c) => c.id), !allSelected)}
                   />
                   <span>Company</span>
                   <span className="hidden sm:block">Location</span>

@@ -22,12 +22,34 @@ export function useBulkSelect() {
   const setAll = useCallback((ids: string[], on: boolean) => {
     setSelected(on ? new Set(ids) : new Set())
   }, [])
+  /**
+   * Select or clear exactly the ids given — the VISIBLE PAGE — leaving any
+   * selection made on other pages alone.
+   *
+   * ⚠️ Use this for a header select-all on any paginated list, never `setAll`
+   * over the whole filtered set. Every list here paginates, so passing the full
+   * set means one click ticks the header, visibly checks the ten rows on screen,
+   * and quietly puts every off-screen row in the selection too — with a Delete
+   * button sitting on the same bar. Reproduced on /admin/tickets 2026-08-24:
+   * 10 rows checked, "Selected: 17".
+   */
+  const togglePage = useCallback((ids: string[], on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const id of ids) {
+        if (on) next.add(id)
+        else next.delete(id)
+      }
+      return next
+    })
+  }, [])
   const clear = useCallback(() => setSelected(new Set()), [])
   return {
     selected,
     has: (id: string) => selected.has(id),
     toggle,
     setAll,
+    togglePage,
     clear,
     count: selected.size,
     ids: Array.from(selected),
@@ -37,7 +59,15 @@ export function useBulkSelect() {
 /** Checkbox that stops the click from bubbling to a row link/nav.
  *  `className` replaces the display class so lists can hide the select column
  *  on phones (pass "hidden sm:flex") — the mobile row grids drop bulk-select. */
-export function SelectBox({ checked, onChange, className = 'flex' }: { checked: boolean; onChange: () => void; className?: string }) {
+export function SelectBox({ checked, onChange, className = 'flex', indeterminate = false, label }: {
+  checked: boolean
+  onChange: () => void
+  className?: string
+  /** Header boxes: part of the page selected. Without it a half-selected page
+   *  renders identically to an empty one. */
+  indeterminate?: boolean
+  label?: string
+}) {
   return (
     <div
       className={`${className} items-center justify-center`}
@@ -47,6 +77,8 @@ export function SelectBox({ checked, onChange, className = 'flex' }: { checked: 
         type="checkbox"
         checked={checked}
         onChange={onChange}
+        ref={(el) => { if (el) el.indeterminate = indeterminate && !checked }}
+        aria-label={label}
         className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer"
       />
     </div>

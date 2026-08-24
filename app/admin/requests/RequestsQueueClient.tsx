@@ -75,7 +75,6 @@ export default function RequestsQueueClient({
     return true
   })
 
-  const allSelected = filtered.length > 0 && filtered.every(r => sel.has(r.id))
 
   // Clear the selection when the view changes so a bulk delete can never touch
   // requests outside what's on screen.
@@ -83,6 +82,10 @@ export default function RequestsQueueClient({
 
   const paged = usePagedList(filtered.length, { initialPerPage: 10, resetKey: `${type}|${filter}|${query}` })
   const pageRows = filtered.slice(paged.start, paged.end)
+  // Select-all is PAGE-scoped — see togglePage in components/admin/bulk-select.tsx.
+  // Using the whole filtered set silently selects off-screen rows.
+  const allSelected = pageRows.length > 0 && pageRows.every((r) => sel.has(r.id))
+  const someSelected = pageRows.some((r) => sel.has(r.id))
 
   const review = async (id: string, decision: 'approved' | 'denied') => {
     setActionLoading(id + decision)
@@ -170,7 +173,9 @@ export default function RequestsQueueClient({
           cols={COLS}
           minWidth={960}
           head={<>
-            <SelectBox checked={allSelected} onChange={() => sel.setAll(filtered.map(r => r.id), !allSelected)} />
+            <SelectBox checked={allSelected}
+                indeterminate={someSelected}
+                onChange={() => sel.togglePage(pageRows.map((r) => r.id), !allSelected)} />
             <span>Employee</span>
             <span>Type</span>
             <span>Balance</span>

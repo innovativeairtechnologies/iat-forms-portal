@@ -101,3 +101,31 @@ kanban and only took the header/shell. Notes:
   the row `<Link>` with `preventDefault`/`stopPropagation` guards — it works everywhere but is
   HTML-invalid (interactive-in-interactive). A future `Row` "stretched-link" variant (a `<div>`
   row + an absolute `<Link>` overlay + `relative z-10` on the controls) would make it clean.
+
+## 🔴 Select-all must be PAGE-scoped (fixed 2026-08-24)
+
+Every admin list here paginates (10 per page by default), but all six with multi-select computed
+their header checkbox from the **whole filtered set**:
+
+```ts
+const allSelected = filtered.length > 0 && filtered.every(r => sel.has(r.id))
+onChange={() => sel.setAll(filtered.map(r => r.id), !allSelected)}
+```
+
+One click then ticked the header, visibly checked the ten rows on screen, and put **every
+off-screen row in the selection too** — with a Delete button sitting on the same bar. Reproduced
+on `/admin/tickets`: 10 rows checked, bulk bar reporting **"Selected: 17"**.
+
+Affected and fixed together: Tickets, Customers, Employees, Equipment, Requests, and the new
+RFQ list. Customers and Employees are the dangerous pair — both can bulk-delete.
+
+**Use `sel.togglePage(pageRows.map(r => r.id), !allSelected)`**, added to
+`components/admin/bulk-select.tsx`. It adds or removes only the ids passed, so a selection made
+on page 1 survives paging forward and back rather than being replaced.
+
+`SelectBox` also takes `indeterminate` now — without it a half-selected page renders identically
+to an empty one.
+
+⚠️ A checkbox has to mean what it looks like it means. If a future list wants "select all N
+across pages", that needs an explicit affordance saying so, not a header box that quietly reaches
+past the screen.
