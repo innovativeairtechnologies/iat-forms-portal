@@ -68,27 +68,37 @@ export function SelectBox({ checked, onChange, className = 'flex', indeterminate
   indeterminate?: boolean
   label?: string
 }) {
-  // 🔴 The box must be re-synced AFTER the click event finishes. Do not replace
-  // this with a ref callback or rely on the `checked` prop alone.
+  // 🔴 The input is DECORATIVE and must never receive the click. `pointer-events`
+  // is off on it; the wrapper is the control. Do not remove that.
   //
-  // These boxes render INSIDE the row's <a>, so the wrapper has to
-  // preventDefault() or selecting navigates into the record. On a checkbox that
-  // same call reverts the browser's own toggle. React flushes discrete events
-  // (a click) SYNCHRONOUSLY, so anything running during render — including a ref
-  // callback — happens BEFORE that revert and is undone by it. The box then
-  // reports selected in state and unselected in pixels.
+  // Why, because three more obvious fixes were tried live and all failed:
   //
-  // useEffect runs after the commit and after the event completes, which is the
-  // only point late enough to win. Verified live on /admin/rfq: prop-only and
-  // ref-callback versions both left DOM .checked false while reactProps.checked
-  // was true; this does not.
+  // These boxes render INSIDE the row's <a>, so the wrapper must preventDefault()
+  // or selecting navigates into the record. On a checkbox that same call reverts
+  // the browser's own toggle, leaving the box selected in state and unticked in
+  // pixels. Attempts: the `checked` prop alone (React will not re-sync, the prop
+  // it last wrote already matches), then a ref callback (runs during render,
+  // which React flushes synchronously for a click — i.e. BEFORE the revert), then
+  // useEffect (closer, and it fixed every box EXCEPT the one clicked, because
+  // React flushes passive effects at the end of the same discrete event).
+  //
+  // Letting the click land only on the wrapper removes the native toggle from the
+  // problem entirely: there is no default action on the input to revert, so
+  // `checked` is authoritative and nothing can desynchronise it.
+  //
+  // The wrapper therefore carries the semantics — role, tabIndex, aria-checked
+  // and keyboard handling — because it is now the actual control.
   const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const el = inputRef.current
-    if (!el) return
-    el.checked = checked
-    el.indeterminate = indeterminate && !checked
+    if (el) el.indeterminate = indeterminate && !checked
   }, [checked, indeterminate])
+
+  const fire = (e: React.SyntheticEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    onChange()
+  }
 
   return (
     // 🔴 The box is READ-ONLY and the wrapper drives it. Do not "simplify" this
@@ -107,16 +117,22 @@ export function SelectBox({ checked, onChange, className = 'flex', indeterminate
     // cannot desynchronise it. Same shape the tickets queue has always used,
     // which is why that list never showed this.
     <div
-      className={`${className} items-center justify-center`}
-      onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange() }}
+      className={`${className} items-center justify-center cursor-pointer`}
+      role="checkbox"
+      aria-checked={indeterminate && !checked ? 'mixed' : checked}
+      aria-label={label}
+      tabIndex={0}
+      onClick={fire}
+      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') fire(e) }}
     >
       <input
         type="checkbox"
         checked={checked}
         readOnly
         ref={inputRef}
-        aria-label={label}
-        className="w-[15px] h-[15px] rounded accent-emerald-600 cursor-pointer"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="w-[15px] h-[15px] rounded accent-emerald-600 pointer-events-none"
       />
     </div>
   )
