@@ -722,8 +722,17 @@ function UnitPhotos({ photos }: { photos: string[] }) {
   )
 }
 
-// ── Contact Us (team roster + message form) ──────────────────────────────────
-// Departments a customer can direct a message to (routing is server-side).
+// ── Contact Us (message form) ────────────────────────────────────────────────
+// ⚠️ These are SUBJECT TAGS, not routing. Every message goes to the one shared
+// desk (CONTACT_TO in lib/resend-customer.ts) whichever is picked; the choice
+// only sets the subject prefix — "[Billing] Portal message from …" — so whoever
+// works the mailbox can triage at a glance.
+//
+// The copy below is worded to match that and must stay that way while it is
+// true. It previously asked "Who can we connect you with?" and confirmed with
+// "on its way to our Billing team", which told the customer their message had
+// reached a team it had not. If per-department inboxes ever land, change the
+// copy back in the same commit — not before.
 const DEPARTMENTS = ['Sales', 'Customer Service', 'Engineering', 'Billing'] as const
 type Department = (typeof DEPARTMENTS)[number]
 
@@ -765,13 +774,13 @@ function ContactCard() {
       <div className="space-y-3 px-5 py-4">
         {sent ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-[12.5px] text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-            <CheckCircle2 size={14} /> Thanks. Your message is on its way to our {department} team.
+            <CheckCircle2 size={14} /> Thanks &mdash; we&apos;ve got your message and we&apos;ll get it to the right person.
           </div>
         ) : (
           <>
             <div>
               <label htmlFor="cu-dept" className="mb-1 block text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                Who can we connect you with?
+                What&apos;s this about?
               </label>
               <select
                 id="cu-dept"

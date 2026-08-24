@@ -93,6 +93,30 @@ Worth stating plainly: the reminders are the safety net that catches a ticket no
 They were the wrong thing to leave behind, because they are what fires precisely when everything
 else has already been missed.
 
+## 2026-08-24 — The customer portal stops promising a delivery it does not make
+
+The Contact Us card at the bottom of a customer's portal asks them to pick Sales, Customer Service,
+Engineering or Billing. It then asked **"Who can we connect you with?"** and, once sent, told them
+**"Your message is on its way to our Billing team."**
+
+It was not. All four options go to the one shared support desk and always have — the picker only
+tags the subject line, so whoever works that mailbox can see at a glance what a message is about. A
+customer choosing Billing was being told their message had reached a team it had never been sent to,
+and would only get there if someone forwarded it.
+
+Building real per-department routing was considered and set aside: the inboxes to route to do not
+exist, and inventing four addresses to satisfy a label is a worse answer than a label that tells the
+truth. So the copy changed instead. The question is now **"What's this about?"** and the confirmation
+reads **"Thanks — we've got your message and we'll get it to the right person."** Both are true, the
+subject tag still does its job, and nothing about where the message goes has changed.
+
+The code now carries a note explaining why the wording is what it is, so the next person to read it
+doesn't quietly "improve" it back into a promise. If per-department inboxes are ever set up, the copy
+goes back in the same change.
+
+Two documentation errors were corrected in passing: the portal notes described a team roster on that
+card that has never existed, and named the wrong destination address for these messages.
+
 ## 2026-08-24 — A customer asking for portal access now reaches someone
 
 A customer who has filed a support ticket can ask for an account with one button, and is told IAT

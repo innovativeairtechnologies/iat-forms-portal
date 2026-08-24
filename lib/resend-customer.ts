@@ -7,6 +7,13 @@ const FROM = EMAIL_FROM.PORTAL
 // All portal "Contact Us" / support-facing messages route here for now; the
 // chosen department (or automated context) is carried in the subject/body so
 // they can be split to per-department inboxes later.
+//
+// 2026-08-24: real per-department routing was considered and deliberately NOT
+// built — the inboxes to route to do not exist. What was fixed instead is the
+// customer-facing copy, which used to say "on its way to our Billing team" and
+// promised a delivery this function does not make. See the DEPARTMENTS comment
+// in components/customer/CustomerDashboard.tsx: the picker is a subject tag for
+// triage, and the wording has to stay honest about that until it isn't.
 const CONTACT_TO = 'iatsupport@dehumidifiers.com'
 
 function esc(s: string) {

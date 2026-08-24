@@ -128,12 +128,33 @@ preview invite points at the preview and a prod invite at prod.
   password → `/customer`.
 - Dashboard: unit cards (serial / model / warranty), build & shipping tracker, **build & QC
   photos** (admin-uploaded, expandable gallery), KB + start-up guide, the support forms, a
-  **Contact Us** card (IAT team roster + a message form that emails the team), and "My Requests"
+  **Contact Us** card (a message form that emails the support desk), and "My Requests"
   (their tickets + troubleshooting intakes).
 - **Photos** come from the admin equipment record (`/admin/equipment/[id]` → Photos card →
   Upload). Files go browser → Supabase Storage (`ticket-photos` bucket) → `equipment.photo_urls`.
-- **Contact Us** form → `POST /api/customer/contact` → emails the IAT team
-  (`jacob.younker@dehumidifiers.com`); the customer's identity is taken from the session.
+- **Contact Us** form → `POST /api/customer/contact` → emails **`iatsupport@dehumidifiers.com`**
+  (`CONTACT_TO` in `lib/resend-customer.ts`); the customer's identity is taken from the session,
+  never from the client. *(This doc previously said `jacob.younker@` — that was never the
+  destination in this code path.)*
+
+  ⚠️ **The Sales / Customer Service / Engineering / Billing picker is a SUBJECT TAG, not routing.**
+  All four go to the one shared desk; the choice only sets the subject prefix
+  (`[Billing] Portal message from …`) so the mailbox can be triaged at a glance.
+
+  Real per-department routing was considered on 2026-08-24 and deliberately **not built** — the
+  inboxes to route to do not exist. What was fixed instead is the customer-facing copy, which used
+  to ask *"Who can we connect you with?"* and confirm *"on its way to our Billing team"* — telling
+  the customer their message had reached a team it had not. It now reads *"What's this about?"* and
+  *"we've got your message and we'll get it to the right person."* **If per-department inboxes are
+  ever added, change the copy back in the same commit — not before.**
+
+  Still open on this path, none of them done: the send sets **no `replyTo`**, so hitting Reply goes
+  to `noreply@portal.dehumidifiers.com` rather than the customer (their address is in the body, to
+  be copied out by hand); `CONTACT_TO` is a **hard-coded literal**, not `SUPPORT_NOTIFICATION_EMAIL`,
+  so changing the desk address in Vercel would not move this one; and the message is **email only** —
+  no ticket, no owner, no aging reminder, so a message missed in the mailbox stays missed. The body
+  also carries the customer's text verbatim, which exposes it to the Exchange word-match quarantine
+  rule (see [`notifications.md`](notifications.md)).
 - **Jerry** (IAT's customer assistant, right rail) → `POST /api/customer/assistant` (Anthropic `claude-sonnet-4-6`) —
   presented as an animated "presence" (a breathing orb that energizes while it reads the docs) with
   typeset answers + cited source chips, not a chat-bubble bot (orb styles in `app/globals.css`).
