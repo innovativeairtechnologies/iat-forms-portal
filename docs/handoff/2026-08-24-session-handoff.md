@@ -399,12 +399,25 @@ and burned the day-claim, turning tonight's report into a 07:55 one.
 
 **Next action:** after 18:00 ET on 2026-08-24, read the breadcrumb:
 
+🔴 **The command originally written here did not work** (corrected 2026-08-24 08:50 ET, before the
+run). It sourced credentials from `vercel env pull`, but **`NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` are both SENSITIVE vars, which pull back as `""`** — 33 of 50 do. The
+fetch then resolved against an empty origin and threw `ERR_INVALID_URL`. It could never have
+answered the question. Run this from `iat-forms-portal/`, sourcing the real values from `.env.local`:
+
 ```bash
-npx vercel env pull /tmp/e --environment=production --yes && node --env-file=/tmp/e -e 'const u=process.env.NEXT_PUBLIC_SUPABASE_URL,k=process.env.SUPABASE_SERVICE_ROLE_KEY;fetch(`${u}/rest/v1/app_settings?select=key,value,updated_at&key=like.leadership_%`,{headers:{apikey:k,Authorization:"Bearer "+k}}).then(r=>r.json()).then(j=>console.log(JSON.stringify(j,null,1)))'
+node -e 'const t=require("fs").readFileSync(".env.local","utf8");const get=n=>((t.match(new RegExp("^"+n+"=(.*)$","m"))||[])[1]||"").replace(/^"|"$/g,"").trim();const u=get("NEXT_PUBLIC_SUPABASE_URL"),k=get("SUPABASE_SERVICE_ROLE_KEY");fetch(`${u}/rest/v1/app_settings?select=key,value,updated_at&key=like.leadership_%25`,{headers:{apikey:k,Authorization:"Bearer "+k}}).then(r=>r.text()).then(console.log)'
 ```
 
-- **No row** → the cron never fired. Check the deploy timeline first.
+- **No row** → the cron never fired **or was rejected 401**. `trace()` sits *after* the auth check,
+  so a bad or missing `CRON_SECRET` also leaves no breadcrumb — the two are indistinguishable from
+  this query alone. Check the deploy timeline first, then the secret.
 - **A row** → it fired; the `outcome` field says what it decided.
+
+**Baseline measured 2026-08-24 08:48 ET: `app_settings` holds exactly 2 rows**
+(`support_reference_wheel`, `support_reference_seals`) and **no `leadership_*` row at all**. The
+query path is proven against those two, so tonight an empty result is a real negative rather than a
+broken query.
 
 ⚠️ **Do not deploy between 17:45 and 19:15 ET.**
 
