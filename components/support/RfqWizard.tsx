@@ -16,11 +16,11 @@ import { getRecaptchaToken } from '@/components/use-recaptcha'
 import {
   AIR_SOURCES, CEILING_MATERIALS, CONSTRUCTIONS, COOLING_TYPES, DOOR_TYPES, FLOOR_MATERIALS,
   HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, FINAL_FILTER_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
-  PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, RUNTIMES, TEMP_UNITS,
-  TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS,
+  PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, ROOM_SIZE_MODES, RUNTIMES, TEMP_UNITS,
+  TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS, DEFAULT_CEILING_FT,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
   estimateProcess, fmt, fmtDewPoint, fmtGrains, fToC, grains, modeIsTemperature, normalizeMode,
-  presetFor, setCondition, tempFromDisplay, tempToDisplay,
+  normalizeRoomSizeMode, presetFor, roomDims, setCondition, tempFromDisplay, tempToDisplay,
   type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
   type ProcessPreset, type RfqData, type RoomPreset, type TempUnit, type Tightness, type Track,
   type VaporBarrier,
@@ -1177,7 +1177,7 @@ function ApplicationRender({ data }: { data: RfqData }) {
   if (!asset) return null
 
   const label = applicationLabel(data)
-  const L = numOf(data.roomL), W = numOf(data.roomW), H = numOf(data.roomH)
+  const { L, W, H } = roomDims(data)
   // Process surveys have no room geometry to call out, so they never dimension.
   const dims = data.track === 'room' && (L > 0 || W > 0 || H > 0)
 
@@ -1384,22 +1384,56 @@ function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<
 }
 
 function StepSpace({ data, set, load }: { data: RfqData; set: SetFn; load: ReturnType<typeof estimateLoad> }) {
+  const sizeMode = normalizeRoomSizeMode(data.roomSizeMode)
+  const dims = roomDims(data)
   return (
     <div className="space-y-5">
-      <Grid cols={3}>
-        <TextField label="Length" value={data.roomL} onChange={v => set('roomL', v)} type="number" suffix="ft" autoFocus />
-        <TextField label="Width" value={data.roomW} onChange={v => set('roomW', v)} type="number" suffix="ft" />
-        <TextField label="Height" value={data.roomH} onChange={v => set('roomH', v)} type="number" suffix="ft" />
-      </Grid>
+      <Segmented
+        label="How do you know the size?"
+        hint="Plenty of people know a building by its volume and would have to go and measure to answer length × width × height. Either is fine."
+        value={sizeMode}
+        onChange={v => set('roomSizeMode', v)}
+        options={ROOM_SIZE_MODES}
+      />
+
+      {sizeMode === 'volume' ? (
+        <>
+          <Grid cols={2}>
+            <TextField label="Volume" value={data.roomVolumeCuFt} onChange={v => set('roomVolumeCuFt', v)} type="number" suffix="cu.ft" autoFocus />
+            <TextField label="Ceiling height" value={data.roomH} onChange={v => set('roomH', v)} type="number" suffix="ft"
+              placeholder={String(DEFAULT_CEILING_FT)} />
+          </Grid>
+          {/* Not a nicety — the load depends on envelope AREA, not just volume, and
+              a single number cannot give us that. Saying so is the difference
+              between an assumption and a silent guess. */}
+          <Callout tone="amber">
+            Volume alone does not size a system — moisture comes through the walls, ceiling and
+            floor, so we need their <strong className="font-semibold">area</strong>. We assume a
+            square floor at your ceiling height
+            {numOf(data.roomVolumeCuFt) > 0 && (
+              <> — about <strong className="font-semibold">{fmt(dims.L)} × {fmt(dims.W)} ft</strong> at{' '}
+                <strong className="font-semibold">{fmt(dims.H)} ft</strong></>
+            )}
+            . If the space is long and narrow it has more wall than that, and the real figure will
+            be higher. Enter dimensions instead if you know them.
+          </Callout>
+        </>
+      ) : (
+        <Grid cols={3}>
+          <TextField label="Length" value={data.roomL} onChange={v => set('roomL', v)} type="number" suffix="ft" autoFocus />
+          <TextField label="Width" value={data.roomW} onChange={v => set('roomW', v)} type="number" suffix="ft" />
+          <TextField label="Height" value={data.roomH} onChange={v => set('roomH', v)} type="number" suffix="ft" />
+        </Grid>
+      )}
 
       {/* Same wash as every other readout on the survey. It was hardcoded violet
           rather than going through TONE, which is how it survived the palette being
           cut down. */}
       {load.volumeCuFt > 0 && (
         <div className={`grid grid-cols-2 gap-3 rounded-xl p-4 sm:grid-cols-3 ${TONE.sky.softBg}`}>
-          <Stat label="Floor area" value={fmt(numOf(data.roomL) * numOf(data.roomW))} unit="sq.ft" />
+          <Stat label="Floor area" value={fmt(dims.L * dims.W)} unit="sq.ft" />
           <Stat label="Volume" value={fmt(load.volumeCuFt)} unit="cu.ft" />
-          <Stat label="Wall area" value={fmt(2 * (numOf(data.roomL) + numOf(data.roomW)) * numOf(data.roomH))} unit="sq.ft" />
+          <Stat label="Wall area" value={fmt(2 * (dims.L + dims.W) * dims.H)} unit="sq.ft" />
         </div>
       )}
 
@@ -2396,7 +2430,9 @@ function validateStep(step: StepKey, d: RfqData): boolean {
     case 'target':
       return numOf(d.targetTempF) !== 0 && d.targetRhPct.trim() !== ''
     case 'space':
-      return numOf(d.roomL) > 0 && numOf(d.roomW) > 0 && numOf(d.roomH) > 0
+      // Either way of answering counts — roomDims() resolves both to L/W/H, and a
+      // volume with no usable size still lands at 0 here.
+      { const g = roomDims(d); return g.L > 0 && g.W > 0 && g.H > 0 }
     case 'leaving':
       return numOf(d.leavingTempF) !== 0 && numOf(d.leavingGrains) > 0
     case 'airstream':

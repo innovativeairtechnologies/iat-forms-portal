@@ -9,6 +9,7 @@ import { isRfqStatus } from '@/lib/rfq-status'
 import TriageCard from './TriageCard'
 import {
   LOAD_DISCLAIMER, conditionEntered, dewPointF, fmt, fmtDewPoint, fmtGrains, grains,
+  roomDims, roomDimsAreDerived,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
 
@@ -112,7 +113,15 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
               <Card>
                 <CardHead title="The space" icon={<Ruler size={15} />} />
                 <div className="px-5 py-1">
-                  <Field label="Dimensions">{d.roomL} × {d.roomW} × {d.roomH} ft</Field>
+                  {/* Say plainly when the customer gave a volume rather than
+                      measuring — a rep quoting off this needs to know the footprint
+                      was assumed square, not reported. */}
+                  <Field label={roomDimsAreDerived(d) ? 'Dimensions (assumed)' : 'Dimensions'}>
+                    {(() => { const g = roomDims(d); return `${fmt(g.L)} × ${fmt(g.W)} × ${fmt(g.H)} ft` })()}
+                    {roomDimsAreDerived(d) && (
+                      <span className="text-ink-muted"> · square footprint derived from volume</span>
+                    )}
+                  </Field>
                   <Field label="Volume">{s.volume_cu_ft != null ? `${Number(s.volume_cu_ft).toLocaleString()} cu.ft` : '—'}</Field>
                   <Field label="Target condition">
                     {d.targetTempF}°F / {d.targetRhPct}% rh

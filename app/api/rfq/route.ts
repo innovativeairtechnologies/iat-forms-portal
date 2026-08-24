@@ -5,7 +5,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
 import {
-  applicationLabel, emptyRfq, normalizeMode, setCondition,
+  applicationLabel, emptyRfq, normalizeMode, normalizeRoomSizeMode, setCondition,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
 
@@ -74,6 +74,12 @@ function coerce(raw: unknown): RfqData {
     }))
 
   out.track = src.track === 'process' ? 'process' : 'room'
+
+  // Same reasoning as the moisture modes below: a string union copied by the
+  // generic branch above would accept anything. An unknown value here would fall
+  // through roomDims() to the dimensions branch and read roomL/W/H that volume
+  // mode never filled in, silently producing a zero-volume survey.
+  out.roomSizeMode = normalizeRoomSizeMode(src.roomSizeMode)
 
   // The moisture-unit fields are string unions, so the generic string copy above
   // would happily accept "banana" and hand it to the converter. Pin them to the

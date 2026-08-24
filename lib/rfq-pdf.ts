@@ -30,6 +30,8 @@ import {
   fmtGrains,
   grains,
   presetFor,
+  roomDims,
+  roomDimsAreDerived,
 } from './rfq'
 import { renderAsset, renderAssetUrl } from './render-assets'
 import { renderKeyForPreset } from './rfq-renders'
@@ -258,13 +260,16 @@ function spacePage(ctx: Ctx) {
   const cardH = 76
 
   card(doc, M, y, diagW, cardH)
-  overline(doc, 'ROOM DIMENSIONS', M + 6, y + 8, C.inkMuted)
-  roomDiagram(doc, M + 6, y + 12, diagW - 12, 60,
-    numOf(data.roomL), numOf(data.roomW), numOf(data.roomH), roomImage)
+  // Volume mode has no measured length/width, so the heading has to stop claiming
+  // these were dimensions someone gave us. roomDims() supplies the derived pair.
+  const g = roomDims(data)
+  const derived = roomDimsAreDerived(data)
+  overline(doc, derived ? 'ROOM SIZE (FROM VOLUME)' : 'ROOM DIMENSIONS', M + 6, y + 8, C.inkMuted)
+  roomDiagram(doc, M + 6, y + 12, diagW - 12, 60, g.L, g.W, g.H, roomImage)
 
   const vol = load?.volumeCuFt ?? 0
-  const floorArea = numOf(data.roomL) * numOf(data.roomW)
-  const wallArea = 2 * (numOf(data.roomL) + numOf(data.roomW)) * numOf(data.roomH)
+  const floorArea = g.L * g.W
+  const wallArea = 2 * (g.L + g.W) * g.H
   keyPanel(doc, 'THE NUMBERS', [
     ['Floor area', floorArea ? `${fmt(floorArea)} sq.ft` : ''],
     ['Wall area', wallArea ? `${fmt(wallArea)} sq.ft` : ''],
@@ -587,11 +592,17 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
 
   panelHead(doc, rx, y, halfW, T.duo, '2', isRoom ? 'YOUR SPACE' : 'YOUR AIRSTREAM', C.blue, C.blueSoft)
   if (isRoom) {
-    roomDiagram(doc, rx + 6, y + 12, halfW - 12, 27, numOf(data.roomL), numOf(data.roomW), numOf(data.roomH))
+    const t = roomDims(data)
+    roomDiagram(doc, rx + 6, y + 12, halfW - 12, 27, t.L, t.W, t.H)
     const v = load?.volumeCuFt ?? 0
-    text(doc, v ? `${fmt(v)} cu.ft` : 'Dimensions not given', rx + 6, y + 42, { size: 9, weight: 'bold', color: C.ink })
+    text(doc, v ? `${fmt(v)} cu.ft` : 'Size not given', rx + 6, y + 42, { size: 9, weight: 'bold', color: C.ink })
     if (v) {
-      text(doc, `${fmt(numOf(data.roomL))} × ${fmt(numOf(data.roomW))} × ${fmt(numOf(data.roomH))} ft`,
+      // san() everywhere — jsPDF's Helvetica is WinAnsi and drops anything else
+      // silently. '×' is in WinAnsi; 'assumed' is spelled out rather than using a
+      // symbol for the same reason.
+      text(doc, roomDimsAreDerived(data)
+          ? `${fmt(t.L)} × ${fmt(t.W)} × ${fmt(t.H)} ft assumed`
+          : `${fmt(t.L)} × ${fmt(t.W)} × ${fmt(t.H)} ft`,
         rx + halfW - 6, y + 42, { size: 8, color: C.inkMuted, align: 'right' })
     }
   } else {

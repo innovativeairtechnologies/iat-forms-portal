@@ -118,6 +118,67 @@ export function normalizeMode(mode: unknown, fallback: MoistureMode): MoistureMo
   return MOISTURE_MODES.some(m => m.value === mode) ? (mode as MoistureMode) : fallback
 }
 
+// ─── How the room's size was given ──────────────────────────────────────────
+//
+// Plenty of people know their building as "about 30,000 cubic feet" and have to
+// go and measure to answer length × width × height. Volume mode lets them answer
+// the question they can actually answer.
+//
+// ⚠️ Volume alone is NOT enough for the physics. L, W and H do not just make a
+// volume here — they make the wall, ceiling and floor AREAS that the permeation
+// term needs (`wallArea = 2(L+W)H`, `ceil = floor = L×W`). Two rooms of identical
+// volume can have very different envelope areas, so a single number cannot
+// determine the load on its own.
+//
+// So volume mode also takes a CEILING HEIGHT — the one dimension almost everyone
+// knows without measuring — and derives a SQUARE footprint from it:
+//
+//     H = ceiling height (default DEFAULT_CEILING_FT when blank)
+//     L = W = sqrt(volume / H)
+//
+// That reproduces the volume exactly and the floor/ceiling area exactly. Only the
+// footprint SHAPE is assumed, and a square is the minimum-perimeter case, so wall
+// area is the low end for a given footprint — an elongated room has more wall than
+// this predicts. The survey is explicitly preliminary and carries a disclaimer, but
+// `roomDimsAreDerived()` exists so every surface that shows these numbers can say
+// they were assumed rather than measured.
+export type RoomSizeMode = 'dimensions' | 'volume'
+
+export const ROOM_SIZE_MODES: { value: RoomSizeMode; label: string }[] = [
+  { value: 'dimensions', label: 'Dimensions' },
+  { value: 'volume', label: 'Volume' },
+]
+
+/** Used when volume mode is chosen but no ceiling height is given. */
+export const DEFAULT_CEILING_FT = 12
+
+export function normalizeRoomSizeMode(mode: unknown): RoomSizeMode {
+  return ROOM_SIZE_MODES.some(m => m.value === mode) ? (mode as RoomSizeMode) : 'dimensions'
+}
+
+/** True when L and W were inferred from a volume rather than entered. */
+export function roomDimsAreDerived(data: RfqData): boolean {
+  return normalizeRoomSizeMode(data.roomSizeMode) === 'volume'
+}
+
+/**
+ * The room's effective L/W/H, whichever way it was entered.
+ *
+ * ONE definition, deliberately: the load engine, the wizard's live readout, the
+ * PDF diagram and the admin detail page all read through here, so they cannot
+ * disagree about how big the room is.
+ */
+export function roomDims(data: RfqData): { L: number; W: number; H: number } {
+  if (normalizeRoomSizeMode(data.roomSizeMode) === 'volume') {
+    const volume = num(data.roomVolumeCuFt)
+    const H = num(data.roomH) || DEFAULT_CEILING_FT
+    if (volume <= 0 || H <= 0) return { L: 0, W: 0, H: 0 }
+    const side = Math.sqrt(volume / H)
+    return { L: side, W: side, H }
+  }
+  return { L: num(data.roomL), W: num(data.roomW), H: num(data.roomH) }
+}
+
 /** Any moisture unit → relative humidity %, at a given dry bulb. */
 export function moistureToRh(mode: MoistureMode, value: number, tempF: number, elevationFt = 0): number {
   if (!Number.isFinite(value)) return 0
@@ -687,6 +748,10 @@ export type RfqData = {
   surroundMoistureValue: string
 
   // Geometry
+  // Two ways in — see ROOM_SIZE_MODES and roomDims(). `roomL/W/H` stay the single
+  // source of truth for the engine either way; volume mode derives them.
+  roomSizeMode: RoomSizeMode
+  roomVolumeCuFt: string
   roomL: string
   roomW: string
   roomH: string
@@ -754,6 +819,9 @@ export function emptyRfq(): RfqData {
     outdoorTempF: '95', outdoorRhPct: '55', outdoorMoistureMode: 'rh', outdoorMoistureValue: '55',
     tempUnit: 'F', outdoorSource: '', outdoorVintage: '',
     surroundTempF: '', surroundRhPct: '', surroundMoistureMode: 'rh', surroundMoistureValue: '',
+    // 'dimensions' is the default so the ~5 surveys taken before volume mode
+    // existed still resolve through roomDims() exactly as they always did.
+    roomSizeMode: 'dimensions', roomVolumeCuFt: '',
     roomL: '', roomW: '', roomH: '',
     wallMaterial: 'Insulated metal panel',
     ceilingMaterial: 'Insulated metal panel',
@@ -957,7 +1025,8 @@ const num = (v: string | number | undefined, fallback = 0): number => {
 
 export function estimateLoad(data: RfqData): LoadEstimate {
   const elev = num(data.elevationFt, 0)
-  const L = num(data.roomL), W = num(data.roomW), H = num(data.roomH)
+  // Never read roomL/W/H directly here — volume mode derives them. See roomDims().
+  const { L, W, H } = roomDims(data)
   const volume = L * W * H
 
   const roomT = num(data.targetTempF, 70)
