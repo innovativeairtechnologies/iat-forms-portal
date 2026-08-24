@@ -391,8 +391,14 @@ export default function TicketDetailClient({
   const closingNow = pendingStatus !== ticket.status && (pendingStatus === 'resolved' || pendingStatus === 'closed')
   const closingNoteRequired = closingNow && closingNote.trim().length < MIN_CLOSING_NOTE
 
+  // A finished ticket must have an owner. Tickets were reaching a terminal state
+  // unassigned, which permanently loses who handled them — see the matching guard
+  // in actions.ts, which is the one that actually enforces this. This half exists
+  // so the disabled button says why, the same way closing notes do.
+  const ownerRequired = closingNow && !pendingOwnerId
+
   const saveTicket = async () => {
-    if (updating || !hasUnsavedChanges || resolvedReasonRequired || closingNoteRequired) return
+    if (updating || !hasUnsavedChanges || resolvedReasonRequired || closingNoteRequired || ownerRequired) return
     setUpdating(true)
     setSaveError(null)
     const { error } = await updateTicket(ticket.id, {
@@ -698,7 +704,7 @@ export default function TicketDetailClient({
               action={hasUnsavedChanges ? (
                 <button
                   onClick={saveTicket}
-                  disabled={updating || resolvedReasonRequired || closingNoteRequired}
+                  disabled={updating || resolvedReasonRequired || closingNoteRequired || ownerRequired}
                   className="text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 h-8 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {updating ? 'Saving…' : 'Update Ticket'}
@@ -726,18 +732,29 @@ export default function TicketDetailClient({
                   ))}
                 </div>
 
-                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-2">Owner</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mb-2">
+                  Owner {closingNow && <span className="text-rose-400">*</span>}
+                </p>
                 <select
                   value={pendingOwnerId ?? ''}
                   onChange={e => setPendingOwnerId(e.target.value || null)}
                   disabled={updating}
-                  className="text-[13px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-zinc-700 dark:text-zinc-200 outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/15 transition-all disabled:opacity-50 w-full sm:w-auto min-w-[180px]"
+                  className={`text-[13px] bg-white dark:bg-zinc-900 border rounded-lg px-3 py-2 text-zinc-700 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-emerald-500/15 transition-all disabled:opacity-50 w-full sm:w-auto min-w-[180px] ${
+                    ownerRequired
+                      ? 'border-rose-400/60 focus:border-rose-400'
+                      : 'border-zinc-200 dark:border-zinc-700 focus:border-emerald-500/50'
+                  }`}
                 >
                   <option value="">Unassigned</option>
                   {owners.map(o => (
                     <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
                 </select>
+                {ownerRequired && (
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-rose-400">
+                    Assign an owner before {pendingStatus === 'resolved' ? 'resolving' : 'closing'} — a finished ticket needs a name on it.
+                  </p>
+                )}
 
                 {pendingStatus === 'resolved' && (
                   <div className="mt-4">

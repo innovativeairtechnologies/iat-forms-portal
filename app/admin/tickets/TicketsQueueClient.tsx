@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Ticket, Search, X, MoreHorizontal, Clock, CheckCircle2, ExternalLink, ShieldCheck, ShieldAlert,
+  AlertCircle,
 } from 'lucide-react'
 import type { Ticket as TicketType } from '@/lib/supabase'
 import { updateTicket } from './actions'
@@ -118,6 +119,10 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+  // Why a queue action refused. updateTicket's errors used to be dropped on the
+  // floor here, so a rejected Resolve looked identical to a successful one — the
+  // row simply did not change. See setStatusFor.
+  const [actionError, setActionError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -167,13 +172,37 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
   const allSelected = sorted.length > 0 && sorted.every(t => selected.has(t.id))
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(sorted.map(t => t.id)))
 
+  /**
+   * Inline status change from the queue.
+   *
+   * ⚠️ These calls can legitimately FAIL, and every failure used to be silent.
+   * `updateTicket` refuses a move into resolved/closed without closing notes, and
+   * now without an owner too — but this function discarded the returned `error`
+   * and called router.refresh() regardless, so a refused Resolve was
+   * indistinguishable from one that worked: the row just stayed as it was.
+   *
+   * Neither requirement can be satisfied from the queue (there is nowhere here to
+   * write remarks), so a refusal is reported with the ticket numbers and the
+   * operator is pointed at the ticket itself, rather than being left to wonder.
+   */
   const setStatusFor = (ids: string[], status: TicketType['status']) => {
+    setActionError(null)
     startTransition(async () => {
-      await Promise.all(ids.map(id => {
+      const results = await Promise.all(ids.map(async id => {
         const t = tickets.find(x => x.id === id)
-        if (!t) return Promise.resolve({ error: null })
-        return updateTicket(id, { status, priority: t.priority ?? 'med', owner_id: t.owner_id ?? null })
+        if (!t) return { number: null as string | null, error: null as string | null }
+        const { error } = await updateTicket(id, { status, priority: t.priority ?? 'med', owner_id: t.owner_id ?? null })
+        return { number: t.ticket_number, error }
       }))
+
+      const failed = results.filter(r => r.error)
+      if (failed.length) {
+        const numbers = failed.map(f => f.number).filter(Boolean).join(', ')
+        setActionError(
+          `${failed.length === 1 ? numbers : `${failed.length} tickets (${numbers})`} could not be updated: ${failed[0].error} Open the ticket to finish this.`
+        )
+      }
+
       setSelected(new Set())
       setMenuFor(null)
       router.refresh()
@@ -188,6 +217,21 @@ export default function TicketsQueueClient({ tickets, warrantyBySerial = {}, meI
           title="Tickets"
           count={`${sorted.length} ${sorted.length === 1 ? 'ticket' : 'tickets'}`}
         />
+
+        {/* A refused bulk/row action. Sits above the ribbon rather than floating,
+            so it cannot be missed and does not time out before it is read. */}
+        {actionError && (
+          <div className="flex items-start gap-2 px-4 py-2.5 bg-rose-50 dark:bg-rose-500/10 border-b border-rose-200 dark:border-rose-500/20">
+            <AlertCircle size={14} className="mt-0.5 shrink-0 text-rose-500" />
+            <p className="text-[12px] leading-relaxed text-rose-700 dark:text-rose-300">{actionError}</p>
+            <button
+              onClick={() => setActionError(null)}
+              className="ml-auto shrink-0 text-[11px] font-medium text-rose-600 dark:text-rose-400 hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Filter tabs. Ownership (My Tickets / Unassigned) and status share one
             ribbon; counts come from the SAME predicate as the rows, so a badge

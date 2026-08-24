@@ -430,6 +430,49 @@ destination. The single-ticket branch of the same email already deep-links.
 
 ## Assignment, reopening, and the 30-day window (2026-08-21)
 
+### A ticket cannot be resolved or closed while unassigned (2026-08-24)
+
+Tickets were reaching a terminal state with nobody's name on them. That loss is **unrecoverable**:
+`audit_log` records that the status changed and who clicked the button, but an owner that was never
+set is simply absent — so time-to-close by engineer, workload, and the plain question "who do I ask
+about this one?" all quietly degrade.
+
+`updateTicket()` now refuses the move, right beside the closing-notes guard and on the same
+`closing` condition:
+
+```ts
+if (closing && !data.owner_id) {
+  return { error: 'Assign an owner before resolving or closing — a finished ticket needs a name on it.' }
+}
+```
+
+**Applied to `resolved` as well as `closed`**, matching the closing-note rule rather than inventing
+a second, differently-shaped one. Resolved is if anything the more important of the two: per the
+queue's Active/Closed split a resolved ticket is still live work awaiting formal closure, so an
+unowned one is a job with nobody on the hook to finish it.
+
+Enforced on the server because that is where it is authoritative. The detail page mirrors it —
+the Owner label gains a `*`, the select turns rose, and **Update Ticket** is disabled with a line
+saying why — for the same reason the closing-note guard does: refusing without explaining is not
+help.
+
+⚠️ Only a genuine transition is guarded (`statusChanged`), so editing the priority of an already
+closed ticket is never blocked by it.
+
+### ⚠️ Queue status actions could fail silently — fixed 2026-08-24
+
+`setStatusFor()` in `TicketsQueueClient` called `updateTicket` for each selected row and **discarded
+the returned `error`**, then called `router.refresh()` regardless. A refused change was therefore
+indistinguishable from a successful one: the row simply did not change.
+
+This was not hypothetical. The queue offers **Resolve** (row menu and bulk bar) but has nowhere to
+write closing remarks, so *every* Resolve from the queue was already being rejected by the
+closing-note guard and silently swallowed. The owner guard above would have added a second silent
+rejection on the same path.
+
+Failures now surface in a rose banner above the filter ribbon, naming the ticket numbers and the
+reason, and pointing at the ticket itself — neither requirement can be satisfied from the queue.
+
 ### Assigning a ticket emails the new owner
 
 `updateTicket()` already detected owner changes for the audit trail; the alert hangs off the same

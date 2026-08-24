@@ -215,9 +215,40 @@ crons defined — and it is **disproven**: three distinct cron paths ran on the 
 over that weekend, and all 7 report `"enabled": true` under
 `vercel crons ls --format json`. Do not re-open that theory.
 
-**So:** when a scheduled job matters that day, stop deploying roughly 20 minutes either side of
-it. Windows in ET: 09:00 accrue-pto (Mon) · 09:00 reminders · 16:30 digest · 18:00 leadership
-(Mon/Wed/Fri).
+**So:** when a scheduled job matters that day, stop deploying around it. But measure that window
+from when the job **actually runs**, not from its schedule — see immediately below.
+
+### 🔴 Crons fire 30–55 minutes LATE, so the naive exclusion window guards the wrong time
+
+Measured 2026-08-24 from the reminder stamps (`tickets` / `rfq_requests` →
+`assignee_nudged_at`, `unclaimed_reminded_at`, `escalated_at`). Those stamps are the only durable
+record of when a cron truly executed — Vercel's runtime logs on this project return nothing.
+
+| Nominal (UTC) | Actually ran | Lag |
+|---|---|---|
+| 2026-08-22 13:00 | 13:47:58 / 13:53:23 | **47 / 53 min** |
+| 2026-08-23 13:00 | 13:47:58 / 13:53:23 | **47 / 53 min** |
+| 2026-08-21 13:00 | 13:27 | 27 min |
+
+The 09:00 ET reminders therefore really execute around **09:47 ET**. Someone who dutifully avoids
+08:40–09:20 and then ships at 09:30 lands directly on the run — which is exactly the mistake the
+rule above was written to prevent.
+
+**Compute the exclusion from nominal + 30..55 minutes.** In ET that means roughly:
+
+| Job | Nominal | Do not deploy |
+|---|---|---|
+| reminders (daily) | 09:00 | **09:25 – 10:10** |
+| accrue-pto (Mon) | 09:00 | **09:25 – 10:10** |
+| digest (daily) | 16:30 | **16:55 – 17:40** |
+| leadership (Mon/Wed/Fri) | 18:00 | **18:25 – 19:10** |
+
+⚠️ The lag is stable but not constant (27 min on 08-21 against 47 on 08-22/23), so treat it as a
+band, not an offset to subtract.
+
+This is also why `withinSendWindow` on the leadership job is a two-hour band (18:00–20:00) rather
+than an hour: nominal 18:00 ET really lands near 18:47 ET, and an hour-wide check would have been
+uncomfortably close to its own edge.
 
 **And when a cron "fails", check the deploy timeline FIRST** — before the route, the guard or
 the secret. On 2026-08-21 an entire evening went into the route before anyone looked at the

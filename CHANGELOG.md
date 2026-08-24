@@ -10,6 +10,26 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — A ticket now needs an owner before it can be finished
+
+**Tickets can no longer be resolved or closed while unassigned.** A few had been finished with
+nobody's name on them, and that cannot be recovered afterwards: the record shows the status changed
+and who clicked, but an owner that was never set is simply missing — so "who handled this?" has no
+answer. The Owner field is now required on the way into resolved or closed, marked with a `*`, and
+the Update button explains itself rather than just refusing.
+
+**Queue actions no longer fail in silence.** Resolving from the ticket list quietly did nothing:
+the server requires closing remarks, the list has nowhere to write them, and the refusal was being
+thrown away — so the row just stayed as it was, with no message. Refusals now appear at the top of
+the list, naming the tickets and the reason, and point you at the ticket itself.
+
+**The "Reopened by a customer" figure on the dashboard was counting our own staff.** Moving a
+ticket back out of closed looks identical in the record whether a customer prompted it or one of us
+did, so the card was reporting our own triage as customer dissatisfaction. It now counts only
+reopens that came from a customer replying through the status page. The reopen figures in the
+Tickets report are unchanged and still count both, which is deliberate — that report is asking
+whether we called things done too early, and a staff reopen answers that question too.
+
 ## 2026-08-24 — Friday's 6pm report did not send, and why
 
 The first run of the new Monday/Wednesday/Friday schedule was due at 6pm on Friday. It never

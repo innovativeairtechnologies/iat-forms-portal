@@ -120,6 +120,24 @@ read-only (scoped → `DepartmentDashboard` with `preview` = default layout + no
 `SalesDashboardView`; production → a note). Middleware + guards still use the real session role, so the
 preview only changes what renders — it can't grant access or lock the admin out.
 
+## ⚠️ "Reopened by a customer" counts customers only (fixed 2026-08-24)
+
+There is no reopen counter on a ticket, so the `ticket_alerts` card derives one from `audit_log`:
+rows where a `ticket.status` change has `metadata.from === 'closed'`.
+
+**That predicate alone is wrong for this label.** A staff member dragging a ticket back out of
+`closed` writes exactly the same `from: 'closed'` as a customer replying to one, so the card was
+reporting our own triage back to us as customer dissatisfaction. On 2026-08-24 it read **1**, and
+that 1 was a colleague moving a ticket from closed to in progress.
+
+`loadTicketAlerts` now also requires `metadata.via === 'status-page-reply'`, stamped only by
+`app/api/tickets/status/message` — the sole route a customer can reopen through. (`actor_id === null`
+would work too, but `via` records *why*, not merely *who*.)
+
+⛔ **Do not copy this filter into the tickets report.** That report's language is deliberately
+actor-agnostic — "Reopen rate", "tickets that came back", "did we call things done that were not
+done" — and a staff reopen is precisely that question. The two want different numbers on purpose.
+
 ## Not this
 
 An earlier iteration scaffolded a separate universal `/dashboard` route (its own layout +

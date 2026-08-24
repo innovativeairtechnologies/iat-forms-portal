@@ -380,7 +380,25 @@ async function loadTicketAlerts() {
     supabaseAdmin.from('audit_log').select('id, metadata')
       .eq('action', 'ticket.status').gte('created_at', daysAgo(REOPEN_LOOKBACK_DAYS)).limit(500),
   ])
-  const reopened = (reopens ?? []).filter(r => (r.metadata as { from?: string } | null)?.from === 'closed').length
+  // ⚠️ CUSTOMER reopens ONLY — `from: 'closed'` alone is not enough.
+  //
+  // A staff member dragging a ticket back out of `closed` writes exactly the same
+  // `from: 'closed'` metadata as a customer replying to one. Counting both under a
+  // label that reads "Reopened by a customer" reports our own triage back to us as
+  // customer dissatisfaction, and it did: on 2026-08-24 this card showed 1, and
+  // that 1 was a colleague moving a ticket from closed to in_progress.
+  //
+  // `via: 'status-page-reply'` is stamped only by app/api/tickets/status/message,
+  // which is the only route a customer can reopen through — so it is the whole
+  // discriminator. (`actor_id === null` works too, but `via` says why, not just who.)
+  //
+  // ⛔ The tickets REPORT must NOT adopt this filter. Its language is deliberately
+  // actor-agnostic — "Reopen rate", "tickets that came back", "did we call things
+  // done that were not done" — and a staff reopen is exactly that question.
+  const reopened = (reopens ?? []).filter(r => {
+    const m = r.metadata as { from?: string; via?: string } | null
+    return m?.from === 'closed' && m?.via === 'status-page-reply'
+  }).length
   return { unassigned: unassigned ?? 0, overdue: overdue ?? 0, unclaimedRfqs: unclaimedRfqs ?? 0, reopened }
 }
 

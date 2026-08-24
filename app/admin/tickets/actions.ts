@@ -56,6 +56,27 @@ export async function updateTicket(
     return { error: 'Add closing notes before resolving or closing — the customer is sent what you write here.' }
   }
 
+  // A ticket cannot reach a terminal state with nobody's name on it.
+  //
+  // Tickets were being closed while still unassigned, which loses the one fact
+  // every later question needs: who handled this. It is unrecoverable after the
+  // fact — `audit_log` records that the status changed and who clicked, but an
+  // owner that was never set is simply absent, so time-to-close by engineer,
+  // workload, and "who do I ask about this?" all silently degrade.
+  //
+  // Applied to resolved AND closed, matching the closing-note guard directly
+  // above rather than inventing a second rule. Resolved is the more important of
+  // the two if anything: per the queue's Active/Closed split a resolved ticket is
+  // still live work awaiting formal closure, so an unowned one is a job with
+  // nobody on the hook to finish it.
+  //
+  // Server-side because this is a server action and the client cannot be trusted
+  // to have run its own check; the UI disables the button for the same reason it
+  // does for closing notes, to explain rather than merely refuse.
+  if (closing && !data.owner_id) {
+    return { error: 'Assign an owner before resolving or closing — a finished ticket needs a name on it.' }
+  }
+
   // Whitelist the fields this action may set — never forward the whole client
   // object, or a tickets-scoped caller could set customer_email, ids, brand, etc.
   const patch: Record<string, unknown> = {
