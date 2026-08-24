@@ -10,6 +10,24 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — Friday's 6pm report did not send, and why
+
+The first run of the new Monday/Wednesday/Friday schedule was due at 6pm on Friday. It never
+arrived, and neither did that afternoon's daily digest.
+
+**The cause was our own deployment activity, not the reports.** Ten releases went out between
+4:09pm and 7:21pm Friday — straight through every scheduled job's slot. A release landing while a
+job is due makes that run disappear with no error and no record. The evidence is clean: the one job
+scheduled earlier in the day, away from the releases, ran normally; and over the weekend, with no
+releases at all, every job ran on both days.
+
+**Two changes came out of it.** The reports now leave a record of every attempt and why it did or
+did not send, so a missed run can be diagnosed in seconds rather than by inference. And there is now
+a documented rule: no releases within twenty minutes either side of a scheduled job.
+
+Friday's content was not lost — it was delivered as a Word document covering 19 to 21 August.
+Today's 6pm report covers 22 to 24 August as normal.
+
 ## 2026-08-21 — Morning ticket alerts on the dashboard, and a tools report
 
 **Two alert cards now open the admin dashboard.** *My Tickets* shows what is yours and waiting —
