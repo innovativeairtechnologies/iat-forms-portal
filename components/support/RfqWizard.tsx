@@ -16,7 +16,7 @@ import { getRecaptchaToken } from '@/components/use-recaptcha'
 import {
   AIR_SOURCES, CEILING_MATERIALS, CONSTRUCTIONS, COOLING_TYPES, DOOR_TYPES, FLOOR_MATERIALS,
   HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, FINAL_FILTER_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
-  PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, ROOM_SIZE_MODES, RUNTIMES, TEMP_UNITS,
+  PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, ROOM_RENDER_EDGES, ROOM_SIZE_MODES, RUNTIMES, TEMP_UNITS,
   TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS, DEFAULT_CEILING_FT,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
   estimateProcess, fmt, fmtDewPoint, fmtGrains, fToC, grains, modeIsTemperature, normalizeMode,
@@ -1113,27 +1113,72 @@ const DIM_H = DIM.padT + DIM.imgH + DIM.padB
 const pct = (n: number, total: number) => `${(n / total) * 100}%`
 
 /**
- * Length, width and height called out around the picture, drawn live from the
- * step-4 inputs.
+ * Length, width and height called out ON THE ROOM'S OWN EDGES, drawn live from
+ * the step-4 inputs.
  *
- * ⚠️ The convention is length along the BOTTOM, width along the TOP, height up
- * the LEFT — three unambiguous edges. The PDF's abstract box puts width on the
- * isometric depth edge instead, which works there because that box HAS a depth
- * edge; a photograph does not, so lib/rfq-pdf.ts switches to this same
- * three-edge convention whenever it draws the render in place of the box. The
- * two must agree: a customer reads them side by side.
+ * Until 2026-08-24 these were three rules floating outside the picture — width
+ * along the top, height up the left, length across the bottom — because a
+ * photograph was assumed to have no usable depth edge. Every image in the
+ * `rooms` set is in fact the same isometric cutaway from the same camera, so it
+ * does: the near-left wall's top edge, its outer vertical edge and the floor's
+ * front edge land in the same place in all of them. Drawing on those reads as
+ * part of the room rather than as a diagram wrapped around it.
+ *
+ * ⚠️ Geometry lives in ONE place — ROOM_RENDER_EDGES in lib/rfq.ts — because
+ * lib/rfq-pdf.ts draws the same three callouts on the same render, and the
+ * customer reads the screen and the PDF side by side. Change one, change both.
  *
  * Each edge appears only once its own field has a value, so the drawing builds
  * up as they type rather than flashing three "0 ft" labels.
  */
 function DimensionOverlay({ L, W, H }: { L: number; W: number; H: number }) {
-  const x0 = DIM.padL, x1 = DIM.padL + DIM.imgW
-  const y0 = DIM.padT, y1 = DIM.padT + DIM.imgH
-  const midX = (x0 + x1) / 2, midY = (y0 + y1) / 2
-  const bottomY = y1 + 11, topY = y0 - 11, leftX = x0 - 13
+  // Edge fractions are of the IMAGE box; map them into overlay coordinates.
+  const E = ROOM_RENDER_EDGES
+  const P = (p: { x: number; y: number }) => ({
+    x: DIM.padL + p.x * DIM.imgW,
+    y: DIM.padT + p.y * DIM.imgH,
+  })
+  const leftTop = P(E.leftTop), apex = P(E.apex), leftBot = P(E.leftBot), floor = P(E.floor)
 
-  const tickV = (x: number, y: number, k: string) => <line key={k} x1={x} y1={y - 3.5} x2={x} y2={y + 3.5} />
-  const tickH = (x: number, y: number, k: string) => <line key={k} x1={x - 3.5} y1={y} x2={x + 3.5} y2={y} />
+  /** One callout: a line running PARALLEL to a room edge but standing off it, a
+   *  tick across each end, and a label lying along it.
+   *
+   *  `side` is the outward perpendicular. The line is pushed OUT by OFFSET so the
+   *  three callouts outline the room from outside rather than sitting on its
+   *  walls — drawing them on the walls reads as graffiti on the render. */
+  const OFFSET = 7   // overlay units ≈ 0.022 of the image width, matched by eye
+  const edge = (
+    a: { x: number; y: number }, b: { x: number; y: number },
+    label: string, side: 1 | -1, key: string,
+  ) => {
+    const dx = b.x - a.x, dy = b.y - a.y
+    const len = Math.hypot(dx, dy) || 1
+    const ux = dx / len, uy = dy / len            // along the edge
+    const nx = -uy * side, ny = ux * side         // outward perpendicular
+    const T = 4                                   // tick half-length
+    const GAP = 11                                // label clearance beyond the line
+    // Stand the whole callout off the room.
+    const p = { x: a.x + nx * OFFSET, y: a.y + ny * OFFSET }
+    const q = { x: b.x + nx * OFFSET, y: b.y + ny * OFFSET }
+    const mid = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }
+    // Keep text upright: past vertical, flip it rather than let it read upside down.
+    let deg = (Math.atan2(dy, dx) * 180) / Math.PI
+    if (deg > 90) deg -= 180
+    if (deg < -90) deg += 180
+    const lx = mid.x + nx * GAP, ly = mid.y + ny * GAP
+    return (
+      <g key={key}>
+        <line x1={p.x} y1={p.y} x2={q.x} y2={q.y} />
+        <line x1={p.x - nx * T} y1={p.y - ny * T} x2={p.x + nx * T} y2={p.y + ny * T} />
+        <line x1={q.x - nx * T} y1={q.y - ny * T} x2={q.x + nx * T} y2={q.y + ny * T} />
+        <text
+          x={lx} y={ly} fill="currentColor" stroke="none"
+          fontSize="13" fontWeight="600" textAnchor="middle" dominantBaseline="middle"
+          transform={`rotate(${deg.toFixed(2)} ${lx.toFixed(2)} ${ly.toFixed(2)})`}
+        >{label}</text>
+      </g>
+    )
+  }
 
   return (
     <svg
@@ -1142,14 +1187,14 @@ function DimensionOverlay({ L, W, H }: { L: number; W: number; H: number }) {
       aria-hidden="true"
     >
       <g stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round">
-        {L > 0 && [<line key="l" x1={x0} y1={bottomY} x2={x1} y2={bottomY} />, tickV(x0, bottomY, 'l0'), tickV(x1, bottomY, 'l1')]}
-        {W > 0 && [<line key="w" x1={x0} y1={topY} x2={x1} y2={topY} />, tickV(x0, topY, 'w0'), tickV(x1, topY, 'w1')]}
-        {H > 0 && [<line key="h" x1={leftX} y1={y0} x2={leftX} y2={y1} />, tickH(leftX, y0, 'h0'), tickH(leftX, y1, 'h1')]}
-      </g>
-      <g fill="currentColor" fontSize="14" fontWeight="600" textAnchor="middle">
-        {L > 0 && <text x={midX} y={bottomY + 16}>{fmt(L)} ft long</text>}
-        {W > 0 && <text x={midX} y={topY - 7}>{fmt(W)} ft wide</text>}
-        {H > 0 && <text x={leftX - 5} y={midY} transform={`rotate(-90 ${leftX - 5} ${midY})`}>{fmt(H)} ft high</text>}
+        {/* ⚠️ The `side` on each is the OUTWARD normal and they are not all the
+            same sign — for the downward vertical, -uy/ux points INTO the room, so
+            height takes +1 while width takes -1. Getting it wrong puts the line
+            on the wall face instead of outside it, which looks almost right and
+            is easy to miss. Verified by compositing onto three real renders. */}
+        {W > 0 && edge(leftTop, apex, `${fmt(W)} ft wide`, -1, 'w')}
+        {H > 0 && edge(leftTop, leftBot, `${fmt(H)} ft high`, 1, 'h')}
+        {L > 0 && edge(leftBot, floor, `${fmt(L)} ft long`, 1, 'l')}
       </g>
     </svg>
   )

@@ -32,6 +32,7 @@ import {
   presetFor,
   roomDims,
   roomDimsAreDerived,
+  ROOM_RENDER_EDGES,
 } from './rfq'
 import { renderAsset, renderAssetUrl } from './render-assets'
 import { renderKeyForPreset } from './rfq-renders'
@@ -1044,32 +1045,42 @@ function roomPhotoDiagram(
   stroke(doc, C.green)
   doc.setLineWidth(0.4)
 
-  // Length across the bottom
-  if (L) {
-    const ly = iy + ih + 3.6
-    doc.line(ix, ly, ix + iw, ly)
-    tick(doc, ix, ly)
-    tick(doc, ix + iw, ly)
-    text(doc, `${fmt(L)} ft long`, ix + iw / 2, ly + 4.2, { size: 7, weight: 'bold', color: C.green, align: 'center' })
+  // ── Callouts along the room's own edges, standing just outside it ──
+  // Same three edges and the same geometry as the wizard's DimensionOverlay
+  // (ROOM_RENDER_EDGES in lib/rfq.ts). The customer reads the screen and this
+  // page side by side, so they have to match — do not change one alone.
+  const E = ROOM_RENDER_EDGES
+  const pt = (p: { x: number; y: number }) => ({ x: ix + p.x * iw, y: iy + p.y * ih })
+  const leftTop = pt(E.leftTop), apex = pt(E.apex), leftBot = pt(E.leftBot), floorPt = pt(E.floor)
+  const OFFSET = 0.022 * iw
+  const GAP = 2.4
+
+  const edge = (
+    a: { x: number; y: number }, b: { x: number; y: number }, label: string, side: 1 | -1,
+  ) => {
+    const dx = b.x - a.x, dy = b.y - a.y
+    const len = Math.hypot(dx, dy) || 1
+    const nx = (-dy / len) * side, ny = (dx / len) * side   // outward perpendicular
+    const p = { x: a.x + nx * OFFSET, y: a.y + ny * OFFSET }
+    const q = { x: b.x + nx * OFFSET, y: b.y + ny * OFFSET }
+    doc.line(p.x, p.y, q.x, q.y)
+    const T = 1.1
+    doc.line(p.x - nx * T, p.y - ny * T, p.x + nx * T, p.y + ny * T)
+    doc.line(q.x - nx * T, q.y - ny * T, q.x + nx * T, q.y + ny * T)
+    let deg = (Math.atan2(dy, dx) * 180) / Math.PI
+    if (deg > 90) deg -= 180
+    if (deg < -90) deg += 180
+    // jsPDF measures the angle COUNTER-clockwise while screen y runs down, so the
+    // sign flips relative to the SVG rotate() the wizard uses.
+    text(doc, label, (p.x + q.x) / 2 + nx * GAP, (p.y + q.y) / 2 + ny * GAP,
+      { size: 7, weight: 'bold', color: C.green, align: 'center', angle: -deg })
   }
-  // Width across the top
-  if (W) {
-    const wy = iy - 3.6
-    doc.line(ix, wy, ix + iw, wy)
-    tick(doc, ix, wy)
-    tick(doc, ix + iw, wy)
-    text(doc, `${fmt(W)} ft wide`, ix + iw / 2, wy - 1.8, { size: 7, weight: 'bold', color: C.green, align: 'center' })
-  }
-  // Height up the left
-  if (H) {
-    const hx = ix - 3.6
-    doc.line(hx, iy, hx, iy + ih)
-    tick(doc, hx, iy, true)
-    tick(doc, hx, iy + ih, true)
-    // Rotated so a tall room does not need a wide gutter. jsPDF measures the
-    // angle counter-clockwise from the baseline.
-    text(doc, `${fmt(H)} ft high`, hx - 1.6, iy + ih / 2, { size: 7, weight: 'bold', color: C.green, align: 'center', angle: 90 })
-  }
+
+  // ⚠️ The signs differ: for the downward vertical the raw normal points INTO the
+  // room, so height takes +1 where width takes -1. See the wizard's note.
+  if (W) edge(leftTop, apex, `${fmt(W)} ft wide`, -1)
+  if (H) edge(leftTop, leftBot, `${fmt(H)} ft high`, 1)
+  if (L) edge(leftBot, floorPt, `${fmt(L)} ft long`, 1)
 }
 
 function tick(doc: Doc, x: number, y: number, horizontal = false) {

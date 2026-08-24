@@ -142,6 +142,29 @@ export function normalizeMode(mode: unknown, fallback: MoistureMode): MoistureMo
 // this predicts. The survey is explicitly preliminary and carries a disclaimer, but
 // `roomDimsAreDerived()` exists so every surface that shows these numbers can say
 // they were assumed rather than measured.
+// ─── Where the dimension callouts sit on a room render ──────────────────────
+//
+// Every image in the `rooms` set is the same 1920x1080 isometric cutaway shot
+// from the same camera, so three edges of the near-left wall land in the same
+// place in every one. Callouts drawn along those edges read as part of the room
+// instead of as rules floating outside the picture.
+//
+// Fractions of the IMAGE BOX (not the padded overlay), so they survive any
+// scale. MEASURED, not eyeballed: candidate lines were composited onto
+// battery, cannabis-room and chemical-lab with sharp and checked by eye until
+// they hugged the edges in all three. Re-run that check if the renders are ever
+// re-exported — a new camera angle silently misaligns every line.
+//
+//   leftTop -> apex     the wall's TOP edge, receding away to the right   (WIDTH)
+//   leftTop -> leftBot  the wall's OUTER VERTICAL edge                    (HEIGHT)
+//   leftBot -> floor    the floor's FRONT edge, advancing to the right    (LENGTH)
+export const ROOM_RENDER_EDGES = {
+  leftTop: { x: 0.180, y: 0.256 },
+  apex: { x: 0.531, y: 0.051 },
+  leftBot: { x: 0.180, y: 0.681 },
+  floor: { x: 0.524, y: 0.940 },
+} as const
+
 export type RoomSizeMode = 'dimensions' | 'volume'
 
 export const ROOM_SIZE_MODES: { value: RoomSizeMode; label: string }[] = [
