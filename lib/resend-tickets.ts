@@ -210,7 +210,7 @@ export async function sendTicketAssignedAlert(
     </p>
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0f0f0;border-radius:8px;margin:0 0 20px;">
       ${row('Customer', esc(who))}
-      ${row('Status', esc(String(status).replace('_', ' ')))}
+      ${row('Status', esc(String(status).replace(/_/g, ' ')))}
       ${row('Priority', esc(priority || 'med'))}
     </table>
     ${snippet ? `<div style="background:#f8f9fa;border-left:3px solid #089447;border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 20px;">

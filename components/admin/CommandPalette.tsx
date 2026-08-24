@@ -249,7 +249,7 @@ export default function CommandPalette() {
       })),
       ...results.tickets.map((t) => ({
         id: `tkt-${t.id}`, label: t.customer_name || t.ticket_number,
-        sublabel: `${t.ticket_number} · ${t.status.replace('_', ' ')}`,
+        sublabel: `${t.ticket_number} · ${t.status.replace(/_/g, ' ')}`,
         group: 'Tickets', icon: LifeBuoy, href: `/admin/tickets/${t.id}`,
       })),
       ...results.submissions.map((s) => ({

@@ -256,7 +256,7 @@ export default function EquipmentDetailClient({ equipment, tickets, customer, mi
                             <TicketIcon size={11} />{t.ticket_number}
                           </span>
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_CLS[t.status] || STATUS_CLS.closed}`}>
-                            {t.status.replace('_', ' ')}
+                            {t.status.replace(/_/g, ' ')}
                           </span>
                         </div>
                         {t.problem_description && (

@@ -130,7 +130,7 @@ export async function updateTicket(
         action: 'ticket.status',
         entityType: 'ticket',
         entityId: ticketId,
-        summary: `Set ticket ${tkt} (${who}) to ${String(data.status).replace('_', ' ')}`,
+        summary: `Set ticket ${tkt} (${who}) to ${String(data.status).replace(/_/g, ' ')}`,
         // On a close, record whether the customer was sent the remarks. "Did they
         // see what I wrote?" is otherwise unanswerable after the fact, and it is
         // exactly the question that gets asked when a customer quotes something
