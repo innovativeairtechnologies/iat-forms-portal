@@ -121,6 +121,25 @@ submission. A lost alert falls back to the digest.
 Only a full admin can approve or deny — that was already true and is unchanged. The approver list can
 be changed from Vercel without a deploy.
 
+## 2026-08-24 — The quote request opens on a picture of the customer's room
+
+The first page of a quote request is the summary the customer actually reads — their target
+condition on the left, their space on the right. The space panel drew a plain grey box. Page 3 has
+shown a picture of a room like theirs for a few days now, and there was no reason the summary
+should not.
+
+Panel 2 now shows that same picture. The volume and the length × width × height stay printed
+underneath it, as before.
+
+The measurements are **not** drawn on this copy, and that is deliberate: the summary page is laid
+out to a fixed height so it can never run to two pages, and the panel is small. Leaving room for
+the measurement lines would shrink the picture to about two thirds of an inch across, with labels
+too small to read — and the same figures are already written in text directly below it. Page 3,
+where there is room, keeps the measurements on the picture.
+
+Rooms we have no artwork for — an indoor pool is the one — still show the drawn box, as does any
+request where the picture cannot be fetched. A picture never costs anyone their document.
+
 ## 2026-08-24 — The length callout now follows the floor, all the way along
 
 The room illustration on a quote request has the customer's length, width and height drawn onto it.

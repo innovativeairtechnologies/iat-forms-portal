@@ -536,7 +536,7 @@ const T = {
 // 24+3 +17+3 +46+3 +34+3 +40+3 +45+3 +14 = 238, clearing FOOTER_BAND_TOP (246.4).
 
 function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
-  const { doc, data, load, proc, logoLight, isRoom } = ctx
+  const { doc, data, load, proc, logoLight, isRoom, roomImage } = ctx
   if (!opts?.first) doc.addPage()
   paper(doc, C.white)
 
@@ -605,7 +605,16 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   panelHead(doc, rx, y, halfW, T.duo, '2', isRoom ? 'YOUR SPACE' : 'YOUR AIRSTREAM', C.blue, C.blueSoft)
   if (isRoom) {
     const t = roomDims(data)
-    roomDiagram(doc, rx + 6, y + 12, halfW - 12, 27, t.L, t.W, t.H)
+    // The same application render the space page shows, so the takeaway opens on
+    // the customer's own room rather than a generic box. Callouts are OFF here:
+    // this panel is 46mm on a page with a fixed vertical budget, and the callout
+    // padding would shrink the picture to a 17.8mm stamp. The dimensions are
+    // printed as text directly below instead.
+    //
+    // Falls back to the drawn box whenever roomImage is null — an unmapped
+    // application (indoor pool has no artwork) or any fetch/CORS failure. A
+    // picture must never cost someone their PDF.
+    roomDiagram(doc, rx + 6, y + 12, halfW - 12, 27, t.L, t.W, t.H, roomImage, { callouts: false })
     const v = load?.volumeCuFt ?? 0
     text(doc, v ? `${fmt(v)} cu.ft` : 'Size not given', rx + 6, y + 42, { size: 9, weight: 'bold', color: C.ink })
     if (v) {
@@ -982,9 +991,10 @@ function miniBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
 function roomDiagram(
   doc: Doc, x: number, y: number, w: number, h: number,
   L: number, W: number, H: number, image?: string | null,
+  opts?: { callouts?: boolean },
 ) {
   if (image) {
-    roomPhotoDiagram(doc, x, y, w, h, L, W, H, image)
+    roomPhotoDiagram(doc, x, y, w, h, L, W, H, image, opts?.callouts !== false)
     return
   }
   const pad = 12
@@ -1034,11 +1044,21 @@ function roomDiagram(
 /** Render mode for roomDiagram: the picture, with L/W/H called out around it. */
 function roomPhotoDiagram(
   doc: Doc, x: number, y: number, w: number, h: number,
-  L: number, W: number, H: number, image: string,
+  L: number, W: number, H: number, image: string, callouts = true,
 ) {
   // Room for the callouts. Left is widest because the height label is rotated
   // upright there rather than laid along the line.
-  const padL = 12, padR = 5, padT = 7, padB = 10
+  //
+  // Without them the picture takes the whole slot instead. That is not a
+  // cosmetic choice — the callout padding costs 17mm in each direction, which is
+  // most of the takeaway panel: at that size the render comes out 17.8 x 10mm
+  // and the labels are unreadable, against 42.7 x 24mm with the padding dropped.
+  // The takeaway panel already prints the volume and the L x W x H underneath,
+  // so callouts there would repeat that in a space too small to read.
+  const padL = callouts ? 12 : 1.5
+  const padR = callouts ? 5 : 1.5
+  const padT = callouts ? 7 : 1.5
+  const padB = callouts ? 10 : 1.5
   const availW = w - padL - padR
   const availH = h - padT - padB
 
@@ -1052,6 +1072,7 @@ function roomPhotoDiagram(
   stroke(doc, C.hair)
   doc.setLineWidth(0.3)
   doc.rect(ix, iy, iw, ih, 'S')
+  if (!callouts) return
 
   stroke(doc, C.green)
   doc.setLineWidth(0.4)

@@ -465,6 +465,31 @@ identical reason: it is a string union, the generic string copy would accept any
 unknown value falls through to the dimensions branch and reads fields volume mode never filled in —
 a silent zero-volume survey. Legacy rows default to `dimensions` and resolve exactly as before.
 
+### Where the render appears (2026-08-24)
+
+Both room-track surfaces now show the **same** application render, from one `ctx.roomImage`:
+
+| Where | Size | Callouts |
+|---|---|---|
+| Page 3, ROOM SIZE card | 68.7 × 38.6 mm | **yes** — length, width, height along the room's edges |
+| Page 1, panel 2 YOUR SPACE | 42.7 × 24 mm | **no** — volume and L × W × H are printed underneath instead |
+
+⚠️ **The takeaway's callouts are off for a measured reason, not a stylistic one.** That panel is
+`T.duo` = 46mm tall on a page whose bands are fixed constants, so the diagram slot is 27mm and
+cannot grow — the budget sums to 238mm against a `CONTENT_BOTTOM` of 242.4mm, leaving ~2mm. The
+callout padding costs 17mm in each direction, which in that slot yields a **17.8 × 24 → 17.8 × 10mm**
+picture with unreadable 7pt labels. Dropping the padding gives **42.7 × 24mm**. The panel already
+prints the volume and the dimensions as text directly below, so callouts there would repeat that
+in a space too small to read them.
+
+`roomPhotoDiagram(..., callouts)` carries this: `true` uses the callout padding and draws the three
+edges, `false` uses a 1.5mm margin and returns straight after the image and its hairline.
+
+**The fallback is unchanged and still matters.** `roomImage` is null for an unmapped application
+(`natatorium` has no pool artwork) and for any fetch or CORS failure, and both surfaces then draw
+the abstract isometric box with its own callouts, exactly as before. Verified against a natatorium
+survey: no render fetched, both surfaces fall back, still 5 pages.
+
 ## Dimension callouts on the room render (2026-08-24)
 
 The customer's L, W and H are drawn onto the application render, in the wizard's right rail and
@@ -579,7 +604,7 @@ the file is ~35 KB, prints crisply and stays text-searchable.
 |---|---|
 | **1** | **The takeaway infographic** — one page, the customer's own numbers |
 | 2 | Cover — project identity, four at-a-glance tiles, contact + project detail, purpose |
-| 3 | The space (isometric room diagram, design conditions, envelope) *or* the process spec |
+| 3 | The space (application render with L/W/H callouts, design conditions, envelope) *or* the process spec |
 | 4 | *Room only* — openings, internal loads, estimated breakdown bars, totals |
 | 5 | Equipment & utilities + standing engineering notes from the paper form |
 
