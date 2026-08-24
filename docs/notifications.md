@@ -57,6 +57,48 @@ failure being chased.
 | 19 | Weekly leadership update | `LEADERSHIP_UPDATE_EMAIL` → currently **lee.childers@** only | **Mondays 17:00 ET** |
 | 20 | PTO accrual run | — (no mail; a scheduled data job) | Mondays 08:00 UTC |
 | 21 | Form submissions, PTO requests, approvals | Per-form recipients | Immediately |
+| 22 | A customer requests portal access | Support desk + the three approving admins, individually | Immediately |
+
+### A portal-access request used to tell nobody (fixed 2026-08-24)
+
+A customer who has filed a support ticket can click **Request portal access** on the ticket success
+screen or on their `/support/status` result. Until 24 August that wrote a row to
+`customer_portal_requests` and notified **no one**. The customer saw *"we'll review it and email you
+once it's approved"*; the only thing that could surface the request was an admin opening
+`/admin/customers` and clicking a tab they had no reason to click. Two requests were found sitting
+there, one three days old.
+
+Two things now carry it, and they are deliberately different in kind:
+
+- **#22, the immediate alert** (`lib/resend-portal-access.ts`) — fires the moment the request lands.
+- **A digest section**, *Portal Access Awaiting Approval* — a standing list of everything still
+  pending, on every digest until it is decided.
+
+One is the nudge, the other the net. A request has to survive **both** to go quiet.
+
+**Who is told.** The shared desk (`SUPPORT_NOTIFICATION_EMAIL` → `iatsupport@`) plus the three admins
+who can act — `PORTAL_ACCESS_ALERT_EMAIL`, defaulting to **kacy@, crystal@, lee.childers@**. Both,
+for the reason `lib/ticket-recipients.ts` gives: the desk is the monitored record that survives
+someone being away, the named people are the ones who will do something. One email per recipient,
+not a shared `To:` line.
+
+⚠️ **Only a full `admin` can approve or deny.** Both `/api/admin/customers/invite` and the deny route
+use the strict `getAdminUser()`, so alerting a scoped role would be telling someone about a button
+they cannot press. If the approver roster changes, set `PORTAL_ACCESS_ALERT_EMAIL` in Vercel —
+no deploy needed — and check the person actually holds `role='admin'`.
+
+⚠️ **This email deliberately carries no free text from the customer.** Not an oversight: staff-bound
+mail is filtered by the Exchange rule `Block Bulk / Sales Emails`, which quarantines any external
+message containing phrases like *"act now"* or *"limited time"*, and SCL -1 does not exempt it.
+Ticket alerts quote the problem description verbatim and are exposed to exactly that. This one
+carries only short identity fields and a link, because the decision it asks for is "is this person
+who they say they are" — not a repair narrative. **Keep it that way.**
+
+The alert is **awaited, and its failure is swallowed**. Awaited because a detached promise on a
+serverless function can be frozen the instant the response returns — a send that simply never
+happens. Swallowed because the row is already committed: failing the customer's submission over our
+own mail relay would turn a notification problem into a customer-facing one. A lost alert degrades
+to the digest, which is what the digest half is for.
 
 ### The digest had never sent, and why (fixed 2026-08-20)
 
@@ -136,6 +178,23 @@ view would have shown every admin an empty section while ten sat there.
 unlike the ticket half, which approximates with `created_at` because tickets carry no separate
 assignment timestamp. The RFQ read **degrades rather than throws**: losing the ticket half is a bug,
 losing the RFQ half should still deliver the tickets.
+
+### The digest also covers portal-access requests (2026-08-24)
+
+One section, *Portal Access Awaiting Approval*, listing every `pending` row in
+`customer_portal_requests` — ticket number, who is asking, and how many days they have waited.
+
+⚠️ **Org-wide, and it cannot be anything else**: these rows have no owner field at all. Same
+reasoning as unclaimed RFQs above, one step further along. Read **once per run** and handed to every
+recipient, like the shared briefing paragraph, rather than re-queried per admin — the answer is
+identical for all of them. Like the RFQ half it **degrades to an empty list rather than throwing**,
+and it is read *after* the recipient roster so it can never be the thing that costs a run its claim
+on `digest_runs`.
+
+The subject line gains `, N portal access` only when N > 0, so a quiet day reads exactly as before.
+Both the section rows and the immediate alert link to `/admin/customers?tab=requests`, which
+deep-links to the tab — a link that drops you one click short of the thing it is telling you about
+is how a notification stops working.
 
 ### Leadership: three times a week, and what each run covers
 

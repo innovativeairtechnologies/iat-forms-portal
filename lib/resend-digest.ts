@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import type { DigestRfq, DigestTicket } from '@/lib/admin-digest'
+import type { DigestPortalRequest, DigestRfq, DigestTicket } from '@/lib/admin-digest'
 import { EMAIL_FROM, internalFrom } from '@/lib/email-from'
 
 // Internal admin email (daily digest + on-demand test-send). Kept separate
@@ -81,6 +81,34 @@ function rfqList(items: DigestRfq[], emptyText: string): string {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:20px;">${rows}</table>`
 }
 
+/** Pending portal-access requests. Third table in the same family as the two
+ *  above, with one difference worth knowing: this list is ORG-WIDE, because a
+ *  portal request has no owner to be "yours". The right-hand cell carries who is
+ *  asking and how long they have waited — the two things that decide whether it
+ *  needs picking up now. Deliberately no free text from the customer here; see
+ *  lib/resend-portal-access.ts for why staff-bound mail keeps clear of it. */
+function portalRequestList(items: DigestPortalRequest[], emptyText: string): string {
+  if (!items.length) {
+    return `<p style="margin:0 0 20px;color:#999;font-size:13px;">${esc(emptyText)}</p>`
+  }
+  const url = `${APP_URL}/admin/customers?tab=requests`
+  const rows = items.map(r => {
+    const age = r.ageDays === 0 ? 'today' : r.ageDays === 1 ? '1 day old' : `${r.ageDays} days old`
+    const who = r.company || r.contactName || r.email
+    return `<tr>
+      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;vertical-align:top;width:30%;">
+        <a href="${esc(url)}" style="color:#089447;font-weight:600;font-family:monospace;text-decoration:none;">${esc(r.ticketNumber || 'Request')}</a>
+      </td>
+      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;color:#555;vertical-align:top;">
+        <strong style="color:#333;">${esc(who)}</strong><br/>
+        <span style="font-size:13px;">${esc(r.email)} · ${esc(age)}</span>
+      </td>
+    </tr>`
+  }).join('')
+
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:20px;">${rows}</table>`
+}
+
 export type DigestEmailOpts = {
   to: string
   adminName: string
@@ -91,15 +119,19 @@ export type DigestEmailOpts = {
   assignedRfqs: DigestRfq[]
   agingRfqs: DigestRfq[]
   unclaimedRfqs: DigestRfq[]
+  /** ORG-WIDE, identical for every recipient — see getPendingPortalRequests(). */
+  portalRequests: DigestPortalRequest[]
 }
 
 /** Sends one admin's daily digest email: the shared AI briefing paragraph,
- *  tickets recently assigned to them, and their aging/overdue open tickets. */
+ *  tickets recently assigned to them, their aging/overdue open tickets, their
+ *  quote requests, and the org-wide queue of pending portal-access requests. */
 export async function sendAdminDigestEmail(opts: DigestEmailOpts) {
   const {
     to, adminName, briefing,
     assignedTickets, agingTickets, overdueTickets,
     assignedRfqs, agingRfqs, unclaimedRfqs,
+    portalRequests,
   } = opts
   const dashboardUrl = `${APP_URL}/admin`
 
@@ -134,12 +166,21 @@ export async function sendAdminDigestEmail(opts: DigestEmailOpts) {
     <p style="margin:0 0 8px;color:#c0392b;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Unclaimed Quote Requests</p>
     ${rfqList(unclaimedRfqs, 'Every quote request has an owner.')}
 
+    <!-- Portal access. Under its own rule again: unlike everything above it,
+         this queue is org-wide and the ask is a yes/no decision rather than a
+         piece of work to carry. It sits last because on a normal day it is the
+         shortest list and the one that should read as "nothing to do here". -->
+    <hr style="border:0;border-top:1px solid #eee;margin:28px 0 24px;" />
+
+    <p style="margin:0 0 8px;color:#333;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">Portal Access Awaiting Approval</p>
+    ${portalRequestList(portalRequests, 'No customers are waiting on portal access.')}
+
     <a href="${esc(dashboardUrl)}" style="display:inline-block;background:#089447;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;margin-top:4px;">Open Admin Dashboard</a>`
 
   const result = await resend.emails.send({
     from: FROM,
     to,
-    subject: `Your daily digest: ${assignedTickets.length} new, ${overdueTickets.length} overdue, ${unclaimedRfqs.length} unclaimed quote${unclaimedRfqs.length === 1 ? '' : 's'}`,
+    subject: `Your daily digest: ${assignedTickets.length} new, ${overdueTickets.length} overdue, ${unclaimedRfqs.length} unclaimed quote${unclaimedRfqs.length === 1 ? '' : 's'}${portalRequests.length ? `, ${portalRequests.length} portal access` : ''}`,
     html: shell('Daily Admin Digest', body),
   })
   if (result.error) console.error(`[resend] admin digest failed to ${to}:`, result.error)

@@ -261,6 +261,75 @@ export async function getAdminRfqDigest(adminId: string): Promise<AdminRfqDigest
   }
 }
 
+// ── Portal access requests ───────────────────────────────────────────────────
+
+export type DigestPortalRequest = {
+  id: string
+  company: string
+  contactName: string
+  email: string
+  ticketNumber: string
+  ageDays: number
+}
+
+/**
+ * Every PENDING self-serve portal-access request, org-wide.
+ *
+ * ⚠️ Not per-admin, and it cannot be: these rows have no owner field at all.
+ * Same reasoning as `unclaimed` in getAdminRfqDigest — a request belonging to
+ * nobody is exactly the shape a strictly per-person digest never mentions, and
+ * "nobody has looked at this" is the whole failure mode. Before this section
+ * existed the only surface for a pending request was a tab on /admin/customers
+ * that nobody had a reason to click; two requests sat there for days.
+ *
+ * Fetched ONCE per digest run and handed to every recipient's email, not
+ * re-queried per admin, because the answer is identical for all of them — the
+ * same treatment getSharedBriefing() gets.
+ *
+ * Degrades to an empty list on a read failure rather than throwing: losing this
+ * section must not cost the recipient their tickets and quotes.
+ */
+export async function getPendingPortalRequests(): Promise<DigestPortalRequest[]> {
+  const now = Date.now()
+
+  const { data, error } = await supabaseAdmin
+    .from('customer_portal_requests')
+    .select('id, ticket_id, requested_email, requested_company, requested_contact_name, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[admin-digest] portal request read failed:', error.message)
+    return []
+  }
+
+  const rows = data ?? []
+  if (!rows.length) return []
+
+  // Ticket numbers joined in manually rather than via an embed — the same
+  // untyped-query-builder caution app/admin/customers/page.tsx documents for
+  // this table, and one extra query either way.
+  const ticketIds = [...new Set(rows.map(r => r.ticket_id as string).filter(Boolean))]
+  const numbersById = new Map<string, string>()
+  if (ticketIds.length) {
+    const { data: tickets, error: tErr } = await supabaseAdmin
+      .from('tickets')
+      .select('id, ticket_number')
+      .in('id', ticketIds)
+    if (tErr) console.error('[admin-digest] portal request ticket join failed:', tErr.message)
+    for (const t of tickets ?? []) numbersById.set(t.id as string, (t.ticket_number as string) ?? '')
+  }
+
+  return rows.map(r => ({
+    id: r.id as string,
+    company: ((r.requested_company as string) ?? '').trim(),
+    contactName: ((r.requested_contact_name as string) ?? '').trim(),
+    email: ((r.requested_email as string) ?? '').trim(),
+    ticketNumber: numbersById.get(r.ticket_id as string) ?? '',
+    ageDays: Math.floor((now - new Date(r.created_at as string).getTime()) / 864e5),
+  }))
+}
+
 /** The one shared briefing paragraph for the day (same generator the
  *  dashboard widget uses) — generated once per digest run, not once per
  *  admin, to keep this to a single Claude call. */

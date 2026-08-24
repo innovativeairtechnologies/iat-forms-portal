@@ -68,6 +68,22 @@ export default function CustomersClient({
   // bulk delete can never touch rows outside the current view.
   useEffect(() => { sel.clear() }, [filter, search]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ?tab=requests deep-links straight to a tab. The digest email and the
+  // portal-access alert both link here, and without this they landed on "All"
+  // — a link that drops you one click short of the thing it was telling you
+  // about is how a notification stops working.
+  //
+  // Read from window on mount rather than via useSearchParams(): the server
+  // renders 'all' either way, so setting it in an effect avoids a hydration
+  // mismatch, and it keeps this page off the useSearchParams Suspense/CSR
+  // bailout entirely. Runs once — a later manual tab click must stick.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    if (tab === 'requests' || tab === 'warranty' || tab === 'active' || tab === 'inactive') {
+      setFilter(tab)
+    }
+  }, [])
+
   return (
     <ListCardPage>
       <ListCard>

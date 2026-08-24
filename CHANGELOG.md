@@ -10,6 +10,34 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — A customer asking for portal access now reaches someone
+
+A customer who has filed a support ticket can ask for an account with one button, and is told IAT
+will review it and email them once it is approved. That request has been going into a queue that
+notified nobody. The only way to find one was to open the Customers page and click a tab there was
+no reason to click. Two requests were sitting in it, one of them three days old.
+
+Requests now reach people two ways, on purpose. **An alert goes out the moment one lands** — to the
+support desk and to the three admins who can actually approve it, each getting their own copy rather
+than a shared address where everyone assumes someone else has it. **And every request still waiting
+is listed on the daily digest**, under *Portal Access Awaiting Approval*, with who is asking and how
+many days they have been waiting. The first is the nudge; the second is the net, and a request has to
+be missed by both to go quiet. The subject line only mentions portal access when something is
+actually pending, so a quiet day reads exactly as it did before.
+
+The links in both emails go to the Requests tab rather than the customer list — a link that leaves
+you one click short of the thing it just told you about is how a notification stops working.
+
+Two smaller decisions worth knowing. The alert carries the company, contact, email, phone and ticket
+number and **nothing the customer wrote themselves**: our own mail filter quarantines external
+messages containing ordinary sales phrasing, and the decision being asked for does not need a repair
+narrative. And a failure to send is logged rather than raised — the customer's request is saved
+before the email is attempted, so a problem with our mail must not become a problem with their
+submission. A lost alert falls back to the digest.
+
+Only a full admin can approve or deny — that was already true and is unchanged. The approver list can
+be changed from Vercel without a deploy.
+
 ## 2026-08-24 — The quote request PDF drops a blank page
 
 Every quote request for a room came back as a six-page document, and the fourth page held one short

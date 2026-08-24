@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
+import { sendPortalAccessRequestAlert } from '@/lib/resend-portal-access'
 
 // Neutralize LIKE/ILIKE wildcards so a value like "%" can't match every row.
 function escapeLike(value: string): string {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     // Re-prove ownership exactly like /api/tickets/status.
     const { data: ticket } = await supabaseAdmin
       .from('tickets')
-      .select('id, customer_id, serial_number')
+      .select('id, ticket_number, customer_id, serial_number')
       .ilike('ticket_number', escapeLike(ticketNumber))
       .ilike('customer_email', escapeLike(email))
       .maybeSingle()
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
       suggestedCustomerId = eq?.customer_id ?? null
     }
 
-    const { error } = await supabaseAdmin
+    const { data: inserted, error } = await supabaseAdmin
       .from('customer_portal_requests')
       .insert({
         ticket_id: ticket.id,
@@ -89,6 +90,8 @@ export async function POST(req: NextRequest) {
         requested_phone: fullTicket?.customer_phone ?? null,
         suggested_customer_id: suggestedCustomerId,
       })
+      .select('id')
+      .maybeSingle()
 
     // Unique-violation from a concurrent double-submit — treat as success, not an error.
     if (error?.code === '23505') {
@@ -97,6 +100,41 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('[request-account] insert failed:', error)
       return NextResponse.json({ error: 'Could not submit the request.' }, { status: 500 })
+    }
+
+    // ── Tell the desk and the approvers ──
+    // Awaited, not fire-and-forget: this runs on a serverless function that can
+    // be frozen the instant the response is returned, so a detached promise is a
+    // send that may simply never happen. The cost is a second or two on a
+    // request the customer already sees as "submitted".
+    //
+    // Wrapped and swallowed because the row is ALREADY committed — the customer's
+    // request succeeded, and failing their submission over our own mail relay
+    // would turn a notification problem into a customer-facing one. A lost alert
+    // degrades to the daily digest, which lists the same pending request every
+    // afternoon until someone decides it.
+    try {
+      let suggestedCompany: string | null = null
+      if (suggestedCustomerId) {
+        const { data: sc } = await supabaseAdmin
+          .from('customers')
+          .select('company_name')
+          .eq('id', suggestedCustomerId)
+          .maybeSingle()
+        suggestedCompany = sc?.company_name ?? null
+      }
+
+      await sendPortalAccessRequestAlert({
+        requestId: inserted?.id ?? 'unknown',
+        email: email.toLowerCase(),
+        company: fullTicket?.customer_company ?? null,
+        contactName: fullTicket?.customer_name ?? null,
+        phone: fullTicket?.customer_phone ?? null,
+        ticketNumber: ticket.ticket_number ?? ticketNumber,
+        suggestedCompany,
+      })
+    } catch (alertErr) {
+      console.error('[request-account] alert failed (request still queued):', alertErr)
     }
 
     return NextResponse.json({ status: 'submitted' }, { status: 201 })

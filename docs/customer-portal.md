@@ -44,6 +44,15 @@ auto-created account:
   if a suggested match exists, a banner offers **"attach to this company
   instead"** rather than creating a duplicate. **Deny** just closes the request
   out (optional reason, no email sent).
+- **Somebody is told a request exists (2026-08-24).** For its first fourteen months
+  the queue was silent: a request wrote its row and notified nobody, while the
+  customer was told IAT would review it. Now an alert goes to the support desk and
+  the three approving admins the moment it lands, and every pending row is listed
+  in the daily digest until it is decided. `/admin/customers?tab=requests`
+  deep-links to the tab so those links land on the queue rather than the
+  customer list. Full detail — recipients, why the email carries no free text,
+  and why the send is awaited but its failure swallowed — in
+  [`notifications.md`](notifications.md) (#22).
 - Approving stamps `tickets.customer_id` (migration `034`) onto the
   triggering ticket **and backfills** any other historical ticket from the
   same email that isn't linked yet — additive to `POST

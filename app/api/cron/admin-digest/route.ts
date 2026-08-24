@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getNyWallClock, isDigestTime, getDigestRecipients, getAdminTicketDigest, getAdminRfqDigest, getSharedBriefing } from '@/lib/admin-digest'
+import { getNyWallClock, isDigestTime, getDigestRecipients, getAdminTicketDigest, getAdminRfqDigest, getSharedBriefing, getPendingPortalRequests } from '@/lib/admin-digest'
 import { sendAdminDigestEmail } from '@/lib/resend-digest'
 import { runRfqReminders } from '@/lib/rfq-reminders'
 
@@ -86,6 +86,14 @@ export async function GET(req: NextRequest) {
     const { briefing, generatedAt } = await getSharedBriefing()
     const admins = await getDigestRecipients()
 
+    // Org-wide and identical for everyone, so it is read once per run rather
+    // than once per admin — the same treatment the briefing paragraph gets. It
+    // reads AFTER the recipient list on purpose: getPendingPortalRequests()
+    // swallows its own errors and returns [], so it can never be the thing that
+    // costs the run its claim, and putting it here keeps the expensive/failable
+    // work (briefing, roster) first.
+    const portalRequests = await getPendingPortalRequests()
+
     for (const admin of admins) {
       if (!admin.email) continue
       try {
@@ -101,6 +109,7 @@ export async function GET(req: NextRequest) {
           assignedRfqs: rfq.assigned,
           agingRfqs: rfq.aging,
           unclaimedRfqs: rfq.unclaimed,
+          portalRequests,
         })
         sent++
       } catch (perAdminErr) {
