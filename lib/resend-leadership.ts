@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { EMAIL_FROM } from './email-from'
+import { EMAIL_FROM, internalFrom } from './email-from'
 import type { LeadershipUpdate } from './leadership-update'
 
 // Delivery for the weekly leadership update (lib/leadership-update.ts).
@@ -10,7 +10,7 @@ import type { LeadershipUpdate } from './leadership-update'
 // address because a variable was cleared is worse than not sending at all.
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = EMAIL_FROM.PORTAL
+const FROM = internalFrom(EMAIL_FROM.PORTAL)
 
 function esc(s: string): string {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

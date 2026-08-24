@@ -143,9 +143,23 @@ Setting `RESEND_FROM_INTERNAL` (e.g. `IAT Portal <noreply@portal.dehumidifiers.c
 staff-bound alerts onto a subdomain that is **not** a protected domain. The spoofing verdict
 stops applying, and the subdomain can be allow-listed the ordinary way.
 
-It covers ticket desk alerts, the admin digest, troubleshooting alerts, form-submission
-notifications, time-off requests, and the portal contact relay. **Customer-facing mail is
-deliberately excluded** and still sends from `dehumidifiers.com`.
+It covers every send addressed to IAT staff. Action-triggered: ticket desk alerts, the customer
+reply alert, the admin digest, troubleshooting alerts, form-submission notifications, time-off
+requests, the portal contact relay, and the sales-desk notice on a new quote request.
+Schedule-triggered: ticket reminders, quote-request reminders, the unassigned-work escalation to
+leadership, and the weekly leadership update.
+
+⚠️ The schedule-triggered half was **missed** in the first pass (2026-08-20) and only caught on
+2026-08-24, after two weekend reminders were found sitting in quarantine. If you add a new sender,
+ask who receives it, not what triggers it. The reminders are the safety net for a ticket nobody has
+picked up — they fire exactly when everything else has already been missed, which makes them the
+worst thing to leave on the wrong domain.
+
+**Customer-facing mail is deliberately excluded** and still sends from `dehumidifiers.com`. That
+includes the quote-request confirmation, which lives in `lib/resend-rfq.ts` alongside the sales-desk
+notice that did move — the two sends in that one file intentionally use different domains.
+`app/api/tools/duct-traverse/email` also stays, because it mails an arbitrary address chosen by the
+staff member and can legitimately reach a customer.
 
 ⚠️ Never register `portal.dehumidifiers.com` as a protected domain in the mail filter.
 Doing so re-creates the exact problem this works around.

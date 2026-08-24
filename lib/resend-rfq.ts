@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { EMAIL_FROM } from './email-from'
+import { EMAIL_FROM, internalFrom } from './email-from'
 import type { RfqData } from './rfq'
 import { customerTicketEmailsEnabled } from './resend-customer-tickets'
 
@@ -19,7 +19,7 @@ import { customerTicketEmailsEnabled } from './resend-customer-tickets'
 // address they typed is the only one we can confirm we captured correctly.
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = EMAIL_FROM.PORTAL
+const FROM = internalFrom(EMAIL_FROM.PORTAL)
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL
   || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://iatportal.vercel.app')
 

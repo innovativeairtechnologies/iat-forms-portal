@@ -10,6 +10,27 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — The rest of the staff email moves to the portal domain
+
+Ticket alerts started arriving reliably on 20 August. The reminders did not, and over the weekend
+two of them were quarantined: "Ticket IAT-TEST-9006 has gone quiet" on Saturday and "2 of your
+support tickets have gone quiet" on Sunday.
+
+The reason is that the earlier change covered the mail an action triggers — a new ticket, a customer
+reply, the daily digest — and missed the mail a schedule triggers. Five senders were still on the
+old domain: ticket reminders, quote-request reminders, the unassigned-work escalation to leadership,
+the weekly leadership update, and the sales-desk notice on a new quote request. All of them go to
+staff, so all of them hit the same filtering the ticket alerts used to.
+
+They now send from the portal domain like everything else addressed to staff.
+
+Mail to customers is unchanged and still comes from the main domain. That includes the quote-request
+confirmation, which sits in the same file as one of the senders that moved.
+
+Worth stating plainly: the reminders are the safety net that catches a ticket nobody has picked up.
+They were the wrong thing to leave behind, because they are what fires precisely when everything
+else has already been missed.
+
 ## 2026-08-24 — A customer asking for portal access now reaches someone
 
 A customer who has filed a support ticket can ask for an account with one button, and is told IAT
