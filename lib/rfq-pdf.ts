@@ -296,22 +296,33 @@ function spacePage(ctx: Ctx) {
   y += 6
 
   // Envelope
-  y = ensure(ctx, y, 9 + tableH(6), 'The space', 'Construction and envelope')
-  overline(doc, 'CONSTRUCTION & ENVELOPE', M, y, C.inkMuted)
-  y += 4
   // Tightness sets the whole infiltration line (Loose is 6× Tight) and used to be
   // recorded nowhere on the document — only inside a breakdown-bar caption. The
   // rate is spelled out because the band name alone does not say what was assumed.
   // The `??` fallback mirrors estimateLoad exactly, so a survey stored under a
   // retired band prints the rate the math actually used rather than a blank.
   const leakRate = TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
-  y = table(doc, M, y, CW, ['Element', 'Material / rating'], [
+  const envelopeRows: string[][] = [
     ['Walls', data.wallMaterial],
     ['Roof / ceiling', data.ceilingMaterial],
     ['Floor', data.floorMaterial],
     ['Vapor barrier', data.vaporBarrier],
     ['Building tightness', `${data.tightness} — ${leakRate} cu.ft/hr per sq.ft of envelope`],
-  ], [0.34, 0.66])
+  ]
+  // Reserve exactly what this block draws: the 4mm below the overline, plus the
+  // table. tableH() ALREADY allows for the header row, so the count passed is the
+  // DATA rows — asking for tableH(rows + 1) double-counts it.
+  //
+  // ⚠️ This is the last block on the page, so over-reserving does not shuffle
+  // anything down, it emits a whole continuation page holding one short table.
+  // At 9 + tableH(6) = 65mm against the 59.1mm a typical room survey leaves, it
+  // did that on EVERY room-track PDF — which is exactly what moving the doors
+  // table to the load page was meant to prevent. Measured, not estimated: the
+  // block is 52mm and clears CONTENT_BOTTOM by 7.1mm.
+  y = ensure(ctx, y, 4 + tableH(envelopeRows.length), 'The space', 'Construction and envelope')
+  overline(doc, 'CONSTRUCTION & ENVELOPE', M, y, C.inkMuted)
+  y += 4
+  y = table(doc, M, y, CW, ['Element', 'Material / rating'], envelopeRows, [0.34, 0.66])
   y += 9
 
   // Openings

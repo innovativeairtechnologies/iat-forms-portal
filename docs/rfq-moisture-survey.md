@@ -405,8 +405,24 @@ Three things in `loadRoomRender()` are not optional:
 The ROOM DIMENSIONS card grew from 62mm to 76mm to give the picture somewhere to sit. That came out
 of this page's slack; the envelope section below still calls `ensure()`, so a long survey spills to
 a continuation page exactly as before. Verified against the generated file: one `/DCTDecode` stream,
-the image placed at 68.7 × 38.6 mm, all three callout labels present in the content streams, and
-still five pages.
+the image placed at 68.7 × 38.6 mm, all three callout labels present in the content streams.
+
+⚠️ **"Still five pages" was wrong, and stayed wrong for three days.** It was five in the sense that
+nothing overran — but the envelope table stopped fitting and moved onto a continuation page of its
+own, so **every** room-track PDF was six pages, two of them mostly empty. The 14mm was not really
+the cause: `ensure()` was being asked for `9 + tableH(6)` = 65mm to draw a block that occupies
+52mm, and the 14mm was merely what took the slack below that inflated figure. `tableH()` already
+allows for the header row, so passing `rows + 1` double-counts it. Fixed 2026-08-24 by reserving
+`4 + tableH(envelopeRows.length)` — measured from a rendered file rather than inferred: y reaches
+187.3mm, `CONTENT_BOTTOM` is 246.4mm, the block is 52mm, and it clears by 7.1mm.
+
+⚠️ **Over-reserving in the LAST block on a page is not a safe error.** Everywhere else a too-large
+`ensure()` just shuffles content down. Here there is nothing below it, so the only thing the
+reserve can do is emit an entire continuation page holding one short table — which is precisely
+what moving the doors table off this page was meant to prevent.
+
+The general lesson: **a page-count claim is worth exactly what the rendered file says.** This one
+was reasoned from the arithmetic of a slack budget and checked against nothing.
 
 
 ---
@@ -562,8 +578,35 @@ IAT's required wording, applied by `stampEveryPage()` after all content is laid 
 
 ### Verifying a PDF change
 
-Render it and look at it — layout bugs here are invisible to the type checker. Poppler's
-`pdftoppm -png -r 110 out.pdf page` is on the dev box and turns each page into an image.
+Render it and look at it — layout bugs here are invisible to the type checker, and the page-count
+error above survived a type check, a build, a deploy and a written verification note. Poppler's
+`pdftoppm -png -r 130 out.pdf page` is on the dev box and turns each page into an image;
+`pdftotext -layout` gives you something greppable for the strings.
+
+**Getting a file to look at, without a browser.** `generateRfqPdf()` is browser-only — it early-
+returns `null` from `loadLogo`/`loadRoomRender` when `window` is undefined, and both go through
+a `<canvas>` because jsPDF cannot read the webp the render bucket stores. That does not mean it
+needs a browser to *check*. Transpile the module graph and shim the three browser APIs:
+
+```bash
+node node_modules/typescript/bin/tsc \
+  lib/rfq-psych.ts lib/rfq.ts lib/render-assets.ts lib/rfq-renders.ts lib/rfq-pdf.ts \
+  --module commonjs --target es2022 --moduleResolution node --esModuleInterop \
+  --skipLibCheck --outDir <scratch>
+```
+
+then run the real `generateRfqPdf` with `window`, `Image` and `document.createElement('canvas')`
+stubbed — `Image` fetching the bucket URL (or reading `public/` for a rooted path) and `toDataURL`
+shelling out to `sharp`, which is already a dependency. Two details decide whether this works:
+
+- **`toDataURL` is synchronous** and `sharp` is not, so the encode has to be a synchronous child
+  process (`execFileSync`). Returning a promise from the shim silently embeds nothing.
+- **Shim `window` first.** Without it both loaders return `null` and you get a PDF with no logo
+  and no render — which looks like a broken fetch and is really a missing global.
+
+Test at least the volume/dimensions pair (they must differ **only** in the heading and the
+"ft assumed" suffix), one survey with a long looked-up design source (it is the note above the
+envelope table that decides whether that table fits), and one process-track survey.
 
 ---
 

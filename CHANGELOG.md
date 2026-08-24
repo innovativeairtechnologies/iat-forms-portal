@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-24 — The quote request PDF drops a blank page
+
+Every quote request for a room came back as a six-page document, and the fourth page held one short
+table — walls, ceiling, floor, vapor barrier, tightness — with two-thirds of the sheet empty above
+it. The page before it was two-thirds empty as well. It has been that way since the room
+illustration went onto the survey PDF on 21 August.
+
+The table fitted the whole time. The layout code asks "is there room for what I am about to draw?"
+before each section, and for this one it was asking for about 65mm to draw 52mm — it counted the
+table's header row twice. With the illustration taking some of the page's spare space, that
+inflated figure was the difference between the table sitting where it belonged and being pushed
+onto a page of its own.
+
+Room quote requests are now **five pages**, with construction and envelope back at the foot of the
+space page where it reads as part of that page. Nothing else moved: the numbers, the callouts on
+the room illustration and the volume-mode wording are unchanged, and the process-track document
+was never affected.
+
+Found by generating the file and looking at it. The change that introduced this was type-checked,
+built, deployed and written up as "still five pages" — the count was worked out from the layout
+arithmetic and never checked against a rendered document. The survey documentation now carries a
+way to produce one of these PDFs without a browser, so the next layout change can be looked at
+instead of reasoned about.
+
 ## 2026-08-24 — Session handoff record: disaster recovery and room-size entry
 
 Business-continuity record for the session that built the stack backup and the volume option:
@@ -306,7 +330,7 @@ case where the picture cannot be fetched, still get the drawn box exactly as bef
 an illustration of the two ways a person adds water to a room, breathing and perspiring. People
 are the load customers most often assume is negligible.
 
-Also corrected three British spellings that reached the customer PDF: "vapour barrier", "vapour
+Also corrected three British spellings that reached the customer PDF: "vapor barrier", "vapour
 retarder classes" and "fibreglass".
 
 ## 2026-08-21 — The quote request shows you the room you are describing
