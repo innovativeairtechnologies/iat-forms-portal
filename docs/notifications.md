@@ -277,37 +277,70 @@ over that weekend, and all 7 report `"enabled": true` under
 **So:** when a scheduled job matters that day, stop deploying around it. But measure that window
 from when the job **actually runs**, not from its schedule — see immediately below.
 
-### 🔴 Crons fire 30–55 minutes LATE, so the naive exclusion window guards the wrong time
+### 🔴 Crons fire LATE, so the exclusion window starts at the NOMINAL time
 
-Measured 2026-08-24 from the reminder stamps (`tickets` / `rfq_requests` →
-`assignee_nudged_at`, `unclaimed_reminded_at`, `escalated_at`). Those stamps are the only durable
-record of when a cron truly executed — Vercel's runtime logs on this project return nothing.
+⚠️ **An earlier version of this section (written the morning of 2026-08-24) gave a table saying the
+window opens at nominal + 25 minutes. That was wrong, and it caused a real bad decision the same
+afternoon** — a deploy went out at 16:50 ET on the reasoning that the 16:30 digest "really runs at
+16:57, so there is margin". Do not reintroduce a rule that opens the window after the nominal time.
 
-| Nominal (UTC) | Actually ran | Lag |
+**The window opens at NOMINAL and stays open for at least an hour.** A production deploy
+re-registers the project's cron jobs, so a run that has not fired yet when the new deployment goes
+live is at risk regardless of how far past its nominal time it is.
+
+| Job | Nominal (ET) | Do not deploy |
 |---|---|---|
-| 2026-08-22 13:00 | 13:47:58 / 13:53:23 | **47 / 53 min** |
-| 2026-08-23 13:00 | 13:47:58 / 13:53:23 | **47 / 53 min** |
-| 2026-08-21 13:00 | 13:27 | 27 min |
+| reminders (daily) | 09:00 | **09:00 – 10:00** |
+| accrue-pto (Mon) | 09:00 | **09:00 – 10:00** |
+| digest (daily) | 16:30 | **16:30 – 17:30** |
+| leadership (Mon/Wed/Fri) | 18:00 | **18:00 – 19:00** |
 
-The 09:00 ET reminders therefore really execute around **09:47 ET**. Someone who dutifully avoids
-08:40–09:20 and then ships at 09:30 lands directly on the run — which is exactly the mistake the
-rule above was written to prevent.
+#### How late, honestly
 
-**Compute the exclusion from nominal + 30..55 minutes.** In ET that means roughly:
+**The evidence is thin — two clean observations per job.** Say that out loud rather than quoting a
+bound; three sessions spent an hour on 2026-08-24 reasoning from numbers that turned out to be
+artifacts.
 
-| Job | Nominal | Do not deploy |
+Single-entry crons are the only clean sample, because their `sent_at` can be attributed to one
+schedule entry. From the reminder stamps (`assignee_nudged_at`, `unclaimed_reminded_at`,
+`escalated_at` — the only durable record, since runtime logs on this project return nothing):
+
+| Nominal (UTC) | Ran | Lag |
 |---|---|---|
-| reminders (daily) | 09:00 | **09:25 – 10:10** |
-| accrue-pto (Mon) | 09:00 | **09:25 – 10:10** |
-| digest (daily) | 16:30 | **16:55 – 17:40** |
-| leadership (Mon/Wed/Fri) | 18:00 | **18:25 – 19:10** |
+| 2026-08-22 13:00 | 13:47:58 / 13:53:23 | 47 / 53 min |
+| 2026-08-23 13:00 | 13:47:58 / 13:53:23 | 47 / 53 min |
 
-⚠️ The lag is stable but not constant (27 min on 08-21 against 47 on 08-22/23), so treat it as a
-band, not an offset to subtract.
+So: **wide, variable, and barely measured.** Roughly half an hour to just under an hour on two
+days of stamp data — and the earlier Resend-timestamp measurement in this same doc puts the spread
+at **14 to 63 minutes** across four jobs. Treat the whole thing as "anywhere up to about an hour",
+not as a bound anyone has established.
+
+#### ⚠️ Two traps that produced wrong numbers on 2026-08-24
+
+**1. `admin-digest` has TWO entries (20:30 and 21:30 UTC), so `sent_at` cannot be attributed to a
+schedule entry without care.** `digest_runs` for 08-20 shows 21:33:53Z. Read as the 20:30 entry
+that is a 63-minute lag; read as the 21:30 entry it is 3.9 minutes. **Both are possible and this one
+is genuinely unresolved** — the section above ("The digest had never sent") independently measured
+14-63 minute lags on 2026-08-20 from Resend timestamps across four different jobs, so a 63-minute
+lag on this project is entirely plausible.
+
+The point is not which reading wins. It is that a two-entry job cannot be used as lag evidence at
+all, because the datapoint is ambiguous by construction. Use the single-entry crons for that.
+
+**2. "It has not run yet" is not evidence that it was eaten.** Late and lost look identical until
+the full delay budget has passed. On 08-24 an absent `digest_runs` row at 21:24 was diagnosed as
+"the deploy ate it" — by two separate sessions — with no evidence beyond the row being missing.
+Wait out the budget before concluding anything.
+
+⚠️ **Triggering a job by hand claims the day.** `vercel crons run /api/cron/admin-digest` at 21:25
+on 08-24 wrote the `digest_runs` row 4 seconds later, which means any later natural invocation
+no-ops — and whether the 20:30 entry would have arrived became permanently unanswerable. Recovering
+a run by hand is right when the day's mail matters, but it destroys the evidence. Decide which you
+want first.
 
 This is also why `withinSendWindow` on the leadership job is a two-hour band (18:00–20:00) rather
-than an hour: nominal 18:00 ET really lands near 18:47 ET, and an hour-wide check would have been
-uncomfortably close to its own edge.
+than an hour: nominal 18:00 ET can land near 18:50, and an hour-wide check would sit uncomfortably
+close to its own edge.
 
 **And when a cron "fails", check the deploy timeline FIRST** — before the route, the guard or
 the secret. On 2026-08-21 an entire evening went into the route before anyone looked at the
