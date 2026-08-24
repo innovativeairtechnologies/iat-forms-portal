@@ -106,9 +106,17 @@ to the digest, which is what the digest half is for.
 `CRON_SECRET` found on 2026-08-17 was real but was not the whole cause — fixing it
 only moved the failure somewhere quieter.
 
-**Vercel fires crons on this project 14 to 63 minutes late.** Measured from Resend
-send timestamps: 13:00→13:41, 21:30→22:03, 22:00→22:42, and the digest itself at
-20:30→21:33. `isDigestTime()` accepted a **ten-minute** window (16:25–16:34 NY)
+**Vercel fires crons on this project tens of minutes late — 33 to 42 on the measurements that
+can actually be attributed.** From Resend send timestamps: 13:00→13:41 (41 min), 21:30→22:03
+(33 min), 22:00→22:42 (42 min).
+
+⚠️ This line used to read "14 to 63 minutes" and cited a fourth measurement, "the digest itself at
+20:30→21:33". **Both ends of that range were unsupported by the very list beneath it** — the four
+figures are 41, 33, 42 and 63, so nothing is near 14 — and the 63 is the 2026-08-20 `digest_runs`
+row, which is **ambiguous**: `admin-digest` has entries at BOTH 20:30 and 21:30 UTC, so 21:33:53Z
+is either the first running 63 min late or the second running 3.9 min late. It was then requoted
+twice more in this file as if it were established. Corrected 2026-08-24. Do not reintroduce a
+bound; see "How late, honestly" below. `isDigestTime()` accepted a **ten-minute** window (16:25–16:34 NY)
 against an entry scheduled for 16:30 exactly, so every invocation arrived after it
 had closed.
 
@@ -135,8 +143,12 @@ failure fetching the briefing or the recipient list burned the whole day silentl
 claim is now released when `sent === 0`, guarded so a partial send can never be
 retried into duplicates.
 
-**First successful send: 2026-08-20, 3 recipients.** It fired 63 minutes late and
-landed in hour 17 — `hour === 16` would have missed again.
+**First successful send: 2026-08-20, 3 recipients.** It landed at 21:33:53Z = **17:33 NY**, i.e.
+in hour 17 — so `hour === 16` would have missed again.
+
+⚠️ That conclusion is **independent of the lag dispute**: 21:33:53Z is hour 17 whether it was the
+20:30 entry 63 minutes late or the 21:30 entry 3.9 minutes late. The window widening is sound; only
+the "63 minutes" attribution was ever in question.
 
 ⚠️ Vercel's runtime logs are useless for confirming a cron ran here: wide queries time
 out, historical ones return `ExceedsBillingLimitError`, and cron invocations did not
@@ -214,8 +226,8 @@ went out on Wednesday and Friday. `?edition=8.17.26` still rebuilds any past wee
 
 ⚠️ **The hour check had to widen, and a claim had to come with it.** `is5pmEastern()` tested
 `hour === 17` and survived only because exactly one cron entry could ever land inside that hour.
-Crons here run **up to 63 minutes late**, so a 6pm entry arriving at 19:03 would have silently sent
-nothing — the identical failure that stopped the daily digest sending for months. The window is now
+Crons here run **tens of minutes late, and the upper bound is not established** (see "How late,
+honestly"), so a 6pm entry arriving well into the next hour would have silently sent nothing — the identical failure that stopped the daily digest sending for months. The window is now
 18:00–20:00, and `leadership_last_sent` in `app_settings` claims the NY day so a wide window cannot
 send several copies.
 
@@ -310,10 +322,17 @@ schedule entry. From the reminder stamps (`assignee_nudged_at`, `unclaimed_remin
 | 2026-08-22 13:00 | 13:47:58 / 13:53:23 | 47 / 53 min |
 | 2026-08-23 13:00 | 13:47:58 / 13:53:23 | 47 / 53 min |
 
-So: **wide, variable, and barely measured.** Roughly half an hour to just under an hour on two
-days of stamp data — and the earlier Resend-timestamp measurement in this same doc puts the spread
-at **14 to 63 minutes** across four jobs. Treat the whole thing as "anywhere up to about an hour",
-not as a bound anyone has established.
+So: **wide, variable, and barely measured.** Everything that can actually be attributed:
+
+| Source | Lag |
+|---|---|
+| Resend timestamps, three unambiguous jobs (08-20) | 33-42 min |
+| Reminder stamps, single-entry crons (08-22, 08-23) | 47-53 min |
+| Everything else | ambiguous or absent |
+
+**Do not quote a bound in either direction.** "Anywhere up to about an hour" is as far as this data
+goes. In particular there is no evidence for a 14-minute lower bound anywhere in this file, and the
+only measurement above 53 minutes is the ambiguous 08-20 digest row.
 
 #### ⚠️ Two traps that produced wrong numbers on 2026-08-24
 
