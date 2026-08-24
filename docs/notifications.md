@@ -326,9 +326,20 @@ So: **wide, variable, and barely measured.** Everything that can actually be att
 
 | Source | Lag |
 |---|---|
+| **Leadership breadcrumb, 2026-08-24 (cleanest datapoint we have)** | **17m 47s** |
 | Resend timestamps, three unambiguous jobs (08-20) | 33-42 min |
 | Reminder stamps, single-entry crons (08-22, 08-23) | 47-53 min |
 | Everything else | ambiguous or absent |
+
+⚠️ **The 17m47s reading disproves the 33-minute floor** this table asserted earlier the same day.
+`leadership_last_invocation` stamped `at 2026-08-24T22:17:47.666Z` against a 22:00:00Z entry, and it
+is unambiguous — the paired 23:00Z entry had not fired. It is also the only measurement here taken
+from a breadcrumb the route writes about ITSELF, rather than inferred from a side effect, which
+makes it the most trustworthy of the three sources.
+
+So the original "14 to 63" was **not** invented at the low end after all; something near it was
+probably real. The honest span across everything measured is roughly **18 to 53 minutes**, with the
+top end disputed. Still: do not quote a bound.
 
 **Do not quote a bound in either direction.** "Anywhere up to about an hour" is as far as this data
 goes. In particular there is no evidence for a 14-minute lower bound anywhere in this file, and the
