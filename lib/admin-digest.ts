@@ -72,24 +72,42 @@ export function getNyWallClock(): { hour: number; minute: number; dateISO: strin
  * leadership report survives on a bare hour check only because it is scheduled at
  * :00, so its whole delay budget fits inside the hour.)
  *
- * ── Why 16..18, and why excluding 15 matters ────────────────────────────────
+ * ── Why 18..20, and why excluding 17 matters ────────────────────────────────
  * Correctness now rests on `digest_runs`' UNIQUE index on run_date, not on hitting
  * a narrow time: the first invocation of the NY day claims the run and any later
  * one no-ops. The hour range is only a sanity bound, so a wildly misfired
  * invocation cannot mail everyone at 3am.
  *
- * Dropping 15 is what keeps the send at ~4:30pm in BOTH seasons, because the
+ * MOVED TO 6:00pm ON 2026-08-25. The owner deploys to production most days between
+ * 4:30 and 5:30pm ET, which is exactly where the digest used to sit — a deploy
+ * re-registers the project's crons and any run that has not fired yet is at risk,
+ * so the job was scheduled into its own worst hour. 6:00pm clears that, and the
+ * digest lands in the inbox for a next-morning read either way.
+ *
+ * ⚠️ AND IT ADDS A THIRD ENTRY, WHICH IS THE POINT. The old pair gave EDT a
+ * backstop but left EST with NONE: 15:30 NY fell outside the window and was
+ * skipped, so 16:30 was the only entry that could ever send, and one lost
+ * invocation in winter meant no digest at all. That gap arrives with the November
+ * clock change. Three entries close it in both seasons.
+ *
+ * Dropping 17 is what keeps the send at ~6:00pm in BOTH seasons, because the
  * earliest eligible entry is the one that claims:
  *
- *              20:30 UTC          21:30 UTC          sends
- *   EDT        16:30 NY  CLAIMS   17:30 NY  no-op    ~4:30-4:45pm
- *   EST        15:30 NY  skipped  16:30 NY  CLAIMS   ~4:30-4:45pm
+ *              22:00 UTC          23:00 UTC          00:00 UTC        sends
+ *   EDT        18:00 NY  CLAIMS   19:00 NY  backstop 20:00 NY  backstop  ~6:00-6:55pm
+ *   EST        17:00 NY  skipped  18:00 NY  CLAIMS   19:00 NY  backstop  ~6:00-6:55pm
  *
- * Tolerates roughly ninety minutes of lateness in either season, against a worst
- * observed forty-two. No seasonal maintenance, and vercel.json is unchanged.
+ * ⚠️ 00:00 UTC is the PREVIOUS ET DAY (8:00pm EDT / 7:00pm EST), so getNyWallClock()
+ * resolves it to the right run_date and it backstops the correct day. That is also
+ * why the leadership job sits at :30 past — see its route. This route's RFQ sweep
+ * runs BEFORE the window guard, so even a window-skipped invocation here sends
+ * mail, and the two jobs must not share a UTC minute.
+ *
+ * Tolerates roughly ninety minutes of lateness in either season. No seasonal
+ * maintenance needed.
  */
 export function withinDigestWindow(hour: number): boolean {
-  return hour >= 16 && hour <= 18
+  return hour >= 18 && hour <= 20
 }
 
 /** True if this invocation may claim and send today's digest. */

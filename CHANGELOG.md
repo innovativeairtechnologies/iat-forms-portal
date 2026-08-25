@@ -10,6 +10,31 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-25 — Both scheduled emails move to the evening, and stop dropping in winter
+
+We release to the live site most days between 4:30 and 5:30 in the afternoon. The daily digest was
+scheduled for 4:30 — sitting in the middle of that window. A release restarts the scheduled jobs,
+so anything that has not run yet when the release goes live can be skipped, which means the digest
+was being sent at the one time of day most likely to lose it.
+
+**The daily digest now goes out at 6:00pm, and the leadership update at 8:30pm on Monday,
+Wednesday and Friday.** Both land well after the working day, so they are waiting in the inbox
+first thing the next morning, which is when they actually get read.
+
+**The more important fix is one nobody would have noticed until November.** Both emails are
+registered twice, an hour apart, so that they arrive at the right local time on either side of the
+daylight-saving change. A useful side effect was that if the first attempt was lost, the second one
+covered it. That safety net only existed in summer — in winter the earlier attempt falls outside
+the allowed hours and is ignored, leaving exactly one chance. A single lost run between November
+and March would have meant no digest and no leadership report at all, with nothing to say why.
+
+Both are now registered three times instead of twice, so there is a genuine second attempt in
+**both** halves of the year. Nothing changes about when they arrive.
+
+**Still worth knowing:** the daily ticket reminders at 9:00am have no second attempt of any kind,
+so a release at 9:00am still loses that day's ticket nudges. Quote-request reminders are safer,
+because that sweep also runs alongside the evening digest.
+
 ## 2026-08-25 — The leadership update was quietly only reaching some of you
 
 Monday's leadership update did not arrive. It had arrived before, which is what made it puzzling —

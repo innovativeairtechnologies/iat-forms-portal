@@ -53,8 +53,8 @@ failure being chased.
 
 | # | Trigger | Who is told | When |
 |---|---|---|---|
-| 18 | Daily admin digest | Admin roster, minus `DIGEST_OPT_OUT_DEFAULT` | Daily, lands ~16:30–17:45 ET |
-| 19 | Leadership update | `LEADERSHIP_UPDATE_EMAIL` → Lee, Kacy, Crystal | **Mon/Wed/Fri 18:30 ET**, lands ~19:00–19:25 |
+| 18 | Daily admin digest | Admin roster, minus `DIGEST_OPT_OUT_DEFAULT` | Daily **18:00 ET**, lands ~18:00–19:00 |
+| 19 | Leadership update | `LEADERSHIP_UPDATE_EMAIL` → Lee, Kacy, Crystal | **Mon/Wed/Fri 20:30 ET**, lands ~20:30–21:30 |
 | 20 | PTO accrual run | — (no mail; a scheduled data job) | Mondays 08:00 UTC |
 | 21 | Form submissions, PTO requests, approvals | Per-form recipients | Immediately |
 | 22 | A customer requests portal access | Support desk + the three approving admins, individually | Immediately |
@@ -265,6 +265,51 @@ only ever reach back two or three days — but a manual `?edition=` covering tho
 truncate. Fix the ordering before trusting a rebuild of that period.
 
 
+## 🔴 Both scheduled mails moved out of the daily deploy window (2026-08-25)
+
+The owner ships to production **most days between 4:30 and 5:30pm ET**. The digest was nominally
+4:30pm — scheduled into its own worst hour. Moved:
+
+| Job | Was (ET) | Now (ET) | Backstops (ET) |
+|---|---|---|---|
+| Admin digest | 4:30pm | **6:00pm** | 7:00pm, and 8:00pm in summer |
+| Leadership (Mon/Wed/Fri) | 6:00pm → 6:30pm | **8:30pm** | 9:30pm, and 10:30pm in summer |
+
+Both land in the inbox for a next-morning read, which is what they are for.
+
+### 🔴 The November gap this also closes
+
+**A DST pair gives a backstop in summer and NONE in winter.** The pairs were built so the *right*
+entry fires in each season — the earlier one falls outside the window and is skipped — which means
+in winter only ONE entry can ever send. One lost invocation between November and March meant no
+digest and no leadership report at all, and the claim-release logic had nothing to release to.
+
+Both jobs now register **three** entries so both seasons keep a backstop:
+
+| | 22:00Z | 23:00Z | 00:00Z |
+|---|---|---|---|
+| Digest EDT | 6:00pm **claims** | 7:00pm backstop | 8:00pm backstop |
+| Digest EST | 5:00pm skipped | 6:00pm **claims** | 7:00pm backstop |
+
+| | 00:30Z | 01:30Z | 02:30Z |
+|---|---|---|---|
+| Leadership EDT | 8:30pm **claims** | 9:30pm backstop | 10:30pm backstop |
+| Leadership EST | 7:30pm skipped | 8:30pm **claims** | 9:30pm backstop |
+
+⚠️ **Leadership's cron days are `2,4,6` (Tue/Thu/Sat), not `1,3,5`, and that is correct.** 8:30pm ET
+is past midnight UTC, so a Monday-evening send is Tuesday in UTC. The route reads
+`getNyWallClock()` and `scheduledSpan()` derives the weekday from the NY date, so it still resolves
+to Monday. **Move the hour and the day-of-week may have to move with it.**
+
+⚠️ **Leadership is at :30 past deliberately.** The digest's third entry is 00:00Z = 8:00pm EDT.
+`admin-digest` runs the RFQ reminder **sweep before its window and claim guards**, so an invocation
+that skips the digest still sends mail — two mailing jobs must not share a UTC minute.
+
+⚠️ **Three jobs still have no backstop in any season:** `ticket-reminders` (9:00am ET — nothing
+else calls `runTicketReminders`), `rfq-reminders` (9:00am, but partly covered because the digest
+cron runs that sweep too), and `accrue-pto` (Mon 4:00am). A deploy at 9:00am loses that day's
+ticket nudges outright.
+
 ## 🔴 Deploying near a cron's scheduled time makes that run vanish
 
 Measured 2026-08-21. No error, no log, no trace — indistinguishable from the job never having
@@ -304,8 +349,8 @@ live is at risk regardless of how far past its nominal time it is.
 |---|---|---|
 | reminders (daily) | 09:00 | **09:00 – 10:00** |
 | accrue-pto (Mon) | 09:00 | **09:00 – 10:00** |
-| digest (daily) | 16:30 | **16:30 – 17:30** |
-| leadership (Mon/Wed/Fri) | 18:30 | **18:30 – 19:30** |
+| digest (daily) | 18:00 | **18:00 – 20:00** |
+| leadership (Mon/Wed/Fri) | 20:30 | **20:30 – 22:30** |
 
 #### How late, honestly
 

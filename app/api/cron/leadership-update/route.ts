@@ -6,37 +6,47 @@ import { getNyWallClock } from '@/lib/admin-digest'
 import { interimPeriod, parseEdition } from '@/lib/edition'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-/* Leadership update — MONDAY, WEDNESDAY and FRIDAY at 6:30pm Eastern.
+/* Leadership update — MONDAY, WEDNESDAY and FRIDAY at 8:30pm Eastern.
  *
  * ── Changed 2026-08-21, and what it replaced ────────────────────────────────
  * Was Mondays at 5pm covering the whole edition that closed the day before.
- * Now three times a week at 6:30pm, each run covering only the days since the
+ * Now three times a week at 8:30pm, each run covering only the days since the
  * previous run (scheduledSpan below). ⚠️ EVERY SCHEDULED SEND IS NOW AN INTERIM;
  * there is no automatic weekly edition. Putting a Monday full-week edition back
  * alongside these would re-send Tuesday-to-Friday content that already went out
  * on Wednesday and Friday, which is the duplication the interim concept exists
  * to avoid. `?edition=8.17.26` still rebuilds any past week by hand.
  *
- * MOVED TO 6:30pm ON 2026-08-25, at the owner's request, to put clear air between
- * this and the daily admin digest. The digest is nominally 4:30pm ET and its window
- * runs to hour 18; two jobs mailing the same three people minutes apart was the
- * owner's first suspicion when this stopped arriving. It was not the cause (see
- * lib/resend-leadership.ts — the real fault was three PARALLEL sends against
- * Resend's rate limit), but the separation is worth having regardless: nominal
- * times are now two hours apart, against a worst observed lateness of ~55 min.
+ * MOVED to 6:30pm then 8:30pm on 2026-08-25. The owner deploys to production most
+ * days between 4:30 and 5:30pm ET; a deploy re-registers the project's crons and
+ * any run that has not yet fired is at risk, so both scheduled mails were sitting
+ * in the daily deploy window. The digest moved to 6:00pm and this to 8:30pm, which
+ * also puts both in the inbox for a next-morning read.
  *
- * DST is handled by registering 22:30 AND 23:30 UTC and letting the window plus
- * the day-claim sort it out, rather than by one entry being wrong for a season:
+ * 🔴 WHY :30 AND NOT 8:00pm, WHICH IS WHAT WAS ASKED FOR. The digest's third entry
+ * is 00:00 UTC, which in EDT is 8:00pm ET — the same instant. That is not harmless:
+ * app/api/cron/admin-digest runs the RFQ reminder SWEEP before its window and claim
+ * guards, so even an invocation that skips the digest still sends mail. Two mailing
+ * jobs on the same UTC minute is the collision the owner asked to remove. 30 minutes
+ * of separation costs nothing and is the whole reason for the offset — do not
+ * 'tidy' it back to the hour.
  *
- *            22:30 UTC            23:30 UTC
- *   EDT      18:30 ET  SENDS      19:30 ET  in window, day already claimed -> no-op
- *   EST      17:30 ET  skipped    18:30 ET  SENDS
+ * ⚠️ THE CRON DAYS ARE 2,4,6 — NOT 1,3,5 — AND THAT IS CORRECT. 8:30pm ET is past
+ * midnight UTC, so a Monday-evening send is TUESDAY in UTC. Cron expressions are
+ * UTC, the route's period logic reads getNyWallClock(), and scheduledSpan() derives
+ * the weekday from that NY date — so the run still resolves to Monday and covers
+ * the right span. Change the hour here and the day-of-week may have to move with it.
  *
- * ⚠️ In EST there is NO backstop entry after the one that sends — 22:30 UTC falls
- * at 17:30 ET, before the window opens. That was equally true of the old 22:00/
- * 23:00 pair, so it is not a regression, but it means a lost invocation in winter
- * is a missed send. The claim release added below is what makes the EDT backstop
- * actually able to retry; winter has no second chance to release to.
+ * THREE entries, because two left EST with no backstop at all:
+ *
+ *            00:30 UTC          01:30 UTC          02:30 UTC
+ *   EDT      20:30 ET  SENDS    21:30 ET backstop  22:30 ET backstop
+ *   EST      19:30 ET  skipped  20:30 ET  SENDS    21:30 ET backstop
+ *
+ * Dropping hour 19 is what makes the right entry claim in each season. Before this
+ * the winter schedule had ONE eligible entry, so a single lost invocation between
+ * November and March meant no report at all — and the claim release below had
+ * nothing to release to.
  *
  * Exactly one send in both directions. The old build relied on only one entry
  * ever landing inside a one-hour check; that cannot survive a wide window, and a
@@ -100,7 +110,7 @@ export const maxDuration = 60   // the model call plus docx render exceeds the d
  *
  * ⚠️ WIDE ON PURPOSE, and the width is the point. Vercel fires crons on this
  * project up to about an hour late — the often-quoted "14 to 63 minutes" is not
- * supported at either end, see docs/notifications.md. A 6:30pm entry landing at 19:33 against
+ * supported at either end, see docs/notifications.md. An 8:30pm entry landing at 21:33 against
  * an `hour === 18` check would silently send nothing — which is exactly how the
  * daily digest managed never to send once from the day it was built.
  *
@@ -108,7 +118,7 @@ export const maxDuration = 60   // the model call plus docx render exceeds the d
  * below is what keeps a wide window to one send instead of three.
  */
 function withinSendWindow(hour: number): boolean {
-  return hour >= 18 && hour <= 20
+  return hour >= 20 && hour <= 22
 }
 
 const SEND_MARKER = 'leadership_last_sent'
