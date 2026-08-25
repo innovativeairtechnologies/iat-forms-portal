@@ -45,7 +45,7 @@ export default function SupportPortal() {
               Customer Support
             </p>
             <h1 className="text-[30px] font-semibold leading-[1.06] tracking-tight text-ink sm:text-[38px]">
-              Having trouble with your&nbsp;equipment?
+              How can we&nbsp;help?
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-ink-secondary">
               Open a support request and we&apos;ll walk you through it, pre-screening your unit
