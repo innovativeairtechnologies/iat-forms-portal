@@ -1092,75 +1092,18 @@ function useCanHover() {
  * drops only the transition, so it snaps.
  */
 function HoverMagnify({
-  children, scale = 2, origin = '100% 50%', className = '', label, prescale = false,
+  children, scale = 2, origin = '100% 50%', className = '', label,
 }: {
   children: React.ReactNode
   scale?: number
   origin?: string
   className?: string
   label?: string
-  /**
-   * Render the child at its MAGNIFIED size and shrink it at rest, instead of
-   * rendering it small and stretching it.
-   *
-   * 🔴 Why this exists: `transform: scale()` does NOT re-read the source image.
-   * The browser rasterizes an <img> at its LAYOUT size — a 760px-wide asset laid
-   * out at 132px becomes a ~264 device-pixel bitmap at 2x DPR — and then the
-   * transform stretches that bitmap. Magnifying 2.4x asks 264px of data to cover
-   * ~634px, so the source detail is never used and any text in the artwork goes
-   * soft. Reported on the step 7 illustration, whose callouts are text.
-   *
-   * With `prescale`, the child is laid out at full magnified size and the resting
-   * state is `scale(1/scale)`. The raster is therefore created at the size it is
-   * eventually shown at, so magnification is 1:1 rather than an upscale. Resting
-   * appearance improves slightly too, being a downsample rather than a 1:1 of a
-   * small raster.
-   *
-   * ⚠️ The child overflows its container by design — the container keeps the
-   * RESTING footprint so surrounding layout is unchanged, and the child is
-   * absolutely centered inside it. The caller must therefore give `className` an
-   * explicit resting width AND height, and size the child to exactly
-   * resting x scale, or the two disagree and the image jumps on hover.
-   */
-  prescale?: boolean
 }) {
   const reduce = useReducedMotion()
   const canHover = useCanHover()
   const [on, setOn] = useState(false)
   const active = canHover && on
-
-  const transition = reduce ? 'none' : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)'
-  const z = active ? 20 : undefined   // under the sticky header (z-30), over the card
-  const focusRing =
-    'rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
-
-  if (prescale) {
-    return (
-      <div className={`${className} relative`}>
-        <div
-          onPointerEnter={() => setOn(true)}
-          onPointerLeave={() => setOn(false)}
-          onFocus={() => setOn(true)}
-          onBlur={() => setOn(false)}
-          tabIndex={canHover ? 0 : -1}
-          aria-label={label}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            // translate first, then scale — the child is centered on the
-            // container's midpoint at every scale, so it grows in place.
-            transform: `translate(-50%, -50%) scale(${active ? 1 : 1 / scale})`,
-            transition,
-            zIndex: z,
-          }}
-          className={focusRing}
-        >
-          {children}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className={className}>
@@ -1174,11 +1117,12 @@ function HoverMagnify({
         style={{
           transform: active ? `scale(${scale})` : 'scale(1)',
           transformOrigin: origin,
-          transition,
+          transition: reduce ? 'none' : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
           position: 'relative',
-          zIndex: z,
+          // Under the sticky header (z-30) on purpose, over the step card.
+          zIndex: active ? 20 : undefined,
         }}
-        className={focusRing}
+        className="rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         {children}
       </div>
@@ -1942,23 +1886,13 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
         <HoverMagnify
           scale={2.4}
           origin="center"
-          prescale
-          // Resting footprint, kept explicit because `prescale` lets the child
-          // overflow: 112x149 and 132x176 are the 760x1013 aspect at each width.
-          className="h-[149px] w-[112px] flex-shrink-0 sm:h-[176px] sm:w-[132px]"
+          className="flex-shrink-0"
           label="Enlarge the illustration of how people add moisture"
         >
           {/* Same reasoning as the room render, and it matters more here: this
               artwork carries its own callout text, and text is what a second
-              lossy pass destroys first.
-
-              🔴 Laid out at the MAGNIFIED width (112 x 2.4 = 269, 132 x 2.4 =
-              317) and scaled down at rest by `prescale`. Laid out small and
-              scaled UP, the browser rasterizes at ~132 CSS px and stretches that
-              bitmap 2.4x — roughly 264 device pixels covering 634 — so the
-              callouts went soft and the 760px source was never touched. Keep
-              these widths at exactly resting x scale or the image jumps on
-              hover. */}
+              lossy pass destroys first. Stored at 760px wide / q92, which is
+              about 1.2x the device pixels it needs at full magnification. */}
           <Image
             src="/rfq/panda-moisture.webp"
             alt="Illustration: people give off moisture both by exhaling and by perspiring, the amount depending on their activity level and the conditions around them."
@@ -1966,7 +1900,7 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
             height={1013}
             unoptimized
             draggable={false}
-            className="block w-[269px] select-none rounded-lg sm:w-[317px]"
+            className="block w-[112px] select-none rounded-lg sm:w-[132px]"
           />
         </HoverMagnify>
         <div className="min-w-0">
