@@ -9,6 +9,24 @@ import { UNSTARTED_STATUS } from './rfq-status'
 
 // ─── Chasing support tickets that have stalled ───────────────────────────────
 //
+// ⏰ RUNS AT 3:00am ET (07:00 UTC in EDT, 08:00 in EST), twice, an hour apart.
+// Moved off 9:00am on 2026-08-25: the owner deploys to production every day at
+// 9:00am, a deploy re-registers the project's crons, and a run that has not fired
+// yet when the new deployment goes live is at risk — so this job was aimed
+// straight at the one time of day guaranteed to lose it. 3:00am also puts the mail
+// in THAT DAY's inbox rather than at the bottom of yesterday's.
+//
+// ⚠️ NO WINDOW GUARD AND NO DAY-CLAIM HERE, UNLIKE THE DIGEST — and that is why two
+// entries are enough where the digest needs three. The three stamps below make a
+// repeat run a no-op on rows already chased, so both entries simply run and the
+// first one to succeed does the work. Nothing has to be excluded by season, so
+// both entries are live in both seasons and each is the other's backstop.
+//
+// ⚠️ In EST the 07:00 entry lands at 2:00am, so winter mail goes out an hour
+// earlier than summer. Deliberate: still early-AM of the correct ET day, which is
+// the actual requirement, and forcing exactly 3:00am would mean adding window
+// machinery to a job whose idempotency already makes it unnecessary.
+//
 // Four sweeps, all keyed on a ticket that is still live (open or in progress):
 //
 //   1. Assigned, no activity in 24h → nudge the owner.

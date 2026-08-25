@@ -10,6 +10,17 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-25 — Daily reminders move to 3am, so a 9am release cannot swallow them
+
+Releases go out every morning at 9:00, and the daily ticket and quote-request reminders were
+scheduled for exactly that time. A release restarts the scheduled jobs, so anything that has not
+run yet can be skipped — and the ticket reminders had no second attempt at all, which meant a
+9:00am release quietly cost that day's chasing.
+
+**Both now run at 3:00am**, twice an hour apart so one lost run is covered by the other. They also
+arrive in that morning's inbox rather than at the bottom of the previous day's, which is when
+somebody is actually going to act on them.
+
 ## 2026-08-25 — Both scheduled emails move to the evening, and stop dropping in winter
 
 We release to the live site most days between 4:30 and 5:30 in the afternoon. The daily digest was

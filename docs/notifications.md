@@ -305,10 +305,43 @@ to Monday. **Move the hour and the day-of-week may have to move with it.**
 `admin-digest` runs the RFQ reminder **sweep before its window and claim guards**, so an invocation
 that skips the digest still sends mail — two mailing jobs must not share a UTC minute.
 
-⚠️ **Three jobs still have no backstop in any season:** `ticket-reminders` (9:00am ET — nothing
-else calls `runTicketReminders`), `rfq-reminders` (9:00am, but partly covered because the digest
-cron runs that sweep too), and `accrue-pto` (Mon 4:00am). A deploy at 9:00am loses that day's
-ticket nudges outright.
+### The reminders moved to 3:00am for the same reason (2026-08-25)
+
+The owner deploys to production **every day at 9:00am**, which is exactly where `rfq-reminders` and
+`ticket-reminders` used to sit — and `ticket-reminders` had no backstop of any kind, so a 9:00am
+deploy lost that day's nudges outright. Both now run at **3:00am ET**, which also puts the mail in
+that day's inbox rather than at the bottom of yesterday's.
+
+| | 07:00Z | 08:00Z |
+|---|---|---|
+| EDT | **3:00am** | 4:00am |
+| EST | 2:00am | **3:00am** |
+
+⚠️ **Two entries here, not three, and no window guard — that is not an oversight.** These jobs have
+no day-claim: idempotency is per ROW, via the `assignee_nudged_at` / `unclaimed_reminded_at` /
+`escalated_at` stamps from migration 090, which are written only on a successful send. A repeat run
+is therefore a no-op on anything already chased, so **both entries are live in both seasons** and
+each is the other's backstop. The digest needs three entries precisely because its window
+deliberately excludes one per season; nothing is excluded here.
+
+⚠️ In EST the first entry lands at 2:00am, so winter mail goes an hour earlier than summer.
+Deliberate — still early-AM of the correct ET day, and forcing exactly 3:00am would mean adding
+window machinery to a job whose idempotency already makes it unnecessary.
+
+`accrue-pto` (Mon, 08:00Z) still has a single entry, and now shares that minute with the
+reminders' second entry on Mondays. Harmless: it sends no mail, and the reminders' 08:00 run is
+normally a no-op.
+
+⚠️ **What these reminders do NOT cover.** They chase things that have gone **stale** — a ticket
+assigned with no note in 24h, or one nobody has claimed — not everything that is assigned. And
+"assigned" across this database means four tables, of which only two are swept:
+
+| Table | Column | Chased? |
+|---|---|---|
+| `tickets` | `owner_id` | ✅ |
+| `rfq_requests` | `assignee_id` | ✅ |
+| `deals` | `assigned_to` | ❌ |
+| `production_tasks` | `assignee` | ❌ |
 
 ## 🔴 Deploying near a cron's scheduled time makes that run vanish
 
@@ -347,7 +380,7 @@ live is at risk regardless of how far past its nominal time it is.
 
 | Job | Nominal (ET) | Do not deploy |
 |---|---|---|
-| reminders (daily) | 09:00 | **09:00 – 10:00** |
+| reminders (daily) | 03:00 | **03:00 – 05:00** |
 | accrue-pto (Mon) | 09:00 | **09:00 – 10:00** |
 | digest (daily) | 18:00 | **18:00 – 20:00** |
 | leadership (Mon/Wed/Fri) | 20:30 | **20:30 – 22:30** |
