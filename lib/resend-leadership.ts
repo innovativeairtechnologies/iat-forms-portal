@@ -21,13 +21,15 @@ export function leadershipRecipients(): string[] {
     .split(',').map(s => s.trim()).filter(Boolean)
 }
 
-export async function sendLeadershipUpdate(update: LeadershipUpdate, docx: Buffer): Promise<string[]> {
+export async function sendLeadershipUpdate(
+  update: LeadershipUpdate, docx: Buffer,
+): Promise<{ sent: string[]; failed: { to: string; error: string }[] }> {
   const weekly = update.period.kind === 'edition'
 
   const recipients = leadershipRecipients()
   if (!recipients.length) {
     console.log('[leadership] no LEADERSHIP_UPDATE_EMAIL configured — nothing sent')
-    return []
+    return { sent: [], failed: [] }
   }
 
   // The email body repeats the first section inline so it is useful on a phone
@@ -66,8 +68,8 @@ export async function sendLeadershipUpdate(update: LeadershipUpdate, docx: Buffe
   </td></tr>
   <tr><td style="padding:16px 32px;background:#f8f9fa;border-top:1px solid #eee;">
     <p style="margin:0;color:#aaa;font-size:12px;">${weekly
-      ? 'IAT Portal &middot; Automated weekly update, Mondays at 5pm Eastern'
-      : 'IAT Portal &middot; Interim update &mdash; the full week still follows on Monday at 5pm Eastern'}</p>
+      ? 'IAT Portal &middot; Automated leadership update, Mon/Wed/Fri at 6:30pm Eastern'
+      : 'IAT Portal &middot; Interim leadership update &mdash; the regular one still follows Mon/Wed/Fri at 6:30pm Eastern'}</p>
   </td></tr>
 </table>
 </td></tr></table>
@@ -84,19 +86,41 @@ export async function sendLeadershipUpdate(update: LeadershipUpdate, docx: Buffe
     ? `IAT-Portal-Edition-${update.period.id}.docx`
     : `IAT-Portal-Interim-${update.period.id}.docx`
 
-  const results = await Promise.all(recipients.map(to => resend.emails.send({
-    from: FROM,
-    to,
-    subject: `IAT Portal: ${update.period.label} (${update.period.range})`,
-    html,
-    attachments: [{ filename, content: docx.toString('base64') }],
-  })))
-
+  // ⚠️ ONE AT A TIME, NOT Promise.all. This was the only sender in the codebase
+  // firing parallel requests, and the only one carrying an attachment — three
+  // simultaneous sends, each with a base64 .docx, against Resend's documented
+  // 2-requests-per-second default. A 429 on some of them fails SILENTLY: the
+  // function only throws when EVERY send fails, so one success and two rate-limit
+  // rejections returned "ok" and two people simply never got the report.
+  //
+  // The admin digest has always looped with await and has always arrived. Same
+  // sender address, same three mailboxes — the difference was the concurrency,
+  // not the domain, and not the recipients. Do not "optimise" this back into a
+  // Promise.all; the whole job sends three emails three times a week.
   const sent: string[] = []
-  results.forEach((r, i) => {
-    if (r.error) console.error(`[leadership] send failed to ${recipients[i]}:`, r.error)
-    else { sent.push(recipients[i]); console.log(`[leadership] sent to ${recipients[i]}: id=${r.data?.id}`) }
-  })
-  if (!sent.length) throw new Error('every leadership update send failed')
-  return sent
+  const failed: { to: string; error: string }[] = []
+  for (const to of recipients) {
+    const r = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `IAT Leadership Update: ${update.period.label} (${update.period.range})`,
+      html,
+      attachments: [{ filename, content: docx.toString('base64') }],
+    })
+    if (r.error) {
+      // Resend types the response as a discriminated union, so r.error here is
+      // always the ErrorResponse object — a string check narrows it to never.
+      const error = r.error.message ?? JSON.stringify(r.error)
+      console.error(`[leadership] send failed to ${to}:`, r.error)
+      failed.push({ to, error })
+    } else {
+      sent.push(to)
+      console.log(`[leadership] sent to ${to}: id=${r.data?.id}`)
+    }
+  }
+  // A PARTIAL failure must be visible too — it is the case that hid for weeks.
+  if (!sent.length) {
+    throw new Error(`every leadership update send failed: ${failed.map(f => `${f.to} (${f.error})`).join('; ')}`)
+  }
+  return { sent, failed }
 }

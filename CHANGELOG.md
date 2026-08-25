@@ -10,6 +10,34 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-25 — The leadership update was quietly only reaching some of you
+
+Monday's leadership update did not arrive. It had arrived before, which is what made it puzzling —
+and the answer turned out to be that it has probably been arriving for *some* people and not
+others for a while, without anything reporting a problem.
+
+The report is sent to three people. It was mailing all three **at the same instant**, and our mail
+provider only accepts two messages a second — so one or more of them could be rejected for going
+too fast. The code only treated it as a failure if *every* copy was rejected. One delivered and two
+refused counted as success, and nobody was told. That is why it looked intermittent rather than
+broken, and why nothing in the portal could explain it.
+
+It now sends to one person at a time, which is exactly what the daily digest has always done — and
+the daily digest has always arrived. Same sender, same three mailboxes, same day: the only
+difference between the one that worked and the one that did not was how fast it tried to send.
+
+**Two related repairs so this cannot hide again.** The job marked the day as "sent" *before*
+actually sending, so a failure afterwards left a record saying it had gone out, and also cancelled
+the automatic second attempt an hour later. The day is now released if nothing was sent, so the
+retry can genuinely retry — and the result of every send is recorded, including when only some
+copies fail.
+
+**The leadership update has moved to 6:30pm Eastern**, Monday, Wednesday and Friday, arriving
+between about 7:00 and 7:25. It used to run at 6:00. The daily admin digest stays where it is at
+4:30pm. The two were never actually colliding, but they now sit two hours apart, which is easier to
+reason about — and they are named differently enough in the subject line to tell apart at a glance:
+the digest opens "Your daily digest", the leadership report now opens "IAT Leadership Update".
+
 ## 2026-08-25 — The quote request now keeps the PDF the customer got
 
 **You can open the customer's own PDF from their quote request.** Whoever picks the request up

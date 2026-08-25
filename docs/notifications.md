@@ -54,7 +54,7 @@ failure being chased.
 | # | Trigger | Who is told | When |
 |---|---|---|---|
 | 18 | Daily admin digest | Admin roster, minus `DIGEST_OPT_OUT_DEFAULT` | Daily, lands ~16:30–17:45 ET |
-| 19 | Weekly leadership update | `LEADERSHIP_UPDATE_EMAIL` → currently **lee.childers@** only | **Mondays 17:00 ET** |
+| 19 | Leadership update | `LEADERSHIP_UPDATE_EMAIL` → Lee, Kacy, Crystal | **Mon/Wed/Fri 18:30 ET**, lands ~19:00–19:25 |
 | 20 | PTO accrual run | — (no mail; a scheduled data job) | Mondays 08:00 UTC |
 | 21 | Form submissions, PTO requests, approvals | Per-form recipients | Immediately |
 | 22 | A customer requests portal access | Support desk + the three approving admins, individually | Immediately |
@@ -305,7 +305,7 @@ live is at risk regardless of how far past its nominal time it is.
 | reminders (daily) | 09:00 | **09:00 – 10:00** |
 | accrue-pto (Mon) | 09:00 | **09:00 – 10:00** |
 | digest (daily) | 16:30 | **16:30 – 17:30** |
-| leadership (Mon/Wed/Fri) | 18:00 | **18:00 – 19:00** |
+| leadership (Mon/Wed/Fri) | 18:30 | **18:30 – 19:30** |
 
 #### How late, honestly
 
@@ -367,6 +367,45 @@ on 08-24 wrote the `digest_runs` row 4 seconds later, which means any later natu
 no-ops — and whether the 20:30 entry would have arrived became permanently unanswerable. Recovering
 a run by hand is right when the day's mail matters, but it destroys the evidence. Decide which you
 want first.
+
+### ⚠️ Why the leadership update stopped arriving (2026-08-25)
+
+**It was three PARALLEL sends against Resend's rate limit — not the domain, not the recipients,
+not a collision with the digest.** `lib/resend-leadership.ts` was the only sender in the codebase
+doing `Promise.all(recipients.map(...))`, and the only one carrying an attachment: three
+simultaneous requests, each with a base64 .docx, against Resend's documented **2 requests per
+second** default.
+
+The differential is what proves it. On 2026-08-24 the admin digest arrived and the leadership
+update did not, and the two are near-identical:
+
+| | Digest (arrived) | Leadership (did not) |
+|---|---|---|
+| Sender | `noreply@portal.dehumidifiers.com` | **identical** |
+| Recipients | Crystal, Kacy, Lee | **the same three** |
+| Send pattern | `for … await` — one at a time | **`Promise.all` — three at once** |
+| Attachment | none | **.docx** |
+
+Same sender to the same mailboxes on the same day rules out the Proofpoint/SPF/domain-spoofing
+family — those would have killed both. The changelog also carried none of the Exchange
+"Block Bulk / Sales Emails" trigger phrases.
+
+🔴 **A partial rate-limit failure was SILENT.** The function only threw when *every* send failed,
+so one success and two 429s returned "ok" and two people simply never got the report — which is
+why it had "worked before" and then intermittently did not. Fixed by sending sequentially (the
+digest has always looped with `await` and has always arrived) and by returning `failed` alongside
+`sent` so a partial failure is recorded.
+
+🔴 **`leadership_last_sent` is a CLAIM marker, not a send marker.** It is written by `claimDay()`
+*before* anything is sent, so it proves only that a run started. Two people read it as proof of
+delivery on 2026-08-24, including me. Worse, a failure after the claim burned the day *and*
+disarmed the paired second entry — the 19:13 ET run stood down with `skipped-already-sent` for a
+send that may never have happened. `releaseDay()` now puts the claim back when nothing went out,
+matching what the admin digest has always done, and the send path is stamped (`sent` /
+`sent-partial` / `failed`) so the outcome is answerable afterwards.
+
+Moved to **18:30 ET** the same day at the owner's request, to keep clear air between this and the
+digest. Nominal times are now two hours apart against a worst observed lateness of ~55 min.
 
 This is also why `withinSendWindow` on the leadership job is a two-hour band (18:00–20:00) rather
 than an hour: nominal 18:00 ET can land near 18:50, and an hour-wide check would sit uncomfortably

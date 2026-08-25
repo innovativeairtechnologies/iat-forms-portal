@@ -6,23 +6,37 @@ import { getNyWallClock } from '@/lib/admin-digest'
 import { interimPeriod, parseEdition } from '@/lib/edition'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-/* Leadership update — MONDAY, WEDNESDAY and FRIDAY at 6pm Eastern.
+/* Leadership update — MONDAY, WEDNESDAY and FRIDAY at 6:30pm Eastern.
  *
  * ── Changed 2026-08-21, and what it replaced ────────────────────────────────
  * Was Mondays at 5pm covering the whole edition that closed the day before.
- * Now three times a week at 6pm, each run covering only the days since the
+ * Now three times a week at 6:30pm, each run covering only the days since the
  * previous run (scheduledSpan below). ⚠️ EVERY SCHEDULED SEND IS NOW AN INTERIM;
  * there is no automatic weekly edition. Putting a Monday full-week edition back
  * alongside these would re-send Tuesday-to-Friday content that already went out
  * on Wednesday and Friday, which is the duplication the interim concept exists
  * to avoid. `?edition=8.17.26` still rebuilds any past week by hand.
  *
- * DST is handled by registering 22:00 AND 23:00 UTC and letting the window plus
+ * MOVED TO 6:30pm ON 2026-08-25, at the owner's request, to put clear air between
+ * this and the daily admin digest. The digest is nominally 4:30pm ET and its window
+ * runs to hour 18; two jobs mailing the same three people minutes apart was the
+ * owner's first suspicion when this stopped arriving. It was not the cause (see
+ * lib/resend-leadership.ts — the real fault was three PARALLEL sends against
+ * Resend's rate limit), but the separation is worth having regardless: nominal
+ * times are now two hours apart, against a worst observed lateness of ~55 min.
+ *
+ * DST is handled by registering 22:30 AND 23:30 UTC and letting the window plus
  * the day-claim sort it out, rather than by one entry being wrong for a season:
  *
- *            22:00 UTC          23:00 UTC
- *   EDT      18:00 ET  SENDS    19:00 ET  in window, day already claimed -> no-op
- *   EST      17:00 ET  skipped  18:00 ET  SENDS
+ *            22:30 UTC            23:30 UTC
+ *   EDT      18:30 ET  SENDS      19:30 ET  in window, day already claimed -> no-op
+ *   EST      17:30 ET  skipped    18:30 ET  SENDS
+ *
+ * ⚠️ In EST there is NO backstop entry after the one that sends — 22:30 UTC falls
+ * at 17:30 ET, before the window opens. That was equally true of the old 22:00/
+ * 23:00 pair, so it is not a regression, but it means a lost invocation in winter
+ * is a missed send. The claim release added below is what makes the EDT backstop
+ * actually able to retry; winter has no second chance to release to.
  *
  * Exactly one send in both directions. The old build relied on only one entry
  * ever landing inside a one-hour check; that cannot survive a wide window, and a
@@ -85,7 +99,8 @@ export const maxDuration = 60   // the model call plus docx render exceeds the d
  * The send window, America/New_York.
  *
  * ⚠️ WIDE ON PURPOSE, and the width is the point. Vercel fires crons on this
- * project 14 to 63 MINUTES LATE (measured). A 6pm entry landing at 19:03 against
+ * project up to about an hour late — the often-quoted "14 to 63 minutes" is not
+ * supported at either end, see docs/notifications.md. A 6:30pm entry landing at 19:33 against
  * an `hour === 18` check would silently send nothing — which is exactly how the
  * daily digest managed never to send once from the day it was built.
  *
@@ -97,6 +112,8 @@ function withinSendWindow(hour: number): boolean {
 }
 
 const SEND_MARKER = 'leadership_last_sent'
+/** What claimDay() overwrote, so releaseDay() can restore it on a failed run. */
+let claimedOver: string | null = null
 const TRACE_MARKER = 'leadership_last_invocation'
 
 /**
@@ -144,6 +161,27 @@ async function trace(outcome: string, detail?: Record<string, unknown>) {
  * another run. Accepted knowingly; a real `leadership_runs` table with a unique
  * index on the date is the correct fix once migrations are available.
  */
+/**
+ * Release a claim taken for a run that then sent NOTHING.
+ *
+ * 🔴 WITHOUT THIS A FAILED RUN BURNS THE DAY *AND* DISARMS THE BACKSTOP. The claim
+ * is taken before the send; if the build, the docx render or every send then
+ * fails, the marker still reads "today", the paired second entry an hour later
+ * sees it and returns 'skipped-already-sent', and nobody is told. That is exactly
+ * the 2026-08-24 shape: claimed 18:17 ET, second entry stood down at 19:13, and no
+ * evidence either way survived.
+ *
+ * The admin digest has released its claim on a zero send since it was built; this
+ * route did not. Restores the PREVIOUS value rather than deleting, so the marker
+ * keeps meaning "the last date we actually sent".
+ */
+async function releaseDay(previous: string | null): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('app_settings')
+    .upsert({ key: SEND_MARKER, value: previous ?? '', updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  if (error) console.error('[leadership-update] failed to release the day claim:', error.message)
+}
+
 async function claimDay(dateISO: string): Promise<boolean> {
   const { data } = await supabaseAdmin
     .from('app_settings')
@@ -152,6 +190,7 @@ async function claimDay(dateISO: string): Promise<boolean> {
     .maybeSingle()
 
   if (data?.value === dateISO) return false
+  claimedOver = data?.value ?? null
 
   const { error } = await supabaseAdmin
     .from('app_settings')
@@ -270,11 +309,24 @@ export async function GET(req: NextRequest) {
     // A quiet week still sends — silence is indistinguishable from a broken job,
     // and this whole portal has now been bitten twice by exactly that.
     const docx = await renderLeadershipDocx(update)
-    const sent = await sendLeadershipUpdate(update, docx)
+    const { sent, failed } = await sendLeadershipUpdate(update, docx)
 
-    console.log(`[cron/leadership-update] ${period.label} (${period.range}, ${period.kind}): ${lineCount} summary + ${technicalLines} technical lines from ${update.sourceEntries.length} entries → ${sent.length} recipient(s)`)
-    return NextResponse.json({ ok: true, period: period.id, kind: period.kind, lineCount, technicalLines, sent, sourceEntries: update.sourceEntries })
+    // ⚠️ TRACE THE SEND PATH TOO. Every other outcome here was already stamped —
+    // invoked, bad-period, skipped-window, skipped-already-sent — but the path that
+    // actually sends was not, so "sent to 3", "sent to 0" and "threw after claiming"
+    // were indistinguishable afterwards. Failures are recorded even on a PARTIAL
+    // success: that is the case that hides, because the run still looks fine.
+    await trace(failed.length ? 'sent-partial' : 'sent', {
+      nyDate, period: period.id, recipients: sent.length, failed,
+    })
+    console.log(`[cron/leadership-update] ${period.label} (${period.range}, ${period.kind}): ${lineCount} summary + ${technicalLines} technical lines from ${update.sourceEntries.length} entries → ${sent.length} recipient(s), ${failed.length} failed`)
+    return NextResponse.json({ ok: true, period: period.id, kind: period.kind, lineCount, technicalLines, sent, failed, sourceEntries: update.sourceEntries })
   } catch (err) {
+    // Nothing went out — sendLeadershipUpdate only throws when EVERY send failed,
+    // and a throw from the build or the render means we never reached the send.
+    // Give the day back so the paired entry an hour later can genuinely retry.
+    if (!dryRun && !force) await releaseDay(claimedOver)
+    await trace('failed', { nyDate, period: period.id, error: String(err), claimReleased: !dryRun && !force })
     console.error('[cron/leadership-update] failed:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
