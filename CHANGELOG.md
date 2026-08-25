@@ -10,6 +10,11 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-25 — The quote card drops its acronym
+
+The second card on the support page was labeled "RFQ: Request for Quote". Customers do not
+need the abbreviation to pick the right card, so it now simply reads **Request for Quote**.
+
 ## 2026-08-25 — The support page opens with "How can we help?"
 
 The customer support landing page led with "Having trouble with your equipment?" — a question that

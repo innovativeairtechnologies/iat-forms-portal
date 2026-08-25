@@ -85,7 +85,7 @@ export default function SupportPortal() {
             </span>
             <div className="min-w-0 flex-1">
               <span className="text-[18px] font-semibold tracking-tight text-ink">
-                RFQ: Request for Quote
+                Request for Quote
               </span>
               <p className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">
                 A guided moisture survey for a room or a process, with typical values filled in as you go,
