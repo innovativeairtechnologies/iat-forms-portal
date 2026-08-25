@@ -1091,6 +1091,82 @@ function useCanHover() {
  * Reduced motion keeps the magnify — a zoom is a function, not an ornament — and
  * drops only the transition, so it snaps.
  */
+/**
+ * Hover-to-enlarge for an image whose ARTWORK CONTAINS TEXT.
+ *
+ * Separate from HoverMagnify below, which stays exactly as it is — the render and
+ * the wall build-ups have a settled interaction and are not worth disturbing.
+ *
+ * 🔴 Why this exists. `transform: scale()` does not re-read the source file. The
+ * browser rasterizes an <img> at its LAYOUT size, then stretches that bitmap. A
+ * 760px asset laid out at 132px is ~264 device pixels at 2x DPR; magnifying it
+ * 2.4x spreads those 264 across ~634, so the callout text goes soft and the
+ * source resolution is never used. Measured side by side on 2026-08-25: at the
+ * same on-screen size, laid-out-at-317px is visibly crisper than
+ * laid-out-at-132px-then-scaled.
+ *
+ * So the image is laid out at its FULL magnified size and scaled DOWN at rest.
+ * The raster is made at the size it is eventually shown at, and magnifying is
+ * 1:1 rather than an upscale.
+ *
+ * ⚠️ `max-w-none` IS LOAD-BEARING. A global `img { max-width: 100% }` clamps the
+ * full-size image to the container's resting width, and the scale-down then
+ * applies to THAT — which renders the picture at 132 x 0.4167 = 54px. That is
+ * exactly what shipped and had to be reverted on 2026-08-25. If the illustration
+ * ever looks tiny, this is the first thing to check.
+ *
+ * ⚠️ `full` must be exactly `rest` x `scale`, or the image jumps on hover. The
+ * container keeps the resting footprint so surrounding layout never moves.
+ */
+function CrispMagnifyImage({
+  src, alt, width, height, rest, full, scale, label,
+}: {
+  src: string
+  alt: string
+  width: number
+  height: number
+  /** Resting footprint — what the layout reserves. */
+  rest: string
+  /** The image's own size: rest x scale. */
+  full: string
+  scale: number
+  label: string
+}) {
+  const reduce = useReducedMotion()
+  const canHover = useCanHover()
+  const [on, setOn] = useState(false)
+  const active = canHover && on
+
+  return (
+    <div
+      onPointerEnter={() => setOn(true)}
+      onPointerLeave={() => setOn(false)}
+      onFocus={() => setOn(true)}
+      onBlur={() => setOn(false)}
+      tabIndex={canHover ? 0 : -1}
+      aria-label={label}
+      className={`relative flex-shrink-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${rest}`}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        unoptimized
+        draggable={false}
+        className={`absolute left-1/2 top-1/2 max-w-none select-none rounded-lg ${full}`}
+        style={{
+          transform: `translate(-50%, -50%) scale(${active ? 1 : 1 / scale})`,
+          transformOrigin: 'center',
+          transition: reduce ? 'none' : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
+          // Under the sticky header (z-30) on purpose, over the step card.
+          zIndex: active ? 20 : undefined,
+        }}
+      />
+    </div>
+  )
+}
+
 function HoverMagnify({
   children, scale = 2, origin = '100% 50%', className = '', label,
 }: {
@@ -1883,26 +1959,22 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
           idiom as the wall build-ups on step 5 and the render in the rail.
           Centered origin here: this sits mid-column with room on both sides. */}
       <div className="flex items-center gap-5 rounded-xl border border-hairline bg-surface-soft p-4">
-        <HoverMagnify
+        {/* Same reasoning as the room render, and it matters more here: this
+            artwork carries its own callout text, and text is what a lossy pass
+            destroys first. Stored at 760px wide / q92, which comfortably covers
+            the ~634 device pixels full magnification needs — but only if the
+            image is laid out at that size, which is what CrispMagnifyImage does.
+            Resting footprint is unchanged at 112/132px. */}
+        <CrispMagnifyImage
+          src="/rfq/panda-moisture.webp"
+          alt="Illustration: people give off moisture both by exhaling and by perspiring, the amount depending on their activity level and the conditions around them."
+          width={760}
+          height={1013}
           scale={2.4}
-          origin="center"
-          className="flex-shrink-0"
+          rest="h-[149px] w-[112px] sm:h-[176px] sm:w-[132px]"
+          full="w-[269px] sm:w-[317px]"
           label="Enlarge the illustration of how people add moisture"
-        >
-          {/* Same reasoning as the room render, and it matters more here: this
-              artwork carries its own callout text, and text is what a second
-              lossy pass destroys first. Stored at 760px wide / q92, which is
-              about 1.2x the device pixels it needs at full magnification. */}
-          <Image
-            src="/rfq/panda-moisture.webp"
-            alt="Illustration: people give off moisture both by exhaling and by perspiring, the amount depending on their activity level and the conditions around them."
-            width={760}
-            height={1013}
-            unoptimized
-            draggable={false}
-            className="block w-[112px] select-none rounded-lg sm:w-[132px]"
-          />
-        </HoverMagnify>
+        />
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
             Why people count
