@@ -10,6 +10,12 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-25 — The support page opens with "How can we help?"
+
+The customer support landing page led with "Having trouble with your equipment?" — a question that
+presumes something is already broken. It now reads **"How can we help?"**, which fits the full range
+of reasons a customer lands there and reads as an invitation rather than a diagnosis.
+
 ## 2026-08-25 — Daily reminders move to 3am, so a 9am release cannot swallow them
 
 Releases go out every morning at 9:00, and the daily ticket and quote-request reminders were
