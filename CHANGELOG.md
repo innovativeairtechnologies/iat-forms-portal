@@ -292,6 +292,16 @@ Select-all now means the page you are looking at, and the header box shows a das
 of the page is selected. Fixed on Tickets, Customers, Employees, Equipment, Requests and Quote
 Requests together — Customers and Employees mattered most, since both can delete.
 
+**And clicking a box did not tick it.** Separate problem, same complaint. On Customers, Employees,
+Equipment, Requests and Quote Requests, clicking a tick box selected the row — the count at the
+bottom went up — but the box itself stayed empty. Nothing was broken underneath; every selection
+was real and every action worked on the right rows. The boxes simply were not showing it, which is
+worse in its own way: there was no way to confirm what you had picked before pressing Delete.
+
+Both are fixed, and the boxes are now one shared component rather than each list carrying its own
+copy — which is how Tickets came to behave differently from everything else in the first place.
+They also work from the keyboard now, which they never did.
+
 ## 2026-08-24 — "Waiting on Customer", and tickets that chase themselves
 
 **A ticket can now be marked Waiting on Customer.** Use it when the ball is genuinely in their

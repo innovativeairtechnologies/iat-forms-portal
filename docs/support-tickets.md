@@ -544,6 +544,18 @@ plainly rather than implying a send. The page resolves that gate server-side and
 a boolean — ⛔ never import `resend-customer-tickets` into the client component, it builds the
 Resend client at module scope.
 
+### ⚠️ Multi-word statuses and `.replace('_', ' ')`
+
+`waiting_on_customer` is the first ticket status with **two** underscores.
+`String(x).replace('_', ' ')` replaces only the first, so the audit trail read *"to waiting
+on_customer"* — as did the assignment email, the ⌘K palette and the equipment page. Fixed to
+`/_/g` in the four ticket-status call sites.
+
+⛔ The other six `.replace('_', ' ')` instances in the codebase are submissions, presentations and
+tool-crib, whose values have a single underscore. They were deliberately left alone — a blanket
+sweep across unrelated domains is the shape that has caused damage here before. If you add another
+two-word status anywhere, check its render sites rather than assuming.
+
 ### A ticket cannot be resolved or closed while unassigned (2026-08-24)
 
 Tickets were reaching a terminal state with nobody's name on them. That loss is **unrecoverable**:

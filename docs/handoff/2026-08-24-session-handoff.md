@@ -424,6 +424,28 @@ broken query.
 Tonight's report should cover **22–24 August**. Thursday and Friday are already covered by the Word
 document (§2.9), so no content is lost.
 
+#### ✅ RESOLVED — it sent, 2026-08-24 18:17:47 ET
+
+```
+leadership_last_invocation  {"at":"2026-08-24T22:17:47.666Z","outcome":"invoked",
+                             "nyHour":18,"nyDate":"2026-08-24"}
+leadership_last_sent        2026-08-24            (22:17:48.025Z)
+```
+
+Everything the redesign was for worked: fired **17m 47s** after its 22:00Z entry, `nyHour 18` sat
+inside the widened 18:00–20:00 `withinSendWindow`, and the day-claim landed 359ms later so the
+paired 23:00Z entry no-ops instead of sending a second copy. Three recipients, covering 22–24
+August — and by then three changelog entries rather than the one this section anticipated.
+
+**The breadcrumb answered it in a single query**, which is the whole point of `ca4fea9`: on Friday
+the identical outcome was indistinguishable from "never fired" and cost an evening.
+
+⚠️ That 17m47s reading also **disproved the lag table written the same morning** (§4.1 of this
+file said the exclusion window opens at nominal + 25 min). It does not — a deploy re-registers the
+crons, so the window opens at **nominal**. Following the wrong version of that table caused a real
+deploy at 16:50 ET into the 16:30 digest's window. Both `docs/notifications.md` and the memory note
+are corrected; **prefer them over §4.1 above, which is left as written for the record.**
+
 ### 6.2 — Indoor pool has no render
 
 `natatorium` is the one unmapped application. Needs a pool render exported into the SharePoint

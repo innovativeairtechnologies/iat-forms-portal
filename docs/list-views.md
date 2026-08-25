@@ -129,3 +129,45 @@ to an empty one.
 ⚠️ A checkbox has to mean what it looks like it means. If a future list wants "select all N
 across pages", that needs an explicit affordance saying so, not a header box that quietly reaches
 past the screen.
+
+## 🔴 A checkbox inside a row link cannot use its own native toggle (2026-08-24)
+
+**Symptom:** clicking a tick box selected the row — bulk bar counting up, actions operating on the
+right records — while the box itself stayed visually empty. State correct, pixels wrong. There was
+no way to confirm a selection before pressing Delete.
+
+**Cause.** `SelectBox` renders *inside* the row's `<a href>`, so its wrapper must call
+`preventDefault()` or selecting navigates into the record. On a checkbox that same call also
+reverts the browser's own toggle, and React then declines to re-sync because the `checked` prop it
+last wrote already equals the one it is rendering.
+
+**Three fixes were tried against production and each failed for its own reason.** Recorded because
+every one of them looks correct in review:
+
+| Attempt | Why it failed |
+|---|---|
+| `checked` prop + `onChange` | React will not re-sync; last-written prop already matches |
+| `checked` prop + **ref callback** | Ref runs during render, and React flushes discrete events (a click) **synchronously** — so it lands *before* the revert |
+| `checked` prop + **`useEffect`** | Closest. Fixed every box *except the one clicked* — React flushes passive effects at the end of that same discrete event |
+
+**What works: the input never receives the click.** `pointer-events` is off on it and the wrapper
+is the control. With no default action on the input there is nothing to revert, so `checked` is
+authoritative and cannot desynchronise.
+
+The wrapper consequently carries the semantics — `role="checkbox"`, `tabIndex`, `aria-checked`
+(with `"mixed"` for an indeterminate header) and Space/Enter. ⚠️ That is a genuine improvement, not
+just a shuffle: the previous `readOnly` input with no `onChange` had **no keyboard path at all**.
+
+⛔ **Do not "simplify" the input back into an interactive control** while these boxes live inside a
+row link. The three attempts above are what that costs.
+
+### One component, not five
+
+Tickets hand-rolled its own boxes rather than using the kit. That is exactly why it behaved
+differently from every other list, and why the click bug went unnoticed there while it was live on
+five other pages. It now uses `SelectBox`.
+
+⚠️ **A verification trap worth naming.** The first check of the tickets rows called
+`.closest('div').click()` — the *wrapper*. That is the path that already worked, so the test passed
+while the bug was live on the path a person actually uses. **Click the affordance the user clicks**,
+not the container that happens to be convenient in a script.
