@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { Building2, Cog, DoorOpen, Droplets, Gauge, Layers, Ruler, User } from 'lucide-react'
+import { Building2, Cog, DoorOpen, Droplets, FileText, Gauge, Layers, Ruler, User } from 'lucide-react'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Card, CardHead, DetailShell, DetailTopBar, Field, MetaRow } from '@/components/admin/detail-ui'
@@ -66,6 +66,28 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
   const isRoom = d.track === 'room'
   const elev = num(d.elevationFt)
 
+  // The exact PDF the customer's browser produced (migration 095).
+  //
+  // ⚠️ Signed and short-lived, NOT a public URL. This document carries their
+  // contact details, site location and project economics on page one, which is
+  // why the bucket is private — a public object link is permanent and guessable
+  // once it leaks out of an inbox.
+  //
+  // Ten minutes is plenty to click it and short enough that a URL pasted into a
+  // chat is dead by the time anyone else opens it. The page is force-dynamic, so
+  // the link is minted fresh on every view rather than cached at build.
+  //
+  // NULL is NORMAL, not an error: every request created before this shipped has
+  // no PDF, and a browser that failed to build one leaves it NULL too.
+  let pdfUrl: string | null = null
+  if (row.pdf_path) {
+    const { data: signed, error: signErr } = await supabaseAdmin.storage
+      .from('rfq-pdfs')
+      .createSignedUrl(row.pdf_path as string, 600)
+    if (signErr) console.error('[rfq detail] could not sign pdf url:', signErr.message)
+    pdfUrl = signed?.signedUrl ?? null
+  }
+
   return (
     <DetailShell>
       <DetailTopBar crumbs={[{ label: 'Requests for Quote', href: '/admin/rfq' }, { label: row.reference }]}>
@@ -74,6 +96,32 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
 
       <div className="mx-auto grid max-w-6xl gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-5">
+          {/* The document the customer is actually holding. First, above the
+              estimate, because when a customer rings up quoting a number this is
+              the thing to open — the page below is our rendering of the same
+              data, this is the artefact in their hands. */}
+          {pdfUrl && (
+            <Card>
+              <CardHead title="The PDF the customer received" icon={<FileText size={15} />} />
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <p className="text-[13px] leading-relaxed text-ink-muted">
+                  The exact file their browser produced when they submitted
+                  {row.pdf_stored_at
+                    ? <> on {new Date(row.pdf_stored_at as string).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</>
+                    : null}. Not a regeneration — this is what they are looking at.
+                </p>
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-emerald-500"
+                >
+                  <FileText size={14} /> Open the PDF
+                </a>
+              </div>
+            </Card>
+          )}
+
           {/* The estimate, exactly as the customer saw it */}
           <Card>
             <CardHead title="The job, as we estimated it for them" icon={<Gauge size={15} />} />

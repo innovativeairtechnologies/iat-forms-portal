@@ -598,6 +598,30 @@ export default function RfqWizard() {
     }
   }, [buildPdf, data.company, data.projectName])
 
+  /** Build the PDF this browser would hand the customer and post it to the desk.
+   *  Best-effort by design — see the call site. */
+  const storePdfCopy = useCallback(async (ref: string) => {
+    try {
+      const blob = await buildPdf(true, ref)
+      const buf = await blob.arrayBuffer()
+      // Chunked so a few hundred KB cannot blow the argument limit on
+      // String.fromCharCode — apply() takes the array as individual arguments.
+      const bytes = new Uint8Array(buf)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
+      }
+      await fetch('/api/rfq/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference: ref, pdf: btoa(binary) }),
+      })
+    } catch (err) {
+      // Never surfaced. The request is already safely in the queue.
+      console.warn('[rfq] could not store a copy of the PDF:', err)
+    }
+  }, [buildPdf])
+
   const submit = async () => {
     setError(null)
     setStage('sending')
@@ -617,6 +641,20 @@ export default function RfqWizard() {
       setReference(json.reference)
       setStage('done')
       window.scrollTo({ top: 0, behavior: 'smooth' })
+
+      // Hand the desk a copy of the exact document this browser produces, so the
+      // engineer who picks the request up sees what the customer is holding
+      // rather than a regeneration that may drift from it (migration 095).
+      //
+      // ⚠️ Deliberately AFTER the success screen and deliberately not awaited.
+      // The survey is already committed; a customer must never wait on — or be
+      // shown an error from — a convenience for us. Every failure is swallowed
+      // and simply leaves pdf_path NULL, which the admin page treats as normal.
+      //
+      // It also runs whether or not they click Download, because most people
+      // never do, and "only the ones who downloaded it" is a strange rule for
+      // which requests have a record.
+      void storePdfCopy(json.reference)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
       setStage('form')

@@ -884,3 +884,49 @@ that **no `/admin/*` page here has ever been rendered with a logged-in session.*
   actual work — the form-filling is trivial either way.
 - The reminder cadence (24h to first chase, 48h to re-chase) is hard-coded in
   `lib/rfq-reminders.ts` rather than configurable.
+
+### The PDF the customer received is kept (2026-08-25, migration 095)
+
+An engineer picking up a quote request could see the survey answers but not the document the
+customer is holding. `/admin/rfq/[id]` now opens the **exact file their browser produced**.
+
+**Why the browser has to send it.** `lib/rfq-pdf.ts` is browser-only by design — it uses
+`<canvas>` to downscale the logo — so the server cannot build this document. Regenerating it
+later would produce something matching *today's* template, not what was sent; the moment the
+layout changes, the page and the customer's copy disagree. That is the same reasoning the detail
+page already applies to `summary`, which is never recomputed.
+
+**Flow.** Submit succeeds → server assigns the reference → the browser builds the PDF with that
+reference stamped in → POSTs it base64 to `/api/rfq/pdf` → service role writes to the private
+`rfq-pdfs` bucket and sets `pdf_path` / `pdf_stored_at`.
+
+- It runs **whether or not the customer clicks Download**, because most never do, and "only the
+  ones who downloaded it" is a strange rule for which requests have a record.
+- It is **not awaited and never surfaces an error**. The survey is already committed; a customer
+  must not wait on, or be shown a failure from, a convenience for us. Failure leaves `pdf_path`
+  NULL, which is what every pre-095 row looks like.
+
+⛔ **The browser does NOT write to Storage directly.** That would need an anonymous INSERT policy,
+and anonymous storage writes are an open item in the ideas backlog (§8.2). The bytes go through a
+route on the service role instead. The ~4.5MB Vercel function-body cap is irrelevant here — a
+vector PDF is ~200KB — unlike ticket photos, which genuinely must bypass the route.
+
+**What stops a stranger writing junk**, given the endpoint is necessarily anonymous like the submit
+it follows. Four guards, none sufficient alone:
+
+1. the reference must exist;
+2. **`pdf_path` must still be NULL — one write per request, ever**, so the worst case is a race in
+   the seconds after a submit, never overwriting an engineer's copy later;
+3. the request must be under 30 minutes old, so an old reference off a forwarded PDF is refused;
+4. rate limited per IP, size-capped before decode, and checked for a `%PDF-` header.
+
+A missing reference and an already-stored one return the **same** response, so the endpoint cannot
+be used to discover which references exist.
+
+⚠️ **Private bucket, served by short-lived signed URL** — never a public link. Page one carries the
+customer's contact details, site location and project economics. The URL is minted per page view
+and expires in ten minutes, so one pasted into a chat is dead before anyone else opens it.
+
+**Storage is not a concern and this does not belong in SharePoint or in Postgres.** ~200KB per
+vector PDF, 13 requests to date; even 500/year is ~100MB against a project already running ten
+buckets. `proposal-docs` and `soo-submittals` are the same shape.

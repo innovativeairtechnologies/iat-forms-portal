@@ -10,6 +10,24 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-25 — The quote request now keeps the PDF the customer got
+
+**You can open the customer's own PDF from their quote request.** Whoever picks the request up
+sees a link at the top of the page to the exact file that customer downloaded — not a fresh copy
+built from their answers, the actual document sitting in their hands.
+
+That distinction matters when someone rings up quoting a figure. The page underneath is our
+rendering of the same survey; the PDF is what they are reading from. As the quote template gets
+refined over time, a regenerated copy would quietly stop matching what was sent, and the person on
+the phone would be looking at a different document to the customer.
+
+It is saved automatically the moment a request is submitted, whether or not the customer clicks
+Download — and if saving it ever fails, nothing about their submission is affected. Older requests
+sent before today have no PDF, and the link simply does not appear.
+
+The file is held privately and opened through a link that expires after ten minutes, because page
+one carries the customer's contact details and site information.
+
 ## 2026-08-24 — Quote requests are chased the same way tickets are, and sales are told
 
 Following on from the admin oversight change earlier today. Two more gaps, both the same shape.
