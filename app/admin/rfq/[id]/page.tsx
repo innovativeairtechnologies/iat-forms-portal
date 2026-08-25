@@ -28,6 +28,13 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+/** When the portal started keeping the customer's PDF (migration 095, deployed
+ *  2026-08-25 13:24 UTC). Requests older than this have none and never will —
+ *  the file only ever existed in the customer's own browser. Used to tell "we
+ *  did not collect these yet" apart from "this one did not come through", which
+ *  are the same blank card otherwise. */
+const PDF_CAPTURE_FROM = new Date('2026-08-25T13:24:00Z')
+
 type Summary = Record<string, unknown>
 
 export default async function RfqDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -100,9 +107,14 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
               estimate, because when a customer rings up quoting a number this is
               the thing to open — the page below is our rendering of the same
               data, this is the artefact in their hands. */}
-          {pdfUrl && (
-            <Card>
-              <CardHead title="The PDF the customer received" icon={<FileText size={15} />} />
+          {/* ⚠️ Rendered even when there is NO stored PDF, on purpose.
+              Hiding it made "this request has no copy" look exactly like "the
+              feature does not exist" — which is precisely how it was read the
+              first time someone went looking. An empty state that explains
+              itself is the difference between a gap and a bug. */}
+          <Card>
+            <CardHead title="The PDF the customer received" icon={<FileText size={15} />} />
+            {pdfUrl ? (
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <p className="text-[13px] leading-relaxed text-ink-muted">
                   The exact file their browser produced when they submitted
@@ -119,8 +131,22 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                   <FileText size={14} /> Open the PDF
                 </a>
               </div>
-            </Card>
-          )}
+            ) : (
+              <div className="px-5 py-4">
+                <p className="text-[13px] leading-relaxed text-ink-muted">
+                  {new Date(row.created_at as string) < PDF_CAPTURE_FROM
+                    ? <>No copy was kept. This request predates the change that started saving them
+                        ({PDF_CAPTURE_FROM.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}),
+                        and the original cannot be recovered — the file was only ever built in the
+                        customer&apos;s own browser.</>
+                    : <>No copy came through for this one. The PDF is built and sent by the
+                        customer&apos;s browser, so a page opened before the change shipped, or a
+                        browser that could not build it, leaves nothing here. The survey below is
+                        unaffected.</>}
+                </p>
+              </div>
+            )}
+          </Card>
 
           {/* The estimate, exactly as the customer saw it */}
           <Card>
