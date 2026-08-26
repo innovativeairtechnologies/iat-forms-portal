@@ -10,6 +10,26 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — Session handoff record: quote request PDF, survey physics, notification timing
+
+Business-continuity record for the three sittings that reworked the quote request document and
+re-timed both scheduled emails:
+[`docs/handoff/2026-08-26-session-handoff.md`](docs/handoff/2026-08-26-session-handoff.md).
+
+The two lines most worth reaching from it:
+
+**The building-tightness rates were wrong**, and the value used for "Average" was the one our own
+table calls "Loose". Every quote request since that feature shipped costed ordinary buildings for
+air leakage as though they were draughty ones.
+
+**The leadership update was mailing all three recipients simultaneously**, against a provider limit
+of two a second, and only treated it as a failure if *every* copy was rejected — so it had been
+reaching some people and not others, silently, for weeks.
+
+Both are fixed. The record also carries the thing that cost the most time and produced no code: an
+hour spent by three sessions concluding a deploy had killed a scheduled email, from nothing but the
+absence of a record that had not been written yet.
+
 ## 2026-08-26 — Building tightness was being costed at the wrong leakage rates
 
 Asked to show customers what the Tight / Average / Loose options actually mean, we checked the
