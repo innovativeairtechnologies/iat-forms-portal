@@ -161,12 +161,13 @@ out, historical ones return `ExceedsBillingLimitError`, and cron invocations did
 appear even when they demonstrably ran. Check the side effects instead — `digest_runs`
 and the Resend send list.
 
-The weekly update covers one **edition** — a Monday-to-Sunday work week named
-after its Monday (`lib/edition.ts`), e.g. **Edition 8.17.26** for 17–23 August.
-Sent Monday evening, it reports the edition that closed the night before; that
-Monday's own work belongs to the edition just starting and appears next week.
-Rebuild any past week with `?edition=8.17.26` (or `2026-08-17`) — any date inside it resolves to
-that week's Monday.
+**Editions** name the reporting periods. An edition is one Monday-to-Sunday work week named
+after its Monday (`lib/edition.ts`) — **Edition 8.17.26** is 17–23 August.
+
+⚠️ **The leadership update is no longer weekly.** It runs Monday, Wednesday and Friday, and each
+run covers only the days since the previous one, so no scheduled send maps to a whole edition any
+more. Editions still name and address the history: rebuild any past week by hand with
+`?edition=8.17.26` (or `2026-08-17`) — any date inside it resolves to that week's Monday.
 
 ---
 
@@ -270,7 +271,8 @@ truncate. Fix the ordering before trusting a rebuild of that period.
 
 ## 🔴 Both scheduled mails moved out of the daily deploy window (2026-08-25)
 
-The owner ships to production **most days between 4:30 and 5:30pm ET**. The digest was nominally
+Work on the portals runs **8:00am to 5:30pm ET**, every day, most of it ending in a 4:30–5:30pm
+push. The digest was nominally
 4:30pm — scheduled into its own worst hour. Moved:
 
 | Job | Was (ET) | Now (ET) | Backstops (ET) |
@@ -310,8 +312,9 @@ that skips the digest still sends mail — two mailing jobs must not share a UTC
 
 ### The reminders moved to 3:00am for the same reason (2026-08-25)
 
-The owner deploys to production **every day at 9:00am**, which is exactly where `rfq-reminders` and
-`ticket-reminders` used to sit — and `ticket-reminders` had no backstop of any kind, so a 9:00am
+The working day starts at **8:00am**, and the first push of the morning used to land right on top
+of where `rfq-reminders` and `ticket-reminders` sat — and `ticket-reminders` had no backstop of any
+kind, so a morning
 deploy lost that day's nudges outright. Both now run at **3:00am ET**, which also puts the mail in
 that day's inbox rather than at the bottom of yesterday's.
 
@@ -346,7 +349,7 @@ assigned with no note in 24h, or one nobody has claimed — not everything that 
 | `deals` | `assigned_to` | ❌ |
 | `production_tasks` | `assignee` | ❌ |
 
-## 🔴 Deploying near a cron's scheduled time makes that run vanish
+## 🔴 Deploying near a job's scheduled time makes that run vanish
 
 Measured 2026-08-21. No error, no log, no trace — indistinguishable from the job never having
 been scheduled at all.
@@ -377,9 +380,34 @@ window opens at nominal + 25 minutes. That was wrong, and it caused a real bad d
 afternoon** — a deploy went out at 16:50 ET on the reasoning that the 16:30 digest "really runs at
 16:57, so there is margin". Do not reintroduce a rule that opens the window after the nominal time.
 
-**The window opens at NOMINAL and stays open for at least an hour.** A production deploy
-re-registers the project's cron jobs, so a run that has not fired yet when the new deployment goes
-live is at risk regardless of how far past its nominal time it is.
+**The window opens at NOMINAL and stays open for at least an hour.** Promoting a production
+deployment re-registers the project's jobs, so a run that has not fired yet when the new deployment
+goes live is at risk regardless of how far past its nominal time it is.
+
+⚠️ **And the risk starts BEFORE nominal too.** In the table above, a deploy **six minutes ahead of**
+a job's scheduled time killed it. There is no measurement establishing how much earlier is far
+enough, so do not compute a safe margin — see the rule below.
+
+### 🔴 The rule: nothing goes to production outside 8:00am – 5:30pm ET
+
+Work on the portals happens **8:00am to 5:30pm Eastern**. Every job was deliberately moved outside
+that window — the two reminder sweeps into the early morning, the digest and the leadership update
+into the evening — precisely so the two never meet.
+
+**So the only rule anyone has to follow is: do not promote a production deployment before 8:00am or
+after 5:30pm.** No arithmetic, no per-job boundaries. The table below is the derivation, not the
+instruction — a boundary table is what produced the bad 16:50 deploy, when someone reasoned from it
+that there was margin.
+
+⚠️ **The digest has the tightest margin in the system, and it is not proven safe.** Work stops at
+5:30pm; the digest is nominally 6:00pm. Thirty minutes — against a measured kill six minutes ahead
+of nominal, with no evidence about anything in between. What actually protects it is its
+**backstops at 7:00pm and 8:00pm**: a deploy that slips to 5:45pm costs an hour, not the day,
+provided you then stop. The leadership update at 8:30pm has three hours of clearance; the early
+morning jobs have four.
+
+⚠️ **A deploy is not the only way a run vanishes.** The 2026-08-21 table above has one miss with no
+deploy anywhere near it. An untouched evening is not proof the job ran — check the side effects.
 
 | Job | Nominal (ET) | Do not deploy |
 |---|---|---|
