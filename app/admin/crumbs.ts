@@ -62,6 +62,19 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/customer-jerry',  section: 'Jerry',   label: 'Customer Jerry' },
   { prefix: '/admin/jerry',           section: 'Jerry',   label: 'Ask Jerry' },
   { prefix: '/admin/knowledge',       section: 'Jerry',   label: "Jerry's Brain" },
+  // Reports. These were missing entirely, so every report crumbed as
+  // "Operations › Overview" via the bare '/admin' catch-all at the bottom of this
+  // list — noticed when the Engineering report was added 2026-08-26 and it
+  // inherited the same wrong trail. Longest-match ordering means the leaves win
+  // over the group prefix.
+  { prefix: '/admin/reports',             section: 'Reports', label: 'Reports' },
+  { prefix: '/admin/reports/tickets',     section: 'Reports', label: 'Support Tickets' },
+  { prefix: '/admin/reports/engineering', section: 'Reports', label: 'Engineering' },
+  { prefix: '/admin/reports/rfq',         section: 'Reports', label: 'Quote Requests' },
+  { prefix: '/admin/reports/sales',       section: 'Reports', label: 'Sales Pipeline' },
+  { prefix: '/admin/reports/warranty',    section: 'Reports', label: 'Installed Base' },
+  { prefix: '/admin/reports/tools',       section: 'Reports', label: 'Tools & Inventory' },
+  { prefix: '/admin/reports/adoption',    section: 'Reports', label: 'Portal Adoption' },
   // System
   { prefix: '/admin/home-content',    section: 'System',  label: 'Hub Content' },
   { prefix: '/admin/audit',           section: 'System',  label: 'Audit Log' },

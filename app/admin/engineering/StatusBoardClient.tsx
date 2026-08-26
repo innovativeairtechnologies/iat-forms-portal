@@ -53,11 +53,16 @@ function StreamTileCard({ tile, wall }: { tile: StreamTile; wall: boolean }) {
         <div className="divide-y divide-hairline-soft">
           {rows.map(r => {
             const href = r.job_id ? `/admin/engineering/jobs/${r.job_id}` : '/admin/engineering/tasks'
+            // 84px for the job column, not 70. A shop job number is four digits
+            // and fits either way, but the column also carries the word
+            // "Standing" for a task with no job behind it — and a truncated
+            // "Standin…" on a wall board is the one cell nobody can widen from
+            // across the room.
             return (
               <Link
                 key={r.id}
                 href={href}
-                className="grid grid-cols-[70px_minmax(0,1fr)_auto] items-center gap-2.5 px-4 py-2 transition-colors hover:bg-surface-soft group"
+                className="grid grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2.5 px-4 py-2 transition-colors hover:bg-surface-soft group"
               >
                 <span className={`tabular-nums font-medium text-ink truncate ${wall ? 'text-[14px]' : 'text-[12.5px]'}`}>
                   {r.job_number ?? <span className="text-ink-faint font-normal">Standing</span>}
