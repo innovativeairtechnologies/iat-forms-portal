@@ -148,6 +148,34 @@ Also 2026-08-25: `TIGHTNESS_HELP.Average` read "sealing programme". Display-only
 to change — unlike a material label, which `permOf()` matches by exact string
 ([[rfq-option-lists-are-physics-tables]]).
 
+### 🔴 The leakage rates themselves were wrong until 2026-08-26
+
+The owner produced IAT's own tightness table and asked whether those were the figures the survey
+used. **They were not.**
+
+| Band | was | now | shell leakage, 50 × 50 × 12 warehouse |
+|---|---|---|---|
+| Tight | 0.25 | **0.10** | 4,333 → 1,733 gr/hr |
+| Average | 0.60 | **0.30** | 10,400 → 5,200 gr/hr |
+| Loose | 1.50 | **0.60** | 25,999 → 10,400 gr/hr |
+
+⚠️ **The old Average (0.60) was exactly the new Loose.** A customer answering "average" was priced
+at the leakage rate IAT calls loose, and every survey since this feature shipped carried it.
+Corrected, shell leakage falls to 0.40–0.50 of what it was. (The "Loose is exactly 6× Tight"
+relation above still holds — 0.60 / 0.10.)
+
+**Stored surveys do not re-price.** `summary` is snapshotted at submit, `/admin/rfq` reads it
+rather than recomputing, and the customer's PDF is kept as a file (migration 095).
+
+⚠️ The retired `'Not sure'` band used to share Average's 0.6, so a legacy row missing the lookup
+took the `?? TIGHTNESS_RATES.Average` fallback and landed on the number it always had. It now lands
+on 0.30 — which only matters if something recomputes such a row, and nothing does.
+
+**The rate is now visible in the wizard**: on hover over each band (native `title`, matching the
+breakdown bars — there is no shared Tooltip in `components/ui`, and a bespoke one here would be a
+fourth pattern for the same job) and printed under the control for whichever band is selected, so
+nothing depends on hovering.
+
 ### History — the Advanced block, while it existed (2026-08-20)
 
 Three images sit above the material dropdowns: **Good, Better, Best**, from

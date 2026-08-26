@@ -17,7 +17,7 @@ import {
   AIR_SOURCES, CEILING_MATERIALS, CONSTRUCTIONS, COOLING_TYPES, DOOR_TYPES, FLOOR_MATERIALS,
   HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, FINAL_FILTER_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
   PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, ROOM_RENDER_EDGES, ROOM_SIZE_MODES, RUNTIMES, TEMP_UNITS,
-  TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS, DEFAULT_CEILING_FT,
+  TIGHTNESS_HELP, TIGHTNESS_RATES, VOLTAGES, WALL_MATERIALS, DEFAULT_CEILING_FT,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
   estimateProcess, fmt, fmtDewPoint, fmtGrains, fToC, grains, modeIsTemperature, normalizeMode,
   normalizeRoomSizeMode,
@@ -214,7 +214,7 @@ function Segmented<T extends string>({
   label, hint, value, onChange, options, tone = 'sky',
 }: {
   label?: string; hint?: string; value: T; onChange: (v: T) => void
-  options: { value: T; label: string }[]; tone?: Tone
+  options: { value: T; label: string; title?: string }[]; tone?: Tone
 }) {
   const groupId = useId()
   const hintId = `${groupId}-hint`
@@ -242,6 +242,13 @@ function Segmented<T extends string>({
               type="button"
               role="radio"
               aria-checked={on}
+              // Native title rather than a bespoke tooltip: the wizard already uses
+              // them (the breakdown bars do), there is no shared Tooltip in
+              // components/ui, and a hand-rolled one here would be a fourth pattern
+              // for the same job. Shows on hover AND on keyboard focus in most
+              // browsers; the same text is printed under the control for anyone who
+              // never hovers, so nothing depends on it.
+              title={o.title}
               onClick={() => onChange(o.value)}
               className={`rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 on
@@ -1746,13 +1753,22 @@ function StepShell({
           tone="sky"
           value={data.tightness}
           onChange={v => set('tightness', v)}
-          options={[
-            { value: 'Tight', label: 'Tight' },
-            { value: 'Average', label: 'Average' },
-            { value: 'Loose', label: 'Loose' },
-          ]}
+          // The leakage rate each band actually applies, on hover — and printed
+          // below whichever is chosen, so it is on the page rather than only in a
+          // tooltip. This is the number that sets the whole infiltration term.
+          options={(Object.keys(TIGHTNESS_RATES) as Tightness[]).map(t => ({
+            value: t,
+            label: t,
+            title: `${TIGHTNESS_RATES[t].toFixed(2)} cfh/sq.ft of envelope`,
+          }))}
         />
-        <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{TIGHTNESS_HELP[data.tightness]}</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+          <span className="font-medium text-ink-secondary">
+            {TIGHTNESS_RATES[data.tightness].toFixed(2)} cfh/sq.ft
+          </span>
+          {' — '}
+          {TIGHTNESS_HELP[data.tightness]}
+        </p>
       </div>
 
 

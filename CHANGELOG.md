@@ -10,6 +10,31 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — Building tightness was being costed at the wrong leakage rates
+
+Asked to show customers what the Tight / Average / Loose options actually mean, we checked the
+figures the survey was using against IAT's own table. **They did not match.**
+
+| | was using | should be |
+|---|---|---|
+| Tight | 0.25 | **0.10** |
+| Average | 0.60 | **0.30** |
+| Loose | 1.50 | **0.60** |
+
+The number the survey used for **Average was the same one our table calls Loose** — so a customer
+who described an ordinary building was costed for air leakage as though it were a draughty one.
+Every quote request since this feature shipped carried that. Corrected, the air-leakage figure falls
+to roughly half: on a 50 × 50 × 12 ft warehouse described as average, from about 10,400 to 5,200
+grains an hour.
+
+**Quote requests already submitted are unaffected** — what a customer was shown is stored with their
+request and never recalculated, and their PDF is kept as a file.
+
+The rate is now visible rather than buried: hovering a band shows what it applies, and the figure
+for whichever band is chosen is printed under the control. Air leakage is one of the larger terms in
+a survey and the customer is answering it on our behalf, so they should be able to see what their
+answer costs.
+
 ## 2026-08-26 — The quote request PDF wears the company's colors
 
 The band across the top of every page now fades from the logo's green on the left to its blue on

@@ -668,16 +668,37 @@ export const FLOOR_MATERIALS: MaterialOption[] = [
  * "Method A" shorthand — a single tightness band instead of totalling every
  * crack, which is the only realistic thing to ask a customer for.
  */
-// 'Not sure' removed (owner, 2026-08-20) along with every other list. Free of
-// consequence here: its rate was 0.6, IDENTICAL to Average, and estimateLoad reads
-// `TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average` — so a stored survey
-// holding 'Not sure' now misses the lookup, takes that fallback, and lands on the
-// same 0.6 it always used. Nothing re-prices.
+// 🔴 CORRECTED 2026-08-26 TO MATCH IAT'S OWN TABLE. The owner produced the figures
+// this survey is supposed to agree with and asked whether they were the ones in
+// use. They were not:
+//
+//              was      now
+//   Tight      0.25  →  0.10
+//   Average    0.60  →  0.30
+//   Loose      1.50  →  0.60
+//
+// ⚠️ The old **Average** (0.60) was exactly the new **Loose**, so a customer
+// answering "average" was being priced at the leakage rate IAT calls loose.
+// Corrected, shell leakage falls to 0.40–0.50 of what it was — on a 50 × 50 × 12
+// warehouse, Average goes 10,400 → 5,200 gr/hr.
+//
+// STORED SURVEYS DO NOT RE-PRICE. `summary` is snapshotted at submit and
+// /admin/rfq reads it rather than recomputing, and the customer's PDF is kept as
+// a file (migration 095). Only new surveys use these.
+//
+// ⚠️ These are a PHYSICS TABLE, not display copy — see the option-list rule in the
+// project memory. Change one only against a source, and say which.
+//
+// 'Not sure' was removed (owner, 2026-08-20). Its rate was 0.6, and estimateLoad
+// reads `TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average`, so a stored
+// row holding 'Not sure' misses the lookup and takes the fallback. Before today
+// that landed on the same 0.6 it always used; now it lands on 0.30 — which only
+// matters if something recomputes such a row, and nothing does.
 export type Tightness = 'Tight' | 'Average' | 'Loose'
 export const TIGHTNESS_RATES: Record<Tightness, number> = {
-  Tight: 0.25,
-  Average: 0.6,
-  Loose: 1.5,
+  Tight: 0.10,
+  Average: 0.30,
+  Loose: 0.60,
 }
 export const TIGHTNESS_HELP: Record<Tightness, string> = {
   Tight: 'Purpose-built envelope: sealed penetrations, gasketed doors, taped vapor barrier.',
