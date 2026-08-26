@@ -1004,15 +1004,26 @@ That anchored it to the foot of a page this section no longer owns — the clamp
 
 Measured, not estimated. Nothing below was done, because each one removes something real:
 
+⚠️ **The room render figure below was ~62mm until it was MEASURED on 2026-08-26. It is 13.5mm.**
+The estimate assumed the whole 62mm row went. It does not: the row is the render *beside* the
+"THE NUMBERS" panel, and that panel has to stay — it is the only place floor area, wall area,
+volume and envelope total appear. Only the difference between the row height and the panel on its
+own is saved. Cutting the render was built, measured at **still five pages**, and reverted.
+
 | Candidate | Saves | The catch |
 |---|---|---|
-| The room render in the record | ~62mm | The picture is already on page 1 — but only the record's copy carries the **dimension callouts** |
+| The room render in the record | **13.5mm** (measured) | The picture is already on page 1 — but only the record's copy carries the **dimension callouts**, and page 1 draws it with `callouts: false` on purpose |
 | Standing engineering notes | ~40mm | IAT's own text from the paper quote request |
 | The two blue `note()` explainers | ~24mm | They are the customer-education lines about grains vs %rh |
 | The load totals tile row | ~30mm | The bars above it would be left unexplained |
 
-Even all four together is under a page. **Two or three pages needs the breakdown, the design
-conditions table or the render to go** — a content decision, not a layout one.
+All four together is ~112mm, against the ~110mm page 5 currently holds — so **four pages needs
+essentially every one of them**, and even then it is marginal: one long project name or a wordy
+note pushes it back to five. Two or three pages needs the breakdown or the design conditions table
+to go. That is a content decision, not a layout one.
+
+**Decided 2026-08-26: stay at five.** The render cut was built and reverted rather than shipped for
+13.5mm and the loss of the dimension callouts.
 
 ### Four rules for editing the PDF
 
