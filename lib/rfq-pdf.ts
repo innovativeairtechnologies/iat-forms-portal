@@ -56,6 +56,8 @@ const C = {
   // were changed on 2026-08-26 at the owner's request — "use more of our
   // traditional colour scheme versus the green".
   brandNavy: [30, 58, 110] as RGB,     // band field, deep enough for white text
+  /** Left end of the header fade — the mark's green, deepened so white text holds. */
+  brandGreenDeep: [30, 86, 49] as RGB,
   brandBlue: [59, 95, 168] as RGB,     // the mark's blue
   brandSilver: [192, 192, 192] as RGB, // the mark's silver
   brandLime: [86, 176, 67] as RGB,     // the mark's green
@@ -115,6 +117,9 @@ export async function generateRfqPdf(data: RfqData, meta: RfqPdfMeta): Promise<B
   // full-color mark was fetched here too until the takeaway page stopped using
   // it; re-add it if a light-background placement ever needs it.
   const logoLight = await loadLogo('/iat-logo-white.png')
+  // The full-colour mark, for the header tiles. Transparent PNG, so it keeps its
+  // alpha through the canvas hop and sits on the white tile rather than a box.
+  const logoColor = await loadLogo('/iat-logo-transparent.png')
 
   // The application render, so the space page shows the room rather than only an
   // abstract box. Fetched in parallel with nothing else because it is the only
@@ -123,7 +128,7 @@ export async function generateRfqPdf(data: RfqData, meta: RfqPdfMeta): Promise<B
   // falls back to the drawn box. A picture must never cost someone their PDF.
   const roomImage = isRoom ? await loadRoomRender(data) : null
 
-  const ctx: Ctx = { doc, data, meta, load, proc, logoLight, isRoom, roomImage }
+  const ctx: Ctx = { doc, data, meta, load, proc, logoLight, logoColor, isRoom, roomImage }
 
   // The takeaway leads. It used to close the document, but the person opening
   // this wants their own numbers first — the detail pages behind it are the
@@ -146,6 +151,8 @@ type Ctx = {
   load: LoadEstimate | null
   proc: ProcessEstimate | null
   logoLight: string | null
+  /** Full-colour mark for the header tiles. See markTile. */
+  logoColor: string | null
   isRoom: boolean
   /** JPEG data URL of the application render, or null. See loadRoomRender. */
   roomImage: string | null
@@ -153,17 +160,16 @@ type Ctx = {
 
 // ─── Page 1 · Cover ───────────────────────────────────────────────────────────
 
-function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts?: { newPage?: boolean }) {
+function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }: Ctx, opts?: { newPage?: boolean }) {
   if (opts?.newPage) doc.addPage()
   paper(doc)
 
   // Header band — pine, with a ghosted mark bleeding off the right edge below
   // the reference chip (the two used to overlap).
-  fill(doc, C.brandNavy)
-  doc.rect(0, 0, PAGE_W, 66, 'F')
+  gradientBand(doc, 0, 0, PAGE_W, 66, C.brandGreenDeep, C.brandNavy)
   ghostMark(doc, logoLight, PAGE_W - 26, 40, 34)
 
-  if (logoLight) doc.addImage(logoLight, 'PNG', M, 13, 12.5, 16)
+  markTile(doc, logoColor, M, 13, 12.5, 16)
 
   overline(doc, COMPANY.name.toUpperCase(), M + 18, 19, C.onNavyStrong)
   text(doc, 'Request for Quote', M + 18, 28.5, { size: 20, weight: 'bold', color: C.white })
@@ -616,13 +622,12 @@ const T = {
 // pages, and nothing here reflows.
 
 function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
-  const { doc, data, load, proc, logoLight, isRoom, roomImage } = ctx
+  const { doc, data, load, proc, logoLight, logoColor, isRoom, roomImage } = ctx
   if (!opts?.first) doc.addPage()
   paper(doc, C.white)
 
   // Title block
-  fill(doc, C.brandNavy)
-  doc.rect(0, 0, PAGE_W, T.band, 'F')
+  gradientBand(doc, 0, 0, PAGE_W, T.band, C.brandGreenDeep, C.brandNavy)
   // ── Letterhead ──
   // The document opens on this page, so it carries the company identity: mark,
   // name, address and web address, on the pine band. Asked for 2026-08-25.
@@ -636,7 +641,7 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   // fixed vertical budget that already clears CONTENT_BOTTOM by about 4mm. Three
   // stacked lines on the left and two on the right is what fits. If anything is
   // added here, take the room from within the band, not from the page.
-  if (logoLight) doc.addImage(logoLight, 'PNG', M, 4, 12, 15.3)
+  markTile(doc, logoColor, M, 4, 12, 15.3)
   overline(doc, COMPANY.name.toUpperCase(), M + 17.5, 8, C.onNavyStrong)
   text(doc, 'YOUR DEHUMIDIFICATION SNAPSHOT', M + 17.5, 15,
     { size: 12.5, weight: 'bold', color: C.white, spacing: 0.25 })
@@ -863,9 +868,8 @@ function newPage(ctx: Ctx, title: string, sub: string) {
   const { doc } = ctx
   doc.addPage()
   paper(doc)
-  fill(doc, C.brandNavy)
-  doc.rect(0, 0, PAGE_W, 30, 'F')
-  if (ctx.logoLight) doc.addImage(ctx.logoLight, 'PNG', M, 7, 11, 14)
+  gradientBand(doc, 0, 0, PAGE_W, 30, C.brandGreenDeep, C.brandNavy)
+  markTile(doc, ctx.logoColor, M, 7, 11, 14)
   text(doc, title, M + 16, 16, { size: 14, weight: 'bold', color: C.white })
   text(doc, sub, M + 16, 22.5, { size: 8.5, color: C.onNavy })
   text(doc, ctx.meta.reference, PAGE_W - M, 16, { size: 9, weight: 'bold', color: C.onNavy, align: 'right' })
@@ -877,6 +881,47 @@ function newPage(ctx: Ctx, title: string, sub: string) {
  * read as blobs and collided with the reference chip. The real mark at 8% is
  * both more on-brand and impossible to mistake for content.
  */
+/**
+ * A horizontal fade, drawn as interpolated strips.
+ *
+ * jsPDF has no linear-gradient primitive, so this is the standard workaround:
+ * lay down N thin rectangles stepping the colour from `from` to `to`. 0.6mm
+ * strips over a letter width is ~360 rects per band — invisible seams, and a few
+ * KB once the content stream is compressed.
+ *
+ * ⚠️ Each strip is drawn 0.15mm WIDER than its step. Butt-jointed rectangles leave
+ * hairline gaps where the rasteriser rounds to device pixels, which prints as fine
+ * vertical lines across the band — visible on paper, easy to miss on screen.
+ */
+function gradientBand(doc: Doc, x: number, y: number, w: number, h: number, from: RGB, to: RGB) {
+  const step = 0.6
+  const n = Math.max(1, Math.ceil(w / step))
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1 || 1)
+    fill(doc, [
+      Math.round(from[0] + (to[0] - from[0]) * t),
+      Math.round(from[1] + (to[1] - from[1]) * t),
+      Math.round(from[2] + (to[2] - from[2]) * t),
+    ] as RGB)
+    doc.rect(x + i * step, y, step + 0.15, h, 'F')
+  }
+}
+
+/**
+ * The full-colour mark on a white tile.
+ *
+ * ⚠️ THE TILE IS NOT DECORATION. The mark is green → silver → blue; on a green-to-
+ * navy band its own colours sit within a few shades of the field behind it and it
+ * disappears. The white tile is what lets the colour logo be used at all — the
+ * alternative is the white knockout, which is what this replaced.
+ */
+function markTile(doc: Doc, logo: string | null, x: number, y: number, w: number, h: number) {
+  const pad = 2.2
+  fill(doc, C.white)
+  doc.roundedRect(x - pad, y - pad, w + pad * 2, h + pad * 2, 1.8, 1.8, 'F')
+  if (logo) doc.addImage(logo, 'PNG', x, y, w, h)
+}
+
 function ghostMark(doc: Doc, logo: string | null, x: number, y: number, h: number) {
   if (!logo) return
   const g = doc as unknown as { GState: new (o: object) => object }

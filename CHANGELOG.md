@@ -12,12 +12,16 @@ filed as an interim, and never replaces the edition it sits inside.
 
 ## 2026-08-26 — The quote request PDF wears the company's colors
 
-The dark bands across the top of the document were the portal's green. They are now the blue IAT
-has always used on paper.
+The band across the top of every page now fades from the logo's green on the left to its blue on
+the right, and carries the full-color mark rather than a plain white version of it.
 
-The colors were taken from the logo itself rather than picked by eye — the mark is blue over silver
-with a green accent, and blue is what leads. The same treatment is applied to every dark block in
-the document so it does not mix two schemes.
+The colors were taken from the logo itself rather than picked by eye. The mark sits on a small white
+tile — not for decoration: it is green, silver and blue, and against a green-to-blue band its own
+colors would vanish into the background behind it.
+
+The same treatment is applied to every dark block in the document, so it no longer mixes two
+schemes. What was there before was the portal's green, which is a different color from the logo's
+green — a screen palette that had found its way onto the letterhead.
 
 The colored panels inside the pages are unchanged: those greens, blues and ambers mean something —
 which reading is the target, which is the space, where most of the moisture comes from — and are

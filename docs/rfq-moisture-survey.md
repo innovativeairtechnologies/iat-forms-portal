@@ -725,6 +725,30 @@ trade-off for a customer-facing estimate.
 `lib/rfq-pdf.ts`, generated client-side with jsPDF — vector throughout (no `html2canvas`), so
 the file is ~35 KB, prints crisply and stays text-searchable.
 
+### The header is a green→navy fade carrying the full-colour mark (2026-08-26)
+
+Owner: use the colour logo, "and use those colors across the top as well, kind of fade from one
+colour to the other within the header".
+
+**`gradientBand()`** — jsPDF has no linear-gradient primitive, so the fade is laid down as
+interpolated strips, 0.6mm each, ~360 per band. ⚠️ **Each strip is drawn 0.15mm wider than its
+step.** Butt-jointed rectangles leave hairline gaps where the rasteriser rounds to device pixels,
+and those print as fine vertical lines across the band — visible on paper, easy to miss on screen.
+
+**`markTile()`** — the colour mark on a small white tile. ⚠️ **The tile is not decoration.** The
+mark is green → silver → blue; on a green-to-navy band its own colours sit within a few shades of
+the field behind it and it disappears. The tile is what makes the colour logo usable at all — the
+alternative is the white knockout (`iat-logo-white.png`), which is what this replaced.
+
+`iat-logo-transparent.png` is the colour mark with alpha (588KB source). It keeps its transparency
+through the canvas hop because `loadLogo` emits PNG, not JPEG.
+
+**Cost:** ~86KB → ~129KB per document. The colour mark is 27KB against the white one's 7KB, and the
+strips add the rest. Still inside the ~200KB the file's header comment targets.
+
+Applied to all three header bands — takeaway, cover, continuation — so the document does not mix a
+gradient with a flat block.
+
 ### The PDF uses the COMPANY's colours, not the portal's (2026-08-26)
 
 The dark bands were `C.pine` (#0a2e1e) — the portal's "Quiet Precision" emerald. The owner asked
