@@ -352,6 +352,11 @@ function spacePage(ctx: Ctx, startY: number): number {
     ['Roof / ceiling', data.ceilingMaterial],
     ['Floor', data.floorMaterial],
     ['Vapor barrier', data.vaporBarrier],
+    ['Space around the room', data.surroundSource === 'outdoor'
+      ? 'Outside air — the outdoor design condition'
+      : data.surroundSource === 'manual'
+        ? 'Box in a box — surrounded by another conditioned space'
+        : 'Not stated'],
     ['Building tightness', `${data.tightness} — ${leakRate} cu.ft/hr per sq.ft of envelope`],
   ]
   // Reserve exactly what this block draws: the 4mm below the overline, plus the

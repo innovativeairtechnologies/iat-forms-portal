@@ -25,7 +25,7 @@ import {
   VENT_LOAD_TARGETS,
   type VentLoadTarget, presetFor, roomDims, setCondition, tempFromDisplay, tempToDisplay,
   type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
-  type ProcessPreset, type RfqData, type RoomPreset, type TargetSource, type TempUnit,
+  type ProcessPreset, type RfqData, type RoomPreset, type SurroundSource, type TargetSource, type TempUnit,
   type Tightness, type Track, type VaporBarrier,
 } from '@/lib/rfq'
 import { renderAsset, renderAssetUrl } from '@/lib/render-assets'
@@ -1055,6 +1055,13 @@ function Readout({
   const elev = numOf(data.elevationFt)
   const t = numOf(data.targetTempF)
   const rh = numOf(data.targetRhPct)
+  // Follows the survey unit, same as ConditionReadout. The dew point here used to
+  // print through fmtDewPoint() and was therefore always Fahrenheit - a °F dew
+  // point under a °C temperature is the exact confusion the input fields were
+  // fixed for, so both go through this.
+  const unit = data.tempUnit ?? 'F'
+  const asUnit = (f: number) =>
+    !Number.isFinite(f) ? '—' : unit === 'C' ? `${fmt(fToC(f))}°C` : `${fmt(f)}°F`
 
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5">
@@ -1072,9 +1079,10 @@ function Readout({
           filling the form. Restoring them is deleting this comment and putting the
           blocks back; nothing was ripped out of the model. */}
       {isRoom ? (
-        <div className="mt-3 grid grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          <Stat label="Temperature" value={t ? asUnit(t) : '—'} />
           <Stat label="Grains" value={t || rh ? fmtGrains(grains(t, rh, elev)) : '—'} unit="gr/lb" />
-          <Stat label="Dew point" value={t || rh ? fmtDewPoint(dewPointF(t, rh, elev)) : '—'} />
+          <Stat label="Dew point" value={t || rh ? asUnit(dewPointF(t, rh, elev)) : '—'} />
         </div>
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -1712,6 +1720,43 @@ const SHELL_EXAMPLES = [
 function StepShell({
   data, set, setData,
 }: { data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
+  /* ── Option A mirrors the outdoor design point into the surround fields ──
+     Written into the record rather than resolved at calculation time, on purpose.
+     estimateLoad, the PDF and the admin view all read `surround*` directly; making
+     any of them ask "unless surroundSource is outdoor" would be the same fact in
+     four places, and the RFQ has already been bitten by a value the browser priced
+     one way and the stored record another.
+
+     The guard is what stops this looping: it returns the moment the three surround
+     fields already match outdoor. */
+  const outdoorKnown = numOf(data.outdoorTempF) !== 0 && numOf(data.outdoorRhPct) > 0
+  const mirrored = data.surroundTempF === data.outdoorTempF
+    && data.surroundMoistureMode === data.outdoorMoistureMode
+    && data.surroundMoistureValue === data.outdoorMoistureValue
+
+  useEffect(() => {
+    if (data.surroundSource !== 'outdoor' || mirrored) return
+    setData(d => setCondition(
+      setCondition(d, 'surround', { tempF: d.outdoorTempF }),
+      'surround',
+      { mode: d.outdoorMoistureMode, value: d.outdoorMoistureValue },
+    ))
+  }, [data.surroundSource, mirrored, setData])
+
+  const chooseSurround = (v: SurroundSource) => setData(d => (v === 'manual'
+    // Back to zero, so our outdoor figures never sit in the boxes for someone to
+    // tab past as though they had entered them. Same reasoning as the old
+    // "we'll enter our own" button on step 3.
+    ? {
+      ...setCondition(
+        setCondition(d, 'surround', { tempF: '0' }),
+        'surround',
+        { mode: d.surroundMoistureMode, value: '0' },
+      ),
+      surroundSource: 'manual' as SurroundSource,
+    }
+    : { ...d, surroundSource: 'outdoor' as SurroundSource }))
+
   return (
     <div className="space-y-5">
       <div>
@@ -1828,37 +1873,84 @@ function StepShell({
 
 
       {/* ⚠️ NO "use typical" CHIP AND NO PRE-FILLED FIGURES HERE (owner, 2026-08-26).
-          Both boxes below start at 0 and validateStep('shell') will not advance
-          until they are replaced.
-
           The surrounding condition used to arrive pre-filled from the application
           preset, and the outdoor box from a national '95°F / 55%rh' placeholder.
-          Neither was ever measured, and both feed estimateLoad directly —
-          surrounding sets the driving vapor pressure for permeation AND the grain
-          difference for shell leakage, so it moves the biggest two lines on most
-          surveys. The outdoor box is still filled automatically when step 1's
-          location lookup succeeds, because an ASHRAE design point for the
-          customer's own site is measured data rather than a guess; the zero is
-          what stands when no location was given.
+          Neither was ever measured, and the surrounding condition feeds estimateLoad
+          directly — it sets the driving vapor pressure for permeation AND the grain
+          difference for infiltration, so it moves the biggest two lines on most
+          surveys.
 
           Do not re-add a typical chip to this block. */}
       <div className="space-y-4 rounded-xl border border-hairline bg-surface-soft p-4">
-        <ConditionField
+        <Segmented<SurroundSource>
           label="The space around the room"
-          hint="Moisture pushes in from whatever is on the other side of the wall, usually the rest of the plant rather than the weather."
-          tempLabel="Surrounding temperature"
-          data={data}
-          conditionKey="surround"
-          onChange={setData}
+          hint="Moisture pushes in from whatever is on the other side of the wall. Which is it?"
+          tone="sky"
+          value={(data.surroundSource || '') as SurroundSource}
+          onChange={chooseSurround}
+          options={[
+            { value: 'outdoor', label: 'Outside air' },
+            { value: 'manual', label: 'Box in a box' },
+          ]}
         />
-        <ConditionField
-          label="Outdoor summer design"
-          hint="The worst day the system has to hold. We confirm against ASHRAE design data for your location."
-          tempLabel="Outdoor temperature"
-          data={data}
-          conditionKey="outdoor"
-          onChange={setData}
-        />
+
+        {data.surroundSource === 'outdoor' && (
+          outdoorKnown ? (
+            <>
+              <Callout tone="sky">
+                Using the <strong className="font-semibold">ASHRAE summer design condition</strong> for
+                your site as the air on the other side of the walls.
+                {data.outdoorSource ? <> Source: {data.outdoorSource}.</> : null}
+              </Callout>
+              <ConditionReadout
+                tempF={numOf(data.surroundTempF)}
+                rhPct={numOf(data.surroundRhPct)}
+                elevationFt={numOf(data.elevationFt)}
+                unit={data.tempUnit ?? 'F'}
+              />
+            </>
+          ) : (
+            /* The lookup never ran or found no station within range. Saying so beats
+               showing a confident zero, and the outdoor fields appear below so the
+               step is still completable. */
+            <Callout tone="amber">
+              We do not have an ASHRAE design point for this site yet — go back to step 1 and
+              check the location, or enter the outdoor condition below and we will use that.
+            </Callout>
+          )
+        )}
+
+        {data.surroundSource === 'manual' && (
+          <ConditionField
+            label="The condition in the space around the room"
+            hint="The rest of the plant, a warehouse, a mezzanine — whatever the room sits inside."
+            tempLabel="Surrounding temperature"
+            data={data}
+            conditionKey="surround"
+            onChange={setData}
+          />
+        )}
+
+        {/* ⚠️ THE "OUTDOOR SUMMER DESIGN" FIELDS WERE ALWAYS HERE and were removed from
+            this step on 2026-08-26 at the owner's request. Step 1's location lookup
+            fills them from ASHRAE, which is measured data rather than a guess, so for
+            almost everyone there was nothing to do here.
+
+            🔴 THEY COME BACK WHENEVER THE LOOKUP DID NOT FILL THEM. Outdoor still
+            prices every opening that vents outside and is the fallback condition for
+            makeup air, and validateStep('shell') still requires it — so without this
+            fallback a customer whose site matched no weather station would face a
+            Continue button that never enables and no field to fix it. */}
+        {!outdoorKnown && (
+          <ConditionField
+            label="Outdoor summer design"
+            hint="We normally take this from ASHRAE for your location. No station matched, so please enter the worst day the system has to hold."
+            tempLabel="Outdoor temperature"
+            data={data}
+            conditionKey="outdoor"
+            onChange={setData}
+          />
+        )}
       </div>
     </div>
   )
@@ -2485,12 +2577,25 @@ function SiteLocation({ data, set, setData }: {
         // humidity that was never true anywhere.
         const withElev = { ...prev, elevationFt: String(j.elevationFt) }
         if (!d) return withElev
+        const withOutdoor = setCondition(withElev, 'outdoor', {
+          tempF: String(d.dehumMcdbF),
+          value: String(d.dehumGrains),
+          mode: 'gr',
+        })
+        // 🔴 CARRY THE SURROUND WITH IT when the customer answered "Outside air" on
+        // step 5. StepShell mirrors outdoor into surround, but it only does so while
+        // it is MOUNTED — someone who picks Outside air, comes back here to correct
+        // the location and then jumps straight to review would otherwise submit a
+        // surrounding condition taken from the site they first typed.
+        const withSurround = withOutdoor.surroundSource === 'outdoor'
+          ? setCondition(
+            setCondition(withOutdoor, 'surround', { tempF: withOutdoor.outdoorTempF }),
+            'surround',
+            { mode: withOutdoor.outdoorMoistureMode, value: withOutdoor.outdoorMoistureValue },
+          )
+          : withOutdoor
         return {
-          ...setCondition(withElev, 'outdoor', {
-            tempF: String(d.dehumMcdbF),
-            value: String(d.dehumGrains),
-            mode: 'gr',
-          }),
+          ...withSurround,
           // No edition year here: this string is what the customer reads, in the
           // wizard and on their PDF. The vintage rides on its own field for staff.
           outdoorSource: `ASHRAE · ${d.station} · ${d.distanceMi} mi`,
@@ -2748,10 +2853,17 @@ function validateStep(step: StepKey, d: RfqData): boolean {
         && numOf(d.targetTempF) !== 0
         && numOf(d.targetRhPct) > 0
     case 'shell':
-      // Both boxes at the bottom of the step start at 0 and have to be replaced.
-      // Outdoor is normally filled by step 1's location lookup, so for most people
-      // this only gates the surrounding condition.
-      return numOf(d.surroundTempF) !== 0
+      // The surrounding condition has to be ANSWERED, not merely non-zero: Option A
+      // mirrors the outdoor design point into it, so a survey could otherwise carry
+      // real-looking numbers nobody chose.
+      //
+      // ⚠️ The outdoor test stays even though its fields are no longer on this step.
+      // Outdoor still prices every door that opens outside and is the fallback for
+      // makeup air, and step 1 fills it from the ASHRAE lookup. StepShell shows the
+      // outdoor fields again whenever that lookup did NOT fill them, so this can
+      // never become a gate with no way through it.
+      return d.surroundSource !== ''
+        && numOf(d.surroundTempF) !== 0
         && numOf(d.surroundRhPct) > 0
         && numOf(d.outdoorTempF) !== 0
         && numOf(d.outdoorRhPct) > 0

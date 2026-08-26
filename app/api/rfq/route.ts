@@ -6,7 +6,7 @@ import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
 import {
   applicationLabel, emptyRfq, normalizeMode, normalizeRoomSizeMode,
-  normalizeTargetSource, normalizeVentLoadTarget, setCondition,
+  normalizeSurroundSource, normalizeTargetSource, normalizeVentLoadTarget, setCondition,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
 
@@ -103,6 +103,10 @@ function coerce(raw: unknown): RfqData {
   // before quoting off it. Anything else pins to blank, which reads as "not
   // stated" rather than silently claiming they gave us figures.
   out.targetSource = normalizeTargetSource(src.targetSource)
+  // Same reasoning: the generic string branch above would accept any text, and an
+  // unknown value here reads as 'not answered' in the wizard while the stored
+  // record claims something else.
+  out.surroundSource = normalizeSurroundSource(src.surroundSource)
 
   // The moisture-unit fields are string unions, so the generic string copy above
   // would happily accept "banana" and hand it to the converter. Pin them to the

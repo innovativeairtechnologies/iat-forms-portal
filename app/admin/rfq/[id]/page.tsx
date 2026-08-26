@@ -238,6 +238,16 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                   <Field label="Floor">{d.floorMaterial}</Field>
                   <Field label="Vapor barrier">{d.vaporBarrier}</Field>
                   <Field label="Tightness">{d.tightness}</Field>
+                  {/* Which of the two the customer answered on step 5. Worth having on
+                      the record: Outside air means the surrounding condition below IS
+                      the ASHRAE design point, not a figure they measured. */}
+                  <Field label="Space around it">
+                    {d.surroundSource === 'outdoor'
+                      ? 'Outside air (ASHRAE design point)'
+                      : d.surroundSource === 'manual'
+                        ? 'Box in a box (entered)'
+                        : 'Not stated'}
+                  </Field>
                 </div>
               </Card>
 

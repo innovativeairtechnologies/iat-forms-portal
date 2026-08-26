@@ -123,6 +123,30 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-26 — The quote request asks what is on the other side of the wall
+
+Moisture comes through a wall from whatever is on the far side of it, and until now the survey asked
+for that condition as a pair of empty boxes without asking the question that decides them.
+
+**Step 5 now offers two answers.** *Outside air* — the room is a building, and the weather is on the
+other side — fills the condition from the ASHRAE summer design point for the site, taken from the
+location given at the start. *Box in a box* — the room sits inside another building — opens fields
+for the surrounding condition to be entered directly. Neither is pre-selected: it moves the two
+largest figures on most surveys, so it is not a question to answer on a customer's behalf.
+
+The difference is not small. On a 50 by 40 foot room the same building reads roughly **2,700 grains
+an hour** surrounded by conditioned plant and **10,400** surrounded by summer air. Getting that
+answer explicitly is worth more than any amount of care taken over the numbers that follow it.
+
+**The outdoor design condition has come off that step**, because the location lookup at the start of
+the survey already fills it from ASHRAE and there was nothing for anyone to do there. It reappears
+by itself in the one case that matters — when no weather station matched the site — so the survey
+can always be completed.
+
+**On step 3**, the summary panel that follows you down the page now shows the target temperature
+alongside grains and dew point, and both temperatures follow whichever unit the survey is being
+filled in with.
+
 ## 2026-08-26 — The quote request asks less, and says it more plainly
 
 A pass over the customer-facing quote request, top to bottom, at the owner's direction.

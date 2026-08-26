@@ -822,6 +822,28 @@ export const INSTALL_LOCATIONS = ['Indoor', 'Outdoor']
  */
 export type TargetSource = 'entered' | 'typical'
 
+/**
+ * What is on the other side of the room wall.
+ *
+ *   'outdoor' — Option A, "Outside air". The room is a standalone building, so the
+ *               surrounding condition IS the outdoor design point. The surround
+ *               fields are MIRRORED from the ASHRAE lookup rather than typed.
+ *   'manual'  — Option B, "Box in a box". The room sits inside another building,
+ *               so the surrounding condition is its own thing and is typed in.
+ *
+ * Blank until answered, on purpose. It moves the two biggest lines on most
+ * surveys - permeation drives off the surrounding vapor pressure and infiltration
+ * off the surrounding grains - so it is the same category of question as tightness
+ * and the vapor barrier, and this survey has been bitten three times by answering
+ * that category on the customer behalf.
+ */
+export type SurroundSource = 'outdoor' | 'manual'
+
+/** Pin the union — see the same reasoning on `roomSizeMode` in app/api/rfq. */
+export function normalizeSurroundSource(v: unknown): SurroundSource | '' {
+  return v === 'outdoor' || v === 'manual' ? v : ''
+}
+
 /** Pin the union — see the same reasoning on `roomSizeMode` in app/api/rfq. */
 export function normalizeTargetSource(v: unknown): TargetSource | '' {
   return v === 'entered' || v === 'typical' ? v : ''
@@ -856,6 +878,7 @@ export type RfqData = {
   targetMoistureValue: string
   /** See TargetSource. Blank until the customer chooses on step 3. */
   targetSource: TargetSource | ''
+  surroundSource: SurroundSource | ''
 
   // Process target — canonical unit here is grains, not rh.
   leavingTempF: string
@@ -994,6 +1017,7 @@ export function emptyRfq(): RfqData {
     // explicit 0 rather than its fallback, so nothing quietly re-inflates these.
     targetTempF: '0', targetRhPct: '0', targetMoistureMode: 'rh', targetMoistureValue: '0',
     targetSource: '',
+    surroundSource: '',
     leavingTempF: '', leavingGrains: '', leavingMoistureMode: 'gr', leavingMoistureValue: '',
     processCfm: '',
     airSource: '100% return air', mixOutdoorPct: '',
@@ -1152,6 +1176,7 @@ export function applyRoomPreset(data: RfqData, preset: RoomPreset): RfqData {
     targetMoistureMode: 'rh',
     targetMoistureValue: '0',
     targetSource: '',
+    surroundSource: '',
     surroundTempF: '0',
     surroundRhPct: '0',
     surroundMoistureMode: 'rh',

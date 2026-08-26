@@ -913,6 +913,56 @@ absent quantity matches qty 1.
 | Breakdown label | "Shell air leakage" is now **Infiltration**, renamed at the source. `shortLabel()` still maps the old long string so stored summaries read the same way |
 | Support landing page | The line under "How can we help?" was written when the page had one door on it; it now covers both |
 
+## Step 5: what is on the other side of the wall (2026-08-26)
+
+The surrounding condition is now a **two-option choice** rather than a pair of boxes, and the
+outdoor pair has come off this step.
+
+| Option | What it means | Where the numbers come from |
+|---|---|---|
+| **A — Outside air** | The room is a standalone building; the weather is on the other side of the wall | The **ASHRAE summer design point** for the site, mirrored in from step 1's location lookup |
+| **B — Box in a box** | The room sits inside another building | Typed in, starting at zero |
+
+Blank until answered. It moves the two biggest lines on most surveys — permeation drives off the
+surrounding **vapor pressure**, infiltration off the surrounding **grains** — so it is the same
+category of question as tightness and the vapor barrier, both of which this survey has already been
+bitten by answering on the customer's behalf. `validateStep('shell')` requires `surroundSource` to
+be non-empty as well as the figures to be non-zero.
+
+### Option A mirrors, it does not resolve at calculation time
+
+Picking Outside air **writes** the outdoor condition into the `surround*` fields. It would have been
+tidier to leave `surround*` empty and teach `estimateLoad` to substitute — but `estimateLoad`, the
+PDF and the admin view all read those fields directly, so that one fact would then live in four
+places. Mirroring keeps a single set of numbers, and it is those numbers that get stored, printed
+and quoted.
+
+Verified: Option A produces a load **identical to the same survey typed by hand** with the outdoor
+figures (10,377.9657 gr/hr both ways), and correctly harsher than a box-in-box.
+
+🔴 **The mirror is written in TWO places and both are needed.** `StepShell` re-syncs on mount and
+whenever the choice changes — but only while it is mounted. Someone who picks Outside air, goes back
+to step 1 to correct the location, and then jumps straight to review would otherwise submit a
+surrounding condition taken from the site they first typed. So the location lookup carries the
+surround with it as well, whenever `surroundSource === 'outdoor'`.
+
+### The "Outdoor summer design" fields are gone from step 5 — with a fallback
+
+Step 1's lookup fills them from ASHRAE, so for almost everyone there was nothing to do there.
+
+⚠️ **They reappear whenever that lookup did not fill them.** Outdoor still prices every opening that
+vents outside, is the fallback condition for makeup air, and `validateStep('shell')` still requires
+it. Removing the fields outright would have left a customer whose site matched no weather station
+looking at a Continue button that never enables, with nothing on the page to fix it. The fallback is
+the difference between "removed" and "removed and broken".
+
+## Step 3: the sticky panel shows temperature
+
+The **Target Conditions** panel on the right showed grains and dew point only; it now leads with
+temperature. Both temperatures follow the survey's unit — the dew point there used to print through
+`fmtDewPoint()` and was therefore always Fahrenheit, which put a °F dew point under a °C temperature,
+the exact confusion the input fields were fixed for.
+
 ## Consolidating the document (2026-08-26)
 
 Asked for: five pages down to two or three. **The result is five, and the honest reason is that the
