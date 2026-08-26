@@ -34,6 +34,7 @@ import {
   roomDimsAreDerived,
   ROOM_RENDER_EDGES,
 } from './rfq'
+import { COMPANY, companyAddressLine, companyContactLine } from './company'
 import { renderAsset, renderAssetUrl } from './render-assets'
 import { renderKeyForPreset } from './rfq-renders'
 
@@ -144,10 +145,16 @@ function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts
 
   if (logoLight) doc.addImage(logoLight, 'PNG', M, 13, 12.5, 16)
 
-  overline(doc, 'INNOVATIVE AIR TECHNOLOGIES', M + 18, 19, [168, 200, 180])
+  overline(doc, COMPANY.name.toUpperCase(), M + 18, 19, [168, 200, 180])
   text(doc, 'Request for Quote', M + 18, 28.5, { size: 20, weight: 'bold', color: C.white })
   text(doc, `Moisture Survey · ${isRoom ? 'Room Dehumidification' : 'Process Dehumidification'}`,
     M + 18, 35, { size: 9.5, color: [150, 190, 168] })
+
+  // Address on the cover too, low in the band where the ghosted mark is faintest.
+  // Same two lines as page 1, from the same constants — a document that prints two
+  // different addresses is worse than one that prints none.
+  text(doc, companyAddressLine(), M + 18, 48, { size: 7.6, color: [150, 190, 168] })
+  text(doc, companyContactLine(), M + 18, 53.5, { size: 7.6, color: [150, 190, 168] })
 
   // Reference chip, right
   const chipW = 52
@@ -434,7 +441,10 @@ function loadsPage(ctx: Ctx) {
   const totals: TileSpec[] = [
     { label: 'Room internal load', value: fmt(load.internalGrPerHr), unit: 'gr/hr', sub: `${fmt(load.internalGrPerHr / 7000, 1)} lb/hr, includes ${Math.round(load.safetyFactor * 100)}% safety factor`, tone: C.green, soft: C.greenSoft },
     { label: 'Ventilation air load', value: fmt(load.ventilationGrPerHr), unit: 'gr/hr', sub: load.ventilationGrPerHr > 0 ? 'Dried upstream, kept out of the room total' : 'No ventilation air recorded', tone: C.blue, soft: C.blueSoft },
-    { label: 'Total to remove', value: fmt(load.totalLbPerHr, 1), unit: 'lb/hr', sub: `About ${fmt(load.totalPintsPerDay)} pints of water a day`, tone: C.amber, soft: C.amberSoft },
+    // ⚠️ The amber "Total to remove" tile was here and came out on 2026-08-25, with
+    // the page-1 headline panel, at the owner's request. Still calculated, still on
+    // the record in rfq_requests.summary — off the customer's copy only. The two
+    // component loads stay: they are what the breakdown bars above are made of.
   ]
   y = tileRow(doc, totals, M, y, CW)
   y += 8
@@ -525,7 +535,6 @@ function equipmentPage(ctx: Ctx) {
 // re-check the total — nothing here reflows.
 const T = {
   band: 24,
-  headline: 17,
   duo: 46,      // target condition + the space
   formula: 34,
   bars: 40,
@@ -533,7 +542,12 @@ const T = {
   strip: 14,
   gap: 3,
 }
-// 24+3 +17+3 +46+3 +34+3 +40+3 +45+3 +14 = 238, clearing FOOTER_BAND_TOP (246.4).
+// 24+3 +46+3 +34+3 +40+3 +45+3 +14 = 218, clearing FOOTER_BAND_TOP (246.4).
+//
+// The amber headline band (17 + 3) came out on 2026-08-25 with the load figure it
+// carried, which is where the extra ~20mm of slack came from. Kept as slack rather
+// than redistributed: this page's whole guarantee is that it never runs to two
+// pages, and nothing here reflows.
 
 function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   const { doc, data, load, proc, logoLight, isRoom, roomImage } = ctx
@@ -543,32 +557,43 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   // Title block
   fill(doc, C.pine)
   doc.rect(0, 0, PAGE_W, T.band, 'F')
-  ghostMark(doc, logoLight, PAGE_W - 21, 1.5, 27)
+  // ── Letterhead ──
+  // The document opens on this page, so it carries the company identity: mark,
+  // name, address and web address, on the pine band. Asked for 2026-08-25.
+  //
+  // ⚠️ NO ghostMark HERE, unlike the cover. The faded mark bled across the right
+  // third of this band, which is where the address block now sits — a 0.08-opacity
+  // logo behind 6.6pt text reads as a printing fault. The cover page keeps it,
+  // because nothing competes for that space there.
+  //
+  // ⚠️ The band is T.band = 24mm and CANNOT GROW: this page is laid out against a
+  // fixed vertical budget that already clears CONTENT_BOTTOM by about 4mm. Three
+  // stacked lines on the left and two on the right is what fits. If anything is
+  // added here, take the room from within the band, not from the page.
   if (logoLight) doc.addImage(logoLight, 'PNG', M, 4, 12, 15.3)
-  text(doc, 'YOUR DEHUMIDIFICATION SNAPSHOT', M + 17.5, 12.5,
-    { size: 14, weight: 'bold', color: C.white, spacing: 0.25 })
-  text(doc, truncate(doc, `${data.projectName || 'Your project'}  ·  ${applicationLabel(data)}`, CW - 22, 8.5),
-    M + 17.5, 18.8, { size: 8.5, color: [150, 190, 168] })
+  overline(doc, COMPANY.name.toUpperCase(), M + 17.5, 8, [168, 200, 180])
+  text(doc, 'YOUR DEHUMIDIFICATION SNAPSHOT', M + 17.5, 15,
+    { size: 12.5, weight: 'bold', color: C.white, spacing: 0.25 })
+  text(doc, truncate(doc, `${data.projectName || 'Your project'}  ·  ${applicationLabel(data)}`, CW - 78, 8),
+    M + 17.5, 20.5, { size: 8, color: [150, 190, 168] })
+
+  // Address block, right-aligned against the margin.
+  text(doc, companyAddressLine(), PAGE_W - M, 11.5,
+    { size: 6.8, color: [150, 190, 168], align: 'right' })
+  text(doc, companyContactLine(), PAGE_W - M, 16,
+    { size: 6.8, color: [150, 190, 168], align: 'right' })
 
   let y = T.band + T.gap
 
-  // ── The one thing to remember ──
-  const headline = isRoom && load?.complete
-    ? `You need roughly ${fmt(load.totalLbPerHr, 1)} lb of water removed every hour`
-    : proc?.complete
-      ? `You need ${fmt(proc.cfm)} cfm dried to ${fmtGrains(proc.leavingGrains)} gr/lb`
-      : 'Here is what you told us'
-  const sub = isRoom && load?.complete
-    ? `That is about ${fmt(load.totalPintsPerDay)} pints a day, and ${load.dominant ? shortDriver(load.dominant.label).toLowerCase() : 'the envelope'} is where most of it comes from.`
-    : proc?.complete
-      ? `That is a ${fmtGrains(proc.depression)} gr/lb depression, about ${fmt(proc.lbPerHr, 1)} lb of water an hour off the airstream.`
-      : 'Add room dimensions or process airflow and we can put a number on it.'
-
-  softPanel(doc, M, y, CW, T.headline, C.amberSoft)
-  accentEdge(doc, M, y, T.headline, C.amber)
-  text(doc, truncate(doc, headline, CW - 16, 11.5), M + 7, y + 8, { size: 11.5, weight: 'bold', color: [120, 66, 6] })
-  wrapped(doc, sub, M + 7, y + 13.8, CW - 14, { size: 8.2, color: [150, 100, 30], leading: 3.6, maxLines: 1 })
-  y += T.headline + T.gap
+  // ⚠️ THE AMBER "You need roughly N lb of water removed every hour" PANEL WAS HERE,
+  // and was REMOVED on 2026-08-25 at the owner's request — along with the "Total to
+  // remove" tile on the load page. The figure is still calculated and still stored
+  // on the record (rfq_requests.summary); it is only off the CUSTOMER's copy.
+  //
+  // Do not reinstate it as "the one thing to remember". It led the document with a
+  // preliminary lb/hr the customer could read as a quantity we had committed to,
+  // which is the opposite of what a survey is for. T.headline and its gap are gone
+  // from the budget with it — see the sum above the T block.
 
   // ── Left: the target in four units · Right: the room / the airstream ──
   const halfW = (CW - 6) / 2

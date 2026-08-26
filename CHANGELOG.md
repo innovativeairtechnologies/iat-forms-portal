@@ -10,6 +10,26 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-25 — Quote request: both envelope questions back on the page, letterhead on the PDF, load total off it
+
+**Step 5 no longer hides anything.** "Is there a vapor barrier?" and "How tight is the building?"
+were tucked behind an **Advanced** button; they are back on the page where they started. Both
+change the number the customer is quoted — building tightness alone moves the air-leakage figure by
+a factor of six between its loosest and tightest setting — so neither belongs behind a click. A
+question that is already being answered on the customer's behalf should be visible.
+
+**The PDF now opens on proper letterhead.** The first page and the cover both carry the IAT mark,
+Innovative Air Technologies, the Covington address and the web address, in the company colors. It
+is the document customers forward to their own engineer, and it should say plainly who it came
+from. The address is defined in one place, so it cannot drift between pages.
+
+**The estimated load total has come off the customer's copy** — the panel that led the first page
+and the matching tile on the breakdown page. The figure is still calculated and still kept on the
+record; it is simply not something to hand a customer at survey stage, when it reads as a quantity
+we have committed to rather than a preliminary estimate.
+
+Also corrected one British spelling in the building-tightness help text.
+
 ## 2026-08-25 — The quote card drops its acronym
 
 The second card on the support page was labeled "RFQ: Request for Quote". Customers do not

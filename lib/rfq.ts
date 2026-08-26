@@ -652,7 +652,7 @@ export const TIGHTNESS_RATES: Record<Tightness, number> = {
 }
 export const TIGHTNESS_HELP: Record<Tightness, string> = {
   Tight: 'Purpose-built envelope: sealed penetrations, gasketed doors, taped vapor barrier.',
-  Average: 'Newer building, normal construction. No deliberate sealing programme.',
+  Average: 'Newer building, normal construction. No deliberate sealing program.',
   Loose: 'Older or industrial shell: visible daylight at joints, unsealed conduit, worn door seals.',
 }
 

@@ -132,7 +132,23 @@ Three things that are not obvious and must not be "simplified":
 replaced it with `tempToDisplay()`, which returns the raw value untouched in Fahrenheit,
 and `49.05563453465°F` reached the page before it was caught.
 
-## Step 5 — wall build-ups and the Advanced block (2026-08-20)
+## Step 5 — wall build-ups, and NO Advanced block (2026-08-25)
+
+🔴 **Vapor barrier and building tightness sit on the page. Do not put either back behind a
+toggle.** They were collapsed under an "Advanced" disclosure; the owner asked for them back in
+front of everybody on 2026-08-25, which is where they started.
+
+Both feed `estimateLoad` and both carry a LIVE DEFAULT — `vaporBarrier` is only ever tested
+`=== 'Yes'`, and `tightness` sets the whole infiltration term (Loose is exactly 6x Tight). Hiding a
+question whose default is already costing the customer money is the shape of bug this survey has
+hit twice: on 2026-08-19 tightness was commented out while it kept pricing every survey at average
+leakage, an assumption nobody was asked to confirm.
+
+Also 2026-08-25: `TIGHTNESS_HELP.Average` read "sealing programme". Display-only help text, so safe
+to change — unlike a material label, which `permOf()` matches by exact string
+([[rfq-option-lists-are-physics-tables]]).
+
+### History — the Advanced block, while it existed (2026-08-20)
 
 Three images sit above the material dropdowns: **Good, Better, Best**, from
 `public/rfq/shell-*.webp`. Hovering magnifies the *figure* to 2× — the figure owns the
@@ -613,6 +629,24 @@ trade-off for a customer-facing estimate.
 `lib/rfq-pdf.ts`, generated client-side with jsPDF — vector throughout (no `html2canvas`), so
 the file is ~35 KB, prints crisply and stays text-searchable.
 
+### The PDF letterhead (2026-08-25)
+
+Page 1 and the cover both carry the company identity — mark, name, address and web address on the
+pine band. Everything comes from `lib/company.ts`, which is the single definition: a document that
+prints two different addresses is worse than one that prints none.
+
+Address source: the footer of www.dehumidifiers.com, read 2026-08-25, normalized to US postal form.
+Corroborated inside the repo — `lib/ashrae.ts` uses Covington, GA as its worked example because it
+is the office's own location.
+
+⚠️ **Page 1's band is `T.band` = 24mm and cannot grow** — that page is laid out against a fixed
+vertical budget that already clears `CONTENT_BOTTOM` by about 4mm. Three stacked lines on the left
+and two on the right is what fits; take any new room from inside the band, never from the page.
+
+⚠️ **The ghosted mark is gone from page 1, kept on the cover.** It bled across the right third of
+that band, which is where the address block now sits, and a 0.08-opacity logo behind 6.6pt text
+reads as a printing fault. The cover has room, so it keeps it.
+
 | Page | Contents |
 |---|---|
 | **1** | **The takeaway infographic** — one page, the customer's own numbers |
@@ -627,6 +661,26 @@ no page-reorder, so it is simply built first.
 
 Every page carries a diagonal **PRELIMINARY** watermark and a highlighted disclaimer band with
 IAT's required wording, applied by `stampEveryPage()` after all content is laid out.
+
+### The load total is OFF the customer's copy (2026-08-25)
+
+The owner asked for two boxes to come out. **The figure is still calculated and still stored on the
+record (`rfq_requests.summary`) — it is only off the customer's document.**
+
+| Where | What came out |
+|---|---|
+| Page 1 | the amber "You need roughly N lb of water removed every hour" panel |
+| Load page | the amber "Total to remove — N lb/hr" tile |
+
+⚠️ **`T.headline` (17mm) and its gap left the takeaway budget with it**, taking the sum from 238mm
+to 218mm. That slack is deliberately NOT redistributed: this page's whole guarantee is that it
+never runs to two pages, and nothing on it reflows.
+
+⚠️ **The same number is STILL on the cover**, in the "Estimated load" tile — 188.5 lb/hr and
+"About 4,336 pints of water a day" on the worked example. Raised with the owner rather than removed
+on inference: they named page 1 and the load page specifically, and that tile is one of four
+at-a-glance tiles whose row would visibly change. The load page's "Room internal load" sub-line
+also still reads "165.3 lb/hr, includes 10% safety factor" — a component, not the total.
 
 ### Four rules for editing the PDF
 
