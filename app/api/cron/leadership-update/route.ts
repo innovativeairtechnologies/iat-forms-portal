@@ -114,7 +114,7 @@ export const maxDuration = 60   // the model call plus docx render exceeds the d
  * an `hour === 18` check would silently send nothing — which is exactly how the
  * daily digest managed never to send once from the day it was built.
  *
- * 18..20 absorbs the worst observed delay with an hour to spare. The day-claim
+ * 20..22 absorbs the worst observed delay with an hour to spare. The day-claim
  * below is what keeps a wide window to one send instead of three.
  */
 function withinSendWindow(hour: number): boolean {
@@ -219,7 +219,7 @@ async function claimDay(dateISO: string): Promise<boolean> {
  * What a scheduled run covers: EVERY DAY SINCE THE PREVIOUS SCHEDULED RUN,
  * today included.
  *
- * Mon/Wed/Fri at 6pm, so working backwards from the weekday:
+ * Mon/Wed/Fri at 8:30pm, so working backwards from the weekday:
  *   Monday    -> Saturday, Sunday, Monday   (Friday's run ended at Friday)
  *   Wednesday -> Tuesday, Wednesday         (Monday's run ended at Monday)
  *   Friday    -> Thursday, Friday           (Wednesday's run ended at Wednesday)
@@ -294,7 +294,7 @@ export async function GET(req: NextRequest) {
   if (!dryRun && !force) {
     if (!withinSendWindow(clock.hour)) {
       await trace('skipped-window', { nyHour: clock.hour })
-      return NextResponse.json({ skipped: true, reason: 'outside the 18:00-20:00 NY window' })
+      return NextResponse.json({ skipped: true, reason: 'outside the 20:00-22:00 NY window' })
     }
     if (!(await claimDay(nyDate))) {
       await trace('skipped-already-sent', { nyDate })

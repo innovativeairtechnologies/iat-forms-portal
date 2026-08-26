@@ -10,6 +10,35 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — The notification reference now matches the schedules it describes
+
+When both scheduled emails moved out of the daily deploy window on 25 August, the change was
+recorded as a new section rather than folded into the page around it. The older sections kept
+describing the previous times in the present tense, so the one page meant to answer "who gets told
+what, and when" gave two different answers depending on where you looked — the daily digest was
+listed at both 4:30pm and 6:00pm, and the leadership update at both 6:00pm and 8:30pm.
+
+Every one of those is now stated once, at the time it actually runs: the digest at **6:00pm**, the
+leadership update **Monday, Wednesday and Friday at 8:30pm**, and the two reminder sweeps at
+**3:00am**. Where an older passage is worth keeping as the record of a past problem, it now says so
+instead of reading as current.
+
+Three related corrections came out of the same pass:
+
+**The do-not-deploy table listed the wrong hour for the Monday PTO accrual job** — 9:00am, when it
+actually runs at 4:00am. The window was guarding an hour with nothing in it and leaving the real one
+unguarded.
+
+**The leadership update reported the wrong window when it declined to send.** The job's own skip
+message named 6:00–8:00pm while the check it had just failed was 8:00–10:00pm, which would have sent
+anyone diagnosing a missing report looking at the wrong two hours.
+
+**Two code comments still argued for the earlier times**, including the one directly above the send
+window explaining why it is set where it is.
+
+No schedule, guard or recipient list changed. This is the documentation catching up to a move that
+had already shipped.
+
 ## 2026-08-26 — Session handoff record: quote request PDF, survey physics, notification timing
 
 Business-continuity record for the three sittings that reworked the quote request document and

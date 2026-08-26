@@ -102,6 +102,11 @@ to the digest, which is what the digest half is for.
 
 ### The digest had never sent, and why (fixed 2026-08-20)
 
+⚠️ **Every time below is the OLD 4:30pm ET schedule this bug happened under.** The digest moved to
+**6:00pm ET** on 2026-08-25 and `withinDigestWindow()` widened with it — see "Both scheduled mails
+moved out of the daily deploy window" for the current times. The reasoning here still holds; the
+numbers are history.
+
 `digest_runs` held **zero rows from the day migration 038 created it**. The missing
 `CRON_SECRET` found on 2026-08-17 was real but was not the whole cause — fixing it
 only moved the failure somewhere quieter.
@@ -127,8 +132,9 @@ fits inside one hour.
 
 **What shipped:** correctness rests on `digest_runs`' unique index on `run_date` —
 the first invocation of the NY day claims it, later ones no-op — with
-`withinDigestWindow(hour) = hour >= 16 && hour <= 18` kept only as a sanity bound so
-a wildly misfired run cannot mail everyone at 3am.
+`withinDigestWindow()` kept only as a sanity bound so a wildly misfired run cannot mail
+everyone at 3am. ⚠️ It was `hour >= 16 && hour <= 18` when this was written; it is now
+**`hour >= 18 && hour <= 20`** (`lib/admin-digest.ts`).
 
 **Excluding hour 15 is load-bearing.** It makes the correct entry win in each season,
 because the earliest *eligible* invocation is the one that claims:
@@ -171,7 +177,7 @@ They are often confused, so: **one is an email, one is a document.**
 | | Daily admin digest | Leadership update |
 |---|---|---|
 | Format | HTML email | Word document, attached |
-| When | **every day**, ~16:30 ET | **Mon / Wed / Fri**, 18:00 ET |
+| When | **every day**, 6:00pm ET | **Mon / Wed / Fri**, 8:30pm ET |
 | To | admins, minus `DIGEST_OPT_OUT_EMAILS` | `LEADERSHIP_UPDATE_EMAIL` |
 | Built from | live tickets + quote requests | `CHANGELOG.md` |
 | Route | `/api/cron/admin-digest` | `/api/cron/leadership-update` |
@@ -228,15 +234,12 @@ went out on Wednesday and Friday. `?edition=8.17.26` still rebuilds any past wee
 `hour === 17` and survived only because exactly one cron entry could ever land inside that hour.
 Crons here run **tens of minutes late, and the upper bound is not established** (see "How late,
 honestly"), so a 6pm entry arriving well into the next hour would have silently sent nothing — the identical failure that stopped the daily digest sending for months. The window is now
-18:00–20:00, and `leadership_last_sent` in `app_settings` claims the NY day so a wide window cannot
-send several copies.
+**20:00–22:00** (it was 18:00–20:00 until the 2026-08-25 move), and `leadership_last_sent` in
+`app_settings` claims the NY day so a wide window cannot send several copies.
 
-DST is handled by window + claim rather than by one entry being wrong for the season:
-
-|  | 22:00 UTC | 23:00 UTC |
-|---|---|---|
-| EDT | 18:00 ET **sends** | 19:00 ET in window, day claimed, no-op |
-| EST | 17:00 ET outside window | 18:00 ET **sends** |
+DST is handled by window + claim rather than by one entry being wrong for the season. There are
+now **three** entries at 00:30 / 01:30 / 02:30 UTC — the season table lives in "Both scheduled mails
+moved out of the daily deploy window" below, and is the only copy, so it cannot drift from this one.
 
 ⚠️ The claim is read-then-write, not an atomic upsert on a unique index. The entries sit an hour
 apart, so the race needs a 60-minute delay landing on the exact second of the other run. A real
@@ -381,7 +384,7 @@ live is at risk regardless of how far past its nominal time it is.
 | Job | Nominal (ET) | Do not deploy |
 |---|---|---|
 | reminders (daily) | 03:00 | **03:00 – 05:00** |
-| accrue-pto (Mon) | 09:00 | **09:00 – 10:00** |
+| accrue-pto (Mon) | 04:00 | **04:00 – 06:00** (already inside the reminders window) |
 | digest (daily) | 18:00 | **18:00 – 20:00** |
 | leadership (Mon/Wed/Fri) | 20:30 | **20:30 – 22:30** |
 
@@ -483,11 +486,12 @@ matching what the admin digest has always done, and the send path is stamped (`s
 `sent-partial` / `failed`) so the outcome is answerable afterwards.
 
 Moved to **18:30 ET** the same day at the owner's request, to keep clear air between this and the
-digest. Nominal times are now two hours apart against a worst observed lateness of ~55 min.
+digest. ⚠️ **Superseded on 2026-08-25** — it is now 8:30pm ET, and the digest 6:00pm, so the nominal
+times sit two and a half hours apart against a worst observed lateness of ~55 min.
 
-This is also why `withinSendWindow` on the leadership job is a two-hour band (18:00–20:00) rather
-than an hour: nominal 18:00 ET can land near 18:50, and an hour-wide check would sit uncomfortably
-close to its own edge.
+This is also why `withinSendWindow` on the leadership job is a two-hour band (**20:00–22:00**)
+rather than an hour: nominal 20:30 ET can land near 21:20, and an hour-wide check would sit
+uncomfortably close to its own edge.
 
 **And when a cron "fails", check the deploy timeline FIRST** — before the route, the guard or
 the secret. On 2026-08-21 an entire evening went into the route before anyone looked at the
