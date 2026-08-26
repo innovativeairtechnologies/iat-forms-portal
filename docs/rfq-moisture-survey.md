@@ -670,17 +670,30 @@ record (`rfq_requests.summary`) — it is only off the customer's document.**
 | Where | What came out |
 |---|---|
 | Page 1 | the amber "You need roughly N lb of water removed every hour" panel |
+| Cover | the "Estimated load — N lb/hr" at-a-glance tile |
 | Load page | the amber "Total to remove — N lb/hr" tile |
+
+**It was the same figure in three places**, which is why removing two of them did not achieve what
+was asked. The room load is an ESTIMATE OF THE CUSTOMER'S BUILDING — it rests on assumed tightness,
+permeation and door traffic — so handing it over at survey stage reads as a quantity IAT has
+committed to. Do not reinstate it on any page.
 
 ⚠️ **`T.headline` (17mm) and its gap left the takeaway budget with it**, taking the sum from 238mm
 to 218mm. That slack is deliberately NOT redistributed: this page's whole guarantee is that it
 never runs to two pages, and nothing on it reflows.
 
-⚠️ **The same number is STILL on the cover**, in the "Estimated load" tile — 188.5 lb/hr and
-"About 4,336 pints of water a day" on the worked example. Raised with the owner rather than removed
-on inference: they named page 1 and the load page specifically, and that tile is one of four
-at-a-glance tiles whose row would visibly change. The load page's "Room internal load" sub-line
-also still reads "165.3 lb/hr, includes 10% safety factor" — a component, not the total.
+The cover's at-a-glance row drops from three tiles to two (Target condition, Biggest driver);
+`tileRow` splits the width evenly, so nothing is left hanging.
+
+**What still shows a lb/hr on a ROOM survey — one thing, deliberately.** The load page's
+"Room internal load" tile carries "N lb/hr, includes 10% safety factor" in its sub-line. That is a
+COMPONENT of the breakdown the bars above it are made of, not the total, and removing it would
+leave the bars unexplained.
+
+**The PROCESS track is untouched and should stay that way.** Its "Moisture removed" tile and the
+worked `Water removed (lb/hr)` formula are arithmetic on the customer's OWN stated airflow and
+grain depression — not an estimate of an unknown building. Different in kind from the room load,
+and gutting it would leave a process survey with nothing to say.
 
 ### Four rules for editing the PDF
 

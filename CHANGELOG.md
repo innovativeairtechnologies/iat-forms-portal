@@ -23,10 +23,11 @@ Innovative Air Technologies, the Covington address and the web address, in the c
 is the document customers forward to their own engineer, and it should say plainly who it came
 from. The address is defined in one place, so it cannot drift between pages.
 
-**The estimated load total has come off the customer's copy** — the panel that led the first page
-and the matching tile on the breakdown page. The figure is still calculated and still kept on the
-record; it is simply not something to hand a customer at survey stage, when it reads as a quantity
-we have committed to rather than a preliminary estimate.
+**The estimated load total has come off the customer's copy entirely** — the panel that led the
+first page, the at-a-glance tile on the cover, and the matching tile on the breakdown page. It was
+the same figure in three places. It is still calculated and still kept on the record; it is simply
+not something to hand a customer at survey stage, when it reads as a quantity we have committed to
+rather than an estimate resting on assumed building tightness, permeation and door traffic.
 
 Also corrected one British spelling in the building-tightness help text.
 

@@ -196,7 +196,16 @@ function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts
   const tiles: TileSpec[] = isRoom && load
     ? [
         { label: 'Target condition', value: `${fmt(numOf(data.targetTempF))}°F`, sub: `${enteredPrefix(data, 'target')}${fmt(numOf(data.targetRhPct))}% rh · ${fmtGrains(load.roomGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
-        { label: 'Estimated load', value: load.complete ? `${fmt(load.totalLbPerHr, 1)}` : '—', unit: 'lb/hr', sub: load.complete ? `About ${fmt(load.totalPintsPerDay)} pints of water a day` : 'Need room dimensions', tone: C.blue, soft: C.blueSoft },
+        // ⚠️ The "Estimated load" tile was here — N lb/hr and "About N pints of water
+        // a day" — and came out on 2026-08-26 with the page-1 panel and the load
+        // page's "Total to remove" tile. It was the same figure a third time, which
+        // is why removing the other two alone did not achieve what was asked.
+        //
+        // Still calculated, still on the record in rfq_requests.summary. The room
+        // load is an ESTIMATE OF THE CUSTOMER'S BUILDING, resting on assumed
+        // tightness, permeation and door traffic; handing it over at survey stage
+        // reads as a quantity we have committed to. That is the whole reason it is
+        // gone from the customer's copy. Do not reinstate it on any page.
         { label: 'Biggest driver', value: load.dominant ? shortDriver(load.dominant.label) : '—', sub: load.dominant && load.complete ? `${pct(load.dominant.grainsPerHour, load.lines.reduce((s, l) => s + l.grainsPerHour, 0))} of the room load` : 'Preliminary', tone: C.amber, soft: C.amberSoft, small: true },
       ]
     : proc
