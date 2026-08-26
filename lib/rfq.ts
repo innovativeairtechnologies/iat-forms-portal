@@ -264,6 +264,20 @@ export function roundForMode(mode: MoistureMode, n: number): number {
 // target condition, the surrounding space, occupancy and door activity with
 // numbers a person in that industry would recognize. Every seeded value stays
 // editable — the preset is a starting point, never an answer.
+//
+// ⚠️ PROVENANCE — these figures carry no external source. They were authored in
+// one pass (2026-08-14, 59aeff9) from general industry knowledge, not transcribed
+// from a standard, a datasheet, or an internal IAT table. That makes them the
+// exception in this file: rfq-psych.ts is ASHRAE Fundamentals checked against
+// published points, the load equations below follow IAT's moisture-load workbook,
+// PEOPLE_LOADS is IAT's own table, and elevation comes from USGS. The presets do
+// not have that backing.
+//
+// Two were found wrong exactly this way and corrected — the dry-room note
+// (−20°F dp, should have been −30.2) and dry-room-process (0.4 gr/lb, should have
+// been 0.55). Both read as plausible until checked against the psychrometrics.
+//
+// Reviewed by: —          ← fill in when an engineer signs off
 
 export type RoomPreset = {
   key: string
