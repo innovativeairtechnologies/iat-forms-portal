@@ -47,6 +47,29 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-26 — The quote request looks like something you can click
+
+On the customer support page the two front doors are **Start a support request** and **Request for
+Quote**. The first carried a solid green tile; the second was grey on grey, and read as disabled —
+as though the option were switched off rather than simply the quieter of the two.
+
+It now carries a solid blue tile, taken from the blue in our own mark rather than picked to taste.
+The value already existed in the codebase — it is the blue the quote request PDF has been printing
+its headers in — so the page and the document the customer receives now agree.
+
+Green still means what it meant: it stays on the primary action, on focus outlines and on active
+indicators, and the quote request deliberately does **not** use it. The change is only that the
+second door no longer looks shut.
+
+**The rule for deploying around scheduled email now fits in one line.** Work on the portals runs
+8:00am to 5:30pm Eastern, and every scheduled job was moved outside that window on purpose — the
+reminder sweeps into the early morning, the daily digest and the leadership update into the
+evening. So the whole rule is: nothing goes to production before 8:00am or after 5:30pm. The
+per-job table stays as the derivation, but nobody has to read it to stay clear.
+
+That matters because the previous guidance was a table of per-job boundaries, and the one bad
+deploy it caused came from someone doing arithmetic against it and concluding there was margin.
+
 ## 2026-08-26 — The notification reference now matches the schedules it describes
 
 When both scheduled emails moved out of the daily deploy window on 25 August, the change was

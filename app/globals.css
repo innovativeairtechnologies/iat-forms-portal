@@ -25,6 +25,13 @@
   --brand-soft: #e9f6ee;
   --brand-ink: #0b6b36;
 
+  /* The mark's blue, sampled from the logo — the same value lib/rfq-pdf.ts carries as
+     `brandBlue` [59, 95, 168]. NOT a second brand accent: green still owns the primary
+     action, focus rings and active indicators. This exists so a SECONDARY front-door
+     choice can read as interactive instead of disabled-grey. */
+  --brand-blue: #3b5fa8;
+  --brand-blue-hover: #334f8c;
+
   /* ── Sidebar — deep pine (brand green 950, desaturated + warmed). In LIGHT mode
      the rail is dark-on-light: strong separation from the warm canvas. Dark-mode
      values are lifted (see .dark below) to keep that separation on a black canvas. ── */
@@ -67,6 +74,11 @@
   --brand-hover: #2bc474;
   --brand-soft: rgba(31, 182, 104, 0.12);
   --brand-ink: #4ed292;
+
+  /* Lifted off the mark's #3b5fa8, which is too dark to read as a fill on a black
+     canvas. Same move the brand green makes above. */
+  --brand-blue: #5b83d0;
+  --brand-blue-hover: #6b90d8;
 
   /* Sidebar dark = part of the graphite family: a subtly raised rail (between the
      canvas gutter and the cards). No green field — brand green stays a pure accent

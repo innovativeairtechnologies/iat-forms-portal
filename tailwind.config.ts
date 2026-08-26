@@ -34,6 +34,8 @@ const config: Config = {
           hover: 'var(--brand-hover)',
           soft: 'var(--brand-soft)',
           ink: 'var(--brand-ink)',
+          blue: 'var(--brand-blue)',
+          'blue-hover': 'var(--brand-blue-hover)',
         },
         sidebar: {
           DEFAULT: 'var(--sidebar)',
