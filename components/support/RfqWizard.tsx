@@ -140,7 +140,9 @@ function TextField({
           type={type}
           value={value}
           autoFocus={autoFocus}
-          onChange={e => onChange(e.target.value)}
+          // ⚠️ A number TextField stores the STRING, so without this it did not just
+          // display 010 - it stored "010" on the record.
+          onChange={e => onChange(type === 'number' ? noLeadingZero(e.target) : e.target.value)}
           placeholder={placeholder}
           aria-describedby={hint ? hintId : undefined}
           aria-required={required || undefined}
@@ -292,6 +294,32 @@ const unitLabel = (label: string, unit: TempUnit): string =>
  * as 40.6°C, which would re-enter as 105.1°F — so a toggle that wrote back would
  * quietly edit a survey every time someone looked at it in the other unit.
  */
+/**
+ * Drop a leading zero the customer did not mean to type, and correct the input
+ * element itself.
+ *
+ * 🔴 REACT WILL NOT DO THIS FOR YOU. For <input type="number"> it compares the live
+ * node against the incoming value with LOOSE equality:
+ *
+ *     if ((value === 0 && node.value === "") || node.value != value) node.value = ...
+ *
+ * so node "01" against a new value of 1 is "equal" and the DOM is left alone. A box
+ * showing 0 that you type 1 then 0 into reads 010 while the state says 10 - which is
+ * exactly what it did. Rewriting e.target.value is the only thing that fixes it; the
+ * state was already right.
+ *
+ * Only strips zeros FOLLOWED BY A DIGIT, so a lone "0" survives and a half-typed
+ * decimal ("0." on the way to "0.5") is never touched. Arrow keys were always fine -
+ * the browser writes a clean value - and still are.
+ */
+function noLeadingZero(el: HTMLInputElement): string {
+  const raw = el.value
+  const cleaned = raw.replace(/^(-?)0+(?=d)/, '$1')
+  // Only reassign on an actual change: writing to .value moves the caret to the end.
+  if (cleaned !== raw) el.value = cleaned
+  return cleaned
+}
+
 function TempInput({
   id, valueF, unit, onChangeF, autoFocus, className, ariaDescribedBy,
 }: {
@@ -326,7 +354,7 @@ function TempInput({
       autoFocus={autoFocus}
       aria-describedby={ariaDescribedBy}
       onChange={e => {
-        const text = e.target.value
+        const text = noLeadingZero(e.target)
         setRaw(text)
         const f = tempFromDisplay(text, unit)
         pushed.current = f
@@ -442,7 +470,7 @@ function ConditionField({
                 inputMode="decimal"
                 value={value}
                 aria-describedby={hint ? hintId : undefined}
-                onChange={e => onChange(setCondition(data, conditionKey, { value: e.target.value }))}
+                onChange={e => onChange(setCondition(data, conditionKey, { value: noLeadingZero(e.target) }))}
                 className={`${inputCx} min-w-0 flex-1 tabular-nums`}
               />
             )}
@@ -2021,7 +2049,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
                 min={1}
                 inputMode="numeric"
                 value={door.quantity ?? 1}
-                onChange={e => update(door.id, { quantity: Math.max(1, Math.round(parseFloat(e.target.value) || 1)) })}
+                onChange={e => update(door.id, { quantity: Math.max(1, Math.round(parseFloat(noLeadingZero(e.target)) || 1)) })}
                 className="w-14 flex-shrink-0 rounded-md border border-hairline bg-surface px-2 py-1 text-[12.5px] tabular-nums text-ink transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
               />
               <button
@@ -2106,7 +2134,7 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
         id={id}
         type="number"
         value={Number.isFinite(value) ? value : ''}
-        onChange={e => onChange(parseFloat(e.target.value) || 0)}
+        onChange={e => onChange(parseFloat(noLeadingZero(e.target)) || 0)}
         className="w-full rounded-lg border border-hairline bg-surface px-2.5 py-1.5 text-[13px] tabular-nums text-ink transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
       />
     </div>
