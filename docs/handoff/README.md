@@ -24,6 +24,7 @@ Each record carries, in order:
 | [2026-08-24](2026-08-24-session-handoff.md) | Room renders in the survey, Mon/Wed/Fri leadership report, ticket lifecycle — **and the deploys-eat-crons finding** |
 | [2026-08-24 (b)](2026-08-24-session-handoff-dr-and-rfq-volume.md) | Disaster-recovery backup of the whole stack; RFQ volume entry; dimension callouts; cron DST |
 | [2026-08-26](2026-08-26-session-handoff.md) | RFQ PDF layout, letterhead and brand colours; conveyor + makeup-air physics; the tightness rates were wrong; both scheduled mails re-timed |
+| [2026-08-26 (b)](2026-08-26-session-handoff-tickets-lists-and-rfq-pdf.md) | Ticket close rules, Waiting-on-Customer ladder, list selection defects across six lists, RFQ bulk actions, RFQ document capture — **and the cron exclusion window correction** |
 
 > **Two records can share a date.** Sessions run concurrently in this repo, so
 > `<YYYY-MM-DD>-session-handoff.md` may already be taken by a session that finished

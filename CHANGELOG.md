@@ -113,6 +113,15 @@ says on the page that the opening is counted as open continuously.
 **Quote requests submitted before today are not affected** — they keep the numbers they were
 quoted on.
 
+## 2026-08-25 — The step 7 illustration reads more clearly when you enlarge it
+
+The picture on the people step carries its own labels, and they went soft when you hovered to
+enlarge it. The enlargement was stretching a small copy rather than using the full-resolution
+artwork, so the words blurred at exactly the moment someone was trying to read them. They are
+noticeably sharper now.
+
+The picture is the same size on the page as before, and everything around it sits where it did.
+
 ## 2026-08-25 — Quote request: both envelope questions back on the page, letterhead on the PDF, load total off it
 
 **Step 5 no longer hides anything.** "Is there a vapor barrier?" and "How tight is the building?"
