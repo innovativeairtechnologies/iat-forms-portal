@@ -881,6 +881,15 @@ The two buttons — "We'll enter our conditions" and "Use typical for &lt;applic
 The only affordance left is the **use typical** chip under the fields, and beside it a one-line
 caveat replaces the four-line amber Callout that used to sit above them.
 
+The caveat names itself as a disclaimer and says what the figures are FOR (owner, 2026-08-26):
+
+> Just so it is on the record — these are typical figures for this kind of space, for putting a
+> quote together, rather than a measurement of yours. We will confirm the real conditions with you
+> before anything is selected. Please type over them any time.
+
+It appears only once **Use typical** has been clicked, sits beside the chip, and the row is
+`flex-wrap items-start` so it drops under the chip on a narrow screen rather than squeezing it.
+
 🔴 **`targetSource` is now DERIVED, not clicked.** `validateStep('target')` still refuses to advance
 on an empty `targetSource`, and there is no longer a button that sets it — so `StepTarget` computes
 it on every edit: values exactly equal to the preset mean `typical`, anything else means `entered`.

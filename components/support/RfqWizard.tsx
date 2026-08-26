@@ -469,7 +469,7 @@ function ConditionField({
           <option> copy and for anything that explains the units later. */}
 
       {typical && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           <Typical
             label={`${tempToDisplay(String(typical.tempF), unit)}${unitLabel('°F', unit)} / ${
               modeIsTemperature(typical.mode) ? tempToDisplay(String(typical.value), unit) : typical.value
@@ -1596,7 +1596,10 @@ function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<
         typical={preset ? { tempF: preset.tempF, value: preset.rhPct, mode: 'rh' } : undefined}
         onTypical={() => setData(d => ({ ...d, targetSource: 'typical' }))}
         typicalNote={data.targetSource === 'typical'
-          ? 'Typical for this kind of space, not a measurement of yours. Type over it if you know your own.'
+          // Says what it is (a disclaimer) and what it is for (quoting), softly.
+          // Longer than a pill wants, which is why the row wraps and this sits on
+          // its own line under the chip on narrow screens.
+          ? 'Just so it is on the record — these are typical figures for this kind of space, for putting a quote together, rather than a measurement of yours. We will confirm the real conditions with you before anything is selected. Please type over them any time.'
           : undefined}
       />
 

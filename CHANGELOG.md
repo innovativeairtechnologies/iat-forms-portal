@@ -153,7 +153,9 @@ A pass over the customer-facing quote request, top to bottom, at the owner's dir
 
 **The survey stops suggesting answers it has no business suggesting.** Step 3 used to open with two
 buttons asking where the target conditions should come from; it now simply shows the fields, with a
-single "use typical" chip and a one-line caveat beside it instead of a paragraph above them. Step 7
+single "use typical" chip and a short caveat beside it instead of a paragraph above them. That
+caveat now says plainly what it is — a disclaimer, and figures meant for putting a quote together
+rather than a measurement of anyone’s building, which we confirm before anything is selected. Step 7
 no longer offers a suggested headcount — how many people are in the customer's own building is not
 something we should be proposing a figure for. The small print under every Moisture field is gone.
 
