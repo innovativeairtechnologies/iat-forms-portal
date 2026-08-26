@@ -10,6 +10,19 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — The quote request PDF wears the company's colors
+
+The dark bands across the top of the document were the portal's green. They are now the blue IAT
+has always used on paper.
+
+The colors were taken from the logo itself rather than picked by eye — the mark is blue over silver
+with a green accent, and blue is what leads. The same treatment is applied to every dark block in
+the document so it does not mix two schemes.
+
+The colored panels inside the pages are unchanged: those greens, blues and ambers mean something —
+which reading is the target, which is the space, where most of the moisture comes from — and are
+not branding.
+
 ## 2026-08-26 — The survey now asks what the makeup air actually is, and where it goes
 
 The ventilation box on step 7 is now **"Outdoor makeup air, vent for people, or exhaust"**, and it

@@ -44,6 +44,26 @@ type RGB = [number, number, number]
 // silver → blue, so green and blue are both "on brand" here; amber is the one
 // borrowed accent and it only ever marks the thing we want read first.
 const C = {
+  // ── The company's own colours ──
+  // SAMPLED FROM THE MARK, not chosen: public/iat-logo.png, 2026-08-26. Averaging
+  // its non-grey pixels gives blue #3b5fa8 and green #56b043 over a silver
+  // #c0c0c0 — the mark reads blue → silver → green, and blue is what IAT has
+  // always led with on paper.
+  //
+  // ⚠️ THIS IS NOT THE SAME GREEN AS C.pine/C.green. Those are the PORTAL's
+  // "Quiet Precision" emerald (DESIGN.md `--brand` #089447), which is a screen
+  // system, not the company's letterhead. The header bands used to be pine and
+  // were changed on 2026-08-26 at the owner's request — "use more of our
+  // traditional colour scheme versus the green".
+  brandNavy: [30, 58, 110] as RGB,     // band field, deep enough for white text
+  brandBlue: [59, 95, 168] as RGB,     // the mark's blue
+  brandSilver: [192, 192, 192] as RGB, // the mark's silver
+  brandLime: [86, 176, 67] as RGB,     // the mark's green
+  /** Muted text on a brandNavy band — the silver, warmed toward the mark's blue. */
+  onNavy: [166, 190, 224] as RGB,
+  /** Slightly brighter, for the small-caps overline above a title. */
+  onNavyStrong: [190, 208, 235] as RGB,
+
   pine: [10, 46, 30] as RGB,
   pineDeep: [6, 30, 20] as RGB,
   green: [8, 148, 71] as RGB,
@@ -139,22 +159,22 @@ function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts
 
   // Header band — pine, with a ghosted mark bleeding off the right edge below
   // the reference chip (the two used to overlap).
-  fill(doc, C.pine)
+  fill(doc, C.brandNavy)
   doc.rect(0, 0, PAGE_W, 66, 'F')
   ghostMark(doc, logoLight, PAGE_W - 26, 40, 34)
 
   if (logoLight) doc.addImage(logoLight, 'PNG', M, 13, 12.5, 16)
 
-  overline(doc, COMPANY.name.toUpperCase(), M + 18, 19, [168, 200, 180])
+  overline(doc, COMPANY.name.toUpperCase(), M + 18, 19, C.onNavyStrong)
   text(doc, 'Request for Quote', M + 18, 28.5, { size: 20, weight: 'bold', color: C.white })
   text(doc, `Moisture Survey · ${isRoom ? 'Room Dehumidification' : 'Process Dehumidification'}`,
-    M + 18, 35, { size: 9.5, color: [150, 190, 168] })
+    M + 18, 35, { size: 9.5, color: C.onNavy })
 
   // Address on the cover too, low in the band where the ghosted mark is faintest.
   // Same two lines as page 1, from the same constants — a document that prints two
   // different addresses is worse than one that prints none.
-  text(doc, companyAddressLine(), M + 18, 48, { size: 7.6, color: [150, 190, 168] })
-  text(doc, companyContactLine(), M + 18, 53.5, { size: 7.6, color: [150, 190, 168] })
+  text(doc, companyAddressLine(), M + 18, 48, { size: 7.6, color: C.onNavy })
+  text(doc, companyContactLine(), M + 18, 53.5, { size: 7.6, color: C.onNavy })
 
   // Reference chip, right
   const chipW = 52
@@ -162,10 +182,10 @@ function coverPage({ doc, data, meta, load, proc, logoLight, isRoom }: Ctx, opts
   doc.setGState(new (doc as unknown as { GState: new (o: object) => object }).GState({ opacity: 0.1 }))
   doc.roundedRect(PAGE_W - M - chipW, 13, chipW, 17, 2.5, 2.5, 'F')
   doc.setGState(new (doc as unknown as { GState: new (o: object) => object }).GState({ opacity: 1 }))
-  overline(doc, meta.submitted ? 'REFERENCE' : 'DRAFT PREVIEW', PAGE_W - M - chipW + 5, 19, [150, 190, 168])
+  overline(doc, meta.submitted ? 'REFERENCE' : 'DRAFT PREVIEW', PAGE_W - M - chipW + 5, 19, C.onNavy)
   text(doc, meta.reference, PAGE_W - M - chipW + 5, 26, { size: 11, weight: 'bold', color: C.white })
   text(doc, meta.submittedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    PAGE_W - M, 35, { size: 8.5, color: [150, 190, 168], align: 'right' })
+    PAGE_W - M, 35, { size: 8.5, color: C.onNavy, align: 'right' })
 
   // Project identity
   let y = 80
@@ -357,8 +377,8 @@ function processPage(ctx: Ctx) {
   const elev = numOf(data.elevationFt)
 
   // Big leaving-air spec block
-  card(doc, M, y, CW, 42, C.pine)
-  overline(doc, 'REQUIRED LEAVING AIR OFF THE DEHUMIDIFIER', M + 8, y + 10, [150, 190, 168])
+  card(doc, M, y, CW, 42, C.brandNavy)
+  overline(doc, 'REQUIRED LEAVING AIR OFF THE DEHUMIDIFIER', M + 8, y + 10, C.onNavy)
   const specs: [string, string, string][] = [
     [`${fmt(numOf(data.leavingTempF))}°F`, 'dry bulb', ''],
     [fmtGrains(proc?.leavingGrains ?? 0), 'gr/lb', 'grains of water per pound of dry air'],
@@ -368,7 +388,7 @@ function processPage(ctx: Ctx) {
   specs.forEach(([v, l], i) => {
     const x = M + 8 + i * ((CW - 16) / 4)
     text(doc, v, x, y + 26, { size: 17, weight: 'bold', color: C.white })
-    text(doc, l, x, y + 33, { size: 8, color: [150, 190, 168] })
+    text(doc, l, x, y + 33, { size: 8, color: C.onNavy })
   })
   y += 50
 
@@ -601,7 +621,7 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   paper(doc, C.white)
 
   // Title block
-  fill(doc, C.pine)
+  fill(doc, C.brandNavy)
   doc.rect(0, 0, PAGE_W, T.band, 'F')
   // ── Letterhead ──
   // The document opens on this page, so it carries the company identity: mark,
@@ -617,17 +637,17 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   // stacked lines on the left and two on the right is what fits. If anything is
   // added here, take the room from within the band, not from the page.
   if (logoLight) doc.addImage(logoLight, 'PNG', M, 4, 12, 15.3)
-  overline(doc, COMPANY.name.toUpperCase(), M + 17.5, 8, [168, 200, 180])
+  overline(doc, COMPANY.name.toUpperCase(), M + 17.5, 8, C.onNavyStrong)
   text(doc, 'YOUR DEHUMIDIFICATION SNAPSHOT', M + 17.5, 15,
     { size: 12.5, weight: 'bold', color: C.white, spacing: 0.25 })
   text(doc, truncate(doc, `${data.projectName || 'Your project'}  ·  ${applicationLabel(data)}`, CW - 78, 8),
-    M + 17.5, 20.5, { size: 8, color: [150, 190, 168] })
+    M + 17.5, 20.5, { size: 8, color: C.onNavy })
 
   // Address block, right-aligned against the margin.
   text(doc, companyAddressLine(), PAGE_W - M, 11.5,
-    { size: 6.8, color: [150, 190, 168], align: 'right' })
+    { size: 6.8, color: C.onNavy, align: 'right' })
   text(doc, companyContactLine(), PAGE_W - M, 16,
-    { size: 6.8, color: [150, 190, 168], align: 'right' })
+    { size: 6.8, color: C.onNavy, align: 'right' })
 
   let y = T.band + T.gap
 
@@ -799,10 +819,10 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   y += T.ref + T.gap
 
   // ── Key takeaway strip ──
-  fill(doc, C.pine)
+  fill(doc, C.brandNavy)
   doc.roundedRect(M, y, CW, T.strip, 3, 3, 'F')
   text(doc, 'ONE NUMBER TO REMEMBER', PAGE_W / 2, y + 6,
-    { size: 6.6, weight: 'bold', color: [150, 190, 168], align: 'center', spacing: 0.5 })
+    { size: 6.6, weight: 'bold', color: C.onNavy, align: 'center', spacing: 0.5 })
   const takeaway = isRoom && load?.complete
     ? `${fmt(load.dryAirCfm)} cfm of dry air at ${fmtGrains(load.supplyGrains)} gr/lb holds this room at ${fmt(numOf(data.targetRhPct))}% rh`
     : proc?.complete
@@ -843,12 +863,12 @@ function newPage(ctx: Ctx, title: string, sub: string) {
   const { doc } = ctx
   doc.addPage()
   paper(doc)
-  fill(doc, C.pine)
+  fill(doc, C.brandNavy)
   doc.rect(0, 0, PAGE_W, 30, 'F')
   if (ctx.logoLight) doc.addImage(ctx.logoLight, 'PNG', M, 7, 11, 14)
   text(doc, title, M + 16, 16, { size: 14, weight: 'bold', color: C.white })
-  text(doc, sub, M + 16, 22.5, { size: 8.5, color: [150, 190, 168] })
-  text(doc, ctx.meta.reference, PAGE_W - M, 16, { size: 9, weight: 'bold', color: [150, 190, 168], align: 'right' })
+  text(doc, sub, M + 16, 22.5, { size: 8.5, color: C.onNavy })
+  text(doc, ctx.meta.reference, PAGE_W - M, 16, { size: 9, weight: 'bold', color: C.onNavy, align: 'right' })
 }
 
 /**

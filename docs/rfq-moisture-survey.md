@@ -725,6 +725,32 @@ trade-off for a customer-facing estimate.
 `lib/rfq-pdf.ts`, generated client-side with jsPDF — vector throughout (no `html2canvas`), so
 the file is ~35 KB, prints crisply and stays text-searchable.
 
+### The PDF uses the COMPANY's colours, not the portal's (2026-08-26)
+
+The dark bands were `C.pine` (#0a2e1e) — the portal's "Quiet Precision" emerald. The owner asked
+for "more of our traditional colour scheme versus the green", so they are now `C.brandNavy`.
+
+⚠️ **The brand colours were SAMPLED FROM THE MARK, not picked.** Averaging the non-grey pixels of
+`public/iat-logo.png` gives blue **#3b5fa8** and green **#56b043** over a silver **#c0c0c0** — the
+mark reads blue → silver → green, and blue is what IAT leads with on paper.
+
+| token | value | |
+|---|---|---|
+| `brandNavy` | `30, 58, 110` | band field, deep enough for white text |
+| `brandBlue` | `59, 95, 168` | the mark's blue |
+| `brandSilver` | `192, 192, 192` | the mark's silver |
+| `brandLime` | `86, 176, 67` | the mark's green |
+| `onNavy` / `onNavyStrong` | | muted text on a navy band |
+
+🔴 **The portal's green is not the company's green.** DESIGN.md's `--brand` #089447 is a screen
+system; the mark's green is #56b043 and the letterhead colour is the blue. Do not "unify" the PDF
+back to the portal palette — they are answering different questions.
+
+Applied to every dark block so the document does not mix two schemes: both header bands, the
+continuation-page header, the "ONE NUMBER TO REMEMBER" strip and the process page's leaving-air
+card. **Body accents stay semantic** — green for the target condition, blue for the space, amber
+for the dominant driver — because those encode meaning, not brand.
+
 ### The PDF letterhead (2026-08-25)
 
 Page 1 and the cover both carry the company identity — mark, name, address and web address on the
