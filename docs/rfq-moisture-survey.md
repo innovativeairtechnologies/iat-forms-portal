@@ -138,7 +138,7 @@ Three images sit above the material dropdowns: **Good, Better, Best**, from
 `public/rfq/shell-*.webp`. Hovering magnifies the *figure* to 2× — the figure owns the
 rounded clip, so scaling the image inside it would crop rather than enlarge. The outer
 two use `origin-[25%_50%]` and `origin-[75%_50%]` so they lean outward instead of
-growing across their neighbours.
+growing across their neighbors.
 
 ⚠️ Their order comes from the **file names** and does not match the order they were
 supplied: *Good* is the brick build-up, *Best* is the insulated metal panel.
@@ -235,6 +235,19 @@ activity with numbers a person in that industry recognizes, so most steps are a 
 rather than a fill-in. Every seeded value stays editable, and each one carries a one-tap
 `Typical: 40% rh — use it` chip. Presets live in `ROOM_PRESETS` / `PROCESS_PRESETS`
 (`lib/rfq.ts`) — adding an application is adding one object there.
+
+⚠️ **Provenance — the presets are the one uncited input in this survey.** "Numbers a person in
+that industry recognizes" describes the *intent* behind the figures, not a source, and it reads
+like one. There isn't a source: all 29 sets were authored in a single pass (2026-08-14, `59aeff9`)
+from general industry knowledge and have not been edited since. That makes them the exception
+here — `lib/rfq-psych.ts` is ASHRAE Fundamentals checked against published points, the load
+equations follow IAT's moisture-load workbook, `PEOPLE_LOADS` is IAT's own table, and elevation
+comes from USGS, which explicitly refuses to guess. **Treat any preset figure as an unverified
+starting point until an engineer signs it off**; the same caveat and the corresponding comment
+live above `ROOM_PRESETS`. Two values were already found wrong exactly this way — the dry-room
+note (−20°F dp, should have been −30.2) and `dry-room-process` (0.4 gr/lb, should have been
+0.55) — and both read as plausible until they were checked against the psychrometrics. A review
+sheet of all 29 presets with their derived grains and dew points went out 2026-08-26.
 
 ## The readout — "Typical Conditions"
 
@@ -453,7 +466,7 @@ wall than this predicts (a 200 × 12.5 ft room of the same volume has 53% more).
 
 Because it is an assumption, three surfaces say so rather than presenting it as measured: the
 wizard shows an amber callout with the derived footprint, the PDF heading reads `ROOM SIZE (FROM
-VOLUME)` and prints `… ft assumed`, and the admin field is labelled **Dimensions (assumed)**.
+VOLUME)` and prints `… ft assumed`, and the admin field is labeled **Dimensions (assumed)**.
 `roomDimsAreDerived()` is what each of them tests.
 
 Scale check before worrying: permeation was **283 of 78,791 gr/hr (0.4%)** on a real survey, so a
