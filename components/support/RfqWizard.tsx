@@ -348,7 +348,7 @@ function TempInput({
  * 70%rh at 60°F, so the temperature is part of the moisture answer.
  */
 function ConditionField({
-  label, hint, tempLabel = 'Temperature', data, conditionKey, onChange, autoFocus, typical, onTypical, tone = 'sky',
+  label, hint, tempLabel = 'Temperature', data, conditionKey, onChange, autoFocus, typical, onTypical, typicalNote, tone = 'sky',
 }: {
   label: string
   hint?: string
@@ -364,6 +364,12 @@ function ConditionField({
    * than typing their own. Step 3 uses it to set `targetSource`.
    */
   onTypical?: () => void
+  /**
+   * A short line rendered BESIDE the "use typical" chip. Step 3 uses it for the
+   * caveat that used to be a full-width amber Callout stacked above the fields —
+   * the caveat belongs next to the thing it is about.
+   */
+  typicalNote?: React.ReactNode
   tone?: Tone
 }) {
   const tempId = useId()
@@ -376,7 +382,6 @@ function ConditionField({
   const tempF = (data[`${conditionKey}TempF` as keyof RfqData] as string) ?? ''
   const mode = normalizeMode(data[`${conditionKey}MoistureMode` as keyof RfqData], conditionKey === 'leaving' ? 'gr' : 'rh')
   const value = (data[`${conditionKey}MoistureValue` as keyof RfqData] as string) ?? ''
-  const modeMeta = MOISTURE_MODES.find(m => m.value === mode)!
 
   const typicalUsed = !!typical
     && tempF === String(typical.tempF)
@@ -459,23 +464,32 @@ function ConditionField({
         </div>
       </div>
 
-      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-muted">{modeMeta.hint}</p>
+      {/* The per-unit explainer that sat here was removed (owner, 2026-08-26).
+          MOISTURE_MODES still carries its `hint` — it is the source for the mode
+          <option> copy and for anything that explains the units later. */}
 
       {typical && (
-        <Typical
-          label={`${tempToDisplay(String(typical.tempF), unit)}${unitLabel('°F', unit)} / ${
-            modeIsTemperature(typical.mode) ? tempToDisplay(String(typical.value), unit) : typical.value
-          }${unitLabel(MOISTURE_SUFFIX[typical.mode], unit)}`}
-          used={typicalUsed}
-          onUse={() => {
-            onChange(setCondition(
-              setCondition(data, conditionKey, { tempF: String(typical.tempF) }),
-              conditionKey,
-              { mode: typical.mode, value: String(typical.value) },
-            ))
-            onTypical?.()
-          }}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Typical
+            label={`${tempToDisplay(String(typical.tempF), unit)}${unitLabel('°F', unit)} / ${
+              modeIsTemperature(typical.mode) ? tempToDisplay(String(typical.value), unit) : typical.value
+            }${unitLabel(MOISTURE_SUFFIX[typical.mode], unit)}`}
+            used={typicalUsed}
+            onUse={() => {
+              onChange(setCondition(
+                setCondition(data, conditionKey, { tempF: String(typical.tempF) }),
+                conditionKey,
+                { mode: typical.mode, value: String(typical.value) },
+              ))
+              onTypical?.()
+            }}
+          />
+          {typicalNote && (
+            <span className={`mt-1.5 rounded-md px-2 py-1 text-[11px] leading-snug ${TONE.amber.softBg} ${TONE.amber.text}`}>
+              {typicalNote}
+            </span>
+          )}
+        </div>
       )}
     </div>
   )
@@ -1542,66 +1556,40 @@ function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<
   const elev = numOf(data.elevationFt)
 
   /* The target no longer arrives pre-filled from the application preset (see
-     applyRoomPreset). It starts at 0 and the customer has to say, explicitly,
-     which of two things is happening — that choice is stored on the record and
-     `validateStep('target')` will not advance without it.
+     applyRoomPreset). It starts at 0 and the customer has to fill it in;
+     validateStep('target') will not advance until they have.
 
-     Both buttons WRITE the fields, so the readout below and every downstream
-     calculation behave exactly as they always did once a choice is made. */
-  const applyTypical = () => setData(d => (preset
-    ? {
-        ...setCondition(
-          setCondition(d, 'target', { tempF: String(preset.tempF) }),
-          'target',
-          { mode: 'rh', value: String(preset.rhPct) },
-        ),
-        targetSource: 'typical',
-      }
-    : d))
+     WARNING: targetSource IS DERIVED NOW, NOT CLICKED (owner, 2026-08-26). The
+     two buttons that used to ask "where should these numbers come from?" are
+     gone, leaving the "use typical" chip under the fields as the only
+     affordance. So the source is read back off the VALUES: exactly our typical
+     figure means typical, anything else means entered.
 
-  // Back to zero, so "we'll enter our own" never leaves our numbers sitting in
-  // the boxes for someone to tab past.
-  const applyOwn = () => setData(d => ({
-    ...setCondition(
-      setCondition(d, 'target', { tempF: '0' }),
-      'target',
-      { mode: d.targetMoistureMode, value: '0' },
-    ),
-    targetSource: 'entered',
-  }))
+     validateStep('target') STILL REQUIRES a non-empty targetSource, so this must
+     be set on EVERY edit. Miss it and the step can never be completed, because
+     there is no longer a button that sets it. */
+  const sourceFor = (next: RfqData): TargetSource =>
+    preset
+      && next.targetTempF === String(preset.tempF)
+      && next.targetMoistureMode === 'rh'
+      && next.targetMoistureValue === String(preset.rhPct)
+      ? 'typical'
+      : 'entered'
 
   return (
     <div className="space-y-5">
-      <Segmented<TargetSource>
-        label="Where should these numbers come from?"
-        hint="We need one or the other on the record before we quote."
-        tone="sky"
-        value={(data.targetSource || '') as TargetSource}
-        onChange={v => (v === 'typical' ? applyTypical() : applyOwn())}
-        options={[
-          { value: 'entered', label: 'We’ll enter our conditions' },
-          ...(preset ? [{ value: 'typical' as TargetSource, label: `Use typical for ${preset.label.toLowerCase()}` }] : []),
-        ]}
-      />
-
-      {data.targetSource === 'typical' && (
-        <Callout tone="amber">
-          <strong className="font-semibold">Heads up:</strong> these are the figures we see most often for
-          this kind of space, not a measurement of yours. They are fine for putting a budget number
-          together, and we will confirm the real conditions with you before anything is selected or
-          ordered. If you know your own numbers, type them over the top.
-        </Callout>
-      )}
-
       <ConditionField
         label="The condition you need held inside"
         tempLabel="Target temperature"
         data={data}
         conditionKey="target"
-        onChange={setData}
+        onChange={next => setData({ ...next, targetSource: sourceFor(next) })}
         autoFocus
         typical={preset ? { tempF: preset.tempF, value: preset.rhPct, mode: 'rh' } : undefined}
         onTypical={() => setData(d => ({ ...d, targetSource: 'typical' }))}
+        typicalNote={data.targetSource === 'typical'
+          ? 'Typical for this kind of space, not a measurement of yours. Type over it if you know your own.'
+          : undefined}
       />
 
       <ConditionReadout
@@ -1898,6 +1886,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
         secondsOpen: 0,
         exposure: 'Surrounding space' as Exposure,
         continuouslyOpen: type.continuouslyOpen === true,
+        quantity: 1,
       }],
     }))
   }
@@ -1922,6 +1911,23 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
                 value={door.label}
                 onChange={e => update(door.id, { label: e.target.value })}
                 className="flex-1 rounded-md bg-transparent px-1 py-0.5 text-[13.5px] font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+              />
+              {/* How many identical openings this row stands for (owner, 2026-08-26).
+                  Twelve of the same personnel door is ONE row with 12 in this box,
+                  rather than adding the same door twelve times.
+
+                  This MULTIPLIES the load and the open-minutes - see DoorSpec.quantity.
+                  Floored at 1 here as well as in estimateLoad and coerce(), so the
+                  number shown is always the number being priced. */}
+              <label htmlFor={'qty-' + door.id} className="flex-shrink-0 text-[11px] text-ink-muted">Qty</label>
+              <input
+                id={'qty-' + door.id}
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={door.quantity ?? 1}
+                onChange={e => update(door.id, { quantity: Math.max(1, Math.round(parseFloat(e.target.value) || 1)) })}
+                className="w-14 flex-shrink-0 rounded-md border border-hairline bg-surface px-2 py-1 text-[12.5px] tabular-nums text-ink transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
               />
               <button
                 type="button"
@@ -2015,7 +2021,6 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
 function StepInside({ data, set, setData }: {
   data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>
 }) {
-  const preset = presetFor(data) as RoomPreset | undefined
   const people = numOf(data.occupants)
 
   // Open the advanced block on arrival if any of its fields already carry a value,
@@ -2030,20 +2035,16 @@ function StepInside({ data, set, setData }: {
 
   return (
     <div className="space-y-5">
-      {/* items-start, because the left cell carries a "typical" chip under its input
-          and the right cell a conditional hint under its select. Left to stretch,
-          the two cells matched heights and the fields drifted out of line with each
-          other as those extras appeared and disappeared. */}
+      {/* items-start, because the right cell carries a conditional hint under its
+          select. Left to stretch, the two cells matched heights and the fields
+          drifted out of line as that hint appeared and disappeared.
+
+          The left cell used to carry a "use typical" chip offering the preset's
+          headcount. Removed (owner, 2026-08-26) - how many people are in the
+          customer's own building is not ours to suggest an answer to. */}
       <div className="grid items-start gap-4 sm:grid-cols-2">
         <div>
           <TextField label="How many people, typically?" value={data.occupants} onChange={v => set('occupants', v)} type="number" suffix="people" autoFocus />
-          {preset && (
-            <Typical
-              label={`${preset.occupants}`}
-              used={data.occupants === String(preset.occupants)}
-              onUse={() => set('occupants', String(preset.occupants))}
-            />
-          )}
         </div>
         {/* Blank until picked. It was 'Light Work', which multiplied whatever
             headcount was on the page — an authored value on the preset review
@@ -2336,6 +2337,24 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
           <SelectField label="Electrical service" value={data.voltage} onChange={v => set('voltage', v)} options={VOLTAGES} />
           <SelectField label="Regeneration heat" value={data.regenSource} onChange={v => set('regenSource', v)} options={REGEN_SOURCES} />
         </Grid>
+        {/* Moved up into this box (owner, 2026-08-26): where the regeneration air
+            is drawn FROM belongs beside what heats it. */}
+        <div className="mt-4">
+          <Grid>
+            <SelectField label="Regeneration air source" value={data.regenAirSource} onChange={v => set('regenAirSource', v)} options={['Outdoor', 'Indoor']} />
+          </Grid>
+        </div>
+        {data.regenAirSource === 'Indoor' && (
+          <div className="mt-4">
+            <TextField
+              label="Indoor regeneration air condition"
+              hint="Temperature and humidity where the regeneration air is drawn from."
+              value={data.regenIndoorConditions}
+              onChange={v => set('regenIndoorConditions', v)}
+              placeholder="85°F / 55% rh in the mezzanine"
+            />
+          </div>
+        )}
         {/* "Natural gas available?" removed at the owner's request — the field went
             with it rather than being left to record a default nobody chose. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -2346,19 +2365,8 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
       </div>
 
       <Grid>
-        <SelectField label="Regeneration air source" value={data.regenAirSource} onChange={v => set('regenAirSource', v)} options={['Outdoor', 'Indoor']} />
         <SelectField label="Cooling" value={data.coolingType} onChange={v => set('coolingType', v)} options={COOLING_TYPES} />
       </Grid>
-
-      {data.regenAirSource === 'Indoor' && (
-        <TextField
-          label="Indoor regeneration air condition"
-          hint="Temperature and humidity where the regeneration air is drawn from."
-          value={data.regenIndoorConditions}
-          onChange={v => set('regenIndoorConditions', v)}
-          placeholder="85°F / 55% rh in the mezzanine"
-        />
-      )}
 
       {/* "Package preference" removed entirely (owner, 2026-08-19), so Heating pairs
           with Pre-filter here rather than leaving a half-empty row. */}
@@ -2817,7 +2825,7 @@ function numOf(v: string): number {
 function shortLabel(label: string): string {
   return label
     .replace('Permeation through walls, roof and floor', 'Envelope permeation')
-    .replace('Air leakage through the shell', 'Shell air leakage')
+    .replace('Air leakage through the shell', 'Infiltration')
     .replace('Doors and openings', 'Doors & openings')
     .replace('People in the space', 'People')
     .replace('Product, packaging and process', 'Product & process')

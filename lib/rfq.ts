@@ -741,6 +741,19 @@ export type DoorSpec = {
    * the counted model they were quoted on.
    */
   continuouslyOpen?: boolean
+  /**
+   * How many identical openings this row stands for. A building with twelve of
+   * the same personnel door is ONE row with quantity 12, not twelve rows.
+   *
+   * ⚠️ estimateLoad multiplies BOTH the load and the open-minutes by this, so it
+   * is a physics field, not a label. It must be carried through coerce() in
+   * app/api/rfq — that map rebuilds each door and silently drops anything it does
+   * not name, which would price the browser one way and the stored record another.
+   *
+   * Optional, and read as 1 when absent, so every survey taken before 2026-08-26
+   * reads back exactly as it was quoted.
+   */
+  quantity?: number
 }
 
 export const DOOR_TYPES: {
@@ -1296,7 +1309,10 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   if (volume > 0) {
     lines.push({
       key: 'infiltration',
-      label: 'Air leakage through the shell',
+      // Renamed from 'Air leakage through the shell' (owner, 2026-08-26). Stored
+      // summaries keep whatever text they were quoted under - they are snapshotted
+      // at submit and never recomputed - so shortLabel() still maps the old string.
+      label: 'Infiltration',
       grainsPerHour: infiltration,
       detail: `${data.tightness.toLowerCase()} construction, ${leakRate} cu.ft/hr per sq.ft`,
     })
@@ -1306,6 +1322,9 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   let doorLoad = 0
   let doorMinutes = 0
   for (const d of data.doors) {
+    // Absent, zero and fractional all mean one opening. A row cannot stand for
+    // less than the door it describes.
+    const qty = Math.max(1, Math.round(d.quantity ?? 1))
     const area = d.widthFt * d.heightFt
     // ⚠️ A continuously-open aperture is the full hour, not a count of cycles.
     // Asked for on 2026-08-26: the wizard stops asking opens-per-hour and
@@ -1317,18 +1336,20 @@ export function estimateLoad(data: RfqData): LoadEstimate {
     const minutesPerHour = d.continuouslyOpen
       ? 60
       : Math.min((d.opensPerHour * d.secondsOpen) / 60, 60)
-    doorMinutes += minutesPerHour
+    doorMinutes += minutesPerHour * qty
     const outside = d.exposure === 'Outdoor'
     const velocity = outside ? DOOR_VELOCITY_OUTDOOR : DOOR_VELOCITY_INTERIOR
     const delta = (outside ? outGr : surGr) - roomGr
-    doorLoad += Math.max(area * velocity * minutesPerHour * density * delta, 0)
+    doorLoad += Math.max(area * velocity * minutesPerHour * density * delta, 0) * qty
   }
   if (data.doors.length) {
+    // The COUNT is openings, not rows — one row of twelve doors reads as twelve.
+    const openings = data.doors.reduce((n, d) => n + Math.max(1, Math.round(d.quantity ?? 1)), 0)
     lines.push({
       key: 'doors',
       label: 'Doors and openings',
       grainsPerHour: doorLoad,
-      detail: `${data.doors.length} opening${data.doors.length === 1 ? '' : 's'}, open ${fmt(doorMinutes)} min per hour in total`,
+      detail: `${openings} opening${openings === 1 ? '' : 's'}, open ${fmt(doorMinutes)} min per hour in total`,
     })
   }
 

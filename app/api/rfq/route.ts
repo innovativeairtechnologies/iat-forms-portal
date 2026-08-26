@@ -77,6 +77,10 @@ function coerce(raw: unknown): RfqData {
       // record another. continuouslyOpen decides whether the opening is charged the
       // full 60 min/hr, so losing it changes the load by ~10x on a conveyor.
       continuouslyOpen: d.continuouslyOpen === true,
+      // Multiplies this opening's load — see DoorSpec.quantity. Clamped here as
+      // well as in estimateLoad so a hand-posted body cannot store a 10,000-door
+      // row, and floored at 1 so a missing or junk value is one opening.
+      quantity: Math.min(Math.max(1, Math.round(finite(d.quantity) || 1)), 999),
     }))
 
   out.track = src.track === 'process' ? 'process' : 'room'

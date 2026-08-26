@@ -123,6 +123,40 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-26 — The quote request asks less, and says it more plainly
+
+A pass over the customer-facing quote request, top to bottom, at the owner's direction.
+
+**The survey stops suggesting answers it has no business suggesting.** Step 3 used to open with two
+buttons asking where the target conditions should come from; it now simply shows the fields, with a
+single "use typical" chip and a one-line caveat beside it instead of a paragraph above them. Step 7
+no longer offers a suggested headcount — how many people are in the customer's own building is not
+something we should be proposing a figure for. The small print under every Moisture field is gone.
+
+**Twelve identical doors are now one line with a quantity, not twelve lines.** Anyone with a row of
+matching dock doors had to add the same opening over and over; each opening now carries a count that
+multiplies it. Surveys taken before today are unaffected and still price exactly as they were quoted.
+
+**"Shell air leakage" is now "Infiltration"** wherever it appears, which is the word the industry
+actually uses. On the equipment step, where the regeneration air is drawn from now sits beside what
+heats it, rather than in a separate box further down.
+
+**The document the customer receives is leaner.** Four things came off it, each of them a repeat of
+something already on the page: the worked formula, a generic table of typical conditions for other
+people's buildings, a closing banner restating the headline figure, and the four summary tiles on
+the cover. The five-step design procedure at the end has been replaced with a plain thank-you and
+the one commitment worth making at that point — that someone from IAT will be in touch within one
+business day. Contact and project details moved onto the first page, which is the one people keep.
+
+The record pages now flow into one another instead of each starting a new sheet, and every table on
+them sits tighter. The document still runs to five pages for a full room survey: the record is
+genuinely about four pages of tables, and getting to three means dropping something real rather than
+rearranging it. What each remaining option would cost is written down in the docs for a decision
+later.
+
+**On the support landing page**, the line under "How can we help?" was written when that page had a
+single support link on it. It now reflects that there are two ways in.
+
 ## 2026-08-26 — The quote request looks like something you can click
 
 On the customer support page the two front doors are **Start a support request** and **Request for

@@ -725,7 +725,7 @@ published points at sea level: 70°F/30%rh → 32.5 gr/lb, 70°F/20%rh → 21.6,
 | Source | Equation |
 |---|---|
 | Permeation | `area × permeance × Δ vapor pressure` |
-| Shell air leakage | `envelope area × tightness rate × density × Δ grains` |
+| Infiltration | `envelope area × tightness rate × density × Δ grains` |
 | Doors & openings | `open area × velocity × min/hr × density × Δ grains` |
 | People | `count × gr/hr by activity` |
 | Product / process | `lb of water per hour × 7,000` |
@@ -799,8 +799,8 @@ system; the mark's green is #56b043 and the letterhead colour is the blue. Do no
 back to the portal palette — they are answering different questions.
 
 Applied to every dark block so the document does not mix two schemes: both header bands, the
-continuation-page header, the "ONE NUMBER TO REMEMBER" strip and the process page's leaving-air
-card. **Body accents stay semantic** — green for the target condition, blue for the space, amber
+continuation-page header and the process page's leaving-air card. (The "ONE NUMBER TO REMEMBER"
+strip was also on this list until it was removed on 2026-08-26.) **Body accents stay semantic** — green for the target condition, blue for the space, amber
 for the dominant driver — because those encode meaning, not brand.
 
 ### The PDF letterhead (2026-08-25)
@@ -821,13 +821,15 @@ and two on the right is what fits; take any new room from inside the band, never
 that band, which is where the address block now sits, and a 0.08-opacity logo behind 6.6pt text
 reads as a printing fault. The cover has room, so it keeps it.
 
+⚠️ **Rewritten 2026-08-26.** The record no longer runs one section per page — see
+"Consolidating the document" below. Page numbers past 1 are now a typical outcome, not a layout.
+
 | Page | Contents |
 |---|---|
-| **1** | **The takeaway infographic** — one page, the customer's own numbers |
-| 2 | Cover — project identity, four at-a-glance tiles, contact + project detail, purpose |
-| 3 | The space (application render with L/W/H callouts, design conditions, envelope) *or* the process spec |
-| 4 | *Room only* — openings, internal loads, estimated breakdown bars, totals |
-| 5 | Equipment & utilities + standing engineering notes from the paper form |
+| **1** | **The takeaway infographic** — the customer's own numbers, what happens now, and who to talk to |
+| 2+ | The record, flowing: cover identity and purpose, the space *or* the process spec, openings and internal loads, the estimated breakdown, equipment and utilities, standing engineering notes |
+
+A full room survey lands at **five pages**; a section starts wherever the last one finished.
 
 The takeaway **leads** the document (moved from last, 2026-08-14). The person opening it wants
 their own numbers first; the detail pages behind are the evidence, not the headline. jsPDF has
@@ -869,12 +871,106 @@ worked `Water removed (lb/hr)` formula are arithmetic on the customer's OWN stat
 grain depression — not an estimate of an unknown building. Different in kind from the room load,
 and gutting it would leave a process survey with nothing to say.
 
+## The 2026-08-26 pass — fewer questions, fewer pages
+
+Owner-directed. Everything here was asked for.
+
+### Step 3 no longer asks where the numbers came from
+
+The two buttons — "We'll enter our conditions" and "Use typical for &lt;application&gt;" — are gone.
+The only affordance left is the **use typical** chip under the fields, and beside it a one-line
+caveat replaces the four-line amber Callout that used to sit above them.
+
+🔴 **`targetSource` is now DERIVED, not clicked.** `validateStep('target')` still refuses to advance
+on an empty `targetSource`, and there is no longer a button that sets it — so `StepTarget` computes
+it on every edit: values exactly equal to the preset mean `typical`, anything else means `entered`.
+Remove that and the step becomes impossible to complete. It is written down in the component too.
+
+⚠️ Deriving it from the values rather than from the click also fixes a smaller thing: changing the
+temperature UNIT after accepting our figures no longer re-labels the record as customer-entered.
+
+### Openings carry a quantity
+
+`DoorSpec.quantity` — twelve identical personnel doors are **one row with 12 in the box**, not
+twelve rows. It multiplies both the load and the open-minutes, and the breakdown detail line counts
+openings rather than rows.
+
+⛔ **It is a physics field and it has to exist in three places.** The type, `estimateLoad`, and
+`coerce()` in `app/api/rfq` — that map REBUILDS every door, so a field it does not name is silently
+dropped on submit and the browser prices the survey differently from the stored record. Optional and
+read as 1 when absent, so surveys taken before today read back exactly as they were quoted.
+
+Verified against literals, not against itself: qty 3 returns **exactly** 3x the qty-1 load, and an
+absent quantity matches qty 1.
+
+### Smaller removals
+
+| Where | Change |
+|---|---|
+| Every condition field | The per-unit explainer under **Moisture** is gone. `MOISTURE_MODES.hint` still exists and still feeds the mode options |
+| Step 7 | The "use typical" chip offering the preset headcount is gone — how many people are in the customer's building is not ours to suggest |
+| Step 8 | **Regeneration air source** moved up beside **Regeneration heat**, inside the utilities box, with the indoor-condition field following it |
+| Breakdown label | "Shell air leakage" is now **Infiltration**, renamed at the source. `shortLabel()` still maps the old long string so stored summaries read the same way |
+| Support landing page | The line under "How can we help?" was written when the page had one door on it; it now covers both |
+
+## Consolidating the document (2026-08-26)
+
+Asked for: five pages down to two or three. **The result is five, and the honest reason is that the
+record is about four pages of tables.** What changed is what is on them.
+
+**Removed** — all duplicates of something the reader already had:
+
+| Gone | Why it was safe |
+|---|---|
+| Takeaway panel 3, "The math behind your number" | The working, not the answer |
+| Takeaway panel 5, "Typical target conditions" | A generic chart; their own row was the only useful line and panel 1 already carries it |
+| The "ONE NUMBER TO REMEMBER" strip | Said the same thing a fourth time |
+| The cover's four "AT A GLANCE" tiles | Takeaway panels 1 and 3 are the target condition and the dominant driver |
+
+**Moved:** WHO TO TALK TO and PROJECT DETAIL now sit on the takeaway page, in the space the removed
+panels left. That is the page a customer keeps, which is where contact details were always most use.
+
+**Rewritten:** panel 6 "What happens next" — the five-step Chapter-7 design procedure — is now
+panel 4, **"What happens now"**, full width: a thank-you and one commitment, contact within one
+business day.
+
+**Tightened, losing no words:** table row pitch 8 → 6.8mm, key-panel pitch 7.6 → 6.8, the cover band
+66 → 48mm, the room card 76 → 62, and the standing engineering notes to 7.2/3.3. All four notes stay.
+
+### 🔴 The record FLOWS now, and that has a sharp edge
+
+`section()` continues the current page when the next block fits and only takes a new one when it
+does not. **Every block in a flowing section therefore needs an `ensure()` reserve.** Blocks that
+could not overflow when a section always began at y = 46 on its own page can overflow now, and an
+unguarded block does not wrap — it draws off the bottom of the sheet. The first run after the change
+put "Construction and envelope" at **y = 282.8 on a 279.4mm page**. Guards were added to Design
+conditions, The airstream, Process notes, Internal loads and Additional notes.
+
+⚠️ The engineering-notes box used to be PINNED with `Math.min(Math.max(y, 186), CONTENT_BOTTOM - boxH)`.
+That anchored it to the foot of a page this section no longer owns — the clamp would have pulled it
+*upwards* into the content above. It follows the flow now.
+
+### What a third page would actually cost
+
+Measured, not estimated. Nothing below was done, because each one removes something real:
+
+| Candidate | Saves | The catch |
+|---|---|---|
+| The room render in the record | ~62mm | The picture is already on page 1 — but only the record's copy carries the **dimension callouts** |
+| Standing engineering notes | ~40mm | IAT's own text from the paper quote request |
+| The two blue `note()` explainers | ~24mm | They are the customer-education lines about grains vs %rh |
+| The load totals tile row | ~30mm | The bars above it would be left unexplained |
+
+Even all four together is under a page. **Two or three pages needs the breakdown, the design
+conditions table or the render to go** — a content decision, not a layout one.
+
 ### Four rules for editing the PDF
 
 1. **Every string passes through `san()`.** jsPDF's Helvetica is WinAnsi-encoded and does not
    fall back — `≈` rendered as `ʺH` and `′` as a stray `2` before the sanitiser existed. It is
    a silent corruption, not an error.
-2. **The takeaway page has a fixed vertical budget** (the `T` constants, summing to 238 mm). It
+2. **The takeaway page has a fixed vertical budget** (the `T` constants, summing to **171 mm**
+   since the 2026-08-26 removals; it was 238, then 218). It
    must stay one page no matter how long the project name is or how many load lines there are,
    so panel heights are constants and their contents are sized to fit. Change one, re-check the
    total against `FOOTER_BAND_TOP`.

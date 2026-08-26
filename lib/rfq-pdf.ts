@@ -2,12 +2,18 @@
 //
 // Two documents in one file, and the split is deliberate:
 //
-//   Pages 1-4  The RECORD. Everything the customer told us, laid out the way an
-//              application engineer reads it. This is the page our sales desk
-//              prints and the customer forwards to their engineer.
-//   Last page  The TAKEAWAY. A single-page infographic of their own numbers —
-//              what they asked for, where their moisture comes from, and what
-//              happens next. Designed to survive being pinned to a wall.
+//   Page 1     The TAKEAWAY. A single-page infographic of their own numbers —
+//              what they asked for, where their moisture comes from, what happens
+//              now, and who to talk to. Designed to survive being pinned to a wall.
+//              Built FIRST because jsPDF cannot reorder pages.
+//   Pages 2+   The RECORD. Everything the customer told us, laid out the way an
+//              application engineer reads it. This is what our sales desk prints
+//              and the customer forwards to their engineer.
+//
+// ⚠️ The record FLOWS (2026-08-26). Its sections used to take a page each, which is
+// how a short survey still ran to five pages with a third of each one blank. They
+// now continue on the current page when the next block fits — so EVERY block needs
+// an ensure() reserve. An unguarded one does not wrap, it draws off the sheet.
 //
 // Vector throughout (jsPDF primitives, no html2canvas), so the file stays around
 // 200 KB, prints crisply at any size, and the text is selectable and searchable.
@@ -18,7 +24,6 @@ import {
   type LoadEstimate,
   type ProcessEstimate,
   type RfqData,
-  ROOM_PRESETS,
   TIGHTNESS_RATES,
   applicationLabel,
   conditionEntered,
@@ -135,10 +140,13 @@ export async function generateRfqPdf(data: RfqData, meta: RfqPdfMeta): Promise<B
   // evidence, not the headline. jsPDF has no page-reorder, so it is simply built
   // first; the first page of a new document already exists, hence no addPage.
   takeawayPage(ctx, { first: true })
-  coverPage(ctx, { newPage: true })
-  isRoom ? spacePage(ctx) : processPage(ctx)
-  if (isRoom) loadsPage(ctx)
-  equipmentPage(ctx)
+  // The record now FLOWS from the cover instead of one section per page — see
+  // section(). Each returns the y it finished at, and the next decides from that
+  // whether it fits underneath or needs a page.
+  let y = coverPage(ctx, { newPage: true })
+  y = isRoom ? spacePage(ctx, y) : processPage(ctx, y)
+  if (isRoom) y = loadsPage(ctx, y)
+  equipmentPage(ctx, y)
 
   stampEveryPage(doc, meta)
   return doc.output('blob')
@@ -166,15 +174,17 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
 
   // Header band — pine, with a ghosted mark bleeding off the right edge below
   // the reference chip (the two used to overlap).
-  gradientBand(doc, 0, 0, PAGE_W, 66, C.brandGreenDeep, C.brandNavy)
-  ghostMark(doc, logoLight, PAGE_W - 26, 40, 34)
+  // 66 -> 48 (owner, 2026-08-26: fewer pages). Four lines of text did not need
+  // sixty-six millimetres, and every millimetre here is one the record cannot use.
+  gradientBand(doc, 0, 0, PAGE_W, 48, C.brandGreenDeep, C.brandNavy)
+  ghostMark(doc, logoLight, PAGE_W - 26, 30, 26)
 
-  markTile(doc, logoColor, M, 13, 12.5, 16)
+  markTile(doc, logoColor, M, 9, 11.5, 14.5)
 
-  overline(doc, COMPANY.name.toUpperCase(), M + 18, 19, C.onNavyStrong)
-  text(doc, 'Request for Quote', M + 18, 28.5, { size: 20, weight: 'bold', color: C.white })
+  overline(doc, COMPANY.name.toUpperCase(), M + 18, 14, C.onNavyStrong)
+  text(doc, 'Request for Quote', M + 18, 23.5, { size: 20, weight: 'bold', color: C.white })
   text(doc, `Moisture Survey · ${isRoom ? 'Room Dehumidification' : 'Process Dehumidification'}`,
-    M + 18, 35, { size: 9.5, color: C.onNavy })
+    M + 18, 30, { size: 9.5, color: C.onNavy })
 
   // Address on the cover too, low in the band where the ghosted mark is faintest.
   // Same two lines as page 1, from the same constants — a document that prints two
@@ -194,7 +204,7 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
     PAGE_W - M, 35, { size: 8.5, color: C.onNavy, align: 'right' })
 
   // Project identity
-  let y = 80
+  let y = 62
   overline(doc, 'PROJECT', M, y, C.inkMuted)
   y += 8
   // wrapped() returns the next free baseline, so a two-line project name pushes
@@ -215,38 +225,35 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
     y += 8
   }
 
-  // ── At a glance ──
-  overline(doc, 'AT A GLANCE', M, y, C.inkMuted)
-  y += 5
+  // ⚠️ "AT A GLANCE" AND THE TWO KEY PANELS WERE HERE (owner, 2026-08-26: get the
+  // document to two or three pages).
+  //
+  // The tile row went because it was the third telling of the same numbers — the
+  // takeaway page opens with YOUR TARGET CONDITION and WHERE YOUR MOISTURE COMES
+  // FROM, which is the target condition and the dominant driver already.
+  //
+  // WHO TO TALK TO and PROJECT DETAIL moved to the takeaway page, into the space
+  // the removed panels left there. Nothing was dropped: contactRows/projectRows
+  // now live in contactPanels(), called from takeawayPage().
+  if (data.purpose) {
+    softPanel(doc, M, y, CW, 0, C.paper)
+    const inner = wrapped(doc, data.purpose, M + 6, y + 12, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
+    const boxH = inner - y + 6
+    softPanel(doc, M, y, CW, boxH, C.paper)
+    accentEdge(doc, M, y, boxH, C.green)
+    overline(doc, 'IN THEIR WORDS', M + 6, y + 7, C.inkMuted)
+    wrapped(doc, data.purpose, M + 6, y + 13.5, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
+    y += boxH
+  }
+  return y
+}
 
-  const tiles: TileSpec[] = isRoom && load
-    ? [
-        { label: 'Target condition', value: `${fmt(numOf(data.targetTempF))}°F`, sub: `${enteredPrefix(data, 'target')}${fmt(numOf(data.targetRhPct))}% rh · ${fmtGrains(load.roomGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
-        // ⚠️ The "Estimated load" tile was here — N lb/hr and "About N pints of water
-        // a day" — and came out on 2026-08-26 with the page-1 panel and the load
-        // page's "Total to remove" tile. It was the same figure a third time, which
-        // is why removing the other two alone did not achieve what was asked.
-        //
-        // Still calculated, still on the record in rfq_requests.summary. The room
-        // load is an ESTIMATE OF THE CUSTOMER'S BUILDING, resting on assumed
-        // tightness, permeation and door traffic; handing it over at survey stage
-        // reads as a quantity we have committed to. That is the whole reason it is
-        // gone from the customer's copy. Do not reinstate it on any page.
-        { label: 'Biggest driver', value: load.dominant ? shortDriver(load.dominant.label) : '—', sub: load.dominant && load.complete ? `${pct(load.dominant.grainsPerHour, load.lines.reduce((s, l) => s + l.grainsPerHour, 0))} of the room load` : 'Preliminary', tone: C.amber, soft: C.amberSoft, small: true },
-      ]
-    : proc
-      ? [
-          { label: 'Leaving air', value: `${fmt(numOf(data.leavingTempF))}°F`, sub: `${enteredPrefix(data, 'leaving')}${fmtGrains(proc.leavingGrains)} gr/lb`, tone: C.green, soft: C.greenSoft },
-          { label: 'Leaving dew point', value: fmtDewPoint(proc.leavingDewPointF), sub: `${fmt(proc.leavingRhPct, 1)}% rh at the leaving temp`, tone: C.blue, soft: C.blueSoft },
-          { label: 'Process airflow', value: fmt(proc.cfm), unit: 'cfm', sub: data.airSource, tone: C.violet, soft: C.violetSoft },
-          { label: 'Moisture removed', value: proc.complete ? fmt(proc.lbPerHr, 1) : '—', unit: 'lb/hr', sub: proc.complete ? `${fmtGrains(proc.depression)} gr/lb of drying` : 'Preliminary', tone: C.amber, soft: C.amberSoft },
-        ]
-      : []
-
-  y = tileRow(doc, tiles, M, y, CW)
-  y += 9
-
-  // ── Contact / project detail, two columns ──
+/**
+ * WHO TO TALK TO + PROJECT DETAIL, side by side. Lived on the cover until
+ * 2026-08-26; drawn on the takeaway page now. Returns the height it used.
+ */
+function contactPanels(ctx: Ctx, y: number): number {
+  const { doc, data } = ctx
   const colW = (CW - 6) / 2
   const contactRows: [string, string][] = [
     ['Company', data.company],
@@ -257,37 +264,24 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
   ]
   const projectRows: [string, string][] = [
     ['Location', data.location],
-    ['Elevation', data.elevationFt ? `${fmt(numOf(data.elevationFt))} ft above sea level` : ''],
+    ['Elevation', data.elevationFt ? fmt(numOf(data.elevationFt)) + ' ft above sea level' : ''],
     ['Quote needed by', formatDate(data.dateRequired)],
     ['Expected order', formatDate(data.dateClose)],
     ['Engineering firm', data.engineeringFirm],
     ['Engineer contact', data.engineerContact],
   ]
-
-  const hA = panelHeight(contactRows.length)
-  const hB = panelHeight(projectRows.length)
-  const h = Math.max(hA, hB)
+  const h = Math.max(panelHeight(contactRows.length), panelHeight(projectRows.length))
   keyPanel(doc, 'WHO TO TALK TO', contactRows, M, y, colW, h)
   keyPanel(doc, 'PROJECT DETAIL', projectRows, M + colW + 6, y, colW, h)
-  y += h + 8
-
-  if (data.purpose) {
-    softPanel(doc, M, y, CW, 0, C.paper)
-    const inner = wrapped(doc, data.purpose, M + 6, y + 12, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
-    const boxH = inner - y + 6
-    softPanel(doc, M, y, CW, boxH, C.paper)
-    accentEdge(doc, M, y, boxH, C.green)
-    overline(doc, 'IN THEIR WORDS', M + 6, y + 7, C.inkMuted)
-    wrapped(doc, data.purpose, M + 6, y + 13.5, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
-  }
+  return h
 }
 
 // ─── Page 2 · The space (room track) ──────────────────────────────────────────
 
-function spacePage(ctx: Ctx) {
+function spacePage(ctx: Ctx, startY: number): number {
   const { doc, data, load, roomImage } = ctx
-  newPage(ctx, 'The space', 'Geometry, envelope and design conditions')
-  let y = 46
+  // 62 is cardH below — the room card is drawn first and does not split.
+  let y = section(ctx, startY, 62, 'The space', 'Geometry, envelope and design conditions')
 
   // Room diagram + facts, side by side.
   //
@@ -300,7 +294,9 @@ function spacePage(ctx: Ctx) {
   const diagW = CW * 0.52
   const factsX = M + diagW + 6
   const factsW = CW - diagW - 6
-  const cardH = 76
+  // 76 -> 62 (owner, 2026-08-26). The render still fills the column width; what
+  // went was the air under it.
+  const cardH = 62
 
   card(doc, M, y, diagW, cardH)
   // Volume mode has no measured length/width, so the heading has to stop claiming
@@ -308,7 +304,7 @@ function spacePage(ctx: Ctx) {
   const g = roomDims(data)
   const derived = roomDimsAreDerived(data)
   overline(doc, derived ? 'ROOM SIZE (FROM VOLUME)' : 'ROOM DIMENSIONS', M + 6, y + 8, C.inkMuted)
-  roomDiagram(doc, M + 6, y + 12, diagW - 12, 60, g.L, g.W, g.H, roomImage)
+  roomDiagram(doc, M + 6, y + 12, diagW - 12, 46, g.L, g.W, g.H, roomImage)
 
   const vol = load?.volumeCuFt ?? 0
   const floorArea = g.L * g.W
@@ -319,17 +315,24 @@ function spacePage(ctx: Ctx) {
     ['Volume', vol ? `${fmt(vol)} cu.ft` : ''],
     ['Envelope total', floorArea ? `${fmt(wallArea + floorArea * 2)} sq.ft` : ''],
   ], factsX, y, factsW, cardH)
-  y += cardH + 8
+  y += cardH + 5
 
   // Design conditions — the table an engineer looks for first
-  overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
-  y += 4
   const elev = numOf(data.elevationFt)
   const rows: string[][] = [
     condRow('Inside the room (target)', numOf(data.targetTempF), numOf(data.targetRhPct), elev, conditionEntered(data, 'target')),
     condRow('Surrounding space', numOf(data.surroundTempF), numOf(data.surroundRhPct), elev, conditionEntered(data, 'surround')),
     condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev, conditionEntered(data, 'outdoor')),
   ]
+  // ⚠️ GUARD ADDED 2026-08-26. Before the record flowed, every section began at
+  // y = 46 on a page of its own, so this block could not overflow. It can now -
+  // and an unguarded block does not wrap, it draws straight off the bottom of the
+  // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
+  // page. EVERY block in a flowing section needs a reserve.
+  // 4 below the overline, the table, then the note and its air: measured at 21.
+  y = ensure(ctx, y, 4 + tableH(rows.length) + 21, 'The space', 'Design conditions')
+  overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
+  y += 4
   y = table(doc, M, y, CW,
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
     rows, [0.4, 0.15, 0.15, 0.15, 0.15])
@@ -372,14 +375,15 @@ function spacePage(ctx: Ctx) {
   // are almost always the dominant load, so they belong beside the breakdown
   // that says so rather than filed under geometry. It also stops a two-door
   // survey from spilling a near-empty continuation page out of this one.
+  return y
 }
 
 // ─── Page 2 · The process (process track) ─────────────────────────────────────
 
-function processPage(ctx: Ctx) {
+function processPage(ctx: Ctx, startY: number): number {
   const { doc, data, proc } = ctx
-  newPage(ctx, 'The process', 'Leaving-air specification and airstream')
-  let y = 46
+  // The leaving-air card is 42 plus its 8 of air below.
+  let y = section(ctx, startY, 50, 'The process', 'Leaving-air specification and airstream')
   const elev = numOf(data.elevationFt)
 
   // Big leaving-air spec block
@@ -398,6 +402,12 @@ function processPage(ctx: Ctx) {
   })
   y += 50
 
+  // ⚠️ GUARD ADDED 2026-08-26. Before the record flowed, every section began at
+  // y = 46 on a page of its own, so this block could not overflow. It can now -
+  // and an unguarded block does not wrap, it draws straight off the bottom of the
+  // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
+  // page. EVERY block in a flowing section needs a reserve.
+  y = ensure(ctx, y, 4 + tableH(4) + 10, 'The process', 'The airstream')
   overline(doc, 'THE AIRSTREAM', M, y, C.inkMuted)
   y += 4
   y = table(doc, M, y, CW, ['Parameter', 'Value'], [
@@ -423,19 +433,24 @@ function processPage(ctx: Ctx) {
   y += 6
 
   if (data.purpose || data.notes) {
+    // Free text, so measure it rather than reserve a guess.
+    y = ensure(ctx, y, 5 + wrapLines(doc, [data.purpose, data.notes].filter(Boolean).join(' '), CW, { size: 9.5 }).length * 5,
+      'The process', 'Process notes')
     overline(doc, 'PROCESS NOTES', M, y, C.inkMuted)
     y += 5
     y = wrapped(doc, [data.purpose, data.notes].filter(Boolean).join('\n\n'), M, y, CW, { size: 9.5, color: C.inkSoft, leading: 5 })
   }
+  return y
 }
 
 // ─── Page 3 · Loads (room track) ──────────────────────────────────────────────
 
-function loadsPage(ctx: Ctx) {
+function loadsPage(ctx: Ctx, startY: number): number {
   const { doc, data, load } = ctx
-  if (!load) return
-  newPage(ctx, 'Where the moisture comes from', 'Openings, internal loads and the preliminary estimate')
-  let y = 46
+  if (!load) return startY
+  // The doors table is first, and an empty survey still draws one row.
+  let y = section(ctx, startY, 4 + tableH(Math.max(1, data.doors.length)),
+    'Where the moisture comes from', 'Openings, internal loads and the preliminary estimate')
 
   overline(doc, 'DOORS & OPENINGS', M, y, C.inkMuted)
   y += 4
@@ -456,6 +471,12 @@ function loadsPage(ctx: Ctx) {
   }
   y += 5
 
+  // ⚠️ GUARD ADDED 2026-08-26. Before the record flowed, every section began at
+  // y = 46 on a page of its own, so this block could not overflow. It can now -
+  // and an unguarded block does not wrap, it draws straight off the bottom of the
+  // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
+  // page. EVERY block in a flowing section needs a reserve.
+  y = ensure(ctx, y, 4 + tableH(7), 'Where the moisture comes from', 'Internal loads')
   overline(doc, 'INTERNAL LOADS RECORDED', M, y, C.inkMuted)
   y += 4
   // ⚠️ NO NEW ROW HERE — the condition rides on the row that already exists.
@@ -528,14 +549,16 @@ function loadsPage(ctx: Ctx) {
   // The old rose "PRELIMINARY ESTIMATE" panel lived here. It is gone because
   // stampEveryPage() now prints the disclaimer on every page — two copies on
   // this one page would read as boilerplate rather than as a caution.
+  // +10 clears the note drawn at y + 4 just above.
+  return y + 10
 }
 
 // ─── Page 4 · Equipment & utilities ───────────────────────────────────────────
 
-function equipmentPage(ctx: Ctx) {
+function equipmentPage(ctx: Ctx, startY: number): number {
   const { doc, data } = ctx
-  newPage(ctx, 'Equipment & utilities', 'Everything that shapes the unit we quote')
-  let y = 46
+  // panelHeight(5) = 54 — the two key panels are the first block and sit side by side.
+  let y = section(ctx, startY, 54, 'Equipment & utilities', 'Everything that shapes the unit we quote')
 
   const colW = (CW - 6) / 2
   const left: [string, string][] = [
@@ -572,6 +595,9 @@ function equipmentPage(ctx: Ctx) {
   y += 9
 
   if (data.notes) {
+    // Free text, so measure it rather than reserve a guess.
+    y = ensure(ctx, y, 5 + wrapLines(doc, data.notes, CW, { size: 9.5 }).length * 5 + 6,
+      'Equipment & utilities', 'Additional notes')
     overline(doc, 'ADDITIONAL NOTES', M, y, C.inkMuted)
     y += 5
     y = wrapped(doc, data.notes, M, y, CW, { size: 9.5, color: C.inkSoft, leading: 5 })
@@ -585,20 +611,29 @@ function equipmentPage(ctx: Ctx) {
     ['Vapor retarder classes', 'Class I is polyethylene. Class II is kraft-faced fiberglass batt. Class III is latex-painted gypsum board.'],
     ['Drawings help', 'A plan or sketch showing dimensions, door locations and openings lets us skip a round of questions.'],
   ]
-  const bodyOpts = { size: 7.8, color: C.inkMuted, leading: 3.6 }
+  // Tightened 2026-08-26 (7.8/3.6 -> 7.2/3.3). All four notes are KEPT - they are
+  // IAT standing engineering text, not filler - they simply take less room.
+  const bodyOpts = { size: 7.2, color: C.inkMuted, leading: 3.3 }
   // Measure first: a fixed 62 mm box left dead space on a short answer and ran
   // the last note off the panel on a long one.
-  const boxH = 12 + notes.reduce(
-    (h, [, b]) => h + 4 + wrapLines(doc, b, CW - 12, bodyOpts).length * bodyOpts.leading + 3, 0
+  const boxH = 10 + notes.reduce(
+    (h, [, b]) => h + 3.6 + wrapLines(doc, b, CW - 12, bodyOpts).length * bodyOpts.leading + 2, 0
   )
-  const boxY = Math.min(Math.max(y, 186), CONTENT_BOTTOM - boxH)
+  // WARNING: THIS BOX USED TO BE PINNED LOW on the page:
+  //     Math.min(Math.max(y, 186), CONTENT_BOTTOM - boxH)
+  // which anchored it to the foot of a page this section no longer owns. Now the
+  // record flows, so a hard 186 would drop it on top of whatever is above it, and
+  // the CONTENT_BOTTOM clamp would happily pull it UPWARDS into that content.
+  // It now follows the flow and takes a new page only when it will not fit.
+  const boxY = ensure(ctx, y, boxH, 'Equipment & utilities', 'Notes from our engineering team')
   softPanel(doc, M, boxY, CW, boxH, C.paper)
   overline(doc, 'NOTES FROM OUR ENGINEERING TEAM', M + 6, boxY + 8, C.inkMuted)
   let ny = boxY + 15
   for (const [t, b] of notes) {
-    text(doc, t, M + 6, ny, { size: 8.5, weight: 'bold', color: C.ink })
-    ny = wrapped(doc, b, M + 6, ny + 4, CW - 12, bodyOpts) + 3
+    text(doc, t, M + 6, ny, { size: 8, weight: 'bold', color: C.ink })
+    ny = wrapped(doc, b, M + 6, ny + 3.6, CW - 12, bodyOpts) + 2
   }
+  return boxY + boxH
 }
 
 // ─── Last page · The takeaway infographic ─────────────────────────────────────
@@ -610,13 +645,17 @@ function equipmentPage(ctx: Ctx) {
 const T = {
   band: 24,
   duo: 46,      // target condition + the space
-  formula: 34,
   bars: 40,
-  ref: 45,      // typical conditions + what happens next
-  strip: 14,
+  next: 52,     // what happens now - full width since the ref table went
   gap: 3,
 }
-// 24+3 +46+3 +34+3 +40+3 +45+3 +14 = 218, clearing FOOTER_BAND_TOP (246.4).
+// 24+3 +46+3 +40+3 +52 = 171, comfortably clear of FOOTER_BAND_TOP (246.4).
+//
+// It used to be 218. The formula panel (34), the reference table that shared a row
+// with "what happens next" (45) and the closing strip (14) came out on 2026-08-26,
+// and "what happens next" grew from 45 to 52 taking the full width. The slack is
+// deliberate - this page is a summary, and the room at the foot of it is what stops
+// it reading like a form.
 //
 // The amber headline band (17 + 3) came out on 2026-08-25 with the load figure it
 // carried, which is where the extra ~20mm of slack came from. Kept as slack rather
@@ -729,27 +768,22 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   }
   y += T.duo + T.gap
 
-  // ── The formula, with their own numbers substituted in ──
-  panelHead(doc, M, y, CW, T.formula, '3', isRoom ? 'THE MATH BEHIND YOUR NUMBER' : 'THE MATH BEHIND YOUR WHEEL', C.violet, C.violetSoft)
-  if (isRoom && load) {
-    formulaLine(doc, M + 7, y + 18,
-      'Dry air (cfm)  =',
-      { top: 'moisture load (gr/hr)', bottom: 'density × 60 × grain difference' },
-      `${fmt(load.internalGrPerHr)}  ÷  ( 0.075 × 60 × ${fmtGrains(load.roomGrains - load.supplyGrains)} )  =  ${fmt(load.dryAirCfm)} cfm`)
-  } else if (proc) {
-    formulaLine(doc, M + 7, y + 18,
-      'Water removed (lb/hr)  =',
-      { top: 'cfm × density × 60 × grain depression', bottom: '7,000 grains per pound' },
-      `${fmt(proc.cfm)} × 0.075 × 60 × ${fmtGrains(proc.depression)}  ÷  7,000  =  ${fmt(proc.lbPerHr, 1)} lb/hr`)
-  }
-  y += T.formula + T.gap
+  // ⚠️ PANEL 3 "THE MATH BEHIND YOUR NUMBER" WAS HERE, and was REMOVED on
+  // 2026-08-26 at the owner request, together with panel 5 "TYPICAL TARGET
+  // CONDITIONS" and the closing "ONE NUMBER TO REMEMBER" strip.
+  //
+  // formulaLine(), which drew the substituted equation, went with it rather than
+  // being left as dead code. It is in git history if the working ever comes back.
+  //
+  // The surviving panels were RENUMBERED 1-2-3-4. The numbers are on the page in
+  // front of the reader, so a gap in them reads as a missing section.
 
   // ── Where the moisture comes from · or the five system types ──
   if (isRoom && load && load.lines.length) {
-    panelHead(doc, M, y, CW, T.bars, '4', 'WHERE YOUR MOISTURE COMES FROM', C.teal, C.tealSoft)
+    panelHead(doc, M, y, CW, T.bars, '3', 'WHERE YOUR MOISTURE COMES FROM', C.teal, C.tealSoft)
     miniBars(doc, M + 7, y + 15, CW - 14, load)
   } else {
-    panelHead(doc, M, y, CW, T.bars, '4', 'THE FIVE KINDS OF DESICCANT SYSTEM', C.teal, C.tealSoft)
+    panelHead(doc, M, y, CW, T.bars, '3', 'THE FIVE KINDS OF DESICCANT SYSTEM', C.teal, C.tealSoft)
     const kinds: [string, string][] = [
       ['Passive storage', 'Archives, vaults, layup (doors rarely open)'],
       ['Active storage', 'Warehouses, cold storage (heavy door traffic)'],
@@ -767,77 +801,29 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   }
   y += T.bars + T.gap
 
-  // ── Quick reference · what happens next ──
-  const refW = CW * 0.46
-  const nextX = M + refW + 6
-  const nextW = CW - refW - 6
-
-  panelHead(doc, M, y, refW, T.ref, '5', 'TYPICAL TARGET CONDITIONS', C.navy, C.blueSoft)
-  // Their own application is always the first row, so the highlighted line is
-  // theirs rather than a generic chart they have to hunt through. Four rows is
-  // what T.ref affords once the caption is allowed for.
-  const refKeys = ['warehouse', 'cold-storage', 'pharma', 'dry-room']
-  const refRows = [
-    ...ROOM_PRESETS.filter(p => p.key === data.application && !p.key.startsWith('other')),
-    ...ROOM_PRESETS.filter(p => refKeys.includes(p.key) && p.key !== data.application),
-  ].slice(0, 4)
-  let ry = y + 16
-  text(doc, 'Application', M + 7, ry, { size: 6.6, weight: 'bold', color: C.inkMuted })
-  text(doc, '°F', M + refW - 30, ry, { size: 6.6, weight: 'bold', color: C.inkMuted, align: 'right' })
-  text(doc, '%rh', M + refW - 19, ry, { size: 6.6, weight: 'bold', color: C.inkMuted, align: 'right' })
-  text(doc, 'gr/lb', M + refW - 6, ry, { size: 6.6, weight: 'bold', color: C.inkMuted, align: 'right' })
-  ry += 1.6
-  hair(doc, M + 7, ry, M + refW - 6, ry)
-  ry += 5
-  for (const p of refRows) {
-    // Their own application is highlighted, so the table reads as "here is where
-    // you sit" rather than as a generic chart.
-    const mine = p.key === data.application
-    if (mine) {
-      fill(doc, C.greenSoft)
-      doc.roundedRect(M + 5, ry - 3.9, refW - 10, 6.1, 1, 1, 'F')
-    }
-    text(doc, truncate(doc, p.label, refW - 42, 7.4), M + 7, ry,
-      { size: 7.4, weight: mine ? 'bold' : 'normal', color: mine ? [7, 100, 52] : C.inkSoft })
-    text(doc, String(p.tempF), M + refW - 30, ry, { size: 7.4, color: C.inkSoft, align: 'right' })
-    text(doc, String(p.rhPct), M + refW - 19, ry, { size: 7.4, color: C.inkSoft, align: 'right' })
-    text(doc, fmtGrains(grains(p.tempF, p.rhPct, 0)), M + refW - 6, ry, { size: 7.4, color: C.inkSoft, align: 'right' })
-    ry += 5.5
-  }
-  text(doc, 'Starting points, not specifications.', M + 7, y + T.ref - 2.5, { size: 6.4, color: C.inkMuted })
-
-  // Chapter-7 design procedure, in the customer's language.
-  panelHead(doc, nextX, y, nextW, T.ref, '6', 'WHAT HAPPENS NEXT', C.green, C.greenSoft)
-  const steps = [
-    'Confirm the purpose: what the humidity is hurting.',
-    'Agree the control level and its tolerance.',
-    'Calculate the heat and moisture loads.',
-    'Select, size and position the components.',
-    'Select and locate the controls.',
+  // ── What happens now · full width, the reference table beside it having gone ──
+  //
+  // This was the five-step Chapter-7 design procedure. Replaced 2026-08-26 with a
+  // thank-you and the one commitment worth making at this point: a human, soon.
+  panelHead(doc, M, y, CW, T.next, '4', 'WHAT HAPPENS NOW', C.green, C.greenSoft)
+  const nextBody = [
+    "Thank you for taking the time to put this together. Everything on these pages is now with our "
+    + "application engineers, and it is exactly the detail that lets us size this properly rather than "
+    + "estimate around the gaps.",
+    "Someone from IAT will be in touch within one business day to talk it through, answer anything you "
+    + "are unsure of, and confirm the details before any equipment is selected.",
   ]
-  let sy = y + 18
-  steps.forEach((s, i) => {
-    fill(doc, C.green)
-    doc.circle(nextX + 9, sy - 1.3, 2.4, 'F')
-    text(doc, String(i + 1), nextX + 9, sy + 0.3, { size: 6.2, weight: 'bold', color: C.white, align: 'center' })
-    text(doc, truncate(doc, s, nextW - 20, 7.8), nextX + 14.5, sy, { size: 7.8, color: C.inkSoft })
-    sy += 6.2
-  })
-  y += T.ref + T.gap
+  let ny = y + 18
+  for (const para of nextBody) {
+    ny = wrapped(doc, para, M + 8, ny, CW - 16, { size: 9.2, color: C.inkSoft, leading: 5 }) + 3.5
+  }
+  y += T.next + T.gap
 
-  // ── Key takeaway strip ──
-  fill(doc, C.brandNavy)
-  doc.roundedRect(M, y, CW, T.strip, 3, 3, 'F')
-  text(doc, 'ONE NUMBER TO REMEMBER', PAGE_W / 2, y + 6,
-    { size: 6.6, weight: 'bold', color: C.onNavy, align: 'center', spacing: 0.5 })
-  const takeaway = isRoom && load?.complete
-    ? `${fmt(load.dryAirCfm)} cfm of dry air at ${fmtGrains(load.supplyGrains)} gr/lb holds this room at ${fmt(numOf(data.targetRhPct))}% rh`
-    : proc?.complete
-      ? `${fmt(proc.cfm)} cfm at ${fmtGrains(proc.leavingGrains)} gr/lb  ·  ${fmtDewPoint(proc.leavingDewPointF)} dew point`
-      : 'Send this to IAT and we will put the numbers to it'
-  text(doc, truncate(doc, takeaway, CW - 12, 9.6), PAGE_W / 2, y + 12,
-    { size: 9.6, weight: 'bold', color: C.white, align: 'center' })
-
+  // ── Who to talk to · project detail ──
+  // Moved here from the cover on 2026-08-26. They fit in the room the removed
+  // formula panel and reference table left behind, and putting them on the page
+  // the customer actually keeps is where they were always most use.
+  contactPanels(ctx, y)
   // No footer lines here any more — stampEveryPage() carries the disclaimer and
   // the credit on every page, this one included.
 }
@@ -864,7 +850,38 @@ function ensure(ctx: Ctx, y: number, needed: number, title: string, sub: string)
 }
 
 /** Height a table() call will occupy, so ensure() can be asked before drawing. */
-const tableH = (rows: number) => 8 + rows * 8
+const tableH = (rows: number) => 7.4 + rows * 6.8
+
+/**
+ * Start a section of the flowing record.
+ *
+ * ⚠️ EACH OF THESE USED TO FORCE A PAGE OF ITS OWN, which is how a survey with two
+ * doors and no notes still ran to five pages with a third of each one empty. A
+ * section now CONTINUES the current page when the block that follows will fit, and
+ * only takes a fresh page when it will not — so the document is as long as the
+ * survey is, not as long as the list of headings. (Owner, 2026-08-26: get it to
+ * two or three pages.)
+ *
+ * `needed` is the height of the FIRST block after the heading, measured the same
+ * way ensure() wants it. Under-state it and a heading can strand itself at the
+ * foot of a page with its content overleaf — the one failure mode here.
+ */
+function section(ctx: Ctx, y: number, needed: number, title: string, sub: string): number {
+  const HEAD = 14
+  if (y + HEAD + needed > CONTENT_BOTTOM) {
+    newPage(ctx, title, sub)
+    return 46
+  }
+  const { doc } = ctx
+  const top = y + 7
+  // A quiet inline heading rather than a second full-width band: the page already
+  // carries one at its top, and two of them read as two documents.
+  fill(doc, C.brandGreenDeep)
+  doc.roundedRect(M, top - 4.6, 2.4, 10.4, 1.2, 1.2, 'F')
+  text(doc, title, M + 6.5, top + 1, { size: 12, weight: 'bold', color: C.ink })
+  text(doc, sub, M + 6.5, top + 6.4, { size: 7.6, color: C.inkMuted })
+  return top + 12
+}
 
 function newPage(ctx: Ctx, title: string, sub: string) {
   const { doc } = ctx
@@ -993,19 +1010,19 @@ function panelHead(doc: Doc, x: number, y: number, w: number, h: number, n: stri
 function keyPanel(doc: Doc, title: string, rows: [string, string][], x: number, y: number, w: number, h: number) {
   card(doc, x, y, w, h)
   overline(doc, title, x + 6, y + 8, C.inkMuted)
-  let ry = y + 16
+  let ry = y + 14.5
   for (const [k, v] of rows) {
     text(doc, k, x + 6, ry, { size: 7.6, color: C.inkMuted })
     text(doc, truncate(doc, v || '—', w - 12 - 34, 8.4), x + 34, ry, { size: 8.4, weight: v ? 'bold' : 'normal', color: v ? C.ink : C.inkMuted })
-    ry += 7.6
+    ry += 6.8
   }
 }
 
-const panelHeight = (rows: number) => 16 + rows * 7.6
+const panelHeight = (rows: number) => 14.5 + rows * 6.8
 
 function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: string[][], widths: number[]): number {
-  const rowH = 8
-  const headH = 8
+  const rowH = 6.8
+  const headH = 7.4
   const total = headH + rows.length * rowH
 
   fill(doc, C.paper)
@@ -1013,7 +1030,7 @@ function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: 
   doc.rect(x, y + headH - 2, w, 2, 'F')
   let cx = x + 4
   head.forEach((hd, i) => {
-    text(doc, hd.toUpperCase(), cx, y + 5.4, { size: 6.3, weight: 'bold', color: C.inkMuted, spacing: 0.3 })
+    text(doc, hd.toUpperCase(), cx, y + 5.1, { size: 6.3, weight: 'bold', color: C.inkMuted, spacing: 0.3 })
     cx += widths[i] * w
   })
 
@@ -1027,7 +1044,7 @@ function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: 
     let tx = x + 4
     r.forEach((cell, ci) => {
       const cellW = widths[ci] * w - 5
-      text(doc, truncate(doc, cell || '—', cellW, 8), tx, ry + 5.4, {
+      text(doc, truncate(doc, cell || '—', cellW, 8), tx, ry + 4.8, {
         size: 8,
         weight: ci === 0 ? 'bold' : 'normal',
         color: cell ? (ci === 0 ? C.ink : C.inkSoft) : C.inkMuted,
@@ -1286,26 +1303,6 @@ function airstreamDiagram(doc: Doc, x: number, y: number, w: number, h: number, 
   }
 }
 
-/**
- * A stacked fraction — the general form — with the customer's own numbers
- * substituted underneath. Seeing the arithmetic done with their figures is what
- * turns the estimate from a black box into something they can check.
- */
-function formulaLine(doc: Doc, x: number, y: number, lead: string, frac: { top: string; bottom: string }, substituted: string) {
-  text(doc, lead, x, y, { size: 9, weight: 'bold', color: C.ink })
-  const fx = x + textW(doc, lead, 9, 'bold') + 4
-  const barW = Math.max(textW(doc, frac.top, 7.4), textW(doc, frac.bottom, 7.4)) + 4
-  text(doc, frac.top, fx + barW / 2, y - 2, { size: 7.4, color: C.violet, align: 'center' })
-  stroke(doc, C.violet)
-  doc.setLineWidth(0.35)
-  doc.line(fx, y + 0.6, fx + barW, y + 0.6)
-  text(doc, frac.bottom, fx + barW / 2, y + 4.6, { size: 7.4, color: C.violet, align: 'center' })
-
-  const boxW = CW - 14
-  fill(doc, C.violetSoft)
-  doc.roundedRect(x, y + 7.5, boxW, 8.5, 1.8, 1.8, 'F')
-  text(doc, truncate(doc, substituted, boxW - 8, 8.4), x + 4, y + 13, { size: 8.4, weight: 'bold', color: [80, 55, 140] })
-}
 
 /** Info callout that sizes itself to its copy; returns the y below the box. */
 function note(doc: Doc, body: string, x: number, y: number, w: number): number {
@@ -1551,7 +1548,7 @@ function pct(part: number, whole: number): string {
 function shortDriver(label: string): string {
   return label
     .replace('Permeation through walls, roof and floor', 'Envelope permeation')
-    .replace('Air leakage through the shell', 'Shell air leakage')
+    .replace('Air leakage through the shell', 'Infiltration')
     .replace('Doors and openings', 'Doors & openings')
     .replace('People in the space', 'People')
     .replace('Product, packaging and process', 'Product & process')

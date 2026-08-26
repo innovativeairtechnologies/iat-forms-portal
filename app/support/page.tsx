@@ -53,8 +53,8 @@ export default function SupportPortal() {
               How can we&nbsp;help?
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-ink-secondary">
-              Open a support request and we&apos;ll walk you through it, pre-screening your unit
-              so our service team arrives prepared.
+              Two ways in, depending on what you need. Both walk you through it a few questions
+              at a time, so what reaches our team is complete enough to act on.
             </p>
           </div>
 
