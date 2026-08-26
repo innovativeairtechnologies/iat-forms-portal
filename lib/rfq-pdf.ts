@@ -477,7 +477,9 @@ function loadsPage(ctx: Ctx) {
   const ventDetail = `${ventWhen}, ${fmtGrains(load.ventGrains)} gr/lb`
 
   y = table(doc, M, y, CW, ['Source', 'What you told us'], [
-    ['People', data.occupants ? `${data.occupants} × ${data.activity.toLowerCase()}` : 'None recorded'],
+    // Numeric test, not truthiness: occupants defaults to the STRING '0' since
+    // 2026-08-26, which is truthy and would have printed "0 × " with no activity.
+    ['People', Number(data.occupants) > 0 ? `${data.occupants} × ${data.activity.toLowerCase()}` : 'None recorded'],
     ['Product / process moisture', data.productLoadLbHr ? `${data.productLoadLbHr} lb of water per hour${data.productDescription ? ` (${data.productDescription})` : ''}` : 'None recorded'],
     ['Unvented combustion', data.gasCfh ? `${data.gasCfh} cu.ft/hr of gas` : 'None recorded'],
     ['Open water / wet surfaces', data.wetAreaSqFt ? `${data.wetAreaSqFt} sq.ft at ${data.wetWaterTempF}°F` : 'None recorded'],
@@ -1496,10 +1498,20 @@ function stampEveryPage(doc: Doc, meta: RfqPdfMeta) {
  * would be worse than claiming none.
  */
 function sourceNote(data: RfqData): string {
-  return data.outdoorSource
+  const outdoor = data.outdoorSource
     // The middot reads as a separator on screen and as noise in a sentence.
     ? ` Outdoor design conditions are ${san(data.outdoorSource.replace(/\s*·\s*/g, ", "))}.`
     : ''
+  // Says out loud, on the customer's own copy, whether the target is theirs or
+  // ours. Since 2026-08-26 the survey no longer pre-fills it, so 'typical' means
+  // they were shown the figures and accepted them for budget purposes — which is
+  // exactly the caveat that has to travel with the document.
+  const target = data.targetSource === 'typical'
+    ? ' The target condition above is the typical figure for this application, accepted for budget purposes rather than measured on site.'
+    : data.targetSource === 'entered'
+      ? ' The target condition above was given by you.'
+      : ''
+  return `${outdoor}${target}`
 }
 
 function condRow(label: string, t: number, rh: number, elev: number, entered?: string): string[] {

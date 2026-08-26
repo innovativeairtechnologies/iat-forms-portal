@@ -797,6 +797,23 @@ export const INSTALL_LOCATIONS = ['Indoor', 'Outdoor']
 
 // ─── Form data ────────────────────────────────────────────────────────────────
 
+/**
+ * How the room's target condition got its numbers — a REQUIRED choice on step 3
+ * (owner, 2026-08-26).
+ *
+ * The survey no longer pre-fills the target from the application preset, because
+ * a number nobody looked at was still pricing the job. Now the customer either
+ * types their own figures or knowingly accepts ours, and the record says which.
+ * Blank is the third state and it is the whole point: it means nobody has chosen
+ * yet, and `validateStep('target')` refuses to advance on it.
+ */
+export type TargetSource = 'entered' | 'typical'
+
+/** Pin the union — see the same reasoning on `roomSizeMode` in app/api/rfq. */
+export function normalizeTargetSource(v: unknown): TargetSource | '' {
+  return v === 'entered' || v === 'typical' ? v : ''
+}
+
 export type RfqData = {
   track: Track
   application: string
@@ -824,6 +841,8 @@ export type RfqData = {
   targetRhPct: string
   targetMoistureMode: MoistureMode
   targetMoistureValue: string
+  /** See TargetSource. Blank until the customer chooses on step 3. */
+  targetSource: TargetSource | ''
 
   // Process target — canonical unit here is grains, not rh.
   leavingTempF: string
@@ -897,7 +916,12 @@ export type RfqData = {
 
   // Internal loads
   occupants: string
-  activity: ActivityLevel
+  /**
+   * Blank until chosen. It multiplies the headcount in estimateLoad, so a
+   * default here is a number nobody picked pricing the job — required on step 7
+   * whenever `occupants` is above zero, and irrelevant (so not required) at zero.
+   */
+  activity: ActivityLevel | ''
   productLoadLbHr: string
   productDescription: string
   gasCfh: string
@@ -952,17 +976,22 @@ export function emptyRfq(): RfqData {
     company: '', contactName: '', email: '', phone: '',
     projectName: '', location: '', elevationFt: '', endUser: '',
     engineeringFirm: '', engineerContact: '', dateRequired: '', dateClose: '', purpose: '',
-    targetTempF: '', targetRhPct: '', targetMoistureMode: 'rh', targetMoistureValue: '',
+    // Zero, not blank, and not a preset value (owner, 2026-08-26). The customer
+    // sees 0 and has to replace it — see TargetSource for why. num() returns an
+    // explicit 0 rather than its fallback, so nothing quietly re-inflates these.
+    targetTempF: '0', targetRhPct: '0', targetMoistureMode: 'rh', targetMoistureValue: '0',
+    targetSource: '',
     leavingTempF: '', leavingGrains: '', leavingMoistureMode: 'gr', leavingMoistureValue: '',
     processCfm: '',
     airSource: '100% return air', mixOutdoorPct: '',
-    // A national placeholder, NOT a design condition — roughly 100 gr/lb, which is
-    // wrong almost everywhere. Step 1's location lookup replaces it with the site's
-    // real ASHRAE design point (lib/ashrae.ts); this is what stands if that fails,
-    // or if nobody ever typed a location.
-    outdoorTempF: '95', outdoorRhPct: '55', outdoorMoistureMode: 'rh', outdoorMoistureValue: '55',
+    // Was '95'/'55' — a national placeholder, NOT a design condition, and roughly
+    // 100 gr/lb, which is wrong almost everywhere. Now zero (owner, 2026-08-26) so
+    // nothing is assumed on the customer's behalf: step 1's location lookup fills
+    // the site's real ASHRAE design point (lib/ashrae.ts), and if that never runs
+    // the zero stands and validateStep('shell') will not let the survey past it.
+    outdoorTempF: '0', outdoorRhPct: '0', outdoorMoistureMode: 'rh', outdoorMoistureValue: '0',
     tempUnit: 'F', outdoorSource: '', outdoorVintage: '',
-    surroundTempF: '', surroundRhPct: '', surroundMoistureMode: 'rh', surroundMoistureValue: '',
+    surroundTempF: '0', surroundRhPct: '0', surroundMoistureMode: 'rh', surroundMoistureValue: '0',
     // 'dimensions' is the default so the ~5 surveys taken before volume mode
     // existed still resolve through roomDims() exactly as they always did.
     roomSizeMode: 'dimensions', roomVolumeCuFt: '',
@@ -973,7 +1002,7 @@ export function emptyRfq(): RfqData {
     vaporBarrier: 'No',
     tightness: 'Average',
     doors: [],
-    occupants: '', activity: 'Light Work',
+    occupants: '0', activity: '',
     productLoadLbHr: '', productDescription: '', gasCfh: '', wetAreaSqFt: '', wetWaterTempF: '70',
     ventCfm: '', exhaustCfm: '',
     // Blank condition = fall back to the outdoor design point. 'dehumidifier' is
@@ -1075,32 +1104,48 @@ export function conditionEntered(data: RfqData, key: ConditionKey): string {
   return `${value} ${MOISTURE_SUFFIX[mode]}`
 }
 
-/** Seed the form from a chosen application, preserving anything already typed. */
+/**
+ * Record the chosen application and CLEAR every figure it used to seed.
+ *
+ * The name is now slightly wrong and kept anyway — it is called from the wizard
+ * and from tests, and renaming it buys nothing. It no longer applies the preset's
+ * numbers; see the comment inside.
+ */
 export function applyRoomPreset(data: RfqData, preset: RoomPreset): RfqData {
   return {
     ...data,
     track: 'room',
     application: preset.key,
-    targetTempF: String(preset.tempF),
-    targetRhPct: String(preset.rhPct),
+    // ⚠️ THIS NO LONGER SEEDS ANY NUMBER (owner, 2026-08-26).
+    //
+    // It used to write the preset's target, surrounding condition, occupancy,
+    // activity and a pre-built personnel door — the columns highlighted on the
+    // preset review sheet, i.e. exactly the AUTHORED ones. Those values are
+    // AI-authored and have never been signed off by an engineer (see the
+    // "Reviewed by: —" note above PEOPLE_LOADS), yet every one of them reached
+    // estimateLoad and priced the survey whether or not the customer ever looked
+    // at the field.
+    //
+    // Zero is deliberate rather than blank: the customer SEES a 0 they have to
+    // replace, and num() returns an explicit 0 instead of falling through to a
+    // fallback. The preset values are NOT deleted — they still back the "Use
+    // typical" chip on step 3, which is now an opt-in the record captures via
+    // TargetSource.
+    //
+    // Do not re-add seeding here. That is the hidden-default bug this survey has
+    // now hit three times (outdoor placeholder, hidden tightness, and this).
+    targetTempF: '0',
+    targetRhPct: '0',
     targetMoistureMode: 'rh',
-    targetMoistureValue: String(preset.rhPct),
-    surroundTempF: String(preset.surroundTempF),
-    surroundRhPct: String(preset.surroundRhPct),
+    targetMoistureValue: '0',
+    targetSource: '',
+    surroundTempF: '0',
+    surroundRhPct: '0',
     surroundMoistureMode: 'rh',
-    surroundMoistureValue: String(preset.surroundRhPct),
-    occupants: String(preset.occupants),
-    activity: preset.activity,
-    doors: preset.doorOpensPerHour
-      ? [{
-          id: 'd1',
-          label: 'Personnel door',
-          widthFt: 3, heightFt: 7,
-          opensPerHour: preset.doorOpensPerHour,
-          secondsOpen: 8,
-          exposure: 'Surrounding space',
-        }]
-      : [],
+    surroundMoistureValue: '0',
+    occupants: '0',
+    activity: '',
+    doors: [],
   }
 }
 
@@ -1289,9 +1334,15 @@ export function estimateLoad(data: RfqData): LoadEstimate {
 
   // — People (Eq. 5.4) —
   const people = num(data.occupants)
-  const perPerson = PEOPLE_LOADS[data.activity] ?? PEOPLE_LOADS['Light Work']
+  // No activity chosen contributes NOTHING, rather than quietly falling back to
+  // 'Light Work' as it did before 2026-08-26. Step 7 requires the choice once the
+  // headcount is above zero, so a stored survey always has one; this is what the
+  // live readout shows in the moments before it is picked, and showing a load
+  // computed from an activity the customer never selected is the whole habit this
+  // round of changes is removing.
+  const perPerson = data.activity ? PEOPLE_LOADS[data.activity] : 0
   const peopleLoad = people * perPerson
-  if (people > 0) {
+  if (people > 0 && perPerson > 0) {
     lines.push({
       key: 'people',
       label: 'People in the space',

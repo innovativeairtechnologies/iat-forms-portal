@@ -941,6 +941,55 @@ was really given, not that it is dialable — and is **the same rule `POST /api/
 the two public intakes cannot drift into disagreeing about what a phone number is. Change one,
 change both.
 
+### Nothing is pre-filled any more (2026-08-26)
+
+`applyRoomPreset()` **records the chosen application and clears every figure it used to seed.** It
+previously wrote the target condition, the surrounding condition, the occupancy, the activity level
+and a ready-made personnel door — the columns marked AUTHORED on the preset review sheet, which is
+to say the ones with no engineering sign-off ([[rfq-preset-values-ai-generated]]). All of them
+reached `estimateLoad`, so a customer who recognized their application and pressed Next was priced
+on eight numbers they were never shown.
+
+Every one of those fields now starts at **`'0'`, not blank**. That distinction is load-bearing:
+`num()` returns `Number.isFinite(n) ? n : fallback`, so an explicit `'0'` is used as zero while a
+blank string falls through to the hard-coded fallback (`70`/`45` for the target, `95`/`55` for
+outdoor). Blanking the fields would have re-created the same hidden defaults one layer down.
+
+The preset values are **not deleted** — they still back the "use typical" chip on step 3, which is
+now opt-in and recorded.
+
+**New gates in `validateStep()`:**
+
+| Step | Rule |
+|---|---|
+| `target` | `targetSource` chosen, **and** temp ≠ 0, **and** rh > 0 |
+| `shell` | surrounding **and** outdoor both non-zero |
+| `openings` | every door that EXISTS has a size, and opens/seconds unless continuously open |
+| `inside` | activity chosen whenever `occupants` > 0 |
+
+⚠️ The old target rule was `d.targetRhPct.trim() !== ''`, which the string `'0'` passes. A blank-test
+is not a zero-test, and the switch to `'0'` defaults turns every one of them into a hole.
+
+**`TargetSource`** (`'entered' | 'typical' | ''`) records which way the target was answered. It is
+pinned in `coerce()` — like `roomSizeMode` and `ventLoadTarget`, a union the generic string copy
+would otherwise accept as anything. It prints on the customer PDF via `sourceNote()` and badges on
+the admin detail page. **Blank means "not stated"**, which is what every survey before this date is,
+and must never be read as "the customer gave us these".
+
+⚠️ `data.occupants` defaults to the string `'0'`, which is **truthy**. Two display sites tested it
+for truthiness and would have printed "0 × " with no activity — `lib/rfq-pdf.ts` and the admin
+detail page both now test `Number(...) > 0`. Anywhere else that reasons about occupancy needs the
+same treatment.
+
+⚠️ Activity is `ActivityLevel | ''` and `estimateLoad` no longer falls back to `'Light Work'`; an
+unchosen activity contributes **nothing**. On a six-person room the old fallback was adding 2.71 of
+3.64 lb/hr without being selected.
+
+**Outdoor is the one exception worth understanding.** Its zero is a *placeholder removal*, not a
+demand that the customer know their own ASHRAE design point — step 1's location lookup still fills
+it, because a station-derived design condition for their site is measured data. The zero is only
+what stands when no location was ever given, and the step-5 hint says so.
+
 ## Storage & delivery
 
 `rfq_requests` (migration 087) stores **both** `data` (the full wizard state) and `summary`

@@ -25,8 +25,8 @@ import {
   VENT_LOAD_TARGETS,
   type VentLoadTarget, presetFor, roomDims, setCondition, tempFromDisplay, tempToDisplay,
   type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
-  type ProcessPreset, type RfqData, type RoomPreset, type TempUnit, type Tightness, type Track,
-  type VaporBarrier,
+  type ProcessPreset, type RfqData, type RoomPreset, type TargetSource, type TempUnit,
+  type Tightness, type Track, type VaporBarrier,
 } from '@/lib/rfq'
 import { renderAsset, renderAssetUrl } from '@/lib/render-assets'
 import { renderKeyForPreset } from '@/lib/rfq-renders'
@@ -183,9 +183,16 @@ function TextArea({
 }
 
 function SelectField({
-  label, hint, value, onChange, options,
+  label, hint, value, onChange, options, placeholder,
 }: {
   label: string; hint?: string; value: string; onChange: (v: string) => void; options: readonly string[]
+  /**
+   * Rendered as a disabled first option and selected while `value` is blank, so a
+   * dropdown that must be answered opens showing a prompt rather than silently
+   * standing on whichever option happened to be first. The select-level
+   * equivalent of defaulting a number field to 0.
+   */
+  placeholder?: string
 }) {
   const id = useId()
   const hintId = `${id}-hint`
@@ -200,6 +207,7 @@ function SelectField({
           aria-describedby={hint ? hintId : undefined}
           className={`${inputCx} cursor-pointer appearance-none pr-9`}
         >
+          {placeholder && <option value="" disabled>{placeholder}</option>}
           {options.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
         <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint" />
@@ -340,7 +348,7 @@ function TempInput({
  * 70%rh at 60°F, so the temperature is part of the moisture answer.
  */
 function ConditionField({
-  label, hint, tempLabel = 'Temperature', data, conditionKey, onChange, autoFocus, typical, tone = 'sky',
+  label, hint, tempLabel = 'Temperature', data, conditionKey, onChange, autoFocus, typical, onTypical, tone = 'sky',
 }: {
   label: string
   hint?: string
@@ -350,6 +358,12 @@ function ConditionField({
   onChange: (next: RfqData) => void
   autoFocus?: boolean
   typical?: { tempF: number; value: number; mode: MoistureMode }
+  /**
+   * Fired in ADDITION to onChange when the "use typical" chip is clicked, so the
+   * caller can record that the customer knowingly accepted our figures rather
+   * than typing their own. Step 3 uses it to set `targetSource`.
+   */
+  onTypical?: () => void
   tone?: Tone
 }) {
   const tempId = useId()
@@ -453,11 +467,14 @@ function ConditionField({
             modeIsTemperature(typical.mode) ? tempToDisplay(String(typical.value), unit) : typical.value
           }${unitLabel(MOISTURE_SUFFIX[typical.mode], unit)}`}
           used={typicalUsed}
-          onUse={() => onChange(setCondition(
-            setCondition(data, conditionKey, { tempF: String(typical.tempF) }),
-            conditionKey,
-            { mode: typical.mode, value: String(typical.value) },
-          ))}
+          onUse={() => {
+            onChange(setCondition(
+              setCondition(data, conditionKey, { tempF: String(typical.tempF) }),
+              conditionKey,
+              { mode: typical.mode, value: String(typical.value) },
+            ))
+            onTypical?.()
+          }}
         />
       )}
     </div>
@@ -1028,7 +1045,7 @@ function Readout({
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-        Typical Conditions
+        Target Conditions
       </p>
 
       {/* Grains and dew point ONLY.
@@ -1523,8 +1540,59 @@ function StepApplication({
 function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
   const preset = presetFor(data) as RoomPreset | undefined
   const elev = numOf(data.elevationFt)
+
+  /* The target no longer arrives pre-filled from the application preset (see
+     applyRoomPreset). It starts at 0 and the customer has to say, explicitly,
+     which of two things is happening — that choice is stored on the record and
+     `validateStep('target')` will not advance without it.
+
+     Both buttons WRITE the fields, so the readout below and every downstream
+     calculation behave exactly as they always did once a choice is made. */
+  const applyTypical = () => setData(d => (preset
+    ? {
+        ...setCondition(
+          setCondition(d, 'target', { tempF: String(preset.tempF) }),
+          'target',
+          { mode: 'rh', value: String(preset.rhPct) },
+        ),
+        targetSource: 'typical',
+      }
+    : d))
+
+  // Back to zero, so "we'll enter our own" never leaves our numbers sitting in
+  // the boxes for someone to tab past.
+  const applyOwn = () => setData(d => ({
+    ...setCondition(
+      setCondition(d, 'target', { tempF: '0' }),
+      'target',
+      { mode: d.targetMoistureMode, value: '0' },
+    ),
+    targetSource: 'entered',
+  }))
+
   return (
     <div className="space-y-5">
+      <Segmented<TargetSource>
+        label="Where should these numbers come from?"
+        hint="We need one or the other on the record before we quote."
+        tone="sky"
+        value={(data.targetSource || '') as TargetSource}
+        onChange={v => (v === 'typical' ? applyTypical() : applyOwn())}
+        options={[
+          { value: 'entered', label: 'We’ll enter our conditions' },
+          ...(preset ? [{ value: 'typical' as TargetSource, label: `Use typical for ${preset.label.toLowerCase()}` }] : []),
+        ]}
+      />
+
+      {data.targetSource === 'typical' && (
+        <Callout tone="amber">
+          <strong className="font-semibold">Heads up:</strong> these are the figures we see most often for
+          this kind of space, not a measurement of yours. They are fine for putting a budget number
+          together, and we will confirm the real conditions with you before anything is selected or
+          ordered. If you know your own numbers, type them over the top.
+        </Callout>
+      )}
+
       <ConditionField
         label="The condition you need held inside"
         tempLabel="Target temperature"
@@ -1533,6 +1601,7 @@ function StepTarget({ data, setData }: { data: RfqData; setData: React.Dispatch<
         onChange={setData}
         autoFocus
         typical={preset ? { tempF: preset.tempF, value: preset.rhPct, mode: 'rh' } : undefined}
+        onTypical={() => setData(d => ({ ...d, targetSource: 'typical' }))}
       />
 
       <ConditionReadout
@@ -1655,8 +1724,6 @@ const SHELL_EXAMPLES = [
 function StepShell({
   data, set, setData,
 }: { data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
-  const preset = presetFor(data) as RoomPreset | undefined
-
   return (
     <div className="space-y-5">
       <div>
@@ -1772,6 +1839,21 @@ function StepShell({
       </div>
 
 
+      {/* ⚠️ NO "use typical" CHIP AND NO PRE-FILLED FIGURES HERE (owner, 2026-08-26).
+          Both boxes below start at 0 and validateStep('shell') will not advance
+          until they are replaced.
+
+          The surrounding condition used to arrive pre-filled from the application
+          preset, and the outdoor box from a national '95°F / 55%rh' placeholder.
+          Neither was ever measured, and both feed estimateLoad directly —
+          surrounding sets the driving vapor pressure for permeation AND the grain
+          difference for shell leakage, so it moves the biggest two lines on most
+          surveys. The outdoor box is still filled automatically when step 1's
+          location lookup succeeds, because an ASHRAE design point for the
+          customer's own site is measured data rather than a guess; the zero is
+          what stands when no location was given.
+
+          Do not re-add a typical chip to this block. */}
       <div className="space-y-4 rounded-xl border border-hairline bg-surface-soft p-4">
         <ConditionField
           label="The space around the room"
@@ -1780,7 +1862,6 @@ function StepShell({
           data={data}
           conditionKey="surround"
           onChange={setData}
-          typical={preset ? { tempF: preset.surroundTempF, value: preset.surroundRhPct, mode: 'rh' } : undefined}
         />
         <ConditionField
           label="Outdoor summer design"
@@ -1799,13 +1880,22 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
   const add = (type: typeof DOOR_TYPES[number]) => {
     setData(d => ({
       ...d,
+      // ⚠️ EVERY NUMBER STARTS AT 0 (owner, 2026-08-26). Adding an opening used to
+      // stamp in the type's suggested size plus 6 opens/hr and its seconds-open —
+      // four invented numbers that priced the single biggest line on most surveys
+      // without anybody being asked. The TYPE still decides the label and whether
+      // the opening is continuously open; it no longer decides the load.
+      //
+      // DOOR_TYPES keeps its widthFt/heightFt/secondsOpen: they are the documented
+      // typical sizes and are what a future "suggest a size" affordance would read.
+      // They are simply no longer applied on the customer's behalf.
       doors: [...d.doors, {
         id: `d${Date.now()}`,
         label: type.label,
-        widthFt: type.widthFt,
-        heightFt: type.heightFt,
-        opensPerHour: 6,
-        secondsOpen: type.secondsOpen,
+        widthFt: 0,
+        heightFt: 0,
+        opensPerHour: 0,
+        secondsOpen: 0,
         exposure: 'Surrounding space' as Exposure,
         continuouslyOpen: type.continuouslyOpen === true,
       }],
@@ -1955,9 +2045,16 @@ function StepInside({ data, set, setData }: {
             />
           )}
         </div>
+        {/* Blank until picked. It was 'Light Work', which multiplied whatever
+            headcount was on the page — an authored value on the preset review
+            sheet, applied without being chosen. Required once anyone is in the
+            room; at zero people it changes nothing, so it is not asked for. */}
         <SelectField
           label="What are they doing?"
-          hint={people > 0 ? `${fmt(PEOPLE_LOADS[data.activity])} gr/hr each, ${fmt(people * PEOPLE_LOADS[data.activity])} gr/hr in total.` : undefined}
+          placeholder={people > 0 ? 'Choose an activity level…' : 'Not needed at zero people'}
+          hint={people > 0 && data.activity
+            ? `${fmt(PEOPLE_LOADS[data.activity])} gr/hr each, ${fmt(people * PEOPLE_LOADS[data.activity])} gr/hr in total.`
+            : undefined}
           value={data.activity}
           onChange={v => set('activity', v as ActivityLevel)}
           options={Object.keys(PEOPLE_LOADS)}
@@ -2635,7 +2732,34 @@ function validateStep(step: StepKey, d: RfqData): boolean {
     case 'application':
       return !!d.application && (!d.application.startsWith('other') || d.applicationOther.trim().length > 1)
     case 'target':
-      return numOf(d.targetTempF) !== 0 && d.targetRhPct.trim() !== ''
+      // The source choice is required, and both figures must have been moved off
+      // zero. `targetRhPct.trim() !== ''` used to be the moisture test, which the
+      // string '0' passes — fine when the field started blank, wrong now that it
+      // starts at 0.
+      return d.targetSource !== ''
+        && numOf(d.targetTempF) !== 0
+        && numOf(d.targetRhPct) > 0
+    case 'shell':
+      // Both boxes at the bottom of the step start at 0 and have to be replaced.
+      // Outdoor is normally filled by step 1's location lookup, so for most people
+      // this only gates the surrounding condition.
+      return numOf(d.surroundTempF) !== 0
+        && numOf(d.surroundRhPct) > 0
+        && numOf(d.outdoorTempF) !== 0
+        && numOf(d.outdoorRhPct) > 0
+    case 'openings':
+      // No openings at all stays valid — a sealed vessel is a real answer. But an
+      // opening someone ADDED and left at zero contributes nothing to the load
+      // while looking like it was accounted for, which is the failure this whole
+      // change is about. Continuously-open apertures are not asked how often they
+      // open, so they are only checked for a size.
+      return d.doors.every(x =>
+        x.widthFt > 0
+        && x.heightFt > 0
+        && (x.continuouslyOpen || (x.opensPerHour > 0 && x.secondsOpen > 0)))
+    case 'inside':
+      // Activity only matters when somebody is in the room.
+      return numOf(d.occupants) <= 0 || d.activity !== ''
     case 'space':
       // Either way of answering counts — roomDims() resolves both to L/W/H, and a
       // volume with no usable size still lands at 0 here.
@@ -2666,7 +2790,14 @@ function validateStep(step: StepKey, d: RfqData): boolean {
 function requirementHint(step: StepKey, d: RfqData): string {
   switch (step) {
     case 'application': return 'Pick an application to continue'
-    case 'target':      return 'Enter a target temperature and humidity'
+    case 'target':      return d.targetSource === ''
+      ? 'Choose whether you are entering your own conditions or using typical ones'
+      : 'Enter a target temperature and humidity'
+    case 'shell':       return numOf(d.surroundTempF) === 0 || numOf(d.surroundRhPct) <= 0
+      ? 'Enter the condition of the space around the room'
+      : 'Enter the outdoor summer design condition, or set a location on step 1'
+    case 'openings':    return 'Give every opening a size, and how often it opens'
+    case 'inside':      return 'Choose what the people in the room are doing'
     case 'space':       return normalizeRoomSizeMode(d.roomSizeMode) === 'volume'
       ? 'Enter the room volume'
       : 'Enter length, width and height'

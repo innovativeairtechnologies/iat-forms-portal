@@ -10,6 +10,43 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — The quote survey stops answering its own questions
+
+Choosing an application used to fill in eight figures on the customer's behalf: the target
+temperature and humidity, the condition of the surrounding space, the headcount, what those people
+were doing, and a loading door complete with a size and an opens-per-hour. Every one of them fed the
+load calculation. Somebody who read the application list, recognized their building and clicked
+Next was priced on numbers they had never been shown, and the document they received presented
+those numbers back to them as though they had given them.
+
+**Every one of those fields now starts at zero and has to be filled in.** The boxes are all still
+there and in the same places; only the answers are gone. Calculations run exactly as before as the
+real figures arrive, and the completed survey reaching our desk is now made of the customer's own
+numbers.
+
+**The target condition asks which it is.** Step 3 requires an explicit choice — the customer's own
+figures, or our typical values for that application knowingly accepted for budget purposes. Picking
+the typical route fills the boxes and prints a plain-language caveat on the customer's PDF saying
+the target was not measured on site. The desk view badges it the same way. Surveys taken before
+today read as "not stated" rather than being quietly counted as customer-supplied.
+
+**Where the numbers came from mattered more than it looked.** The application values are authored
+estimates that no engineer has signed off, and they were reaching the two largest lines on a typical
+survey. The activity level was the clearest case: it defaulted to *Light Work* and multiplied
+whatever headcount was on the page, and on a six-person test room it was adding **2.71 lb/hr** to a
+**3.64 lb/hr** total — three quarters of the answer, from two fields nobody had touched. It is now
+asked for only when somebody is actually in the room, and contributes nothing until it is answered.
+
+Two smaller pieces of the same problem went with it. The **outdoor design condition** no longer falls
+back to a national `95°F / 55%rh` placeholder that was wrong almost everywhere; the location lookup
+on step 1 still fills it with the real ASHRAE design point for the site, and where no location was
+given the field is blank and asks. The **right-hand readout is now titled "Target Conditions"** and
+stays empty until there are real conditions to report, rather than displaying the application's
+values from step 2 onward.
+
+The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
+unchanged.
+
 ## 2026-08-26 — The notification reference now matches the schedules it describes
 
 When both scheduled emails moved out of the daily deploy window on 25 August, the change was

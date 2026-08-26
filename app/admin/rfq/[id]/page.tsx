@@ -202,6 +202,20 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                     {' · '}{fmtGrains(grains(num(d.targetTempF), num(d.targetRhPct), elev))} gr/lb
                     {' · '}{fmtDewPoint(dewPointF(num(d.targetTempF), num(d.targetRhPct), elev))} dp
                     <Entered data={d} conditionKey="target" />
+                    {/* Whether these are the customer's figures or our application
+                        typical that they accepted for budget purposes. Blank on every
+                        survey taken before 2026-08-26, when the target was pre-filled
+                        and nobody was asked — which is why 'Not stated' is its own
+                        reading rather than being folded into "customer entered". */}
+                    {d.targetSource === 'typical' ? (
+                      <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        Typical for the application — not measured
+                      </span>
+                    ) : d.targetSource === 'entered' ? (
+                      <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        Customer&apos;s own figures
+                      </span>
+                    ) : null}
                   </Field>
                   <Field label="Surrounding space">
                     {d.surroundTempF || '—'}°F / {d.surroundRhPct || '—'}% rh
@@ -243,7 +257,8 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
               <Card>
                 <CardHead title="Internal loads" icon={<Droplets size={15} />} />
                 <div className="px-5 py-1">
-                  <Field label="People">{d.occupants ? `${d.occupants} × ${d.activity}` : 'None recorded'}</Field>
+                  {/* Numeric, not truthy — occupants defaults to the string '0'. */}
+                  <Field label="People">{Number(d.occupants) > 0 ? `${d.occupants} × ${d.activity}` : 'None recorded'}</Field>
                   <Field label="Product / process">{d.productLoadLbHr ? `${d.productLoadLbHr} lb/hr${d.productDescription ? ` — ${d.productDescription}` : ''}` : 'None recorded'}</Field>
                   <Field label="Open water">{d.wetAreaSqFt ? `${d.wetAreaSqFt} sq.ft at ${d.wetWaterTempF}°F` : 'None recorded'}</Field>
                   <Field label="Unvented combustion">{d.gasCfh ? `${d.gasCfh} cu.ft/hr` : 'None recorded'}</Field>

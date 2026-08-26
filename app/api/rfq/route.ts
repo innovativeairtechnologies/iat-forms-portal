@@ -6,7 +6,7 @@ import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
 import {
   applicationLabel, emptyRfq, normalizeMode, normalizeRoomSizeMode,
-  normalizeVentLoadTarget, setCondition,
+  normalizeTargetSource, normalizeVentLoadTarget, setCondition,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
 
@@ -92,6 +92,13 @@ function coerce(raw: unknown): RfqData {
   // is inside the room load and inside the supply-air sizing, so a junk value
   // falling through to the wrong branch changes the equipment.
   out.ventLoadTarget = normalizeVentLoadTarget(src.ventLoadTarget)
+
+  // And again. 'entered' vs 'typical' is the record of whether the target
+  // condition is the customer's own measurement or our application default that
+  // they knowingly accepted for budget purposes — the thing the desk needs to know
+  // before quoting off it. Anything else pins to blank, which reads as "not
+  // stated" rather than silently claiming they gave us figures.
+  out.targetSource = normalizeTargetSource(src.targetSource)
 
   // The moisture-unit fields are string unions, so the generic string copy above
   // would happily accept "banana" and hand it to the converter. Pin them to the
