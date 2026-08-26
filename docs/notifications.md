@@ -346,8 +346,32 @@ assigned with no note in 24h, or one nobody has claimed — not everything that 
 |---|---|---|
 | `tickets` | `owner_id` | ✅ |
 | `rfq_requests` | `assignee_id` | ✅ |
+| `eng_tasks` | `assignee_id` | ✅ (2026-08-26) |
 | `deals` | `assigned_to` | ❌ |
 | `production_tasks` | `assignee` | ❌ |
+
+### Engineering joined the 3:00am pair (2026-08-26)
+
+`/api/cron/eng-reminders`, same two entries (07:00Z + 08:00Z) and the same reasoning: idempotency is
+per ROW via `eng_tasks.nudged_at` (migration 096), written only on a successful send, so a repeat run
+is a no-op and each entry backstops the other. No window guard, for the same reason.
+
+It differs from the other two in one way worth knowing: it chases work that is **approaching** a due
+date, not only work that has gone stale. Anything due within the playbook's `nudgeLeadDays` (default
+2, editable at `/admin/engineering/playbook`) is included, grouped so a person with six things due
+gets one email rather than six.
+
+**The lead roll-up sends NOTHING when there is nothing outstanding.** A daily all-clear teaches
+people to filter the sender, and then the one that matters is filtered too.
+
+⚠️ **Recipients:** `ENGINEERING_NOTIFICATION_EMAIL` (comma-separated) if set, otherwise everyone
+whose profile role is literally `engineering`. Deliberately not "everyone holding `engineering_jobs`"
+— that includes every admin and every production manager. If neither resolves, nothing is sent and
+the cron log says so in `result.skipped` rather than the sweep guessing at an audience.
+
+⚠️ Sends are **sequential**, 600ms apart (`sendAll` in `lib/resend-engineering.ts`). Resend's limit
+is 2/sec, and a `Promise.all` fan-out against it once reached only some of three recipients while
+reporting success.
 
 ## 🔴 Deploying near a job's scheduled time makes that run vanish
 

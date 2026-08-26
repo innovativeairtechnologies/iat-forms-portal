@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Inbox, LogOut, Menu, X,
   ChevronDown, ShieldCheck, Package,
   Users, Bot, DollarSign, Sun, Moon, Home, UserRound, Megaphone,
-  GraduationCap, BarChart3,
+  GraduationCap, BarChart3, DraftingCompass,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -19,7 +19,7 @@ import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'timeoff' | 'usrotors' | 'drafts' | 'rfq'
+type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'timeoff' | 'usrotors' | 'drafts' | 'rfq' | 'engtasks'
 
 type NavChild = {
   href: string
@@ -58,6 +58,7 @@ type Counts = {
   usrotors: number
   drafts: number
   rfq: number
+  engtasks: number
 }
 
 // ─── Nav structure — parents with expandable children ─────────────────────────
@@ -86,6 +87,29 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/tools', label: 'Internal Apps', perm: 'tools' },
       // SRV Form (/admin/srv) pulled from the rail — slated to surface inside the
       // Forms page instead. Route stays live. Sizing Studio + Gantt moved to Sales.
+    ],
+  },
+  // Engineering — the job board, task queue and scheduling rules (096). Sits
+  // directly under Operations because that is the order work moves in: a job
+  // becomes engineering tasks, and engineering releases to production.
+  //
+  // Flat and single-level like every other group (see docs/roles-and-permissions).
+  // "Status Board" leads on purpose — it is the screen the department opens the
+  // day on and the one intended for the wall display, not an index of the others.
+  {
+    label: 'Engineering',
+    icon: DraftingCompass,
+    children: [
+      { href: '/admin/engineering', label: 'Status Board', perm: 'engineering_jobs' },
+      { href: '/admin/engineering/jobs', label: 'Jobs', perm: 'engineering_jobs' },
+      { href: '/admin/engineering/tasks', label: 'Task Queue', badge: 'engtasks', perm: 'engineering_jobs' },
+      { href: '/admin/engineering/my-work', label: 'My Work', perm: 'engineering_jobs' },
+      { href: '/admin/engineering/capacity', label: 'Workload', perm: 'engineering_jobs' },
+      // The automation rules. Visible to everyone who can see the section; the
+      // SAVE is gated to admin/engineering in requireEngineeringAuth, and the
+      // page renders read-only for anyone else rather than offering a button
+      // that 403s.
+      { href: '/admin/engineering/playbook', label: 'Scheduling Rules', perm: 'engineering_jobs' },
     ],
   },
   {
@@ -203,6 +227,11 @@ const NAV_PARENTS: NavParent[] = [
     icon: BarChart3,
     children: [
       { href: '/admin/reports/tickets', label: 'Support Tickets', perm: 'reports' },
+      // Engineering (096) — on-time delivery, target vs actual hours, per person.
+      // Gated on `reports` like its siblings, which is admin-only by omission and
+      // NARROWER than `engineering_jobs`: working the board and being scored on
+      // it are different grants.
+      { href: '/admin/reports/engineering', label: 'Engineering', perm: 'reports' },
       { href: '/admin/reports/rfq', label: 'Quote Requests', perm: 'reports' },
       { href: '/admin/reports/sales', label: 'Sales Pipeline', perm: 'reports' },
       { href: '/admin/reports/warranty', label: 'Installed Base', perm: 'reports' },
@@ -255,6 +284,10 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   drafts:      'bg-amber-500/15 text-amber-400',
   // Sky like Submissions: an unread inbound request, not a warning.
   rfq:         'bg-sky-500/15 text-sky-400',
+  // Rose, unlike every other badge here: this one counts work that is PAST its
+  // due date, not work that is waiting. A queue badge and a missed-deadline
+  // badge should not look the same.
+  engtasks:    'bg-rose-500/15 text-rose-400',
 }
 
 function Badge({ kind, count }: { kind: BadgeKind; count: number }) {
@@ -298,16 +331,17 @@ interface Props {
   usRotorsOrders: number
   draftCount: number
   rfqUnread: number
+  engOverdue: number
   adminName: string
 }
 
 // adminName stays in Props (the layout passes it) but is no longer rendered here —
 // identity moved to the top-bar avatar.
-export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, rfqUnread }: Props) {
+export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, rfqUnread, engOverdue }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const { hasPerm, home, canPreview } = useViewAs()
-  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, timeoff: ptoPending + sickPending, usrotors: usRotorsOrders, drafts: draftCount, rfq: rfqUnread }
+  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, timeoff: ptoPending + sickPending, usrotors: usRotorsOrders, drafts: draftCount, rfq: rfqUnread, engtasks: engOverdue }
   const [mobileOpen, setMobileOpen] = useState(false)
 
   // An exact hit, or a real path segment below it — never a raw string prefix, so

@@ -9,6 +9,7 @@ import {
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
   MessageCircle, KeyRound, Wrench, Map as MapIcon, Gauge, Workflow, GraduationCap, Megaphone,
+  DraftingCompass,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -65,6 +66,17 @@ const STATIC: Item[] = [
   { id: 'nav-sizing',  label: 'Sizing Studio',    group: 'Go to', icon: Gauge,           href: '/admin/sizing-studio', keywords: 'psychrometric sizing selection unit dehumidifier grains load chart', perm: 'sizing' },
   { id: 'nav-diagram', label: 'Application Diagrams', group: 'Go to', icon: Workflow,    href: '/admin/diagram-studio', keywords: 'airflow figure drawing proposal submittal schematic diagram studio', perm: 'diagrams' },
   { id: 'nav-soo',     label: 'Submittal Generator', group: 'Go to', icon: Workflow,  href: '/admin/soo', keywords: 'soo sequence of operation submittal generator controls narrative dryware bas plc contractor commissioning', perm: 'soo' },
+  // Engineering (096). Keywords carry the words people actually use for these —
+  // "LLI", "takt", "lead time", "monday" — because the section is replacing two
+  // monday boards and a workbook, and for a while people will search for it by
+  // the name of the thing it replaced.
+  { id: 'nav-eng',     label: 'Engineering Status Board', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering', keywords: 'engineering status board submittals long lead lli bom production electrical takt monday wall display', perm: 'engineering_jobs' },
+  { id: 'nav-eng-jobs', label: 'Engineering Jobs', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/jobs', keywords: 'engineering jobs job number po ship date complexity plan', perm: 'engineering_jobs' },
+  { id: 'nav-eng-tasks', label: 'Engineering Task Queue', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/tasks', keywords: 'engineering tasks queue overdue late unassigned untouched behind', perm: 'engineering_jobs' },
+  { id: 'nav-eng-mine', label: 'My Engineering Work', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/my-work', keywords: 'my engineering work mine assigned tasks due', perm: 'engineering_jobs' },
+  { id: 'nav-eng-load', label: 'Engineering Workload', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/capacity', keywords: 'engineering workload capacity hours per person week takt', perm: 'engineering_jobs' },
+  { id: 'nav-eng-rules', label: 'Engineering Scheduling Rules', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/playbook', keywords: 'engineering scheduling rules playbook lead time cycle time takt target hours automation', perm: 'engineering_jobs' },
+  { id: 'nav-eng-report', label: 'Engineering Report', group: 'Go to', icon: TrendingUp, href: '/admin/reports/engineering', keywords: 'engineering report on time lead time target actual hours per person leadership', perm: 'reports' },
   // Training (IAT Learn) — re-listed 2026-08-06 when the nav group was un-parked
   // for the Control Panel Crash Course. Learner entries carry no perm on purpose:
   // /admin/learn is in OPEN_ADMIN_PREFIXES, open to every admin-surface role.

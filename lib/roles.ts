@@ -176,6 +176,22 @@ export type Perm =
   // controls contract the field commissions against, which is a different trust
   // boundary from a sales document and should be revocable on its own.
   | 'soo'
+  // /admin/engineering — the engineering job board, task queue and playbook
+  // (migration 096). Named engineering_JOBS, not 'engineering': `engineering` is
+  // already a StaffRole, and a perm sharing that name would read as "the
+  // engineering role's perm" — the same collision 'production_board',
+  // 'tool_crib' and 'marketing_calendar' are all named around.
+  //
+  // Granted to engineering and production_manager in the scoped-role defaults
+  // below + seeded by 096 (both are required — see the note under those
+  // defaults). Sales is deliberately excluded: sales GENERATES engineering work,
+  // and a queue the requesters can re-prioritise is not an accountability tool.
+  //
+  // Editing the PLAYBOOK (the automation rules) is additionally role-gated to
+  // admin or engineering inside requireEngineeringAuth, the same shape as SOO
+  // approval — a production manager can work the board without being able to
+  // change what every future job's schedule is measured against.
+  | 'engineering_jobs'
 
 // Human-readable labels for the permissions matrix UI.
 export const PERM_LABELS: Record<Perm, string> = {
@@ -215,6 +231,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   learn_admin: 'Learn — manage content',
   compensation: 'Compensation Review',
   soo: 'Sequence of Operation',
+  engineering_jobs: 'Engineering Jobs',
 }
 
 // Perms an admin can grant to scoped roles from the /admin/permissions matrix.
@@ -240,8 +257,8 @@ export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
   sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies', 'diagrams', 'proposals', 'soo'],
   hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools', 'compensation'],
   marketing: ['dashboard', 'presentations', 'jerry', 'tools', 'case_studies', 'marketing_calendar', 'diagrams'],
-  engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools', 'diagrams', 'soo'],
-  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib', 'production_board'],
+  engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools', 'diagrams', 'soo', 'engineering_jobs'],
+  production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib', 'production_board', 'engineering_jobs'],
   production: [],
 }
 // NOTE: editing this list alone changes NOTHING in a deployed environment. Once
@@ -302,6 +319,10 @@ export function isAdminSurfaceRole(role: Role | null): boolean {
 // Ordered list of admin sections → canonical landing href. Order defines a
 // scoped role's default landing page (its first permitted section).
 export const ADMIN_SECTIONS: { perm: Perm; href: string }[] = [
+  // First for Engineering, deliberately. This list's order decides a scoped
+  // role's landing page when they hold no 'dashboard' perm, and the engineering
+  // status board is the screen that department is meant to open the day on.
+  { perm: 'engineering_jobs', href: '/admin/engineering' },
   { perm: 'submissions', href: '/admin/submissions' },
   { perm: 'tickets', href: '/admin/tickets' },
   { perm: 'equipment', href: '/admin/equipment' },
@@ -428,6 +449,12 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // path falls back to 'dashboard', which every scoped role holds — so omitting
   // this would open the page to all of them rather than fail closed.
   { prefix: '/admin/soo', perm: 'soo' },
+  // Engineering jobs, tasks and the playbook (096). MUST be listed, for the same
+  // reason as every entry above it: an unmapped /admin/* path falls back to
+  // 'dashboard', which sales, hr, marketing, engineering and production_manager
+  // all hold — so omitting this would show the whole department's workload,
+  // per-person, to every scoped role instead of failing closed.
+  { prefix: '/admin/engineering', perm: 'engineering_jobs' },
   // Application diagram studio (073). MUST be listed: an unmapped /admin/* path
   // falls back to 'dashboard', which every scoped role holds — so omitting this
   // would open the page to all of them rather than fail closed.

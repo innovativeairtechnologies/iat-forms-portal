@@ -28,6 +28,15 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/sizing-studio',   section: 'Operations', label: 'Sizing Studio' },
   { prefix: '/admin/diagram-studio',  section: 'Operations', label: 'Application Diagrams' },
   { prefix: '/admin/gantt',           section: 'Operations', label: 'Gantt' },
+  // Engineering (096). Longest-match ordering means the leaves below beat the
+  // bare '/admin/engineering' entry, so the Status Board keeps its own name
+  // rather than every page in the section crumbing as "Status Board".
+  { prefix: '/admin/engineering',           section: 'Engineering', label: 'Status Board' },
+  { prefix: '/admin/engineering/jobs',      section: 'Engineering', label: 'Jobs' },
+  { prefix: '/admin/engineering/tasks',     section: 'Engineering', label: 'Task Queue' },
+  { prefix: '/admin/engineering/my-work',   section: 'Engineering', label: 'My Work' },
+  { prefix: '/admin/engineering/capacity',  section: 'Engineering', label: 'Workload' },
+  { prefix: '/admin/engineering/playbook',  section: 'Engineering', label: 'Scheduling Rules' },
   // Sales
   { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },
   { prefix: '/admin/projected-sales', section: 'Sales',   label: 'Performance' },

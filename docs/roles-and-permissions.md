@@ -14,8 +14,8 @@ everything. This replaced the old coarse `admin | employee | customer` split.
 | `sales` | `/admin` (department dashboard) | Tickets, Equipment, Customers, Deals, Gantt, Case Studies, Application Diagrams, Jerry |
 | `hr` | `/admin` (department dashboard) | Accounts, Org Chart, Forms, PTO, Sick Time, Scheduling, Accrual, Compensation Review, Jerry |
 | `marketing` | `/admin` (department dashboard) | Presentations, Marketing Calendar, Case Studies, Application Diagrams, Jerry |
-| `engineering` | `/admin` (department dashboard) | Submissions, Tickets, Equipment, Gantt, Application Diagrams, Jerry |
-| `production_manager` | `/admin` (department dashboard) | Tickets, Equipment, Gantt, Scheduling, Jerry |
+| `engineering` | `/admin` (department dashboard) | **Engineering Jobs**, Submissions, Tickets, Equipment, Gantt, Application Diagrams, Sequence of Operation, Jerry |
+| `production_manager` | `/admin` (department dashboard) | **Engineering Jobs**, Tickets, Equipment, Gantt, Scheduling, Tool Crib, Production Board, Jerry |
 | `production` | `/admin` (Company Home) | The always-open `/admin/home`, `/admin/profile`, and the `/admin/me/*` self-service pages (time off, forms, directory, apps); My Board + US Rotors still under `/employee` |
 | `customer` | `/customer` | External customer portal |
 
@@ -207,6 +207,19 @@ Why it isn't admin-only: middleware already lets `tickets` holders — `sales`,
 queue daily. With an admin-only write the page rendered a form that **always failed on
 save**, offering an action it then refused. Gating the write on the same editable perm
 as the page means the two can't drift when the matrix changes.
+
+**Engineering (2026-08-26).** `requireEngineeringAuth()` (`lib/api-auth.ts`) gates every job and
+task write on the `engineering_jobs` perm, read live from the matrix — the same perm
+`ADMIN_PATH_PERMS` gates the pages on, so page access and writes cannot drift apart. Its own named
+guard, per `requireDealsAuth`'s note.
+
+`requireEngineeringAuth({ playbook: true })` adds a second, non-delegatable check: `admin` or the
+`engineering` role only. Same shape as `requireSooAuth`'s approve gate and the same kind of reason —
+`production_manager` legitimately works the board, but the playbook is the template every future
+job's schedule is generated from and every variance is measured against. It is not a separate perm
+because a half-grant (nav shows, save 403s) is worse than a clear no; the page renders read-only
+instead. Deleting a job is narrower still — full `admin` only, because a job carries the lead-time
+history the report is computed from. See `docs/engineering.md`.
 
 **Ticket notes (resolved 2026-07-16, later the same day).** `requireTicketAccess()`
 (`lib/ticket-access.ts`) — the single boundary shared by all four dual-auth ticket routes

@@ -112,6 +112,21 @@ the exec KPIs for admin. So `app/admin/page.tsx` is now just a role router (admi
 `DepartmentDashboard`; sales → `SalesDashboardView`), and the old layout presets / view-switcher are
 retired.
 
+**Engineering cards share one read (2026-08-26).** `components/dashboards/eng-cards.tsx` adds four —
+`eng_status`, `eng_risk`, `eng_my_work`, `eng_load` — all gated on `engineering_jobs`. They do NOT
+thread through `CardCtx`; they call `engData()`, a React `cache()`-wrapped loader in `dept-cards.tsx`,
+so a dashboard showing all four fires the query once and the next request gets fresh data.
+
+That is a different choice from `execData`, deliberately: the admin dashboard needs the exec batch
+whether or not any exec card renders, while these four are only ever loaded when one of them is on
+the grid. **Four cards each doing their own full table read is how a dashboard becomes the slowest
+page in the portal** — if you add a fifth engineering card, add it to `engData()`, not beside it.
+
+`eng_my_work` is hidden outright when the account has no `employees` row (`ctx.myEmployeeId` is
+null), the same rule as `my_tickets`: the only join from an auth user to `eng_tasks.assignee_id` is
+the email, so "no row" means "cannot tell what is yours", and a card that can only ever render
+nothing reads as "you have nothing to do".
+
 ## View-as preview
 
 "View as [role]" (admin-only, `components/admin/ViewAs.tsx`) writes a short-lived `va_role` cookie and

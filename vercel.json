@@ -37,6 +37,14 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/eng-reminders",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/eng-reminders",
+      "schedule": "0 8 * * *"
+    },
+    {
       "schedule": "30 0 * * 2,4,6",
       "path": "/api/cron/leadership-update"
     },

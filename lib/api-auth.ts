@@ -531,6 +531,50 @@ export async function requireSooAuth(
 }
 
 /**
+ * Guard for the Engineering API (/admin/engineering, migration 096) — jobs,
+ * tasks and the playbook. Matrix-backed on `engineering_jobs`, the same perm
+ * ADMIN_PATH_PERMS gates the pages on, so page access and writes can never
+ * disagree. Its own named guard, per requireDealsAuth's note above.
+ *
+ * `{ playbook: true }` additionally requires admin or the engineering role, the
+ * same shape as requireSooAuth's approve gate and for the same kind of reason:
+ * production_manager legitimately works this board, but the playbook is the
+ * template every future job's schedule is generated from and every variance is
+ * measured against. Changing it is a department-lead decision, and it is not a
+ * delegatable perm of its own because a half-grant (nav shows, save 403s) is
+ * worse than a clear no.
+ *
+ * Returns the actor's user id (stamped onto created_by / updated_by), or a
+ * NextResponse error to return directly.
+ */
+export async function requireEngineeringAuth(
+  opts: { playbook?: boolean } = {},
+): Promise<{ userId: string; role: string | null } | NextResponse> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'engineering_jobs', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (opts.playbook && role !== 'admin' && role !== 'engineering') {
+    return NextResponse.json(
+      { error: 'Only engineering or an admin can change the scheduling rules.' },
+      { status: 403 },
+    )
+  }
+  return { userId: user.id, role }
+}
+
+/**
  * Guard for the marketing-calendar API (/admin/marketing, migration 071).
  * Matrix-backed on `marketing_calendar` — the same perm middleware gates the
  * page on — so the page and the API can never disagree. Its own named guard,

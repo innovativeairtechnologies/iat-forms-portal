@@ -10,6 +10,82 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — Engineering gets a board, and the board can tell you it is going to be late
+
+Engineering has been run out of two monday.com boards and a spreadsheet called *Engineering
+Lead-Times*. The boards hold what was done; the spreadsheet holds how long things are supposed to
+take; neither of them can put those two facts next to each other. **There is now an Engineering
+section in the portal that does.**
+
+**Five buckets, exactly the ones drawn on the whiteboard.** Submittals, Long-Lead Items, Bill of
+Materials, Production / Design, Electrical Production — and a sixth, *Support & Other*, which
+matters more than it sounds. Every row of the spreadsheet nobody highlighted lives in it: sales
+support, testing support, production cross-checks, training, R&D. That is the 20% of Monday to
+Wednesday the spreadsheet already allocates to work that is not a production package, and it is the
+only reason "somebody worked sixty hours and finished nothing" can ever have an answer. Logging a
+piece of it takes one line and four fields.
+
+**Opening a job writes the whole plan.** A job number, a customer and a PO date go in; every task
+that job needs comes out — dated forward from the PO, costed at the target hours, sorted by the
+spreadsheet's own priority column. A submittal package is due two weeks after the PO because that is
+what the sheet says, not because somebody remembered.
+
+**The progress bar predicts.** Each task carries a bar, and next to the bar is a small tick showing
+where a steady pace says it should be by now. A task at 40% with the mark at 70% is a picture of
+something running late, and the board turns that picture into a sentence: *trending 4 days late*.
+The arithmetic is deliberately plain — at the point where two-thirds of a task's window is gone and
+a third of the work is done, it is running at half pace, and the finish date follows. No model, no
+guess, and the same number every time you look, which is what makes it worth arguing with.
+
+It refuses to answer in one case: a task at 0%. The honest projection there is infinity, and a board
+where everything is red is a board nobody reads. Those show days remaining instead.
+
+**Where the percentages came from.** The electrical sheet turned out to be carrying something the
+rest of the workbook does not — real completion weights. Drawings put a job at 30%, the BOM at 60%,
+programming at 99%, and a comment in one cell reading *"Upload 1%"* closes it at 100. Those are the
+bands the electrical progress bar uses. For the buckets nobody has weighted, the bar is a plain
+average and says so rather than inventing a split.
+
+**Numbers nobody has written down are blank, and stay blank.** The spreadsheet says "TBD", "See
+Master", "Per Smartsheet" and "Must be scheduled" in a lot of places, and the BOM and production
+breakdowns exist as words with no hours behind them at all. Every one of those is empty here and
+prints as *Not set*, and the steps carry an amber **Unconfirmed** mark. Filling one in with something
+plausible would have made it the standard every future job is measured against, permanently, with
+nobody left who remembers it was made up. The workload page counts uncosted tasks separately instead
+of scoring them as free time, and the report prints how much of the work its hours figures could
+actually see.
+
+**The rules are editable, because the meeting said they were not finished.** *Scheduling Rules* is
+the page where the follow-up session lands: every step, its target hours, its cycle days, its
+progress band, and a line under each one saying which source the number came from. Editing a rule
+changes future jobs only — a task snapshots its title, hours and dates the moment it is created, so
+nothing already on the board moves under anyone.
+
+**The morning sweep chases.** Before the working day, anyone with something due or past gets one
+email listing all of it, not one per task. The department lead gets a roll-up of what is past due,
+what nobody owns, what nobody has touched in five days, and any job that somehow has no plan at all.
+When there is nothing outstanding it sends nothing — a daily all-clear is the fastest way to teach
+people to filter the sender, and then the one that matters gets filtered too.
+
+**Leadership can see it without asking.** Four cards land on the dashboard: bucket status, what is at
+risk, what is yours, and who is carrying what. On James's dashboard they lead the page; on the
+executive dashboard they sit with the morning alerts rather than below the analysis, because a job
+trending late has to be visible while there is still time to do something. The Task Queue tab carries
+a red count of anything past its date. **Reports › Engineering** adds the longer view: on-time rate,
+median finish against the date, target hours against actual hours per step — which is the department's
+own stated goal, *lead-times under four hours, then under two* — and the same per person, plus the
+whole table as a CSV.
+
+**And there is a screen for the wall.** `?tv=1` on the status board strips the chrome, sizes the type
+up and refreshes itself every minute. The desk view deliberately does not auto-refresh; a page that
+reloads while you are reading it is worse than a stale one.
+
+Access is a new **Engineering Jobs** permission, granted to engineering and to production managers —
+the second on purpose, so ordering hears about a released bill of materials. Sales is not on the list:
+sales generates a good deal of this work, and a queue the requesters can re-prioritise is not an
+accountability tool. Changing the scheduling rules needs engineering or an admin specifically, and the
+report — which scores named people — is narrower still.
+
 ## 2026-08-26 — The quote survey stops answering its own questions
 
 Choosing an application used to fill in eight figures on the customer's behalf: the target

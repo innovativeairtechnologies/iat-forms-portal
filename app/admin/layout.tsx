@@ -33,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { count: usRotorsOrders },
     { count: newIntakes },
     { count: rfqUnread },
+    { count: engOverdue },
     draftCount,
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
@@ -44,6 +45,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // Unread rather than status='new': opening one marks it read, so the badge
     // clears when a human has actually looked — the same rule as Submissions.
     supabaseAdmin.from('rfq_requests').select('*', { count: 'exact', head: true }).eq('is_read', false),
+    // Engineering tasks PAST their due date. Deliberately the plain overdue
+    // count and not the projection from lib/engineering.ts: the projection needs
+    // whole rows and this is a badge on every admin page load. The two agree on
+    // what "overdue" means (the date has passed), so the badge can never claim a
+    // number the Task Queue then contradicts.
+    supabaseAdmin.from('eng_tasks').select('*', { count: 'exact', head: true })
+      .in('status', ['not_started', 'in_progress', 'blocked'])
+      .lt('due_date', new Date().toISOString().slice(0, 10)),
     getUserFormDraftCount(),
   ])
 
@@ -75,6 +84,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           usRotorsOrders={usRotorsOrders ?? 0}
           draftCount={draftCount}
           rfqUnread={rfqUnread ?? 0}
+          engOverdue={engOverdue ?? 0}
           adminName={admin.displayName}
         />
         {/* pt-14 clears the fixed mobile top bar (the sidebar's old h-14 spacer sat in

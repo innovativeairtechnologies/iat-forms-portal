@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cache } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { ADMIN_SECTIONS, hasPermission, ROLE_LABELS, ROLE_DESCRIPTIONS, type StaffRole, type Perm, type PermMatrix } from '@/lib/roles'
@@ -10,6 +11,7 @@ import {
   ArrowRight, Ticket, Boxes, Building2, Clock, Inbox, Sparkles,
   Calendar, Users, FileText, Presentation, CalendarRange, DollarSign, CalendarClock,
   MessageSquare, LayoutGrid, Compass, ClipboardList, CheckCircle2, AlertCircle,
+  DraftingCompass,
 } from 'lucide-react'
 import type { ExecData } from '@/lib/exec-dashboard-data'
 import { getMyRfqs, type MyRfqSummary } from '@/lib/rfq-mine'
@@ -17,6 +19,9 @@ import {
   FormsPerformanceCard, TopFormsCard, TopSubmittersCard, ActivityCard,
   FormStatusCard, NeedsAttentionCard, LiveActivityCard, AdminActivityCard, AttentionRow,
 } from '@/components/dashboards/exec-cards'
+import {
+  EngStatusCard, EngRiskCard, EngMyWorkCard, EngLoadCard, getEngCardData,
+} from '@/components/dashboards/eng-cards'
 
 /* ────────────────────────────────────────────────────────────────────────────
    Department-dashboard CARD REGISTRY — the catalog behind both the default
@@ -71,7 +76,7 @@ const SECTION_ICON: Partial<Record<string, LucideIcon>> = {
   submissions: Inbox, tickets: Ticket, equipment: Boxes, customers: Building2, deals: DollarSign, gantt: CalendarRange,
   org_chart: Users, forms: FileText, employee_forms: FileText, pto: Calendar, sick: Clock,
   scheduling: Calendar, accrual: Clock, presentations: Presentation, employees: Users,
-  jerry: MessageSquare, tools: LayoutGrid,
+  jerry: MessageSquare, tools: LayoutGrid, engineering_jobs: DraftingCompass,
 }
 // Jerry + the Internal Apps launcher live outside ADMIN_SECTIONS but every scoped
 // role holds their perms, so thin departments still get a fuller link grid.
@@ -135,6 +140,23 @@ const STAT_WIDGETS: { perm: Perm; build: () => Promise<StatDef[]> }[] = [
   { perm: 'forms', build: async () => {
       const { count } = await supabaseAdmin.from('forms').select('*', HEAD).eq('is_active', true)
       return [{ label: 'Active Forms', value: count ?? 0, tone: 'emerald', icon: <FileText size={16} />, href: '/admin/forms' }]
+    } },
+  { perm: 'engineering_jobs', build: async () => {
+      // Two tiles, and the second is the one that matters. "Open" is volume;
+      // "past due" is the number the whole section exists to drive to zero. The
+      // plain overdue count (the date has passed), NOT the projection — a KPI
+      // strip is read at a glance and must not disagree with the nav badge,
+      // which counts the same way for the same reason.
+      const today = new Date().toISOString().slice(0, 10)
+      const OPEN = ['not_started', 'in_progress', 'blocked']
+      const [{ count: open }, { count: late }] = await Promise.all([
+        supabaseAdmin.from('eng_tasks').select('*', HEAD).in('status', OPEN),
+        supabaseAdmin.from('eng_tasks').select('*', HEAD).in('status', OPEN).lt('due_date', today),
+      ])
+      return [
+        { label: 'Engineering Tasks', value: open ?? 0, tone: 'sky', icon: <DraftingCompass size={16} />, href: '/admin/engineering/tasks' },
+        { label: 'Past Due', value: late ?? 0, tone: 'rose', icon: <AlertCircle size={16} />, href: '/admin/engineering/tasks' },
+      ]
     } },
   { perm: 'presentations', build: async () => {
       const { count } = await supabaseAdmin.from('presentations').select('*', HEAD)
@@ -541,6 +563,18 @@ function MyRfqCard({ d }: { d: MyRfqSummary }) {
   )
 }
 
+/**
+ * The engineering batch, memoized for the life of one render.
+ *
+ * React's `cache()` is per-request, which is exactly the scope wanted here: the
+ * four engineering cards on one dashboard share a single read, and the next
+ * request gets fresh data. Doing this inside the registry rather than threading
+ * it through CardCtx keeps the ctx shape unchanged — `execData` is threaded that
+ * way because the ADMIN dashboard needs it whether or not any exec card is
+ * rendered, while these four are only ever loaded when one of them is.
+ */
+const engData = cache(() => getEngCardData())
+
 export const CARD_REGISTRY: CardDef[] = [
   {
     id: 'metrics', title: 'Key Metrics', defaultSpan: 3, sizes: [2, 3],
@@ -575,6 +609,35 @@ export const CARD_REGISTRY: CardDef[] = [
     id: 'tickets_donut', title: 'Tickets by Status', perm: 'tickets', defaultSpan: 1, sizes: [1, 2],
     available: (ctx) => ctx.can('tickets'),
     Component: async () => <TicketsDonutCard status={await loadTicketStatus()} />,
+  },
+  // ── Engineering (096) ───────────────────────────────────────────────────
+  // Four cards over ONE shared read. `engCardData` is memoized per request in
+  // engData() below, so a dashboard showing all four fires the query once —
+  // four cards each doing their own full table read is how a dashboard becomes
+  // the slowest page in the portal.
+  {
+    id: 'eng_status', title: 'Engineering Status', perm: 'engineering_jobs', defaultSpan: 1, sizes: [1, 2],
+    available: (ctx) => ctx.can('engineering_jobs'),
+    Component: async () => <EngStatusCard d={await engData()} />,
+  },
+  {
+    id: 'eng_risk', title: 'Engineering Risk', perm: 'engineering_jobs', defaultSpan: 1, sizes: [1, 2],
+    available: (ctx) => ctx.can('engineering_jobs'),
+    Component: async () => <EngRiskCard d={await engData()} />,
+  },
+  {
+    id: 'eng_my_work', title: 'My Engineering Work', perm: 'engineering_jobs', defaultSpan: 1, sizes: [1, 2],
+    // Hidden outright when the account has no employees row — the only join from
+    // an auth user to eng_tasks.assignee_id is the email (lib/my-employee.ts), so
+    // "no row" means "cannot tell what is yours", and a card that can only ever
+    // show nothing reads as "you have nothing to do".
+    available: (ctx) => ctx.can('engineering_jobs') && !!ctx.myEmployeeId,
+    Component: async (ctx) => (ctx.myEmployeeId ? <EngMyWorkCard d={await engData()} employeeId={ctx.myEmployeeId} /> : null),
+  },
+  {
+    id: 'eng_load', title: 'Engineering Load', perm: 'engineering_jobs', defaultSpan: 1, sizes: [1, 2],
+    available: (ctx) => ctx.can('engineering_jobs'),
+    Component: async () => <EngLoadCard d={await engData()} />,
   },
   {
     id: 'quick_links', title: 'Quick Links', defaultSpan: 2, sizes: [1, 2, 3],
@@ -613,6 +676,11 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
       // Morning alerts lead the exec dashboard: what is yours, then what is
       // nobody's. Everything below is analysis you go looking for.
       { id: 'my_tickets', span: 1 }, { id: 'ticket_alerts', span: 1 },
+      // Engineering sits with the other morning-alert cards, not below the
+      // analysis. The section's whole reason for existing is that a job trending
+      // late has to be visible before the ship date, and a card leadership has to
+      // scroll to is a card that does that a week too late.
+      { id: 'eng_status', span: 1 }, { id: 'eng_risk', span: 1 }, { id: 'eng_load', span: 1 },
       { id: 'exec_top_forms', span: 1 }, { id: 'exec_top_submitters', span: 1 }, { id: 'exec_needs_attention', span: 1 },
       { id: 'exec_activity', span: 2 }, { id: 'recent_submissions', span: 1 },
       { id: 'recent_tickets', span: 2 }, { id: 'exec_form_status', span: 1 },
@@ -629,6 +697,18 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
   // means a scoped role that is later granted the quote queue gets the card
   // without anyone remembering to come back here.
   items.push({ id: 'my_rfqs', span: 1 })
+
+  // Engineering leads the department dashboard for anyone who holds the section —
+  // in practice James and his team. What is mine, then what is at risk, then the
+  // bucket roll-up, then who is carrying what. The trailing .filter() drops
+  // eng_my_work for an account with no employees row and drops all four for a
+  // role that does not hold the perm, so this is safe to push unconditionally:
+  // a scoped role granted the section later gets the cards without anyone
+  // remembering to come back here.
+  items.push(
+    { id: 'eng_my_work', span: 1 }, { id: 'eng_risk', span: 1 },
+    { id: 'eng_status', span: 1 }, { id: 'eng_load', span: 1 },
+  )
 
   if (ctx.can('tickets')) {
     // Engineering and production_manager work the queue daily, so their morning

@@ -1,7 +1,7 @@
 # Reports (`/admin/reports`)
 
-Five reports under one sidebar group, added 2026-08-21. Support Tickets first, then Quote Requests,
-Sales Pipeline, Installed Base and Portal Adoption.
+Six reports under one sidebar group, added 2026-08-21. Support Tickets first, then Quote Requests,
+Sales Pipeline, Installed Base, Portal Adoption and Engineering (2026-08-26).
 
 ## Access
 
@@ -91,3 +91,22 @@ email address. Caught by re-deriving the number independently, not by reading th
 
 Measured against `profiles`, not `employees`: that table is not staff-only (every customer invite
 adds a row), so counting there would report customers as staff who never logged in.
+
+### Engineering
+_Added 2026-08-26. See `docs/engineering.md` for the section it reports on._
+
+🔴 **Every hours figure is printed next to its COVERAGE.** Target hours are null wherever the
+lead-time workbook publishes none, and actual hours are null until somebody logs them. A median over
+four of nineteen tasks is a true statement about a small sample, and printed bare it becomes a claim
+about the department. The tile strip carries an explicit "Hours coverage: N%" line for that reason.
+
+⚠️ **A task with no due date is EXCLUDED from on-time percentages, not counted as on time.**
+Otherwise the cheapest way to improve the number would be to stop setting dates.
+
+⚠️ **`skipped` ("Not required") tasks are excluded from completions.** Marking one was a correct
+decision, not a delivery — counting it would make skipping things the cheapest way to raise the score.
+
+**Target vs actual reads targets off each TASK, not off the live playbook.** A task snapshots its
+target when it is created, so a step compares against the standard that applied when the job started
+rather than one edited afterwards. Ad-hoc tasks (step keys prefixed `custom:`) are excluded from the
+per-step table so one-off work cannot distort a standard step's figure.
