@@ -677,16 +677,35 @@ export type DoorSpec = {
   opensPerHour: number
   secondsOpen: number
   exposure: Exposure
+  /**
+   * An aperture that is never closed — the product runs through it, so there is
+   * no open/close cycle to count. estimateLoad charges it the full 60 minutes an
+   * hour and IGNORES opensPerHour/secondsOpen.
+   *
+   * ⚠️ A FLAG ON THE DOOR, NOT A CHECK ON THE LABEL. `label` is a free-text input the
+   * customer can rename — keying the physics off the string would mean typing
+   * "Conveyor 1" silently cut that opening's load by ~10x. Set from DOOR_TYPES
+   * when the opening is added, and carried through coerce() in app/api/rfq.
+   *
+   * Optional so surveys taken before 2026-08-26 read back as undefined and keep
+   * the counted model they were quoted on.
+   */
+  continuouslyOpen?: boolean
 }
 
-export const DOOR_TYPES: { label: string; widthFt: number; heightFt: number; secondsOpen: number }[] = [
+export const DOOR_TYPES: {
+  label: string; widthFt: number; heightFt: number; secondsOpen: number
+  continuouslyOpen?: boolean
+}[] = [
   { label: 'Personnel door', widthFt: 3, heightFt: 7, secondsOpen: 8 },
   { label: 'Double personnel door', widthFt: 6, heightFt: 7, secondsOpen: 10 },
   { label: 'Roll-up / sectional door', widthFt: 10, heightFt: 10, secondsOpen: 45 },
   { label: 'Loading dock door', widthFt: 8, heightFt: 9, secondsOpen: 60 },
   { label: 'High-speed roll door', widthFt: 8, heightFt: 9, secondsOpen: 12 },
   { label: 'Air-lock vestibule', widthFt: 8, heightFt: 8, secondsOpen: 10 },
-  { label: 'Conveyor pass-through', widthFt: 4, heightFt: 2, secondsOpen: 60 },
+  // The only opening here that never closes. secondsOpen is kept for shape but is
+  // not read for this type — see DoorSpec.continuouslyOpen.
+  { label: 'Conveyor pass-through', widthFt: 4, heightFt: 2, secondsOpen: 60, continuouslyOpen: true },
 ]
 
 // ─── Equipment & utility option lists (mirrors the paper quote request) ────────
@@ -1159,7 +1178,16 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   let doorMinutes = 0
   for (const d of data.doors) {
     const area = d.widthFt * d.heightFt
-    const minutesPerHour = Math.min((d.opensPerHour * d.secondsOpen) / 60, 60)
+    // ⚠️ A continuously-open aperture is the full hour, not a count of cycles.
+    // Asked for on 2026-08-26: the wizard stops asking opens-per-hour and
+    // seconds-open for a conveyor pass-through, because the product runs through
+    // it and there is nothing to count. Hiding those two inputs while still
+    // pricing off whatever happened to be stored in them is the exact bug this
+    // survey has hit twice (tightness, vapor barrier) — so the model changes with
+    // the UI rather than leaving a stale multiplier behind it.
+    const minutesPerHour = d.continuouslyOpen
+      ? 60
+      : Math.min((d.opensPerHour * d.secondsOpen) / 60, 60)
     doorMinutes += minutesPerHour
     const outside = d.exposure === 'Outdoor'
     const velocity = outside ? DOOR_VELOCITY_OUTDOOR : DOOR_VELOCITY_INTERIOR

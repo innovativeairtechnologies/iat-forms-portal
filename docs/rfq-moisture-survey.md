@@ -197,6 +197,38 @@ minutes). It renders as a caption under each bar on `/admin/rfq/[id]`. Records w
 before 2026-08-24 have no `detail`, so it is typed optional and every reader must treat
 it that way — those surveys render the bar with nothing underneath.
 
+## Step 6 — a conveyor pass-through is never closed (2026-08-26)
+
+Selecting **Conveyor pass-through** drops the *Opens per hour* and *Seconds open* fields. Width and
+height stay. The product runs through the aperture, so there is no open/close cycle to count.
+
+🔴 **The MODEL changed with the UI, not just the form.** `estimateLoad` charges a continuously-open
+opening the full **60 minutes an hour** and ignores `opensPerHour`/`secondsOpen` entirely. Removing
+the two questions while still pricing off whatever was stored in them would have been the same bug
+as the hidden tightness default — a number the customer can no longer see, still setting their
+price. Measured on a 50 × 50 × 12 room with one 4 × 2 ft pass-through:
+
+| | door load | room total |
+|---|---|---|
+| counted, 6/hr × 60s (old) | 8,489 gr/hr | 3.02 lb/hr |
+| **continuous (now)** | **84,894 gr/hr** | **15.03 lb/hr** |
+
+**10× on that opening, ~5× on the room total.** That is the honest number for a hole that is never
+shut, but it is a large change and was flagged to the owner rather than slipped in.
+
+⚠️ **`continuouslyOpen` is a FLAG ON THE DOOR, never a check on the label.** `DoorSpec.label` is a
+free-text input the customer can rename — keying the physics off the string would mean typing
+"Conveyor 1" silently cut that opening's load by 10×. Set from `DOOR_TYPES` when the opening is
+added. See [[form-fields-label-keyed]] for the same trap in the form builder.
+
+⚠️ **`coerce()` in `app/api/rfq/route.ts` REBUILDS EACH DOOR**, so a field missing from that map is
+dropped on submit — the browser would price the survey one way and the stored record another. The
+flag is listed there for exactly that reason.
+
+**Surveys taken before 2026-08-26 are untouched.** The flag is optional, legacy rows read back
+`undefined`, and the counted model still applies — verified at 3.02 lb/hr against the same room.
+The stored `summary` is never recomputed on read anyway.
+
 ## Two tones, and only two (2026-08-20)
 
 `Tone` is `'sky' | 'amber'`. Sky carries ordinary information; amber marks the one thing

@@ -71,6 +71,11 @@ function coerce(raw: unknown): RfqData {
       opensPerHour: finite(d.opensPerHour),
       secondsOpen: finite(d.secondsOpen),
       exposure: d.exposure === 'Outdoor' ? 'Outdoor' : 'Surrounding space',
+      // ⚠️ THIS MAP REBUILDS EACH DOOR, so a field missing here is silently dropped
+      // on submit — the browser would price the survey one way and the stored
+      // record another. continuouslyOpen decides whether the opening is charged the
+      // full 60 min/hr, so losing it changes the load by ~10x on a conveyor.
+      continuouslyOpen: d.continuouslyOpen === true,
     }))
 
   out.track = src.track === 'process' ? 'process' : 'room'

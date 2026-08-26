@@ -1788,6 +1788,7 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
         opensPerHour: 6,
         secondsOpen: type.secondsOpen,
         exposure: 'Surrounding space' as Exposure,
+        continuouslyOpen: type.continuouslyOpen === true,
       }],
     }))
   }
@@ -1821,12 +1822,32 @@ function StepOpenings({ data, setData }: { data: RfqData; setData: React.Dispatc
                 Remove
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {/* A conveyor pass-through is an aperture the product runs through, not a
+                door that closes, so opens-per-hour and seconds-open have nothing to
+                count and are not asked for (owner, 2026-08-26).
+
+                ⚠️ THE ASSUMPTION IS PRINTED BELOW, NOT SWALLOWED. estimateLoad charges
+                a continuously-open opening the full 60 minutes an hour, which is
+                roughly 10x what the old default of 6/hr x 60s produced. Dropping the
+                questions while leaving the old multiplier in place would be the same
+                bug as the hidden tightness default — so the customer is told what is
+                being assumed on their behalf. */}
+            <div className={`grid grid-cols-2 gap-3 ${door.continuouslyOpen ? '' : 'sm:grid-cols-4'}`}>
               <NumField label="Width (ft)" value={door.widthFt} onChange={v => update(door.id, { widthFt: v })} />
               <NumField label="Height (ft)" value={door.heightFt} onChange={v => update(door.id, { heightFt: v })} />
-              <NumField label="Opens per hour" value={door.opensPerHour} onChange={v => update(door.id, { opensPerHour: v })} />
-              <NumField label="Seconds open" value={door.secondsOpen} onChange={v => update(door.id, { secondsOpen: v })} />
+              {!door.continuouslyOpen && (
+                <>
+                  <NumField label="Opens per hour" value={door.opensPerHour} onChange={v => update(door.id, { opensPerHour: v })} />
+                  <NumField label="Seconds open" value={door.secondsOpen} onChange={v => update(door.id, { secondsOpen: v })} />
+                </>
+              )}
             </div>
+            {door.continuouslyOpen && (
+              <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+                Counted as open continuously — the full 60 minutes an hour. Product runs
+                through it, so there is no opening and closing to count.
+              </p>
+            )}
             <div className="mt-3">
               <Segmented<Exposure>
                 tone="sky"

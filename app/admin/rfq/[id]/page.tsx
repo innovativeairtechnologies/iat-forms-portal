@@ -232,7 +232,9 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                 <div className="px-5 py-1">
                   {d.doors?.length ? d.doors.map(door => (
                     <Field key={door.id} label={door.label}>
-                      {door.widthFt} × {door.heightFt} ft · {door.opensPerHour}/hr · {door.secondsOpen}s open · {door.exposure}
+                      {door.widthFt} × {door.heightFt} ft · {door.continuouslyOpen
+                        ? 'open continuously'
+                        : `${door.opensPerHour}/hr · ${door.secondsOpen}s open`} · {door.exposure}
                     </Field>
                   )) : <Field label="Openings">None recorded</Field>}
                 </div>

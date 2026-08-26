@@ -10,6 +10,25 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — A conveyor pass-through is no longer treated as a door that opens and closes
+
+Picking **Conveyor pass-through** on the openings step used to ask how many times an hour it opens
+and for how many seconds. It does not open — product runs through it, and the gap is there all the
+time. Those two questions are gone; width and height stay.
+
+**The calculation changed with them, and it matters.** The survey now charges that opening for the
+full hour instead of the handful of minutes the old default implied. On a 50 × 50 × 12 ft room with
+one 4 × 2 ft pass-through, the moisture coming through it goes from about 3 lb an hour to about 15.
+That is the honest figure for an opening that is never shut, and it is the number a system would
+have to be sized against — the old one would have under-sized it.
+
+We could have simply hidden the two questions and left the old arithmetic running underneath. That
+would have been worse: a figure nobody can see any more, still setting the answer. The survey now
+says on the page that the opening is counted as open continuously.
+
+**Quote requests submitted before today are not affected** — they keep the numbers they were
+quoted on.
+
 ## 2026-08-25 — Quote request: both envelope questions back on the page, letterhead on the PDF, load total off it
 
 **Step 5 no longer hides anything.** "Is there a vapor barrier?" and "How tight is the building?"

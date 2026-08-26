@@ -419,8 +419,10 @@ function loadsPage(ctx: Ctx) {
       data.doors.map(d => [
         d.label,
         `${fmt(d.widthFt)} × ${fmt(d.heightFt)} ft`,
-        fmt(d.opensPerHour),
-        fmt(d.secondsOpen),
+        // A continuously-open aperture has no cycle to report — printing the stored
+        // opensPerHour/secondsOpen here would contradict the load it was charged.
+        d.continuouslyOpen ? 'Continuous' : fmt(d.opensPerHour),
+        d.continuouslyOpen ? '—' : fmt(d.secondsOpen),
         d.exposure,
       ]), [0.32, 0.16, 0.14, 0.18, 0.2])
   } else {
