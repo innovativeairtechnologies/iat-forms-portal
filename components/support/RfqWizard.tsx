@@ -2432,24 +2432,30 @@ function StepUnit({ data, set }: { data: RfqData; set: SetFn }) {
           <SelectField label="Electrical service" value={data.voltage} onChange={v => set('voltage', v)} options={VOLTAGES} />
           <SelectField label="Regeneration heat" value={data.regenSource} onChange={v => set('regenSource', v)} options={REGEN_SOURCES} />
         </Grid>
-        {/* Moved up into this box (owner, 2026-08-26): where the regeneration air
-            is drawn FROM belongs beside what heats it. */}
-        <div className="mt-4">
-          <Grid>
+        {/* Moved up into this box (owner, 2026-08-26): where the regeneration air is
+            drawn FROM belongs with what heats it.
+
+            ⚠️ sm:col-start-2 IS LOAD-BEARING. A two-column grid with a single child
+            fills column ONE, which put this under "Electrical service" instead of
+            under "Regeneration heat". Forcing the column stacks the two regeneration
+            questions in the right-hand column, and the indoor follow-up under them.
+            Below the sm breakpoint the grid is one column and this does nothing. */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-start-2">
             <SelectField label="Regeneration air source" value={data.regenAirSource} onChange={v => set('regenAirSource', v)} options={['Outdoor', 'Indoor']} />
-          </Grid>
-        </div>
-        {data.regenAirSource === 'Indoor' && (
-          <div className="mt-4">
-            <TextField
-              label="Indoor regeneration air condition"
-              hint="Temperature and humidity where the regeneration air is drawn from."
-              value={data.regenIndoorConditions}
-              onChange={v => set('regenIndoorConditions', v)}
-              placeholder="85°F / 55% rh in the mezzanine"
-            />
           </div>
-        )}
+          {data.regenAirSource === 'Indoor' && (
+            <div className="sm:col-start-2">
+              <TextField
+                label="Indoor regeneration air condition"
+                hint="Temperature and humidity where the regeneration air is drawn from."
+                value={data.regenIndoorConditions}
+                onChange={v => set('regenIndoorConditions', v)}
+                placeholder="85°F / 55% rh in the mezzanine"
+              />
+            </div>
+          )}
+        </div>
         {/* "Natural gas available?" removed at the owner's request — the field went
             with it rather than being left to record a default nobody chose. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
