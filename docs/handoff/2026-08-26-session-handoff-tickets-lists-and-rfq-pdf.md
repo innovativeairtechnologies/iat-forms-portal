@@ -12,8 +12,9 @@ overwritten by this one. Both are needed to reconstruct the day.
 are that *a CSS class you did not write can silently defeat your layout* and that *"committed but
 not pushed" is not a hold in a shared working tree*.
 
-🔴 **§6.1 is the highest-priority open item: a concurrent session moved every cron schedule after
-this session documented them, so the exclusion windows in `docs/notifications.md` are stale.**
+✅ **§6.1 is RESOLVED (2026-08-26, commit `5984c12`) — but read it, because what was actually
+stale was NOT what this section claimed.** The exclusion-window table had already been corrected;
+the older prose around it had not.
 
 ---
 
@@ -43,7 +44,8 @@ Owner-directed, in this order. Nothing below was speculative.
 
 ### Left open
 
-1. 🔴 **Cron exclusion windows are stale** — schedules moved by another session (§6.1).
+1. ✅ ~~Cron exclusion windows are stale~~ — **resolved 2026-08-26** (§6.1). The table was already
+   right; eight other passages were not.
 2. **Step 7 illustration not verified in situ** (§6.2) — the wizard cannot be driven by automation.
 3. **The RFQ PDF has never been captured from a real submission** (§6.3).
 4. **Migration 093 still unapplied and untracked** — standing owner decision, do not re-raise.
@@ -345,23 +347,57 @@ stays disabled, so React's state never updates. **Step 7 could not be reached to
 
 ## 6. OPEN THREADS
 
-### 6.1 — 🔴 The cron exclusion windows in `docs/notifications.md` are STALE
+### 6.1 — ✅ RESOLVED 2026-08-26 — and the diagnosis above was wrong
 
-A concurrent session re-timed every cron **after** this session documented them. Current
-`vercel.json`:
+**Fixed in `5984c12`.** Current `vercel.json`, in ET (EDT, UTC-4):
 
-```
-0 22,23 * * *      admin-digest        (+ 0 0 * * *)
-0 7,8 * * *        rfq-reminders, ticket-reminders
-30 0,1,2 * * 2,4,6 leadership-update
-```
+| Job | UTC | ET |
+|---|---|---|
+| `rfq-reminders`, `ticket-reminders` | 07:00, 08:00 daily | **3:00am**, 4:00am |
+| `admin-digest` | 22:00, 23:00, 00:00 daily | **6:00pm**, 7:00pm, 8:00pm |
+| `leadership-update` | 00:30, 01:30, 02:30 Tue/Thu/Sat | **8:30pm**, 9:30pm, 10:30pm Mon/Wed/Fri |
+| `accrue-pto` | 08:00 Mon | **4:00am Mon** |
 
-The table this session wrote lists 09:00 ET reminders, 16:30 ET digest and 18:00 ET leadership.
-**All three are wrong now.** The *rule* still holds — the window opens at the **nominal** time and
-runs about an hour — but the times must be recomputed and the table rewritten.
+⚠️ **The claim above — "all three are wrong now" — was itself stale when it was written.** The
+deploy-exclusion table already read 03:00 / 18:00 / 20:30 correctly; the session that moved the
+schedules had fixed it. Checking before quoting it would have cost one grep.
 
-**Next action:** recompute the ET windows from the current `vercel.json` and update the table in
-`docs/notifications.md`, and the memory note.
+**What was actually wrong** was everything *around* that table. The three timing commits
+(`46ef5e2`, `cb156f8`, `b44c4f4`) were near-pure additions to `docs/notifications.md` — `+43/-1`,
+`+53/-3`, `+43/-5` — so a new authoritative section was appended and the older narrative was never
+reconciled with it. Eight passages went on describing the pre-move times **in the present tense**:
+
+| Where | Said | Is |
+|---|---|---|
+| `notifications.md` digest-vs-leadership table | ~16:30 ET / 18:00 ET | 6:00pm / 8:30pm |
+| `notifications.md` "What shipped" | `withinDigestWindow = 16..18` | `18..20` |
+| `notifications.md` leadership window | "now 18:00–20:00" | 20:00–22:00 |
+| `notifications.md` leadership DST table | two entries, 22:00/23:00Z | three, 00:30/01:30/02:30Z |
+| `notifications.md` exclusion table | `accrue-pto` nominal 09:00 | **04:00** |
+| `notifications.md` "two-hour band" | 18:00–20:00, lands near 18:50 | 20:00–22:00, near 21:20 |
+| `leadership-update/route.ts:117` | "18..20 absorbs…" | 20..22 |
+| `leadership-update/route.ts:222` | "Mon/Wed/Fri at 6pm" | 8:30pm |
+
+🔴 **One of those was not a comment.** `route.ts:297` returned
+`reason: 'outside the 18:00-20:00 NY window'` from the skip path while `withinSendWindow()` was
+already `20..22` — so the breadcrumb you would read while diagnosing a missing leadership report
+named the wrong two hours. Corrected.
+
+**The lesson, which is the one this file already teaches elsewhere:** appending a dated section is
+not the same as updating a document. The new section was correct and the page was still wrong,
+because a reader who lands on the older heading has no way to know it has been superseded. Passages
+kept as the record of a past bug now say which schedule they happened under.
+
+⚠️ **Still unreconciled, deliberately left for a decision (not fixed here):**
+
+1. `notifications.md` still describes the leadership report as **weekly**, "Sent Monday evening",
+   in the paragraph closing the digest-history section — contradicted by the same file's
+   "EVERY SCHEDULED SEND IS NOW AN INTERIM". That is cadence, not timing, so it was out of scope
+   for this pass.
+2. The exclusion windows are **nominal + 2h**, which covers the primary entry and the first
+   backstop but **not the third** (digest's 8:00pm, leadership's 10:30pm). Defensible — once the
+   day is claimed, killing a backstop is harmless — but it is an assumption nobody has written
+   down, and the table does not say so.
 
 ### 6.2 — Step 7 illustration not verified in place
 
