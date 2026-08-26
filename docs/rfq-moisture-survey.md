@@ -229,6 +229,70 @@ flag is listed there for exactly that reason.
 `undefined`, and the counted model still applies — verified at 3.02 lb/hr against the same room.
 The stored `summary` is never recomputed on read anyway.
 
+## Step 7 — makeup air: its own condition, and where its load lands (2026-08-26)
+
+The box is now **"Outdoor makeup air, vent for people, or exhaust"** and carries three things: the
+cfm, the condition of that air, and a choice of where its moisture is applied.
+
+### The condition
+
+`ConditionKey` gains `vent`, so the makeup air gets the same %rh / dew point / grains / wet bulb
+entry as step 3. **Blank falls back to the outdoor design point**, which is what `estimateLoad` used
+before the field existed — an untouched survey computes exactly as it did.
+
+Worth asking because makeup air is not always raw outdoor air. At 500 cfm into a 75°F/40% room:
+
+| Makeup air | grains | load |
+|---|---|---|
+| outdoor design (94°F/49%) | 122.5 gr/lb | 162,152 gr/hr |
+| pre-treated deck (70°F/50%) | 56.5 gr/lb | 7,113 gr/hr |
+
+**A ~20x swing on the same cfm**, which is why the condition is printed on the PDF beside the cfm.
+
+### 🔴 `ventLoadTarget` — these are different systems, not two views of one number
+
+| | `dehumidifier` (default, marked *preferred*) | `room` |
+|---|---|---|
+| Where the air goes | ducted to the unit, dried before it reaches the room | delivered into the space untreated |
+| Its moisture | carried SEPARATELY from the room load | a LINE in the breakdown, inside the safety factor |
+| In `dryAirCfm`? | **no** | **yes** |
+
+Measured on a 50 × 50 × 12 room, 500 cfm makeup, outdoor design air:
+
+| | total | dry air the unit must supply |
+|---|---|---|
+| dehumidifier | 25.75 lb/hr | **849 cfm** |
+| room | 25.75 lb/hr | **8,438 cfm** |
+
+**The total is identical — it is the same water — and the equipment is completely different.** That
+is the whole point of the choice, and why the wizard prints the consequence under the control
+rather than leaving the customer to infer it. ASHRAE Ch. 5 is explicit that folding ventilation into
+the room load oversizes the system, which is why `dehumidifier` is the default and the preferred
+option; `room` is for when the air genuinely is dumped into the space.
+
+⚠️ `ventLoadTarget` is a string union and is **pinned in `coerce()`** beside `roomSizeMode`. A junk
+value falling through to the wrong branch changes the equipment.
+
+⚠️ **Surveys before 2026-08-26 are unaffected** — the default is `dehumidifier`, which is what they
+were quoted on, and the blank condition falls back to outdoor.
+
+### Layout: the condition rides on an existing row
+
+⚠️ **Do not add a row to INTERNAL LOADS RECORDED for this.** That table sits directly above the
+ESTIMATED BREAKDOWN block, whose `ensure()` reserve is **honest** — measured at 97.4mm actual
+against 96.4mm reserved, i.e. very slightly *under*. There is no slack to reclaim, and every row
+costs 8mm.
+
+A separate "Makeup air" row spilled the breakdown onto a continuation page for any survey with a
+second opening, or with the air counted as room load. The condition is folded into
+**"Ventilation air in"** instead (`500 cfm · 70°F · 50 % rh, 57 gr/lb`), and *where* the load lands
+is already the sub-line of the **Makeup air load** tile. Zero added height; all scenarios stay at
+five pages.
+
+⚠️ The closing note under the tiles is **conditional** — the old sentence ("carried separately on
+purpose… folding it into the room total would oversize the system") is FALSE for a room-load survey
+and asserted the opposite of what that survey had just been charged.
+
 ## Two tones, and only two (2026-08-20)
 
 `Tone` is `'sky' | 'amber'`. Sky carries ordinary information; amber marks the one thing

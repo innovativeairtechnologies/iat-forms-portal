@@ -10,6 +10,28 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-26 — The survey now asks what the makeup air actually is, and where it goes
+
+The ventilation box on step 7 is now **"Outdoor makeup air, vent for people, or exhaust"**, and it
+asks two things it never used to.
+
+**What that air actually is.** Until now the survey assumed makeup air was raw outdoor air on the
+worst summer day. Often it is not — it can come off a pre-treated deck or out of a conditioned
+corridor. There is now a temperature and moisture entry for it, the same one step 3 uses, and
+leaving it blank still assumes the outdoor design condition exactly as before. On 500 cfm into a
+75°F room the difference between raw outdoor air and pre-treated air is roughly twenty-fold, so it
+is worth a question.
+
+**Where that air lands.** A new choice: **Dehumidifier load (preferred)** or **Room load**. If the
+air is ducted to the dehumidifier and dried before it reaches the room, its moisture is a load on
+the unit. If it is blown into the space untreated, it is part of the room load and the unit has to
+supply far more dry air to hold the room against it. Same water either way — but very different
+equipment. On our worked example the dry air needed goes from about 850 cfm to about 8,400.
+
+The survey now says which of the two it assumed, on the page and on the PDF, rather than leaving it
+to be inferred. Existing quote requests are unaffected: they keep the arrangement they were quoted
+on.
+
 ## 2026-08-26 — A conveyor pass-through is no longer treated as a door that opens and closes
 
 Picking **Conveyor pass-through** on the openings step used to ask how many times an hour it opens

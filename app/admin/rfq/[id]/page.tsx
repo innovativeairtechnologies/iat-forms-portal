@@ -249,6 +249,18 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                   <Field label="Unvented combustion">{d.gasCfh ? `${d.gasCfh} cu.ft/hr` : 'None recorded'}</Field>
                   <Field label="Ventilation in">{d.ventCfm ? `${d.ventCfm} cfm` : 'None recorded'}</Field>
                   <Field label="Exhaust out">{d.exhaustCfm ? `${d.exhaustCfm} cfm` : 'None recorded'}</Field>
+                  {(d.ventCfm || d.exhaustCfm) && (
+                    <>
+                      <Field label="Makeup air condition">
+                        {d.ventRhPct ? `${d.ventTempF}°F · ${d.ventRhPct}% rh` : 'Outdoor design condition'}
+                      </Field>
+                      <Field label="Counted as">
+                        {d.ventLoadTarget === 'room'
+                          ? 'Room load — delivered into the space'
+                          : 'Dehumidifier load — dried upstream'}
+                      </Field>
+                    </>
+                  )}
                 </div>
               </Card>
             </>

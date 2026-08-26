@@ -5,7 +5,8 @@ import { rateLimit } from '@/lib/rate-limit'
 import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
 import {
-  applicationLabel, emptyRfq, normalizeMode, normalizeRoomSizeMode, setCondition,
+  applicationLabel, emptyRfq, normalizeMode, normalizeRoomSizeMode,
+  normalizeVentLoadTarget, setCondition,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
 
@@ -85,6 +86,12 @@ function coerce(raw: unknown): RfqData {
   // through roomDims() to the dimensions branch and read roomL/W/H that volume
   // mode never filled in, silently producing a zero-volume survey.
   out.roomSizeMode = normalizeRoomSizeMode(src.roomSizeMode)
+
+  // Same reasoning again: a string union the generic copy would accept as
+  // anything. 'room' vs 'dehumidifier' decides whether the make-up air's moisture
+  // is inside the room load and inside the supply-air sizing, so a junk value
+  // falling through to the wrong branch changes the equipment.
+  out.ventLoadTarget = normalizeVentLoadTarget(src.ventLoadTarget)
 
   // The moisture-unit fields are string unions, so the generic string copy above
   // would happily accept "banana" and hand it to the converter. Pin them to the

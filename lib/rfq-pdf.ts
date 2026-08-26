@@ -432,13 +432,35 @@ function loadsPage(ctx: Ctx) {
 
   overline(doc, 'INTERNAL LOADS RECORDED', M, y, C.inkMuted)
   y += 4
+  // ⚠️ NO NEW ROW HERE — the condition rides on the row that already exists.
+  //
+  // The make-up air's condition has to be on the record: the customer cannot check
+  // the estimate without it, and "outdoor design" against a pre-treated deck is a
+  // ~20x swing on the same cfm. But this table sits directly above the ESTIMATED
+  // BREAKDOWN block, and that block's ensure() reserve is HONEST — measured at
+  // 97.4mm actual against 96.4mm reserved, i.e. very slightly under. So there is no
+  // slack to reclaim, and every row added here costs 8mm of real estate.
+  //
+  // A separate "Makeup air" row spilled the breakdown onto a continuation page for
+  // any survey with a second opening, or with the air counted as room load. Folding
+  // the same text into "Ventilation air in" costs nothing. WHERE the load lands is
+  // already on the page — it is the sub-line of the Makeup air load tile below.
+  const ventWhen = data.ventRhPct
+    ? `${fmt(numOf(data.ventTempF))}°F · ${conditionEntered(data, 'vent')}`
+    : 'outdoor design'
+  const ventDetail = `${ventWhen}, ${fmtGrains(load.ventGrains)} gr/lb`
+
   y = table(doc, M, y, CW, ['Source', 'What you told us'], [
     ['People', data.occupants ? `${data.occupants} × ${data.activity.toLowerCase()}` : 'None recorded'],
     ['Product / process moisture', data.productLoadLbHr ? `${data.productLoadLbHr} lb of water per hour${data.productDescription ? ` (${data.productDescription})` : ''}` : 'None recorded'],
     ['Unvented combustion', data.gasCfh ? `${data.gasCfh} cu.ft/hr of gas` : 'None recorded'],
     ['Open water / wet surfaces', data.wetAreaSqFt ? `${data.wetAreaSqFt} sq.ft at ${data.wetWaterTempF}°F` : 'None recorded'],
-    ['Ventilation air in', data.ventCfm ? `${fmt(numOf(data.ventCfm))} cfm` : 'None recorded'],
-    ['Exhaust air out', data.exhaustCfm ? `${fmt(numOf(data.exhaustCfm))} cfm` : 'None recorded'],
+    ['Ventilation air in', data.ventCfm ? `${fmt(numOf(data.ventCfm))} cfm · ${ventDetail}` : 'None recorded'],
+    // The condition rides on the exhaust row instead when exhaust is what drives the
+    // make-up air — estimateLoad takes max(vent, exhaust), so either can be the term.
+    ['Exhaust air out', data.exhaustCfm
+      ? `${fmt(numOf(data.exhaustCfm))} cfm${data.ventCfm ? '' : ` · ${ventDetail}`}`
+      : 'None recorded'],
   ], [0.34, 0.66])
   y += 6
 
@@ -451,7 +473,16 @@ function loadsPage(ctx: Ctx) {
   // Totals strip
   const totals: TileSpec[] = [
     { label: 'Room internal load', value: fmt(load.internalGrPerHr), unit: 'gr/hr', sub: `${fmt(load.internalGrPerHr / 7000, 1)} lb/hr, includes ${Math.round(load.safetyFactor * 100)}% safety factor`, tone: C.green, soft: C.greenSoft },
-    { label: 'Ventilation air load', value: fmt(load.ventilationGrPerHr), unit: 'gr/hr', sub: load.ventilationGrPerHr > 0 ? 'Dried upstream, kept out of the room total' : 'No ventilation air recorded', tone: C.blue, soft: C.blueSoft },
+    // ⚠️ Shows ventGrPerHr, NOT ventilationGrPerHr. The latter is zero when the air
+    // is counted as room load, so the old tile would have read "0 gr/hr" for a
+    // survey whose make-up air was the single largest term in the breakdown above.
+    { label: 'Makeup air load', value: fmt(load.ventGrPerHr), unit: 'gr/hr',
+      sub: load.ventGrPerHr <= 0
+        ? 'No makeup air recorded'
+        : load.ventTarget === 'room'
+          ? 'Delivered into the room — included in the room load'
+          : 'Dried upstream, kept out of the room total',
+      tone: C.blue, soft: C.blueSoft },
     // ⚠️ The amber "Total to remove" tile was here and came out on 2026-08-25, with
     // the page-1 headline panel, at the owner's request. Still calculated, still on
     // the record in rfq_requests.summary — off the customer's copy only. The two
@@ -460,7 +491,11 @@ function loadsPage(ctx: Ctx) {
   y = tileRow(doc, totals, M, y, CW)
   y += 8
 
-  text(doc, 'Ventilation air is carried separately on purpose: the dehumidifier dries it before it reaches the room, so folding it into the room total would oversize the system.',
+  // ⚠️ CONDITIONAL, because the old sentence is FALSE for a room-load survey — it
+  // asserted the opposite of what that survey had just been charged.
+  text(doc, load.ventTarget === 'room'
+      ? 'Makeup air is counted inside the room load here, because it is delivered into the space untreated. That is why the dry air figure is higher than the internal sources alone would suggest.'
+      : 'Ventilation air is carried separately on purpose: the dehumidifier dries it before it reaches the room, so folding it into the room total would oversize the system.',
     M, y + 4, { size: 7, color: C.inkMuted })
   // The old rose "PRELIMINARY ESTIMATE" panel lived here. It is gone because
   // stampEveryPage() now prints the disclaimer on every page — two copies on

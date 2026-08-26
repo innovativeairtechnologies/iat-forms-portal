@@ -188,6 +188,35 @@ export const ROOM_RENDER_EDGES = {
   floor: { x: 0.479, y: 0.950 },
 } as const
 
+/**
+ * Where the make-up / vent air's moisture lands.
+ *
+ * 'dehumidifier' — the air is ducted to the unit and dried BEFORE it reaches the
+ *   room. Its moisture is a load on the UNIT, carried separately from the room
+ *   load and excluded from the supply-air sizing. ASHRAE Ch. 5 is explicit that
+ *   folding it into the room load grossly oversizes the system. This is what the
+ *   engine did for every survey before the choice existed, so it is the default
+ *   AND what the wizard marks preferred.
+ *
+ * 'room' — the air is delivered into the space untreated. Its moisture is then
+ *   genuinely part of the room load: it shows up as a line in the breakdown, is
+ *   inside the safety factor with everything else, and RAISES the dry air the
+ *   unit has to supply.
+ *
+ * ⚠️ These are not two ways of reporting one number — they are different systems,
+ * and they produce different equipment. Do not "simplify" one into the other.
+ */
+export type VentLoadTarget = 'dehumidifier' | 'room'
+
+export const VENT_LOAD_TARGETS: { value: VentLoadTarget; label: string }[] = [
+  { value: 'dehumidifier', label: 'Dehumidifier load (preferred)' },
+  { value: 'room', label: 'Room load' },
+]
+
+export function normalizeVentLoadTarget(v: unknown): VentLoadTarget {
+  return VENT_LOAD_TARGETS.some(t => t.value === v) ? (v as VentLoadTarget) : 'dehumidifier'
+}
+
 export type RoomSizeMode = 'dimensions' | 'volume'
 
 export const ROOM_SIZE_MODES: { value: RoomSizeMode; label: string }[] = [
@@ -854,9 +883,24 @@ export type RfqData = {
   wetAreaSqFt: string
   wetWaterTempF: string
 
-  // Ventilation
+  // Ventilation / make-up air
   ventCfm: string
   exhaustCfm: string
+  /**
+   * The condition of the make-up air itself. Blank falls back to the outdoor
+   * design point — which is what estimateLoad used before this existed, so an
+   * untouched survey computes exactly as it did.
+   *
+   * Worth asking separately because make-up air is not always raw outdoor air:
+   * it can come off a pre-treated deck, out of a conditioned corridor, or from a
+   * neighbouring space at a condition nothing else on this form describes.
+   */
+  ventTempF: string
+  ventRhPct: string
+  ventMoistureMode: MoistureMode
+  ventMoistureValue: string
+  /** See VentLoadTarget — different systems, not two views of one number. */
+  ventLoadTarget: VentLoadTarget
 
   // Equipment & utilities
   installLocation: string
@@ -911,6 +955,10 @@ export function emptyRfq(): RfqData {
     occupants: '', activity: 'Light Work',
     productLoadLbHr: '', productDescription: '', gasCfh: '', wetAreaSqFt: '', wetWaterTempF: '70',
     ventCfm: '', exhaustCfm: '',
+    // Blank condition = fall back to the outdoor design point. 'dehumidifier' is
+    // the default because it is what every survey before 2026-08-26 assumed.
+    ventTempF: '', ventRhPct: '', ventMoistureMode: 'rh', ventMoistureValue: '',
+    ventLoadTarget: 'dehumidifier',
     installLocation: 'Indoor', sizeRestrictions: '', construction: 'Galvanized (standard)',
     voltage: '460V / 3ph / 60Hz',
     chilledWaterEwt: '', hotWaterEwt: '', steamPsi: '',
@@ -925,7 +973,7 @@ export function emptyRfq(): RfqData {
 
 // ─── Conditions ───────────────────────────────────────────────────────────────
 
-export type ConditionKey = 'target' | 'surround' | 'outdoor' | 'leaving'
+export type ConditionKey = 'target' | 'surround' | 'outdoor' | 'leaving' | 'vent'
 
 /** Which canonical field each condition keeps in sync, and its default unit. */
 const CONDITION_CANON: Record<ConditionKey, { canon: 'rh' | 'gr'; defaultMode: MoistureMode }> = {
@@ -933,6 +981,9 @@ const CONDITION_CANON: Record<ConditionKey, { canon: 'rh' | 'gr'; defaultMode: M
   surround: { canon: 'rh', defaultMode: 'rh' },
   outdoor:  { canon: 'rh', defaultMode: 'rh' },
   leaving:  { canon: 'gr', defaultMode: 'gr' },
+  // Make-up / vent air. Blank on purpose — estimateLoad falls back to the outdoor
+  // design point, which is what it used before this condition existed.
+  vent:     { canon: 'rh', defaultMode: 'rh' },
 }
 
 /**
@@ -1066,8 +1117,20 @@ export type LoadEstimate = {
   lines: LoadLine[]
   /** Internal room load, gr/hr, after the safety factor. */
   internalGrPerHr: number
-  /** Ventilation / make-up air load, gr/hr — carried separately, per Ch. 5. */
+  /**
+   * Make-up air load carried SEPARATELY from the room, gr/hr.
+   * Zero when ventLoadTarget is 'room' — there it is a line in `lines` instead.
+   */
   ventilationGrPerHr: number
+  /**
+   * The make-up air's moisture load whichever way it is counted, gr/hr, after the
+   * safety factor. Use this to SHOW the figure; use ventilationGrPerHr for totals.
+   */
+  ventGrPerHr: number
+  /** Where that load was applied. See VentLoadTarget. */
+  ventTarget: VentLoadTarget
+  /** Grains of the make-up air itself — outdoor design point unless overridden. */
+  ventGrains: number
   totalGrPerHr: number
   totalLbPerHr: number
   totalPintsPerDay: number
@@ -1255,16 +1318,50 @@ export function estimateLoad(data: RfqData): LoadEstimate {
     })
   }
 
+  // — Fresh air / make-up (Eq. 5.13) —
+  //
+  // The AIR'S OWN CONDITION, not necessarily the outdoor design point: make-up
+  // air can come off a pre-treated deck or out of a conditioned corridor. Blank
+  // falls back to outdoor, which is what this used before the field existed, so
+  // an untouched survey is unchanged.
+  const ventEntered = String(data.ventRhPct ?? '').trim() !== ''
+  const ventT = ventEntered ? num(data.ventTempF, outT) : outT
+  const ventRh = ventEntered ? num(data.ventRhPct, outRh) : outRh
+  const ventGr = ventEntered ? grains(ventT, ventRh, elev) : outGr
+
+  const ventCfm = Math.max(num(data.ventCfm), num(data.exhaustCfm))
+  const ventTarget = normalizeVentLoadTarget(data.ventLoadTarget)
+  const ventRaw = ventCfm > 0 ? Math.max(ventCfm * density * 60 * (ventGr - roomGr), 0) : 0
+
+  // ⚠️ WHERE THIS LANDS IS THE WHOLE POINT OF ventLoadTarget, and the two branches
+  // size different equipment.
+  //
+  //   'dehumidifier' — ducted to the unit and dried upstream, so it is carried
+  //     SEPARATELY and stays out of dryAirCfm. Ch. 5 is explicit that folding it
+  //     into the room load grossly oversizes the system. Default, and what every
+  //     survey before 2026-08-26 assumed.
+  //
+  //   'room' — delivered into the space untreated, so it is a room load like any
+  //     other: pushed as a LINE here, which puts it in the breakdown bars, inside
+  //     the safety factor with everything else, and inside dryAirCfm — the unit
+  //     has to supply more dry air to hold the room against it.
+  //
+  // Pushed BEFORE rawInternal is summed, so the safety factor is applied once, to
+  // everything, rather than separately to this term.
+  if (ventTarget === 'room' && ventRaw > 0) {
+    lines.push({
+      key: 'ventilation',
+      label: 'Outdoor make-up air into the room',
+      grainsPerHour: ventRaw,
+      detail: `${fmt(ventCfm)} cfm at ${fmtGrains(ventGr)} gr/lb, delivered into the space`,
+    })
+  }
+
   const rawInternal = lines.reduce((s, l) => s + l.grainsPerHour, 0)
   const internal = rawInternal * (1 + SAFETY_FACTOR)
 
-  // — Fresh air / make-up (Eq. 5.13). Kept OUT of the internal total on purpose:
-  //   Chapter 5 is explicit that folding ventilation moisture into the room load
-  //   grossly oversizes the system, because the unit dries that air upstream. —
-  const ventCfm = Math.max(num(data.ventCfm), num(data.exhaustCfm))
-  const ventilation = ventCfm > 0
-    ? Math.max(ventCfm * density * 60 * (outGr - roomGr), 0) * (1 + SAFETY_FACTOR)
-    : 0
+  // Only the dehumidifier branch is carried outside the room load.
+  const ventilation = ventTarget === 'dehumidifier' ? ventRaw * (1 + SAFETY_FACTOR) : 0
 
   const total = internal + ventilation
   const supplyGr = Math.max(roomGr - supplyDepression(roomGr), 0.1)
@@ -1278,6 +1375,9 @@ export function estimateLoad(data: RfqData): LoadEstimate {
     lines,
     internalGrPerHr: internal,
     ventilationGrPerHr: ventilation,
+    ventGrPerHr: ventRaw * (1 + SAFETY_FACTOR),
+    ventTarget,
+    ventGrains: ventGr,
     totalGrPerHr: total,
     totalLbPerHr: total / GRAINS_PER_LB,
     // 1 lb of water ≈ 0.9586 US pints — the unit people actually picture.

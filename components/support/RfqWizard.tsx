@@ -20,7 +20,10 @@ import {
   TIGHTNESS_HELP, VOLTAGES, WALL_MATERIALS, DEFAULT_CEILING_FT,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
   estimateProcess, fmt, fmtDewPoint, fmtGrains, fToC, grains, modeIsTemperature, normalizeMode,
-  normalizeRoomSizeMode, presetFor, roomDims, setCondition, tempFromDisplay, tempToDisplay,
+  normalizeRoomSizeMode,
+  normalizeVentLoadTarget,
+  VENT_LOAD_TARGETS,
+  type VentLoadTarget, presetFor, roomDims, setCondition, tempFromDisplay, tempToDisplay,
   type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
   type ProcessPreset, type RfqData, type RoomPreset, type TempUnit, type Tightness, type Track,
   type VaporBarrier,
@@ -1430,7 +1433,7 @@ function StepBody({
     case 'space':       return <StepSpace data={data} set={set} load={load} />
     case 'shell':       return <StepShell data={data} set={set} setData={setData} />
     case 'openings':    return <StepOpenings data={data} setData={setData} />
-    case 'inside':      return <StepInside data={data} set={set} />
+    case 'inside':      return <StepInside data={data} set={set} setData={setData} />
     case 'leaving':     return <StepLeaving data={data} set={set} setData={setData} proc={proc} />
     case 'airstream':   return <StepAirstream data={data} set={set} />
     case 'entering':    return <StepEntering data={data} set={set} setData={setData} />
@@ -1903,7 +1906,9 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
   )
 }
 
-function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
+function StepInside({ data, set, setData }: {
+  data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>
+}) {
   const preset = presetFor(data) as RoomPreset | undefined
   const people = numOf(data.occupants)
 
@@ -2040,16 +2045,54 @@ function StepInside({ data, set }: { data: RfqData; set: SetFn }) {
         />
       </Grid>
 
-      <div className="rounded-xl border border-hairline bg-surface-soft p-4">
-        <p className="text-[12.5px] font-medium text-ink-secondary">Ventilation and exhaust</p>
-        <p className="mt-0.5 mb-3 text-[11.5px] leading-relaxed text-ink-muted">
-          Fresh air brought in for people or to replace what hoods and fans pull out. ASHRAE 62 asks for
-          roughly 15–25 cfm per person.
-        </p>
+      <div className="space-y-4 rounded-xl border border-hairline bg-surface-soft p-4">
+        <div>
+          <p className="text-[12.5px] font-medium text-ink-secondary">Outdoor makeup air, vent for people, or exhaust</p>
+          <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-muted">
+            Fresh air brought in for people or to replace what hoods and fans pull out. ASHRAE 62 asks for
+            roughly 15–25 cfm per person.
+          </p>
+        </div>
         <Grid>
           <TextField label="Fresh air supplied" value={data.ventCfm} onChange={v => set('ventCfm', v)} type="number" suffix="cfm" />
           <TextField label="Air exhausted" value={data.exhaustCfm} onChange={v => set('exhaustCfm', v)} type="number" suffix="cfm" />
         </Grid>
+
+        {/* The make-up air's OWN condition. Blank falls back to the outdoor design
+            point from step 3, which is what the engine used before this existed —
+            so leaving it alone changes nothing. Worth asking because make-up air
+            is not always raw outdoor air: it can come off a pre-treated deck or
+            out of a conditioned corridor, and at 500 cfm that is the difference
+            between roughly 162,000 and 7,000 gr/hr. */}
+        <ConditionField
+          label="Condition of that air"
+          hint="Leave blank and we use the outdoor design condition from step 3. Fill it in if the air is pre-treated or comes from somewhere conditioned."
+          tempLabel="Makeup air temperature"
+          data={data}
+          conditionKey="vent"
+          onChange={setData}
+        />
+
+        {/* ⚠️ THESE TWO CHOICES SIZE DIFFERENT EQUIPMENT — see VentLoadTarget in
+            lib/rfq.ts. Dehumidifier load keeps it out of the room load and out of
+            the supply-air figure; room load makes it a line in the breakdown and
+            raises the dry air the unit must deliver (849 -> 8,438 cfm on the
+            worked example). The consequence is spelled out below the control
+            rather than left for the customer to infer. */}
+        <div>
+          <Segmented<VentLoadTarget>
+            label="Where does that air land?"
+            tone="sky"
+            value={normalizeVentLoadTarget(data.ventLoadTarget)}
+            onChange={v => set('ventLoadTarget', v)}
+            options={VENT_LOAD_TARGETS.map(t => ({ value: t.value, label: t.label }))}
+          />
+          <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+            {normalizeVentLoadTarget(data.ventLoadTarget) === 'room'
+              ? 'Delivered into the space untreated, so its moisture counts as part of the room load and the unit has to supply more dry air to hold the room against it.'
+              : 'Ducted to the dehumidifier and dried before it reaches the room, so it is a load on the unit rather than on the space. This is the usual arrangement.'}
+          </p>
+        </div>
       </div>
       </div>
       )}
