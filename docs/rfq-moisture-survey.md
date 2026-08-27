@@ -1300,6 +1300,37 @@ reintroduces the exact behaviour this removes. Every reserve before a splitting 
 Sixteen doors costs no more pages than eight, which is the splitting doing its job. Worst remaining
 blank is 19mm, down from 53.
 
+## PDF headers (2026-08-27)
+
+**The project name is in the header of every page.** A sheet separated from the rest could not
+previously be tied back to a job. The cover carries it in the reference chip, the takeaway in its
+subtitle, and continuation pages right-aligned under the reference.
+
+### ⚠️ The mark is centred on the TEXT BLOCK, not on the band
+
+All three headers had it positioned against the top of the band, so it floated above the wording
+rather than sitting with it:
+
+| Header | Type runs | centres | Mark centred at | Now |
+|---|---|---|---|---|
+| Cover (40mm band) | 8.7 → 37.6 | 23.1 | **12.5** | 23.0 |
+| Continuation (30mm) | 11.1 → 24.3 | 17.7 | **14.0** | 17.7 |
+| Takeaway (24mm) | 5.7 → 22.0 | 13.9 | **11.7** | 13.9 |
+
+🔴 **Move any line in a header and move the mark with it.** These are hand-computed against the
+baselines above them; nothing recalculates. The cover has already been broken once this way — the
+address lines were left behind when the band shrank and printed on white below it.
+
+### A draft names the project, not "PREVIEW" twice
+
+`meta.reference` is the literal string `PREVIEW` before submission, so the cover chip read
+**DRAFT PREVIEW** over **PREVIEW**. It now shows the project name, and continuation headers show
+`DRAFT` in the same slot. A submitted document is unchanged and still carries its reference, which
+is the entire purpose of that chip.
+
+⚠️ The per-page footer still prints `Request for Quote PREVIEW` on a draft. Left alone — it reads
+as a preview marker there rather than a repetition.
+
 ### Four rules for editing the PDF
 
 1. **Every string passes through `san()`.** jsPDF's Helvetica is WinAnsi-encoded and does not

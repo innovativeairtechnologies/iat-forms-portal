@@ -182,7 +182,10 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
   gradientBand(doc, 0, 0, PAGE_W, 40, C.brandGreenDeep, C.brandNavy)
   ghostMark(doc, logoLight, PAGE_W - 26, 25, 21)
 
-  markTile(doc, logoColor, M, 6, 10.5, 13)
+  // ⚠️ CENTRED ON THE TEXT BLOCK, NOT THE BAND. The type runs from the overline cap
+  // (~8.7) to the second address line (~37.6) and centres at 23.1; the tile at y = 6
+  // centred at 12.5 and sat visibly high. Move any of those lines and move this.
+  markTile(doc, logoColor, M, 15, 13.5, 16)
 
   overline(doc, COMPANY.name.toUpperCase(), M + 17, 11, C.onNavyStrong)
   text(doc, 'Request for Quote', M + 17, 20, { size: 18, weight: 'bold', color: C.white })
@@ -208,7 +211,12 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
   doc.roundedRect(PAGE_W - M - chipW, 9, chipW, 16, 2.5, 2.5, 'F')
   doc.setGState(new (doc as unknown as { GState: new (o: object) => object }).GState({ opacity: 1 }))
   overline(doc, meta.submitted ? 'REFERENCE' : 'DRAFT PREVIEW', PAGE_W - M - chipW + 5, 15, C.onNavy)
-  text(doc, meta.reference, PAGE_W - M - chipW + 5, 21.5, { size: 10.5, weight: 'bold', color: C.white })
+  // ⚠️ A DRAFT NAMES THE PROJECT, not the reference. `meta.reference` is the string
+  // "PREVIEW" before submission, which under a "DRAFT PREVIEW" overline printed the
+  // word twice and told the reader nothing. Submitted documents still show the real
+  // reference, which is the whole point of the chip.
+  text(doc, truncate(doc, meta.submitted ? meta.reference : (data.projectName || 'Untitled project'), chipW - 10, 10.5),
+    PAGE_W - M - chipW + 5, 21.5, { size: 10.5, weight: 'bold', color: C.white })
   text(doc, meta.submittedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     PAGE_W - M, 31.5, { size: 8, color: C.onNavy, align: 'right' })
 
@@ -695,7 +703,9 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
   // fixed vertical budget that already clears CONTENT_BOTTOM by about 4mm. Three
   // stacked lines on the left and two on the right is what fits. If anything is
   // added here, take the room from within the band, not from the page.
-  markTile(doc, logoColor, M, 4, 12, 15.3)
+  // ⚠️ CENTRED ON THE TEXT BLOCK. The overline cap sits near 5.7 and the project
+  // line descends to about 22, centring at 13.9; y = 4 put the tile at 11.7.
+  markTile(doc, logoColor, M, 6.2, 12, 15.3)
   overline(doc, COMPANY.name.toUpperCase(), M + 17.5, 8, C.onNavyStrong)
   text(doc, 'YOUR DEHUMIDIFICATION SNAPSHOT', M + 17.5, 15,
     { size: 12.5, weight: 'bold', color: C.white, spacing: 0.25 })
@@ -898,10 +908,23 @@ function newPage(ctx: Ctx, title: string, sub: string) {
   doc.addPage()
   paper(doc)
   gradientBand(doc, 0, 0, PAGE_W, 30, C.brandGreenDeep, C.brandNavy)
-  markTile(doc, ctx.logoColor, M, 7, 11, 14)
+  // ⚠️ THE MARK IS CENTRED ON THE TEXT BLOCK, NOT ON THE BAND. The title sits at
+  // 16 and the sub at 22.5, so the type runs roughly 11 to 24 and centres at 17.7.
+  // At y = 7 the tile centred at 14 and read as sitting high. Move the type, move
+  // this with it.
+  markTile(doc, ctx.logoColor, M, 10.7, 11, 14)
   text(doc, title, M + 16, 16, { size: 14, weight: 'bold', color: C.white })
   text(doc, sub, M + 16, 22.5, { size: 8.5, color: C.onNavy })
-  text(doc, ctx.meta.reference, PAGE_W - M, 16, { size: 9, weight: 'bold', color: C.onNavy, align: 'right' })
+  // Same reasoning as the cover chip: before submission `meta.reference` is the
+  // literal string "PREVIEW", which sat directly above the project name and said
+  // nothing. A draft is labelled as one; a submitted document carries its reference.
+  text(doc, ctx.meta.submitted ? ctx.meta.reference : 'DRAFT', PAGE_W - M, 16,
+    { size: 9, weight: 'bold', color: C.onNavy, align: 'right' })
+  // The project name on EVERY page (owner, 2026-08-27), so a sheet that gets
+  // separated from the rest can still be identified. Truncated against the space
+  // left by the title on the same line.
+  text(doc, truncate(doc, ctx.data.projectName || 'Untitled project', CW * 0.42, 8), PAGE_W - M, 22.5,
+    { size: 8, color: C.onNavy, align: 'right' })
 }
 
 /**

@@ -123,6 +123,22 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — The project name on every page of the quote document
+
+A page that gets separated from the rest of the document had nothing on it to say which job it
+belonged to. **The project name now appears in the header of every page.**
+
+**The mark in the header sat high on all three headers.** It was positioned against the top of the
+green band rather than against the block of text beside it, so it read as floating above the wording
+instead of sitting with it. On the cover the type ran from roughly 9mm to 38mm down the band while
+the mark centred at 12mm. All three are now centred on their own text.
+
+**The draft label no longer says the same word twice.** Before a request is submitted, the panel on
+the second page read "DRAFT PREVIEW" over "PREVIEW" — the same word again, telling the reader
+nothing. It now carries the project name, which is what somebody looking at that corner of the page
+actually wants. A submitted document still shows its real reference number, which is the point of
+that panel. Continuation pages follow the same rule and are simply marked DRAFT.
+
 ## 2026-08-27 — Two decimal places, and a full check of the arithmetic
 
 The two boxes where a figure can be entered by hand on the envelope step now accept **two decimal
