@@ -26,6 +26,8 @@ import {
   type RfqData,
   TIGHTNESS_RATES,
   VAPOR_BARRIER_PERMS,
+  type TightnessBand,
+  type VaporClass,
   applicationLabel,
   conditionEntered,
   dewPointF,
@@ -352,20 +354,27 @@ function spacePage(ctx: Ctx, startY: number): number {
   // Tightness sets the whole infiltration line (Loose is 6× Tight) and used to be
   // recorded nowhere on the document — only inside a breakdown-bar caption. The
   // rate is spelled out because the band name alone does not say what was assumed.
-  // The `??` fallback mirrors estimateLoad exactly, so a survey stored under a
-  // retired band prints the rate the math actually used rather than a blank.
-  // ⚠️ MIRRORS estimateLoad EXACTLY, including the customer-entered rate winning
-  // over the band. If these two ever disagree the document prints one assumption
-  // and the quote is built on another.
-  const typedRate = numOf(data.tightnessCustom)
-  const leakRate = typedRate > 0 ? typedRate : TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
+  // ⚠️ MIRRORS estimateLoad EXACTLY, down to reading the typed figure only when
+  // 'Custom' is the selected band. If these two ever disagree the document prints
+  // one assumption and the quote is built on another.
+  const typedRate = data.tightness === 'Custom' ? numOf(data.tightnessCustom) : 0
+  const leakRate = typedRate > 0
+    ? typedRate
+    : TIGHTNESS_RATES[data.tightness as TightnessBand] ?? TIGHTNESS_RATES.Average
+  // Same three-way read as estimateLoad: a class from the table, the typed figure
+  // when 'Custom' is chosen, and nothing for None or unanswered.
+  const retarderPerm = data.vaporBarrier === 'Custom'
+    ? numOf(data.vaporBarrierCustom)
+    : data.vaporBarrier === 'None' || !data.vaporBarrier ? 0
+      : VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporClass] ?? 0
   const envelopeRows: string[][] = [
     ['Walls', data.wallMaterial],
     ['Roof / ceiling', data.ceilingMaterial],
     ['Floor', data.floorMaterial],
-    ['Vapor retarder', data.vaporBarrier
-      ? `${data.vaporBarrier} — ${VAPOR_BARRIER_PERMS[data.vaporBarrier].toFixed(2)} grains/hr/sq.ft/inHg`
-      : 'None credited'],
+    ['Vapor retarder', retarderPerm > 0
+      ? `${data.vaporBarrier} — ${retarderPerm.toFixed(2)} grains/hr/sq.ft/inHg`
+      : data.vaporBarrier === 'None' ? 'None — no retarder credited'
+        : 'Not stated — no retarder credited'],
     ['Space around the room', data.surroundSource === 'outdoor'
       ? 'Outside air — the outdoor design condition'
       : data.surroundSource === 'manual'

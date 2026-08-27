@@ -1133,20 +1133,29 @@ evaluated separately — doors have their own term and the roof and floor are ca
 so folding the ceiling into this line was counting it twice. On a 50 × 40 × 14 room the two changes
 together take Average from 1,356 to 252 cu.ft/hr.
 
-**The customer can type their own rate.** `tightnessCustom`, in the same cu.ft/hr per sq.ft of
-exterior wall. Anything above zero replaces the band; zero, blank or junk falls back to it. The line
-printed under the control uses the same test as `estimateLoad`, so the page and the calculation
-cannot disagree.
+**There is a fourth band, Custom** (owner, 2026-08-27). Selecting it dims the other three and
+reveals a small box **on the same line**, holding `tightnessCustom` in the same cu.ft/hr per sq.ft
+of exterior wall.
+
+⚠️ **The typed figure is read ONLY while Custom is the selected band.** It briefly worked the other
+way — any value above zero won, whichever band was highlighted — which meant the buttons and the
+arithmetic could disagree in front of the customer.
+
+🔴 `validateStep('shell')` refuses to advance on a Custom band with an empty box. `estimateLoad`
+falls back to Average in that state so it cannot divide by a blank, and being quoted on a fallback
+nobody chose is the bug this survey has hit three times.
 
 ### The retarder is a class now, and it combines in series
 
 `'Yes' | 'No'` became **Class I / II / III**, each carrying an explicit permeance:
 
-| Class | | Permeance |
+| Choice | | Permeance |
 |---|---|---|
 | Class I | Polyethylene | 0.06 |
 | Class II | Kraft-faced batt | 0.60 |
 | Class III | Latex-painted gypsum | 3.00 |
+| **None** | no retarder | — |
+| **Custom** | tested assembly data | typed, decimals expected |
 
 grains/hr/sq.ft/inHg.
 
@@ -1168,8 +1177,13 @@ should — and with Class III gives 2.83. Permeation falls with each tighter cla
 ⚠️ **`permSealed` IS NO LONGER READ.** It stays in the tables as the record of what surveys before
 2026-08-27 were quoted under; nothing computes from it.
 
-⚠️ **BLANK IS A REAL STATE** and means no retarder credited — the bare material permeance is used.
-There is no "None" button; see the open questions.
+⚠️ **None and blank produce the same arithmetic** — no retarder credited, the bare material
+permeance — and differ only in what the record can honestly say afterwards. None is an answer;
+blank is an unanswered question. **None was added 2026-08-27**, closing the gap where a bare block
+or metal building could not be stated positively.
+
+⚠️ **Custom with an empty box credits NOTHING** rather than borrowing a class value, and
+`validateStep('shell')` will not advance in that state.
 
 ### The disclaimers are behind an ⓘ, not on the page
 

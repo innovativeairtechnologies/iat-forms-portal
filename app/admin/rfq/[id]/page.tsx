@@ -238,8 +238,16 @@ export default async function RfqDetailPage(props: { params: Promise<{ id: strin
                   <Field label="Floor">{d.floorMaterial}</Field>
                   {/* Yes/No until 2026-08-27, a retarder class since. Older records
                       still read Yes or No and that is what those were quoted under. */}
-                  <Field label="Vapor retarder">{d.vaporBarrier || 'None credited'}</Field>
-                  <Field label="Tightness">{Number(d.tightnessCustom) > 0 ? `${d.tightnessCustom} cfh/sq.ft (entered)` : d.tightness}</Field>
+                  <Field label="Vapor retarder">
+                    {d.vaporBarrier === 'Custom'
+                      ? `${d.vaporBarrierCustom} perm (entered)`
+                      : d.vaporBarrier || 'Not stated'}
+                  </Field>
+                  <Field label="Tightness">
+                    {d.tightness === 'Custom'
+                      ? `${d.tightnessCustom} cfh/sq.ft (entered)`
+                      : d.tightness}
+                  </Field>
                   {/* Which of the two the customer answered on step 5. Worth having on
                       the record: Outside air means the surrounding condition below IS
                       the ASHRAE design point, not a figure they measured. */}

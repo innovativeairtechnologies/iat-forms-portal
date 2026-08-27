@@ -27,6 +27,7 @@ import {
   type VentLoadTarget, presetFor, roomDims, setCondition, tempFromDisplay, tempToDisplay,
   type ActivityLevel, type ConditionKey, type DoorSpec, type Exposure, type MoistureMode,
   type ProcessPreset, type RfqData, type RoomPreset, type SurroundSource, type TargetSource, type TempUnit,
+  type TightnessBand, type VaporClass,
   type Tightness, type Track, type VaporBarrier,
 } from '@/lib/rfq'
 import { renderAsset, renderAssetUrl } from '@/lib/render-assets'
@@ -147,6 +148,8 @@ function TextField({
           placeholder={placeholder}
           aria-describedby={hint ? hintId : undefined}
           aria-required={required || undefined}
+          // Without a step, a number input defaults to step=1 and rejects decimals.
+          step={type === 'number' ? 'any' : undefined}
           inputMode={type === 'number' ? 'decimal' : undefined}
           className={`${inputCx} ${suffix ? 'pr-12' : ''} ${type === 'number' ? 'tabular-nums' : ''}`}
         />
@@ -222,10 +225,21 @@ function SelectField({
 
 /** Segmented control — the fastest possible answer for a short option set. */
 function Segmented<T extends string>({
-  label, hint, value, onChange, options, tone = 'sky',
+  label, hint, value, onChange, options, tone = 'sky', trailing, dimUnselected,
 }: {
   // A node, not a string: step 5 hangs an InfoDot off the end of two of these.
   label?: React.ReactNode; hint?: string; value: T; onChange: (v: T) => void
+  /**
+   * Rendered INSIDE the button row, after the last option — so a "Custom" box sits
+   * on the same line as the bands rather than under them in a full-width field.
+   */
+  trailing?: React.ReactNode
+  /**
+   * Mute the unselected options. Used when the selection supersedes them — a typed
+   * figure means the bands no longer describe what is being applied. They stay
+   * clickable: disabling them would strand anyone who wanted to go back.
+   */
+  dimUnselected?: boolean
   options: { value: T; label: string; title?: string }[]; tone?: Tone
 }) {
   const groupId = useId()
@@ -262,11 +276,12 @@ function Segmented<T extends string>({
               // never hovers, so nothing depends on it.
               title={o.title}
               onClick={() => onChange(o.value)}
+              data-dim={dimUnselected && !on ? '' : undefined}
               className={`rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
                 on
                   ? `border-transparent ring-1 ${TONE[tone].ring} ${TONE[tone].chip}`
                   : 'border-hairline bg-surface text-ink-muted hover:border-hairline-strong hover:text-ink-secondary'
-              }`}
+              } ${dimUnselected && !on ? 'opacity-40' : ''}`}
             >
               {o.label}
             </button>
@@ -547,6 +562,36 @@ function ConditionReadout({ tempF, rhPct, elevationFt, unit = 'F', tone = 'sky' 
       <Stat label="Grains" value={fmtGrains(grains(tempF, rhPct, elevationFt))} unit="gr/lb" />
       <Stat label="Dew point" value={asUnit(dewPointF(tempF, rhPct, elevationFt))} />
     </div>
+  )
+}
+
+/**
+ * The small number box a "Custom" band reveals, sized to sit ON THE SAME LINE as
+ * the bands rather than as a full-width field under them.
+ *
+ * ⚠️ step="any" IS THE POINT OF IT. Without a step, a number input defaults to
+ * step=1 and the browser treats 0.06 as invalid — which is why these boxes only
+ * ever took whole numbers.
+ */
+function InlineNum({ value, onChange, suffix, ariaLabel, autoFocus }: {
+  value: string; onChange: (v: string) => void; suffix: string; ariaLabel: string; autoFocus?: boolean
+}) {
+  const id = useId()
+  return (
+    <span className="relative inline-flex items-center">
+      <label htmlFor={id} className="sr-only">{ariaLabel}</label>
+      <input
+        id={id}
+        type="number"
+        step="any"
+        inputMode="decimal"
+        autoFocus={autoFocus}
+        value={value}
+        onChange={e => onChange(noLeadingZero(e.target))}
+        className={`w-[104px] rounded-lg border border-hairline bg-surface py-2 pl-3 pr-[46px] text-[13px] tabular-nums text-ink transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand`}
+      />
+      <span className="pointer-events-none absolute right-3 text-[11px] text-ink-faint">{suffix}</span>
+    </span>
   )
 }
 
@@ -1593,12 +1638,9 @@ function StepApplication({
         })}
       </div>
 
-      {chosen && (
-        <Callout tone="sky">
-          <strong className="font-semibold">What we&apos;re protecting:</strong> {chosen.driver}. We&apos;ve
-          pre-filled typical values for this application. Change anything that doesn&apos;t match your site.
-        </Callout>
-      )}
+      {/* ⚠️ A "What we're protecting: <driver>" Callout sat here and was removed on
+          2026-08-27, matching the same line taken off the PDF cover. `driver` is still
+          on the preset and still feeds the process-track copy. */}
 
       {chosen?.key.startsWith('other') && (
         <TextField
@@ -1897,33 +1939,66 @@ function StepShell({
           assumption nobody was asked to confirm.
 
           Do not put either back behind a toggle. */}
-      <Segmented<VaporBarrier>
-        label={
-          <span className="inline-flex items-center gap-1.5">
-            Is there a vapor retarder?
-            <InfoDot label="About these vapor permeance values" text={VAPOR_BARRIER_DISCLAIMER} />
-          </span>
-        }
-        hint="Hover a class to see the permeance we use for it."
-        tone="sky"
-        value={(data.vaporBarrier || '') as VaporBarrier}
-        onChange={v => set('vaporBarrier', v)}
-        options={(Object.keys(VAPOR_BARRIER_PERMS) as VaporBarrier[]).map(c => ({
-          value: c,
-          label: c,
-          title: `${VAPOR_BARRIER_HELP[c]}  ${VAPOR_BARRIER_PERMS[c].toFixed(2)} grains/hr/sq.ft/inHg`,
-        }))}
-      />
-      {data.vaporBarrier && (
-        <p className="-mt-2 text-[12px] leading-relaxed text-ink-muted">
-          <span className="font-medium text-ink-secondary">
-            {VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporBarrier].toFixed(2)} grains/hr/sq.ft/inHg
-          </span>
-          {' — '}
-          {VAPOR_BARRIER_HELP[data.vaporBarrier as VaporBarrier]} We put this in series with whatever the
-          walls, roof and floor are made of, so the assembly is always tighter than either on its own.
-        </p>
-      )}
+      <div>
+        <Segmented<VaporBarrier>
+          label={
+            <span className="inline-flex items-center gap-1.5">
+              Is there a vapor retarder?
+              <InfoDot label="About these vapor permeance values" text={VAPOR_BARRIER_DISCLAIMER} />
+            </span>
+          }
+          hint="Hover a class to see the permeance we use for it."
+          tone="sky"
+          value={(data.vaporBarrier || '') as VaporBarrier}
+          onChange={v => set('vaporBarrier', v)}
+          dimUnselected={data.vaporBarrier === 'Custom'}
+          options={[
+            ...(Object.keys(VAPOR_BARRIER_PERMS) as VaporClass[]).map(c => ({
+              value: c as VaporBarrier,
+              label: c,
+              title: `${VAPOR_BARRIER_HELP[c]}  ${VAPOR_BARRIER_PERMS[c].toFixed(2)} grains/hr/sq.ft/inHg`,
+            })),
+            { value: 'None' as VaporBarrier, label: 'None', title: 'No vapor retarder — the bare material permeance is used.' },
+            { value: 'Custom' as VaporBarrier, label: 'Custom', title: 'Enter a permeance from tested assembly data.' },
+          ]}
+          trailing={data.vaporBarrier === 'Custom' ? (
+            <InlineNum
+              value={data.vaporBarrierCustom}
+              onChange={v => set('vaporBarrierCustom', v)}
+              suffix="perm"
+              ariaLabel="Vapor retarder permeance, grains per hour per square foot per inch of mercury"
+              autoFocus
+            />
+          ) : undefined}
+        />
+        {/* What is ACTUALLY being applied. estimateLoad reads the same fields in the
+            same order, so this line and the calculation cannot disagree. */}
+        {data.vaporBarrier && (
+          <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+            {data.vaporBarrier === 'None' ? (
+              'No retarder credited — the walls, roof and floor are priced on their own permeance.'
+            ) : data.vaporBarrier === 'Custom' ? (
+              numOf(data.vaporBarrierCustom) > 0 ? (
+                <>
+                  <span className="font-medium text-ink-secondary">
+                    {numOf(data.vaporBarrierCustom)} grains/hr/sq.ft/inHg
+                  </span>
+                  {' — your own figure, put in series with the materials.'}
+                </>
+              ) : 'Enter a permeance and we will put it in series with the materials.'
+            ) : (
+              <>
+                <span className="font-medium text-ink-secondary">
+                  {VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporClass].toFixed(2)} grains/hr/sq.ft/inHg
+                </span>
+                {' — '}
+                {VAPOR_BARRIER_HELP[data.vaporBarrier as VaporClass]} We put this in series with whatever the
+                walls, roof and floor are made of, so the assembly is always tighter than either on its own.
+              </>
+            )}
+          </p>
+        )}
+      </div>
 
       <div>
         <Segmented<Tightness>
@@ -1936,40 +2011,48 @@ function StepShell({
           tone="sky"
           value={data.tightness}
           onChange={v => set('tightness', v)}
+          dimUnselected={data.tightness === 'Custom'}
           // The leakage rate each band actually applies, on hover — and printed
           // below whichever is chosen, so it is on the page rather than only in a
           // tooltip. This is the number that sets the whole infiltration term.
-          options={(Object.keys(TIGHTNESS_RATES) as Tightness[]).map(t => ({
-            value: t,
-            label: t,
-            title: `${TIGHTNESS_RATES[t].toFixed(2)} cu.ft/hr per sq.ft of exterior wall area`,
-          }))}
+          options={[
+            ...(Object.keys(TIGHTNESS_RATES) as TightnessBand[]).map(t => ({
+              value: t as Tightness,
+              label: t,
+              title: `${TIGHTNESS_RATES[t].toFixed(2)} cu.ft/hr per sq.ft of exterior wall area`,
+            })),
+            { value: 'Custom' as Tightness, label: 'Custom', title: 'Enter a measured or engineered leakage rate.' },
+          ]}
+          trailing={data.tightness === 'Custom' ? (
+            <InlineNum
+              value={data.tightnessCustom}
+              onChange={v => set('tightnessCustom', v)}
+              suffix="cfh/ft²"
+              ariaLabel="Leakage rate, cubic feet per hour per square foot of exterior wall"
+              autoFocus
+            />
+          ) : undefined}
         />
-        {/* What is ACTUALLY being applied, including when the customer has typed
-            over the band. estimateLoad uses the same test — a typed rate above zero
-            wins — so this line and the calculation cannot disagree. */}
         <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
-          <span className="font-medium text-ink-secondary">
-            {(numOf(data.tightnessCustom) > 0
-              ? numOf(data.tightnessCustom)
-              : TIGHTNESS_RATES[data.tightness]).toFixed(2)} cu.ft/hr per sq.ft of exterior wall
-          </span>
-          {' — '}
-          {numOf(data.tightnessCustom) > 0
-            ? 'your own figure, used instead of the band above.'
-            : TIGHTNESS_HELP[data.tightness]}
+          {data.tightness === 'Custom' ? (
+            numOf(data.tightnessCustom) > 0 ? (
+              <>
+                <span className="font-medium text-ink-secondary">
+                  {numOf(data.tightnessCustom)} cu.ft/hr per sq.ft of exterior wall
+                </span>
+                {' — your own figure, used instead of the bands.'}
+              </>
+            ) : 'Enter a rate in cu.ft/hr per sq.ft of exterior wall area.'
+          ) : (
+            <>
+              <span className="font-medium text-ink-secondary">
+                {TIGHTNESS_RATES[data.tightness as TightnessBand].toFixed(2)} cu.ft/hr per sq.ft of exterior wall
+              </span>
+              {' — '}
+              {TIGHTNESS_HELP[data.tightness as TightnessBand]}
+            </>
+          )}
         </p>
-
-        <div className="mt-3 sm:max-w-[300px]">
-          <TextField
-            label="Or enter your own leakage rate"
-            hint="If you have measured or engineered envelope data, use it. Anything above zero replaces the band."
-            value={data.tightnessCustom}
-            onChange={v => set('tightnessCustom', v)}
-            type="number"
-            suffix="cfh/sq.ft"
-          />
-        </div>
       </div>
 
 
@@ -2216,6 +2299,7 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
       <input
         id={id}
         type="number"
+        step="any"
         value={Number.isFinite(value) ? value : ''}
         onChange={e => onChange(parseFloat(noLeadingZero(e.target)) || 0)}
         className="w-full rounded-lg border border-hairline bg-surface px-2.5 py-1.5 text-[13px] tabular-nums text-ink transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
@@ -2982,6 +3066,11 @@ function validateStep(step: StepKey, d: RfqData): boolean {
       // makeup air, and step 1 fills it from the ASHRAE lookup. StepShell shows the
       // outdoor fields again whenever that lookup did NOT fill them, so this can
       // never become a gate with no way through it.
+      // A Custom band with an empty box would price the building on the Average
+      // fallback in estimateLoad — an assumed figure nobody chose, which is the bug
+      // this survey has hit three times. Make them type it.
+      if (d.tightness === 'Custom' && numOf(d.tightnessCustom) <= 0) return false
+      if (d.vaporBarrier === 'Custom' && numOf(d.vaporBarrierCustom) <= 0) return false
       return d.surroundSource !== ''
         && numOf(d.surroundTempF) !== 0
         && numOf(d.surroundRhPct) > 0

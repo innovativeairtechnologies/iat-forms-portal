@@ -123,6 +123,31 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — None, Custom, and boxes that accept a decimal
+
+Two answers were missing from the envelope step, and one of them mattered.
+
+**A building can now be said to have no vapor retarder at all.** The choice was Class I, II or III,
+which left a bare block wall or a metal building with nothing honest to select — not answering and
+answering "none" looked the same on the record. **None** is now a button of its own.
+
+**Both questions also take a figure of your own.** Choosing **Custom** on either the retarder or the
+building tightness dims the preset choices and opens a small box beside them, for a permeance from
+tested assembly data or a measured envelope leakage rate. The typed figure is used only while Custom
+is the selected choice, so the buttons and the arithmetic always say the same thing, and the survey
+will not move on until the box has something in it.
+
+**Those boxes take decimals.** They did not before — every number field in the survey was quietly
+restricted to whole numbers, which made a Class I permeance of 0.06 impossible to enter. Fixed
+across the whole survey, not only the new boxes: room dimensions, door sizes, airflows and utility
+figures all accept a decimal now.
+
+**The tightness box also stopped taking up half the step.** It sits on the same line as Tight,
+Average and Loose instead of below them as a full-width field.
+
+**Removed:** the "What we're protecting" line on the application step, matching the one taken off the
+quote document yesterday.
+
 ## 2026-08-27 — Leakage rates, vapor retarder classes, and a document that fills its pages
 
 **The building-leakage figures have been revised on engineering advice, and the change is larger

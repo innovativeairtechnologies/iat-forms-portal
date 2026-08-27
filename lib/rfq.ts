@@ -694,7 +694,14 @@ export const FLOOR_MATERIALS: MaterialOption[] = [
 // row holding 'Not sure' misses the lookup and takes the fallback. Before today
 // that landed on the same 0.6 it always used; now it lands on 0.30 — which only
 // matters if something recomputes such a row, and nothing does.
-export type Tightness = 'Tight' | 'Average' | 'Loose'
+/** The three named bands. Custom is a fourth CHOICE but has no table entry. */
+export type TightnessBand = 'Tight' | 'Average' | 'Loose'
+export type Tightness = TightnessBand | 'Custom'
+
+/** Pin the union — see the same reasoning on `roomSizeMode` in app/api/rfq. */
+export function normalizeTightness(v: unknown): Tightness {
+  return v === 'Tight' || v === 'Average' || v === 'Loose' || v === 'Custom' ? v : 'Average'
+}
 
 /**
  * Envelope air leakage, cu.ft/hr per sq.ft of GROSS EXTERIOR WALL AREA.
@@ -719,12 +726,12 @@ export type Tightness = 'Tight' | 'Average' | 'Loose'
  * ⚠️ These are a PHYSICS TABLE, not display copy — see the option-list rule in the
  * project memory. Change one only against a source, and say which.
  */
-export const TIGHTNESS_RATES: Record<Tightness, number> = {
+export const TIGHTNESS_RATES: Record<TightnessBand, number> = {
   Tight: 0.05,
   Average: 0.10,
   Loose: 0.20,
 }
-export const TIGHTNESS_HELP: Record<Tightness, string> = {
+export const TIGHTNESS_HELP: Record<TightnessBand, string> = {
   Tight: 'Purpose-built envelope: sealed penetrations, gasketed doors, taped vapor barrier.',
   Average: 'Newer building, normal construction. No deliberate sealing program.',
   Loose: 'Older or industrial shell: visible daylight at joints, unsealed conduit, worn door seals.',
@@ -760,16 +767,18 @@ export const TIGHTNESS_DISCLAIMER =
  * permeance is used. There is no 'None' button; see the open question raised with
  * the owner on 2026-08-27.
  */
-export type VaporBarrier = 'Class I' | 'Class II' | 'Class III'
+/** The three published classes. None and Custom are choices with no table entry. */
+export type VaporClass = 'Class I' | 'Class II' | 'Class III'
+export type VaporBarrier = VaporClass | 'None' | 'Custom'
 
 /** Permeance of the retarder itself, grains/hr/sq.ft/inHg. */
-export const VAPOR_BARRIER_PERMS: Record<VaporBarrier, number> = {
+export const VAPOR_BARRIER_PERMS: Record<VaporClass, number> = {
   'Class I': 0.06,
   'Class II': 0.60,
   'Class III': 3.00,
 }
 
-export const VAPOR_BARRIER_HELP: Record<VaporBarrier, string> = {
+export const VAPOR_BARRIER_HELP: Record<VaporClass, string> = {
   'Class I': 'Polyethylene sheet.',
   'Class II': 'Kraft-faced fiberglass batt.',
   'Class III': 'Latex-painted gypsum board.',
@@ -777,7 +786,9 @@ export const VAPOR_BARRIER_HELP: Record<VaporBarrier, string> = {
 
 /** Pin the union — see the same reasoning on `roomSizeMode` in app/api/rfq. */
 export function normalizeVaporBarrier(v: unknown): VaporBarrier | '' {
-  return v === 'Class I' || v === 'Class II' || v === 'Class III' ? v : ''
+  return v === 'Class I' || v === 'Class II' || v === 'Class III' || v === 'None' || v === 'Custom'
+    ? v
+    : ''
 }
 
 /** Shown behind the ⓘ beside the vapor retarder control, not printed on the page. */
@@ -1026,9 +1037,15 @@ export type RfqData = {
   vaporBarrier: VaporBarrier | ''
   /**
    * A leakage rate the customer typed, cu.ft/hr per sq.ft of exterior wall.
-   * Overrides the Tight/Average/Loose band whenever it is above zero.
+   * Read ONLY when `tightness === 'Custom'`. Decimals are the point of it.
    */
   tightnessCustom: string
+  /**
+   * A retarder permeance the customer typed, grains/hr/sq.ft/inHg.
+   * Read ONLY when `vaporBarrier === 'Custom'`. Decimals are the point of it —
+   * a Class I sheet is 0.06.
+   */
+  vaporBarrierCustom: string
   tightness: Tightness
 
   // Openings
@@ -1123,6 +1140,7 @@ export function emptyRfq(): RfqData {
     // Blank, not 'No' — the class buttons replaced the yes/no on 2026-08-27
     // and blank means no retarder credited.
     vaporBarrier: '',
+    vaporBarrierCustom: '',
     tightnessCustom: '',
     tightness: 'Average',
     doors: [],
@@ -1384,9 +1402,18 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   const wallArea = 2 * (L + W) * H
   const ceilArea = L * W
   const floorArea = L * W
-  // The retarder permeance, or undefined when none was chosen. See VaporBarrier:
-  // blank is a real state and means no retarder credited.
-  const retarderPerm = VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporBarrier]
+  // The retarder permeance, or undefined when there is not one to credit.
+  //
+  //   'None'   — answered, and the answer is that there is no retarder.
+  //   ''       — not answered yet. Same arithmetic as None; the two differ only
+  //              in what the record can honestly say afterwards.
+  //   'Custom' — the customer's own figure, and ONLY if it is above zero. A
+  //              Custom selection with an empty box must not silently borrow a
+  //              class value, so it credits nothing until they type one.
+  const retarderPerm =
+    data.vaporBarrier === 'Custom' ? (num(data.vaporBarrierCustom, 0) > 0 ? num(data.vaporBarrierCustom, 0) : undefined)
+      : data.vaporBarrier === 'None' || data.vaporBarrier === '' ? undefined
+        : VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporClass]
   const permOf = (list: MaterialOption[], label: string) => {
     // ⚠️ Renaming a material label silently re-prices every survey that stored the
     // old one: the lookup is an exact string match and misses fall through to the
@@ -1431,12 +1458,14 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   // their own term, so including the ceiling here was counting it twice. See
   // TIGHTNESS_RATES — the rates changed at the same time and the two go together.
   const leakArea = wallArea
-  // A rate the customer typed beats the band. num() returns 0 for blank or junk,
-  // and a zero or negative rate is not an answer, so the band stands.
-  const typedRate = num(data.tightnessCustom, 0)
+  // 'Custom' is a band like the other three; the typed figure is only read when it
+  // is selected. An empty or junk box falls back to Average rather than pricing the
+  // building at zero leakage, and validateStep refuses to advance in that state, so
+  // the fallback is a guard rather than an assumption anybody is quoted on.
+  const typedRate = data.tightness === 'Custom' ? num(data.tightnessCustom, 0) : 0
   const leakRate = typedRate > 0
     ? typedRate
-    : TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
+    : TIGHTNESS_RATES[data.tightness as TightnessBand] ?? TIGHTNESS_RATES.Average
   const infiltration = Math.max(leakArea * leakRate * density * (surGr - roomGr), 0)
   if (volume > 0) {
     lines.push({

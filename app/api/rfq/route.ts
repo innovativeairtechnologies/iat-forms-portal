@@ -6,7 +6,7 @@ import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
 import {
   applicationLabel, emptyRfq, normalizeMode, normalizeRoomSizeMode,
-  normalizeSurroundSource, normalizeTargetSource, normalizeVaporBarrier,
+  normalizeSurroundSource, normalizeTargetSource, normalizeTightness, normalizeVaporBarrier,
   normalizeVentLoadTarget, setCondition,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
@@ -112,6 +112,9 @@ function coerce(raw: unknown): RfqData {
   // it is a three-way union now, and blank means no retarder credited. An unknown
   // value must land on blank rather than being stored and later read as a class.
   out.vaporBarrier = normalizeVaporBarrier(src.vaporBarrier)
+  // Gained a fourth and fifth member on 2026-08-27 (None, Custom) and was still
+  // riding the generic string branch, which would take any text at all.
+  out.tightness = normalizeTightness(src.tightness)
 
   // The moisture-unit fields are string unions, so the generic string copy above
   // would happily accept "banana" and hand it to the converter. Pin them to the
