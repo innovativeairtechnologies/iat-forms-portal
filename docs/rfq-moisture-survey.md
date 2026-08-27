@@ -1164,7 +1164,14 @@ together take Average from 1,356 to 252 cu.ft/hr.
 
 **There is a fourth band, Custom** (owner, 2026-08-27). Selecting it dims the other three and
 reveals a small box **on the same line**, holding `tightnessCustom` in the same cu.ft/hr per sq.ft
-of exterior wall.
+of exterior wall. The retarder control works identically, in grains/hr/sq.ft/inHg.
+
+🔴 **THE BOX SHIPPED INVISIBLE ONCE.** `Segmented` gained a `trailing` prop — destructured, typed
+and passed by both controls — and it was never rendered in the JSX. Selecting Custom did nothing
+visible and there was no way to type the figure. **An unused destructured prop is not a type
+error**, so the build stayed green and every model-level test passed, because they all bypassed the
+component. `Segmented` is now covered by a render test that pulls the real function out of
+RfqWizard.tsx, compiles it and asserts the slot appears inside the button row.
 
 ⚠️ **The typed figure is read ONLY while Custom is the selected band.** It briefly worked the other
 way — any value above zero won, whichever band was highlighted — which meant the buttons and the

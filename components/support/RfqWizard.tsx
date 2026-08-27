@@ -287,6 +287,14 @@ function Segmented<T extends string>({
             </button>
           )
         })}
+        {/* 🔴 RENDER THE SLOT. It was destructured, typed and passed by both step 5
+            controls and then never drawn — so selecting Custom did nothing visible
+            and there was no way to type the figure. An unused destructured prop is
+            not a type error, which is why the build stayed green through it.
+
+            Inside the row on purpose: this is what puts the box on the SAME LINE as
+            the bands rather than under them. */}
+        {trailing}
       </div>
     </div>
   )
