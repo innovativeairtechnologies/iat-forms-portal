@@ -337,6 +337,27 @@ const unitLabel = (label: string, unit: TempUnit): string =>
  * decimal ("0." on the way to "0.5") is never touched. Arrow keys were always fine -
  * the browser writes a clean value - and still are.
  */
+/**
+ * Cap the decimals a customer can type, and correct the element itself.
+ *
+ * ⚠️ Only touches a value that ALREADY has too many decimals. A half-typed "0."
+ * on the way to "0.50" is left alone — clamping that would eat the decimal point
+ * as fast as it was typed. Truncates rather than rounds, so extra keystrokes are
+ * simply ignored instead of the number changing under the cursor.
+ *
+ * Same DOM-write reason as noLeadingZero: React compares node.value against the
+ * new value LOOSELY for type="number", so "0.125" and 0.12 can read as equal and
+ * the element is never corrected.
+ */
+function limitDecimals(el: HTMLInputElement, max = 2): string {
+  const raw = el.value
+  const m = raw.match(/^(-?\d*)\.(\d*)$/)
+  if (!m || m[2].length <= max) return raw
+  const cleaned = m[1] + '.' + m[2].slice(0, max)
+  el.value = cleaned
+  return cleaned
+}
+
 function noLeadingZero(el: HTMLInputElement): string {
   const raw = el.value
   const cleaned = raw.replace(/^(-?)0+(?=\d)/, '$1')
@@ -591,11 +612,13 @@ function InlineNum({ value, onChange, suffix, ariaLabel, autoFocus }: {
       <input
         id={id}
         type="number"
-        step="any"
+        // 0.01 rather than "any": the arrows step in hundredths, matching the two
+        // decimal places limitDecimals() allows.
+        step="0.01"
         inputMode="decimal"
         autoFocus={autoFocus}
         value={value}
-        onChange={e => onChange(noLeadingZero(e.target))}
+        onChange={e => { noLeadingZero(e.target); onChange(limitDecimals(e.target)) }}
         className={`w-[104px] rounded-lg border border-hairline bg-surface py-2 pl-3 pr-[46px] text-[13px] tabular-nums text-ink transition-colors hover:border-hairline-strong focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand`}
       />
       <span className="pointer-events-none absolute right-3 text-[11px] text-ink-faint">{suffix}</span>

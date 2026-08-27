@@ -347,6 +347,18 @@ export type ActivityLevel =
   | 'Athletics'
 
 /** gr/hr of water vapor released per person, by activity (IAT people-load table). */
+/**
+ * Pin the union. ⚠️ NOT COSMETIC: estimateLoad reads PEOPLE_LOADS[activity], and an
+ * unrecognised key gives undefined, so `perPerson > 0` is false and the ENTIRE
+ * people load disappears from the survey without an error. A body posting
+ * 'Light work' instead of 'Light Work' would be quoted with nobody in the room.
+ */
+export function normalizeActivity(v: unknown): ActivityLevel | '' {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(PEOPLE_LOADS, v)
+    ? v as ActivityLevel
+    : ''
+}
+
 export const PEOPLE_LOADS: Record<ActivityLevel, number> = {
   Seated: 1050,
   Standing: 1875,

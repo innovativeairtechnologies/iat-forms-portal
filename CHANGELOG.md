@@ -123,6 +123,32 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — Two decimal places, and a full check of the arithmetic
+
+The two boxes where a figure can be entered by hand on the envelope step now accept **two decimal
+places**. They were taking as many as anyone cared to type, which is more precision than either
+number carries.
+
+**Every calculation in the quote request has been checked against the equations it is built on.**
+Forty-nine separate comparisons: each moisture source recomputed independently and matched against
+what the survey produces, the totals and safety factor, the two ways make-up air can be routed —
+confirming it is never counted twice — and every option on the envelope step, including the ones
+added this week. The generated document was then read back and compared against the figures it was
+built from, rather than assumed to match.
+
+All of it reconciles.
+
+**One fault found and fixed.** The activity level attached to a headcount was not being checked
+against the list it belongs to. A value that did not match exactly — a lower-case letter would do it
+— made the entire people load disappear from the survey silently, with no error and no zero to
+notice. It can only happen to a request submitted outside the normal form, but that is precisely
+what the check exists for.
+
+**One approximation left alone and written down.** The process calculation uses a nominal humidity
+when working out air density rather than the leaving condition it just computed, worth about 0.9% of
+the water-removal figure. It sits inside the tolerance the document already states, and changing it
+would move a number on quotes already issued, so it is recorded rather than quietly corrected.
+
 ## 2026-08-27 — The site lookup stays on screen
 
 On the first step of the quote request, looking up the site filled in the elevation and the outdoor

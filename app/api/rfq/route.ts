@@ -6,7 +6,8 @@ import { verifyRecaptcha } from '@/lib/recaptcha'
 import { sendRfqNotificationToSalesDesk, sendRfqConfirmationToCustomer } from '@/lib/resend-rfq'
 import {
   applicationLabel, emptyRfq, normalizeMode, normalizeRoomSizeMode,
-  normalizeSurroundSource, normalizeTargetSource, normalizeTightness, normalizeVaporBarrier,
+  normalizeActivity, normalizeSurroundSource, normalizeTargetSource, normalizeTightness,
+  normalizeVaporBarrier,
   normalizeVentLoadTarget, setCondition,
   type ConditionKey, type RfqData,
 } from '@/lib/rfq'
@@ -115,6 +116,9 @@ function coerce(raw: unknown): RfqData {
   // Gained a fourth and fifth member on 2026-08-27 (None, Custom) and was still
   // riding the generic string branch, which would take any text at all.
   out.tightness = normalizeTightness(src.tightness)
+  // An unrecognised activity makes the people load vanish silently rather than
+  // erroring — see normalizeActivity.
+  out.activity = normalizeActivity(src.activity)
 
   // The moisture-unit fields are string unions, so the generic string copy above
   // would happily accept "banana" and hand it to the converter. Pin them to the

@@ -1113,6 +1113,52 @@ with it and the two address lines at y = 48 and 53.5 were not — so they landed
 pine and read as the address falling out of the header. Fixed, and the lesson is in the code: the
 band height and everything positioned against it are one unit. Move one, move all of them.
 
+## The 2026-08-27 calculation audit
+
+Asked for after step 5 changed: check every figure still reconciles. **49 assertions, all passing.**
+Each term was recomputed independently from the documented formula and compared against
+`estimateLoad`, rather than asserted against itself.
+
+| Group | Checks | Result |
+|---|---|---|
+| Every load term vs its own equation | 7 | reconcile |
+| Totals, safety factor, dry-air cfm, ACH | 7 | reconcile |
+| Make-up air routing, both branches | 9 | reconcile, nothing double counted |
+| Step 5's options vs the original equations | 17 | reconcile |
+| The generated PDF's printed text vs the model | 9 | agree |
+
+**Step 5 specifically** — every retarder option (None, the three classes, Custom, unanswered, Custom
+with an empty box) reproduces `Wp = P × A × ΔVP` with the retarder in series, and every tightness
+option reproduces Ch.5 Method A on **wall area only**, with the ceiling confirmed excluded. Option A
+and Option B were checked to drive the *same* formulas off different conditions.
+
+**The document was read, not assumed.** The generated PDF's content streams are inflated and searched
+for the printed strings, confirming the entered rate and permeance reach the page and that
+"Infiltration", the exterior-wall basis and the removals are all as intended.
+
+### Two findings
+
+🔴 **`activity` was not pinned in `coerce()`.** It rode the generic string branch, so a hand-posted
+`'Light work'` (wrong case) stored fine, `PEOPLE_LOADS[activity]` returned undefined, and the
+`perPerson > 0` guard made the **entire people load vanish with no error**. Fixed —
+`normalizeActivity()` now pins it, same as the other unions.
+
+⚠️ **`estimateProcess` uses `airDensity(leavingT, 50, elev)`** — a nominal 50% rh rather than the
+computed leaving condition. On a 90°F / 7 gr/lb airstream that is about **0.9%** on the water-removal
+figure. Not corrected: it is inside the disclaimer's tolerance and changing it moves a number on a
+document that is already out, so it is a decision rather than a fix. Recorded here so nobody
+rediscovers it as a bug.
+
+### ⚠️ Two traps in auditing a PDF this way, both hit
+
+**`'endstream'` contains `'stream'`.** A scanner that advances by one after a match cascades into the
+end marker and silently drops most of the document — 57k characters recovered instead of 211k. Four
+checks "failed" that were actually fine, including static labels that could not possibly be missing.
+Advance past the whole `endstream` token.
+
+**Long strings are truncated into table cells** by `truncate()`, so searching for a full sentence can
+miss text that is genuinely on the page. Search for the distinctive fragment.
+
 ## Step 1: the site lookup result survives leaving the step (2026-08-27)
 
 Pressing **Look up site conditions** filled the elevation and the outdoor design condition and showed
