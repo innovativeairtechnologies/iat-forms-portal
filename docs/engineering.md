@@ -74,6 +74,14 @@ unmapped `/admin/*` path falls back to `dashboard`, which every scoped role hold
 check is what makes a future matcher edit fail closed instead of showing the whole department's
 per-person workload to HR and marketing.
 
+## Post-production lives here too
+
+`/admin/engineering/post-production` (migration 098) is the other end of the same job: this
+section plans and tracks the build, post-production records what the built unit taught us and
+carries it into the next kickoff. It shares the `engineering_jobs` perm by prefix — no new
+permission, no seed — and its morning sweep rides this section's existing cron entry rather
+than adding one. See **[post-production.md](post-production.md)**.
+
 ## The buckets
 
 `Stream` in `lib/engineering.ts`, in whiteboard order:

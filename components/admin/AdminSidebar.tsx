@@ -19,7 +19,7 @@ import { useViewAs, ViewAsControl } from '@/components/admin/ViewAs'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'timeoff' | 'usrotors' | 'drafts' | 'rfq' | 'engtasks'
+type BadgeKind = 'submissions' | 'tickets' | 'troubleshooting' | 'pto' | 'sick' | 'timeoff' | 'usrotors' | 'drafts' | 'rfq' | 'engtasks' | 'ppfindings'
 
 type NavChild = {
   href: string
@@ -59,6 +59,7 @@ type Counts = {
   drafts: number
   rfq: number
   engtasks: number
+  ppfindings: number
 }
 
 // ─── Nav structure — parents with expandable children ─────────────────────────
@@ -105,6 +106,12 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/engineering/tasks', label: 'Task Queue', badge: 'engtasks', perm: 'engineering_jobs' },
       { href: '/admin/engineering/my-work', label: 'My Work', perm: 'engineering_jobs' },
       { href: '/admin/engineering/capacity', label: 'Workload', perm: 'engineering_jobs' },
+      // Post-Production (098) — the walkaround queue. Sits after the working
+      // board because it is what happens AFTER a unit is built, and it is the
+      // entry point for all three of its screens (findings, recurring issues,
+      // pre-production checks). The nav stays flat and single-level, so those
+      // two live behind buttons on the page rather than as nested children.
+      { href: '/admin/engineering/post-production', label: 'Post-Production', badge: 'ppfindings', perm: 'engineering_jobs' },
       // The automation rules. Visible to everyone who can see the section; the
       // SAVE is gated to admin/engineering in requireEngineeringAuth, and the
       // page renders read-only for anyone else rather than offering a button
@@ -288,6 +295,9 @@ const BADGE_CLS: Record<BadgeKind, string> = {
   // due date, not work that is waiting. A queue badge and a missed-deadline
   // badge should not look the same.
   engtasks:    'bg-rose-500/15 text-rose-400',
+  // Rose for the same reason as engtasks: this counts findings PAST the
+  // two-week answer date, not findings waiting.
+  ppfindings:  'bg-rose-500/15 text-rose-400',
 }
 
 function Badge({ kind, count }: { kind: BadgeKind; count: number }) {
@@ -332,16 +342,17 @@ interface Props {
   draftCount: number
   rfqUnread: number
   engOverdue: number
+  ppOverdue: number
   adminName: string
 }
 
 // adminName stays in Props (the layout passes it) but is no longer rendered here —
 // identity moved to the top-bar avatar.
-export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, rfqUnread, engOverdue }: Props) {
+export default function AdminSidebar({ unreadCount, ticketCount, troubleshootingCount, ptoPending, sickPending, usRotorsOrders, draftCount, rfqUnread, engOverdue, ppOverdue }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const { hasPerm, home, canPreview } = useViewAs()
-  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, timeoff: ptoPending + sickPending, usrotors: usRotorsOrders, drafts: draftCount, rfq: rfqUnread, engtasks: engOverdue }
+  const counts: Counts = { submissions: unreadCount, tickets: ticketCount, troubleshooting: troubleshootingCount, pto: ptoPending, sick: sickPending, timeoff: ptoPending + sickPending, usrotors: usRotorsOrders, drafts: draftCount, rfq: rfqUnread, engtasks: engOverdue, ppfindings: ppOverdue }
   const [mobileOpen, setMobileOpen] = useState(false)
 
   // An exact hit, or a real path segment below it — never a raw string prefix, so

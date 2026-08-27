@@ -10,6 +10,42 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-27 — Walk the unit with your phone, and the findings get an owner and a clock
+
+Post-production meetings are back, in the portal. A unit passes test, somebody walks it, and
+everything they would have done differently is captured at the unit — talk into it, photograph
+it, film it — and lands in engineering's queue with a name against it and two weeks to answer.
+
+**Open Engineering › Post-Production and press "Walk a unit".** Type the four-digit job number,
+then use the buttons across the bottom of the screen. Recording a voice note transcribes live as
+you talk on most phones, and the audio is kept either way. Photo and video open the rear camera.
+Everything saves as it happens, so a dropped signal at the far end of the shop costs the last
+action rather than the walk. Nothing reaches engineering until you press "Hand over" — and that
+is the moment each finding's two-week clock starts.
+
+**The part the spreadsheet never had.** Every finding gets an owner, a date and an answer.
+Answered is deliberately not the same as closed: the engineer writes what changes, and it goes
+back to whoever raised it to accept or send back. Anything past its date chases its owner each
+morning and rolls up to the department lead.
+
+**It notices when something keeps happening.** A new finding is compared against everything
+raised before — not by matching words, which would never connect "big gap between the filter and
+the wheel" to "the wheel could have come a lot further down", but by reading both. Matches show
+as suggestions until a person agrees, and the counts on the Recurring Issues board only ever
+count what somebody confirmed. A number worth acting on has to survive being checked, so the
+unreviewed matches sit beside it rather than inside it.
+
+**Then it feeds forward.** Open a pre-production check against the next job and the list writes
+itself from every recurring issue still open. Each line is marked designed around, doesn't apply,
+or accepted as a known risk with a note — and the accepted risks are recorded, because "we knew
+about this one and built it anyway" is the sentence a warranty conversation two years from now
+turns on. An empty list is the goal, not a gap.
+
+**Transcribing a saved recording is not switched on yet.** The portal has one AI key and it does
+not accept audio, so the live dictation the phone already does is what produces text today. The
+recordings are kept regardless; adding an OpenAI or Deepgram key turns on server-side
+transcription with no other change, and the recordings being kept now can be transcribed then.
+
 ## 2026-08-27 — Every section of the survey document is visibly its own section
 
 The record pages carry a run of headings — Design Conditions, Construction & Envelope, Doors &

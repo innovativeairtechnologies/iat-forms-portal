@@ -37,6 +37,13 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/engineering/my-work',   section: 'Engineering', label: 'My Work' },
   { prefix: '/admin/engineering/capacity',  section: 'Engineering', label: 'Workload' },
   { prefix: '/admin/engineering/playbook',  section: 'Engineering', label: 'Scheduling Rules' },
+  // Post-production (098). The walkaround capture surface and the pre-production
+  // checklist are their own leaves so a phone's sticky bar says which of the
+  // three somebody is on, not just "Post-Production".
+  { prefix: '/admin/engineering/post-production',           section: 'Engineering', label: 'Post-Production' },
+  { prefix: '/admin/engineering/post-production/walk',      section: 'Engineering', label: 'Walkaround' },
+  { prefix: '/admin/engineering/post-production/themes',    section: 'Engineering', label: 'Recurring Issues' },
+  { prefix: '/admin/engineering/post-production/preflight', section: 'Engineering', label: 'Pre-Production' },
   // Sales
   { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },
   { prefix: '/admin/projected-sales', section: 'Sales',   label: 'Performance' },

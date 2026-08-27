@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runEngineeringReminders } from '@/lib/eng-reminders'
+import { runPostProductionReminders } from '@/lib/pp-reminders'
 
 /* The morning sweep over the engineering board — see lib/eng-reminders.ts.
  *
@@ -30,7 +31,22 @@ export async function GET(req: NextRequest) {
   try {
     const result = await runEngineeringReminders()
     console.log('[cron/eng-reminders]', JSON.stringify(result))
-    return NextResponse.json({ ok: true, ...result })
+
+    /* Post-production rides this entry rather than registering its own (098).
+       A deploy landing on a cron minute EATS that run — ten deploys across one
+       Friday evening killed four — so every extra entry is another minute a
+       routine push can silently swallow. Both sweeps want the same 3am Eastern
+       window, and the sweeps are independent: run separately and caught
+       separately, so a failure in one still lets the other send. */
+    let pp = null
+    try {
+      pp = await runPostProductionReminders()
+      console.log('[cron/eng-reminders] post-production', JSON.stringify(pp))
+    } catch (err) {
+      console.error('[cron/eng-reminders] post-production sweep failed:', err)
+    }
+
+    return NextResponse.json({ ok: true, ...result, postProduction: pp })
   } catch (err) {
     console.error('[cron/eng-reminders] failed:', err)
     return NextResponse.json({ error: 'Engineering reminder sweep failed' }, { status: 500 })

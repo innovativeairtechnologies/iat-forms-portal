@@ -34,6 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { count: newIntakes },
     { count: rfqUnread },
     { count: engOverdue },
+    { count: ppOverdue },
     draftCount,
   ] = await Promise.all([
     supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('is_read', false),
@@ -52,6 +53,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // number the Task Queue then contradicts.
     supabaseAdmin.from('eng_tasks').select('*', { count: 'exact', head: true })
       .in('status', ['not_started', 'in_progress', 'blocked'])
+      .lt('due_date', new Date().toISOString().slice(0, 10)),
+    // Post-production findings past the two-week answer date (098). Same shape
+    // and same reasoning as the engineering count above — a plain date compare,
+    // so the badge can never claim a number the queue then contradicts.
+    supabaseAdmin.from('pp_findings').select('*', { count: 'exact', head: true })
+      .in('status', ['open', 'assigned'])
       .lt('due_date', new Date().toISOString().slice(0, 10)),
     getUserFormDraftCount(),
   ])
@@ -85,6 +92,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           draftCount={draftCount}
           rfqUnread={rfqUnread ?? 0}
           engOverdue={engOverdue ?? 0}
+          ppOverdue={ppOverdue ?? 0}
           adminName={admin.displayName}
         />
         {/* pt-14 clears the fixed mobile top bar (the sidebar's old h-14 spacer sat in
