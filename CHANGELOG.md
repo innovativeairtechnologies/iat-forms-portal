@@ -123,6 +123,29 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — The quote request document is four pages
+
+It was five. Most of the difference was air rather than anything anyone wrote.
+
+**Three pieces of standing text came off**, each of them the same words on every survey we have ever
+produced: the caption explaining that temperature, humidity, grains and dew point are four ways of
+saying one thing; the line naming what the humidity is protecting; and the page of notes from our
+engineering team covering freeze protection, DX against chilled water, vapor retarder classes and a
+request for drawings. None of it was specific to the customer reading it.
+
+**Everything else came from tightening.** The cover header was forty-eight millimetres carrying four
+lines of text and is now forty. Table rows, the bars on the breakdown, the summary tiles and eleven
+gaps between blocks each gave up one to six millimetres. Nothing was reworded and no figure was
+dropped to get there.
+
+A typical survey — a couple of doors, a note, a sentence about what the moisture is hurting — now
+runs to **four pages**. One with eight openings and several paragraphs still runs to five, which is
+the document being honest about carrying more. A process survey is three.
+
+**One thing we broke yesterday and fixed today:** the company address on the cover was printing below
+the green header band instead of inside it, left there when the band was made shorter. It sits back
+inside the band.
+
 ## 2026-08-27 — The weather we are assuming about your site is on the page again
 
 The quote request works out the outdoor design condition from the location given at the start,

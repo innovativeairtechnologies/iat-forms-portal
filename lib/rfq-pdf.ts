@@ -176,54 +176,58 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
   // the reference chip (the two used to overlap).
   // 66 -> 48 (owner, 2026-08-26: fewer pages). Four lines of text did not need
   // sixty-six millimetres, and every millimetre here is one the record cannot use.
-  gradientBand(doc, 0, 0, PAGE_W, 48, C.brandGreenDeep, C.brandNavy)
-  ghostMark(doc, logoLight, PAGE_W - 26, 30, 26)
+  gradientBand(doc, 0, 0, PAGE_W, 40, C.brandGreenDeep, C.brandNavy)
+  ghostMark(doc, logoLight, PAGE_W - 26, 25, 21)
 
-  markTile(doc, logoColor, M, 9, 11.5, 14.5)
+  markTile(doc, logoColor, M, 6, 10.5, 13)
 
-  overline(doc, COMPANY.name.toUpperCase(), M + 18, 14, C.onNavyStrong)
-  text(doc, 'Request for Quote', M + 18, 23.5, { size: 20, weight: 'bold', color: C.white })
+  overline(doc, COMPANY.name.toUpperCase(), M + 17, 11, C.onNavyStrong)
+  text(doc, 'Request for Quote', M + 17, 20, { size: 18, weight: 'bold', color: C.white })
   text(doc, `Moisture Survey · ${isRoom ? 'Room Dehumidification' : 'Process Dehumidification'}`,
-    M + 18, 30, { size: 9.5, color: C.onNavy })
+    M + 17, 25.5, { size: 9, color: C.onNavy })
 
   // Address on the cover too, low in the band where the ghosted mark is faintest.
   // Same two lines as page 1, from the same constants — a document that prints two
   // different addresses is worse than one that prints none.
-  text(doc, companyAddressLine(), M + 18, 48, { size: 7.6, color: C.onNavy })
-  text(doc, companyContactLine(), M + 18, 53.5, { size: 7.6, color: C.onNavy })
+  //
+  // 🔴 THESE WERE AT 48 AND 53.5 AND PRINTED OUTSIDE THE BAND. When the band came
+  // down from 66mm to 48mm on 2026-08-26 the mark, title and subtitle were moved up
+  // with it and these two were not, so they landed on white below the pine and read
+  // as the address falling out of the header. Anything positioned here is measured
+  // against the band height above — move one, move all of them.
+  text(doc, companyAddressLine(), M + 17, 31.5, { size: 7.4, color: C.onNavy })
+  text(doc, companyContactLine(), M + 17, 36, { size: 7.4, color: C.onNavy })
 
   // Reference chip, right
   const chipW = 52
   fill(doc, [255, 255, 255])
   doc.setGState(new (doc as unknown as { GState: new (o: object) => object }).GState({ opacity: 0.1 }))
-  doc.roundedRect(PAGE_W - M - chipW, 13, chipW, 17, 2.5, 2.5, 'F')
+  doc.roundedRect(PAGE_W - M - chipW, 9, chipW, 16, 2.5, 2.5, 'F')
   doc.setGState(new (doc as unknown as { GState: new (o: object) => object }).GState({ opacity: 1 }))
-  overline(doc, meta.submitted ? 'REFERENCE' : 'DRAFT PREVIEW', PAGE_W - M - chipW + 5, 19, C.onNavy)
-  text(doc, meta.reference, PAGE_W - M - chipW + 5, 26, { size: 11, weight: 'bold', color: C.white })
+  overline(doc, meta.submitted ? 'REFERENCE' : 'DRAFT PREVIEW', PAGE_W - M - chipW + 5, 15, C.onNavy)
+  text(doc, meta.reference, PAGE_W - M - chipW + 5, 21.5, { size: 10.5, weight: 'bold', color: C.white })
   text(doc, meta.submittedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    PAGE_W - M, 35, { size: 8.5, color: C.onNavy, align: 'right' })
+    PAGE_W - M, 31.5, { size: 8, color: C.onNavy, align: 'right' })
 
   // Project identity
-  let y = 62
+  let y = 50
   overline(doc, 'PROJECT', M, y, C.inkMuted)
-  y += 8
+  y += 6.5
   // wrapped() returns the next free baseline, so a two-line project name pushes
   // the tags down instead of printing on top of them.
   y = wrapped(doc, data.projectName || 'Untitled project', M, y, CW - 4, {
-    size: 19, weight: 'bold', color: C.ink, leading: 8.5,
+    size: 17, weight: 'bold', color: C.ink, leading: 7.6,
   })
-  y += 3
+  y += 2
 
-  const preset = presetFor(data)
   const appLabel = applicationLabel(data)
   tag(doc, appLabel, M, y, C.greenSoft, [7, 100, 52])
   if (data.location) tag(doc, data.location, M + textW(doc, appLabel, 8.5, 'bold') + 14, y, C.paper, C.inkSoft)
-  y += 13
+  y += 11
 
-  if (preset?.driver) {
-    text(doc, `What we're protecting:  ${preset.driver}`, M, y, { size: 9, color: C.inkSoft })
-    y += 8
-  }
+  // ⚠️ "What we're protecting: <driver>" printed here and was removed on 2026-08-27.
+  // presetFor() went with it - the application tag reads applicationLabel(), not the
+  // preset, so nothing on this page needs it any more.
 
   // ⚠️ "AT A GLANCE" AND THE TWO KEY PANELS WERE HERE (owner, 2026-08-26: get the
   // document to two or three pages).
@@ -237,12 +241,12 @@ function coverPage({ doc, data, meta, load, proc, logoLight, logoColor, isRoom }
   // now live in contactPanels(), called from takeawayPage().
   if (data.purpose) {
     softPanel(doc, M, y, CW, 0, C.paper)
-    const inner = wrapped(doc, data.purpose, M + 6, y + 12, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
-    const boxH = inner - y + 6
+    const inner = wrapped(doc, data.purpose, M + 6, y + 10.5, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
+    const boxH = inner - y + 3
     softPanel(doc, M, y, CW, boxH, C.paper)
     accentEdge(doc, M, y, boxH, C.green)
     overline(doc, 'IN THEIR WORDS', M + 6, y + 7, C.inkMuted)
-    wrapped(doc, data.purpose, M + 6, y + 13.5, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
+    wrapped(doc, data.purpose, M + 6, y + 12, CW - 12, { size: 9.5, color: C.inkSoft, leading: 5 })
     y += boxH
   }
   return y
@@ -338,7 +342,7 @@ function spacePage(ctx: Ctx, startY: number): number {
     rows, [0.4, 0.15, 0.15, 0.15, 0.15])
   y += 3
   y = note(doc, `Loads scale with the difference in grains between inside and out, not with relative humidity, which means a different amount of water at every temperature.${sourceNote(data)}`, M, y, CW)
-  y += 6
+  y += 4
 
   // Envelope
   // Tightness sets the whole infiltration line (Loose is 6× Tight) and used to be
@@ -373,7 +377,7 @@ function spacePage(ctx: Ctx, startY: number): number {
   overline(doc, 'CONSTRUCTION & ENVELOPE', M, y, C.inkMuted)
   y += 4
   y = table(doc, M, y, CW, ['Element', 'Material / rating'], envelopeRows, [0.34, 0.66])
-  y += 9
+  y += 5
 
   // Openings
   // Doors used to close this page. They now open the load page instead — they
@@ -458,7 +462,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
     'Where the moisture comes from', 'Openings, internal loads and the preliminary estimate')
 
   overline(doc, 'DOORS & OPENINGS', M, y, C.inkMuted)
-  y += 4
+  y += 3
   if (data.doors.length) {
     y = table(doc, M, y, CW,
       ['Opening', 'Size', 'Opens/hr', 'Seconds open', 'Opens onto'],
@@ -474,7 +478,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
   } else {
     y = emptyRow(doc, M, y, CW, 'No doors or openings recorded.')
   }
-  y += 5
+  y += 3
 
   // ⚠️ GUARD ADDED 2026-08-26. Before the record flowed, every section began at
   // y = 46 on a page of its own, so this block could not overflow. It can now -
@@ -483,7 +487,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
   // page. EVERY block in a flowing section needs a reserve.
   y = ensure(ctx, y, 4 + tableH(7), 'Where the moisture comes from', 'Internal loads')
   overline(doc, 'INTERNAL LOADS RECORDED', M, y, C.inkMuted)
-  y += 4
+  y += 3
   // ⚠️ NO NEW ROW HERE — the condition rides on the row that already exists.
   //
   // The make-up air's condition has to be on the record: the customer cannot check
@@ -516,13 +520,13 @@ function loadsPage(ctx: Ctx, startY: number): number {
       ? `${fmt(numOf(data.exhaustCfm))} cfm${data.ventCfm ? '' : ` · ${ventDetail}`}`
       : 'None recorded'],
   ], [0.34, 0.66])
-  y += 6
+  y += 4
 
-  y = ensure(ctx, y, 10 + load.lines.length * 10.6 + 44, 'Where the moisture comes from', 'Estimated breakdown')
+  y = ensure(ctx, y, 10 + load.lines.length * 9.4 + 40, 'Where the moisture comes from', 'Estimated breakdown')
   overline(doc, 'ESTIMATED BREAKDOWN', M, y, C.inkMuted)
-  y += 5
+  y += 4
   y = loadBars(doc, M, y, CW, load)
-  y += 5
+  y += 3
 
   // Totals strip
   const totals: TileSpec[] = [
@@ -543,7 +547,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
     // component loads stay: they are what the breakdown bars above are made of.
   ]
   y = tileRow(doc, totals, M, y, CW)
-  y += 8
+  y += 3
 
   // ⚠️ CONDITIONAL, because the old sentence is FALSE for a room-load survey — it
   // asserted the opposite of what that survey had just been charged.
@@ -583,7 +587,7 @@ function equipmentPage(ctx: Ctx, startY: number): number {
   const h = Math.max(panelHeight(left.length), panelHeight(right.length))
   keyPanel(doc, 'THE UNIT', left, M, y, colW, h)
   keyPanel(doc, 'UTILITIES AVAILABLE', right, M + colW + 6, y, colW, h)
-  y += h + 9
+  y += h + 3
 
   y = ensure(ctx, y, 9 + tableH(7), 'Equipment & utilities', 'Air treatment')
   overline(doc, 'AIR TREATMENT', M, y, C.inkMuted)
@@ -597,11 +601,13 @@ function equipmentPage(ctx: Ctx, startY: number): number {
     ['Sensible load (if known)', data.sensibleLoadBtuh ? `${fmt(numOf(data.sensibleLoadBtuh))} BTU/hr` : 'Not stated'],
     ...(ctx.isRoom ? [] : [['Air source', data.airSource] as [string, string]]),
   ], [0.34, 0.66])
-  y += 9
+  y += 4
 
   if (data.notes) {
     // Free text, so measure it rather than reserve a guess.
-    y = ensure(ctx, y, 5 + wrapLines(doc, data.notes, CW, { size: 9.5 }).length * 5 + 6,
+    // +2 rather than +6: this is the last block in the document, so trailing air
+    // here buys nothing and can cost a whole page.
+    y = ensure(ctx, y, 5 + wrapLines(doc, data.notes, CW, { size: 9.5 }).length * 5 + 2,
       'Equipment & utilities', 'Additional notes')
     overline(doc, 'ADDITIONAL NOTES', M, y, C.inkMuted)
     y += 5
@@ -609,36 +615,15 @@ function equipmentPage(ctx: Ctx, startY: number): number {
     y += 6
   }
 
-  // Standing engineering notes carried over from IAT's paper quote request.
-  const notes: [string, string][] = [
-    ['Freeze protection', 'Chilled-water, hot-water and steam coils exposed to freezing air need a cold-weather mitigation strategy: gas or electric pre-heat, and/or drainable coils. All water coils should be externally piped so they can be isolated and drained.'],
-    ['DX vs chilled water', 'Where DX cooling is selected over chilled water, some variation in leaving-air or space conditions may be experienced.'],
-    ['Vapor retarder classes', 'Class I is polyethylene. Class II is kraft-faced fiberglass batt. Class III is latex-painted gypsum board.'],
-    ['Drawings help', 'A plan or sketch showing dimensions, door locations and openings lets us skip a round of questions.'],
-  ]
-  // Tightened 2026-08-26 (7.8/3.6 -> 7.2/3.3). All four notes are KEPT - they are
-  // IAT standing engineering text, not filler - they simply take less room.
-  const bodyOpts = { size: 7.2, color: C.inkMuted, leading: 3.3 }
-  // Measure first: a fixed 62 mm box left dead space on a short answer and ran
-  // the last note off the panel on a long one.
-  const boxH = 10 + notes.reduce(
-    (h, [, b]) => h + 3.6 + wrapLines(doc, b, CW - 12, bodyOpts).length * bodyOpts.leading + 2, 0
-  )
-  // WARNING: THIS BOX USED TO BE PINNED LOW on the page:
-  //     Math.min(Math.max(y, 186), CONTENT_BOTTOM - boxH)
-  // which anchored it to the foot of a page this section no longer owns. Now the
-  // record flows, so a hard 186 would drop it on top of whatever is above it, and
-  // the CONTENT_BOTTOM clamp would happily pull it UPWARDS into that content.
-  // It now follows the flow and takes a new page only when it will not fit.
-  const boxY = ensure(ctx, y, boxH, 'Equipment & utilities', 'Notes from our engineering team')
-  softPanel(doc, M, boxY, CW, boxH, C.paper)
-  overline(doc, 'NOTES FROM OUR ENGINEERING TEAM', M + 6, boxY + 8, C.inkMuted)
-  let ny = boxY + 15
-  for (const [t, b] of notes) {
-    text(doc, t, M + 6, ny, { size: 8, weight: 'bold', color: C.ink })
-    ny = wrapped(doc, b, M + 6, ny + 3.6, CW - 12, bodyOpts) + 2
-  }
-  return boxY + boxH
+  // ⚠️ THE "NOTES FROM OUR ENGINEERING TEAM" PANEL WAS HERE and was removed on
+  // 2026-08-27 to shorten the document. It carried four standing notes from IAT
+  // paper quote request - freeze protection, DX vs chilled water, the vapor
+  // retarder classes and a request for drawings - roughly 45mm of identical text
+  // on every survey ever produced.
+  //
+  // Recoverable from git if it is wanted back: it read from a local `notes` array
+  // and nothing else referenced it.
+  return y
 }
 
 // ─── Last page · The takeaway infographic ─────────────────────────────────────
@@ -738,11 +723,8 @@ function takeawayPage(ctx: Ctx, opts?: { first?: boolean }) {
     text(doc, v, x, yy, { size: 13.5, weight: 'bold', color: C.ink })
     text(doc, l, x, yy + 4.4, { size: 7.2, color: C.inkMuted })
   })
-  wrapped(doc,
-    isRoom
-      ? 'Four ways of saying the same thing. Grains and dew point are the two that size equipment. Relative humidity on its own cannot.'
-      : 'A process is specified by the air leaving the dehumidifier. Dew point is the honest unit: it does not move when the temperature does.',
-    M + 7, y + 41, halfW - 14, { size: 6.8, color: C.inkMuted, leading: 2.9, maxLines: 2 })
+  // ⚠️ A two-line caption explaining the four units sat here and was removed on
+  // 2026-08-27. The four figures speak for themselves at this size.
 
   panelHead(doc, rx, y, halfW, T.duo, '2', isRoom ? 'YOUR SPACE' : 'YOUR AIRSTREAM', C.blue, C.blueSoft)
   if (isRoom) {
@@ -855,7 +837,7 @@ function ensure(ctx: Ctx, y: number, needed: number, title: string, sub: string)
 }
 
 /** Height a table() call will occupy, so ensure() can be asked before drawing. */
-const tableH = (rows: number) => 7.4 + rows * 6.8
+const tableH = (rows: number) => 7 + rows * 6.4
 
 /**
  * Start a section of the flowing record.
@@ -872,20 +854,20 @@ const tableH = (rows: number) => 7.4 + rows * 6.8
  * foot of a page with its content overleaf — the one failure mode here.
  */
 function section(ctx: Ctx, y: number, needed: number, title: string, sub: string): number {
-  const HEAD = 14
+  const HEAD = 11
   if (y + HEAD + needed > CONTENT_BOTTOM) {
     newPage(ctx, title, sub)
     return 46
   }
   const { doc } = ctx
-  const top = y + 7
+  const top = y + 5
   // A quiet inline heading rather than a second full-width band: the page already
   // carries one at its top, and two of them read as two documents.
   fill(doc, C.brandGreenDeep)
   doc.roundedRect(M, top - 4.6, 2.4, 10.4, 1.2, 1.2, 'F')
   text(doc, title, M + 6.5, top + 1, { size: 12, weight: 'bold', color: C.ink })
   text(doc, sub, M + 6.5, top + 6.4, { size: 7.6, color: C.inkMuted })
-  return top + 12
+  return top + 10
 }
 
 function newPage(ctx: Ctx, title: string, sub: string) {
@@ -960,7 +942,9 @@ function tileRow(doc: Doc, tiles: TileSpec[], x: number, y: number, w: number): 
   if (!tiles.length) return y
   const gap = 4
   const tw = (w - gap * (tiles.length - 1)) / tiles.length
-  const h = 30
+  // 30 -> 26 (owner, 2026-08-27: less dead space). The sub-line is capped at two
+  // lines at 2.9 leading and sits at y + 23, so 26 still clears it.
+  const h = 24
   tiles.forEach((t, i) => {
     const tx = x + i * (tw + gap)
     fill(doc, t.soft)
@@ -1015,19 +999,19 @@ function panelHead(doc: Doc, x: number, y: number, w: number, h: number, n: stri
 function keyPanel(doc: Doc, title: string, rows: [string, string][], x: number, y: number, w: number, h: number) {
   card(doc, x, y, w, h)
   overline(doc, title, x + 6, y + 8, C.inkMuted)
-  let ry = y + 14.5
+  let ry = y + 12.5
   for (const [k, v] of rows) {
     text(doc, k, x + 6, ry, { size: 7.6, color: C.inkMuted })
     text(doc, truncate(doc, v || '—', w - 12 - 34, 8.4), x + 34, ry, { size: 8.4, weight: v ? 'bold' : 'normal', color: v ? C.ink : C.inkMuted })
-    ry += 6.8
+    ry += 6.4
   }
 }
 
-const panelHeight = (rows: number) => 14.5 + rows * 6.8
+const panelHeight = (rows: number) => 12.5 + rows * 6.4
 
 function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: string[][], widths: number[]): number {
-  const rowH = 6.8
-  const headH = 7.4
+  const rowH = 6.4
+  const headH = 7
   const total = headH + rows.length * rowH
 
   fill(doc, C.paper)
@@ -1035,7 +1019,7 @@ function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: 
   doc.rect(x, y + headH - 2, w, 2, 'F')
   let cx = x + 4
   head.forEach((hd, i) => {
-    text(doc, hd.toUpperCase(), cx, y + 5.1, { size: 6.3, weight: 'bold', color: C.inkMuted, spacing: 0.3 })
+    text(doc, hd.toUpperCase(), cx, y + 4.9, { size: 6.3, weight: 'bold', color: C.inkMuted, spacing: 0.3 })
     cx += widths[i] * w
   })
 
@@ -1049,7 +1033,7 @@ function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: 
     let tx = x + 4
     r.forEach((cell, ci) => {
       const cellW = widths[ci] * w - 5
-      text(doc, truncate(doc, cell || '—', cellW, 8), tx, ry + 4.8, {
+      text(doc, truncate(doc, cell || '—', cellW, 8), tx, ry + 4.6, {
         size: 8,
         weight: ci === 0 ? 'bold' : 'normal',
         color: cell ? (ci === 0 ? C.ink : C.inkSoft) : C.inkMuted,
@@ -1100,7 +1084,7 @@ function loadBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
     }
     text(doc, `${fmt(line.grainsPerHour)} gr/hr`, x + w, ry + 3.9, { size: 7.4, weight: 'bold', color: C.ink, align: 'right' })
     text(doc, pct(line.grainsPerHour, totalRaw), x + w, ry + 7.8, { size: 6.4, color: C.inkMuted, align: 'right' })
-    ry += 10.6
+    ry += 9.4
   }
   return ry
 }

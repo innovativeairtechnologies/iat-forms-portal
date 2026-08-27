@@ -829,7 +829,8 @@ reads as a printing fault. The cover has room, so it keeps it.
 | **1** | **The takeaway infographic** — the customer's own numbers, what happens now, and who to talk to |
 | 2+ | The record, flowing: cover identity and purpose, the space *or* the process spec, openings and internal loads, the estimated breakdown, equipment and utilities, standing engineering notes |
 
-A full room survey lands at **five pages**; a section starts wherever the last one finished.
+A full room survey lands at **four pages** (five if it carries eight openings and a long note); a
+section starts wherever the last one finished. See "Getting to four pages" below.
 
 The takeaway **leads** the document (moved from last, 2026-08-14). The person opening it wants
 their own numbers first; the detail pages behind are the evidence, not the headline. jsPDF has
@@ -989,8 +990,12 @@ the exact confusion the input fields were fixed for.
 
 ## Consolidating the document (2026-08-26)
 
-Asked for: five pages down to two or three. **The result is five, and the honest reason is that the
-record is about four pages of tables.** What changed is what is on them.
+⚠️ **This section records the 2026-08-26 pass, which ended at five.** It was taken to **four** the
+next day — see "Getting to four pages" below, which supersedes the conclusion here. What follows is
+still an accurate account of what was removed on the 26th and why.
+
+Asked for: five pages down to two or three. The result that day was five, because the record is
+about four pages of tables. What changed is what is on them.
 
 **Removed** — all duplicates of something the reader already had:
 
@@ -1037,7 +1042,7 @@ own is saved. Cutting the render was built, measured at **still five pages**, an
 | Candidate | Saves | The catch |
 |---|---|---|
 | The room render in the record | **13.5mm** (measured) | The picture is already on page 1 — but only the record's copy carries the **dimension callouts**, and page 1 draws it with `callouts: false` on purpose |
-| Standing engineering notes | ~40mm | IAT's own text from the paper quote request |
+| ~~Standing engineering notes~~ | ~40mm | **Taken 2026-08-27** — removed at the owner's request |
 | The two blue `note()` explainers | ~24mm | They are the customer-education lines about grains vs %rh |
 | The load totals tile row | ~30mm | The bars above it would be left unexplained |
 
@@ -1048,6 +1053,65 @@ to go. That is a content decision, not a layout one.
 
 **Decided 2026-08-26: stay at five.** The render cut was built and reverted rather than shipped for
 13.5mm and the loss of the dimension callouts.
+
+⚠️ **Superseded 2026-08-27.** Four pages was reached the next day WITHOUT cutting the render — the
+standing engineering notes went, two short copy blocks went, and the rest came from spacing. The
+render and its dimension callouts are still there.
+
+## Getting to four pages (2026-08-27)
+
+Yesterday's answer was five, and that it needed a content decision rather than a layout one. This is
+that decision, taken by the owner, plus a pass over the dead space.
+
+**Removed outright:**
+
+| Gone | Was |
+|---|---|
+| Panel 1's caption, "Four ways of saying the same thing…" | Two lines under the four figures on the takeaway |
+| "What we're protecting: &lt;driver&gt;" under the project name | One line on the cover, from the preset |
+| "Notes from our engineering team" | ~45mm of identical standing text on every survey ever produced |
+
+⚠️ `presetFor()` went out of `coverPage` with the second of those — the application tag reads
+`applicationLabel()`, not the preset.
+
+**Tightened, losing no words.** Everything below is air, not content:
+
+| | From | To |
+|---|---|---|
+| Cover band, and everything measured against it | 48mm | **40mm** |
+| Cover content start | y = 62 | **y = 50** |
+| Project name | 19pt / 8.5 leading | 17 / 7.6 |
+| Table row pitch | 6.8mm | **6.4mm** |
+| Key-panel pitch / first row | 6.8 / 14.5 | **6.4 / 12.5** |
+| Breakdown bar pitch | 10.6mm | **9.4mm** |
+| Stat tiles | 30mm | **24mm** |
+| Inline section heading | 7 lead-in + 12 | 5 + 10 |
+| Eleven inter-block gaps | 4–9mm | 3–5mm |
+
+🔴 **Three of those have a paired constant that MUST move with them.** `rowH` with `headH` and
+`tableH()`; the breakdown bar pitch with its `ensure()` reserve; and every element positioned against
+the cover band with the band height. `tableH()` and the reserves are what every page break is
+measured with — change one side only and the document either overflows a page or wastes one.
+
+### Measured, per survey shape
+
+| Shape | Pages |
+|---|---|
+| Room, no doors, no notes | **4** |
+| Room, 2 doors, short note and purpose | **4** |
+| Room, box-in-box | **4** |
+| Room, 8 doors, long note, wrapping project name | 5 |
+| Process track | **3** |
+
+The heavy case going to five is the guards working, not failing — it genuinely carries more. Every
+break in every shape lands well inside `CONTENT_BOTTOM`; nothing draws off the sheet.
+
+### 🔴 The cover address printed outside the band for a day
+
+When the band came down from 66mm to 48mm on 2026-08-26, the mark, title and subtitle were moved up
+with it and the two address lines at y = 48 and 53.5 were not — so they landed on white below the
+pine and read as the address falling out of the header. Fixed, and the lesson is in the code: the
+band height and everything positioned against it are one unit. Move one, move all of them.
 
 ### Four rules for editing the PDF
 
