@@ -174,6 +174,29 @@ export function wetBulbF(tempF: number, rhPct: number, elevationFt = 0): number 
  * level, 0.070 at Chicago's 658 ft in the worked example); computing it from the
  * actual condition is the same idea, just not rounded by hand.
  */
+/**
+ * Mass of DRY AIR per cubic foot (lb da / cu.ft) — the 1/v term.
+ *
+ * 🔴 THIS IS THE ONE TO USE WITH GRAINS. Grains are measured per pound of DRY air,
+ * so converting a volume flow into the mass that carries them needs 1/v, not the
+ * density of the moist mixture. Using airDensity() below overstates by exactly
+ * (1 + W) — 0.7% in a typical room, 2% at an outdoor design condition.
+ *
+ * Chapter 5's 0.075 lb/cu.ft near sea level is this value: 1/v_dry(70°F) = 0.0749.
+ */
+export function dryAirDensity(tempF: number, rhPct: number, elevationFt = 0): number {
+  const p = pressureAtElevation(elevationFt)
+  const T = tempF + 459.67
+  const w = humidityRatio(tempF, rhPct, elevationFt)
+  const v = (0.370486 * T * (1 + 1.607858 * w)) / p
+  return v > 0 ? 1 / v : 0.0749
+}
+
+/**
+ * ⚠️ MOIST-air density, and NOT what a grain calculation wants — see dryAirDensity.
+ * Kept because it is the honest answer to "how heavy is this air", which is a
+ * different question from "how much dry air is in it".
+ */
 export function airDensity(tempF: number, rhPct: number, elevationFt = 0): number {
   const p = pressureAtElevation(elevationFt)
   const T = tempF + 459.67

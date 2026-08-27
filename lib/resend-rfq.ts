@@ -77,7 +77,7 @@ export async function sendRfqNotificationToSalesDesk(
       ${row('Contact', `${data.contactName || '—'}, ${data.email || '—'}${data.phone ? `, ${data.phone}` : ''}`)}
       ${row('Project', data.projectName || '—')}
       ${row('Location', data.location || '—')}
-      ${row('Quote needed by', data.dateRequired || 'Not stated')}
+      ${data.dateRequired ? row('Quote needed by', data.dateRequired) : ''}
       ${detail}
     </table>
     ${data.purpose ? `<p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;"><strong style="color:#333;">In their words:</strong> ${esc(data.purpose)}</p>` : ''}

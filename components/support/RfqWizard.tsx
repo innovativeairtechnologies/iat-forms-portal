@@ -2989,8 +2989,13 @@ function StepAbout({ data, set, setData, site }: {
           <TextField label="Project name" value={data.projectName} onChange={v => set('projectName', v)} placeholder="Building 4 dry storage" />
           <TextField label="End user / owner" value={data.endUser} onChange={v => set('endUser', v)} />
         </Grid>
+        {/* ⚠️ "Quote needed by" was asked here and was removed (owner, 2026-08-27).
+            The FIELD is deliberately kept on RfqData and in the database: surveys
+            taken before today carry a real date, the admin record and the reports
+            page still read it, and dropping the column would lose that history.
+            New surveys simply leave it blank, and every surface that prints it now
+            hides the row when it is empty. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <TextField label="Quote needed by" value={data.dateRequired} onChange={v => set('dateRequired', v)} type="date" />
           <TextField label="Expected order date" value={data.dateClose} onChange={v => set('dateClose', v)} type="date" />
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -3063,7 +3068,7 @@ function StepReview({
         ]} />
         <ReviewBlock title="Project" rows={[
           ['Project', data.projectName], ['Application', applicationLabel(data)],
-          ['Location', data.location], ['Quote needed', data.dateRequired],
+          ['Location', data.location],
         ]} />
       </div>
 

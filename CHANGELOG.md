@@ -189,6 +189,44 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — Air density: conservative where it counts, correct where it was wrong
+
+Following the review of the calculation audit, three decisions on how the survey turns an airflow
+into a weight of air.
+
+**We are staying with the Handbook's method, because it is the cautious one.** Chapter 5 uses a
+single density taken at the room condition, and that overstates the load whenever the room is cooler
+than the air coming into it — which is very nearly every job we quote. A warehouse comes out about
+7.6% high, a cold store 10.9%, a freezer dock 15.5%. The physically exact alternative would have made
+every survey around 5.3% smaller, which is the wrong direction for a screening estimate.
+
+**But it stops being cautious in two cases, and those are now covered.** Where the room is warmer
+than the air entering it — a curing or drying room, or make-up air in winter — the same method
+quietly understates, by up to 5.5%. Each airflow now uses whichever of the two densities is the
+larger, so the survey errs the same way in every application instead of only in most of them.
+
+**One figure was erring the wrong way and has been corrected.** The process calculation assumed a
+fixed 50% humidity when working out air density, rather than the very dry air it had just calculated.
+That made the water-removal figure read low. It now uses the real condition.
+
+**And a units error has been put right.** Moisture is measured per pound of dry air, and the
+calculation was using the weight of the air including its moisture — a difference of between half a
+percent and two percent, always in the generous direction. That was margin nobody could see or
+adjust. It is corrected, and the survey's stated 10% safety factor now carries the caution on its
+own, where it is visible.
+
+**None of this changes a survey already submitted.** Stored requests keep the figures they were
+produced with.
+
+## 2026-08-27 — "Quote needed by" removed from the quote request
+
+The first step no longer asks when the quote is needed by. It is off the form, the review summary,
+the document and the notification email.
+
+Requests already submitted keep the date they gave, and it still appears on the internal record and
+in the reports where one was entered — it simply is not asked for any more, and no longer prints an
+empty line where there is no answer.
+
 ## 2026-08-27 — The project name on every page of the quote document
 
 A page that gets separated from the rest of the document had nothing on it to say which job it

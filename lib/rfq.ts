@@ -18,6 +18,7 @@
 import {
   GRAINS_PER_LB,
   airDensity,
+  dryAirDensity,
   dewPointF,
   grains,
   rhFromDewPoint,
@@ -1407,7 +1408,33 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   const surGr = grains(surT, surRh, elev)
   const surVp = vaporPressureInHg(surT, surRh)
 
-  const density = airDensity(roomT, roomRh, elev)
+  /* ── AIR DENSITY (owner decision, 2026-08-27) ────────────────────────────────
+
+     TWO CHANGES, and they pull opposite ways:
+
+     1. DRY basis, not moist. Grains are per lb of DRY air, so the mass that
+        carries them is 1/v. airDensity() returns (1+W)/v and overstated by 0.7%
+        in a room, 2% at an outdoor condition. Its own doc-comment cited 0.075,
+        which IS the dry value — the code and the comment disagreed.
+
+     2. Chapter 5 KEPT, with a conservative guard. Ch.5 uses one project density
+        at the room condition, and that OVERSTATES wherever the room is cooler
+        than the air coming in — every normal dehumidification job: warehouse
+        +7.6%, cold store +10.9%, freezer dock +15.5%. That is the safe side and
+        the owner chose to keep it over the physically-exact per-source density,
+        which would have made every survey ~5.3% SMALLER.
+
+        🔴 BUT IT REVERSES. When the room is WARMER than the source it understates:
+        a 120°F curing room is −1.6%, winter make-up air at 40°F is −5.5%. So each
+        air-driven line takes the GREATER of the room density and its own source
+        density. Conservative by construction rather than by luck.
+
+     ⚠️ THE GUARD IS max() ONLY WHERE DENSITY MULTIPLIES. In dryAirCfm below it
+     DIVIDES, so a larger density means less airflow — max() there would undersize
+     the fan. That one keeps the room density on purpose. */
+  const roomDensity = dryAirDensity(roomT, roomRh, elev)
+  const loadDensity = (srcT: number, srcRh: number) =>
+    Math.max(roomDensity, dryAirDensity(srcT, srcRh, elev))
   const lines: LoadLine[] = []
 
   // — Permeation through the envelope (Eq. 5.1: Wp = P × A × ΔVP) —
@@ -1478,7 +1505,7 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   const leakRate = typedRate > 0
     ? typedRate
     : TIGHTNESS_RATES[data.tightness as TightnessBand] ?? TIGHTNESS_RATES.Average
-  const infiltration = Math.max(leakArea * leakRate * density * (surGr - roomGr), 0)
+  const infiltration = Math.max(leakArea * leakRate * loadDensity(surT, surRh) * (surGr - roomGr), 0)
   if (volume > 0) {
     lines.push({
       key: 'infiltration',
@@ -1513,7 +1540,8 @@ export function estimateLoad(data: RfqData): LoadEstimate {
     const outside = d.exposure === 'Outdoor'
     const velocity = outside ? DOOR_VELOCITY_OUTDOOR : DOOR_VELOCITY_INTERIOR
     const delta = (outside ? outGr : surGr) - roomGr
-    doorLoad += Math.max(area * velocity * minutesPerHour * density * delta, 0) * qty
+    const doorDensity = outside ? loadDensity(outT, outRh) : loadDensity(surT, surRh)
+    doorLoad += Math.max(area * velocity * minutesPerHour * doorDensity * delta, 0) * qty
   }
   if (data.doors.length) {
     // The COUNT is openings, not rows — one row of twelve doors reads as twelve.
@@ -1597,7 +1625,7 @@ export function estimateLoad(data: RfqData): LoadEstimate {
 
   const ventCfm = Math.max(num(data.ventCfm), num(data.exhaustCfm))
   const ventTarget = normalizeVentLoadTarget(data.ventLoadTarget)
-  const ventRaw = ventCfm > 0 ? Math.max(ventCfm * density * 60 * (ventGr - roomGr), 0) : 0
+  const ventRaw = ventCfm > 0 ? Math.max(ventCfm * loadDensity(ventT, ventRh) * 60 * (ventGr - roomGr), 0) : 0
 
   // ⚠️ WHERE THIS LANDS IS THE WHOLE POINT OF ventLoadTarget, and the two branches
   // size different equipment.
@@ -1632,7 +1660,8 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   const total = internal + ventilation
   const supplyGr = Math.max(roomGr - supplyDepression(roomGr), 0.1)
   const dryAirCfm = internal > 0 && roomGr - supplyGr > 0
-    ? internal / (density * 60 * (roomGr - supplyGr))
+    // ⚠️ roomDensity, NOT loadDensity — see the note above. Density divides here.
+    ? internal / (roomDensity * 60 * (roomGr - supplyGr))
     : 0
 
   const sorted = [...lines].sort((a, b) => b.grainsPerHour - a.grainsPerHour)
@@ -1688,7 +1717,13 @@ export function estimateProcess(data: RfqData): ProcessEstimate {
       : data.airSource === '100% return air' ? returnGr
       : returnGr + (outGr - returnGr) * mix
 
-  const density = airDensity(leavingT, 50, elev)
+  // 🔴 WAS airDensity(leavingT, 50, elev) — a hardcoded 50% rh that was never asked
+  // for and never shown. Desiccant leaving air is nearer 4% rh, so assuming 50%
+  // made it lighter than it is and the water-removal figure came out 0.86% LOW —
+  // the one finding that erred toward undersizing. Now the condition the function
+  // has already computed, on the dry basis.
+  const leavingRh = rhFromGrains(leavingT, leavingGr, elev)
+  const density = dryAirDensity(leavingT, leavingRh, elev)
   const depression = Math.max(enteringGr - leavingGr, 0)
   return {
     cfm,
@@ -1697,7 +1732,7 @@ export function estimateProcess(data: RfqData): ProcessEstimate {
     depression,
     lbPerHr: (cfm * density * 60 * depression) / GRAINS_PER_LB,
     leavingDewPointF: leavingGr > 0 ? dewPointF(leavingT, rhFromGrains(leavingT, leavingGr, elev), elev) : -100,
-    leavingRhPct: rhFromGrains(leavingT, leavingGr, elev),
+    leavingRhPct: leavingRh,
     complete: cfm > 0 && leavingGr > 0,
   }
 }
@@ -1725,4 +1760,4 @@ function clamp01(n: number): number {
   return Math.min(Math.max(Number.isFinite(n) ? n : 0, 0), 1)
 }
 
-export { grains, dewPointF, rhFromGrains, vaporPressureFromGrains, airDensity }
+export { grains, dewPointF, rhFromGrains, vaporPressureFromGrains, airDensity, dryAirDensity }

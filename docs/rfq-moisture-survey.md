@@ -1113,6 +1113,75 @@ with it and the two address lines at y = 48 and 53.5 were not — so they landed
 pine and read as the address falling out of the header. Fixed, and the lesson is in the code: the
 band height and everything positioned against it are one unit. Move one, move all of them.
 
+## Air density — the 2026-08-27 decisions
+
+The owner reviewed the three findings from the calculation audit and chose a **conservative** posture.
+All three decisions below are theirs.
+
+### Decision 1 — keep Chapter 5, and guard where it reverses
+
+Chapter 5 uses **one project density at the room condition**, and that OVERSTATES wherever the room is
+cooler than the air coming in — which is every normal dehumidification job:
+
+| Application | Chapter 5 against per-source |
+|---|---|
+| Freezer dock 35°F ← outdoor 95°F | **+15.45%** |
+| Cold store 55°F ← outdoor 95°F | +10.86% |
+| Warehouse 70°F ← outdoor 95°F | +7.57% |
+| Room 70°F ← surrounding plant 85°F | +4.96% |
+| Drying room 95°F ← outdoor 95°F | +2.72% |
+
+Switching to the physically-exact per-source density would have made every room survey **5.3%
+smaller** — the wrong direction for a conservative tool. **Kept.**
+
+🔴 **BUT CHAPTER 5 REVERSES.** When the room is *warmer* than the source it understates: a 120°F
+curing room by **−1.64%**, winter make-up air at 40°F by **−5.51%**. So every air-driven line now
+takes the **greater of the room density and its own source density** — surround for infiltration and
+interior doors, outdoor for doors that vent outside, the vent condition for make-up air.
+
+Verified: on a warehouse and a freezer dock the room density wins and nothing changes; on the curing
+room and the winter case the guard engages and the load goes **up**. The guard can only ever raise a
+figure.
+
+⚠️ **THE GUARD IS `max()` ONLY WHERE DENSITY MULTIPLIES.** In `dryAirCfm` density DIVIDES, so a
+larger density means *less* airflow — `max()` there would undersize the fan. That one keeps the room
+density deliberately. Getting this backwards would be invisible in every test that only checks loads.
+
+### Decision 2 — the process track uses the air it actually calculated
+
+`airDensity(leavingT, 50, elev)` had a hardcoded 50% rh. Desiccant leaving air is nearer 4%, so the
+assumption made the air lighter than it is and the water-removal figure came out **0.86% low** — the
+one finding that erred toward undersizing. Now the real leaving condition: 160.009 → **160.795 lb/hr**.
+
+### Decision 3 — dry basis, and the safety factor carries the margin
+
+Grains are per lb of **dry** air, so the mass carrying them is `1/v`. `airDensity()` returns the moist
+mixture `(1+W)/v` and overstated by 0.7% in a room, 2% at an outdoor condition — and its own
+doc-comment cited 0.075, which *is* the dry value, so code and comment disagreed.
+
+New `dryAirDensity()` is the one to use with grains. `airDensity()` is kept — it is the honest answer
+to a different question — and is no longer used by the load calculation.
+
+⚠️ The removed 0.7–2% was **accidental** conservatism hiding in a units error. The owner chose to fix
+it and let the **explicit 10% safety factor** carry the margin instead, where it is visible and can be
+tuned. Do not reintroduce hidden margin.
+
+### ⏸️ Deferred — the two tools still disagree
+
+The quote request and the Sizing Studio will still differ by roughly **7.6%** on the same job, the
+survey always higher. The owner chose to **leave this undocumented for now and come back to it**. It
+is a real open item, not an oversight: a rep who runs both gets two answers with nothing on either
+screen explaining which is which.
+
+## "Quote needed by" removed from step 1 (2026-08-27)
+
+The question is gone from the form, the review summary, the PDF panel and the desk email.
+
+⚠️ **The FIELD is deliberately kept** — on `RfqData`, in `date_required`, on the admin record and in
+the reports page's `withDeadline` metric. Surveys taken before today carry a real date and dropping
+the column would lose it. New surveys leave it blank, and every surface that prints it now hides the
+row when empty rather than showing a permanent dash.
+
 ## The 2026-08-27 calculation audit
 
 Asked for after step 5 changed: check every figure still reconciles. **49 assertions, all passing.**

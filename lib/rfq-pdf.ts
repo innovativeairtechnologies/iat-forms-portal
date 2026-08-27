@@ -280,7 +280,9 @@ function contactPanels(ctx: Ctx, y: number): number {
   const projectRows: [string, string][] = [
     ['Location', data.location],
     ['Elevation', data.elevationFt ? fmt(numOf(data.elevationFt)) + ' ft above sea level' : ''],
-    ['Quote needed by', formatDate(data.dateRequired)],
+    // No longer asked (2026-08-27). Kept for surveys taken before that, and
+    // dropped from the panel entirely when blank rather than printing an empty row.
+    ...(data.dateRequired ? [['Quote needed by', formatDate(data.dateRequired)] as [string, string]] : []),
     ['Expected order', formatDate(data.dateClose)],
     ['Engineering firm', data.engineeringFirm],
     ['Engineer contact', data.engineerContact],
