@@ -683,6 +683,22 @@ export default function RfqWizard() {
     setData(d => ({ ...d, [key]: value }))
   }, [])
 
+  /* 🔴 THE SITE LOOKUP RESULT LIVES HERE, NOT IN THE STEP (owner, 2026-08-27).
+     Only the current step is mounted, so SiteLocation lost its state the moment
+     anyone moved off step 1 — come back and the outdoor design panel was gone and
+     the button had to be pressed again.
+
+     ⚠️ ONLY THE DISPLAY WAS EVER LOST. Elevation, the outdoor condition and the
+     ASHRAE attribution are all fields on `data` and never went anywhere, so the
+     estimate was right the whole time — it was the evidence for it that vanished.
+     Lifting the state changes no number anywhere.
+
+     It does not survive a page reload, which matches the rest of the wizard: there
+     is no draft persistence in it at all. */
+  const [siteState, setSiteState] = useState<'idle' | 'looking' | 'done' | 'failed'>('idle')
+  const [siteMatched, setSiteMatched] = useState('')
+  const [siteDesign, setSiteDesign] = useState<DesignLookup | null>(null)
+
   const load = useMemo(() => estimateLoad(data), [data])
   const proc = useMemo(() => estimateProcess(data), [data])
 
@@ -916,6 +932,11 @@ export default function RfqWizard() {
                   proc={proc}
                   onDownloadPreview={() => downloadPdf(false, 'PREVIEW')}
                   downloading={downloading}
+                  site={{
+                    state: siteState, setState: setSiteState,
+                    matched: siteMatched, setMatched: setSiteMatched,
+                    design: siteDesign, setDesign: setSiteDesign,
+                  }}
                 />
               </motion.div>
             </AnimatePresence>
@@ -1561,8 +1582,18 @@ function Stat({ label, value, unit, big }: { label: string; value: string; unit?
 
 type SetFn = <K extends keyof RfqData>(key: K, value: RfqData[K]) => void
 
+/** The site lookup result, owned by the wizard so it outlives step 1 unmounting. */
+type SiteLookupState = {
+  state: 'idle' | 'looking' | 'done' | 'failed'
+  setState: React.Dispatch<React.SetStateAction<'idle' | 'looking' | 'done' | 'failed'>>
+  matched: string
+  setMatched: React.Dispatch<React.SetStateAction<string>>
+  design: DesignLookup | null
+  setDesign: React.Dispatch<React.SetStateAction<DesignLookup | null>>
+}
+
 function StepBody({
-  step, data, set, setData, load, proc, onDownloadPreview, downloading,
+  step, data, set, setData, load, proc, onDownloadPreview, downloading, site,
 }: {
   step: StepKey
   data: RfqData
@@ -1572,6 +1603,7 @@ function StepBody({
   proc: ReturnType<typeof estimateProcess>
   onDownloadPreview: () => void
   downloading: boolean
+  site: SiteLookupState
 }) {
   switch (step) {
     case 'application': return <StepApplication data={data} set={set} setData={setData} />
@@ -1584,7 +1616,7 @@ function StepBody({
     case 'airstream':   return <StepAirstream data={data} set={set} />
     case 'entering':    return <StepEntering data={data} set={set} setData={setData} />
     case 'unit':        return <StepUnit data={data} set={set} />
-    case 'about':       return <StepAbout data={data} set={set} setData={setData} />
+    case 'about':       return <StepAbout data={data} set={set} setData={setData} site={site} />
     case 'review':      return <StepReview data={data} load={load} proc={proc} onDownloadPreview={onDownloadPreview} downloading={downloading} />
   }
 }
@@ -2746,12 +2778,13 @@ type DesignLookup = {
  * moves the quoted load, and it comes from a station that may be tens of miles
  * away, so the customer needs to be able to see it to disagree with it.
  */
-function SiteLocation({ data, set, setData }: {
-  data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>
+function SiteLocation({ data, set, setData, site }: {
+  data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>; site: SiteLookupState
 }) {
-  const [state, setState] = useState<'idle' | 'looking' | 'done' | 'failed'>('idle')
-  const [matched, setMatched] = useState('')
-  const [design, setDesign] = useState<DesignLookup | null>(null)
+  // 🔴 OWNED BY THE WIZARD, not by this component — see the comment there. Holding
+  // it here meant it died every time step 1 unmounted, which is every time anyone
+  // pressed Continue.
+  const { state, setState, matched, setMatched, design, setDesign } = site
 
   const lookup = useCallback(async () => {
     const q = data.location.trim()
@@ -2813,7 +2846,9 @@ function SiteLocation({ data, set, setData }: {
     } catch {
       setState('failed')
     }
-  }, [data.location, setData])
+  // The setters come from the wizard now. They are stable useState functions, so
+  // naming them costs nothing and keeps exhaustive-deps honest.
+  }, [data.location, setData, setState, setMatched, setDesign])
 
   const canLookUp = data.location.trim().length >= 2 && state !== 'looking'
 
@@ -2894,8 +2929,8 @@ function SiteLocation({ data, set, setData }: {
 }
 
 
-function StepAbout({ data, set, setData }: {
-  data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>
+function StepAbout({ data, set, setData, site }: {
+  data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>>; site: SiteLookupState
 }) {
   return (
     <div className="space-y-5">
@@ -2915,7 +2950,7 @@ function StepAbout({ data, set, setData }: {
         />
       </Grid>
 
-      <SiteLocation data={data} set={set} setData={setData} />
+      <SiteLocation data={data} set={set} setData={setData} site={site} />
 
       <div className="rounded-xl border border-hairline bg-surface-soft p-4">
         <p className="mb-3 text-[12.5px] font-medium text-ink-secondary">The project</p>

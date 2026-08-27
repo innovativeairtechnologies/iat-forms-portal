@@ -123,6 +123,22 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — The site lookup stays on screen
+
+On the first step of the quote request, looking up the site filled in the elevation and the outdoor
+design condition and showed what it had found. Moving on a step and coming back made that panel
+disappear, and the button had to be pressed again.
+
+**Nothing was ever lost from the survey itself.** The elevation, the design condition and the weather
+station it came from were all recorded and were driving the estimate the whole time — it was only
+the panel showing them that was being thrown away, because it belonged to a step that stops existing
+the moment you leave it. Every figure anybody has been quoted was correct.
+
+The result now stays put for as long as the survey is open. Looking the site up again is still
+allowed, and doing so updates every figure that depends on it immediately — including the condition
+around the room, when that was answered as outside air. There is no need to walk back through the
+steps to make anything recalculate.
+
 ## 2026-08-27 — None, Custom, and boxes that accept a decimal
 
 Two answers were missing from the envelope step, and one of them mattered.

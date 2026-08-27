@@ -1113,6 +1113,35 @@ with it and the two address lines at y = 48 and 53.5 were not — so they landed
 pine and read as the address falling out of the header. Fixed, and the lesson is in the code: the
 band height and everything positioned against it are one unit. Move one, move all of them.
 
+## Step 1: the site lookup result survives leaving the step (2026-08-27)
+
+Pressing **Look up site conditions** filled the elevation and the outdoor design condition and showed
+a panel with the ASHRAE figures. Move to step 2 and come back, and the panel was gone — the button
+had to be pressed again.
+
+🔴 **ONLY THE DISPLAY WAS EVER LOST.** `SiteLocation` held `state`, `matched` and `design` in its own
+`useState`, and only the current step is mounted — so the moment anyone pressed Continue, that state
+was destroyed. But elevation, the outdoor condition, `outdoorSource` and `outdoorVintage` are all
+fields on `data` and never went anywhere. **The estimate was correct the whole time; it was the
+evidence for it that vanished.** Nothing anybody was quoted was ever affected.
+
+The three pieces now live on the wizard and are passed down, so they outlive step 1 unmounting.
+Lifting them changes no number.
+
+⚠️ It does not survive a page reload. That matches the rest of the wizard — there is no draft
+persistence anywhere in it, so a reload loses the whole survey regardless.
+
+### Re-running the lookup updates everything, with no need to walk the steps
+
+`load` and `proc` are `useMemo(() => estimateLoad(data), [data])` on the wizard, so **any** change to
+`data` re-runs the whole estimate on that render. A second lookup writes elevation and the outdoor
+condition through `setData`, which is a `data` change, so every downstream figure — infiltration,
+permeation, doors, make-up air, the dry-air cfm — is recomputed immediately.
+
+⚠️ **And the surrounding condition follows it**, because the location lookup re-mirrors outdoor into
+`surround*` whenever `surroundSource === 'outdoor'`. That is the second of the two mirror sites, and
+this is the case it exists for: correcting the location after answering "Outside air" on step 5.
+
 ## Tightness and the vapor retarder, revised (2026-08-27)
 
 Engineering advice, supplied by the owner. **Both of these are physics tables** — see the
