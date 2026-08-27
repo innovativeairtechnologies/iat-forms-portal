@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
-  Camera, Mic, Video, ClipboardCheck, Repeat2, Plus, ImageIcon,
+  Camera, Mic, Video, ClipboardCheck, Repeat2, Plus, ImageIcon, QrCode,
 } from 'lucide-react'
 import {
   ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar,
@@ -12,7 +12,7 @@ import {
 import { timeAgo } from '@/components/admin/list'
 import {
   CATEGORIES, CATEGORY_LABELS, SEVERITIES, SEVERITY_LABELS,
-  findingTitle, shortDate, standingOf,
+  WALK_ROLE_SUFFIX, findingTitle, shortDate, standingOf,
   type PpFindingRow,
 } from '@/lib/post-production'
 import type { PpSummary } from '@/lib/pp-data'
@@ -103,6 +103,12 @@ export default function QueueClient({
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-hairline-strong bg-surface text-[13px] font-medium text-ink-secondary hover:bg-surface-soft hover:text-ink transition-colors"
               >
                 <Repeat2 size={15} strokeWidth={1.75} /> Recurring
+              </Link>
+              <Link
+                href="/admin/engineering/post-production/tags"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-hairline-strong bg-surface text-[13px] font-medium text-ink-secondary hover:bg-surface-soft hover:text-ink transition-colors"
+              >
+                <QrCode size={15} strokeWidth={1.75} /> Shop tags
               </Link>
               <Link
                 href="/admin/engineering/post-production/preflight"
@@ -209,7 +215,17 @@ export default function QueueClient({
                     </span>
                     <span className="flex items-center gap-2 text-[11px] text-ink-muted mt-0.5">
                       <span className="sm:hidden tabular-nums font-medium text-ink-secondary">{f.job_number}</span>
-                      <span className="truncate">{f.walked_by_name || 'Unknown'}</span>
+                      <span className="truncate">
+                        {f.walked_by_name || 'Unknown'}
+                        {f.walked_by_role && WALK_ROLE_SUFFIX[f.walked_by_role] && (
+                          <span className="text-ink-faint"> · {WALK_ROLE_SUFFIX[f.walked_by_role]}</span>
+                        )}
+                      </span>
+                      {/* A name typed into a phone on the floor is not the same
+                          claim as a signed-in one, so the row says which. */}
+                      {f.source === 'tag' && (
+                        <QrCode size={11} className="text-ink-faint flex-shrink-0" aria-label="Filed from a shop-floor tag — name is self-declared" />
+                      )}
                       <span className="text-ink-faint">·</span>
                       <span className="whitespace-nowrap">{timeAgo(f.created_at)}</span>
                       {(photos > 0 || videos > 0 || audio > 0) && (

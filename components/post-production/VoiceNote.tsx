@@ -68,20 +68,45 @@ export default function VoiceNote({
   onDone,
   onTranscript,
   transcriptionConfigured,
+  uploadEndpoint,
+  uploadBody,
 }: {
   /** Called once the recording is stored. */
-  onDone: (media: Media) => void
+  onDone: (media: Media, previewUrl: string) => void
   /** Called with dictated text as it arrives, so the note fills in live. */
   onTranscript: (text: string) => void
   /** Whether a server-side transcription provider exists. Only changes the
    *  wording under the button — the recorder works either way. */
   transcriptionConfigured: boolean
+  /** Route that mints the signed upload URL — differs between the signed-in walk
+   *  and the no-login scan page. See uploadMedia. */
+  uploadEndpoint: string
+  /** Merged into the upload-url request. The no-login route refuses to mint a
+   *  URL for bytes not destined for a note that sticker owns. */
+  uploadBody?: Record<string, unknown>
 }) {
   const [state, setState] = useState<'idle' | 'recording' | 'saving'>('idle')
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState('')
   const [heard, setHeard] = useState('')
   const [dictating, setDictating] = useState(false)
+
+  /* 🔴 THE DICTATION CALLBACK MUST BE REACHED THROUGH A REF, NOT CLOSED OVER.
+   *
+   * start() builds the SpeechRecognition handlers once, and on iOS Safari
+   * recognition ends itself on every pause for breath — so those handlers get
+   * rebuilt and re-run many times during one recording. A handler that captured
+   * `onTranscript` directly would keep calling the version from the render at
+   * which recording started, which in turn computes "existing note + new words"
+   * from the note as it was BEFORE the first sentence.
+   *
+   * The symptom is brutal and looks like the recorder is broken: every pause
+   * wipes what you had already said, and anything typed by hand, replacing it
+   * with just the newest phrase. Reported from a real phone 2026-08-27; fixed
+   * here and in FindingCard's appendDictated, which needs the same treatment for
+   * the note itself. Do not "simplify" either one back into a plain closure. */
+  const onTranscriptRef = useRef(onTranscript)
+  useEffect(() => { onTranscriptRef.current = onTranscript }, [onTranscript])
 
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -180,10 +205,10 @@ export default function VoiceNote({
       }
 
       setState('saving')
-      const res = await uploadMedia('audio', blob, `note.${extForMime(blob.type, 'webm')}`, { duration_ms: duration })
+      const res = await uploadMedia('audio', blob, `note.${extForMime(blob.type, 'webm')}`, uploadEndpoint, { duration_ms: duration, extraBody: uploadBody })
       setState('idle')
       if (!res.ok) { setError(res.error); return }
-      onDone(res.media)
+      onDone(res.media, res.previewUrl)
     }
 
     startedAtRef.current = Date.now()
@@ -223,7 +248,10 @@ export default function VoiceNote({
               if (res.isFinal) finalText += res[0].transcript
               else interim += res[0].transcript
             }
-            if (finalText.trim()) onTranscript(finalText)
+            // ⚠️ Through the REF, never the captured prop. See the note above
+            // onTranscriptRef — this closure is built once per recognition
+            // instance and iOS rebuilds one on every pause.
+            if (finalText.trim()) onTranscriptRef.current(finalText)
             setHeard(interim.trim())
           }
           // ⚠️ iOS Safari ends recognition on its own every few seconds. Restart

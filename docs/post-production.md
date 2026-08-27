@@ -26,8 +26,8 @@ spreadsheet, and if any of them is ever removed the feature is back to being a s
 
 ### Walkaround — `/post-production/walk`
 
-The phone surface. Type the four-digit job number, then talk, photograph or film your way
-around the unit.
+The phone surface. Type the four-digit **serial** — which is also the job number; they are the same number,
+confirmed 2026-08-27 — then talk, photograph or film your way around the unit.
 
 - **Voice.** Tap once, talk, tap again. `MediaRecorder` captures the audio; the Web Speech
   API transcribes **live** where the device supports it (Android Chrome, iOS Safari 14.5+),
@@ -82,6 +82,95 @@ the sentence a warranty conversation two years from now turns on.
 
 An empty checklist is a **result**, not an error. It is the stated goal: post-production
 meetings with nothing much to share.
+
+## Shop-floor tags — walking a unit with no login
+
+_Migration `099_post_production_tags.sql`._
+
+The meeting was about **four perspectives** on a built unit: the engineer, the person who
+built it, the electrician who wired it, the person who tested it. Three of those four have
+no portal account and are not getting one — so the unit gets a QR sticker.
+
+Manage them at **`/admin/engineering/post-production/tags`**. Two kinds, and the difference
+is the point:
+
+| | |
+|---|---|
+| **Unit tag** — carries a serial | Printed with the job and stuck to that machine. Scan it and you are already walking that unit. **No typing**, which on a shop floor is the difference between a walk happening and not happening. |
+| **Standing tag** — no serial | Printed once, taped to the test-bay wall. The scanner types the four digits. Outlives every unit. |
+
+Scanning opens `/walk/<token>`: who are you, how did you work on this unit, then the *same
+capture screen* the signed-in walk uses. Both render
+`components/post-production/FindingCard`, so a fix to the recorder or the chips lands in
+both at once.
+
+### `walked_by_role` is the feature, not a form field
+
+Without it, twelve findings on job 4153 are an undifferentiated list. With it they are a
+build review — and *"the person who wired it and the person who tested it both flagged the
+same access panel"* becomes a sentence the data can support.
+
+### A tag walk is not second-class
+
+Findings from a sticker go into the same queue, with the same two-week clock and the same
+recurrence matching. Routing them into a lesser queue would reproduce the problem the
+feature exists to solve. What differs is **provenance**, carried on the row and shown on
+every screen: `source='tag'`, `walked_by` NULL, and the name **self-declared**. The queue
+marks those rows and the detail page says *"From a shop tag — name self-declared, not
+signed in"* in words.
+
+### 🔴 Security posture
+
+**The token is the credential**, exactly as `/board/<token>` (055) already establishes.
+43 URL-safe characters, 244 bits, minted by a database column default — never by a route,
+which cannot then forget to set one or mint a weak one.
+
+Every rule below is load-bearing, and `lib/pp-tag.ts` is the one place they live:
+
+- **RLS on, no policies.** "Public page" must not become "public table". An anon SELECT
+  policy on `pp_tags` would let one `GET /rest/v1/pp_tags` with the publishable key dump
+  every row **including every token** — a single request enumerating every sticker.
+- **Same 404 for an unknown token and a retired one.** Never confirm which tokens are real.
+- **Ownership is re-proved on every write.** `walkForTag()` / `findingForTag()` verify the
+  row belongs to *this* tag and is still open. Without them the token would be a
+  **universal write key** — the test-bay sticker could edit any walk in the building.
+- **The write whitelist is much shorter than the admin route's.** A scanner may write what
+  they saw. They may **not** set an assignee, a due date, a status, a resolution or a
+  theme. A sticker on a machine must never be able to close its own finding.
+- **Upload URLs are not general-purpose.** No signed URL is minted unless the caller names
+  a finding that hangs off a walkaround belonging to this tag. Server-generated path,
+  extension allowlist, 50MB cap.
+- **Media reads are ownership-checked, not shape-checked.** Unlike the admin media route
+  (where every viewer may see every object, so bucket membership *is* the authorization),
+  this one proves the object is attached to a finding on one of this tag's walkarounds.
+- **Rate limits are a backstop, not the control** — `lib/rate-limit` fails open by design.
+  Generous, because the whole shop shares one NAT IP. The hard ceilings in `lib/pp-tag.ts`
+  (40 findings per walk, 12 attachments per finding) hold even when the limiter is down.
+- **Retire or rotate.** Rotating issues a new token and kills every printed QR for that tag
+  instantly — that is what it is for, and why it is its own explicit flag rather than
+  something a rename could do by accident. Both are audit-logged.
+
+⚠️ **`/walk` is deliberately absent from middleware's matcher**, which is an allowlist.
+Adding it would gate the page and silently break every printed sticker in the shop.
+
+⚠️ **The roster is `production_people`, never `employees`.** Migration 055 created that
+table for exactly this reason: `employees` is portal accounts, and every **customer invite**
+adds a row to it. Listing it here would put customer names on a sticker-gated page.
+
+### Verified
+
+37 assertions against a locally-served production build and the live database, all passing:
+token shape; the anon key cannot read `pp_tags` or `pp_walkarounds`; unknown and malformed
+tokens refused; missing name/perspective refused; an invented perspective refused; a unit
+tag ignores a posted job number in favour of its own; **tag B cannot add to, edit, delete or
+hand over tag A's walk**; no upload URL without an owned finding, or for another tag's
+finding; an SVG cannot be uploaded as a photo; an over-50MB clip refused; paths are
+server-generated; an unowned media path 404s; status / assignee / due date / resolution /
+theme are all un-writable from a tag while the note itself writes; a retired tag is refused
+with the same message as an unknown one.
+
+The page was also loaded with **no session at all** — it renders, does not redirect, and a
+bad token 404s.
 
 ## 🔴 How the counting works, and why it is split
 

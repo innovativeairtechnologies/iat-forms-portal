@@ -198,6 +198,51 @@ export const VERDICT_TONE: Record<PreflightVerdict, Tone> = {
   risk: 'amber',
 }
 
+// ─── Who walked it ───────────────────────────────────────────────────────────
+//
+// The four perspectives the meeting actually asked for — "from the engineer
+// standpoint. The production guy's standpoint, who built it, the electrician's
+// point of view from the guy who wired it, and even the guy who tested it."
+//
+// This is not decoration and it is not a job title. It is the answer to "why is
+// this person's opinion of this unit worth recording", and it is what turns
+// twelve findings on job 4153 from a list into a build review.
+
+export const WALK_ROLES = ['engineering', 'built_it', 'wired_it', 'tested_it', 'other'] as const
+export type WalkRole = (typeof WALK_ROLES)[number]
+
+export const WALK_ROLE_LABELS: Record<WalkRole, string> = {
+  engineering: 'Engineering',
+  built_it: 'Built it',
+  wired_it: 'Wired it',
+  tested_it: 'Tested it',
+  other: 'Something else',
+}
+
+/** How it reads next to a name on a finding: "Kyle · wired it". */
+export const WALK_ROLE_SUFFIX: Record<WalkRole, string> = {
+  engineering: 'engineering',
+  built_it: 'built it',
+  wired_it: 'wired it',
+  tested_it: 'tested it',
+  other: '',
+}
+
+export const WALK_ROLE_TONE: Record<WalkRole, Tone> = {
+  engineering: 'sky',
+  built_it: 'amber',
+  wired_it: 'violet',
+  tested_it: 'emerald',
+  other: 'slate',
+}
+
+export const isWalkRole = (v: unknown): v is WalkRole =>
+  typeof v === 'string' && (WALK_ROLES as readonly string[]).includes(v)
+
+/** How a walkaround got here. `tag` means somebody scanned a sticker and typed
+ *  their own name — unverified, and every screen that shows the name says so. */
+export type WalkSource = 'portal' | 'tag'
+
 // ─── Media ───────────────────────────────────────────────────────────────────
 
 export type MediaKind = 'photo' | 'video' | 'audio'
@@ -246,19 +291,48 @@ export function clock(ms: number | null | undefined): string {
 
 export type PpWalkaround = {
   id: string
+  /** The four digits the shop says out loud. This is the unit SERIAL and the job
+   *  number — the same number (confirmed 2026-08-27). The column keeps the name
+   *  `job_number` because that is what it joins to on eng_jobs; the UI calls it
+   *  what the shop calls it. */
   job_number: string
   job_id: string | null
-  unit_serial: string | null
   customer_name: string
   model_number: string | null
+  /** NULL for a tag walk — nobody was signed in. */
   walked_by: string | null
+  /** Self-declared on a tag walk. Never render it as though it were verified. */
   walked_by_name: string
+  walked_by_role: WalkRole | null
+  source: WalkSource
+  tag_id: string | null
   status: 'walking' | 'submitted'
   notes: string | null
   started_at: string
   submitted_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type PpTag = {
+  id: string
+  token: string
+  label: string
+  /** NULL = a standing tag (scanner types the number). Set = a unit tag. */
+  job_number: string | null
+  is_active: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** The scan URL a QR encodes. Deliberately NOT NEXT_PUBLIC_APP_URL, which is
+ *  'http://localhost:3000' on a dev box — a sticker is glued to a machine for
+ *  years, and printing one from dev would produce a QR that works nowhere. Same
+ *  reasoning and the same variable as the tool-crib labels. */
+export function walkTagUrl(token: string): string {
+  const origin = process.env.NEXT_PUBLIC_LABEL_ORIGIN || 'https://iatportal.vercel.app'
+  return `${origin.replace(/\/+$/, '')}/walk/${token}`
 }
 
 export type PpFinding = {
@@ -286,10 +360,16 @@ export type PpFinding = {
   updated_at: string
 }
 
-/** A finding joined to the names a screen needs. */
+/** A finding joined to the names a screen needs.
+ *
+ *  `source` and `walked_by_role` ride along from the walkaround because every
+ *  screen that prints `walked_by_name` has to be able to say whether that name
+ *  was authenticated or typed into a phone by whoever was holding it. */
 export type PpFindingRow = PpFinding & {
   assignee_name: string | null
   walked_by_name: string
+  walked_by_role: WalkRole | null
+  source: WalkSource
   customer_name: string
   theme_title: string | null
 }

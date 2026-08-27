@@ -10,6 +10,36 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-27 — A QR on the unit, and the recorder stops erasing what you said
+
+Three changes to Post-Production, all from walking it on a real phone.
+
+**The shop floor can file findings now, with no login.** The original meeting was about four
+perspectives on a built unit — the engineer, the person who built it, the electrician who wired
+it, the person who tested it — and three of those four have no portal account. So the unit gets
+a QR sticker. Print them from Engineering › Post-Production › **Shop tags**. A tag with a serial
+goes on that machine and skips the typing entirely; a tag without one lives on the test-bay wall
+and asks for the number, and never needs replacing.
+
+Scanning asks two questions — who are you, and how did you work on this unit — and then gives
+exactly the same capture screen as the signed-in walk. Findings go into the same queue with the
+same two-week clock. What is recorded alongside them is where they came from: the queue marks a
+finding filed from a sticker, and the detail page says the name was typed rather than signed in.
+Tags can be retired, and issuing a new link kills every printed QR for that tag at once.
+
+**The recorder no longer erases what you already said.** Pausing for breath ended dictation and
+restarted it, and the restarted listener was still working from the note as it stood when you
+first pressed record — so every pause replaced the previous sentence, and anything typed by
+hand, with just the newest phrase. It now accumulates properly: type a bit, talk, pause, talk
+again, and all of it survives. Verified by simulating two pauses mid-recording.
+
+**"Add another note" is at the top of the screen.** Notes stack newest-first, so on a walk with
+several of them the buttons at the foot of the screen were a long scroll away from where you
+were reading.
+
+**One field fewer.** The serial number and the job number are the same four digits, so the
+walkaround no longer asks for both.
+
 ## 2026-08-27 — Walk the unit with your phone, and the findings get an owner and a clock
 
 Post-production meetings are back, in the portal. A unit passes test, somebody walks it, and

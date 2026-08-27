@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import {
-  Camera, Check, CircleAlert, Loader2, Mic, Repeat2, RotateCcw, Sparkles, Video, X,
+  Camera, Check, CircleAlert, Loader2, Mic, QrCode, Repeat2, RotateCcw, Sparkles, Video, X,
 } from 'lucide-react'
 import PageChrome from '@/app/admin/PageChrome'
 import { ListCardPage, ListCard } from '@/components/admin/list-card'
 import {
-  CATEGORY_LABELS, SEVERITY_LABELS, clock, humanBytes, mediaSrc, shortDate, standingOf,
+  CATEGORY_LABELS, SEVERITY_LABELS, WALK_ROLE_LABELS,
+  clock, humanBytes, mediaSrc, shortDate, standingOf,
   type PpFindingRow, type PpThemeRow,
 } from '@/lib/post-production'
 import { CategoryChip, FindingStatusChip, SeverityChip, StandingChip } from '../ui'
@@ -124,7 +125,11 @@ export default function FindingDetailClient({
               <SeverityChip severity={finding.severity} />
               <span className="flex-1" />
               <span className="text-[11.5px] text-ink-muted">
-                {finding.walked_by_name || 'Unknown'} · {shortDate(finding.created_at)}
+                {finding.walked_by_name || 'Unknown'}
+                {finding.walked_by_role && (
+                  <span> · {WALK_ROLE_LABELS[finding.walked_by_role].toLowerCase()}</span>
+                )}
+                {' · '}{shortDate(finding.created_at)}
               </span>
             </div>
 
@@ -434,7 +439,22 @@ export default function FindingDetailClient({
                 )}
               </Meta>
               <Meta label="Customer">{finding.customer_name || <span className="text-ink-faint">Not recorded</span>}</Meta>
-              <Meta label="Walked by">{finding.walked_by_name || <span className="text-ink-faint">Unknown</span>}</Meta>
+              <Meta label="Walked by">
+                {finding.walked_by_name || <span className="text-ink-faint">Unknown</span>}
+                {/* ⚠️ Say it plainly. A name from a scanned tag was typed into a
+                    phone by whoever was holding it — it is an honor-system
+                    signature, not an identity, and an engineer deciding whose
+                    judgement to weigh needs to know which kind it is. */}
+                {finding.source === 'tag' && (
+                  <span className="block mt-0.5 text-[11px] font-normal text-ink-faint">
+                    <QrCode size={10} className="inline -mt-0.5 mr-1" />
+                    From a shop tag — name self-declared, not signed in
+                  </span>
+                )}
+              </Meta>
+              {finding.walked_by_role && (
+                <Meta label="Their part">{WALK_ROLE_LABELS[finding.walked_by_role]}</Meta>
+              )}
               <Meta label="Area">{CATEGORY_LABELS[finding.category]}</Meta>
               <Meta label="Severity">{SEVERITY_LABELS[finding.severity]}</Meta>
               <Meta label="Raised">{shortDate(finding.created_at)}</Meta>

@@ -5,6 +5,7 @@ import {
   OPEN_FINDING_STATUSES, PREFLIGHT_LOOKBACK_DAYS, RECURRENCE_THRESHOLD,
   standingOf, isLate,
   type PpFinding, type PpFindingRow, type PpTheme, type PpThemeRow, type PpWalkaround,
+  type WalkRole, type WalkSource,
 } from './post-production'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -36,12 +37,19 @@ const FINDING_COLS =
  * query.
  */
 const FINDING_JOINS =
-  'walk:pp_walkarounds(walked_by_name, customer_name), ' +
+  'walk:pp_walkarounds(walked_by_name, walked_by_role, source, customer_name), ' +
   'assignee:employees!pp_findings_assignee_id_fkey(name), ' +
   'theme:pp_themes(title)'
 
+type WalkJoin = {
+  walked_by_name: string
+  walked_by_role: WalkRole | null
+  source: WalkSource
+  customer_name: string
+}
+
 type FindingJoinRow = PpFinding & {
-  walk: { walked_by_name: string; customer_name: string } | { walked_by_name: string; customer_name: string }[] | null
+  walk: WalkJoin | WalkJoin[] | null
   assignee: { name: string } | { name: string }[] | null
   theme: { title: string } | { title: string }[] | null
 }
@@ -61,6 +69,10 @@ function flatten(rows: FindingJoinRow[]): PpFindingRow[] {
       media: Array.isArray(f.media) ? f.media : [],
       assignee_name: assignee?.name ?? null,
       walked_by_name: walk?.walked_by_name ?? '',
+      walked_by_role: walk?.walked_by_role ?? null,
+      // Defaults to 'portal' when the join is missing, which is the SAFER wrong
+      // answer: it renders as a signed-in walk rather than mislabelling one.
+      source: walk?.source ?? 'portal',
       customer_name: walk?.customer_name ?? '',
       theme_title: theme?.title ?? null,
     }

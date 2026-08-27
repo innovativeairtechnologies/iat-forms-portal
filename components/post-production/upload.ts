@@ -14,14 +14,33 @@ import { MAX_UPLOAD_BYTES, type Media, type MediaKind } from '@/lib/post-product
    photo clears it; a video is not close. */
 
 export type UploadResult =
-  | { ok: true; media: Media }
+  | {
+      ok: true
+      media: Media
+      /** A local object URL for the bytes just uploaded. Lets a thumbnail render
+       *  instantly and, on the no-login page, without making any read request at
+       *  all. The caller owns it and must revoke it on unmount. */
+      previewUrl: string
+    }
   | { ok: false; error: string }
 
 export async function uploadMedia(
   kind: MediaKind,
   file: Blob,
   filename: string,
-  extra: { duration_ms?: number } = {},
+  /** Which route mints the signed URL. The admin walk and the no-login shop-floor
+   *  scan page share every pixel of this component but NOT their authorization:
+   *  one is behind requireEngineeringAuth, the other behind a sticker's token.
+   *  Passing the endpoint in is what lets the UI be shared without either page
+   *  inheriting the other's gate. */
+  endpoint: string,
+  extra: {
+    duration_ms?: number
+    /** Merged into the upload-url request. The token route requires
+     *  `finding_id` so it can refuse to mint a URL for bytes that are not
+     *  destined for a note that sticker owns; the admin route ignores it. */
+    extraBody?: Record<string, unknown>
+  } = {},
 ): Promise<UploadResult> {
   let payload: Blob = file
   let name = filename
@@ -55,10 +74,10 @@ export async function uploadMedia(
     }
   }
 
-  const res = await fetch('/api/admin/post-production/upload-url', {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind, name, size: payload.size }),
+    body: JSON.stringify({ ...(extra.extraBody ?? {}), kind, name, size: payload.size }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) return { ok: false, error: json.error || 'Could not start the upload.' }
@@ -73,6 +92,7 @@ export async function uploadMedia(
 
   return {
     ok: true,
+    previewUrl: URL.createObjectURL(payload),
     media: {
       kind,
       path: json.path,

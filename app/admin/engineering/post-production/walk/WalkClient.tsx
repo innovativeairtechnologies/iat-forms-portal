@@ -4,46 +4,47 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ArrowLeft, Camera, Video, Pencil, Trash2, Check, Loader2, X,
+  ArrowLeft, Camera, Video, Pencil, Plus, Check, Loader2, X,
   CircleAlert, CloudUpload, CheckCircle2,
 } from 'lucide-react'
+import FindingCard, { type Local } from '@/components/post-production/FindingCard'
+import { uploadMedia } from '@/components/post-production/upload'
 import {
-  CATEGORIES, CATEGORY_LABELS, CATEGORY_SHORT, SEVERITIES, SEVERITY_BLURB, SEVERITY_LABELS,
-  clock, humanBytes, mediaSrc, normalizeJobNumber,
-  type Category, type Media, type PpFinding, type PpWalkaround, type Severity,
+  mediaSrc, normalizeJobNumber,
+  type Media, type PpFinding, type PpWalkaround,
 } from '@/lib/post-production'
-import VoiceNote from './VoiceNote'
-import { uploadMedia } from './upload'
 
 /* ────────────────────────────────────────────────────────────────────────────
-   The walkaround.
+   The walkaround, for somebody signed in.
+
+   The shop-floor scan page at /walk/<token> is the SAME screen for people with
+   no portal account; both render components/post-production/FindingCard. What
+   differs is only what has to differ — the gate on the API routes, and the fact
+   that a scanner has to say who they are because nobody knows.
 
    ── Why it is one screen ───────────────────────────────────────────────────
    Somebody is holding a phone next to a running unit with a coffee in the other
    hand. Every modal is a thing to dismiss and every navigation is a thing to
    come back from. So: a header that says which unit, a stack of findings, and a
-   bar of four fat buttons pinned to the bottom of the glass. Nothing else.
+   bar of fat buttons pinned to the bottom of the glass. Nothing else.
 
    ── Why everything saves immediately ───────────────────────────────────────
    Shop wifi drops. The walkaround row exists before the first photo, each
    finding row exists before it has any words in it, and every photo, clip and
    sentence is a small write against something already on the server. A dropped
-   connection costs the last action, never the walk. The alternative — hold it
-   all in memory until a Submit button — is exactly how somebody loses ten
-   minutes of observations at the far end of the building.
+   connection costs the last action, never the walk.
 
    ── Handing over is a separate, deliberate act ─────────────────────────────
    Nothing in here nags anybody. The findings are drafts with no dates on them
-   until "Hand to engineering", which is the moment the two-week clock starts on
-   each one.
+   until "Hand over", which is the moment the two-week clock starts on each one.
    ──────────────────────────────────────────────────────────────────────────── */
+
+const UPLOAD_URL = '/api/admin/post-production/upload-url'
 
 type Job = {
   id: string; job_number: string; customer_name: string
   project_name: string; model_number: string | null; ship_date: string | null; status: string
 }
-
-type Local = PpFinding & { _saving?: boolean; _error?: string }
 
 export default function WalkClient({
   initialWalk, initialFindings, jobs, prefillJob, transcriptionConfigured,
@@ -74,18 +75,21 @@ export default function WalkClient({
 }
 
 /* ── Step one: which unit ───────────────────────────────────────────────────
-   The job number is the only required thing, and it is four digits everyone
-   already says out loud. Recent jobs are offered as fat taps because typing on a
-   phone next to a noisy unit is the worst part of any form — but an unmatched
-   number is always accepted. A capture surface that can refuse to capture is a
-   capture surface people stop opening. */
+   ONE number, and it is the one everybody already says out loud. It is the
+   unit's serial and the job number at the same time — confirmed 2026-08-27 —
+   so asking for both (which the first cut did) was asking somebody standing at
+   a machine to type the same four digits twice.
+
+   Recent jobs are offered as fat taps because typing on a phone next to a noisy
+   unit is the worst part of any form, but an unmatched number is always
+   accepted. A capture surface that can refuse to capture is one people stop
+   opening. */
 function UnitPicker({
   jobs, prefill, onStarted,
 }: {
   jobs: Job[]; prefill: string; onStarted: (w: PpWalkaround) => void
 }) {
   const [number, setNumber] = useState(prefill)
-  const [serial, setSerial] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -97,12 +101,12 @@ function UnitPicker({
   const exact = jobs.find(j => j.job_number === clean) ?? null
 
   const start = async () => {
-    if (!clean) { setError('The job number is how the finding gets back to the right unit.'); return }
+    if (!clean) { setError('The serial is how the finding gets back to the right unit.'); return }
     setBusy(true); setError('')
     const res = await fetch('/api/admin/post-production/walkarounds', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ job_number: clean, unit_serial: serial || null }),
+      body: JSON.stringify({ job_number: clean }),
     })
     const json = await res.json().catch(() => ({}))
     setBusy(false)
@@ -124,16 +128,18 @@ function UnitPicker({
           <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted">Walkaround</p>
           <h1 className="mt-1 text-[22px] font-semibold text-ink tracking-tight">Which unit?</h1>
           <p className="mt-1.5 text-[13px] text-ink-muted leading-relaxed">
-            The job number the shop uses. Two people can walk the same unit — that makes two walkarounds,
-            and neither overwrites the other.
+            Two people can walk the same unit — that makes two walkarounds, and neither overwrites
+            the other.
           </p>
 
-          <label className="block mt-5 text-[12px] font-medium text-ink-secondary">Job number</label>
+          <label className="block mt-5 text-[12px] font-medium text-ink-secondary">
+            Serial number
+          </label>
           <input
             value={number}
             onChange={e => setNumber(e.target.value)}
-            /* inputMode numeric brings up the number pad without blocking a job
-               number that one day has a letter in it. */
+            /* inputMode numeric brings up the number pad without blocking a
+               serial that one day has a letter in it. */
             inputMode="numeric"
             autoComplete="off"
             autoFocus
@@ -184,16 +190,6 @@ function UnitPicker({
             </div>
           )}
 
-          <label className="block mt-5 text-[12px] font-medium text-ink-secondary">
-            Unit serial <span className="text-ink-faint font-normal">— optional</span>
-          </label>
-          <input
-            value={serial}
-            onChange={e => setSerial(e.target.value)}
-            placeholder="Off the nameplate, if it is on there yet"
-            className="mt-1.5 w-full h-11 px-3 rounded-lg bg-surface border border-hairline text-[13px] text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
-          />
-
           {error && <p className="mt-3 text-[12.5px] text-rose-600 dark:text-rose-400">{error}</p>}
 
           <button
@@ -234,6 +230,13 @@ function Walking({
   /* Debounced text saves, one timer per finding. A dictated note arrives a
      phrase at a time, so saving on every keystroke would be a write per word;
      700ms is under the time it takes to say the next sentence. */
+  // A fresh upload previews from a local object URL — instant, and no read
+  // request for bytes we just sent. Persisted media falls back to the signed
+  // media route. Revoked on unmount; same pattern as ToolPhotos.
+  const freshUrls = useRef<Map<string, string>>(new Map())
+  useEffect(() => () => { freshUrls.current.forEach(URL.revokeObjectURL) }, [])
+  const mediaSrcFor = (path: string) => freshUrls.current.get(path) ?? mediaSrc(path)
+
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   useEffect(() => {
     const map = timers.current
@@ -264,12 +267,12 @@ function Walking({
     map.set(id, setTimeout(() => { map.delete(id); void patch(id, body) }, 700))
   }, [patch])
 
-  const addFinding = useCallback(async (seed: Partial<PpFinding> = {}): Promise<Local | null> => {
+  const addFinding = useCallback(async (): Promise<Local | null> => {
     setError('')
     const res = await fetch('/api/admin/post-production/findings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walkaround_id: walk.id, ...seed }),
+      body: JSON.stringify({ walkaround_id: walk.id }),
     })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) { setError(json.error || 'Could not add that.'); return null }
@@ -288,7 +291,7 @@ function Walking({
     })
   }, [patch, setFindings])
 
-  const pickFile = async (kind: 'photo' | 'video', findingId: string | null) => {
+  const pickFile = (kind: 'photo' | 'video', findingId: string | null) => {
     pendingKindRef.current = kind
     targetRef.current = findingId
     ;(kind === 'photo' ? photoRef : videoRef).current?.click()
@@ -306,9 +309,10 @@ function Walking({
       id = created.id
     }
 
-    const res = await uploadMedia(kind, file, file.name || `${kind}.bin`)
+    const res = await uploadMedia(kind, file, file.name || `${kind}.bin`, UPLOAD_URL)
     setBusy(false)
     if (!res.ok) { setError(res.error); return }
+    freshUrls.current.set(res.media.path, res.previewUrl)
     await attach(id, res.media)
   }
 
@@ -364,7 +368,7 @@ function Walking({
               {handover.submitted} finding{handover.submitted === 1 ? '' : 's'} handed over
             </h1>
             <p className="mt-2 text-[13.5px] text-ink-secondary leading-relaxed">
-              Job {walk.job_number} is with engineering. Each one is due an answer within two weeks.
+              Unit {walk.job_number} is with engineering. Each one is due an answer within two weeks.
             </p>
             {handover.grouped > 0 && (
               <p className="mt-3 text-[12.5px] text-ink-muted leading-relaxed">
@@ -395,7 +399,6 @@ function Walking({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-canvas">
-      {/* Header — which unit, and the way out. */}
       <div className="flex-shrink-0 border-b border-hairline bg-surface">
         <div className="mx-auto w-full max-w-[720px] px-4 py-3 flex items-center gap-3">
           <button
@@ -425,9 +428,25 @@ function Walking({
             Hand over{usable.length > 0 ? ` (${usable.length})` : ''}
           </button>
         </div>
+
+        {/* Add another one WITHOUT scrolling to the bottom.
+            Findings stack newest-first, so on a walk with six of them the action
+            bar at the foot of the screen is a long scroll away from where you
+            are reading — and you want the next note the moment you notice the
+            next thing, not after hunting for a button. Asked for from a real
+            phone 2026-08-27. */}
+        <div className="mx-auto w-full max-w-[720px] px-4 pb-3">
+          <button
+            type="button"
+            onClick={() => { void addFinding() }}
+            disabled={busy}
+            className="w-full h-11 rounded-lg border border-dashed border-hairline-strong bg-surface text-[13.5px] font-medium text-ink-secondary hover:bg-surface-soft hover:text-ink active:scale-[0.99] disabled:opacity-50 transition-all inline-flex items-center justify-center gap-1.5"
+          >
+            <Plus size={16} strokeWidth={2} /> Add another note
+          </button>
+        </div>
       </div>
 
-      {/* The findings. */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="mx-auto w-full max-w-[720px] px-4 py-4 pb-32 space-y-3">
           {error && (
@@ -455,6 +474,8 @@ function Walking({
               finding={f}
               number={findings.length - i}
               transcriptionConfigured={transcriptionConfigured}
+              uploadEndpoint={UPLOAD_URL}
+              mediaSrcFor={mediaSrcFor}
               onNote={(note, source) => {
                 setFindings(cur => cur.map(x => (x.id === f.id ? { ...x, note, note_source: source } : x)))
                 queueSave(f.id, { note, note_source: source })
@@ -469,7 +490,7 @@ function Walking({
               }}
               onPhoto={() => pickFile('photo', f.id)}
               onVideo={() => pickFile('video', f.id)}
-              onAudio={m => attach(f.id, m)}
+              onAudio={(m, preview) => { freshUrls.current.set(m.path, preview); void attach(f.id, m) }}
               onRemoveMedia={p => removeMedia(f.id, p)}
               onRemove={() => removeFinding(f.id)}
             />
@@ -477,12 +498,12 @@ function Walking({
         </div>
       </div>
 
-      {/* The action bar. Pinned, four fat targets, thumb-height. */}
+      {/* The action bar. Pinned, fat targets, thumb-height. */}
       <div className="flex-shrink-0 border-t border-hairline bg-surface pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto w-full max-w-[720px] px-3 py-2.5 grid grid-cols-3 gap-2">
           <ActionButton icon={<Camera size={19} strokeWidth={1.75} />} label="Photo" busy={busy} onClick={() => pickFile('photo', null)} />
           <ActionButton icon={<Video size={19} strokeWidth={1.75} />} label="Video" busy={busy} onClick={() => pickFile('video', null)} />
-          <ActionButton icon={<Pencil size={19} strokeWidth={1.75} />} label="Note" busy={busy} onClick={() => addFinding()} />
+          <ActionButton icon={<Pencil size={19} strokeWidth={1.75} />} label="Note" busy={busy} onClick={() => { void addFinding() }} />
         </div>
       </div>
 
@@ -548,179 +569,5 @@ function ActionButton({
       {busy ? <Loader2 size={19} className="animate-spin" /> : icon}
       <span className="text-[11px] font-medium">{label}</span>
     </button>
-  )
-}
-
-/* ── One finding ────────────────────────────────────────────────────────────── */
-function FindingCard({
-  finding, number, transcriptionConfigured,
-  onNote, onCategory, onSeverity, onPhoto, onVideo, onAudio, onRemoveMedia, onRemove,
-}: {
-  finding: Local
-  number: number
-  transcriptionConfigured: boolean
-  onNote: (note: string, source: PpFinding['note_source']) => void
-  onCategory: (c: Category) => void
-  onSeverity: (s: Severity) => void
-  onPhoto: () => void
-  onVideo: () => void
-  onAudio: (m: Media) => void
-  onRemoveMedia: (path: string) => void
-  onRemove: () => void
-}) {
-  const taRef = useRef<HTMLTextAreaElement | null>(null)
-
-  // Grow to fit. A dictated observation runs long and a phone textarea that
-  // scrolls internally hides the beginning of what somebody just said.
-  useEffect(() => {
-    const ta = taRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = `${Math.min(ta.scrollHeight, 420)}px`
-  }, [finding.note])
-
-  /** Dictated text is APPENDED, never substituted for what is in the box. Somebody
-   *  who typed half a sentence and then started talking must end up with both. */
-  const appendDictated = (text: string) => {
-    const t = text.trim()
-    if (!t) return
-    const joined = finding.note.trim() ? `${finding.note.trimEnd()} ${t}` : t
-    onNote(joined, finding.note_source === 'typed' && finding.note.trim() ? 'mixed' : 'dictated')
-  }
-
-  return (
-    <div className="rounded-xl border border-hairline bg-surface">
-      <div className="flex items-center gap-2 px-4 h-11 border-b border-hairline-soft">
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted">
-          Finding {number}
-        </span>
-        <span className="flex-1" />
-        {finding._saving && <Loader2 size={13} className="animate-spin text-ink-faint" />}
-        {finding._error && <span className="text-[11px] text-rose-500">{finding._error}</span>}
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label="Remove this finding"
-          className="w-8 h-8 -mr-1.5 rounded-lg inline-flex items-center justify-center text-ink-faint hover:bg-surface-strong hover:text-rose-500 transition-colors"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
-
-      <div className="p-4 space-y-3">
-        <textarea
-          ref={taRef}
-          value={finding.note}
-          onChange={e => onNote(e.target.value, finding.note_source === 'dictated' ? 'mixed' : 'typed')}
-          rows={2}
-          placeholder="What would you have done differently?"
-          className="w-full resize-none rounded-lg bg-surface border border-hairline px-3 py-2.5 text-[14px] leading-relaxed text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
-        />
-
-        <VoiceNote
-          transcriptionConfigured={transcriptionConfigured}
-          onTranscript={appendDictated}
-          onDone={onAudio}
-        />
-
-        {finding.media.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {finding.media.map(m => (
-              <MediaThumb key={m.path} media={m} onRemove={() => onRemoveMedia(m.path)} />
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onPhoto}
-            className="flex-1 h-10 rounded-lg border border-hairline bg-surface text-[12.5px] font-medium text-ink-muted hover:bg-surface-soft hover:text-ink transition-colors inline-flex items-center justify-center gap-1.5"
-          >
-            <Camera size={15} strokeWidth={1.75} /> Photo
-          </button>
-          <button
-            type="button"
-            onClick={onVideo}
-            className="flex-1 h-10 rounded-lg border border-hairline bg-surface text-[12.5px] font-medium text-ink-muted hover:bg-surface-soft hover:text-ink transition-colors inline-flex items-center justify-center gap-1.5"
-          >
-            <Video size={15} strokeWidth={1.75} /> Video
-          </button>
-        </div>
-
-        {/* Area. Horizontally scrollable so nine chips never wrap into a wall on
-            a 375px screen, and "Other" is a real answer — nobody standing at a
-            unit should have to shop for a category. */}
-        <div className="-mx-4 px-4 overflow-x-auto">
-          <div className="flex gap-1.5 w-max pb-0.5">
-            {CATEGORIES.map(c => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => onCategory(c)}
-                title={CATEGORY_LABELS[c]}
-                className={`h-8 px-2.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-colors ${
-                  finding.category === c
-                    ? 'bg-ink text-canvas'
-                    : 'bg-surface-strong text-ink-muted hover:text-ink'
-                }`}
-              >
-                {CATEGORY_SHORT[c]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-1.5">
-          {SEVERITIES.map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onSeverity(s)}
-              title={SEVERITY_BLURB[s]}
-              className={`h-9 rounded-lg text-[12px] font-medium transition-colors ${
-                finding.severity === s
-                  ? 'bg-ink text-canvas'
-                  : 'bg-surface-strong text-ink-muted hover:text-ink'
-              }`}
-            >
-              {SEVERITY_LABELS[s]}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MediaThumb({ media, onRemove }: { media: Media; onRemove: () => void }) {
-  const src = mediaSrc(media.path)
-  return (
-    <div className="relative w-[76px] h-[76px] rounded-lg overflow-hidden border border-hairline bg-surface-soft group">
-      {media.kind === 'photo' && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="Finding" className="w-full h-full object-cover" />
-      )}
-      {media.kind === 'video' && (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-ink-muted">
-          <Video size={20} strokeWidth={1.75} />
-          <span className="text-[10px] tabular-nums">{humanBytes(media.bytes) || 'Clip'}</span>
-        </div>
-      )}
-      {media.kind === 'audio' && (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-ink-muted">
-          <span className="w-6 h-6 rounded-full bg-surface-strong flex items-center justify-center text-[11px]">♪</span>
-          <span className="text-[10px] tabular-nums">{clock(media.duration_ms)}</span>
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label="Remove attachment"
-        className="absolute top-0.5 right-0.5 w-6 h-6 flex items-center justify-center rounded-full bg-ink/60 text-canvas"
-      >
-        <X size={12} />
-      </button>
-    </div>
   )
 }

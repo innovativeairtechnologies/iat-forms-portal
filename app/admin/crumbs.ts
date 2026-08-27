@@ -44,6 +44,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/engineering/post-production/walk',      section: 'Engineering', label: 'Walkaround' },
   { prefix: '/admin/engineering/post-production/themes',    section: 'Engineering', label: 'Recurring Issues' },
   { prefix: '/admin/engineering/post-production/preflight', section: 'Engineering', label: 'Pre-Production' },
+  { prefix: '/admin/engineering/post-production/tags',      section: 'Engineering', label: 'Shop Tags' },
   // Sales
   { prefix: '/admin/deals',           section: 'Sales',   label: 'CRM' },
   { prefix: '/admin/projected-sales', section: 'Sales',   label: 'Performance' },
