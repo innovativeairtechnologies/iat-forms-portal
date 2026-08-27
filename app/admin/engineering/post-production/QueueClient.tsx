@@ -51,9 +51,13 @@ export default function QueueClient({
       : 'open',
   )
   const [q, setQ] = useState('')
-  const [category, setCategory] = useState('')
-  const [severity, setSeverity] = useState('')
-  const [owner, setOwner] = useState('')
+  // ⚠️ '__all' is FilterDropdown's own sentinel for 'no filter', not ''. Seeding
+  // these with an empty string made every pill render as an ACTIVE filter with a
+  // blank label, and selecting 'Any area' then set '__all' — which the predicates
+  // below would have matched against as if it were a category, emptying the list.
+  const [category, setCategory] = useState('__all')
+  const [severity, setSeverity] = useState('__all')
+  const [owner, setOwner] = useState('__all')
 
   const now = new Date()
 
@@ -72,10 +76,10 @@ export default function QueueClient({
       if (tab === 'mine' && (f.assignee_id !== myEmployeeId || f.status === 'closed' || f.status === 'duplicate')) return false
       if (tab === 'late' && standingOf(f, now).kind !== 'overdue') return false
       if (tab === 'answered' && f.status !== 'answered') return false
-      if (category && f.category !== category) return false
-      if (severity && f.severity !== severity) return false
+      if (category !== '__all' && f.category !== category) return false
+      if (severity !== '__all' && f.severity !== severity) return false
       if (owner === '__none' && f.assignee_id) return false
-      if (owner && owner !== '__none' && f.assignee_id !== owner) return false
+      if (owner !== '__all' && owner !== '__none' && f.assignee_id !== owner) return false
       if (highlightWalk && tab === 'all' && f.walkaround_id !== highlightWalk) return false
       if (needle) {
         const hay = `${f.note} ${f.job_number} ${f.customer_name} ${f.assignee_name ?? ''} ${f.theme_title ?? ''}`.toLowerCase()
