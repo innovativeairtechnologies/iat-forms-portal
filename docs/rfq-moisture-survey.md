@@ -1352,6 +1352,49 @@ as a preview marker there rather than a repetition.
    judge any change from a rendered page rather than from the number. Nudge that constant rather
    than the gray, so there is one thing to reason about.
 
+### Section headings: `section()`, `subhead()` and their reserves (2026-08-27)
+
+Three levels, and each reserves differently:
+
+| Level | Draws | Reserve |
+|---|---|---|
+| `section()` | Full heading — green bar, 12pt title, sub | `HEAD` (11) + the first block after it |
+| `subhead()` | Hairline across `CW`, an 11mm `brandGreenDeep` bar over its left end, small-caps label below | `SUBHEAD_H` (8.6) + the first block after it |
+| `subheadAt()` | The same, **without** the reserve | caller's own `ensure()` must include `SUBHEAD_H` |
+
+These were bare `overline()` calls with a hand-written `y += 3..5` under them, which put a 6.6pt grey
+label in open space between two tables — it read as a caption on the table *above* rather than a
+heading for the one below (owner, 2026-08-27: make each section look more separate).
+
+⚠️ **`needed` is the block AFTER the label** — pass `tableH(n)`, not `4 + tableH(n)`. The 4 that used
+to be added by hand lives inside `SUBHEAD_H` now.
+
+⚠️ **A `section()` whose first child is a `subhead()` must reserve `SUBHEAD_H + …`, not `4 + …`.**
+Get this wrong and the section title strands at the foot of a page with its content overleaf, which
+is exactly what "Where the moisture comes from" did on the first render after these went in.
+
+⚠️ **The vertical cost was paid for, not absorbed.** The document had just been cut from five pages
+to four; seven headings each gaining ~4.6mm would have handed that straight back. The `y +=` gaps
+feeding each heading came down as the rules went in, because the rule now does the separating that
+whitespace alone was doing. **If you add height here, take it out of a gap and re-render** — all four
+harness cases, both tracks.
+
+🔴 **Watch for the gap edit that eats a block.** Trimming `y += cardH + 5` to `y += 1` silently drops
+the 62mm that moves `y` past the room-dimension cards, and the design-conditions table then draws on
+top of them. It type-checks and builds. Only a rendered page shows it.
+
+### 🔴 `note()` must be reserved, and both of them now are
+
+The blue note under each Design Conditions table (room *and* process) had **no `ensure()`** — it drew
+wherever `y` landed. On a process survey it already finished flush against the disclaimer band, and
+it carries `sourceNote()`, which grows with the ASHRAE station description. A site resolving to a
+more distant station would have printed straight through the band.
+
+Both now measure with **`noteH(doc, body, CW)`**, which shares `NOTE_OPTS` with `note()` so the
+reserve cannot drift from the draw. The body is hoisted to a named const so the two measure the same
+string — and because a nested template literal in an argument list is how generated edits to this
+file break.
+
 ### Verifying a PDF change
 
 Render it and look at it — layout bugs here are invisible to the type checker, and the page-count

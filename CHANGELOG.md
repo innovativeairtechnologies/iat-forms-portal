@@ -10,6 +10,36 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-27 — Every section of the survey document is visibly its own section
+
+The record pages carry a run of headings — Design Conditions, Construction & Envelope, Doors &
+Openings, Internal Loads Recorded, Estimated Breakdown, Air Treatment — and each was a small grey
+label floating in open space between two tables. With nothing marking where one ended and the next
+began, a heading read as a caption belonging to the table *above* it rather than as the title of the
+one below, and where a heading landed directly under a page's own section title the two ran
+together into a single block of text.
+
+Each of those now opens with a hairline across the column, a short bar of the company's green over
+its left end, and the label in a darker grey beneath. The document reads as a set of distinct
+sections rather than a continuous run of tables.
+
+**It did not get any longer.** The survey was cut from five pages to four the day before, and
+adding a rule and its air to seven headings would have handed that back. The whitespace those
+headings used to float in was doing the separating; the rule does it now, so the gaps came down as
+the rules went in. Room and process surveys both still come out at the same length they did before.
+
+Two page-break faults surfaced while checking that, both older than the change and both fixed:
+
+**The blue explanatory note under each Design Conditions table had no page reserve at all.** It drew
+wherever it landed, and on a process survey it was already finishing flush against the disclaimer
+band at the foot of the page. That note carries the ASHRAE station description, which gets longer
+the further the nearest station is, so a customer whose site resolved to a more distant one would
+have had it print straight through the band. Both notes now measure themselves and take a fresh page
+when they will not fit.
+
+**A section title could strand itself at the foot of a page** with its content overleaf, because it
+reserved room for the table underneath it but not for the heading in between.
+
 ## 2026-08-26 — Engineering gets a board, and the board can tell you it is going to be late
 
 Engineering has been run out of two monday.com boards and a spreadsheet called *Engineering

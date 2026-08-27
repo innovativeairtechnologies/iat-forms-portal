@@ -330,7 +330,10 @@ function spacePage(ctx: Ctx, startY: number): number {
     ['Volume', vol ? `${fmt(vol)} cu.ft` : ''],
     ['Envelope total', floorArea ? `${fmt(wallArea + floorArea * 2)} sq.ft` : ''],
   ], factsX, y, factsW, cardH)
-  y += cardH + 5
+  // cardH still has to be cleared — it is what moves y PAST the two cards. Only
+  // the trailing gap came down (5 → 1), because subhead() now draws a rule that
+  // does the separating.
+  y += cardH + 1
 
   // Design conditions — the table an engineer looks for first
   const elev = numOf(data.elevationFt)
@@ -348,14 +351,16 @@ function spacePage(ctx: Ctx, startY: number): number {
   // ⚠️ RESERVE THE START, NOT THE WHOLE TABLE. table() splits across pages now,
   // so booking its full height would send it to a fresh page and leave this one
   // ending in white — the behaviour removed on 2026-08-27. Header plus two rows.
-  y = ensure(ctx, y, 4 + tableH(2), 'The space', 'Design conditions')
-  overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
-  y += 4
+  y = subhead(ctx, y, 'DESIGN CONDITIONS', tableH(2), 'The space', 'Design conditions')
   y = table(ctx, M, y, CW,
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
     rows, [0.4, 0.15, 0.15, 0.15, 0.15], { title: 'The space', sub: 'Design conditions' })
   y += 3
-  y = note(doc, `Loads scale with the difference in grains between inside and out, not with relative humidity, which means a different amount of water at every temperature.${sourceNote(data)}`, M, y, CW)
+  // Same guard and the same reason as the process track: this note carries
+  // sourceNote(), which grows with the station string, and had no reserve.
+  const condNote = `Loads scale with the difference in grains between inside and out, not with relative humidity, which means a different amount of water at every temperature.${sourceNote(data)}`
+  y = ensure(ctx, y, noteH(doc, condNote, CW), 'The space', 'Design conditions')
+  y = note(doc, condNote, M, y, CW)
   y += 4
 
   // Envelope
@@ -397,9 +402,7 @@ function spacePage(ctx: Ctx, startY: number): number {
   // table run onto the next page mid-way if that is where it ends up.
   //
   // tableH() already allows for the header row, so the count passed is DATA rows.
-  y = ensure(ctx, y, 4 + tableH(2), 'The space', 'Construction and envelope')
-  overline(doc, 'CONSTRUCTION & ENVELOPE', M, y, C.inkMuted)
-  y += 4
+  y = subhead(ctx, y, 'CONSTRUCTION & ENVELOPE', tableH(2), 'The space', 'Construction and envelope')
   y = table(ctx, M, y, CW, ['Element', 'Material / rating'], envelopeRows, [0.34, 0.66], { title: 'The space', sub: 'Construction and envelope' })
   y += 5
 
@@ -433,16 +436,16 @@ function processPage(ctx: Ctx, startY: number): number {
     text(doc, v, x, y + 26, { size: 17, weight: 'bold', color: C.white })
     text(doc, l, x, y + 33, { size: 8, color: C.onNavy })
   })
-  y += 50
+  // +45, not +50: the card is 42 tall and subhead() draws a rule under it, so
+  // the 8mm of trailing air that used to do the separating is no longer needed.
+  y += 45
 
   // ⚠️ GUARD ADDED 2026-08-26. Before the record flowed, every section began at
   // y = 46 on a page of its own, so this block could not overflow. It can now -
   // and an unguarded block does not wrap, it draws straight off the bottom of the
   // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
   // page. EVERY block in a flowing section needs a reserve.
-  y = ensure(ctx, y, 4 + tableH(2), 'The process', 'The airstream')
-  overline(doc, 'THE AIRSTREAM', M, y, C.inkMuted)
-  y += 4
+  y = subhead(ctx, y, 'THE AIRSTREAM', tableH(2), 'The process', 'The airstream')
   y = table(ctx, M, y, CW, ['Parameter', 'Value'], [
     ['Process airflow', data.processCfm ? `${fmt(numOf(data.processCfm))} cfm` : '—'],
     ['Air source', data.airSource + (data.mixOutdoorPct ? ` (${data.mixOutdoorPct}% outdoor air)` : '')],
@@ -450,11 +453,10 @@ function processPage(ctx: Ctx, startY: number): number {
     ['Grain depression required', proc ? `${fmtGrains(proc.depression)} gr/lb` : '—'],
     ['Water removed (estimated)', proc?.complete ? `${fmt(proc.lbPerHr, 1)} lb/hr  ·  ${fmt(proc.lbPerHr * 24 * 0.9586)} pints per day` : '—'],
   ], [0.4, 0.6], { title: 'The process', sub: 'The airstream' })
-  y += 9
-
-  y = ensure(ctx, y, 4 + tableH(2), 'The process', 'Design conditions')
-  overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
+  // +4, not +9: subhead()'s rule separates this from the block above.
   y += 4
+
+  y = subhead(ctx, y, 'DESIGN CONDITIONS', tableH(2), 'The process', 'Design conditions')
   y = table(ctx, M, y, CW,
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
     [
@@ -462,15 +464,21 @@ function processPage(ctx: Ctx, startY: number): number {
       condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev, conditionEntered(data, 'outdoor')),
     ], [0.4, 0.15, 0.15, 0.15, 0.15], { title: 'The process', sub: 'Design conditions' })
   y += 3
-  y = note(doc, `A desiccant wheel is sized on the grain depression it has to deliver, not on relative humidity. Where a specification is written as a dew point, that is the number we design to.${sourceNote(data)}`, M, y, CW)
+  // Hoisted: the reserve and the draw must measure the SAME string, and a nested
+  // template in an argument list is how generated edits to this file break.
+  const procNote = `A desiccant wheel is sized on the grain depression it has to deliver, not on relative humidity. Where a specification is written as a dew point, that is the number we design to.${sourceNote(data)}`
+  // ⚠️ RESERVE IT. This note had no guard and drew wherever y landed. At HEAD it
+  // finished flush against the disclaimer band, so a longer sourceNote() — a
+  // distant ASHRAE station makes that string longer — would have run under it.
+  y = ensure(ctx, y, noteH(doc, procNote, CW), 'The process', 'Design conditions')
+  y = note(doc, procNote, M, y, CW)
   y += 6
 
   if (data.purpose || data.notes) {
     // Free text, so measure it rather than reserve a guess.
-    y = ensure(ctx, y, 5 + wrapLines(doc, [data.purpose, data.notes].filter(Boolean).join(' '), CW, { size: 9.5 }).length * 5,
+    y = ensure(ctx, y, SUBHEAD_H + wrapLines(doc, [data.purpose, data.notes].filter(Boolean).join(' '), CW, { size: 9.5 }).length * 5,
       'The process', 'Process notes')
-    overline(doc, 'PROCESS NOTES', M, y, C.inkMuted)
-    y += 5
+    y = subheadAt(ctx, y, 'PROCESS NOTES')
     y = wrapped(doc, [data.purpose, data.notes].filter(Boolean).join('\n\n'), M, y, CW, { size: 9.5, color: C.inkSoft, leading: 5 })
   }
   return y
@@ -484,11 +492,14 @@ function loadsPage(ctx: Ctx, startY: number): number {
   // The doors table is first, and an empty survey still draws one row.
   // Header plus two rows — the doors table splits, so a long one no longer has to
   // start on a page of its own.
-  let y = section(ctx, startY, 4 + tableH(2),
+  // ⚠️ SUBHEAD_H, not 4. The first thing under this heading is a subhead() and
+  // then the doors table, so the reserve has to cover both — otherwise the
+  // section header strands at the foot of a page with its content overleaf, which
+  // is exactly what it did on the first render after subheads went in.
+  let y = section(ctx, startY, SUBHEAD_H + tableH(2),
     'Where the moisture comes from', 'Openings, internal loads and the preliminary estimate')
 
-  overline(doc, 'DOORS & OPENINGS', M, y, C.inkMuted)
-  y += 3
+  y = subhead(ctx, y, 'DOORS & OPENINGS', tableH(2), 'Where the moisture comes from', 'Doors and openings')
   if (data.doors.length) {
     y = table(ctx, M, y, CW,
       ['Opening', 'Size', 'Opens/hr', 'Seconds open', 'Opens onto'],
@@ -511,9 +522,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
   // and an unguarded block does not wrap, it draws straight off the bottom of the
   // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
   // page. EVERY block in a flowing section needs a reserve.
-  y = ensure(ctx, y, 4 + tableH(2), 'Where the moisture comes from', 'Internal loads')
-  overline(doc, 'INTERNAL LOADS RECORDED', M, y, C.inkMuted)
-  y += 3
+  y = subhead(ctx, y, 'INTERNAL LOADS RECORDED', tableH(2), 'Where the moisture comes from', 'Internal loads')
   // ⚠️ NO NEW ROW HERE — the condition rides on the row that already exists.
   //
   // The make-up air's condition has to be on the record: the customer cannot check
@@ -550,9 +559,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
 
   // Overline plus two bars. The bars split now, so booking the whole block is what
   // used to leave up to 53mm blank at the foot of a page.
-  y = ensure(ctx, y, 10 + 2 * 9.4, 'Where the moisture comes from', 'Estimated breakdown')
-  overline(doc, 'ESTIMATED BREAKDOWN', M, y, C.inkMuted)
-  y += 4
+  y = subhead(ctx, y, 'ESTIMATED BREAKDOWN', 2 * 9.4, 'Where the moisture comes from', 'Estimated breakdown')
   y = loadBars(ctx, M, y, CW, load, { title: 'Where the moisture comes from', sub: 'Estimated breakdown' })
   y += 3
 
@@ -620,9 +627,7 @@ function equipmentPage(ctx: Ctx, startY: number): number {
   keyPanel(doc, 'UTILITIES AVAILABLE', right, M + colW + 6, y, colW, h)
   y += h + 3
 
-  y = ensure(ctx, y, 4 + tableH(2), 'Equipment & utilities', 'Air treatment')
-  overline(doc, 'AIR TREATMENT', M, y, C.inkMuted)
-  y += 4
+  y = subhead(ctx, y, 'AIR TREATMENT', tableH(2), 'Equipment & utilities', 'Air treatment')
   y = table(ctx, M, y, CW, ['Item', 'Selection'], [
     ['Regeneration air source', data.regenAirSource + (data.regenIndoorConditions ? ` (${data.regenIndoorConditions})` : '')],
     ['Pre-filter', data.prefilterMerv],
@@ -638,10 +643,9 @@ function equipmentPage(ctx: Ctx, startY: number): number {
     // Free text, so measure it rather than reserve a guess.
     // +2 rather than +6: this is the last block in the document, so trailing air
     // here buys nothing and can cost a whole page.
-    y = ensure(ctx, y, 5 + wrapLines(doc, data.notes, CW, { size: 9.5 }).length * 5 + 2,
+    y = ensure(ctx, y, SUBHEAD_H + wrapLines(doc, data.notes, CW, { size: 9.5 }).length * 5 + 2,
       'Equipment & utilities', 'Additional notes')
-    overline(doc, 'ADDITIONAL NOTES', M, y, C.inkMuted)
-    y += 5
+    y = subheadAt(ctx, y, 'ADDITIONAL NOTES')
     y = wrapped(doc, data.notes, M, y, CW, { size: 9.5, color: C.inkSoft, leading: 5 })
     y += 6
   }
@@ -901,6 +905,58 @@ function section(ctx: Ctx, y: number, needed: number, title: string, sub: string
   text(doc, title, M + 6.5, top + 1, { size: 12, weight: 'bold', color: C.ink })
   text(doc, sub, M + 6.5, top + 6.4, { size: 7.6, color: C.inkMuted })
   return top + 10
+}
+
+/**
+ * Height a subhead() occupies, from its rule down to the first line of content.
+ * Rule at yy, label baseline at yy + 5.2 (cap top 2.9mm clear of the rule),
+ * content 3.4mm under the baseline — the same air the bare overline left.
+ */
+const SUBHEAD_H = 8.6
+
+/**
+ * Opens a sub-section INSIDE a section(): a hairline across the column with a
+ * short accent over its left end, then the small-caps label beneath it.
+ *
+ * These were bare `overline()` calls with 3–4mm under them, which put a 6.6pt
+ * grey label in open space between two tables. It read as a caption on the table
+ * ABOVE rather than a heading for the one below, and directly under a section()
+ * header the two collided (owner, 2026-08-27: make each section look more
+ * separate).
+ *
+ * ⚠️ IT RESERVES ITS OWN HEIGHT. `needed` is the first block AFTER the label,
+ * measured the way ensure() wants it — so pass `tableH(n)`, not `4 + tableH(n)`;
+ * the 4 that used to be added by hand is inside SUBHEAD_H now. Under-state it and
+ * a heading strands at the foot of a page with its table overleaf.
+ *
+ * ⚠️ THE CALLERS' GAPS CAME DOWN WHEN THIS WENT IN. The rule now does the
+ * separating that whitespace alone was doing, so the `y += 3..5` before each of
+ * these was cut to +1. This document was squeezed from five pages to four on
+ * 2026-08-27 and must not grow back — if you add height here, take it out of the
+ * gaps, and re-render before believing it fits.
+ */
+function subhead(ctx: Ctx, y: number, label: string, needed: number, title: string, sub: string): number {
+  return subheadAt(ctx, ensure(ctx, y, SUBHEAD_H + needed, title, sub), label)
+}
+
+/**
+ * subhead() without the reserve — for the two free-text blocks that measure their
+ * own wrapped height and call ensure() themselves. They must book SUBHEAD_H for
+ * this heading in that reserve; passing the old hand-written 5 leaves it 3.6mm
+ * short and can strand the label.
+ */
+function subheadAt(ctx: Ctx, y: number, label: string): number {
+  const { doc } = ctx
+  stroke(doc, C.hair)
+  doc.setLineWidth(0.2)
+  doc.line(M, y, M + CW, y)
+  // The company's green over the left of the rule — the section() bar's accent at
+  // sub-section weight, so the two headings read as one system rather than two.
+  fill(doc, C.brandGreenDeep)
+  doc.rect(M, y - 0.3, 11, 0.6, 'F')
+  // inkSoft, not inkMuted: at 6.6pt the muted grey disappeared against the tables.
+  overline(doc, label, M, y + 5.2, C.inkSoft)
+  return y + SUBHEAD_H
 }
 
 function newPage(ctx: Ctx, title: string, sub: string) {
@@ -1386,8 +1442,20 @@ function airstreamDiagram(doc: Doc, x: number, y: number, w: number, h: number, 
 
 
 /** Info callout that sizes itself to its copy; returns the y below the box. */
+/** Type and geometry of note(), in ONE place so a reserve cannot drift from it. */
+const NOTE_OPTS = { size: 7.2, color: [40, 70, 120] as RGB, leading: 3.4 }
+
+/**
+ * The height note() will occupy, so ensure() can be asked before drawing one.
+ * These notes carry sourceNote(), which grows with the ASHRAE station string —
+ * measure it rather than reserving a guess.
+ */
+function noteH(doc: Doc, body: string, w: number): number {
+  return Math.max(wrapLines(doc, body, w - 14, NOTE_OPTS).length * NOTE_OPTS.leading + 5.5, 10)
+}
+
 function note(doc: Doc, body: string, x: number, y: number, w: number): number {
-  const opts = { size: 7.2, color: [40, 70, 120] as RGB, leading: 3.4 }
+  const opts = NOTE_OPTS
   const lines = wrapLines(doc, body, w - 14, opts)
   const h = Math.max(lines.length * opts.leading + 5.5, 10)
   fill(doc, C.blueSoft)
