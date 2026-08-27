@@ -314,7 +314,7 @@ const unitLabel = (label: string, unit: TempUnit): string =>
  */
 function noLeadingZero(el: HTMLInputElement): string {
   const raw = el.value
-  const cleaned = raw.replace(/^(-?)0+(?=d)/, '$1')
+  const cleaned = raw.replace(/^(-?)0+(?=\d)/, '$1')
   // Only reassign on an actual change: writing to .value moves the caret to the end.
   if (cleaned !== raw) el.value = cleaned
   return cleaned
