@@ -76,6 +76,38 @@ not accept audio, so the live dictation the phone already does is what produces 
 recordings are kept regardless; adding an OpenAI or Deepgram key turns on server-side
 transcription with no other change, and the recordings being kept now can be transcribed then.
 
+## 2026-08-27 — The leadership report gets its second half back
+
+The Monday/Wednesday/Friday report is written in two parts: a short non-technical summary, then a
+longer technical record for whoever has to act on it. Wednesday's report arrived with the first part
+only. The same thing happened on 19 August, and on neither occasion did anything raise an alarm —
+the only visible difference is one clause of one sentence in the covering email.
+
+**The cause was not what the log said it was.** The report is assembled from an AI summary of the
+changelog, and the code asked for that summary as JSON written out by hand. When the reply could not
+be read, the log recorded "bad escaping" — a guess, printed as a fact. Rebuilding Wednesday's report
+against the changelog as it stood that evening showed the model had **declined the request outright**
+and returned nothing at all. The retry then told it to go and fix some quotation marks, a fault that
+was never there, so the second attempt failed exactly like the first.
+
+**The format is now enforced by the API rather than requested in the prompt.** The response shape is
+supplied as a schema, so a malformed reply is no longer possible, and the three reasons a reply can
+come back empty — declined, too long, or genuinely empty — are now told apart and logged by name
+instead of being guessed at. A decline is no longer retried as though it were a formatting slip,
+which only ever spent a second call to be declined again.
+
+Rebuilt against the same input the failing run used: **the technical half came back on four
+consecutive runs**, and against Wednesday's own content the previous code failed twice in a row while
+the new path succeeded twice.
+
+Two smaller things went with it:
+
+**The technical half was writing in Markdown**, which the Word document does not interpret — asterisks
+and backticks were printing literally on the page as punctuation. It now writes plain prose.
+
+**The email footer told recipients the report goes out at 6:30pm.** It has been sent at 8:30pm since
+25 August.
+
 ## 2026-08-27 — Every section of the survey document is visibly its own section
 
 The record pages carry a run of headings — Design Conditions, Construction & Envelope, Doors &

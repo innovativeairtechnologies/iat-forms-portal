@@ -1,5 +1,6 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
+import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema'
 import { anthropic } from './anthropic'
 import { previousEdition, type ReportPeriod } from './edition'
 
@@ -133,10 +134,7 @@ SHAPE
 At most 4 sections, titles in capitals (NEW, FIXED, IMPROVED are usually right).
 BETWEEN ${isWeek(p) ? '16 AND 22' : '12 AND 18'} lines in total across all sections — enough that a reader finishes with the full picture of ${isWeek(p) ? 'the week' : 'these few days'}, not so many that it stops being a summary. Merge closely related items rather than listing every one.
 
-Return ONLY valid JSON, no prose around it:
-{"sections":[{"title":"NEW","items":["...","..."]}]}
-
-NEVER put a double quote inside a line. The examples above quote phrases; write those with single quotes instead. A single unescaped double quote makes the whole response unparseable and costs the entire report.`
+Group the lines into sections, each with a capitalised title.`
 
 const TECHNICAL_SYSTEM = (p: ReportPeriod) => `You write the engineering half of ${isWeek(p) ? 'a weekly report' : 'an interim report'} for the person who maintains the IAT Portal. Your input is the engineering changelog for ${isWeek(p) ? 'the past week' : `${p.range} — a few days, not a full week`}.
 
@@ -152,16 +150,14 @@ WHAT TO WRITE
 WHAT NOT TO WRITE
 - No praise, no summary-of-the-summary, no "this improves reliability" filler.
 - Never a customer name, a customer's company, or a competitor name. Suppliers are fine.
+- NO MARKDOWN. These lines are rendered into a Word document that does not interpret it, so asterisks and backticks print literally — **bold**, *italics* and \`code\` all arrive as punctuation on the page. Write file names, env vars and values as plain words.
 
 LENGTH
 Sections titled in capitals. Group by theme — SECURITY, FIXES, FEATURES, INFRASTRUCTURE, GAPS are usually right, but follow ${isWeek(p) ? 'the week' : 'the material'}.
 Up to 6 sections and up to ${isWeek(p) ? '30' : '24'} lines total. Each line at most 45 words. One sentence is usually enough; two is the ceiling.
 The last section should be GAPS or OPEN — what is unverified, unfinished, or waiting on a decision.
 
-Return ONLY this JSON:
-{"sections":[{"title":"SECURITY","items":["...","..."]}]}
-
-NEVER put a double quote inside a line. The examples above quote phrases; write those with single quotes instead. A single unescaped double quote makes the whole response unparseable and costs the entire report.`
+Group the lines into sections, each with a capitalised title.`
 
 /**
  * The model's JSON, or null if it did not produce any.
@@ -178,18 +174,78 @@ NEVER put a double quote inside a line. The examples above quote phrases; write 
  *
  * Returning null instead lets both halves retry with the fault named.
  */
-function parseSections(text: string): UpdateSection[] | null {
-  // A stray code fence is the one wrapper worth tolerating rather than throwing
-  // the report away.
-  const json = /\{[\s\S]*\}/.exec(text)
-  if (!json) return null
-  try {
-    const parsed = JSON.parse(json[0]) as { sections?: UpdateSection[] }
-    return (parsed.sections ?? []).filter(
-      s => s && typeof s.title === 'string' && Array.isArray(s.items) && s.items.length,
-    )
-  } catch {
-    return null
+const SECTIONS_SCHEMA = {
+  type: 'object',
+  properties: {
+    sections: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          items: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['title', 'items'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['sections'],
+  additionalProperties: false,
+} as const
+
+/** What one call to the model produced, and why it produced nothing if it did not. */
+type SectionsReply = {
+  sections: UpdateSection[] | null
+  /** Distinguishes the three reasons for null. Never guess between them. */
+  reason: 'ok' | 'refusal' | 'truncated' | 'unparseable'
+  stopReason: string | null
+}
+
+/**
+ * Ask for sections with the SHAPE ENFORCED BY THE API, not by the prompt.
+ *
+ * ⚠️ WHY THIS IS NOT `JSON.parse` ANY MORE. Both halves used to ask for JSON in
+ * the prompt and parse the reply by hand, and it failed in production twice:
+ * 2026-08-19 (page 2 missing, nobody noticed) and 2026-08-26.
+ *
+ * 🔴 The 2026-08-26 diagnosis in the log was WRONG, and the wrongness is the
+ * lesson. A null parse with `stop_reason !== 'max_tokens'` was reported as
+ * "bad escaping" — a guess, printed as a fact. The model had actually returned
+ * `stop_reason: 'refusal'` and no JSON at all. The retry then told it to fix
+ * unescaped double quotes, a fault that was not there, so the second attempt
+ * failed the same way. Reproduced against that night's changelog: the shipped
+ * path refused twice, structured output parsed the same input cleanly twice.
+ *
+ * So: the schema is now the contract, and `reason` is measured rather than
+ * assumed — a refusal is never retried as if it were a formatting slip.
+ */
+async function askForSections(
+  system: string,
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  maxTokens: number,
+): Promise<SectionsReply> {
+  const res = await anthropic.messages.parse({
+    model: 'claude-sonnet-4-5',
+    max_tokens: maxTokens,
+    system,
+    messages,
+    output_config: { format: jsonSchemaOutputFormat(SECTIONS_SCHEMA) },
+  })
+  const stopReason = res.stop_reason ?? null
+  const parsed = res.parsed_output as { sections?: UpdateSection[] } | null
+
+  const sections = (parsed?.sections ?? []).filter(
+    s => s && typeof s.title === 'string' && Array.isArray(s.items) && s.items.length,
+  )
+  if (sections.length) return { sections, reason: 'ok', stopReason }
+
+  return {
+    sections: null,
+    reason: stopReason === 'refusal' ? 'refusal'
+      : stopReason === 'max_tokens' ? 'truncated'
+        : 'unparseable',
+    stopReason,
   }
 }
 
@@ -209,9 +265,13 @@ function repairPrompt(truncated: boolean): string {
     ? 'Your reply was cut off before the JSON closed — it was too long. Send the '
       + 'whole thing again, materially SHORTER: merge related items aggressively and '
       + 'stay at the low end of the line count you were given.'
-    : 'That was not valid JSON — a line contained an unescaped double quote. Send '
-      + 'the whole response again, same facts and same shape, using single quotes '
-      + 'inside a line and never a double quote.'
+    // No longer about escaping: the schema makes malformed JSON impossible, so
+    // the only remaining non-truncation failure is an empty or section-less
+    // answer. Naming quotes here was actively harmful — it sent the model to fix
+    // a fault it did not have while the real one (a refusal) went unaddressed.
+    : 'That came back with no usable sections. Send the whole response again, '
+      + 'same facts, grouped into at least one titled section with at least one '
+      + 'line in it.'
 }
 
 
@@ -258,29 +318,20 @@ export async function buildLeadershipUpdate(
 
   const LAST = 2
   for (let attempt = 0; attempt <= LAST; attempt++) {
-    const res = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: MAX_TOKENS_SUMMARY,
-      system: SYSTEM(period),
-      messages,
-    })
-    const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
+    const reply = await askForSections(SYSTEM(period), messages, MAX_TOKENS_SUMMARY)
 
-    const parsed = parseSections(text)
-    if (!parsed) {
-      const truncated = res.stop_reason === 'max_tokens'
-      console.warn(`[leadership] attempt ${attempt + 1}: unparseable JSON (${truncated ? 'CUT OFF at max_tokens' : 'bad escaping'})`)
-      if (attempt === LAST) {
-        throw new Error(`leadership update: model never returned valid JSON (last stop_reason: ${res.stop_reason})`)
+    if (!reply.sections) {
+      console.warn(`[leadership] attempt ${attempt + 1}: no sections (${reply.reason}, stop_reason ${reply.stopReason})`)
+      // A refusal is not a formatting problem, and asking the model to try again
+      // the same way just spends another call to be refused again — measured on
+      // 2026-08-26, twice in a row on the same input.
+      if (attempt === LAST || reply.reason === 'refusal') {
+        throw new Error(`leadership update: no sections (${reply.reason}, last stop_reason: ${reply.stopReason})`)
       }
-      messages.push(
-        { role: 'assistant', content: text },
-        { role: 'user', content: repairPrompt(truncated) },
-      )
+      messages.push({ role: 'user', content: repairPrompt(reply.reason === 'truncated') })
       continue
     }
-    sections = parsed
-    if (!sections.length) throw new Error('leadership update: model returned no sections')
+    sections = reply.sections
 
     const bad = offenders(sections)
     if (!bad.length) break
@@ -290,11 +341,14 @@ export async function buildLeadershipUpdate(
       console.warn(`[leadership] ${bad.length} line(s) still over the brief after a retry`)
       break
     }
+    // The model's own turn is echoed back as the JSON we actually parsed, rather
+    // than the raw reply text it used to be — structured output means there is no
+    // loose text to quote, and the parsed form is what the critique refers to.
     messages.push(
-      { role: 'assistant', content: text },
+      { role: 'assistant', content: JSON.stringify({ sections }) },
       {
         role: 'user',
-        content: `These lines break the brief — each is over 28 words, runs to three or more sentences, or uses banned technical vocabulary:\n\n${bad.map(b => `- ${b}`).join('\n')}\n\nRewrite the WHOLE response. Same facts, same JSON shape, but every line at most two short sentences a director would read aloud in a meeting. Between ${isWeek(period) ? '16 and 22' : '12 and 18'} lines total.`,
+        content: `These lines break the brief — each is over 28 words, runs to three or more sentences, or uses banned technical vocabulary:\n\n${bad.map(b => `- ${b}`).join('\n')}\n\nRewrite the WHOLE response. Same facts, same shape, but every line at most two short sentences a director would read aloud in a meeting. Between ${isWeek(period) ? '16 and 22' : '12 and 18'} lines total.`,
       },
     )
   }
@@ -311,21 +365,14 @@ export async function buildLeadershipUpdate(
       { role: 'user', content: source.slice(0, 60000) },
     ]
     for (let attempt = 0; attempt < 2; attempt++) {
-      const res = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
-        max_tokens: MAX_TOKENS_TECHNICAL,
-        system: TECHNICAL_SYSTEM(period),
-        messages: msgs,
-      })
-      const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
-      const parsed = parseSections(text)
-      if (parsed?.length) { technical = parsed; break }
-      const truncated = res.stop_reason === 'max_tokens'
-      console.warn(`[leadership] technical half attempt ${attempt + 1}: ${parsed ? 'no sections' : truncated ? 'CUT OFF at max_tokens' : 'bad escaping'}`)
-      msgs.push(
-        { role: 'assistant', content: text },
-        { role: 'user', content: repairPrompt(truncated) },
-      )
+      const reply = await askForSections(TECHNICAL_SYSTEM(period), msgs, MAX_TOKENS_TECHNICAL)
+      if (reply.sections) { technical = reply.sections; break }
+      console.warn(`[leadership] technical half attempt ${attempt + 1}: ${reply.reason} (stop_reason ${reply.stopReason})`)
+      // Same reasoning as the leadership half — a refusal will not be talked out
+      // of itself, and this is the half that fails silently, so do not burn the
+      // second call pretending it is a formatting problem.
+      if (reply.reason === 'refusal') break
+      msgs.push({ role: 'user', content: repairPrompt(reply.reason === 'truncated') })
     }
     // ERROR, not warn. This half vanishing is invisible from outside — the only
     // tell in the delivered email is one clause of one sentence — and it shipped

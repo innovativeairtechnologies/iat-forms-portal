@@ -68,8 +68,8 @@ export async function sendLeadershipUpdate(
   </td></tr>
   <tr><td style="padding:16px 32px;background:#f8f9fa;border-top:1px solid #eee;">
     <p style="margin:0;color:#aaa;font-size:12px;">${weekly
-      ? 'IAT Portal &middot; Automated leadership update, Mon/Wed/Fri at 6:30pm Eastern'
-      : 'IAT Portal &middot; Interim leadership update &mdash; the regular one still follows Mon/Wed/Fri at 6:30pm Eastern'}</p>
+      ? 'IAT Portal &middot; Automated leadership update, Mon/Wed/Fri at 8:30pm Eastern'
+      : 'IAT Portal &middot; Interim leadership update &mdash; the regular one still follows Mon/Wed/Fri at 8:30pm Eastern'}</p>
   </td></tr>
 </table>
 </td></tr></table>

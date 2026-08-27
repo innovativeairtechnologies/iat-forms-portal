@@ -247,6 +247,43 @@ apart, so the race needs a 60-minute delay landing on the exact second of the ot
 `leadership_runs` table with a UNIQUE index on the date is the correct fix once migrations are
 available (the Supabase CLI was unauthorized on 2026-08-21 and DDL cannot go through PostgREST).
 
+### 🔴 The report's shape is enforced by the API, not asked for in the prompt (2026-08-27)
+
+Both halves of the report used to request JSON in the system prompt and parse the reply with a
+regex + `JSON.parse`. **That shipped a Part-1-only report twice** — 2026-08-19 and 2026-08-26 — and
+neither time did anything alarm: the only outward tell is one clause in the covering email, emitted
+only when `update.technical.length > 0`.
+
+⚠️ **The 2026-08-26 log entry was wrong, and that is the lesson worth keeping.** `parseSections`
+returned null, `stop_reason` was not `max_tokens`, and the code therefore printed **"bad escaping"** —
+a guess presented as a diagnosis. Reproduced against that evening's changelog, the model had actually
+returned **`stop_reason: 'refusal'`** and no JSON whatsoever. `repairPrompt()` then instructed it to
+fix unescaped double quotes, so the retry addressed a fault that did not exist and failed identically.
+
+**Measured, both directions, same input (18 entries, 25–26 August):**
+
+| path | result |
+|---|---|
+| shipped hand-rolled JSON | `stop_reason: refusal`, no JSON — **twice** |
+| `messages.parse` + schema | parsed cleanly — **twice** (51 and 39 lines) |
+
+Full pipeline after the change, current content: **Part 2 present on four consecutive builds.**
+
+`askForSections()` in `lib/leadership-update.ts` is now the single call path for both halves:
+`anthropic.messages.parse(...)` with `output_config: { format: jsonSchemaOutputFormat(SECTIONS_SCHEMA) }`.
+
+- ⚠️ **`jsonSchemaOutputFormat`, not `zodOutputFormat`.** This project is on `zod ^3.23`; the SDK's
+  zod helper reads Zod v4 internals and throws `Cannot read properties of undefined (reading 'def')`.
+  Raw JSON Schema has no version coupling and needs no new dependency.
+- ⚠️ **Never retry a refusal.** `SectionsReply.reason` distinguishes `refusal` / `truncated` /
+  `unparseable` from the actual `stop_reason` rather than inferring it. A refusal breaks out
+  immediately — talking to it again only spends a second call to be refused again.
+- The "Return ONLY this JSON" and "NEVER put a double quote inside a line" instructions are **gone**
+  from both prompts. The schema makes them redundant, and the second one was aiming the model at the
+  wrong fault.
+- The technical prompt now **forbids Markdown** — the Word renderer does not interpret it, so
+  `**bold**` and backticks were printing literally on the page.
+
 ### ⚠️ Setting LEADERSHIP_UPDATE_EMAIL
 
 Use `--value` **and `--no-sensitive`**:
