@@ -152,10 +152,14 @@ WHAT NOT TO WRITE
 - Never a customer name, a customer's company, or a competitor name. Suppliers are fine.
 - NO MARKDOWN. These lines are rendered into a Word document that does not interpret it, so asterisks and backticks print literally — **bold**, *italics* and \`code\` all arrive as punctuation on the page. Write file names, env vars and values as plain words.
 
+COVERAGE — THIS IS THE PART THAT GETS MISSED
+Every heading in the input must be represented by at least one line. A big change does not earn the whole report: if one entry is long and eight are short, the eight still appear. Before you finish, walk the input headings in order and check each one is somewhere in your answer.
+Merging related entries into a single line is fine. Dropping one is not.
+
 LENGTH
-Sections titled in capitals. Group by theme — SECURITY, FIXES, FEATURES, INFRASTRUCTURE, GAPS are usually right, but follow ${isWeek(p) ? 'the week' : 'the material'}.
-Up to 6 sections and up to ${isWeek(p) ? '30' : '24'} lines total. Each line at most 45 words. One sentence is usually enough; two is the ceiling.
-The last section should be GAPS or OPEN — what is unverified, unfinished, or waiting on a decision.
+Sections titled in capitals. Group by theme — SECURITY, FIXES, FEATURES, INFRASTRUCTURE are usually right, but follow ${isWeek(p) ? 'the week' : 'the material'}.
+${isWeek(p) ? '3' : '2'} to 6 sections, and ${isWeek(p) ? '12 to 30' : '10 to 24'} lines total. Each line at most 45 words. One sentence is usually enough; two is the ceiling.
+The FINAL section MUST be titled OPEN or GAPS — what is unverified, unfinished, or waiting on a decision. If the input records nothing of the sort, say so in one line under that title. Never omit the section.
 
 Group the lines into sections, each with a capitalised title.`
 
@@ -174,6 +178,24 @@ Group the lines into sections, each with a capitalised title.`
  *
  * Returning null instead lets both halves retry with the fault named.
  */
+/**
+ * 🔴 `claude-opus-5`, NOT `claude-sonnet-4-5` — changed 2026-08-27 to stop a
+ * refusal, not for quality.
+ *
+ * Sonnet 4.5 declines this changelog. Measured on two separate windows: the
+ * 25–26 August input returned `stop_reason: 'refusal'` twice in a row, and the
+ * 26–27 August input was stopped MID-JSON at 368 output tokens against a 16000
+ * ceiling. Same prompt and same input on Opus 5: `end_turn`, 6317 tokens, clean
+ * parse. Nothing in the content is remarkable — it is our own engineering
+ * changelog — so this is a model behaviour, not something to write around.
+ *
+ * The report runs three times a week over roughly 30k input and 6k output
+ * tokens, so the tier change is worth a few dollars a month against a document
+ * that twice shipped with half of it missing.
+ */
+const MODEL_SUMMARY = 'claude-sonnet-4-5'
+const MODEL_TECHNICAL = 'claude-opus-5'
+
 const SECTIONS_SCHEMA = {
   type: 'object',
   properties: {
@@ -197,8 +219,13 @@ const SECTIONS_SCHEMA = {
 /** What one call to the model produced, and why it produced nothing if it did not. */
 type SectionsReply = {
   sections: UpdateSection[] | null
-  /** Distinguishes the three reasons for null. Never guess between them. */
-  reason: 'ok' | 'refusal' | 'truncated' | 'unparseable'
+  /**
+   * Why there is nothing usable. NEVER guess between these — every wrong label
+   * in this file's history sent the next attempt after the wrong fault.
+   * `empty` is the one that looks like success: valid JSON, sections present,
+   * every items array empty.
+   */
+  reason: 'ok' | 'refusal' | 'truncated' | 'empty' | 'unparseable'
   stopReason: string | null
 }
 
@@ -224,16 +251,53 @@ async function askForSections(
   system: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
   maxTokens: number,
+  model: string,
 ): Promise<SectionsReply> {
-  const res = await anthropic.messages.parse({
-    model: 'claude-sonnet-4-5',
+  // ⚠️ `create` + `output_config.format`, NOT `messages.parse`. The format still
+  // constrains generation either way, but `parse()` THROWS on a body it cannot
+  // read and the throw carries no `stop_reason` — so a REFUSAL and a truncation
+  // are indistinguishable from it.
+  //
+  // That is not hypothetical. A mid-stream refusal stops the model part-way
+  // through a JSON string, and `parse()` reports it as
+  // "Unterminated string in JSON at position ...", which reads exactly like
+  // running out of tokens. Measured 2026-08-27: `stop_reason: 'refusal'` at 368
+  // output tokens against a 16000 ceiling. Reading stop_reason ourselves is the
+  // only way to tell the two apart, and they need opposite handling.
+  // ⚠️ STREAMED, and not for progress — the SDK REFUSES a non-streaming request
+  // whose max_tokens could run past its 10-minute HTTP ceiling:
+  // "Streaming is required for operations that may take longer than 10 minutes."
+  // At 32000 that threw before a single token was generated. `.finalMessage()`
+  // hands back the same Message, `stop_reason` and all, so nothing downstream
+  // changes.
+  const res = await anthropic.messages.create({
+    model,
     max_tokens: maxTokens,
     system,
     messages,
+    // ⛔ DO NOT SET `effort: 'low'` HERE. Tried 2026-08-27 to claw back the
+    // thinking tokens that count against max_tokens; the leadership half came
+    // back as a well-formed skeleton with EVERY items array empty —
+    // {"sections":[{"title":"NEW","items":[]}, ...]} — on a 24-entry window. It
+    // parses, so it fails the quiet way. The ceilings below carry the cost
+    // instead. Default effort (high) is what every measurement here was taken at.
     output_config: { format: jsonSchemaOutputFormat(SECTIONS_SCHEMA) },
   })
+
   const stopReason = res.stop_reason ?? null
-  const parsed = res.parsed_output as { sections?: UpdateSection[] } | null
+  const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('')
+  // Take the outermost {...} rather than the whole reply. The schema governs the
+  // JSON, not whether the model wraps it — a code fence or a sentence in front of
+  // it still parsed fine under the old hand-rolled reader, and dropping that
+  // tolerance cost a first attempt at `end_turn` on 2026-08-27. Structure is the
+  // API's job now; being relaxed about a wrapper is still ours.
+  const body = /\{[\s\S]*\}/.exec(text)
+  let parsed: { sections?: UpdateSection[] } | null = null
+  try {
+    parsed = body ? (JSON.parse(body[0]) as { sections?: UpdateSection[] }) : null
+  } catch {
+    parsed = null
+  }
 
   const sections = (parsed?.sections ?? []).filter(
     s => s && typeof s.title === 'string' && Array.isArray(s.items) && s.items.length,
@@ -244,7 +308,10 @@ async function askForSections(
     sections: null,
     reason: stopReason === 'refusal' ? 'refusal'
       : stopReason === 'max_tokens' ? 'truncated'
-        : 'unparseable',
+        // Parsed cleanly and still gave us nothing — a different fault from a
+        // body we could not read, and it needs a different thing said back.
+        : parsed ? 'empty'
+          : 'unparseable',
     stopReason,
   }
 }
@@ -256,8 +323,18 @@ async function askForSections(
  * Truncation is deterministic — retrying the same call cannot fix it, which is why
  * it has to be detected rather than retried blindly.
  */
+// Raised again 2026-08-27, from 4000/4000. The tightened coverage brief asks the
+// technical half to represent EVERY entry in the window; on a 24-entry window
+// that ran past 4000 tokens and the reply stopped mid-string, which
+// `messages.parse` reports by throwing. 16000 is the SDK's guidance for a
+// non-streaming request — high enough that truncation stops being the normal
+// case, low enough to stay inside the default HTTP timeout.
+// Opus 5 thinks by default and those tokens count against this ceiling, so both
+// halves hit max_tokens at 8000/16000 and only survived on the retry. The
+// TypeScript SDK scales its own HTTP timeout up for a large max_tokens on a
+// non-streaming request, so these are safe without switching to streaming.
 const MAX_TOKENS_SUMMARY = 4000
-const MAX_TOKENS_TECHNICAL = 4000
+const MAX_TOKENS_TECHNICAL = 8000
 
 /** Why a response would not parse. The two causes need opposite corrections. */
 function repairPrompt(truncated: boolean): string {
@@ -286,6 +363,44 @@ function offenders(sections: UpdateSection[]): string[] {
   return sections.flatMap(s => s.items).filter(
     line => line.split(/\s+/).length > 32 || (line.match(/\./g) ?? []).length > 2 || BANNED.test(line),
   )
+}
+
+/**
+ * What the technical half got structurally wrong, phrased as the lines the retry
+ * quotes back — the same shape as offenders() for the leadership half.
+ *
+ * ⚠️ THE PROMPT ALONE DOES NOT HOLD THIS. The brief already said "up to 6
+ * sections" and "the last section should be GAPS or OPEN", and the first live
+ * test after the schema fix (2026-08-27) returned ONE section, eight lines, all
+ * about a single feature, with the rest of the window dropped and no closing
+ * section at all. The leadership half learned the same lesson months earlier:
+ * naming the specific defect back is what fixes it, not restating the rule.
+ */
+function technicalShortfalls(
+  sections: UpdateSection[], sourceHeadings: number, period: ReportPeriod,
+): string[] {
+  const out: string[] = []
+  const minSections = isWeek(period) ? 3 : 2
+  const minLines = isWeek(period) ? 12 : 10
+  const lines = sections.reduce((n, s) => n + s.items.length, 0)
+
+  const last = sections[sections.length - 1]
+  if (!last || !/^(OPEN|GAPS)\b/i.test(last.title.trim())) {
+    out.push(`The final section must be titled OPEN or GAPS. Yours ends with "${last?.title ?? '(nothing)'}".`)
+  }
+  if (sections.length < minSections) {
+    out.push(`You returned ${sections.length} section(s); this report needs at least ${minSections}.`)
+  }
+  if (lines < minLines) {
+    out.push(`You returned ${lines} lines; this report needs at least ${minLines}.`)
+  }
+  // Coverage is asserted in the brief and cannot be checked exactly here —
+  // merging related entries into one line is legitimate, so a line count below
+  // the entry count is a smell rather than a fault. Name it when it is stark.
+  if (lines < sourceHeadings) {
+    out.push(`There are ${sourceHeadings} entries in the input and only ${lines} lines in your answer, so some entries are unrepresented. Walk the input headings in order and add the ones you dropped.`)
+  }
+  return out
 }
 
 /**
@@ -318,7 +433,7 @@ export async function buildLeadershipUpdate(
 
   const LAST = 2
   for (let attempt = 0; attempt <= LAST; attempt++) {
-    const reply = await askForSections(SYSTEM(period), messages, MAX_TOKENS_SUMMARY)
+    const reply = await askForSections(SYSTEM(period), messages, MAX_TOKENS_SUMMARY, MODEL_SUMMARY)
 
     if (!reply.sections) {
       console.warn(`[leadership] attempt ${attempt + 1}: no sections (${reply.reason}, stop_reason ${reply.stopReason})`)
@@ -364,15 +479,36 @@ export async function buildLeadershipUpdate(
     const msgs: { role: 'user' | 'assistant'; content: string }[] = [
       { role: 'user', content: source.slice(0, 60000) },
     ]
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const reply = await askForSections(TECHNICAL_SYSTEM(period), msgs, MAX_TOKENS_TECHNICAL)
-      if (reply.sections) { technical = reply.sections; break }
-      console.warn(`[leadership] technical half attempt ${attempt + 1}: ${reply.reason} (stop_reason ${reply.stopReason})`)
-      // Same reasoning as the leadership half — a refusal will not be talked out
-      // of itself, and this is the half that fails silently, so do not burn the
-      // second call pretending it is a formatting problem.
-      if (reply.reason === 'refusal') break
-      msgs.push({ role: 'user', content: repairPrompt(reply.reason === 'truncated') })
+    const TECH_LAST = 1
+    for (let attempt = 0; attempt <= TECH_LAST; attempt++) {
+      const reply = await askForSections(TECHNICAL_SYSTEM(period), msgs, MAX_TOKENS_TECHNICAL, MODEL_TECHNICAL)
+
+      if (!reply.sections) {
+        console.warn(`[leadership] technical half attempt ${attempt + 1}: ${reply.reason} (stop_reason ${reply.stopReason})`)
+        // Same reasoning as the leadership half — a refusal will not be talked
+        // out of itself, and this is the half that fails silently, so do not
+        // burn the second call pretending it is a formatting problem.
+        if (reply.reason === 'refusal' || attempt === TECH_LAST) break
+        msgs.push({ role: 'user', content: repairPrompt(reply.reason === 'truncated') })
+        continue
+      }
+
+      // Keep whatever came back even if it is thin — a short Part 2 beats none —
+      // then try once to get the whole window covered.
+      technical = reply.sections
+      const short = technicalShortfalls(technical, entries.length, period)
+      if (!short.length) break
+      if (attempt === TECH_LAST) {
+        console.warn(`[leadership] technical half still short after a retry: ${short.join(' ')}`)
+        break
+      }
+      msgs.push(
+        { role: 'assistant', content: JSON.stringify({ sections: technical }) },
+        {
+          role: 'user',
+          content: `That covers only part of the input.\n\n${short.map(s => `- ${s}`).join('\n')}\n\nRewrite the WHOLE response against the same changelog, same shape and same line limits, with every input heading represented.`,
+        },
+      )
     }
     // ERROR, not warn. This half vanishing is invisible from outside — the only
     // tell in the delivered email is one clause of one sentence — and it shipped

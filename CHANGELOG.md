@@ -76,6 +76,27 @@ not accept audio, so the live dictation the phone already does is what produces 
 recordings are kept regardless; adding an OpenAI or Deepgram key turns on server-side
 transcription with no other change, and the recordings being kept now can be transcribed then.
 
+## 2026-08-27 — The technical half of the leadership report now covers the whole period
+
+With the second half of the report restored, the next problem underneath it became visible: on a
+busy stretch it wrote about whichever change was biggest and quietly dropped the rest. One test
+covered a single feature in eight lines and left out everything else that had happened, and skipped
+the closing section that lists what is unverified or still open.
+
+The brief now requires every entry in the period to be represented, and the report is checked
+against that before it is accepted — too few sections, too few lines, a missing closing section, or
+fewer lines than there were entries all send it back once with the specific shortfall named. The
+same input that produced one section now produces seven, covering every theme and ending in OPEN.
+
+**The half was also being declined by the model that wrote it.** Two separate periods were refused
+outright — one of them stopped part-way through a sentence — while the same input on a more capable
+model completed cleanly every time. That half now uses the larger model; the plain-English summary,
+which was never refused, is unchanged.
+
+Because it does more work, the job's time limit had to go up: a busy period measured just under two
+minutes end to end, against a previous ceiling of one. Left alone, the run would have been cut off
+part-way and produced no report at all — the exact silence this work exists to remove.
+
 ## 2026-08-27 — The leadership report gets its second half back
 
 The Monday/Wednesday/Friday report is written in two parts: a short non-technical summary, then a

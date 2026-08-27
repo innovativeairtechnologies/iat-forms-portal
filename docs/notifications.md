@@ -284,6 +284,48 @@ Full pipeline after the change, current content: **Part 2 present on four consec
 - The technical prompt now **forbids Markdown** — the Word renderer does not interpret it, so
   `**bold**` and backticks were printing literally on the page.
 
+### Coverage, models and the time budget (2026-08-27, same day as the fix above)
+
+Restoring Part 2 exposed the next fault: it wrote about the largest change and dropped the rest. One
+run gave **one section, eight lines**, about a single feature, with no closing section.
+
+**Both a brief and a check, because the brief alone does not hold.** `TECHNICAL_SYSTEM` now demands
+every input heading be represented and makes the final OPEN/GAPS section mandatory;
+`technicalShortfalls()` then verifies section count, line count, the closing title, and lines-vs-entries,
+and sends it back **once** with the specific shortfall quoted — the same shape as `offenders()` on the
+leadership half. Same input, after: **7 sections / 49 lines, closing OPEN.**
+
+🔴 **The two halves use different models, and that is deliberate.**
+
+| half | model | why |
+|---|---|---|
+| leadership | `claude-sonnet-4-5` | never refused; fast; unchanged |
+| technical | `claude-opus-5` | Sonnet 4.5 **refuses this changelog** |
+
+Measured: the 25–26 Aug window returned `stop_reason: 'refusal'` twice; the 26–27 Aug window was
+stopped **mid-JSON at 368 output tokens** against a 16000 ceiling. Same prompt and input on Opus 5 —
+`end_turn`, clean parse, every time.
+
+⚠️ **`messages.create` + `output_config.format`, NOT `messages.parse`.** `parse()` throws on a body
+it cannot read and the throw carries no `stop_reason`, so a mid-stream refusal is indistinguishable
+from truncation — it surfaces as "Unterminated string in JSON at position …", which reads exactly
+like running out of tokens. Reading `stop_reason` ourselves is the only way to tell them apart, and
+they need opposite handling.
+
+⛔ **Do not set `effort: 'low'`.** Tried, to reclaim the thinking tokens that count against
+`max_tokens`. The leadership half returned a well-formed skeleton with **every `items` array empty**.
+It parses, so it fails the quiet way. `SectionsReply.reason` now has `empty` as its own value —
+parsed-but-useless is not the same fault as unreadable.
+
+⚠️ **`maxDuration` is 300, and it is required.** A 24-entry window measures **113.7s** end to end
+(both halves + the Word render). The old ceiling was **60**, which would have killed the run
+mid-flight. 300 is already proven on this plan by `/api/cron/kb-sharepoint-sync`. Re-measure before
+lowering it — the worst case is a wide window with a retry on each half, not the 114s above.
+
+⚠️ **`max_tokens` 4000 / 8000, and going higher needs streaming.** At 32000 the SDK refuses a
+non-streaming request outright — "Streaming is required for operations that may take longer than 10
+minutes" — before generating a token. Raise these and you must switch to `.stream().finalMessage()`.
+
 ### ⚠️ Setting LEADERSHIP_UPDATE_EMAIL
 
 Use `--value` **and `--no-sensitive`**:

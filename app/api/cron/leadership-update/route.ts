@@ -103,7 +103,20 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
  * email.
  */
 
-export const maxDuration = 60   // the model call plus docx render exceeds the default
+/**
+ * ⚠️ 300, NOT 60 — raised 2026-08-27 and it is not slack, it is required.
+ *
+ * The technical half moved to a larger model to stop it being refused, and it
+ * now has to cover every entry in the window. A 24-entry window measured
+ * **113.7 seconds** end to end (both halves plus the Word render) — comfortably
+ * past the old 60, which would have killed the run mid-flight and produced the
+ * same silent no-report this whole change exists to remove.
+ *
+ * 300 is already in use by /api/cron/kb-sharepoint-sync, so it is known to be
+ * available on this plan. Re-measure before lowering it; a wide window with a
+ * retry on each half is the worst case, not the 114s above.
+ */
+export const maxDuration = 300
 
 /**
  * The send window, America/New_York.
