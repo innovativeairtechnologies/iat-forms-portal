@@ -1113,6 +1113,26 @@ with it and the two address lines at y = 48 and 53.5 were not — so they landed
 pine and read as the address falling out of the header. Fixed, and the lesson is in the code: the
 band height and everything positioned against it are one unit. Move one, move all of them.
 
+## ✅ Steps 3, 5 and 6 verified by hand (owner, 2026-08-27)
+
+The wizard cannot be driven past step 1 in an automated browser, so everything built on 26 and 27
+August was compile-verified, unit-verified and confirmed present in the deployed bundle — but not
+clicked. **The owner clicked through steps 3, 5 and 6 on 2026-08-27 and all three behave.**
+
+Specifically confirmed working:
+
+- **Step 3 advances.** `targetSource` is derived from the values now, and the two buttons that used
+  to set it are gone. Had the derivation been wrong, no survey could have been completed at all.
+- **Step 5 gates correctly.** It refuses to advance until "the space around the room" is answered,
+  and refuses a Custom band with an empty box.
+- **The Custom boxes appear and accept input**, on both the retarder and the tightness control.
+
+🔴 **That third one had already shipped broken once.** `Segmented` accepted a `trailing` prop and
+never rendered it, so selecting Custom did nothing visible — and it passed a type check, a build, a
+bundle grep and every model-level test, because all of those looked at layers that do not render.
+`Segmented` now has a render test, but the general lesson stands: **for anything on this wizard,
+"the calculation is right" and "the page works" are different claims and need different evidence.**
+
 ## Air density — the 2026-08-27 decisions
 
 The owner reviewed the three findings from the calculation audit and chose a **conservative** posture.
