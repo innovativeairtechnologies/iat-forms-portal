@@ -695,10 +695,34 @@ export const FLOOR_MATERIALS: MaterialOption[] = [
 // that landed on the same 0.6 it always used; now it lands on 0.30 — which only
 // matters if something recomputes such a row, and nothing does.
 export type Tightness = 'Tight' | 'Average' | 'Loose'
+
+/**
+ * Envelope air leakage, cu.ft/hr per sq.ft of GROSS EXTERIOR WALL AREA.
+ *
+ * 🔴 REVISED 2026-08-27 on engineering advice, and BOTH HALVES CHANGED:
+ *
+ *              rate was   rate now      basis was          basis now
+ *   Tight        0.10       0.05        walls + ceiling    WALLS ONLY
+ *   Average      0.30       0.10        walls + ceiling    WALLS ONLY
+ *   Loose        0.60       0.20        walls + ceiling    WALLS ONLY
+ *
+ * ⚠️ THE BASIS CHANGE IS THE BIGGER ONE. Roof, floor, doors, loading docks,
+ * windows, penetrations and intentional ventilation are all evaluated separately —
+ * doors already are, and the roof and floor are carried by permeation — so folding
+ * the ceiling into this term was double-counting it. On a 50 x 40 x 14 room the two
+ * changes together take Average from 1,356 to 252 cu.ft/hr.
+ *
+ * STORED SURVEYS DO NOT RE-PRICE. `summary` is snapshotted at submit and
+ * /admin/rfq reads it rather than recomputing, and the customer's PDF is kept as a
+ * file (migration 095). Only new surveys use these.
+ *
+ * ⚠️ These are a PHYSICS TABLE, not display copy — see the option-list rule in the
+ * project memory. Change one only against a source, and say which.
+ */
 export const TIGHTNESS_RATES: Record<Tightness, number> = {
-  Tight: 0.10,
-  Average: 0.30,
-  Loose: 0.60,
+  Tight: 0.05,
+  Average: 0.10,
+  Loose: 0.20,
 }
 export const TIGHTNESS_HELP: Record<Tightness, string> = {
   Tight: 'Purpose-built envelope: sealed penetrations, gasketed doors, taped vapor barrier.',
@@ -706,10 +730,64 @@ export const TIGHTNESS_HELP: Record<Tightness, string> = {
   Loose: 'Older or industrial shell: visible daylight at joints, unsealed conduit, worn door seals.',
 }
 
-// 'Not sure' removed (owner, 2026-08-20), matching cooling, heating and the final
-// filter. Safe for the calculation: estimateLoad only ever tests `=== 'Yes'`, so
-// 'No' and 'Not sure' already behaved identically — this changes no stored result.
-export type VaporBarrier = 'Yes' | 'No'
+/** Shown behind the ⓘ beside the tightness control, not printed on the page. */
+export const TIGHTNESS_DISCLAIMER =
+  'These values are conservative preliminary design assumptions for air leakage through above-grade '
+  + 'exterior wall construction, for use when measured building-envelope leakage data are not available. '
+  + 'Apply the rates to gross exterior wall area only, unless a different envelope basis is specifically '
+  + 'established. Roof leakage, floors, doors, loading docks, windows, penetrations, intentional '
+  + 'ventilation and other openings should be evaluated separately where applicable. Actual infiltration '
+  + 'can vary significantly with wind speed, building height, stack effect, mechanical pressurisation, '
+  + 'construction quality and operating conditions. For critical low-dew-point applications, measured or '
+  + 'engineered envelope leakage data should be used whenever available.'
+
+/**
+ * The vapor retarder, by IRC/ASHRAE class rather than a yes/no.
+ *
+ * 🔴 REPLACED 'Yes' | 'No' ON 2026-08-27 on engineering advice. The old pair chose
+ * between a material's `perm` and `permSealed` columns; `permSealed` could not have
+ * come from a published table, because a retarder's permeance is a property of the
+ * RETARDER, not of the material it is fitted to. Backing the old column out implied
+ * a single ~0.45-perm retarder for most rows — a Class II — behind a Yes/No whose
+ * own hint offered Class I to III, a 100x range.
+ *
+ * Now the class carries an explicit permeance and the assembly is combined in
+ * SERIES, which is how two resistances in the same vapor path actually add:
+ *
+ *     1 / P_assembly = 1 / P_material + 1 / P_retarder
+ *
+ * ⚠️ BLANK IS A REAL STATE and means no retarder credited — the bare material
+ * permeance is used. There is no 'None' button; see the open question raised with
+ * the owner on 2026-08-27.
+ */
+export type VaporBarrier = 'Class I' | 'Class II' | 'Class III'
+
+/** Permeance of the retarder itself, grains/hr/sq.ft/inHg. */
+export const VAPOR_BARRIER_PERMS: Record<VaporBarrier, number> = {
+  'Class I': 0.06,
+  'Class II': 0.60,
+  'Class III': 3.00,
+}
+
+export const VAPOR_BARRIER_HELP: Record<VaporBarrier, string> = {
+  'Class I': 'Polyethylene sheet.',
+  'Class II': 'Kraft-faced fiberglass batt.',
+  'Class III': 'Latex-painted gypsum board.',
+}
+
+/** Pin the union — see the same reasoning on `roomSizeMode` in app/api/rfq. */
+export function normalizeVaporBarrier(v: unknown): VaporBarrier | '' {
+  return v === 'Class I' || v === 'Class II' || v === 'Class III' ? v : ''
+}
+
+/** Shown behind the ⓘ beside the vapor retarder control, not printed on the page. */
+export const VAPOR_BARRIER_DISCLAIMER =
+  'Vapor permeance values are representative design assumptions for preliminary moisture-load '
+  + 'calculations, for use when manufacturer-specific or tested assembly data are unavailable. Actual '
+  + 'permeance varies with material thickness, coatings, installation quality, humidity, temperature, '
+  + 'seams, penetrations and test method. Vapor-retarder classification alone does not define an exact '
+  + 'permeance value. For critical low-dew-point applications, use tested permeance data for the actual '
+  + 'wall, ceiling and floor assemblies whenever available.'
 
 // Airflow velocity through an open door, fpm. Chapter 5's guidance: assume the
 // local wind speed for a door to the weather, 50 fpm for a door to another
@@ -944,7 +1022,13 @@ export type RfqData = {
   wallMaterial: string
   ceilingMaterial: string
   floorMaterial: string
-  vaporBarrier: VaporBarrier
+  /** Blank means no retarder credited — see VaporBarrier. */
+  vaporBarrier: VaporBarrier | ''
+  /**
+   * A leakage rate the customer typed, cu.ft/hr per sq.ft of exterior wall.
+   * Overrides the Tight/Average/Loose band whenever it is above zero.
+   */
+  tightnessCustom: string
   tightness: Tightness
 
   // Openings
@@ -1036,7 +1120,10 @@ export function emptyRfq(): RfqData {
     wallMaterial: 'Insulated metal panel',
     ceilingMaterial: 'Insulated metal panel',
     floorMaterial: 'Concrete slab on grade',
-    vaporBarrier: 'No',
+    // Blank, not 'No' — the class buttons replaced the yes/no on 2026-08-27
+    // and blank means no retarder credited.
+    vaporBarrier: '',
+    tightnessCustom: '',
     tightness: 'Average',
     doors: [],
     occupants: '0', activity: '',
@@ -1297,7 +1384,9 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   const wallArea = 2 * (L + W) * H
   const ceilArea = L * W
   const floorArea = L * W
-  const sealed = data.vaporBarrier === 'Yes'
+  // The retarder permeance, or undefined when none was chosen. See VaporBarrier:
+  // blank is a real state and means no retarder credited.
+  const retarderPerm = VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporBarrier]
   const permOf = (list: MaterialOption[], label: string) => {
     // ⚠️ Renaming a material label silently re-prices every survey that stored the
     // old one: the lookup is an exact string match and misses fall through to the
@@ -1306,7 +1395,16 @@ export function estimateLoad(data: RfqData): LoadEstimate {
     // rename needs an entry here, not just a new label.
     const want = LEGACY_MATERIAL_LABELS[label] ?? label
     const m = list.find(x => x.label === want) ?? list[list.length - 1]
-    return sealed ? m.permSealed : m.perm
+    if (!retarderPerm) return m.perm
+    // Two resistances in the same vapor path add reciprocally. The result is always
+    // LOWER than either alone, which is why a Class III retarder still helps a
+    // gypsum wall (50 and 3.0 give 2.83) and barely touches an insulated metal
+    // panel that is already tighter than the retarder (0.16 and 3.0 give 0.152).
+    //
+    // ⚠️ m.permSealed IS NO LONGER READ. It is kept in the tables as the record of
+    // what those surveys were quoted under before 2026-08-27; nothing computes
+    // from it now.
+    return 1 / (1 / m.perm + 1 / retarderPerm)
   }
   const wallPerm = permOf(WALL_MATERIALS, data.wallMaterial)
   const ceilPerm = permOf(CEILING_MATERIALS, data.ceilingMaterial)
@@ -1323,14 +1421,23 @@ export function estimateLoad(data: RfqData): LoadEstimate {
       key: 'permeation',
       label: 'Permeation through walls, roof and floor',
       grainsPerHour: permeation,
-      detail: `${fmt(wallArea + ceilArea + floorArea)} sq.ft of envelope${sealed ? ', vapor barrier credited' : ', no vapor barrier'}`,
+      detail: `${fmt(wallArea + ceilArea + floorArea)} sq.ft of envelope${data.vaporBarrier ? `, ${data.vaporBarrier} vapor retarder` : ', no vapor retarder'}`,
     })
   }
 
   // — Envelope air leakage (Ch. 5 Method A: whole-building infiltration) —
-  const envelopeArea = wallArea + ceilArea
-  const leakRate = TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
-  const infiltration = Math.max(envelopeArea * leakRate * density * (surGr - roomGr), 0)
+  // 🔴 GROSS EXTERIOR WALL AREA, not walls + ceiling (engineering advice,
+  // 2026-08-27). The roof and floor are carried by permeation and the doors have
+  // their own term, so including the ceiling here was counting it twice. See
+  // TIGHTNESS_RATES — the rates changed at the same time and the two go together.
+  const leakArea = wallArea
+  // A rate the customer typed beats the band. num() returns 0 for blank or junk,
+  // and a zero or negative rate is not an answer, so the band stands.
+  const typedRate = num(data.tightnessCustom, 0)
+  const leakRate = typedRate > 0
+    ? typedRate
+    : TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
+  const infiltration = Math.max(leakArea * leakRate * density * (surGr - roomGr), 0)
   if (volume > 0) {
     lines.push({
       key: 'infiltration',
@@ -1339,7 +1446,7 @@ export function estimateLoad(data: RfqData): LoadEstimate {
       // at submit and never recomputed - so shortLabel() still maps the old string.
       label: 'Infiltration',
       grainsPerHour: infiltration,
-      detail: `${data.tightness.toLowerCase()} construction, ${leakRate} cu.ft/hr per sq.ft`,
+      detail: `${typedRate > 0 ? 'entered rate' : data.tightness.toLowerCase() + ' construction'}, ${leakRate} cu.ft/hr per sq.ft of exterior wall (${fmt(leakArea)} sq.ft)`,
     })
   }
 

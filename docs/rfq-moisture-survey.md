@@ -1113,6 +1113,97 @@ with it and the two address lines at y = 48 and 53.5 were not — so they landed
 pine and read as the address falling out of the header. Fixed, and the lesson is in the code: the
 band height and everything positioned against it are one unit. Move one, move all of them.
 
+## Tightness and the vapor retarder, revised (2026-08-27)
+
+Engineering advice, supplied by the owner. **Both of these are physics tables** — see the
+option-list rule in the project memory.
+
+### Leakage rates, and the area they apply to
+
+🔴 **BOTH HALVES CHANGED. The basis matters more than the rates.**
+
+| | Rate was | Rate now | Basis was | Basis now |
+|---|---|---|---|---|
+| Tight | 0.10 | **0.05** | walls + ceiling | **exterior walls only** |
+| Average | 0.30 | **0.10** | walls + ceiling | **exterior walls only** |
+| Loose | 0.60 | **0.20** | walls + ceiling | **exterior walls only** |
+
+Roof, floor, doors, loading docks, windows, penetrations and intentional ventilation are all
+evaluated separately — doors have their own term and the roof and floor are carried by permeation —
+so folding the ceiling into this line was counting it twice. On a 50 × 40 × 14 room the two changes
+together take Average from 1,356 to 252 cu.ft/hr.
+
+**The customer can type their own rate.** `tightnessCustom`, in the same cu.ft/hr per sq.ft of
+exterior wall. Anything above zero replaces the band; zero, blank or junk falls back to it. The line
+printed under the control uses the same test as `estimateLoad`, so the page and the calculation
+cannot disagree.
+
+### The retarder is a class now, and it combines in series
+
+`'Yes' | 'No'` became **Class I / II / III**, each carrying an explicit permeance:
+
+| Class | | Permeance |
+|---|---|---|
+| Class I | Polyethylene | 0.06 |
+| Class II | Kraft-faced batt | 0.60 |
+| Class III | Latex-painted gypsum | 3.00 |
+
+grains/hr/sq.ft/inHg.
+
+The old pair switched a material between its `perm` and `permSealed` columns. **`permSealed` could
+not have come from a published table**, because a retarder's permeance is a property of the
+retarder, not of the material it is fitted to — backing that column out implied a single ~0.45-perm
+retarder for most rows, a Class II, sitting behind a Yes/No whose own hint offered Class I to III, a
+100× range. That was the open question raised on 2026-08-26; this is the answer to it.
+
+Now the assembly is combined the way two resistances in one vapor path actually add:
+
+```
+1 / P_assembly  =  1 / P_material  +  1 / P_retarder
+```
+
+Verified: painted gypsum at 50 perm with Class I gives 0.0599 — the retarder dominating, as it
+should — and with Class III gives 2.83. Permeation falls with each tighter class.
+
+⚠️ **`permSealed` IS NO LONGER READ.** It stays in the tables as the record of what surveys before
+2026-08-27 were quoted under; nothing computes from it.
+
+⚠️ **BLANK IS A REAL STATE** and means no retarder credited — the bare material permeance is used.
+There is no "None" button; see the open questions.
+
+### The disclaimers are behind an ⓘ, not on the page
+
+`InfoDot` — a small circled "i" whose text appears on hover and on keyboard focus. Native `title`,
+for the reason already written on `Segmented`: the wizard uses them elsewhere, there is no shared
+Tooltip in `components/ui`, and a hand-rolled one would be a fourth pattern for the same job.
+
+⚠️ **Nothing load-bearing may live in an InfoDot alone.** It is a design note; the figure it
+qualifies is always printed on the page beside it.
+
+## The PDF stopped ending pages in white space (2026-08-27)
+
+Pages 2–5 each ended in 20–53mm of blank. The cause was not spacing — it was that **a table was
+atomic**: if the room left could not hold all of it, `ensure()` sent the whole block to a fresh page.
+
+`table()` and `loadBars()` now **split across pages** — draw what fits, take a page, repeat the
+header, carry on.
+
+🔴 **THE RESERVES HAD TO SHRINK WITH THEM.** A caller that still books the full table height
+reintroduces the exact behaviour this removes. Every reserve before a splitting block is now
+"is it worth starting here" — the overline plus a header and two rows.
+
+| Shape | Pages |
+|---|---|
+| Room, minimal | 4 |
+| Room, 2 doors, note and purpose | 4 |
+| Room, box-in-box | 4 |
+| Room, 8 doors, long note | 5 |
+| Room, **16 doors** | 5 |
+| Process | 3 |
+
+Sixteen doors costs no more pages than eight, which is the splitting doing its job. Worst remaining
+blank is 19mm, down from 53.
+
 ### Four rules for editing the PDF
 
 1. **Every string passes through `san()`.** jsPDF's Helvetica is WinAnsi-encoded and does not

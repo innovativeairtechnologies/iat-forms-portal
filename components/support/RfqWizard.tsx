@@ -17,7 +17,8 @@ import {
   AIR_SOURCES, CEILING_MATERIALS, CONSTRUCTIONS, COOLING_TYPES, DOOR_TYPES, FLOOR_MATERIALS,
   HEATING_TYPES, INSTALL_LOCATIONS, LOAD_DISCLAIMER, MERV_OPTIONS, FINAL_FILTER_OPTIONS, MOISTURE_MODES, MOISTURE_SUFFIX,
   PEOPLE_LOADS, PROCESS_PRESETS, REGEN_SOURCES, ROOM_PRESETS, ROOM_RENDER_EDGES, ROOM_SIZE_MODES, RUNTIMES, TEMP_UNITS,
-  TIGHTNESS_HELP, TIGHTNESS_RATES, VOLTAGES, WALL_MATERIALS, DEFAULT_CEILING_FT,
+  TIGHTNESS_DISCLAIMER, TIGHTNESS_HELP, TIGHTNESS_RATES, VAPOR_BARRIER_DISCLAIMER,
+  VAPOR_BARRIER_HELP, VAPOR_BARRIER_PERMS, VOLTAGES, WALL_MATERIALS, DEFAULT_CEILING_FT,
   applicationLabel, applyProcessPreset, applyRoomPreset, dewPointF, emptyRfq, estimateLoad,
   estimateProcess, fmt, fmtDewPoint, fmtGrains, fToC, grains, modeIsTemperature, normalizeMode,
   normalizeRoomSizeMode,
@@ -223,7 +224,8 @@ function SelectField({
 function Segmented<T extends string>({
   label, hint, value, onChange, options, tone = 'sky',
 }: {
-  label?: string; hint?: string; value: T; onChange: (v: T) => void
+  // A node, not a string: step 5 hangs an InfoDot off the end of two of these.
+  label?: React.ReactNode; hint?: string; value: T; onChange: (v: T) => void
   options: { value: T; label: string; title?: string }[]; tone?: Tone
 }) {
   const groupId = useId()
@@ -545,6 +547,31 @@ function ConditionReadout({ tempF, rhPct, elevationFt, unit = 'F', tone = 'sky' 
       <Stat label="Grains" value={fmtGrains(grains(tempF, rhPct, elevationFt))} unit="gr/lb" />
       <Stat label="Dew point" value={asUnit(dewPointF(tempF, rhPct, elevationFt))} />
     </div>
+  )
+}
+
+/**
+ * A small circled "i" that reveals a disclaimer on hover and on keyboard focus.
+ *
+ * Native title, for the reason already written on Segmented: the wizard uses them
+ * elsewhere, there is no shared Tooltip in components/ui, and a hand-rolled one
+ * here would be a fourth pattern for the same job.
+ *
+ * ⚠️ Unlike the text under those controls, what this holds is NOT printed on the
+ * page — that was the point of asking for it. So nothing load-bearing may live in
+ * here alone: it is a design note, and the figure it qualifies is always on the
+ * page beside it.
+ */
+function InfoDot({ text, label }: { text: string; label: string }) {
+  return (
+    <button
+      type="button"
+      title={text}
+      aria-label={label}
+      className="inline-flex h-[15px] w-[15px] flex-shrink-0 cursor-help items-center justify-center rounded-full border border-hairline-strong text-[9.5px] font-semibold leading-none text-ink-muted transition-colors hover:border-ink-muted hover:text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+    >
+      i
+    </button>
   )
 }
 
@@ -1862,25 +1889,50 @@ function StepShell({
           They were collapsed under an "Advanced" button; the owner asked for them
           back in front of everybody, which is where they started.
 
-          Both feed estimateLoad and both carry a LIVE DEFAULT — `vaporBarrier` is
-          only ever tested `=== 'Yes'`, and `tightness` sets the whole infiltration term
-          (Loose is exactly 6x Tight). Hiding a question whose default is already
-          costing the customer money is the shape of bug this survey has hit twice:
-          on 2026-08-19 tightness was commented out while it kept pricing every
-          survey at average leakage, an assumption nobody was asked to confirm.
+          Both feed estimateLoad. The retarder class picks the permeance that is put
+          in series with each material, and tightness sets the whole infiltration
+          term. Hiding a question whose answer is already costing the customer money
+          is the shape of bug this survey has hit twice: on 2026-08-19 tightness was
+          commented out while it kept pricing every survey at average leakage, an
+          assumption nobody was asked to confirm.
+
           Do not put either back behind a toggle. */}
       <Segmented<VaporBarrier>
-        label="Is there a vapor barrier?"
-        hint="Class I is polyethylene, Class II is kraft-faced batt, Class III is latex-painted gypsum."
+        label={
+          <span className="inline-flex items-center gap-1.5">
+            Is there a vapor retarder?
+            <InfoDot label="About these vapor permeance values" text={VAPOR_BARRIER_DISCLAIMER} />
+          </span>
+        }
+        hint="Hover a class to see the permeance we use for it."
         tone="sky"
-        value={data.vaporBarrier}
+        value={(data.vaporBarrier || '') as VaporBarrier}
         onChange={v => set('vaporBarrier', v)}
-        options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
+        options={(Object.keys(VAPOR_BARRIER_PERMS) as VaporBarrier[]).map(c => ({
+          value: c,
+          label: c,
+          title: `${VAPOR_BARRIER_HELP[c]}  ${VAPOR_BARRIER_PERMS[c].toFixed(2)} grains/hr/sq.ft/inHg`,
+        }))}
       />
+      {data.vaporBarrier && (
+        <p className="-mt-2 text-[12px] leading-relaxed text-ink-muted">
+          <span className="font-medium text-ink-secondary">
+            {VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporBarrier].toFixed(2)} grains/hr/sq.ft/inHg
+          </span>
+          {' — '}
+          {VAPOR_BARRIER_HELP[data.vaporBarrier as VaporBarrier]} We put this in series with whatever the
+          walls, roof and floor are made of, so the assembly is always tighter than either on its own.
+        </p>
+      )}
 
       <div>
         <Segmented<Tightness>
-          label="How tight is the building?"
+          label={
+            <span className="inline-flex items-center gap-1.5">
+              How tight is the building?
+              <InfoDot label="About these leakage rates" text={TIGHTNESS_DISCLAIMER} />
+            </span>
+          }
           tone="sky"
           value={data.tightness}
           onChange={v => set('tightness', v)}
@@ -1890,16 +1942,34 @@ function StepShell({
           options={(Object.keys(TIGHTNESS_RATES) as Tightness[]).map(t => ({
             value: t,
             label: t,
-            title: `${TIGHTNESS_RATES[t].toFixed(2)} cfh/sq.ft of envelope`,
+            title: `${TIGHTNESS_RATES[t].toFixed(2)} cu.ft/hr per sq.ft of exterior wall area`,
           }))}
         />
+        {/* What is ACTUALLY being applied, including when the customer has typed
+            over the band. estimateLoad uses the same test — a typed rate above zero
+            wins — so this line and the calculation cannot disagree. */}
         <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
           <span className="font-medium text-ink-secondary">
-            {TIGHTNESS_RATES[data.tightness].toFixed(2)} cfh/sq.ft
+            {(numOf(data.tightnessCustom) > 0
+              ? numOf(data.tightnessCustom)
+              : TIGHTNESS_RATES[data.tightness]).toFixed(2)} cu.ft/hr per sq.ft of exterior wall
           </span>
           {' — '}
-          {TIGHTNESS_HELP[data.tightness]}
+          {numOf(data.tightnessCustom) > 0
+            ? 'your own figure, used instead of the band above.'
+            : TIGHTNESS_HELP[data.tightness]}
         </p>
+
+        <div className="mt-3 sm:max-w-[300px]">
+          <TextField
+            label="Or enter your own leakage rate"
+            hint="If you have measured or engineered envelope data, use it. Anything above zero replaces the band."
+            value={data.tightnessCustom}
+            onChange={v => set('tightnessCustom', v)}
+            type="number"
+            suffix="cfh/sq.ft"
+          />
+        </div>
       </div>
 
 

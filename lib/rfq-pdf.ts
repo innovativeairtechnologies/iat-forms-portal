@@ -25,6 +25,7 @@ import {
   type ProcessEstimate,
   type RfqData,
   TIGHTNESS_RATES,
+  VAPOR_BARRIER_PERMS,
   applicationLabel,
   conditionEntered,
   dewPointF,
@@ -334,12 +335,15 @@ function spacePage(ctx: Ctx, startY: number): number {
   // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
   // page. EVERY block in a flowing section needs a reserve.
   // 4 below the overline, the table, then the note and its air: measured at 21.
-  y = ensure(ctx, y, 4 + tableH(rows.length) + 21, 'The space', 'Design conditions')
+  // ⚠️ RESERVE THE START, NOT THE WHOLE TABLE. table() splits across pages now,
+  // so booking its full height would send it to a fresh page and leave this one
+  // ending in white — the behaviour removed on 2026-08-27. Header plus two rows.
+  y = ensure(ctx, y, 4 + tableH(2), 'The space', 'Design conditions')
   overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
   y += 4
-  y = table(doc, M, y, CW,
+  y = table(ctx, M, y, CW,
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
-    rows, [0.4, 0.15, 0.15, 0.15, 0.15])
+    rows, [0.4, 0.15, 0.15, 0.15, 0.15], { title: 'The space', sub: 'Design conditions' })
   y += 3
   y = note(doc, `Loads scale with the difference in grains between inside and out, not with relative humidity, which means a different amount of water at every temperature.${sourceNote(data)}`, M, y, CW)
   y += 4
@@ -350,33 +354,36 @@ function spacePage(ctx: Ctx, startY: number): number {
   // rate is spelled out because the band name alone does not say what was assumed.
   // The `??` fallback mirrors estimateLoad exactly, so a survey stored under a
   // retired band prints the rate the math actually used rather than a blank.
-  const leakRate = TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
+  // ⚠️ MIRRORS estimateLoad EXACTLY, including the customer-entered rate winning
+  // over the band. If these two ever disagree the document prints one assumption
+  // and the quote is built on another.
+  const typedRate = numOf(data.tightnessCustom)
+  const leakRate = typedRate > 0 ? typedRate : TIGHTNESS_RATES[data.tightness] ?? TIGHTNESS_RATES.Average
   const envelopeRows: string[][] = [
     ['Walls', data.wallMaterial],
     ['Roof / ceiling', data.ceilingMaterial],
     ['Floor', data.floorMaterial],
-    ['Vapor barrier', data.vaporBarrier],
+    ['Vapor retarder', data.vaporBarrier
+      ? `${data.vaporBarrier} — ${VAPOR_BARRIER_PERMS[data.vaporBarrier].toFixed(2)} grains/hr/sq.ft/inHg`
+      : 'None credited'],
     ['Space around the room', data.surroundSource === 'outdoor'
       ? 'Outside air — the outdoor design condition'
       : data.surroundSource === 'manual'
         ? 'Box in a box — surrounded by another conditioned space'
         : 'Not stated'],
-    ['Building tightness', `${data.tightness} — ${leakRate} cu.ft/hr per sq.ft of envelope`],
+    ['Building tightness', `${typedRate > 0 ? 'Entered' : data.tightness} — ${leakRate} cu.ft/hr per sq.ft of exterior wall`],
   ]
-  // Reserve exactly what this block draws: the 4mm below the overline, plus the
-  // table. tableH() ALREADY allows for the header row, so the count passed is the
-  // DATA rows — asking for tableH(rows + 1) double-counts it.
+  // ⚠️ REWRITTEN 2026-08-27. This used to reserve the whole table and carried a
+  // long note about not over-reserving, because over-reserving emitted a near-empty
+  // continuation page. table() SPLITS now, so the trade-off is gone: reserve the
+  // start — the 4mm under the overline plus a header and two rows — and let the
+  // table run onto the next page mid-way if that is where it ends up.
   //
-  // ⚠️ This is the last block on the page, so over-reserving does not shuffle
-  // anything down, it emits a whole continuation page holding one short table.
-  // At 9 + tableH(6) = 65mm against the 59.1mm a typical room survey leaves, it
-  // did that on EVERY room-track PDF — which is exactly what moving the doors
-  // table to the load page was meant to prevent. Measured, not estimated: the
-  // block is 52mm and clears CONTENT_BOTTOM by 7.1mm.
-  y = ensure(ctx, y, 4 + tableH(envelopeRows.length), 'The space', 'Construction and envelope')
+  // tableH() already allows for the header row, so the count passed is DATA rows.
+  y = ensure(ctx, y, 4 + tableH(2), 'The space', 'Construction and envelope')
   overline(doc, 'CONSTRUCTION & ENVELOPE', M, y, C.inkMuted)
   y += 4
-  y = table(doc, M, y, CW, ['Element', 'Material / rating'], envelopeRows, [0.34, 0.66])
+  y = table(ctx, M, y, CW, ['Element', 'Material / rating'], envelopeRows, [0.34, 0.66], { title: 'The space', sub: 'Construction and envelope' })
   y += 5
 
   // Openings
@@ -416,27 +423,27 @@ function processPage(ctx: Ctx, startY: number): number {
   // and an unguarded block does not wrap, it draws straight off the bottom of the
   // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
   // page. EVERY block in a flowing section needs a reserve.
-  y = ensure(ctx, y, 4 + tableH(4) + 10, 'The process', 'The airstream')
+  y = ensure(ctx, y, 4 + tableH(2), 'The process', 'The airstream')
   overline(doc, 'THE AIRSTREAM', M, y, C.inkMuted)
   y += 4
-  y = table(doc, M, y, CW, ['Parameter', 'Value'], [
+  y = table(ctx, M, y, CW, ['Parameter', 'Value'], [
     ['Process airflow', data.processCfm ? `${fmt(numOf(data.processCfm))} cfm` : '—'],
     ['Air source', data.airSource + (data.mixOutdoorPct ? ` (${data.mixOutdoorPct}% outdoor air)` : '')],
     ['Entering air (estimated)', proc ? `${fmtGrains(proc.enteringGrains)} gr/lb` : '—'],
     ['Grain depression required', proc ? `${fmtGrains(proc.depression)} gr/lb` : '—'],
     ['Water removed (estimated)', proc?.complete ? `${fmt(proc.lbPerHr, 1)} lb/hr  ·  ${fmt(proc.lbPerHr * 24 * 0.9586)} pints per day` : '—'],
-  ], [0.4, 0.6])
+  ], [0.4, 0.6], { title: 'The process', sub: 'The airstream' })
   y += 9
 
-  y = ensure(ctx, y, 9 + tableH(2) + 16, 'The process', 'Design conditions')
+  y = ensure(ctx, y, 4 + tableH(2), 'The process', 'Design conditions')
   overline(doc, 'DESIGN CONDITIONS', M, y, C.inkMuted)
   y += 4
-  y = table(doc, M, y, CW,
+  y = table(ctx, M, y, CW,
     ['Condition', 'Dry bulb', 'Rel. humidity', 'Grains', 'Dew point'],
     [
       condRow('Return / room air', numOf(data.surroundTempF), numOf(data.surroundRhPct), elev, conditionEntered(data, 'surround')),
       condRow('Outdoor summer design', numOf(data.outdoorTempF), numOf(data.outdoorRhPct), elev, conditionEntered(data, 'outdoor')),
-    ], [0.4, 0.15, 0.15, 0.15, 0.15])
+    ], [0.4, 0.15, 0.15, 0.15, 0.15], { title: 'The process', sub: 'Design conditions' })
   y += 3
   y = note(doc, `A desiccant wheel is sized on the grain depression it has to deliver, not on relative humidity. Where a specification is written as a dew point, that is the number we design to.${sourceNote(data)}`, M, y, CW)
   y += 6
@@ -458,13 +465,15 @@ function loadsPage(ctx: Ctx, startY: number): number {
   const { doc, data, load } = ctx
   if (!load) return startY
   // The doors table is first, and an empty survey still draws one row.
-  let y = section(ctx, startY, 4 + tableH(Math.max(1, data.doors.length)),
+  // Header plus two rows — the doors table splits, so a long one no longer has to
+  // start on a page of its own.
+  let y = section(ctx, startY, 4 + tableH(2),
     'Where the moisture comes from', 'Openings, internal loads and the preliminary estimate')
 
   overline(doc, 'DOORS & OPENINGS', M, y, C.inkMuted)
   y += 3
   if (data.doors.length) {
-    y = table(doc, M, y, CW,
+    y = table(ctx, M, y, CW,
       ['Opening', 'Size', 'Opens/hr', 'Seconds open', 'Opens onto'],
       data.doors.map(d => [
         d.label,
@@ -474,7 +483,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
         d.continuouslyOpen ? 'Continuous' : fmt(d.opensPerHour),
         d.continuouslyOpen ? '—' : fmt(d.secondsOpen),
         d.exposure,
-      ]), [0.32, 0.16, 0.14, 0.18, 0.2])
+      ]), [0.32, 0.16, 0.14, 0.18, 0.2], { title: 'Where the moisture comes from', sub: 'Doors and openings' })
   } else {
     y = emptyRow(doc, M, y, CW, 'No doors or openings recorded.')
   }
@@ -485,7 +494,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
   // and an unguarded block does not wrap, it draws straight off the bottom of the
   // sheet. The first run after the change put this one at y = 282.8 on a 279.4mm
   // page. EVERY block in a flowing section needs a reserve.
-  y = ensure(ctx, y, 4 + tableH(7), 'Where the moisture comes from', 'Internal loads')
+  y = ensure(ctx, y, 4 + tableH(2), 'Where the moisture comes from', 'Internal loads')
   overline(doc, 'INTERNAL LOADS RECORDED', M, y, C.inkMuted)
   y += 3
   // ⚠️ NO NEW ROW HERE — the condition rides on the row that already exists.
@@ -506,7 +515,7 @@ function loadsPage(ctx: Ctx, startY: number): number {
     : 'outdoor design'
   const ventDetail = `${ventWhen}, ${fmtGrains(load.ventGrains)} gr/lb`
 
-  y = table(doc, M, y, CW, ['Source', 'What you told us'], [
+  y = table(ctx, M, y, CW, ['Source', 'What you told us'], [
     // Numeric test, not truthiness: occupants defaults to the STRING '0' since
     // 2026-08-26, which is truthy and would have printed "0 × " with no activity.
     ['People', Number(data.occupants) > 0 ? `${data.occupants} × ${data.activity.toLowerCase()}` : 'None recorded'],
@@ -519,13 +528,15 @@ function loadsPage(ctx: Ctx, startY: number): number {
     ['Exhaust air out', data.exhaustCfm
       ? `${fmt(numOf(data.exhaustCfm))} cfm${data.ventCfm ? '' : ` · ${ventDetail}`}`
       : 'None recorded'],
-  ], [0.34, 0.66])
+  ], [0.34, 0.66], { title: 'Where the moisture comes from', sub: 'Internal loads' })
   y += 4
 
-  y = ensure(ctx, y, 10 + load.lines.length * 9.4 + 40, 'Where the moisture comes from', 'Estimated breakdown')
+  // Overline plus two bars. The bars split now, so booking the whole block is what
+  // used to leave up to 53mm blank at the foot of a page.
+  y = ensure(ctx, y, 10 + 2 * 9.4, 'Where the moisture comes from', 'Estimated breakdown')
   overline(doc, 'ESTIMATED BREAKDOWN', M, y, C.inkMuted)
   y += 4
-  y = loadBars(doc, M, y, CW, load)
+  y = loadBars(ctx, M, y, CW, load, { title: 'Where the moisture comes from', sub: 'Estimated breakdown' })
   y += 3
 
   // Totals strip
@@ -546,6 +557,9 @@ function loadsPage(ctx: Ctx, startY: number): number {
     // the record in rfq_requests.summary — off the customer's copy only. The two
     // component loads stay: they are what the breakdown bars above are made of.
   ]
+  // The tiles do not split, so they carry their own reserve now the bars no longer
+  // book one on their behalf.
+  y = ensure(ctx, y, 24 + 12, 'Where the moisture comes from', 'Estimated totals')
   y = tileRow(doc, totals, M, y, CW)
   y += 3
 
@@ -589,10 +603,10 @@ function equipmentPage(ctx: Ctx, startY: number): number {
   keyPanel(doc, 'UTILITIES AVAILABLE', right, M + colW + 6, y, colW, h)
   y += h + 3
 
-  y = ensure(ctx, y, 9 + tableH(7), 'Equipment & utilities', 'Air treatment')
+  y = ensure(ctx, y, 4 + tableH(2), 'Equipment & utilities', 'Air treatment')
   overline(doc, 'AIR TREATMENT', M, y, C.inkMuted)
   y += 4
-  y = table(doc, M, y, CW, ['Item', 'Selection'], [
+  y = table(ctx, M, y, CW, ['Item', 'Selection'], [
     ['Regeneration air source', data.regenAirSource + (data.regenIndoorConditions ? ` (${data.regenIndoorConditions})` : '')],
     ['Pre-filter', data.prefilterMerv],
     ['Final filter', data.finalMerv],
@@ -600,7 +614,7 @@ function equipmentPage(ctx: Ctx, startY: number): number {
     ['Heating', data.heatingType],
     ['Sensible load (if known)', data.sensibleLoadBtuh ? `${fmt(numOf(data.sensibleLoadBtuh))} BTU/hr` : 'Not stated'],
     ...(ctx.isRoom ? [] : [['Air source', data.airSource] as [string, string]]),
-  ], [0.34, 0.66])
+  ], [0.34, 0.66], { title: 'Equipment & utilities', sub: 'Air treatment' })
   y += 4
 
   if (data.notes) {
@@ -1009,22 +1023,57 @@ function keyPanel(doc: Doc, title: string, rows: [string, string][], x: number, 
 
 const panelHeight = (rows: number) => 12.5 + rows * 6.4
 
-function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: string[][], widths: number[]): number {
+/**
+ * A table that SPLITS ACROSS PAGES rather than jumping to the next one whole.
+ *
+ * 🔴 THIS IS WHY THE PAGES USED TO END IN WHITE SPACE. A table was atomic: if the
+ * remaining room could not hold all of it, ensure() sent the entire block to a
+ * fresh page and left whatever was left of the current one blank — 20 to 35mm at
+ * the foot of most pages, four times over. It now draws as many rows as fit, takes
+ * a page, repeats the header and carries on.
+ *
+ * ⚠️ The caller's ensure() reserve must therefore be SMALL — header plus a row or
+ * two, enough that starting here is not absurd — not the whole table. Reserving the
+ * full height reintroduces exactly the behaviour this removes.
+ */
+function table(
+  ctx: Ctx, x: number, y: number, w: number,
+  head: string[], rows: string[][], widths: number[],
+  cont: { title: string; sub: string },
+): number {
+  const { doc } = ctx
   const rowH = 6.4
   const headH = 7
-  const total = headH + rows.length * rowH
 
-  fill(doc, C.paper)
-  doc.roundedRect(x, y, w, headH, 2, 2, 'F')
-  doc.rect(x, y + headH - 2, w, 2, 'F')
-  let cx = x + 4
-  head.forEach((hd, i) => {
-    text(doc, hd.toUpperCase(), cx, y + 4.9, { size: 6.3, weight: 'bold', color: C.inkMuted, spacing: 0.3 })
-    cx += widths[i] * w
-  })
+  const drawHead = (hy: number) => {
+    fill(doc, C.paper)
+    doc.roundedRect(x, hy, w, headH, 2, 2, 'F')
+    doc.rect(x, hy + headH - 2, w, 2, 'F')
+    let cx = x + 4
+    head.forEach((hd, i) => {
+      text(doc, hd.toUpperCase(), cx, hy + 4.9, { size: 6.3, weight: 'bold', color: C.inkMuted, spacing: 0.3 })
+      cx += widths[i] * w
+    })
+  }
+  const close = (top: number, bottom: number) => {
+    stroke(doc, C.hair)
+    doc.setLineWidth(0.25)
+    doc.roundedRect(x, top, w, bottom - top, 2, 2, 'D')
+  }
+
+  let top = y
+  drawHead(top)
+  let ry = top + headH
 
   rows.forEach((r, ri) => {
-    const ry = y + headH + ri * rowH
+    // No room for another row: close this fragment, take a page, repeat the header.
+    if (ry + rowH > CONTENT_BOTTOM) {
+      close(top, ry)
+      newPage(ctx, `${cont.title} (continued)`, cont.sub)
+      top = 46
+      drawHead(top)
+      ry = top + headH
+    }
     if (ri % 2 === 1) {
       fill(doc, [252, 251, 249])
       doc.rect(x, ry, w, rowH, 'F')
@@ -1040,11 +1089,11 @@ function table(doc: Doc, x: number, y: number, w: number, head: string[], rows: 
       })
       tx += widths[ci] * w
     })
+    ry += rowH
   })
-  stroke(doc, C.hair)
-  doc.setLineWidth(0.25)
-  doc.roundedRect(x, y, w, total, 2, 2, 'D')
-  return y + total
+
+  close(top, ry)
+  return ry
 }
 
 function emptyRow(doc: Doc, x: number, y: number, w: number, label: string): number {
@@ -1063,7 +1112,14 @@ const BAR_COLORS: Record<string, [RGB, RGB]> = {
   wet: [C.navy, C.blueSoft],
 }
 
-function loadBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate): number {
+/**
+ * The breakdown bars. SPLITS ACROSS PAGES, same reasoning as table(): this was the
+ * largest atomic block left at ~78mm, and on a short survey it jumped a whole page
+ * and left 53mm blank behind it.
+ */
+function loadBars(ctx: Ctx, x: number, y: number, w: number, load: LoadEstimate, cont: { title: string; sub: string }): number {
+  const { doc } = ctx
+  const pitch = 9.4
   const max = Math.max(...load.lines.map(l => l.grainsPerHour), 1)
   const totalRaw = load.lines.reduce((s, l) => s + l.grainsPerHour, 0) || 1
   const labelW = 62
@@ -1072,6 +1128,10 @@ function loadBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
   let ry = y
   const sorted = [...load.lines].sort((a, b) => b.grainsPerHour - a.grainsPerHour)
   for (const line of sorted) {
+    if (ry + pitch > CONTENT_BOTTOM) {
+      newPage(ctx, `${cont.title} (continued)`, cont.sub)
+      ry = 46
+    }
     const [tone, soft] = BAR_COLORS[line.key] ?? [C.inkMuted, C.paper]
     text(doc, truncate(doc, line.label, labelW - 4, 7.8), x, ry + 3.6, { size: 7.8, weight: 'bold', color: C.ink })
     text(doc, truncate(doc, line.detail, labelW - 4, 6.4), x, ry + 7.4, { size: 6.4, color: C.inkMuted })
@@ -1084,7 +1144,7 @@ function loadBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
     }
     text(doc, `${fmt(line.grainsPerHour)} gr/hr`, x + w, ry + 3.9, { size: 7.4, weight: 'bold', color: C.ink, align: 'right' })
     text(doc, pct(line.grainsPerHour, totalRaw), x + w, ry + 7.8, { size: 6.4, color: C.inkMuted, align: 'right' })
-    ry += 9.4
+    ry += pitch
   }
   return ry
 }

@@ -123,6 +123,35 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — Leakage rates, vapor retarder classes, and a document that fills its pages
+
+**The building-leakage figures have been revised on engineering advice, and the change is larger
+than it looks.** The rates themselves came down — tight, average and loose are now 0.05, 0.10 and
+0.20 cubic feet per hour for each square foot — but the more consequential change is what they are
+applied to. They now cover **exterior wall area only**. The roof, the floor, the doors and any
+deliberate ventilation are each accounted for elsewhere in the calculation, so including the ceiling
+here was charging for the same air twice. On a fifty by forty foot room the two changes together
+take an average building from 1,356 to 252 cubic feet an hour.
+
+**Anyone who has measured their own building can now enter that figure directly** instead of picking
+a band, and the survey shows which of the two it is using.
+
+**The vapor barrier question is now a retarder class.** It was yes or no; it is Class I, II or III —
+polyethylene, kraft-faced batt, or latex-painted gypsum — and hovering each one shows the permeance
+we apply. This replaces a figure we could not source: the old yes/no switched each material to a
+second column of numbers that no published table could have produced, because a retarder's permeance
+belongs to the retarder rather than to the wall it is fitted to. The classes carry real values, and
+the wall and the retarder are now combined the way two barriers in the same path actually behave.
+
+**Both carry a design note behind a small ⓘ** rather than printing on the page, so the caveats are
+one hover away without crowding the question.
+
+**The document no longer ends its pages in white space.** Pages were finishing twenty to fifty
+millimetres short because a table could not be broken: if what remained would not hold all of it, the
+whole thing moved to the next page. Tables and the breakdown chart now continue across a page break,
+repeating their heading. A survey with sixteen openings now takes the same number of pages as one
+with eight.
+
 ## 2026-08-27 — The quote request document is four pages
 
 It was five. Most of the difference was air rather than anything anyone wrote.
