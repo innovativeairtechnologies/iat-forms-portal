@@ -1925,30 +1925,14 @@ function StepShell({
           ]}
         />
 
-        {data.surroundSource === 'outdoor' && (
-          outdoorKnown ? (
-            <>
-              <Callout tone="sky">
-                Using the <strong className="font-semibold">ASHRAE summer design condition</strong> for
-                your site as the air on the other side of the walls.
-                {data.outdoorSource ? <> Source: {data.outdoorSource}.</> : null}
-              </Callout>
-              <ConditionReadout
-                tempF={numOf(data.surroundTempF)}
-                rhPct={numOf(data.surroundRhPct)}
-                elevationFt={numOf(data.elevationFt)}
-                unit={data.tempUnit ?? 'F'}
-              />
-            </>
-          ) : (
-            /* The lookup never ran or found no station within range. Saying so beats
-               showing a confident zero, and the outdoor fields appear below so the
-               step is still completable. */
-            <Callout tone="amber">
-              We do not have an ASHRAE design point for this site yet — go back to step 1 and
-              check the location, or enter the outdoor condition below and we will use that.
-            </Callout>
-          )
+        {data.surroundSource === 'outdoor' && !outdoorKnown && (
+          /* The lookup never ran or found no station within range. Saying so beats
+             showing a confident zero, and the outdoor fields appear below so the
+             step is still completable. */
+          <Callout tone="amber">
+            We do not have an ASHRAE design point for this site yet — go back to step 1 and
+            check the location, or enter the outdoor condition below and we will use that.
+          </Callout>
         )}
 
         {data.surroundSource === 'manual' && (
@@ -1962,17 +1946,46 @@ function StepShell({
           />
         )}
 
-        {/* ⚠️ THE "OUTDOOR SUMMER DESIGN" FIELDS WERE ALWAYS HERE and were removed from
-            this step on 2026-08-26 at the owner's request. Step 1's location lookup
-            fills them from ASHRAE, which is measured data rather than a guess, so for
-            almost everyone there was nothing to do here.
+        {/* ── The outdoor design point: ALWAYS shown, never editable (owner, 2026-08-27) ──
+            The editable pair was removed from this step on 2026-08-26; showing nothing
+            in their place meant the weather being assumed about the customer's site was
+            invisible from here, two steps back from where it was fetched.
 
-            🔴 THEY COME BACK WHENEVER THE LOOKUP DID NOT FILL THEM. Outdoor still
-            prices every opening that vents outside and is the fallback condition for
-            makeup air, and validateStep('shell') still requires it — so without this
+            ⚠️ IT MATTERS UNDER BOTH ANSWERS, not just "Outside air". Under "Box in a
+            box" the room sits indoors, but outdoor still prices every opening that
+            vents outside and is the fallback condition for makeup air — so a customer
+            who never sees it can still be quoted on it.
+
+            🔴 THE EDITABLE FIELDS COME BACK WHENEVER THE LOOKUP DID NOT FILL THEM.
+            validateStep('shell') requires outdoor to be non-zero, so without this
             fallback a customer whose site matched no weather station would face a
             Continue button that never enables and no field to fix it. */}
-        {!outdoorKnown && (
+        {outdoorKnown ? (
+          <div className="rounded-lg border border-hairline bg-surface p-3.5">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+                Outdoor summer design
+              </p>
+              {data.outdoorSource && (
+                <span className="text-[11px] text-ink-faint">{data.outdoorSource}</span>
+              )}
+            </div>
+            <ConditionReadout
+              tempF={numOf(data.outdoorTempF)}
+              rhPct={numOf(data.outdoorRhPct)}
+              elevationFt={numOf(data.elevationFt)}
+              unit={data.tempUnit ?? 'F'}
+            />
+            <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
+              Taken from the location you gave us at the start, and not editable here. It prices
+              anything that opens to outside and any make-up air
+              {data.surroundSource === 'outdoor'
+                ? ', and it is the air on the other side of the walls above.'
+                : ', even though the room itself sits indoors.'}
+              {' '}To change it, change the location on step 1.
+            </p>
+          </div>
+        ) : (
           <ConditionField
             label="Outdoor summer design"
             hint="We normally take this from ASHRAE for your location. No station matched, so please enter the worst day the system has to hold."

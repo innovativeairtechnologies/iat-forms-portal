@@ -123,6 +123,29 @@ values from step 2 onward.
 The wall build-up pictures, the tightness bands, the material lists and the estimate itself are all
 unchanged.
 
+## 2026-08-27 — The weather we are assuming about your site is on the page again
+
+The quote request works out the outdoor design condition from the location given at the start,
+using published ASHRAE data for the nearest weather station. Until yesterday that appeared as a pair
+of boxes on the envelope step; yesterday it came off that step, because there was never anything for
+anyone to type into it.
+
+Removing it went a step too far. The figure prices every door that opens to outside and any make-up
+air the unit brings in, so a survey can turn on weather the customer never sees. It is back on the
+step — temperature, humidity, grains and dew point, with the weather station it came from named
+beside it — but **read-only**. Changing it means changing the location at the start of the survey,
+which is the only place it can honestly come from.
+
+It shows under both answers to "the space around the room", not just the one where the room is
+surrounded by outside air, because a room sitting inside another building still has doors that open
+to the weather.
+
+**Separately, a typing fault worth naming.** In any box that started at zero, typing a number added
+a leading zero — 10 became 010, 11 became 011. The figure being used was always the right one; only
+the box was wrong, which is the least useful kind of bug. Fixed everywhere it occurred, including
+boxes where the stray zero was being recorded rather than only displayed. Using the up and down
+arrows was never affected.
+
 ## 2026-08-26 — The quote request asks what is on the other side of the wall
 
 Moisture comes through a wall from whatever is on the far side of it, and until now the survey asked

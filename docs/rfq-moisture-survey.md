@@ -955,15 +955,30 @@ to step 1 to correct the location, and then jumps straight to review would other
 surrounding condition taken from the site they first typed. So the location lookup carries the
 surround with it as well, whenever `surroundSource === 'outdoor'`.
 
-### The "Outdoor summer design" fields are gone from step 5 — with a fallback
+### The "Outdoor summer design" fields are read-only, not gone (owner, 2026-08-27)
 
-Step 1's lookup fills them from ASHRAE, so for almost everyone there was nothing to do there.
+⚠️ **Superseded the 2026-08-26 version of this section**, which removed them outright with a
+fallback. They were editable until 08-26; removed on 08-26; and since 08-27 the design point is
+**always displayed and never editable**, with the editable pair returning only as the fallback
+below.
 
-⚠️ **They reappear whenever that lookup did not fill them.** Outdoor still prices every opening that
-vents outside, is the fallback condition for makeup air, and `validateStep('shell')` still requires
-it. Removing the fields outright would have left a customer whose site matched no weather station
-looking at a Continue button that never enables, with nothing on the page to fix it. The fallback is
-the difference between "removed" and "removed and broken".
+Step 1 fills the condition from ASHRAE, so there was never anything to type here — but showing
+nothing in its place made the weather being assumed about the site invisible from this step, two
+steps back from where it was fetched. It now shows temperature, humidity, grains and dew point,
+with the station attribution beside the heading.
+
+⚠️ **It is shown under BOTH answers, not only "Outside air".** Under "Box in a box" the room sits
+indoors, but outdoor still prices every opening that vents outside and is the fallback condition
+for make-up air — so a customer who never sees it can still be quoted on it. The caption says which
+of the two applies.
+
+⚠️ There is no second readout under "Outside air" any more. The surrounding condition IS the
+outdoor one there, so the old sky Callout plus a mirrored readout printed the same four numbers
+twice; the caption on this panel says it instead.
+
+🔴 **The editable pair returns whenever the lookup did not fill them.** `validateStep('shell')`
+requires outdoor to be non-zero, so without that fallback a customer whose site matched no weather
+station would face a Continue button that never enables and nothing on the page to fix it.
 
 ## Step 3: the sticky panel shows temperature
 
