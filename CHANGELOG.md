@@ -62,6 +62,28 @@ the panels are scrolled out of view.
 The three photos are still on disk, and `docs/rfq-envelope-panels.md` documents the way back to
 them if we want it.
 
+## 2026-08-28 — Tick and delete on Post-Production, the same way as Tickets and Quote Requests
+
+The post-production findings list had no way to remove anything. It now has the checkbox
+column, the select-all in the header, the floating "Selected: N" bar and the two-step Delete
+that the other admin lists have had for months — because it is literally the same set of
+controls rather than a second version that would slowly drift from them.
+
+The list is paginated now too, which it was not before and every other list is.
+
+**Delete is limited to full admins.** Engineering and production managers work this board
+every day, but a finding is somebody's recorded criticism of a build with a two-week clock on
+it, so removing one is a narrower permission than answering one. Anyone else sees the count
+and no Delete button, rather than a button that fails when pressed.
+
+**Deleting a finding does not delete the walkaround it came from.** That record — who walked
+which unit, on what day — stays true whether or not the findings survived, and removing it
+would take any other findings on the same walk with it. Photos, clips and recordings are also
+left in storage rather than destroyed alongside the row: a mis-click should not be able to
+wipe the only recording of what somebody said standing at a machine.
+
+Every bulk delete is written to the audit log with what was removed and how much.
+
 ## 2026-08-28 — Transcription is wired and waiting, switched off until we decide
 
 A "Transcribe this recording" control now sits under each voice note on a post-production

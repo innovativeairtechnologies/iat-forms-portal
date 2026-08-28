@@ -60,6 +60,33 @@ the bracket" does not also get to decide the matter is settled; it goes back to 
 it, who accepts or reopens. A queue whose owner is also its judge is a queue that empties
 itself.
 
+**Bulk select and delete work exactly like Tickets and RFQ**, because they are the same
+components — `useBulkSelect` / `SelectBox` / `BulkBar` / `BulkDeleteButton` from
+`components/admin/bulk-select.tsx`, over `POST /api/admin/bulk-delete` with the
+`post_production` entity. A second implementation would drift; this one inherits every fix
+the others have already had. The queue is paginated for the same reason.
+
+Three constraints come with that kit and none is optional:
+
+- ⛔ **`SelectBox`'s input is decorative, `pointer-events` off.** The boxes sit inside the
+  row's `<a>`, so the wrapper must `preventDefault()` — which on a real checkbox also reverts
+  the browser's own toggle, leaving a row selected in state and unticked on screen. Do not
+  "simplify" it back into an interactive input. See `list-checkbox-in-row-link`.
+- ⚠️ **Select-all is PAGE-scoped** via `togglePage()`. Computing it from the whole filtered
+  set ticks the header, visibly checks the rows on screen, and silently adds every off-screen
+  row to a selection that has Delete on it.
+- **Delete is FULL-ADMIN only**, resolved server-side into `canDelete`. This page is gated on
+  `engineering_jobs`, which engineering and production_manager hold; rendering Delete for
+  them would offer a button that 403s. A finding is somebody's recorded criticism of a build
+  with a clock on it — removing one is a narrower grant than working it.
+
+**What a delete does and does not touch.** The finding row goes. The **walkaround survives**
+even when its last finding is deleted: it records that a named person walked a named unit on
+a date, which stays true, and `ON DELETE CASCADE` would take any sibling findings with it.
+Storage objects are **left orphaned** rather than cascaded — invisible and harmless, and a
+mis-click must not destroy the only recording of what somebody said at a unit. Every bulk
+delete is audit-logged with the entity, the count and the number requested.
+
 ### Recurring issues — `/post-production/themes`
 
 The board that makes "twelve times" sayable, and the pre-production checklist's source.
