@@ -46,6 +46,12 @@ export default async function PostProductionQueue({
       myEmployeeId={myEmployeeId}
       initialTab={tab ?? 'open'}
       highlightWalk={walk ?? null}
+      /* /api/admin/bulk-delete is FULL-ADMIN only, but this page is gated on
+         `engineering_jobs` — which engineering and production_manager also
+         hold. Resolved here because the client cannot know it, and rendering
+         Delete for a scoped role would offer a button that 403s. Same shape as
+         /admin/rfq. */
+      canDelete={actor.role === 'admin'}
     />
   )
 }

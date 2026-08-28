@@ -62,6 +62,31 @@ export async function POST(req: NextRequest) {
         errorMsg = error?.message ?? null
         break
       }
+      case 'post_production': {
+        // Post-production FINDINGS. No child table to clear first — a finding's
+        // notes are columns on it and its attachments live in `media` jsonb.
+        //
+        // ⚠️ The storage objects are deliberately left behind, the same call the
+        // equipment and tool photos make. They are invisible and harmless, and a
+        // cascading blob delete here would be irreversible in a way a row delete
+        // is not — a mis-click would destroy the only recording of what somebody
+        // said next to a unit.
+        //
+        // ⚠️ The walkaround is NOT deleted, even when its last finding goes. It
+        // records that a named person walked a named unit on a date, which stays
+        // true whether or not the findings survived — and deleting it would take
+        // any sibling findings with it via ON DELETE CASCADE.
+        //
+        // Full-admin only, like every case here: the page is gated on
+        // `engineering_jobs`, which engineering and production_manager hold, and
+        // a finding is somebody's recorded criticism of a build with a two-week
+        // clock on it. Removing one should be a narrower grant than working it.
+        const { data, error } = await supabaseAdmin
+          .from('pp_findings').delete().in('id', ids).select('id')
+        deleted = data?.length ?? 0
+        errorMsg = error?.message ?? null
+        break
+      }
       case 'equipment': {
         const { data, error } = await supabaseAdmin.from('equipment').delete().in('id', ids).select('id')
         deleted = data?.length ?? 0

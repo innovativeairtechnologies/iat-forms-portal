@@ -8,7 +8,11 @@ import {
 import {
   ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar,
   CardTable, Row, EmptyRow, ListSearch, FilterDropdown, ToneAvatar,
+  usePagedList, Pagination,
 } from '@/components/admin/list-card'
+import {
+  useBulkSelect, SelectBox, BulkBar, BulkDeleteButton,
+} from '@/components/admin/bulk-select'
 import { timeAgo } from '@/components/admin/list'
 import {
   CATEGORIES, CATEGORY_LABELS, SEVERITIES, SEVERITY_LABELS,
@@ -29,14 +33,17 @@ import { CategoryChip, FindingStatusChip, SeverityChip, StandingChip } from './u
    more than usual, because the person who raised a finding is the person most
    likely to check it from the shop floor. */
 
+/* 34px select column leads on desktop, matching /admin/rfq and /admin/tickets.
+   It is `hidden sm:flex`, so on a phone the mobile tier is still identity +
+   standing and nothing scrolls sideways — bulk triage is a desk job. */
 const COLS =
   'grid-cols-[minmax(0,1fr)_auto] ' +
-  'sm:grid-cols-[64px_minmax(0,1fr)_110px_104px_120px_130px_92px]'
+  'sm:grid-cols-[34px_64px_minmax(0,1fr)_110px_104px_120px_130px_92px]'
 
 type Tab = 'open' | 'mine' | 'late' | 'answered' | 'all'
 
 export default function QueueClient({
-  findings, summary, assignees, myEmployeeId, initialTab, highlightWalk,
+  findings, summary, assignees, myEmployeeId, initialTab, highlightWalk, canDelete,
 }: {
   findings: PpFindingRow[]
   summary: PpSummary
@@ -44,6 +51,11 @@ export default function QueueClient({
   myEmployeeId: string | null
   initialTab: string
   highlightWalk: string | null
+  /** /api/admin/bulk-delete is FULL-ADMIN only, but this page is gated on
+   *  `engineering_jobs`, which engineering and production_manager also hold.
+   *  Rendering Delete for them would offer a button that 403s, which reads as
+   *  broken rather than forbidden. Same reasoning as /admin/rfq. */
+  canDelete: boolean
 }) {
   const [tab, setTab] = useState<Tab>(
     (['open', 'mine', 'late', 'answered', 'all'] as const).includes(initialTab as Tab)
@@ -58,6 +70,7 @@ export default function QueueClient({
   const [category, setCategory] = useState('__all')
   const [severity, setSeverity] = useState('__all')
   const [owner, setOwner] = useState('__all')
+  const sel = useBulkSelect()
 
   const now = new Date()
 
@@ -88,6 +101,20 @@ export default function QueueClient({
       return true
     })
   }, [findings, tab, q, category, severity, owner, myEmployeeId, highlightWalk]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Paginated like every other admin list. `resetKey` sends the reader back to
+  // page 1 whenever the filter changes, so a tab switch never lands them on an
+  // empty page 4.
+  const paged = usePagedList(rows.length, { resetKey: `${tab}|${q}|${category}|${severity}|${owner}` })
+  const pageRows = rows.slice(paged.start, paged.end)
+
+  /* ⚠️ Select-all is PAGE-scoped — see the note on togglePage in
+     bulk-select.tsx. Computing it from the whole filtered set means one click
+     ticks the header, visibly checks the rows on screen, and quietly puts every
+     off-screen row into a selection that has a Delete button on it. That
+     shipped once on /admin/tickets: 10 rows checked, "Selected: 17". */
+  const allSelected = pageRows.length > 0 && pageRows.every(r => sel.has(r.id))
+  const someSelected = pageRows.some(r => sel.has(r.id))
 
   return (
     <ListCardPage>
@@ -181,6 +208,13 @@ export default function QueueClient({
           minWidth={1020}
           head={
             <>
+              <SelectBox
+                className="hidden sm:flex"
+                checked={allSelected}
+                indeterminate={someSelected}
+                label={allSelected ? 'Clear selection on this page' : 'Select every finding on this page'}
+                onChange={() => sel.togglePage(pageRows.map(r => r.id), !allSelected)}
+              />
               <span className="hidden sm:block">Job</span>
               <span>Finding</span>
               <span className="hidden sm:block">Area</span>
@@ -198,13 +232,18 @@ export default function QueueClient({
                 : 'Nothing matches those filters.'}
             </EmptyRow>
           ) : (
-            rows.map(f => {
+            pageRows.map(f => {
               const standing = standingOf(f, now)
               const photos = f.media.filter(m => m.kind === 'photo').length
               const videos = f.media.filter(m => m.kind === 'video').length
               const audio = f.media.filter(m => m.kind === 'audio').length
               return (
-                <Row key={f.id} cols={COLS} href={`/admin/engineering/post-production/${f.id}`}>
+                <Row key={f.id} cols={COLS} href={`/admin/engineering/post-production/${f.id}`} selected={sel.has(f.id)}>
+                  {/* ⛔ SelectBox's input is decorative with pointer-events off —
+                      it lives inside the row's <a>, so the wrapper carries the
+                      semantics. Do not "simplify" it into a plain interactive
+                      checkbox here. See list-checkbox-in-row-link. */}
+                  <SelectBox className="hidden sm:flex" checked={sel.has(f.id)} onChange={() => sel.toggle(f.id)} />
                   <span className="hidden sm:block tabular-nums text-[13px] font-medium text-ink">
                     {f.job_number}
                   </span>
@@ -275,6 +314,18 @@ export default function QueueClient({
           )}
         </CardTable>
 
+        {rows.length > 0 && (
+          <Pagination
+            page={paged.page}
+            perPage={paged.perPage}
+            total={rows.length}
+            totalPages={paged.totalPages}
+            onPage={paged.setPage}
+            onPerPage={paged.setPerPage}
+            unit="findings"
+          />
+        )}
+
         {findings.length === 0 && (
           <div className="px-5 py-8 border-t border-hairline-soft">
             <p className="text-[12.5px] text-ink-muted leading-relaxed max-w-[62ch]">
@@ -286,6 +337,16 @@ export default function QueueClient({
           </div>
         )}
       </ListCard>
+
+      {/* The floating bulk bar, same component and same placement as /admin/rfq
+          and /admin/tickets. Delete is the only action here for now, and it is
+          full-admin only — a finding is somebody's recorded criticism of a build
+          with a clock on it, so removing one is a narrower grant than working
+          it. Scoped roles see the bar with a count and no Delete rather than a
+          button that 403s. */}
+      <BulkBar count={sel.count} onClear={sel.clear}>
+        {canDelete && <BulkDeleteButton entity="post_production" ids={sel.ids} onDone={sel.clear} />}
+      </BulkBar>
     </ListCardPage>
   )
 }

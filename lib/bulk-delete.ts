@@ -10,6 +10,7 @@ export const BULK_ENTITIES = [
   'employees',
   'time_off',
   'rfq',
+  'post_production',
 ] as const
 
 export type BulkEntity = (typeof BULK_ENTITIES)[number]
@@ -22,4 +23,5 @@ export const BULK_ENTITY_LABEL: Record<BulkEntity, string> = {
   employees: 'employee',
   time_off: 'request',
   rfq: 'quote request',
+  post_production: 'finding',
 }
