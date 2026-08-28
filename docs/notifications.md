@@ -25,9 +25,9 @@ Two rules govern the whole table:
 | 5 | Status changes (not terminal) | The customer — what it changed to | Immediately |
 | 6 | Status changes to **Resolved** or **Closed** | The customer — the engineer's closing notes, verbatim | Immediately |
 | 7 | A customer marks their own ticket resolved | Support desk — *verify before closing* | Immediately |
-| 8 | Assigned, no activity for **24h** | The assignee, one email covering all their stalled tickets | Daily 13:00 UTC |
-| 9 | Unassigned for **24h** | Support desk | Daily 13:00 UTC |
-| 10 | Unassigned for **24h** | **Leadership** — Kacy and Crystal, individually | Daily 13:00 UTC |
+| 8 | Assigned, no activity for **24h** | The assignee, one email covering all their stalled tickets | Daily 3am ET |
+| 9 | Unassigned for **24h** | Support desk | Daily 3am ET |
+| 10 | Unassigned for **24h** | **Leadership** — Kacy and Crystal, individually | Daily 3am ET |
 
 **Internal notes never reach the customer.** Only notes explicitly marked public
 do (#3). This is the single most important line on this page.
@@ -45,9 +45,9 @@ failure being chased.
 | 12 | An RFQ is submitted | The customer — receipt with their reference | Immediately |
 | 13 | An RFQ is assigned to someone | The new owner. **Not** sent on self-assignment | Immediately |
 | 14 | A customer writes back on `/support/status` | The assignee, or the desk if unassigned — never both | Immediately |
-| 15 | Assigned, still `new` after **24h** | The owner, one email covering all their stalled rows | Daily 13:00 UTC |
-| 16 | Unassigned after **24h** | Sales desk, subject prefixed `REMINDER:` | Daily 13:00 UTC |
-| 17 | Unassigned after **24h** | **Leadership** — Kacy and Crystal, individually | Daily 13:00 UTC |
+| 15 | Assigned, still `new` after **24h** | The owner, one email covering all their stalled rows | Daily 3am ET |
+| 16 | Unassigned after **24h** | Sales desk, subject prefixed `REMINDER:` | Daily 3am ET |
+| 17 | Unassigned after **24h** | **Leadership** — Kacy and Crystal, individually | Daily 3am ET |
 
 ## Everything else
 

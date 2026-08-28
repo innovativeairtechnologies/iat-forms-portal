@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-28 — Overnight reminders stop drifting an hour every winter
+
+**The three overnight sweeps now run at 3am Eastern all year.** Quote-request, support-ticket and
+engineering reminders were registered as a pair of fixed schedules an hour apart, on the
+understanding that the pair itself pinned them to 3am in both seasons. It did not. Both entries
+fire, and whichever runs first does the work — so from every November the sweeps quietly moved to
+2am and stayed there until March.
+
+Nothing was breaking. The mail went out, the stamps were correct, and the only symptom was an hour
+nobody chose. The digest and the leadership update already guarded themselves against exactly this
+by checking the Eastern clock before acting; the reminders never did. They do now, through one
+shared clock module, and the wrong-season run returns `skipped` instead of sending.
+
+**Three route comments described schedules that no longer existed.** One said the quote sweep ran
+at "start of business, 9am" — it runs at 3am. One described the digest as "~4:30pm" with two
+schedules — it is 6pm with three, and had been since the August mail move. One claimed the
+reminder pair was "3am EDT / 3am EST", which is the precise misreading that let the winter drift
+go unnoticed. All three now say what the code does.
+
+**PTO accrual was deliberately left alone.** It has the same seasonal drift, but it adds hours to
+balances and writes ledger rows with no guard against running twice, so it is safe today only
+because it has exactly one schedule. Pinning it the same way means first making a second run
+harmless — money-adjacent work that deserves its own change, not a footnote in this one.
+
 ## 2026-08-28 — The construction step shows you your own building now
 
 **Step 5 of the moisture survey draws your envelope instead of showing stock photos.** Where

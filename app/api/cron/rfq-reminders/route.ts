@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runRfqReminders } from '@/lib/rfq-reminders'
+import { isReminderTime, getNyWallClock } from '@/lib/et-clock'
 
 /* Chases quote requests that have stalled at "new" — see lib/rfq-reminders.ts.
  *
- * Registered in vercel.json at 13:00 UTC — start of business either side of the
- * DST line (9am EDT / 8am EST), so a stalled quote is chased at the top of the
- * day rather than at the end of it. The digest run also calls the same sweep;
- * that is deliberate redundancy, not a leftover. The reminder stamps make the
- * second run of the day a no-op.
+ * Runs at 3am Eastern. Registered twice in vercel.json, an hour apart, because
+ * Vercel Cron is fixed-UTC and does not shift for daylight saving: one entry is
+ * correct for EDT and the other for EST, and isReminderTime() no-ops whichever
+ * is wrong for the season. Before that guard existed the sweep silently moved to
+ * 2am every winter. The digest run also calls the same sweep; that is deliberate
+ * redundancy, not a leftover. The reminder stamps make any second run of the day
+ * a no-op.
  *
  * It was unregistered until 2026-08-17 because the account tier was believed to
  * cap vercel.json at two cron entries. It does not.
@@ -23,6 +26,13 @@ export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Season guard runs AFTER auth: an unauthenticated caller must not be able to
+  // tell the difference between "wrong hour" and "wrong secret".
+  if (!isReminderTime()) {
+    const { hour } = getNyWallClock()
+    return NextResponse.json({ skipped: true, reason: `outside reminder window (${hour}:00 ET)` })
   }
 
   try {

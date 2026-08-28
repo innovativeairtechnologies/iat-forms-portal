@@ -4,14 +4,21 @@ import { getNyWallClock, isDigestTime, getDigestRecipients, getAdminTicketDigest
 import { sendAdminDigestEmail } from '@/lib/resend-digest'
 import { runRfqReminders } from '@/lib/rfq-reminders'
 
-/* Daily admin email digest — one email per active admin at ~4:30pm
-   America/New_York, containing the shared AI briefing paragraph plus their
+/* Daily admin email digest — one email per active admin at 6pm Eastern,
+   containing the shared AI briefing paragraph plus their
    newly-assigned/aging/overdue tickets.
 
+   ⚠️ This comment said "~4:30pm" and "20:30 and 21:30 UTC" until 2026-08-28. It
+   had been stale since the August mail move, which shifted the digest to 6pm and
+   added a third entry without updating the description here.
+
    Vercel Cron is UTC-only and doesn't shift for US daylight saving, so
-   vercel.json registers TWO fixed-UTC schedules — 20:30 and 21:30 UTC, one
-   correct for EDT and the other for EST — and isDigestTime() below no-ops on
-   whichever one is "wrong" for the season. Zero seasonal maintenance.
+   vercel.json registers THREE fixed-UTC schedules an hour apart, and
+   isDigestTime() no-ops on whichever ones are "wrong" for the season. In
+   Eastern terms they land at 6pm/7pm/8pm in summer and 5pm/6pm/7pm in winter;
+   withinDigestWindow() admits 6pm–8:59pm, and the digest_runs claim means the
+   first one inside the window sends and the rest no-op. Net result is 6pm
+   Eastern year-round with zero seasonal maintenance.
 
    This registered only the 20:30 entry until 2026-08-17, on the belief that
    the account tier capped vercel.json at two cron jobs. That belief was wrong:

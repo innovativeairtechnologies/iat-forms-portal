@@ -173,9 +173,14 @@ lead-time number on the report rests on those two columns.
 
 ## Chasing
 
-`/api/cron/eng-reminders`, registered at **07:00 and 08:00 UTC** — 3am Eastern on both sides of the
-DST line, clear of the 9am and 4:30–5:30pm deploy windows. The second run is a no-op; the
-`nudged_at` stamps make it one.
+`/api/cron/eng-reminders`, which runs at **3am Eastern** all year, clear of the 9am and
+4:30–5:30pm deploy windows.
+
+⚠️ It is registered as **two** schedules an hour apart, and that pair alone does **not** pin the
+hour — this doc used to claim it did. The two land at 3am and 4am in summer, 2am and 3am in winter,
+and both fire. `isReminderTime()` in `lib/et-clock.ts` is what selects 3am and rejects the 2am
+winter run; before it existed the sweep silently moved to 2am every November. Any later run the
+same night is a no-op regardless — the `nudged_at` stamps make it one.
 
 1. **Owner nudge** — anything due within `nudgeLeadDays` (default 2) or already past, grouped so a
    person with six things gets one email.

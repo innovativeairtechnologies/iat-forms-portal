@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runTicketReminders } from '@/lib/ticket-reminders'
 import { runWaitingSweep } from '@/lib/ticket-waiting'
+import { isReminderTime, getNyWallClock } from '@/lib/et-clock'
 
 /* Chases support tickets that have gone quiet, and escalates the unassigned ones
  * to leadership along with any unassigned quote requests — see
  * lib/ticket-reminders.ts.
  *
- * Registered in vercel.json at 13:00 UTC, the same slot as the quote-request
- * sweep: start of business either side of the DST line (9am EDT / 8am EST), so a
- * stalled ticket is chased at the top of the day rather than at the end of it.
- * The two are separate entries rather than one combined route because either can
- * fail on its own without taking the other down, and their queries are unrelated.
+ * Runs at 3am Eastern, the same slot as the quote-request sweep. Registered
+ * twice in vercel.json, an hour apart, because Vercel Cron is fixed-UTC and does
+ * not shift for daylight saving: one entry is correct for EDT and the other for
+ * EST, and isReminderTime() no-ops whichever is wrong for the season. Before that
+ * guard existed the sweep silently moved to 2am every winter. The two sweeps are
+ * separate entries rather than one combined route because either can fail on its
+ * own without taking the other down, and their queries are unrelated.
  *
  * Auth FAILS CLOSED: no CRON_SECRET configured means nobody may call this, the
  * same rule as every other cron here. A route whose only job is to send email
@@ -22,6 +25,13 @@ export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Season guard runs AFTER auth: an unauthenticated caller must not be able to
+  // tell the difference between "wrong hour" and "wrong secret".
+  if (!isReminderTime()) {
+    const { hour } = getNyWallClock()
+    return NextResponse.json({ skipped: true, reason: `outside reminder window (${hour}:00 ET)` })
   }
 
   try {

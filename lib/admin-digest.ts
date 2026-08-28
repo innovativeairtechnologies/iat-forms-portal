@@ -30,31 +30,12 @@ function toDigestTicket(t: Ticket): DigestTicket {
   }
 }
 
-/** Current wall-clock time in America/New_York, plus the NY calendar date
- *  (YYYY-MM-DD). The date MUST be derived from the NY timezone, not
- *  `new Date().toISOString()` (UTC), or a run close to midnight UTC would be
- *  filed under the wrong calendar day. */
-export function getNyWallClock(): { hour: number; minute: number; dateISO: string } {
-  const now = new Date()
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now)
-
-  const get = (type: string) => parts.find(p => p.type === type)?.value ?? ''
-  // Intl can render midnight as "24" with hour12:false in some environments —
-  // normalize to 0 so the digest-time window check below is never skipped.
-  const hour = Number(get('hour')) % 24
-  const minute = Number(get('minute'))
-  const dateISO = `${get('year')}-${get('month')}-${get('day')}`
-
-  return { hour, minute, dateISO }
-}
+/* getNyWallClock now lives in lib/et-clock.ts so the overnight reminder routes
+   can check the Eastern clock without importing this module (which pulls in
+   supabase-admin and the whole digest query layer). Re-exported here because
+   this route and leadership-update already import it from this path. */
+export { getNyWallClock } from '@/lib/et-clock'
+import { getNyWallClock } from '@/lib/et-clock'
 
 /**
  * Which NY hours a digest invocation may send in.
