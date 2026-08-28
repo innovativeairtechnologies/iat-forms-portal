@@ -20,7 +20,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json().catch(() => null)
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
-  if (typeof body?.unit_serial === 'string') patch.unit_serial = body.unit_serial.trim().slice(0, 64) || null
+  // No `unit_serial` here either — see the note in the POST route. The unit's
+  // number is `job_number` and it is set once, when the walk starts.
   if (typeof body?.customer_name === 'string') patch.customer_name = body.customer_name.trim()
   if (typeof body?.model_number === 'string') patch.model_number = body.model_number.trim() || null
   if (typeof body?.notes === 'string') patch.notes = body.notes.trim() || null

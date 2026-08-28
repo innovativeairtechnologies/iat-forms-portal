@@ -49,7 +49,9 @@ export async function POST(req: NextRequest) {
     .insert({
       job_number: jobNumber,
       job_id: job?.id ?? null,
-      unit_serial: body?.unit_serial ? String(body.unit_serial).trim().slice(0, 64) : null,
+      // NB: there is no separate serial field. `job_number` IS the unit serial —
+      // the same four digits (confirmed 2026-08-27), which is why 099 dropped
+      // `unit_serial`. Re-adding a write here resurrects PGRST204.
       customer_name: job?.customer_name ?? String(body?.customer_name ?? '').trim(),
       model_number: job?.model_number ?? (body?.model_number ? String(body.model_number).trim() : null),
       walked_by: walkedBy,

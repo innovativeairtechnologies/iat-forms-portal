@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/check-perm-seed.mjs && node scripts/sync-zxing-wasm.mjs && node scripts/sync-maplibre-worker.mjs",
+    "prebuild": "node scripts/check-perm-seed.mjs && node scripts/check-pp-columns.mjs && node scripts/sync-zxing-wasm.mjs && node scripts/sync-maplibre-worker.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
