@@ -211,12 +211,26 @@ fluently enough that nobody notices reading it back. An engineer who disagrees w
 can play the recording. The detail page labels a dictated note as dictated for exactly this
 reason. **Never drop the audio once text exists.**
 
-To turn server-side transcription on, set **one** of these in Vercel — nothing else changes:
+⚠️ **A key alone is NOT enough — there is no button yet.** `lib/transcribe.ts` and
+`/api/admin/post-production/transcribe` are complete and tested, but **nothing in the UI
+calls that route**; `transcriptionConfigured` only changes a line of helper text under the
+record button. Setting a key today would make the endpoint work and change nothing a person
+can see. Wiring a "Transcribe this recording" control onto the finding detail page (and
+optionally a back-fill for recordings already saved) is a small, separate job. This
+paragraph originally claimed "nothing else changes", which was wrong.
 
-| Variable | Service | Rough cost |
+To make the endpoint functional, set **one** of these in Vercel:
+
+| Variable | Service | Model the code asks for |
 |---|---|---|
-| `OPENAI_API_KEY` | Whisper (`whisper-1`) | ~$0.006 / minute |
-| `DEEPGRAM_API_KEY` | Deepgram `nova-3` | comparable |
+| `OPENAI_API_KEY` | OpenAI | `whisper-1` |
+| `DEEPGRAM_API_KEY` | Deepgram | `nova-3` |
+
+⚠️ **Check the vendor's current pricing yourself.** An earlier draft of this file printed
+"~$0.006 / minute" for Whisper. That figure was recalled, not looked up, and it is the kind
+of number that gets quoted in a budget conversation — so it is removed rather than left
+sitting there looking authoritative. Both are billed per minute of audio and a walkaround
+voice note is seconds to a couple of minutes, so the order of magnitude is small either way.
 
 `lib/transcribe.ts` picks whichever exists, downloads the object with the service role and
 forwards it. It takes a storage **path**, never bytes — a Vercel function caps its request

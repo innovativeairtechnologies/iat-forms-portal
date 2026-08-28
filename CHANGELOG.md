@@ -102,7 +102,8 @@ turns on. An empty list is the goal, not a gap.
 **Transcribing a saved recording is not switched on yet.** The portal has one AI key and it does
 not accept audio, so the live dictation the phone already does is what produces text today. The
 recordings are kept regardless; adding an OpenAI or Deepgram key turns on server-side
-transcription with no other change, and the recordings being kept now can be transcribed then.
+transcription. The recordings being kept now can be transcribed then — though a key on its own
+will not add a visible button yet; that is a small follow-on job.
 
 ## 2026-08-27 — The technical half of the leadership report now covers the whole period
 
