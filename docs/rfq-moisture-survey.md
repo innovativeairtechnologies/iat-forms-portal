@@ -134,6 +134,14 @@ and `49.05563453465°F` reached the page before it was caught.
 
 ## Step 5 — wall build-ups, and NO Advanced block (2026-08-25)
 
+> **2026-08-28 — the three build-up photos are gone.** They were replaced by three live
+> cross-sections that redraw the customer's own wall, roof and floor and animate moisture
+> through them. See **[rfq-envelope-panels.md](rfq-envelope-panels.md)** for what is real
+> versus drawn, and for the rollback. The permeance shown comes from `retarderPermOf()` +
+> `assemblyPermOf()` in `lib/rfq.ts`, which `estimateLoad()` now also calls — one definition,
+> so the picture cannot disagree with the quote.
+
+
 🔴 **Vapor barrier and building tightness sit on the page. Do not put either back behind a
 toggle.** They were collapsed under an "Advanced" disclosure; the owner asked for them back in
 front of everybody on 2026-08-25, which is where they started.

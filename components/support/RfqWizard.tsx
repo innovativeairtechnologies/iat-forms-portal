@@ -10,6 +10,7 @@ import {
   Ruler, Send, Sparkles, Thermometer, Users, Wind,
 } from 'lucide-react'
 
+import EnvelopePanels from '@/components/support/EnvelopePanels'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
 import { getRecaptchaToken } from '@/components/use-recaptcha'
@@ -1849,40 +1850,22 @@ function StepSpace({ data, set, load }: { data: RfqData; set: SetFn; load: Retur
 }
 
 /**
- * Three wall build-ups, shown before the material dropdowns.
+ * The three "Good / Better / Best" cut-away photos that used to sit above the
+ * material dropdowns were REPLACED on 2026-08-28 by <EnvelopePanels>, which
+ * draws the customer's own wall, roof and floor and animates moisture through
+ * them.
  *
- * Envelope questions are the ones customers guess at — most people know what their
- * building looks like and not what a permeance rating is. A picture they can point
- * at gets a better answer than a longer hint would.
- *
- * ⚠️ Order is Good → Better → Best and comes from the FILE NAMES, which do not match
- * the order the images were sent: 'Good' is the brick build-up, 'Best' is the
- * insulated metal panel. Verified by opening each file. Do not reorder from memory.
- *
- * Sources are 1448x1086 PNGs (~1.2MB each) in the owner's Downloads; these are
- * 900px webp derivatives at 24-36KB, generated with sharp.
+ * Envelope questions are still the ones customers guess at, and the photos were
+ * doing a job the panels do not: helping someone who does not know what their
+ * wall is IDENTIFY it. If that turns out to matter the files are still in
+ * public/rfq/ and docs/rfq-envelope-panels.md has the way back.
  */
-const SHELL_EXAMPLES = [
-  {
-    label: 'Good',
-    src: '/rfq/shell-good.webp',
-    alt: 'Cut-away of a brick wall: brick veneer, a black vapor barrier, wood sheathing, insulated wood studs, and an inner face carrying two coats of vapor proof paint.',
-  },
-  {
-    label: 'Better',
-    src: '/rfq/shell-better.webp',
-    alt: 'Cut-away of a metal-clad wall: corrugated steel siding, insulated steel studs, and an inner face carrying two coats of vapor proof paint.',
-  },
-  {
-    label: 'Best',
-    src: '/rfq/shell-best.webp',
-    alt: 'Cut-away of a metal-clad wall: corrugated steel siding, insulated steel studs, and an insulated metal panel (IMP) forming the inner face.',
-  },
-] as const
 
 function StepShell({
   data, set, setData,
 }: { data: RfqData; set: SetFn; setData: React.Dispatch<React.SetStateAction<RfqData>> }) {
+  const reduce = useReducedMotion()
+
   /* ── Option A mirrors the outdoor design point into the surround fields ──
      Written into the record rather than resolved at calculation time, on purpose.
      estimateLoad, the PDF and the admin view all read `surround*` directly; making
@@ -1924,63 +1907,12 @@ function StepShell({
     <div className="space-y-5">
       <div>
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
-          Typical wall build-ups
+          Your envelope, surface by surface
         </p>
-        {/* Hover magnifies to 2x so the callouts on the artwork are readable — at a
-            third of the row they render around 7px and simply cannot be. The whole
-            FIGURE scales, not the image inside it: the figure owns the rounded clip,
-            so scaling the image alone would just crop it.
-
-            transform-origin is pinned per column so the outer two grow INWARD rather
-            than off the edge of the panel. Enabled from the sm breakpoint up only —
-            there is no hover on touch, and at phone width these are already
-            full-bleed. tabIndex + focus-visible gives the same magnification to
-            anyone using a keyboard. */}
-        <div className="grid gap-3 sm:grid-cols-3">
-          {SHELL_EXAMPLES.map((x, i) => (
-            <figure
-              key={x.label}
-              tabIndex={0}
-              className={[
-                'group relative z-0 overflow-hidden rounded-xl border border-hairline bg-surface',
-                'transition-transform duration-200 ease-out',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
-                'sm:hover:z-20 sm:hover:scale-[2] sm:focus-visible:z-20 sm:focus-visible:scale-[2]',
-                // Where each card grows FROM at 2x. transform-origin names the point that
-                // stays put, so the growth goes the other way: origin-left pins the left
-                // edge and expands rightward.
-                //
-                // The outer two lean OUTWARD a quarter of the extra width and inward for
-                // the rest (owner, 2026-08-20) — Good spreads left, Best spreads right,
-                // Better stays centered. Pure origin-left/right would send them fully
-                // inward across their neighbours, which is what they did at first.
-                //
-                // A quarter of one card is roughly 55px past the panel edge; no ancestor
-                // sets overflow-hidden, so it is visible rather than clipped.
-                i === 0 ? 'sm:origin-[25%_50%]'
-                  : i === SHELL_EXAMPLES.length - 1 ? 'sm:origin-[75%_50%]'
-                    : 'sm:origin-center',
-              ].join(' ')}
-            >
-              {/* The artwork is drawn on white and stays on white in dark mode —
-                  inverting it would misrepresent the materials. */}
-              <Image
-                src={x.src}
-                alt={x.alt}
-                width={900}
-                height={675}
-                sizes="(max-width: 640px) 100vw, 33vw"
-                className="h-auto w-full bg-white"
-              />
-              <figcaption className="border-t border-hairline px-3 py-2 text-[12px] font-medium text-ink-secondary">
-                {x.label}
-              </figcaption>
-            </figure>
-          ))}
-        </div>
+        <EnvelopePanels data={data} reduced={!!reduce} />
         <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
-          Pick the closest match below. These are the three we see most often.
-          <span className="hidden sm:inline"> Hover over one to enlarge it.</span>
+          Pick your materials below and each panel rebuilds. The droplets show roughly how
+          much moisture the assembly lets through — a relative picture, not a measurement.
         </p>
       </div>
 

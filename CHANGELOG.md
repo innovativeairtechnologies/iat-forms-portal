@@ -10,6 +10,34 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-08-28 — The construction step shows you your own building now
+
+**Step 5 of the moisture survey draws your envelope instead of showing stock photos.** Where
+three static cut-away pictures used to sit — *Good, Better, Best* — there are now three live
+cross-sections: walls on the left, roof in the middle, floor on the right. Pick a material and
+that panel rebuilds itself layer by layer. Pick a vapor retarder and the sheet appears in the
+stack, and the droplets crossing each assembly visibly thin out.
+
+Envelope questions are the ones customers guess at hardest, and the vapor retarder was the
+worst of them — a dropdown with four classes and no way to feel the difference between them.
+Now a Class I sheet on a block wall is something you watch happen. Hover any layer to name it.
+
+**The numbers behind the picture are the same ones that price the job.** Every permeance shown
+is read from the material tables the load calculation uses, through the same two functions, so
+the drawing cannot drift away from the quote. The layer build-ups themselves — brick veneer,
+foam core, granular base — are illustration only and feed nothing. The droplet rate is a
+compressed, capped picture of the real ratio, not a flux; the plain-language band on each panel
+(*Tight*, *Vapor-open*) is the honest read, with the permeance on hover.
+
+Nothing about how a survey is calculated, stored or quoted changed. The retarder and
+series-permeance logic was lifted out of the load function so the picture and the calculation
+share one definition; that extraction was checked against 16,650 surveys and produces identical
+results. The animation stops entirely for anyone who asks for reduced motion, and pauses while
+the panels are scrolled out of view.
+
+The three photos are still on disk, and `docs/rfq-envelope-panels.md` documents the way back to
+them if we want it.
+
 ## 2026-08-27 — A QR on the unit, and the recorder stops erasing what you said
 
 Three changes to Post-Production, all from walking it on a real phone.

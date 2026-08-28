@@ -1382,6 +1382,52 @@ function supplyDepression(roomGrains: number): number {
   return Math.max(Math.min(5, roomGrains * 0.6), 0.35)
 }
 
+/**
+ * The retarder permeance to credit, or undefined when there is not one.
+ *
+ *   'None'   — answered, and the answer is that there is no retarder.
+ *   ''       — not answered yet. Same arithmetic as None; the two differ only
+ *              in what the record can honestly say afterwards.
+ *   'Custom' — the customer's own figure, and ONLY if it is above zero. A
+ *              Custom selection with an empty box must not silently borrow a
+ *              class value, so it credits nothing until they type one.
+ *
+ * ⚠️ EXPORTED so the envelope illustration on step 5 resolves the retarder the
+ * same way the load does. This rule already changed once (Yes/No → classes,
+ * 2026-08-27); a second copy of it would let the picture and the number beside
+ * it disagree without anything failing.
+ */
+export function retarderPermOf(data: Pick<RfqData, 'vaporBarrier' | 'vaporBarrierCustom'>): number | undefined {
+  return data.vaporBarrier === 'Custom'
+    ? (num(data.vaporBarrierCustom, 0) > 0 ? num(data.vaporBarrierCustom, 0) : undefined)
+    : data.vaporBarrier === 'None' || data.vaporBarrier === '' ? undefined
+      : VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporClass]
+}
+
+/**
+ * A material's permeance with the retarder put in series, or the bare material
+ * permeance when there is no retarder to credit. Exported for the same reason.
+ */
+export function assemblyPermOf(list: MaterialOption[], label: string, retarderPerm: number | undefined): number {
+  // ⚠️ Renaming a material label silently re-prices every survey that stored the
+  // old one: the lookup is an exact string match and misses fall through to the
+  // LAST entry, which is the neutral retired row. "Concrete over vapour barrier"
+  // was respelled on 2026-08-20 and is 0.16 perm; the fallback is 0.4. Any future
+  // rename needs an entry here, not just a new label.
+  const want = LEGACY_MATERIAL_LABELS[label] ?? label
+  const m = list.find(x => x.label === want) ?? list[list.length - 1]
+  if (!retarderPerm) return m.perm
+  // Two resistances in the same vapor path add reciprocally. The result is always
+  // LOWER than either alone, which is why a Class III retarder still helps a
+  // gypsum wall (50 and 3.0 give 2.83) and barely touches an insulated metal
+  // panel that is already tighter than the retarder (0.16 and 3.0 give 0.152).
+  //
+  // ⚠️ m.permSealed IS NO LONGER READ. It is kept in the tables as the record of
+  // what those surveys were quoted under before 2026-08-27; nothing computes
+  // from it now.
+  return 1 / (1 / m.perm + 1 / retarderPerm)
+}
+
 const num = (v: string | number | undefined, fallback = 0): number => {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/,/g, ''))
   return Number.isFinite(n) ? n : fallback
@@ -1441,37 +1487,9 @@ export function estimateLoad(data: RfqData): LoadEstimate {
   const wallArea = 2 * (L + W) * H
   const ceilArea = L * W
   const floorArea = L * W
-  // The retarder permeance, or undefined when there is not one to credit.
-  //
-  //   'None'   — answered, and the answer is that there is no retarder.
-  //   ''       — not answered yet. Same arithmetic as None; the two differ only
-  //              in what the record can honestly say afterwards.
-  //   'Custom' — the customer's own figure, and ONLY if it is above zero. A
-  //              Custom selection with an empty box must not silently borrow a
-  //              class value, so it credits nothing until they type one.
-  const retarderPerm =
-    data.vaporBarrier === 'Custom' ? (num(data.vaporBarrierCustom, 0) > 0 ? num(data.vaporBarrierCustom, 0) : undefined)
-      : data.vaporBarrier === 'None' || data.vaporBarrier === '' ? undefined
-        : VAPOR_BARRIER_PERMS[data.vaporBarrier as VaporClass]
-  const permOf = (list: MaterialOption[], label: string) => {
-    // ⚠️ Renaming a material label silently re-prices every survey that stored the
-    // old one: the lookup is an exact string match and misses fall through to the
-    // LAST entry, which is the neutral retired row. "Concrete over vapour barrier"
-    // was respelled on 2026-08-20 and is 0.16 perm; the fallback is 0.4. Any future
-    // rename needs an entry here, not just a new label.
-    const want = LEGACY_MATERIAL_LABELS[label] ?? label
-    const m = list.find(x => x.label === want) ?? list[list.length - 1]
-    if (!retarderPerm) return m.perm
-    // Two resistances in the same vapor path add reciprocally. The result is always
-    // LOWER than either alone, which is why a Class III retarder still helps a
-    // gypsum wall (50 and 3.0 give 2.83) and barely touches an insulated metal
-    // panel that is already tighter than the retarder (0.16 and 3.0 give 0.152).
-    //
-    // ⚠️ m.permSealed IS NO LONGER READ. It is kept in the tables as the record of
-    // what those surveys were quoted under before 2026-08-27; nothing computes
-    // from it now.
-    return 1 / (1 / m.perm + 1 / retarderPerm)
-  }
+  const retarderPerm = retarderPermOf(data)
+  const permOf = (list: MaterialOption[], label: string) =>
+    assemblyPermOf(list, label, retarderPerm)
   const wallPerm = permOf(WALL_MATERIALS, data.wallMaterial)
   const ceilPerm = permOf(CEILING_MATERIALS, data.ceilingMaterial)
   const floorPerm = permOf(FLOOR_MATERIALS, data.floorMaterial)
