@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { notFound, redirect } from 'next/navigation'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { getFinding, listAssignees, listThemes } from '@/lib/pp-data'
+import { isTranscriptionConfigured } from '@/lib/transcribe'
 import FindingDetailClient from './FindingDetailClient'
 
 /* /admin/engineering/post-production/[id] — one finding.
@@ -22,5 +23,17 @@ export default async function FindingPage({ params }: { params: Promise<{ id: st
 
   const [assignees, themes] = await Promise.all([listAssignees(), listThemes()])
 
-  return <FindingDetailClient finding={finding} assignees={assignees} themes={themes} />
+  return (
+    <FindingDetailClient
+      finding={finding}
+      assignees={assignees}
+      themes={themes}
+      /* Checked on the SERVER so the page never offers a control that cannot
+         work. False in production today — no speech-to-text provider is
+         configured — which hides the transcribe button entirely rather than
+         showing one that 501s. Adding OPENAI_API_KEY or DEEPGRAM_API_KEY in
+         Vercel is the only change needed to light it up. */
+      transcriptionConfigured={isTranscriptionConfigured()}
+    />
+  )
 }

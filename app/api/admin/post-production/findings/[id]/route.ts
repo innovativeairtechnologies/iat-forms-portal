@@ -31,6 +31,13 @@ function cleanMedia(v: unknown): Media[] {
       mime: typeof (m as Media).mime === 'string' ? (m as Media).mime!.slice(0, 80) : undefined,
       bytes: Number.isFinite((m as Media).bytes) ? Number((m as Media).bytes) : undefined,
       duration_ms: Number.isFinite((m as Media).duration_ms) ? Number((m as Media).duration_ms) : undefined,
+      // ⚠️ Carried THROUGH, not accepted as new input. Only the transcribe route
+      // writes these; if they were dropped here, the walk client's next media
+      // PATCH (removing an attachment, say) would silently erase a transcript
+      // somebody had already paid a service to produce.
+      transcript: typeof (m as Media).transcript === 'string' ? (m as Media).transcript!.slice(0, 20000) : undefined,
+      transcribed_at: typeof (m as Media).transcribed_at === 'string' ? (m as Media).transcribed_at : undefined,
+      transcript_by: typeof (m as Media).transcript_by === 'string' ? (m as Media).transcript_by!.slice(0, 40) : undefined,
     })
   }
   return out

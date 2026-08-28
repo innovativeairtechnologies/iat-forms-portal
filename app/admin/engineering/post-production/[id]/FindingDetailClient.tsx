@@ -4,14 +4,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import {
-  Camera, Check, CircleAlert, Loader2, Mic, QrCode, Repeat2, RotateCcw, Sparkles, Video, X,
+  Camera, Check, CircleAlert, FileText, Loader2, Mic, QrCode, Repeat2, RotateCcw, Sparkles, Video, X,
 } from 'lucide-react'
 import PageChrome from '@/app/admin/PageChrome'
 import { ListCardPage, ListCard } from '@/components/admin/list-card'
 import {
   CATEGORY_LABELS, SEVERITY_LABELS, WALK_ROLE_LABELS,
   clock, humanBytes, mediaSrc, shortDate, standingOf,
-  type PpFindingRow, type PpThemeRow,
+  type Media, type PpFindingRow, type PpThemeRow,
 } from '@/lib/post-production'
 import { CategoryChip, FindingStatusChip, SeverityChip, StandingChip } from '../ui'
 
@@ -34,11 +34,15 @@ type Candidate = {
 }
 
 export default function FindingDetailClient({
-  finding, assignees, themes,
+  finding, assignees, themes, transcriptionConfigured,
 }: {
   finding: PpFindingRow
   assignees: { id: string; name: string }[]
   themes: PpThemeRow[]
+  /** Whether a speech-to-text service is connected. FALSE in production today —
+   *  see lib/transcribe.ts — which is why the transcribe control does not render
+   *  rather than appearing and failing. */
+  transcriptionConfigured: boolean
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -212,11 +216,24 @@ export default function FindingDetailClient({
                   {audio.length} voice note{audio.length === 1 ? '' : 's'}
                 </h2>
               </div>
-              <div className="p-4 space-y-3">
+              <div className="p-4 space-y-4">
                 {audio.map(m => (
-                  <div key={m.path} className="flex items-center gap-3">
-                    <audio src={mediaSrc(m.path)} controls preload="metadata" className="flex-1 min-w-0 h-9" />
-                    <span className="text-[11px] text-ink-faint tabular-nums flex-shrink-0">{clock(m.duration_ms)}</span>
+                  <div key={m.path}>
+                    <div className="flex items-center gap-3">
+                      <audio src={mediaSrc(m.path)} controls preload="metadata" className="flex-1 min-w-0 h-9" />
+                      <span className="text-[11px] text-ink-faint tabular-nums flex-shrink-0">{clock(m.duration_ms)}</span>
+                    </div>
+                    <Transcript
+                      findingId={finding.id}
+                      media={m}
+                      enabled={transcriptionConfigured}
+                      busy={busy}
+                      onAppend={text => {
+                        const joined = finding.note.trim() ? `${finding.note.trimEnd()}\n\n${text}` : text
+                        return save({ note: joined, note_source: 'transcribed' })
+                      }}
+                      onDone={() => startTransition(() => router.refresh())}
+                    />
                   </div>
                 ))}
               </div>
@@ -485,6 +502,92 @@ export default function FindingDetailClient({
         </div>
       </div>
     </ListCardPage>
+  )
+}
+
+/* One recording's transcript, beside the player.
+ *
+ * ⚠️ DORMANT UNTIL A KEY EXISTS. `enabled` is `isTranscriptionConfigured()`,
+ * computed on the SERVER, and it is false in production today — the portal has
+ * one AI key (Anthropic) and Claude does not take audio. When it is false this
+ * renders NOTHING: no greyed-out button, no "upgrade" nag on a page engineers
+ * open daily. Set OPENAI_API_KEY or DEEPGRAM_API_KEY in Vercel and the control
+ * appears on its own, including for recordings captured long before.
+ *
+ * 🔴 The transcript never silently becomes the note. It sits in its own block,
+ * labelled, and merging it is a deliberate click that stamps the note as
+ * transcribed — because the note is what the walker said, and a transcript is a
+ * machine's second opinion on the same audio. Anyone weighing a finding has to
+ * be able to tell which one they are reading.
+ */
+function Transcript({
+  findingId, media, enabled, busy, onAppend, onDone,
+}: {
+  findingId: string
+  media: Media
+  enabled: boolean
+  busy: boolean
+  onAppend: (text: string) => Promise<boolean>
+  onDone: () => void
+}) {
+  const [running, setRunning] = useState(false)
+  const [error, setError] = useState('')
+  // Held locally as a fallback for the one case the route cannot fix: the
+  // transcription succeeded (and was paid for) but the save failed.
+  const [unsaved, setUnsaved] = useState('')
+
+  const text = media.transcript ?? unsaved
+
+  const run = async () => {
+    setRunning(true); setError('')
+    const res = await fetch('/api/admin/post-production/transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ finding_id: findingId, path: media.path }),
+    })
+    const json = await res.json().catch(() => ({}))
+    setRunning(false)
+    if (!res.ok) { setError(json.error || 'That did not transcribe.'); return }
+    if (json.saved === false) { setUnsaved(json.text ?? ''); setError(json.error ?? ''); return }
+    onDone()
+  }
+
+  if (!enabled && !text) return null
+
+  return (
+    <div className="mt-2">
+      {text ? (
+        <div className="rounded-lg border border-hairline bg-surface-soft px-3 py-2.5">
+          <p className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-widest text-ink-muted">
+            <FileText size={11} /> Transcript
+            {media.transcript_by && <span className="font-normal normal-case tracking-normal text-ink-faint">· {media.transcript_by}</span>}
+            {!media.transcript && <span className="font-normal normal-case tracking-normal text-rose-500">· not saved</span>}
+          </p>
+          <p className="mt-1.5 text-[13px] text-ink-secondary leading-relaxed whitespace-pre-wrap">{text}</p>
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onAppend(text)}
+              className={BTN}
+            >
+              <Check size={14} /> Add to the note
+            </button>
+            {enabled && (
+              <button type="button" disabled={running || busy} onClick={run} className={BTN}>
+                {running ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />} Redo
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <button type="button" disabled={running} onClick={run} className={BTN}>
+          {running ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} strokeWidth={1.75} />}
+          {running ? 'Transcribing…' : 'Transcribe this recording'}
+        </button>
+      )}
+      {error && <p className="mt-1.5 text-[12px] text-rose-600 dark:text-rose-400 leading-snug">{error}</p>}
+    </div>
   )
 }
 

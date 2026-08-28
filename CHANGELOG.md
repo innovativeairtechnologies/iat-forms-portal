@@ -38,6 +38,29 @@ the panels are scrolled out of view.
 The three photos are still on disk, and `docs/rfq-envelope-panels.md` documents the way back to
 them if we want it.
 
+## 2026-08-28 — Transcription is wired and waiting, switched off until we decide
+
+A "Transcribe this recording" control now sits under each voice note on a post-production
+finding. **It is deliberately not live.** Nothing about it is visible today and nothing has
+changed on any screen — it appears by itself the day a speech-to-text service is connected,
+and until then it renders nothing at all rather than a greyed-out button nobody can use.
+
+**Why it is off.** The portal has one AI key and that service does not accept audio, so
+there is currently no way to transcribe a saved recording. Live dictation while you talk —
+the phone's own speech recognition — is unaffected and keeps working as it does now, and
+the audio file is saved either way. This is about a second pass on a recording after the
+fact: for a phone where live dictation never fired, a bay too loud for it to cope, or going
+back over recordings already captured.
+
+**What it will do when switched on.** Transcribe one recording, and keep the text beside the
+audio rather than dropping it into the note. The note is what the person actually said; a
+transcript is a machine's reading of the same recording, and anyone judging a finding should
+be able to tell the two apart. Merging one into the other is a separate, deliberate click,
+and the note is then marked as transcribed.
+
+Recordings captured now can be transcribed later, so nothing is lost by leaving this off
+while we decide whether it earns its keep.
+
 ## 2026-08-27 — A QR on the unit, and the recorder stops erasing what you said
 
 Three changes to Post-Production, all from walking it on a real phone.

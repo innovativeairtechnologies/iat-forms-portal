@@ -255,6 +255,21 @@ export type Media = {
   mime?: string
   bytes?: number
   duration_ms?: number
+
+  /** What a speech-to-text service made of this recording, stored ALONGSIDE the
+   *  audio rather than merged into the note.
+   *
+   *  🔴 The note is what the walker said in their own words. A transcript is a
+   *  machine's second opinion on the same recording, and the two must stay
+   *  distinguishable — an engineer weighing a finding needs to know which one
+   *  they are reading. Appending it to the note is an explicit, human action.
+   *
+   *  Undefined means "never transcribed", which is every recording today: no
+   *  speech-to-text provider is configured. See lib/transcribe.ts. */
+  transcript?: string
+  transcribed_at?: string
+  /** Which service produced it, so a bad batch can be traced to its source. */
+  transcript_by?: string
 }
 
 /** Supabase's standard upload endpoint — the one uploadToSignedUrl uses — is

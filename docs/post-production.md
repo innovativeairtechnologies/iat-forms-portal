@@ -211,13 +211,31 @@ fluently enough that nobody notices reading it back. An engineer who disagrees w
 can play the recording. The detail page labels a dictated note as dictated for exactly this
 reason. **Never drop the audio once text exists.**
 
-⚠️ **A key alone is NOT enough — there is no button yet.** `lib/transcribe.ts` and
-`/api/admin/post-production/transcribe` are complete and tested, but **nothing in the UI
-calls that route**; `transcriptionConfigured` only changes a line of helper text under the
-record button. Setting a key today would make the endpoint work and change nothing a person
-can see. Wiring a "Transcribe this recording" control onto the finding detail page (and
-optionally a back-fill for recordings already saved) is a small, separate job. This
-paragraph originally claimed "nothing else changes", which was wrong.
+⚠️ **BUILT BUT DORMANT — no speech-to-text provider is connected, so none of this is
+live.** The control is wired end to end and waiting on one environment variable.
+
+**Where it is:** the finding detail page, under each voice note. With no provider configured
+it renders **nothing** — no greyed-out button and no upgrade nag on a page engineers open
+daily. Add a key and it appears on its own, including for recordings captured long before.
+
+**What it does:** transcribes that one recording and stores the text **on the media entry**,
+beside the audio — never silently into the note. Merging it into the note is a separate,
+deliberate click that stamps `note_source = 'transcribed'`. The note is what the walker said;
+a transcript is a machine's second opinion on the same audio, and anyone weighing a finding
+has to be able to tell which one they are reading.
+
+**The route persists the result itself**, in the same request that spends the money. If it
+only returned text and left the client to save it, a dropped connection would mean paying
+for a transcript and losing it — and the obvious fix (retry) pays again. On the one path it
+cannot fix (transcribed, save failed) it hands the text back with `saved: false` and the UI
+says so rather than pretending.
+
+**Verified 2026-08-28, both directions:** with no key the server renders
+`transcriptionConfigured: false` and the control is absent; with a key present it renders
+`true`. That flag is computed server-side by `isTranscriptionConfigured()` and is the single
+switch the whole feature hangs on. **Clicking the button end to end is NOT verified** — that
+needs a real key, an authenticated session and a real recording, and is the first thing to
+check on the day a provider is added.
 
 To make the endpoint functional, set **one** of these in Vercel:
 
