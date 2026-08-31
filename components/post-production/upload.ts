@@ -2,7 +2,7 @@
 
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { resizeImage } from '@/lib/image-resize'
-import { MAX_UPLOAD_BYTES, type Media, type MediaKind } from '@/lib/post-production'
+import { MAX_UPLOAD_BYTES, humanBytes, type Media, type MediaKind } from '@/lib/post-production'
 
 /* Getting a photo, a clip or a voice note off a phone and into the private
    bucket.
@@ -66,11 +66,23 @@ export async function uploadMedia(
   }
 
   if (payload.size > MAX_UPLOAD_BYTES) {
+    /* ⚠️ SAY THE ACTUAL SIZE, and blame the right thing.
+     *
+     * This used to read "over 50MB — about a minute of 1080p. Try a shorter
+     * one," which sent somebody looking for a fault after a SIX-SECOND clip.
+     * The length was never the problem: a phone set to 4K/60 writes roughly as
+     * much in ten seconds as 1080p/30 does in a minute, so "shoot a shorter one"
+     * is advice that cannot work and reads as the app being broken.
+     *
+     * The number is what makes it actionable — 220 MB on screen immediately
+     * explains itself, and the fix is a camera setting rather than a shorter
+     * take. iOS prints the per-minute size for each option on the very screen
+     * this points at, so the phone is its own reference. */
     return {
       ok: false,
       error: kind === 'video'
-        ? 'That clip is over 50MB — about a minute of 1080p. Try a shorter one.'
-        : 'That file is over the 50MB limit.',
+        ? `That clip is ${humanBytes(payload.size)} and the limit is 50 MB. It is the recording quality, not the length — on an iPhone, Settings › Camera › Record Video › 1080p HD at 30 fps (that screen shows the size per minute). A photo and a voice note also work.`
+        : `That file is ${humanBytes(payload.size)} and the limit is 50 MB.`,
     }
   }
 
