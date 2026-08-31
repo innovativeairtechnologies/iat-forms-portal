@@ -127,6 +127,32 @@ fixing this", people mark things resolved to clear the board.
 ⚠️ **A resolved theme reopens itself when a new finding lands on it.** A fix that did not take
 must not stay green because of a decision made before the recurrence.
 
+#### Deleting a recurring issue — what survives
+
+Both this board and the pre-production list carry the same bulk select + Delete as the
+findings queue (full-admin only,  and  entities).
+
+🔴 ** is ON DELETE CASCADE, and the route deliberately does NOT
+let it fire.** Without intervention, tidying a theme off this board would silently delete its
+line from every pre-production check it had ever been carried into — erasing the record of a
+conversation a room actually had. The route nulls  on those items **before**
+deleting the theme.
+
+ is a NOT NULL snapshot of the theme name taken when the check was
+held. That is exactly what makes detaching possible, and it is why the snapshot exists: the
+line survives, still readable, with its verdict and note, just unlinked.
+
+ is already ON DELETE SET NULL, so findings survive and become
+ungrouped. **Deleting a grouping must never delete the observations inside it.**
+
+Deleting a **preflight** DOES cascade its items — a check and its lines are one record.
+
+**Verified live 2026-08-31** through the real UI: after deleting a theme that had both a
+finding and a completed pre-production line, the finding survived with  null and the
+preflight line survived with  null and its title, verdict () and note
+() intact. Deleting the preflight afterwards removed its items. Both
+audit-logged.
+
 ### Pre-production check — `/post-production/preflight`
 
 Open a check against a job number and its lines are **generated** from every recurring issue

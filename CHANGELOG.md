@@ -62,6 +62,26 @@ the panels are scrolled out of view.
 The three photos are still on disk, and `docs/rfq-envelope-panels.md` documents the way back to
 them if we want it.
 
+## 2026-08-31 — Delete on Recurring Issues and Pre-production checks
+
+Both lists now have the same tick-boxes, select-all and two-step Delete as the findings queue,
+Tickets and Quote Requests. Full admins only, as everywhere else.
+
+**Deleting a recurring issue does not delete anything that was inside it.** The findings that
+were grouped under it survive and simply become ungrouped — removing a grouping should never
+remove the observations in it.
+
+**It also leaves past pre-production meetings alone.** A recurring issue that was carried into a
+kickoff appears as a line on that meeting's record, with whatever the room decided about it —
+designed around, doesn't apply, known risk, and any note attached. Those lines survive with
+their wording intact. Tidying up the recurring-issues board must not quietly rewrite what a room
+agreed months earlier.
+
+Deleting a **pre-production check** does take its lines with it, which is right: the check and
+its lines are one record of one meeting.
+
+Every delete is written to the audit log with who did it and how many.
+
 ## 2026-08-31 — Walkarounds you started but never sent now show on the post-production page
 
 Two walkarounds had been sitting untouched — one for three days, one for two — each with a real
