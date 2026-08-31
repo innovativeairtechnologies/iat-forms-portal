@@ -62,6 +62,38 @@ the panels are scrolled out of view.
 The three photos are still on disk, and `docs/rfq-envelope-panels.md` documents the way back to
 them if we want it.
 
+## 2026-08-31 — Database migrations no longer need the Supabase CLI
+
+Windows Smart App Control started blocking the Supabase command-line tool on the development
+machine this morning. Nothing had changed locally — the program was installed weeks ago and
+worked two days earlier. It is unsigned, and Microsoft's cloud reputation service simply
+changed its mind about it, which can happen again to any unsigned developer tool.
+
+The only way to run it again would be to switch Smart App Control off, and that cannot be
+switched back on without reinstalling Windows — a poor trade on the machine that holds the
+portal's keys. So the tool has been replaced instead. Everything it did here was ordinary
+database work.
+
+`npm run db -- doctor`, `list`, `query` and `push` now cover it, with two deliberate
+improvements over what they replace:
+
+**It will not apply a migration you did not name.** The old command applied every pending
+change at once, which is why releasing anything meant first moving one deferred file out of
+the folder and hoping nobody forgot. Deferred migrations are now named in the tool itself,
+with the reason attached; they are skipped automatically and take a deliberate override to
+apply.
+
+**Ad-hoc queries are read-only unless you say otherwise**, enforced by the database rather
+than by guessing from the text of the query.
+
+Each migration runs inside its own transaction, and the record that it ran is written in that
+same transaction — so a half-applied change cannot leave the database altered with nothing
+saying so.
+
+Eleven checks run without needing a database at all, and they earned their keep immediately:
+they caught a flaw in the first draft that would have treated six long-since-applied files as
+pending and replayed them against production.
+
 ## 2026-08-28 — Tick and delete on Post-Production, the same way as Tickets and Quote Requests
 
 The post-production findings list had no way to remove anything. It now has the checkbox
