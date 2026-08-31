@@ -27,5 +27,15 @@ export default async function ThemesPage({
   const { open } = await searchParams
   const [themes, findings] = await Promise.all([listThemes(), listFindings()])
 
-  return <ThemesClient themes={themes} findings={findings} openId={open ?? null} />
+  return (
+    <ThemesClient
+      themes={themes}
+      findings={findings}
+      openId={open ?? null}
+      /* /api/admin/bulk-delete is full-admin only; this page is gated on
+         engineering_jobs. Resolved here so a scoped role never sees a Delete
+         that 403s. */
+      canDelete={actor.role === 'admin'}
+    />
+  )
 }

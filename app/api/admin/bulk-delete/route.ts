@@ -87,6 +87,41 @@ export async function POST(req: NextRequest) {
         errorMsg = error?.message ?? null
         break
       }
+      case 'pp_theme': {
+        /* 🔴 DETACH THE PRE-PRODUCTION LINES FIRST — do not let them cascade.
+         *
+         * pp_preflight_items.theme_id is ON DELETE CASCADE, so deleting a theme
+         * would silently delete its line from every pre-production check it was
+         * ever carried into. Those lines are the record of a conversation a room
+         * actually had — "we discussed this at kickoff and marked it Addressed" —
+         * and a tidy-up on the themes board must not rewrite it.
+         *
+         * pp_preflight_items.title is a SNAPSHOT of the theme's name taken when
+         * the check was held, and it is NOT NULL. That is exactly what makes this
+         * possible: nulling theme_id leaves the line intact and still readable,
+         * just no longer linked to a theme that no longer exists.
+         *
+         * pp_findings.theme_id is ON DELETE SET NULL already, so findings survive
+         * a theme delete and simply become ungrouped. That is the right default —
+         * deleting a grouping should never delete the observations in it.
+         */
+        await supabaseAdmin.from('pp_preflight_items').update({ theme_id: null }).in('theme_id', ids)
+        const { data, error } = await supabaseAdmin
+          .from('pp_themes').delete().in('id', ids).select('id')
+        deleted = data?.length ?? 0
+        errorMsg = error?.message ?? null
+        break
+      }
+      case 'pp_preflight': {
+        // Items cascade WITH the check, and that is correct: a pre-production
+        // check and its lines are one record, not two. Unlike the theme case
+        // above, there is nothing here that outlives the parent.
+        const { data, error } = await supabaseAdmin
+          .from('pp_preflights').delete().in('id', ids).select('id')
+        deleted = data?.length ?? 0
+        errorMsg = error?.message ?? null
+        break
+      }
       case 'equipment': {
         const { data, error } = await supabaseAdmin.from('equipment').delete().in('id', ids).select('id')
         deleted = data?.length ?? 0

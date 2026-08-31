@@ -28,5 +28,13 @@ export default async function PreflightIndex() {
     recentJobs(60),
   ])
 
-  return <PreflightListClient checks={checks} carry={carry} jobs={jobs} />
+  return (
+    <PreflightListClient
+      checks={checks}
+      carry={carry}
+      jobs={jobs}
+      /* Full-admin only, same as every other bulk delete. */
+      canDelete={actor.role === 'admin'}
+    />
+  )
 }

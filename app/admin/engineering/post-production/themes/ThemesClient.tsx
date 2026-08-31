@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import { ArrowLeft, ChevronDown, Loader2, Sparkles, TrendingUp } from 'lucide-react'
 import { ListCardPage, ListCard, CardHead, StatStrip, Stat } from '@/components/admin/list-card'
+import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import {
   CATEGORY_LABELS, RECURRENCE_THRESHOLD, THEME_STATUSES, THEME_STATUS_LABELS,
   findingTitle, shortDate, standingOf,
@@ -17,16 +18,19 @@ const BTN =
   'text-ink-secondary hover:text-ink hover:border-hairline-strong transition-colors disabled:opacity-40'
 
 export default function ThemesClient({
-  themes, findings, openId,
+  themes, findings, openId, canDelete,
 }: {
   themes: PpThemeRow[]
   findings: PpFindingRow[]
   openId: string | null
+  /** Full-admin only, like every other bulk delete here. */
+  canDelete: boolean
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [open, setOpen] = useState<string | null>(openId)
   const [busy, setBusy] = useState('')
+  const sel = useBulkSelect()
 
   const byTheme = useMemo(() => {
     const m = new Map<string, PpFindingRow[]>()
@@ -111,10 +115,24 @@ export default function ThemesClient({
               const isOpen = open === t.id
               return (
                 <div key={t.id}>
+                  {/* ⚠️ The checkbox sits OUTSIDE the expand button, not inside.
+                      SelectBox renders a `div role="checkbox"`, and nesting an
+                      interactive control inside a <button> is invalid and makes
+                      the two fight over the click. So the row is a flex
+                      container: checkbox first, then the button that expands. */}
+                  <div className={`flex items-start gap-3 px-5 transition-colors ${
+                    sel.has(t.id) ? 'bg-brand-soft' : 'hover:bg-surface-soft'
+                  }`}>
+                    <SelectBox
+                      className="hidden sm:flex mt-4"
+                      checked={sel.has(t.id)}
+                      onChange={() => sel.toggle(t.id)}
+                      label={`Select ${t.title}`}
+                    />
                   <button
                     type="button"
                     onClick={() => setOpen(isOpen ? null : t.id)}
-                    className="w-full text-left px-5 py-3.5 flex items-start gap-3 hover:bg-surface-soft transition-colors"
+                    className="flex-1 min-w-0 text-left py-3.5 flex items-start gap-3"
                   >
                     <ChevronDown
                       size={16}
@@ -154,6 +172,7 @@ export default function ThemesClient({
                       )}
                     </span>
                   </button>
+                  </div>
 
                   {isOpen && (
                     <div className="px-5 pb-4 pl-12">
@@ -213,6 +232,13 @@ export default function ThemesClient({
           </div>
         )}
       </ListCard>
+
+      {/* Deleting a theme UNGROUPS its findings (theme_id is ON DELETE SET NULL);
+          it never deletes the observations themselves. Pre-production lines are
+          detached rather than cascaded — see the route. */}
+      <BulkBar count={sel.count} onClear={sel.clear}>
+        {canDelete && <BulkDeleteButton entity="pp_theme" ids={sel.ids} onDone={sel.clear} />}
+      </BulkBar>
     </ListCardPage>
   )
 }

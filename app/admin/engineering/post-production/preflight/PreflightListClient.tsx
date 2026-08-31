@@ -5,25 +5,36 @@ import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { ArrowLeft, ClipboardCheck, Loader2, Plus } from 'lucide-react'
 import { ListCardPage, ListCard, CardHead, StatStrip, Stat, CardTable, Row, EmptyRow } from '@/components/admin/list-card'
+import { useBulkSelect, SelectBox, BulkBar, BulkDeleteButton } from '@/components/admin/bulk-select'
 import { PREFLIGHT_LOOKBACK_DAYS, normalizeJobNumber, shortDate, type PpThemeRow } from '@/lib/post-production'
 import type { Preflight } from '@/lib/pp-data'
 import { CategoryChip } from '../ui'
 
-const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[90px_minmax(0,1fr)_140px_120px_110px]'
+const COLS = 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[34px_90px_minmax(0,1fr)_140px_120px_110px]'
 
 type Job = { id: string; job_number: string; customer_name: string; ship_date: string | null }
 
 export default function PreflightListClient({
-  checks, carry, jobs,
+  checks, carry, jobs, canDelete,
 }: {
   checks: (Preflight & { items: number; open: number })[]
   carry: PpThemeRow[]
   jobs: Job[]
+  /** Full-admin only, same as every other bulk delete — resolved server-side so
+   *  a scoped role never sees a button that 403s. */
+  canDelete: boolean
 }) {
   const router = useRouter()
+  const sel = useBulkSelect()
   const [number, setNumber] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  // Not paginated — pre-production checks are a handful, not hundreds — so the
+  // visible set IS the whole list. togglePage is still correct: it adds and
+  // removes only the ids handed to it, so this stays right if paging is added.
+  const allSelected = checks.length > 0 && checks.every(c => sel.has(c.id))
+  const someSelected = checks.some(c => sel.has(c.id))
 
   const clean = normalizeJobNumber(number)
   const suggestions = useMemo(
@@ -110,6 +121,13 @@ export default function PreflightListClient({
             minWidth={860}
             head={
               <>
+                <SelectBox
+                  className="hidden sm:flex"
+                  checked={allSelected}
+                  indeterminate={someSelected}
+                  label={allSelected ? 'Clear selection' : 'Select every check'}
+                  onChange={() => sel.togglePage(checks.map(c => c.id), !allSelected)}
+                />
                 <span className="hidden sm:block">Job</span>
                 <span>Held</span>
                 <span className="hidden sm:block">Lines</span>
@@ -122,7 +140,10 @@ export default function PreflightListClient({
               <EmptyRow>No pre-production checks yet. Open one above before the next kickoff.</EmptyRow>
             ) : (
               checks.map(c => (
-                <Row key={c.id} cols={COLS} href={`/admin/engineering/post-production/preflight/${c.id}`}>
+                <Row key={c.id} cols={COLS} href={`/admin/engineering/post-production/preflight/${c.id}`} selected={sel.has(c.id)}>
+                  {/* Decorative input, pointer-events off — it lives inside the
+                      row link. See list-checkbox-in-row-link. */}
+                  <SelectBox className="hidden sm:flex" checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} />
                   <span className="hidden sm:block tabular-nums text-[13px] font-medium text-ink">{c.job_number}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-[13px] text-ink group-hover:text-brand-ink transition-colors">
@@ -192,6 +213,10 @@ export default function PreflightListClient({
           )}
         </ListCard>
       </div>
+
+      <BulkBar count={sel.count} onClear={sel.clear}>
+        {canDelete && <BulkDeleteButton entity="pp_preflight" ids={sel.ids} onDone={sel.clear} />}
+      </BulkBar>
     </ListCardPage>
   )
 }
