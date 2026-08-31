@@ -62,6 +62,29 @@ the panels are scrolled out of view.
 The three photos are still on disk, and `docs/rfq-envelope-panels.md` documents the way back to
 them if we want it.
 
+## 2026-08-31 — Walkarounds you started but never sent now show on the post-production page
+
+Two walkarounds had been sitting untouched — one for three days, one for two — each with a real
+finding recorded on it, and neither ever handed over to engineering. Nobody could see them,
+including the people who left them. A finding stays a draft until Hand over is pressed, and
+until then it reaches nobody.
+
+That half was deliberate: an unfinished walk should not start chasing an engineer about
+something nobody has submitted. What was missing is that it was also invisible, so the work
+just quietly sat there. Being interrupted halfway round a unit is completely normal on a shop
+floor; losing what you recorded afterwards should not be.
+
+A band now sits above the findings list showing every walkaround in progress — who started it,
+which unit, how many notes, and how long ago. Opening one picks it up exactly where it was left.
+Nothing reaches the queue, and no clock starts, until Hand over is pressed.
+
+It does not nag: no email, no alerts, no badge in the menu. It simply appears where the people
+running this already look, and turns amber once a walk is more than a day old — a walk started
+twenty minutes ago is somebody standing at a unit right now, not a problem.
+
+The walkaround screen also names whose walk it is now, not just the unit, since the band can
+take you into somebody else's — and anything added there is filed under their name.
+
 ## 2026-08-31 — Database migrations have a second, safer path
 
 _Updated later the same day: Smart App Control was switched off on the development machine, so

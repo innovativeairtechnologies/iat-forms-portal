@@ -87,6 +87,35 @@ Storage objects are **left orphaned** rather than cascaded — invisible and har
 mis-click must not destroy the only recording of what somebody said at a unit. Every bulk
 delete is audit-logged with the entity, the count and the number requested.
 
+### Walks in progress — the band above the queue
+
+_Added 2026-08-31, from live data rather than a hunch._
+
+Two walkarounds were sitting in `walking` — Lee on unit 1234 for three days, Kacy Orr on 4454
+for two — each holding a real finding, neither ever handed over. **Nothing anywhere said so.**
+
+🔴 **That gap was the other half of "drafts nag nobody".** A draft deliberately raises no alarm:
+it must not chase an engineer about something nobody submitted. But only that half was built,
+so an unfinished walk was invisible to **everyone, including the person who left it**. Being
+interrupted mid-walk on a shop floor is normal; silently losing the work afterwards is not.
+
+So it is shown, and it still does not nag — **no email, no red, no nav badge**. A band above the
+queue, where the people who run this look daily, with the age doing the talking.
+
+- **Zero-finding walks are excluded.** A Start button pressed by somebody who then walked away
+  has nothing in it to lose, and listing those would bury the ones that matter.
+- **Amber only past a day.** A walk twenty minutes old is somebody standing at a unit *right
+  now*; flagging that as stranded would be wrong and would teach people to ignore the band.
+- **Oldest first** — the one most likely to be forgotten leads.
+
+⚠️ **The band links into a walk that may not be yours.** That is deliberate — it is how stranded
+work gets finished — but anything added there is filed under the **original walker's** name,
+which is right for the observations they made and wrong to discover afterwards. So the walk
+header now reads `WALKING · KACY ORR` rather than just the unit number.
+
+**Chasing was considered and deliberately not built** (Jacob, 2026-08-31). Stale walks do not
+email their owner. Revisit only if the band turns out not to be enough.
+
 ### Recurring issues — `/post-production/themes`
 
 The board that makes "twelve times" sayable, and the pre-production checklist's source.
