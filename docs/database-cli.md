@@ -2,7 +2,28 @@
 
 _Added 2026-08-31._
 
-## Why this exists
+> ## ✅ STATUS: the CLI works again (2026-08-31, later the same day)
+>
+> Jacob turned **Smart App Control off**, and `npx supabase` runs again — verified
+> (`--version` → 2.111.0, and a live `db query` returns rows). ⚠️ That switch is **one-way**:
+> it cannot be re-enabled without reinstalling Windows. **Bitdefender Endpoint Security Tools**
+> is installed and active on this machine, which is why Windows Defender reports itself off —
+> normal handoff, not a second problem.
+>
+> **So this script is no longer a necessity.** Keep it for two reasons and use the CLI for the
+> rest:
+>
+> 1. 🔴 **`push` refuses to apply what you did not name.** `supabase db push` still applies
+>    EVERY pending migration, which is why shipping has always meant moving `093` out of the
+>    folder first and hoping nobody forgot. That footgun is unchanged in the CLI.
+> 2. It is a fallback if an unsigned binary gets blocked again — nothing prevents a future
+>    Bitdefender or Windows update doing what Smart App Control did.
+>
+> ⚠️ **This script has never applied a real migration.** Its offline logic is tested; a live
+> `push` is not. The CLI has years of use behind it. Prefer the CLI unless the hold-list
+> safety is what you want.
+
+## The problem it was built for
 
 On 2026-08-31 Windows **Smart App Control** began blocking
 `node_modules/@supabase/cli-windows-x64/bin/supabase.exe`:
@@ -25,11 +46,15 @@ every block event is from the morning of the 31st. Smart App Control uses cloud-
 reputation, so Microsoft's verdict on that unsigned file changed on its own. **It can happen
 again, to this or any other unsigned developer tool.**
 
-⚠️ **Do not "fix" this by turning Smart App Control off.** It cannot be turned back on without
-reinstalling Windows, and this machine holds the service-role key, Vercel tokens and a
-signed-in admin browser session. Smart App Control also has **no per-app allowlist**, so
-there is no narrower version of that change to make. The dependency goes instead — everything
-the CLI did here is plain Postgres.
+**What was advised, and what happened.** The recommendation at the time was *not* to turn
+Smart App Control off — it cannot be turned back on without reinstalling Windows, it has **no
+per-app allowlist** so there is no narrower version of the change, and this machine holds the
+service-role key, Vercel tokens and a signed-in admin browser session. Jacob turned it off
+anyway, which is his call to make and did resolve it; see the status box at the top.
+
+Recorded here because the reasoning still applies to **the next** unsigned tool that gets
+blocked: the switch is already spent, so it cannot be spent again, and whatever comes next
+needs a different answer. This script is that answer.
 
 ## Setup, once
 

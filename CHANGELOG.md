@@ -62,7 +62,13 @@ the panels are scrolled out of view.
 The three photos are still on disk, and `docs/rfq-envelope-panels.md` documents the way back to
 them if we want it.
 
-## 2026-08-31 — Database migrations no longer need the Supabase CLI
+## 2026-08-31 — Database migrations have a second, safer path
+
+_Updated later the same day: Smart App Control was switched off on the development machine, so
+the Supabase command-line tool works again. The replacement below is kept as a fallback and
+for one specific safety property — it refuses to apply a migration you did not name, where the
+official tool still applies every pending change at once._
+
 
 Windows Smart App Control started blocking the Supabase command-line tool on the development
 machine this morning. Nothing had changed locally — the program was installed weeks ago and
