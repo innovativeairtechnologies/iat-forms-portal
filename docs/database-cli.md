@@ -56,21 +56,53 @@ Recorded here because the reasoning still applies to **the next** unsigned tool 
 blocked: the switch is already spent, so it cannot be spent again, and whatever comes next
 needs a different answer. This script is that answer.
 
-## Setup, once
+## Setup, once — and the four things to know first
 
-Supabase dashboard → **Project Settings → Database → Connection string → Session mode**
-(host ends `.pooler.supabase.com`, port **5432**). Add to `.env.local`:
-
-```
-SUPABASE_DB_URL=postgresql://postgres.<ref>:<password>@<host>:5432/postgres
-```
+Get the string from Supabase → **Project Settings → Database → Connection string → Session
+mode** (host ends `.pooler.supabase.com`, port **5432**).
 
 ⚠️ **Session mode, port 5432 — not the transaction pooler on 6543.** That one does not hold a
 session across statements, which DDL and advisory locks both need.
 
-`.env.local` is gitignored. The script never prints the URL or the password, including in
-error paths — verified by running it against a bogus URL containing a known string and
-grepping the output for it.
+### Where to put it — environment variable, not the file
+
+`connectionString()` reads `process.env.SUPABASE_DB_URL` **first**, then falls back to
+`.env.local`. Prefer the environment variable:
+
+> System Properties → Environment Variables → **New** (under *User variables*)
+> Name `SUPABASE_DB_URL`, value the connection string.
+
+⚠️ Use that dialog rather than `setx` on the command line, or the password lands in shell
+history. Only new terminals pick it up.
+
+### The four challenges, honestly
+
+**1. 🔴 `vercel env pull` REWRITES `.env.local`.** Verified from its own help: *"Pull all
+Development Environment Variables from the cloud and write to a file [.env.local]"*.
+`SUPABASE_DB_URL` is not in Vercel, so pulling silently deletes it and the "not set" message
+comes back looking like a new fault. **This is the main reason to use the environment variable
+instead.**
+
+**2. It is a strictly more powerful credential than what is already on disk.** `.env.local`
+already holds `SUPABASE_SERVICE_ROLE_KEY`, which bypasses RLS and can read or write every table
+through PostgREST. A direct Postgres connection as the `postgres` role adds **DDL and arbitrary
+SQL** — dropping tables, altering schema. Not a category change, but a real widening of what a
+leak of that file would mean.
+
+**3. The repo is PUBLIC.** `.env.local` is gitignored — verified, `.gitignore:30` matches
+`.env*.local` — so it will not be committed by accident. But on a public repo the cost of a
+`git add -f` or an over-broad `git add -A` is higher than usual, which is another point in
+favour of keeping the credential outside the repo folder entirely.
+
+**4. Rotation.** Resetting the database password in Supabase leaves this stale. The failure is
+loud and readable (`Could not connect: …`), never silent.
+
+Not a challenge, but worth knowing: `scripts/backup-db.mjs` already expects a database password
+(`SUPABASE_DB_PASSWORD`, or interactive), so a DB credential is already part of this workflow —
+just under a different name and not currently stored.
+
+Nothing in this script prints the URL or the password, including on failure — verified by
+running it against a bogus URL containing a known string and grepping the output for it.
 
 ## Commands
 

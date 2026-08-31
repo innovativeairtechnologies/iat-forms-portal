@@ -77,17 +77,32 @@ function connectionString() {
   }
   if (!url) {
     console.error(`
-SUPABASE_DB_URL is not set.
+SUPABASE_DB_URL is not set. Looked in the environment, then .env.local.
 
-  1. Supabase dashboard → Project Settings → Database → Connection string
-  2. Choose "Session mode" (host ends .pooler.supabase.com, PORT 5432 —
-     NOT the transaction pooler on 6543)
-  3. Add it to .env.local as one line:
+Get it from: Supabase → Project Settings → Database → Connection string →
+"Session mode" (host ends .pooler.supabase.com, PORT 5432 — NOT the transaction
+pooler on 6543, which does not hold a session across statements).
 
-       SUPABASE_DB_URL=postgresql://postgres.<ref>:<password>@<host>:5432/postgres
+Then EITHER, preferred — a Windows user environment variable, which lives
+outside the repo:
 
-.env.local is gitignored, so the password stays off GitHub. Nothing in this
-script ever prints it.`)
+  System Properties → Environment Variables → New (under User variables)
+    Name:  SUPABASE_DB_URL
+    Value: postgresql://postgres.<ref>:<password>@<host>:5432/postgres
+
+  ⚠️ Set it through that dialog rather than \`setx\` on the command line, or the
+  password lands in your shell history. Only new terminals see it.
+
+OR — a line in .env.local:
+
+  SUPABASE_DB_URL=postgresql://postgres.<ref>:<password>@<host>:5432/postgres
+
+  ⚠️ \`vercel env pull\` REWRITES .env.local from Vercel's variables and this one
+  is not there, so it will silently disappear and this message will come back.
+  That is why the environment variable is preferred.
+
+.env.local is gitignored (.gitignore: .env*.local), and nothing in this script
+ever prints the URL or the password — including on failure.`)
     process.exit(1)
   }
   return url
