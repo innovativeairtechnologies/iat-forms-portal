@@ -129,28 +129,29 @@ must not stay green because of a decision made before the recurrence.
 
 #### Deleting a recurring issue — what survives
 
-Both this board and the pre-production list carry the same bulk select + Delete as the
-findings queue (full-admin only,  and  entities).
+Both this board and the pre-production list carry the same bulk select + Delete as the findings
+queue (full-admin only, `pp_theme` and `pp_preflight` entities).
 
-🔴 ** is ON DELETE CASCADE, and the route deliberately does NOT
-let it fire.** Without intervention, tidying a theme off this board would silently delete its
-line from every pre-production check it had ever been carried into — erasing the record of a
-conversation a room actually had. The route nulls  on those items **before**
-deleting the theme.
+🔴 **`pp_preflight_items.theme_id` is ON DELETE CASCADE, and the route deliberately does NOT let
+it fire.** Without intervention, tidying a theme off this board would silently delete its line
+from every pre-production check it had ever been carried into — erasing the record of a
+conversation a room actually had. The route nulls `theme_id` on those items **before** deleting
+the theme.
 
- is a NOT NULL snapshot of the theme name taken when the check was
-held. That is exactly what makes detaching possible, and it is why the snapshot exists: the
-line survives, still readable, with its verdict and note, just unlinked.
+`pp_preflight_items.title` is a NOT NULL snapshot of the theme name taken when the check was
+held. That is exactly what makes detaching possible, and it is why the snapshot exists: the line
+survives, still readable, with its verdict and note, just unlinked.
 
- is already ON DELETE SET NULL, so findings survive and become
-ungrouped. **Deleting a grouping must never delete the observations inside it.**
+`pp_findings.theme_id` is already ON DELETE SET NULL, so findings survive and become ungrouped.
+**Deleting a grouping must never delete the observations inside it.**
 
-Deleting a **preflight** DOES cascade its items — a check and its lines are one record.
+Deleting a **preflight** DOES cascade its items — a check and its lines are one record of one
+meeting.
 
-**Verified live 2026-08-31** through the real UI: after deleting a theme that had both a
-finding and a completed pre-production line, the finding survived with  null and the
-preflight line survived with  null and its title, verdict () and note
-() intact. Deleting the preflight afterwards removed its items. Both
+**Verified live 2026-08-31** through the real UI: after deleting a theme that had both a finding
+and a completed pre-production line, the finding survived with `theme_id` null, and the
+preflight line survived with `theme_id` null and its title, verdict (`addressed`) and note
+(`agreed at kickoff`) intact. Deleting the preflight afterwards removed its items. Both
 audit-logged.
 
 ### Pre-production check — `/post-production/preflight`
