@@ -141,6 +141,52 @@ export async function listWalkarounds(opts: { walkedBy?: string; status?: 'walki
   return (data ?? []) as PpWalkaround[]
 }
 
+export type UnfinishedWalk = PpWalkaround & { findings: number }
+
+/**
+ * Walkarounds somebody started, put content into, and never handed over.
+ *
+ * 🔴 WHY THIS EXISTS. Drafts deliberately nag nobody — a half-finished walk must
+ * not start chasing an engineer. But the first cut only built that half, so an
+ * unfinished walk was invisible to EVERYONE, including the person who left it.
+ * Found on 2026-08-31: two walks, two different people, sitting three and two
+ * days with a real finding in each, and nothing anywhere saying so. That is
+ * silently lost work, and on a shop floor being interrupted mid-walk is normal
+ * rather than exceptional.
+ *
+ * ⚠️ Walks with ZERO findings are excluded. Those are a Start button pressed by
+ * somebody who then walked away; there is nothing in them to lose, and listing
+ * them would bury the ones that matter.
+ *
+ * Oldest first — the one most likely to be forgotten leads.
+ */
+export async function listUnfinishedWalks(): Promise<UnfinishedWalk[]> {
+  const { data: walks, error } = await supabaseAdmin
+    .from('pp_walkarounds')
+    .select('*')
+    .eq('status', 'walking')
+    .order('started_at', { ascending: true })
+
+  if (error) { console.error('[pp-data] listUnfinishedWalks:', error.message); return [] }
+  const rows = (walks ?? []) as PpWalkaround[]
+  if (!rows.length) return []
+
+  // One count query for all of them rather than one per walk.
+  const { data: drafts } = await supabaseAdmin
+    .from('pp_findings')
+    .select('walkaround_id')
+    .in('walkaround_id', rows.map(w => w.id))
+
+  const counts = new Map<string, number>()
+  for (const d of (drafts ?? []) as { walkaround_id: string }[]) {
+    counts.set(d.walkaround_id, (counts.get(d.walkaround_id) ?? 0) + 1)
+  }
+
+  return rows
+    .map(w => ({ ...w, findings: counts.get(w.id) ?? 0 }))
+    .filter(w => w.findings > 0)
+}
+
 export async function getWalkaround(id: string): Promise<{ walk: PpWalkaround; findings: PpFinding[] } | null> {
   const { data: walk } = await supabaseAdmin.from('pp_walkarounds').select('*').eq('id', id).maybeSingle()
   if (!walk) return null

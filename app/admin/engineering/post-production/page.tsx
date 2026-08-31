@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { employeeIdForEmail } from '@/lib/my-employee'
-import { buildSummary, listAssignees, listFindings } from '@/lib/pp-data'
+import { buildSummary, listAssignees, listFindings, listUnfinishedWalks } from '@/lib/pp-data'
 import QueueClient from './QueueClient'
 
 /* /admin/engineering/post-production — the findings queue.
@@ -32,10 +32,11 @@ export default async function PostProductionQueue({
   const { tab, walk } = await searchParams
   const myEmployeeId = await employeeIdForEmail(actor.user.email)
 
-  const [findings, summary, assignees] = await Promise.all([
+  const [findings, summary, assignees, unfinished] = await Promise.all([
     listFindings(),
     buildSummary(),
     listAssignees(),
+    listUnfinishedWalks(),
   ])
 
   return (
@@ -46,6 +47,7 @@ export default async function PostProductionQueue({
       myEmployeeId={myEmployeeId}
       initialTab={tab ?? 'open'}
       highlightWalk={walk ?? null}
+      unfinished={unfinished}
       /* /api/admin/bulk-delete is FULL-ADMIN only, but this page is gated on
          `engineering_jobs` — which engineering and production_manager also
          hold. Resolved here because the client cannot know it, and rendering

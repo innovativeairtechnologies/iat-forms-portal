@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import {
-  Camera, Mic, Video, ClipboardCheck, Repeat2, Plus, ImageIcon, QrCode,
+  Camera, Mic, Video, ClipboardCheck, Repeat2, Plus, ImageIcon, QrCode, FootprintsIcon, CloudUpload,
 } from 'lucide-react'
 import {
   ListCardPage, ListCard, CardHead, StatStrip, Stat, Toolbar,
@@ -19,7 +19,7 @@ import {
   WALK_ROLE_SUFFIX, findingTitle, shortDate, standingOf,
   type PpFindingRow,
 } from '@/lib/post-production'
-import type { PpSummary } from '@/lib/pp-data'
+import type { PpSummary, UnfinishedWalk } from '@/lib/pp-data'
 import { CategoryChip, FindingStatusChip, SeverityChip, StandingChip } from './ui'
 
 /* The findings queue.
@@ -43,7 +43,7 @@ const COLS =
 type Tab = 'open' | 'mine' | 'late' | 'answered' | 'all'
 
 export default function QueueClient({
-  findings, summary, assignees, myEmployeeId, initialTab, highlightWalk, canDelete,
+  findings, summary, assignees, myEmployeeId, initialTab, highlightWalk, unfinished, canDelete,
 }: {
   findings: PpFindingRow[]
   summary: PpSummary
@@ -51,6 +51,8 @@ export default function QueueClient({
   myEmployeeId: string | null
   initialTab: string
   highlightWalk: string | null
+  /** Walks with content that were never handed over. See the band below. */
+  unfinished: UnfinishedWalk[]
   /** /api/admin/bulk-delete is FULL-ADMIN only, but this page is gated on
    *  `engineering_jobs`, which engineering and production_manager also hold.
    *  Rendering Delete for them would offer a button that 403s, which reads as
@@ -118,6 +120,8 @@ export default function QueueClient({
 
   return (
     <ListCardPage>
+      <UnfinishedBand walks={unfinished} />
+
       <ListCard>
         <CardHead
           overline="Engineering"
@@ -348,6 +352,86 @@ export default function QueueClient({
         {canDelete && <BulkDeleteButton entity="post_production" ids={sel.ids} onDone={sel.clear} />}
       </BulkBar>
     </ListCardPage>
+  )
+}
+
+/* ── Walks that were started and never handed over ──────────────────────────
+ *
+ * 🔴 The other half of "drafts nag nobody".
+ *
+ * A draft deliberately raises no alarm — it must not chase an engineer about
+ * something nobody has submitted. But the first cut only built that half, so an
+ * unfinished walk was invisible to EVERYONE, including the person who left it.
+ * Found 2026-08-31: two walks, two different people, three and two days old,
+ * each holding a real finding, and nothing anywhere saying so.
+ *
+ * So it is shown, and it does not nag. No email, no red, no badge in the nav —
+ * it sits above the queue where the people who run this look every day, and the
+ * age does the talking. Being interrupted mid-walk on a shop floor is normal;
+ * losing the work afterwards should not be.
+ *
+ * ⚠️ Amber only past a day. A walk started twenty minutes ago is somebody
+ * standing at a unit right now, and flagging that as stranded would be wrong
+ * and would teach people to ignore the band.
+ */
+function UnfinishedBand({ walks }: { walks: UnfinishedWalk[] }) {
+  if (!walks.length) return null
+
+  const dayMs = 86_400_000
+  const stale = (w: UnfinishedWalk) => Date.now() - new Date(w.started_at).getTime() > dayMs
+
+  return (
+    <ListCard className="mb-4">
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-hairline">
+        <FootprintsIcon size={14} className="text-ink-muted" strokeWidth={1.75} />
+        <h2 className="text-[13px] font-semibold text-ink">
+          {walks.length} walkaround{walks.length === 1 ? '' : 's'} in progress
+        </h2>
+        <span className="text-[12px] text-ink-muted">
+          — recorded but not handed over, so engineering cannot see {walks.length === 1 ? 'it' : 'them'} yet
+        </span>
+      </div>
+
+      <div className="divide-y divide-hairline-soft">
+        {walks.map(w => (
+          <Link
+            key={w.id}
+            href={`/admin/engineering/post-production/walk?walk=${w.id}`}
+            className="flex items-center gap-3 px-5 py-3 hover:bg-surface-soft transition-colors group"
+          >
+            <span className="tabular-nums text-[13px] font-medium text-ink w-14 flex-shrink-0">
+              {w.job_number}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] text-ink-secondary group-hover:text-brand-ink transition-colors">
+                {w.walked_by_name || 'Unknown'}
+                {w.source === 'tag' && (
+                  <QrCode size={11} className="inline ml-1.5 -mt-0.5 text-ink-faint" aria-label="Filed from a shop tag" />
+                )}
+              </span>
+              <span className="block text-[11.5px] text-ink-muted">
+                {w.findings} note{w.findings === 1 ? '' : 's'} · started {timeAgo(w.started_at)}
+              </span>
+            </span>
+            <span className={`text-[11px] font-semibold px-2 py-[3px] rounded-md whitespace-nowrap ${
+              stale(w)
+                ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                : 'bg-surface-strong text-ink-muted'
+            }`}>
+              {stale(w) ? 'Waiting to hand over' : 'In progress'}
+            </span>
+          </Link>
+        ))}
+      </div>
+
+      <div className="px-5 py-2.5 border-t border-hairline-soft">
+        <p className="text-[11.5px] text-ink-muted leading-relaxed">
+          <CloudUpload size={12} className="inline mr-1.5 -mt-0.5" />
+          Opening one picks it up where it was left. Nothing reaches the queue — and no clock
+          starts — until <strong className="font-medium text-ink-secondary">Hand over</strong> is pressed.
+        </p>
+      </div>
+    </ListCard>
   )
 }
 

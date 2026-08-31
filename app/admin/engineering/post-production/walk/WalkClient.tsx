@@ -410,7 +410,16 @@ function Walking({
             <ArrowLeft size={18} />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted">Walking</p>
+            {/* ⚠️ Whose walk this is, not just which unit.
+                The queue's "in progress" band links straight into a walkaround
+                that may belong to somebody else — a manager picking up work
+                somebody left on the shop floor. Anything added here is filed
+                under the ORIGINAL walker's name, which is right for the
+                observations they made and wrong to discover afterwards. So the
+                header says whose it is. */}
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-muted truncate">
+              Walking{walk.walked_by_name ? ` · ${walk.walked_by_name}` : ''}
+            </p>
             <p className="text-[17px] font-semibold text-ink tabular-nums leading-tight">
               {walk.job_number}
               {walk.customer_name && (
