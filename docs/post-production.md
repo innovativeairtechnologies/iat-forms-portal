@@ -39,6 +39,12 @@ confirmed 2026-08-27 — then talk, photograph or film your way around the unit.
   quality rather than the length, because that is the setting the person can actually change.
   Anything large enough to be worth waiting for shows a **real progress bar** and, if the
   connection drops, a **one-tap retry** that keeps the note and re-sends only the file.
+  🔴 **A retry is offered only when retrying could work.** An over-limit or wrong-type file is
+  refused permanently, and pressing "try again" would re-run the same check, fail instantly and
+  redraw an identical message — a button that works perfectly and does nothing, which nobody
+  can tell apart from a broken one. Those get **"Choose a different clip"**, which reopens the
+  camera. `uploadMedia` returns `permanent: true` for them; only a dropped connection or a 5xx
+  gets a real retry.
 - **Area and severity.** Nine areas, three severities. `Little thing` is load-bearing: most
   of what a walk produces is a small observation, and forcing every one to look like a defect
   is how the old spreadsheet reached hundreds of untriageable rows.
@@ -356,6 +362,31 @@ Widening it to the shop floor — the electrician and the tester, the other two 
 meeting was originally about — would need either the perm granted per person from
 `/admin/permissions`, or a token-based no-login capture page in the shape of `/board/<token>`.
 That was scoped and deferred.
+
+## A "dead" button is usually one of three things
+
+All three were reported together from a phone on 2026-09-01, and only two were real. Worth
+separating, because the diagnosis differs:
+
+1. **It genuinely does nothing.** "Walk another unit" called `router.push()` with the URL the
+   page was already on. Next treats that as a no-op, so the component never remounted and the
+   handed-over screen stayed up. ⚠️ **A same-route push is not a reset.** Where a screen's state
+   lives in the client (here `handover`, inside `Walking`), returning to the start means
+   *clearing that state* — the discard path already did exactly this, and the fix was to reuse
+   its shape rather than invent one.
+2. **It works and accomplishes nothing.** "Try that clip again" on a 184MB video re-ran a
+   client-side size check that cannot pass. Instant, identical message, no visible change.
+   **Never offer an action whose only possible outcome is the error already on screen.**
+3. **It works and you cannot tell yet.** "See them in the queue" was fine — the queue is
+   force-dynamic and simply slow to answer on shop wifi. Sitting directly beneath a genuinely
+   dead button, it inherited the verdict. It now shows "Opening the queue…" on press.
+
+🔎 **The method mattered more than any of the fixes.** The first guess — an invisible overlay
+swallowing taps, which `bg-ink/40` on a semantic token could plausibly have caused
+(see the token-opacity note) — was wrong. `document.elementFromPoint()` at each button's own
+centre returned the button itself, `pointer-events` was `auto`, nothing was disabled, and the
+console was clean. Only then did clicking it in a real browser reproduce the failure in one
+press. **Reproduce before theorising**; the phone was never the variable.
 
 ## Storage
 

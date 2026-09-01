@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-01 — Two dead buttons on the walkaround, and one that only looked dead
+
+**"Walk another unit" did nothing at all.** It navigated to the address the page was already
+on, which the router correctly treats as a no-op — so the component never rebuilt, the
+"handed over" screen stayed up, and the button looked broken because it *was*. It now clears
+the walk and returns to the unit picker, which is what the discard path had been doing all
+along. Reported from a phone; reproduced on a desktop in one click. It was never a phone
+problem.
+
+**"Try that clip again" was offered for a 184MB video.** Pressing it re-ran the same size
+check, failed in under a millisecond, and redrew a word-for-word identical message. The button
+worked perfectly and accomplished nothing, which from the outside is indistinguishable from a
+button that does nothing. A file that is too big is still too big on the second press.
+
+The upload now says whether a failure is *permanent* — over the limit, wrong file type, or any
+refusal of that specific file — and offers **"Choose a different clip"** instead, which reopens
+the camera. A dropped connection or a server hiccup still gets a real retry, because there the
+same bytes genuinely might succeed.
+
+**"See them in the queue" was working the whole time.** But the queue is built fresh on each
+request and can take a few seconds to answer on shop wifi, and a tap that produces no visible
+response — sitting directly above a button that really was dead — reads as broken too. It now
+says "Opening the queue…" the instant it is pressed.
+
 ## 2026-09-01 — Every storage bucket gets its own ceiling
 
 **Raising one limit had quietly raised them all.** Walkaround video needed more headroom than
