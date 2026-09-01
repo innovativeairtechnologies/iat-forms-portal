@@ -436,7 +436,15 @@ function Walking({
     if (!res.ok) {
       setUploads(u => ({
         ...u,
-        [findingId]: { kind, pct: 0, error: res.error, retry: () => { void sendFile(findingId, kind, file) } },
+        [findingId]: {
+          kind,
+          pct: 0,
+          error: res.error,
+          permanent: res.permanent,
+          // Only a transient failure gets a retry — a permanent one re-runs the
+          // identical check and looks like a dead button. See UploadStrip.
+          retry: res.permanent ? undefined : () => { void sendFile(findingId, kind, file) },
+        },
       }))
       return
     }

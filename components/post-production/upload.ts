@@ -40,7 +40,16 @@ export type UploadResult =
        *  all. The caller owns it and must revoke it on unmount. */
       previewUrl: string
     }
-  | { ok: false; error: string }
+  | {
+      ok: false
+      error: string
+      /** True when re-sending the SAME bytes cannot possibly succeed — the file
+       *  is over the limit, or the wrong type. The caller must not offer "try
+       *  again" for these: the retry re-runs an identical check, fails instantly
+       *  with an identical message, and is indistinguishable from a dead button.
+       *  Offer a way to pick a different file instead. */
+      permanent?: boolean
+    }
 
 export type UploadOptions = {
   duration_ms?: number
@@ -117,7 +126,7 @@ export async function uploadMedia(
       name = 'photo.jpg'
     } catch {
       if (file.size > MAX_UPLOAD_BYTES) {
-        return { ok: false, error: `That photo is over ${MAX_UPLOAD_LABEL} and could not be resized here.` }
+        return { ok: false, permanent: true, error: `That photo is over ${MAX_UPLOAD_LABEL} and could not be resized here.` }
       }
     }
   }
@@ -132,6 +141,7 @@ export async function uploadMedia(
      * is advice that cannot work and reads as the app being broken. */
     return {
       ok: false,
+      permanent: true,
       error: kind === 'video'
         ? `That clip is ${humanBytes(payload.size)} and the limit is ${MAX_UPLOAD_LABEL}. It is the recording quality, not the length — on an iPhone, Settings › Camera › Record Video › 1080p HD at 30 fps (that screen shows the size per minute). A photo and a voice note also work.`
         : `That file is ${humanBytes(payload.size)} and the limit is ${MAX_UPLOAD_LABEL}.`,
@@ -146,7 +156,16 @@ export async function uploadMedia(
     body: JSON.stringify({ ...(extra.extraBody ?? {}), kind, name, size: payload.size }),
   })
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) return { ok: false, error: json.error || 'Could not start the upload.' }
+  /* A 4xx from the minting route is a verdict on THIS file — too big, wrong
+     extension, unknown kind — so it is permanent. A 5xx is our side falling over
+     and is worth another go. */
+  if (!res.ok) {
+    return {
+      ok: false,
+      permanent: res.status >= 400 && res.status < 500,
+      error: json.error || 'Could not start the upload.',
+    }
+  }
 
   // The route hands back a signed URL. Absolute already in current supabase-js,
   // but normalised here so a library change cannot silently produce a bad URL.

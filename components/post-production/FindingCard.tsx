@@ -39,6 +39,9 @@ export type UploadState = {
   error?: string
   retry?: () => void
   cancel?: () => void
+  /** Set when re-sending the same bytes cannot work (too big, wrong type). The
+   *  strip then offers a fresh pick instead of a retry — see UploadStrip. */
+  permanent?: boolean
 }
 
 export default function FindingCard({
@@ -155,7 +158,10 @@ export default function FindingCard({
           </div>
         )}
 
-        <UploadStrip upload={upload} />
+        <UploadStrip
+          upload={upload}
+          onPickAgain={upload?.kind === 'video' ? onVideo : onPhoto}
+        />
 
         <div className="flex gap-2">
           <button
@@ -228,18 +234,37 @@ export default function FindingCard({
  * ⚠️ The bar is driven by real XHR upload progress, not a timer. A fake bar that
  * reaches 90% and sits there is worse than no bar: it teaches people the number
  * is a lie, and then they ignore it when it matters. */
-function UploadStrip({ upload }: { upload?: UploadState }) {
+function UploadStrip({ upload, onPickAgain }: { upload?: UploadState; onPickAgain?: () => void }) {
   if (!upload) return null
   const noun = upload.kind === 'video' ? 'clip' : upload.kind === 'photo' ? 'photo' : 'recording'
 
   if (upload.error) {
+    /* ⚠️ NEVER offer a retry for a permanent failure.
+     *
+     * The first cut offered "Try that clip again" for everything, including a
+     * 184MB video. Tapping it re-ran the same size check, failed in under a
+     * millisecond, and re-rendered a byte-identical message — so the button was
+     * reported as broken. It was not; it was working perfectly and doing
+     * something useless. A file that is too big is too big on the second press
+     * too. The only move that helps is picking a different one. */
     return (
       <div className="rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50/60 dark:bg-rose-500/10 px-3 py-2.5">
         <p className="flex items-start gap-2 text-[12.5px] text-rose-700 dark:text-rose-300 leading-snug">
           <CircleAlert size={15} className="mt-0.5 flex-shrink-0" />
           <span>{upload.error}</span>
         </p>
-        {upload.retry && (
+        {upload.permanent ? (
+          onPickAgain && upload.kind !== 'audio' && (
+            <button
+              type="button"
+              onClick={onPickAgain}
+              className="mt-2 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-surface border border-hairline-strong text-[13px] font-medium text-ink-secondary hover:text-ink transition-colors"
+            >
+              {upload.kind === 'video' ? <Video size={14} /> : <Camera size={14} />}
+              Choose a different {noun}
+            </button>
+          )
+        ) : upload.retry ? (
           <button
             type="button"
             onClick={upload.retry}
@@ -247,7 +272,7 @@ function UploadStrip({ upload }: { upload?: UploadState }) {
           >
             <RotateCcw size={14} /> Try that {noun} again
           </button>
-        )}
+        ) : null}
       </div>
     )
   }

@@ -70,6 +70,13 @@ export default function WalkClient({
       setFindings={setFindings}
       transcriptionConfigured={transcriptionConfigured}
       onDiscarded={() => { setWalk(null); setFindings([]); router.refresh() }}
+      /* ⚠️ "Walk another unit" MUST clear this state, not navigate.
+       *
+       * It used to be router.push('/admin/engineering/post-production/walk') —
+       * the URL the page is ALREADY on. Next treats that as a no-op, the
+       * component never remounts, so the handed-over screen stayed up and the
+       * button read as broken. Reproduced on desktop 2026-09-01. */
+      onWalkAnother={() => { setWalk(null); setFindings([]); router.refresh() }}
     />
   )
 }
@@ -208,19 +215,24 @@ function UnitPicker({
 
 /* ── Step two: the walk ─────────────────────────────────────────────────────── */
 function Walking({
-  walk, findings, setFindings, transcriptionConfigured, onDiscarded,
+  walk, findings, setFindings, transcriptionConfigured, onDiscarded, onWalkAnother,
 }: {
   walk: PpWalkaround
   findings: Local[]
   setFindings: React.Dispatch<React.SetStateAction<Local[]>>
   transcriptionConfigured: boolean
   onDiscarded: () => void
+  onWalkAnother: () => void
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [handover, setHandover] = useState<{ submitted: number; grouped: number } | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  /* The queue is a force-dynamic page. On shop wifi it can take a few seconds to
+     answer, and a tap with NO feedback is indistinguishable from a dead button —
+     which is exactly how it was reported. Say something immediately. */
+  const [leaving, setLeaving] = useState(false)
   // findingId -> the upload in flight (or the one that failed, with its retry).
   const [uploads, setUploads] = useState<Record<string, UploadState>>({})
 
@@ -313,7 +325,15 @@ function Walking({
     if (!res.ok) {
       setUploads(u => ({
         ...u,
-        [findingId]: { kind, pct: 0, error: res.error, retry: () => { void send(findingId, kind, file) } },
+        [findingId]: {
+          kind,
+          pct: 0,
+          error: res.error,
+          permanent: res.permanent,
+          // Only a transient failure gets a retry — a permanent one re-runs the
+          // identical check and looks like a dead button. See UploadStrip.
+          retry: res.permanent ? undefined : () => { void send(findingId, kind, file) },
+        },
       }))
       return
     }
@@ -401,13 +421,16 @@ function Walking({
             <div className="mt-6 flex flex-col gap-2">
               <Link
                 href={`/admin/engineering/post-production?walk=${walk.id}&tab=all`}
-                className="h-11 rounded-lg bg-brand text-white text-[14px] font-medium hover:bg-brand-hover active:scale-[0.99] transition-all inline-flex items-center justify-center"
+                onClick={() => setLeaving(true)}
+                aria-busy={leaving}
+                className="h-11 rounded-lg bg-brand text-white text-[14px] font-medium hover:bg-brand-hover active:scale-[0.99] transition-all inline-flex items-center justify-center gap-2"
               >
-                See them in the queue
+                {leaving && <Loader2 size={15} className="animate-spin" />}
+                {leaving ? 'Opening the queue…' : 'See them in the queue'}
               </Link>
               <button
                 type="button"
-                onClick={() => router.push('/admin/engineering/post-production/walk')}
+                onClick={onWalkAnother}
                 className="h-11 rounded-lg border border-hairline-strong bg-surface text-[14px] font-medium text-ink-secondary hover:bg-surface-soft hover:text-ink transition-colors"
               >
                 Walk another unit
