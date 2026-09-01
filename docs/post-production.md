@@ -363,6 +363,44 @@ meeting was originally about — would need either the perm granted per person f
 `/admin/permissions`, or a token-based no-login capture page in the shape of `/board/<token>`.
 That was scoped and deferred.
 
+## ⛔ A token cannot take an opacity modifier
+
+`bg-ink/60`, `bg-ink/40`, `bg-surface/50`, `ring-brand/30` — **every one of these generates no
+CSS rule at all.** Each colour is `var(--ink)`, an opaque value, and Tailwind cannot inject an
+alpha channel into a var(). The element renders **fully transparent**, and nothing warns you:
+`tsc` passes, the build is green, the class name is right there in the source.
+
+Verified 2026-09-01 against the compiled CSS — `bg-ink/60`, `bg-ink/40`, `bg-surface/50` and
+`ring-brand/30` appear in **zero** files, while `bg-surface-soft` and `text-ink-muted` each
+appear in one. **Always assert on the compiled CSS, never on the class name.**
+
+**What it cost here.** The remove button on every media thumbnail used `bg-ink/60`, so it drew
+a near-white X with no backing — invisible on a light photo and completely unseeable on the
+video tile, which is itself a light surface. It was reported as *"there is no way to delete a
+clip, I have to delete the whole note"*. **The feature had been there the whole time.** Two
+confirm dialogs had no scrim for the same reason.
+
+**The fix is a token that carries its own alpha**, not an opacity modifier:
+
+```css
+--scrim: rgba(31, 30, 27, 0.45);   /* light */
+--scrim: rgba(0, 0, 0, 0.62);      /* dark — the surface ladder is already dim */
+```
+
+mapped as `scrim: 'var(--scrim)'` and used as `bg-scrim`. Where no transparency is actually
+needed, use the solid token (`bg-ink`) — it cannot fail this way.
+
+⚠️ **`ring-brand/30` is still dead across the app**, so focus rings render in Tailwind's default
+colour rather than brand green, against DESIGN.md. That is a separate sweep.
+
+### Removing an attachment is undoable
+
+Removal **detaches**; the object stays in the bucket (see the delete section above). So a
+mis-tap is recoverable, and now recoverable *in the UI* — `FindingCard` keeps the last removed
+`Media` and `onRestoreMedia` re-appends it. Worth it because the tap target is small, the phone
+is at arm's length beside a running unit, and the thing removed may be a two-minute clip that
+cost a walk to film.
+
 ## 🔴 A blocked microphone films SILENT VIDEO
 
 The single highest-cost failure this feature has, because it destroys the recording without

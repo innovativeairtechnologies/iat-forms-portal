@@ -18,6 +18,9 @@
   --hairline-strong: #d6d3cc;
   --ink: #1f1e1b;
   --ink-secondary: #57544d;
+  /* Modal scrim. Alpha is BAKED IN because `bg-ink/40` compiles to nothing —
+     Tailwind cannot add an alpha channel to an opaque var(). See DESIGN.md. */
+  --scrim: rgba(31, 30, 27, 0.45);
   --ink-muted: #8a867c;
   --ink-faint: #b3afa5;
   --brand: #089447;
@@ -68,6 +71,9 @@
   --hairline-strong: #3a404a;
   --ink: #f1f3f7;
   --ink-secondary: #aeb4bd;
+  /* Darker in dark mode: the surface ladder is already dim, so a light scrim
+     would not separate the dialog from the page behind it. */
+  --scrim: rgba(0, 0, 0, 0.62);
   --ink-muted: #7f858f;
   --ink-faint: #565c66;
   --brand: #1fb668;

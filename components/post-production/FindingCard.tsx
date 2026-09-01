@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Camera, CircleAlert, Loader2, MicOff, RotateCcw, Trash2, Video, X } from 'lucide-react'
 import {
   CATEGORIES, CATEGORY_LABELS, CATEGORY_SHORT, SEVERITIES, SEVERITY_BLURB, SEVERITY_LABELS,
@@ -50,7 +50,7 @@ export type UploadState = {
 
 export default function FindingCard({
   finding, number, transcriptionConfigured, uploadEndpoint, mediaSrcFor, upload,
-  onNote, onCategory, onSeverity, onPhoto, onVideo, onAudio, onRemoveMedia, onRemove,
+  onNote, onCategory, onSeverity, onPhoto, onVideo, onAudio, onRemoveMedia, onRestoreMedia, onRemove,
 }: {
   finding: Local
   number: number
@@ -66,9 +66,19 @@ export default function FindingCard({
   onVideo: () => void
   onAudio: (m: Media, previewUrl: string) => void
   onRemoveMedia: (path: string) => void
+  /** Put back what onRemoveMedia just took off. Symmetric on purpose — see the
+   *  undo strip below. */
+  onRestoreMedia: (m: Media) => void
   onRemove: () => void
 }) {
   const taRef = useRef<HTMLTextAreaElement | null>(null)
+
+  /* Removal is one tap on a small target held at arm's length next to a running
+     unit, and what it removes may be a two-minute clip that cost a walk to film.
+     The bytes survive in storage — removal only detaches — but nothing in the UI
+     could reach them again, so a mis-tap meant re-filming. This keeps the last
+     removal on hand until the next one. */
+  const [undoable, setUndoable] = useState<Media | null>(null)
 
   // Grow to fit. A dictated observation runs long, and a phone textarea that
   // scrolls internally hides the beginning of what somebody just said.
@@ -157,8 +167,37 @@ export default function FindingCard({
         {finding.media.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {finding.media.map(m => (
-              <MediaThumb key={m.path} media={m} src={mediaSrcFor(m.path)} onRemove={() => onRemoveMedia(m.path)} />
+              <MediaThumb
+                key={m.path}
+                media={m}
+                src={mediaSrcFor(m.path)}
+                onRemove={() => { setUndoable(m); onRemoveMedia(m.path) }}
+              />
             ))}
+          </div>
+        )}
+
+        {undoable && (
+          <div className="flex items-center gap-2 rounded-lg border border-hairline bg-surface-soft px-3 py-2">
+            <span className="text-[12.5px] text-ink-secondary">
+              {undoable.kind === 'video' ? 'Clip' : undoable.kind === 'photo' ? 'Photo' : 'Recording'} removed.
+            </span>
+            <span className="flex-1" />
+            <button
+              type="button"
+              onClick={() => { onRestoreMedia(undoable); setUndoable(null) }}
+              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-surface border border-hairline-strong text-[12.5px] font-medium text-ink-secondary hover:text-ink transition-colors"
+            >
+              <RotateCcw size={13} /> Undo
+            </button>
+            <button
+              type="button"
+              onClick={() => setUndoable(null)}
+              aria-label="Dismiss"
+              className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-ink-faint hover:text-ink transition-colors"
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
 
@@ -339,13 +378,23 @@ export function MediaThumb({
           <span className="text-[10px] tabular-nums">{clock(media.duration_ms)}</span>
         </div>
       )}
+      {/* 🔴 THIS BUTTON WAS INVISIBLE, NOT MISSING.
+           It read `bg-ink/60`, and every colour token is an opaque var(), so
+           Tailwind generated NO RULE — a light X floating with no backing, and on
+           the video tile (already a light surface) completely unseeable. It was
+           reported as "there is no way to delete a clip". Verified against the
+           compiled CSS: bg-ink/60 appears in zero files.
+
+           Solid `bg-ink` needs no alpha, so it cannot fail the same way. The
+           light ring keeps it legible against a dark photo, and 28px is a real
+           thumb target rather than a 24px corner pip. */}
       <button
         type="button"
         onClick={onRemove}
-        aria-label="Remove attachment"
-        className="absolute top-0.5 right-0.5 w-6 h-6 flex items-center justify-center rounded-full bg-ink/60 text-canvas"
+        aria-label="Remove this attachment"
+        className="absolute top-1 right-1 w-7 h-7 flex items-center justify-center rounded-full bg-ink text-canvas ring-1 ring-canvas active:scale-95 transition-transform"
       >
-        <X size={12} />
+        <X size={14} strokeWidth={2.5} />
       </button>
     </div>
   )

@@ -221,7 +221,7 @@ function QrPanel({
   const url = walkTagUrl(tag.token)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 print:static print:bg-transparent print:p-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 print:static print:bg-transparent print:p-0">
       <div className="w-full max-w-[420px] rounded-xl border border-hairline bg-surface print:border-0 print:max-w-none">
         <div className="flex items-center gap-3 px-5 h-14 border-b border-hairline print:hidden">
           <h2 className="text-[15px] font-semibold text-ink truncate flex-1">{tag.label}</h2>

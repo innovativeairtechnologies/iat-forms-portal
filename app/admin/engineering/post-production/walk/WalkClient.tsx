@@ -378,6 +378,22 @@ function Walking({
     await send(id, kind, file)
   }
 
+  /* Put an attachment back. The mirror of removeMedia, and the reason a mis-tap
+     on a small delete target is recoverable: removal only ever DETACHED the
+     media, so the bytes are still in the bucket and the same record can be
+     re-appended. */
+  const restoreMedia = (findingId: string, media: Media) => {
+    setFindings(cur => {
+      const next = cur.map(f =>
+        f.id === findingId && !f.media.some(m => m.path === media.path)
+          ? { ...f, media: [...f.media, media] }
+          : f)
+      const target = next.find(f => f.id === findingId)
+      if (target) void patch(findingId, { media: target.media })
+      return next
+    })
+  }
+
   const removeMedia = (findingId: string, path: string) => {
     setFindings(cur => {
       const next = cur.map(f => (f.id === findingId ? { ...f, media: f.media.filter(m => m.path !== path) } : f))
@@ -568,6 +584,7 @@ function Walking({
               onVideo={() => pickFile('video', f.id)}
               onAudio={(m, preview) => { freshUrls.current.set(m.path, preview); void attach(f.id, m) }}
               onRemoveMedia={p => removeMedia(f.id, p)}
+              onRestoreMedia={m => restoreMedia(f.id, m)}
               onRemove={() => removeFinding(f.id)}
             />
           ))}
@@ -591,7 +608,7 @@ function Walking({
         onChange={e => { void onFile(e.target.files?.[0]); e.target.value = '' }} />
 
       {confirmDiscard && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-scrim p-4">
           <div className="w-full max-w-[420px] rounded-xl border border-hairline bg-surface p-5">
             <h2 className="text-[16px] font-semibold text-ink">Leave this walkaround?</h2>
             <p className="mt-1.5 text-[13px] text-ink-secondary leading-relaxed">

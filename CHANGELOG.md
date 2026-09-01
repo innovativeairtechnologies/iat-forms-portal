@@ -34,6 +34,30 @@ canvas instead of the person — that is what once rendered Jerry 44px wide and 
 All six are now uniform 450px-tall trimmed derivatives in `public/bobbleheads/`, and
 Jerry's is a byte copy of the existing file, so his art did not change at all.
 
+## 2026-09-01 — Deleting one photo or clip, without throwing away the note
+
+**You could always remove a single attachment mid-note. You just could not see the button.**
+Each thumbnail carried a small X in its corner, styled with a translucent dark backing — and
+that backing was never drawn. Every colour in the design system is a token, and a token cannot
+take an opacity modifier, so the rule was silently dropped at build time. What remained was a
+near-white X floating on the picture with nothing behind it, and on the video tile — which is
+already a light panel — it was invisible outright. The reasonable conclusion was that the
+feature did not exist, and the only way out was deleting the whole note and starting again.
+
+The button is now solid, ringed so it reads against a dark photo, and a genuine thumb target
+rather than a corner pip.
+
+**And removing one is now undoable.** It is a single tap on a small target, on a phone held at
+arm's length next to a running unit, and what it removes may be a two-minute clip that cost a
+walk to film. Removing an attachment only ever detached it — the file itself was never
+destroyed — but nothing in the screen could reach it again. There is now an **Undo** beside the
+note for the last thing removed.
+
+**The same missing-backing bug had left two dialogs with no dimming behind them.** The confirm
+step when leaving a walkaround, and the one on shop tags, both sat on the page with nothing
+separating them from it. They now use a proper scrim token that carries its own transparency,
+which is the only form that survives the build.
+
 ## 2026-09-01 — A silent walkaround video, and the one setting behind it
 
 **A video filmed on the shop floor played back with no sound.** The clips were checked rather

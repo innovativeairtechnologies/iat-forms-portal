@@ -492,6 +492,22 @@ function Walking({
     await sendFile(id, kind, file)
   }
 
+  /* Mirror of removeMedia — removal only DETACHES, so the bytes are still in the
+     bucket and the same record can go back on. Matters more here than on the
+     admin walk: this is a phone held at arm's length next to a running unit, and
+     the person cannot sign in later to fix a mis-tap. */
+  const restoreMedia = (findingId: string, media: Media) => {
+    setFindings(cur => {
+      const next = cur.map(f =>
+        f.id === findingId && !f.media.some(m => m.path === media.path)
+          ? { ...f, media: [...f.media, media] }
+          : f)
+      const target = next.find(f => f.id === findingId)
+      if (target) void patch(findingId, { media: target.media })
+      return next
+    })
+  }
+
   const removeMedia = (findingId: string, path: string) => {
     setFindings(cur => {
       const next = cur.map(f => (f.id === findingId ? { ...f, media: f.media.filter(m => m.path !== path) } : f))
@@ -618,6 +634,7 @@ function Walking({
               onVideo={() => pickFile('video', f.id)}
               onAudio={(m, preview) => { freshUrls.current.set(m.path, preview); attach(f.id, m) }}
               onRemoveMedia={p => removeMedia(f.id, p)}
+              onRestoreMedia={m => restoreMedia(f.id, m)}
               onRemove={() => removeFinding(f.id)}
             />
           ))}

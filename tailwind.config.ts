@@ -13,6 +13,9 @@ const config: Config = {
         // Quiet Precision semantic tokens (DESIGN.md §2) — values live in globals.css
         // so they theme automatically. Components use these, never raw palettes.
         canvas: 'var(--canvas)',
+        // Pre-multiplied alpha — see --scrim in globals.css. Never write
+        // `bg-ink/40` for this; it generates no rule.
+        scrim: 'var(--scrim)',
         surface: {
           DEFAULT: 'var(--surface)',
           soft: 'var(--surface-soft)',
