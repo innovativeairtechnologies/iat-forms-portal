@@ -6,7 +6,7 @@ import {
   CalendarClock, FileText, Network, Wrench, GraduationCap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { FUN_FACTS, REFERRAL, type CoreValue } from '@/lib/home-content'
+import { FUN_FACTS, REFERRAL, type CoreValue, type Bobblehead } from '@/lib/home-content'
 import type { HomeData } from '@/lib/home-data'
 import type { LearnHeaderStats } from '@/lib/learn'
 import { StatusPill, type Tone } from '@/components/admin/list'
@@ -79,26 +79,15 @@ const PARTICLE_CSS = `
 .iat-particle{animation-timing-function:ease-in-out;animation-iteration-count:infinite;will-change:transform}
 @media (prefers-reduced-motion:reduce){.iat-particle{animation:none!important}}
 `
-/**
- * Jerry, greeting people from the left of the hero.
- *
- * Derived from public/jerry-bobble.webp, which is the master — but TRIMMED, and
- * that matters. The master is a 512x512 square in which the figure occupies only
- * 177x450, leaving ~165px of transparent padding either side. Pointed at the
- * master directly, a 128px box renders Jerry 44px wide and floating 7px off the
- * floor, because the box is sizing empty canvas rather than him.
- *
- * Regenerate after any art change:
- *   sharp('public/jerry-bobble.webp')
- *     .trim({ background: { r:0, g:0, b:0, alpha:0 }, threshold: 10 })
- *     .webp({ quality: 90, alphaQuality: 100 })
- *     .toFile('public/jerry-hero.webp')
- *
- * He is SIZED BY HEIGHT, not width: at aspect 0.39 a width-driven box would make
- * him taller than the hero itself. Source is 177px wide, so he is near his
- * resolution ceiling around 190px tall — going much larger will soften him.
- */
-const JERRY_HERO_SRC = '/jerry-hero.webp'
+/* The hero greeter used to be Jerry alone, at a module-level constant. It is now
+   one of six on a daily rotation — the roster, the art-regeneration recipe and
+   the reasons the figures are height-sized all live with the rotation itself, in
+   BOBBLEHEADS / bobbleheadOfDay() in lib/home-content.ts. HomeContent just draws
+   whoever it is handed.
+
+   public/jerry-hero.webp is left in place: it is the source of the byte-identical
+   public/bobbleheads/jerry.webp and is still what docs/company-home.md documents
+   as the trimmed derivative of the master. */
 
 const PARTICLES = [
   { left: '6%',  top: '14%', w: 22, o: 0.08, a: 1, d: '12s', dl: '0s' },
@@ -268,11 +257,13 @@ function TrainingStrip({ learn, href }: { learn: LearnHeaderStats; href: string 
 }
 
 export function HomeContent({
-  greeting, dateET, firstName, funIdx, data, name, profileHref, learn = null,
+  greeting, dateET, firstName, funIdx, data, name, profileHref, learn = null, bobblehead,
   unreadCount = 0, ticketCount = 0,
   coreValue, coreValueIndex, coreValueTotal,
 }: {
   greeting: string; dateET: string; firstName: string; funIdx: number; data: HomeData
+  /** Today's greeter — chosen by bobbleheadOfDay() in the caller. */
+  bobblehead: Bobblehead
   name: string; profileHref: string; unreadCount?: number; ticketCount?: number
   /** Per-user Learn snapshot; null when there's no signed-in user id. */
   learn?: LearnHeaderStats | null
@@ -361,16 +352,21 @@ export function HomeContent({
               ))}
             </div>
 
-            {/* Jerry stands at the left, delivering the greeting and presenting the
-                links to his right. Bottom-aligned so he stands ON the hero floor
-                rather than floating in it, and `items-end` on the row is what does
-                that — not a magic offset.
+            {/* The day's greeter stands at the left, delivering the greeting and
+                presenting the links alongside. Bottom-aligned so they stand ON the
+                hero floor rather than floating in it, and `items-end` on the row is
+                what does that — not a magic offset.
 
-                Hidden below `sm`: at phone width he would eat the greeting, and the
-                greeting is the part that has to survive. */}
+                Sized by HEIGHT with w-auto, so each figure keeps its own build: the
+                trimmed aspects run 0.39–0.60, meaning the widest greeter takes about
+                40px more of the row than the narrowest. The bubble is w-fit inside a
+                min-w-0 track, so it absorbs that rather than overflowing.
+
+                Hidden below `sm`: at phone width the figure would eat the greeting,
+                and the greeting is the part that has to survive. */}
             <div className="relative z-10 flex items-end gap-4 sm:gap-5">
               <img
-                src={JERRY_HERO_SRC}
+                src={bobblehead.src}
                 alt=""
                 aria-hidden
                 className="hidden h-[150px] w-auto flex-shrink-0 select-none self-end object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.30)] sm:block md:h-[176px] lg:h-[196px]"
@@ -379,14 +375,14 @@ export function HomeContent({
               <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-100">{dateET}</p>
 
-              {/* Jerry's speech bubble. The greeting stays the page's <h1> — it is
+              {/* The greeter's speech bubble. The greeting stays the page's <h1> — it is
                   still the heading of the page, it is simply him saying it, so the
                   document outline is unchanged for screen readers and search.
 
                   The tail is a rotated square sharing the bubble's background rather
                   than a bordered triangle, so it picks up light and dark from the
                   same token and can never end up a different white. It is hidden
-                  below `sm` alongside Jerry himself — a tail pointing at nobody
+                  below `sm` alongside the figure itself — a tail pointing at nobody
                   reads as a rendering fault. */}
               {/* w-fit + a max-width so the bubble hugs its text instead of
                   stretching the full width of the hero — a flex child fills its
@@ -406,11 +402,11 @@ export function HomeContent({
                   {greeting}{firstName ? `, ${firstName}` : ''}!
                 </h1>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-stone-600">
-                  I&apos;m Jerry — have a look around and see what&apos;s happening here at IAT.
+                  I&apos;m {bobblehead.name} — have a look around and see what&apos;s happening here at IAT.
                 </p>
               </div>
 
-              {/* The day's actual facts sit outside the bubble: Jerry gives the
+              {/* The day's actual facts sit outside the bubble: the greeter gives the
                   welcome, the page gives the data. Dropped the old "Here's what's
                   happening around IAT today" opener, which now duplicates his line. */}
               {(outCount > 0 || nh) && (

@@ -1,5 +1,5 @@
 import { getHomeData } from '@/lib/home-data'
-import { FUN_FACTS, coreValueOfWeek } from '@/lib/home-content'
+import { FUN_FACTS, coreValueOfWeek, bobbleheadOfDay } from '@/lib/home-content'
 import { getLearnHeaderStats, type LearnHeaderStats } from '@/lib/learn'
 import { HomeContent } from './HomeContent'
 import { prettyName, firstNameOf } from '@/lib/display-name'
@@ -41,6 +41,8 @@ export async function HomePage({
   const fullName = prettyName(name)
   const firstName = firstNameOf(name)
   const cv = coreValueOfWeek(now)
+  // Whose turn it is to greet the Hub today — see BOBBLEHEADS in lib/home-content.
+  const bh = bobbleheadOfDay(now)
 
   return (
     <HomeContent
@@ -48,6 +50,7 @@ export async function HomePage({
       data={data} name={fullName} profileHref={profileHref} learn={learn}
       unreadCount={unreadCount} ticketCount={ticketCount}
       coreValue={cv.value} coreValueIndex={cv.index} coreValueTotal={cv.total}
+      bobblehead={bh.person}
     />
   )
 }

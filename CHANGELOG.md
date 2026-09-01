@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-01 — Six of us take turns greeting the Hub
+
+**The Company Home hero now rotates through six bobbleheads, one a day.** Jerry had the
+job alone since August. He now shares it with Jacob, Kacy, Crystal, James and Devon, in
+that order, cycling forever. Whoever is up also says their own name in the speech bubble,
+so the greeting reads "I'm Crystal — have a look around" rather than leaving Jerry's name
+on somebody else's face.
+
+The handover happens at **midnight Eastern**, not UTC — a UTC rollover would have swapped
+the greeter at 7 or 8pm the evening before, mid-shift, which is the sort of thing that
+reads as a bug. The rotation sits next to the core-value rotation in `lib/home-content.ts`
+and is built the same way, counting calendar days from an anchor date. Re-point the anchor
+to put a particular person on a particular day; reorder the roster to change the sequence.
+
+Six people against a seven-day week means nobody is stuck being the Monday face — each
+person drifts a weekday earlier every cycle and everyone covers every weekday over six
+weeks.
+
+The art is trimmed the way Jerry's always had to be. Every master arrives with a wide
+transparent margin, and a height-sized box pointed at an untrimmed master sizes the empty
+canvas instead of the person — that is what once rendered Jerry 44px wide and floating.
+All six are now uniform 450px-tall trimmed derivatives in `public/bobbleheads/`, and
+Jerry's is a byte copy of the existing file, so his art did not change at all.
+
 ## 2026-09-01 — A silent walkaround video, and the one setting behind it
 
 **A video filmed on the shop floor played back with no sound.** The clips were checked rather

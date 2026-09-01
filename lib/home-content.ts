@@ -230,6 +230,82 @@ export function coreValueOfWeek(now: Date): { value: CoreValue; index: number; t
   return { value: CORE_VALUES[index], index, total }
 }
 
+/* ── The hero bobblehead ─────────────────────────────────────────────────────
+   Six of us take turns greeting the Hub — one per day, cycling forever, turning
+   over at midnight Eastern like the core value does.
+
+   ⚠️ ORDER IS LOAD-BEARING, in the same way CORE_VALUES is: the index counts
+   calendar days from BOBBLEHEAD_ANCHOR_DAY, so reordering this array changes who
+   greets people on a given day, and adding or removing someone reshuffles every
+   day after the anchor. Unlike the core value, nothing off this page depends on
+   the phase — it only has to look like a fair rotation — so a reshuffle is
+   cosmetic rather than a desync. Re-point the anchor if you want a specific
+   person on a specific day.
+
+   `name` is spoken in the hero speech bubble ("I'm Jacob — ..."), so it must be
+   the name that person actually goes by.
+
+   ⚠️ Each `src` is a TRIMMED derivative, and that matters. The master art is a
+   tall canvas in which the figure occupies only the middle, leaving a wide
+   transparent margin. Pointed at a master directly, a height-sized box renders
+   the figure small and floating because the box is sizing empty canvas rather
+   than the person. Regenerate one with:
+
+     sharp(master)
+       .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 10 })
+       .resize({ height: 450 })
+       .webp({ quality: 90, alphaQuality: 100 })
+       .toFile('public/bobbleheads/<slug>.webp')
+
+   They are SIZED BY HEIGHT in the hero, never width: the trimmed aspects run from
+   0.39 (Jerry, Kacy) to 0.60 (Jacob), so one width-driven box would make the
+   narrow ones tower over the hero and the wide ones shrink. 450px tall is a bit
+   over 2x the largest render, which is the resolution ceiling worth shipping.
+
+   Jerry's file is a byte copy of the original public/jerry-hero.webp, so his art
+   is unchanged from when it was the only one. */
+export type Bobblehead = { name: string; src: string }
+
+export const BOBBLEHEADS: Bobblehead[] = [
+  { name: 'Jacob',   src: '/bobbleheads/jacob.webp' },
+  { name: 'Kacy',    src: '/bobbleheads/kacy.webp' },
+  { name: 'Jerry',   src: '/bobbleheads/jerry.webp' },
+  { name: 'Crystal', src: '/bobbleheads/crystal.webp' },
+  { name: 'James',   src: '/bobbleheads/james.webp' },
+  { name: 'Devon',   src: '/bobbleheads/devon.webp' },
+]
+
+/** The day that shows BOBBLEHEADS[0], as a date in America/New_York. */
+export const BOBBLEHEAD_ANCHOR_DAY = '2026-09-01'
+
+/** Calendar days since the epoch for a Y/M/D. No clock time, so no DST to get
+ *  wrong — the same trick weekNumber() above uses, counted in days. */
+function dayNumber(y: number, m: number, d: number): number {
+  return Math.floor(Date.UTC(y, m - 1, d) / 86400000)
+}
+
+/**
+ * Whose turn it is today. Deterministic: everyone loading the Hub on the same
+ * Eastern calendar day sees the same person, and it advances at midnight ET.
+ * Pure (no server deps) — safe to call anywhere, including a test.
+ */
+export function bobbleheadOfDay(now: Date): { person: Bobblehead; index: number; total: number } {
+  const total = BOBBLEHEADS.length
+
+  // Read the date in Eastern time so the handover happens at the office's
+  // midnight, not UTC's — which is 7pm or 8pm the evening before, mid-shift.
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
+  const g = (t: string) => parseInt(p.find((x) => x.type === t)!.value, 10)
+  const today = dayNumber(g('year'), g('month'), g('day'))
+
+  const [ay, am, ad] = BOBBLEHEAD_ANCHOR_DAY.split('-').map(Number)
+
+  // The double modulo keeps it correct for dates BEFORE the anchor, where the
+  // difference is negative and a bare % would return a negative index.
+  const index = (((today - dayNumber(ay, am, ad)) % total) + total) % total
+  return { person: BOBBLEHEADS[index], index, total }
+}
+
 // Employee referral program shown on the Open Positions card.
 export const REFERRAL = {
   bonus: '$2,000',

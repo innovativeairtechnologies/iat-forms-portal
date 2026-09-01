@@ -208,21 +208,52 @@ environments just run the current `058_company_home.sql`.)
 2. Add the changelog line (`CHANGELOG.md` + `docs/06-changelog.md`).
 3. (Optional) point `IT_SUPPORT.email` at the real IT inbox; author content via `/admin/home-content`.
 
-### Jerry in the hero
+### The hero greeter — six bobbleheads on a daily rotation
 
-Jerry stands at the left of the greeting hero and speaks the greeting from a speech
-bubble. Two things about this are easy to break:
+Someone stands at the left of the greeting hero and speaks the greeting from a speech
+bubble. It used to be Jerry alone; since 2026-09-01 it is one of **six**, on a daily
+rotation: **Jacob · Kacy · Jerry · Crystal · James · Devon**.
 
-**The asset is trimmed, and must stay trimmed.** `public/jerry-bobble.webp` is the
-master: a 512×512 square in which the figure occupies only 177×450, with ~165px of
-transparent padding either side. Point the hero at the master directly and the box
-sizes the empty canvas rather than Jerry — he renders 44px wide and floats above the
-floor. `public/jerry-hero.webp` is the trimmed derivative; the regeneration command
-lives in a comment above `JERRY_HERO_SRC` in `app/home/HomeContent.tsx`.
+**The rotation lives in `lib/home-content.ts`**, next to the core-value rotation and
+built the same way: `BOBBLEHEADS` is the roster and `bobbleheadOfDay(now)` picks the
+day's entry. The index counts calendar days from `BOBBLEHEAD_ANCHOR_DAY` in
+`America/New_York`, so the handover is at the office's midnight rather than UTC's
+(which would be 7–8pm the evening before, mid-shift). The double modulo keeps the
+index valid for dates before the anchor. It is a pure function — safe to call in a
+test, no server dependency.
 
-He is **sized by height, not width**. At an aspect of 0.39 a width-driven box makes
-him taller than the hero itself. Source width is 177px, so ~196px tall is the
-resolution ceiling before he softens.
+⚠️ **Order is load-bearing**, as it is for `CORE_VALUES`: reordering the array changes
+who greets people on a given day, and adding or removing someone reshuffles every day
+after the anchor. Unlike the core value, nothing off this page depends on the phase —
+it only has to look like a fair rotation — so a reshuffle is cosmetic, not a desync.
+To put a specific person on a specific day, re-point the anchor.
+
+The cycle is six days against a seven-day week, so each person drifts one weekday
+earlier each cycle and everyone gets every weekday over six weeks. That is deliberate:
+nobody is permanently the Monday face or the Saturday face.
+
+`name` is **spoken aloud** in the bubble ("I'm Jacob — …"), so it has to be the name
+that person actually goes by.
+
+**The assets are trimmed, and must stay trimmed.** Each master is a tall canvas in
+which the figure occupies only the middle, leaving a wide transparent margin. Point
+the hero at a master directly and the box sizes the empty canvas rather than the
+person — the original Jerry rendered 44px wide and floated above the floor that way.
+`public/bobbleheads/*.webp` are the trimmed derivatives at a uniform 450px tall; the
+regeneration command lives in the comment above `BOBBLEHEADS`. `public/jerry-hero.webp`
+is kept as the source of the byte-identical `public/bobbleheads/jerry.webp`, so Jerry's
+art is unchanged from when he was the only greeter.
+
+They are **sized by height, not width**. The trimmed aspects run from 0.39 (Jerry,
+Kacy) to 0.60 (Jacob), so one width-driven box would make the narrow ones tower over
+the hero and shrink the wide ones. The consequence of height-sizing is that the widest
+greeter takes about 40px more of the hero row than the narrowest; the bubble is
+`w-fit` inside a `min-w-0` track and absorbs it. 450px tall is a little over 2× the
+largest render.
+
+⚠️ **A green build proves nothing here.** The prop is destructured, typed and passed —
+none of which means it is drawn. Check the compiled JSX (or the page) for an `<img>`
+whose `src` is `bobblehead.src` and a `{bobblehead.name}` child inside the greeting.
 
 **The greeting is still the page `<h1>`**, just rendered inside the bubble — the
 document outline is unchanged. Don't add a second heading outside it.
