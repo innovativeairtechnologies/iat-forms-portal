@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Camera, Loader2, Trash2, Video, X } from 'lucide-react'
+import { Camera, CircleAlert, Loader2, RotateCcw, Trash2, Video, X } from 'lucide-react'
 import {
   CATEGORIES, CATEGORY_LABELS, CATEGORY_SHORT, SEVERITIES, SEVERITY_BLURB, SEVERITY_LABELS,
   clock, humanBytes,
-  type Category, type Media, type PpFinding, type Severity,
+  type Category, type Media, type MediaKind, type PpFinding, type Severity,
 } from '@/lib/post-production'
 import VoiceNote from './VoiceNote'
 
@@ -25,8 +25,24 @@ import VoiceNote from './VoiceNote'
 
 export type Local = PpFinding & { _saving?: boolean; _error?: string }
 
+/** An upload in flight, or one that failed and can be retried.
+ *
+ *  🔴 `retry` exists because the alternative is asking somebody to film it
+ *  again. A 2-minute clip that dies at 90% on shop wifi has cost two minutes of
+ *  filming and two of waiting; making them re-shoot is how a tool stops being
+ *  used. The file is held in memory by the page so retry re-sends the SAME
+ *  bytes. */
+export type UploadState = {
+  kind: MediaKind
+  /** 0–1 while running. */
+  pct: number
+  error?: string
+  retry?: () => void
+  cancel?: () => void
+}
+
 export default function FindingCard({
-  finding, number, transcriptionConfigured, uploadEndpoint, mediaSrcFor,
+  finding, number, transcriptionConfigured, uploadEndpoint, mediaSrcFor, upload,
   onNote, onCategory, onSeverity, onPhoto, onVideo, onAudio, onRemoveMedia, onRemove,
 }: {
   finding: Local
@@ -34,6 +50,8 @@ export default function FindingCard({
   transcriptionConfigured: boolean
   uploadEndpoint: string
   mediaSrcFor: (path: string) => string
+  /** Set while an attachment for THIS finding is uploading or has failed. */
+  upload?: UploadState
   onNote: (note: string, source: PpFinding['note_source']) => void
   onCategory: (c: Category) => void
   onSeverity: (s: Severity) => void
@@ -137,6 +155,8 @@ export default function FindingCard({
           </div>
         )}
 
+        <UploadStrip upload={upload} />
+
         <div className="flex gap-2">
           <button
             type="button"
@@ -195,6 +215,60 @@ export default function FindingCard({
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+/* Progress, and a way back from a failure.
+ *
+ * A 135MB clip is roughly two minutes of 1080p, and on shop wifi that is a long
+ * silence. Without this the screen looks frozen, and the natural response —
+ * reload, or press the button again — is the one that loses the walk.
+ *
+ * ⚠️ The bar is driven by real XHR upload progress, not a timer. A fake bar that
+ * reaches 90% and sits there is worse than no bar: it teaches people the number
+ * is a lie, and then they ignore it when it matters. */
+function UploadStrip({ upload }: { upload?: UploadState }) {
+  if (!upload) return null
+  const noun = upload.kind === 'video' ? 'clip' : upload.kind === 'photo' ? 'photo' : 'recording'
+
+  if (upload.error) {
+    return (
+      <div className="rounded-lg border border-rose-200 dark:border-rose-500/30 bg-rose-50/60 dark:bg-rose-500/10 px-3 py-2.5">
+        <p className="flex items-start gap-2 text-[12.5px] text-rose-700 dark:text-rose-300 leading-snug">
+          <CircleAlert size={15} className="mt-0.5 flex-shrink-0" />
+          <span>{upload.error}</span>
+        </p>
+        {upload.retry && (
+          <button
+            type="button"
+            onClick={upload.retry}
+            className="mt-2 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-surface border border-hairline-strong text-[13px] font-medium text-ink-secondary hover:text-ink transition-colors"
+          >
+            <RotateCcw size={14} /> Try that {noun} again
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  const pct = Math.round(upload.pct * 100)
+  return (
+    <div className="rounded-lg border border-hairline bg-surface-soft px-3 py-2.5">
+      <p className="flex items-center gap-2 text-[12.5px] text-ink-secondary">
+        <Loader2 size={14} className="animate-spin flex-shrink-0" />
+        <span>Sending the {noun}…</span>
+        <span className="flex-1" />
+        <span className="tabular-nums font-medium text-ink">{pct}%</span>
+      </p>
+      <div className="mt-2 h-1.5 rounded-full bg-surface-strong overflow-hidden">
+        <div
+          className="h-full rounded-full bg-brand transition-[width] duration-200 ease-out"
+          style={{ width: `${Math.max(2, pct)}%` }}
+        />
+      </div>
+      {/* Said once, plainly. Leaving mid-upload is the thing that loses it. */}
+      <p className="mt-1.5 text-[11px] text-ink-faint">Keep this page open until it finishes.</p>
     </div>
   )
 }

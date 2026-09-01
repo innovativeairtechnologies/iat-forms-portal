@@ -6,7 +6,7 @@ import {
   Loader2, Pencil, Plus, Video, X,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
-import FindingCard, { type Local } from '@/components/post-production/FindingCard'
+import FindingCard, { type Local, type UploadState } from '@/components/post-production/FindingCard'
 import { uploadMedia } from '@/components/post-production/upload'
 import {
   WALK_ROLES, WALK_ROLE_LABELS, normalizeJobNumber,
@@ -342,6 +342,8 @@ function Walking({
   const [findings, setFindings] = useState<Local[]>(session.findings)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // findingId -> the upload in flight (or the one that failed, with its retry).
+  const [uploads, setUploads] = useState<Record<string, UploadState>>({})
 
   const photoRef = useRef<HTMLInputElement | null>(null)
   const videoRef = useRef<HTMLInputElement | null>(null)
@@ -416,29 +418,47 @@ function Walking({
     ;(kind === 'photo' ? photoRef : videoRef).current?.click()
   }
 
+  /* Send one file, reporting progress against its finding.
+   *
+   * ⚠️ The error lands on the FINDING with a retry that re-sends the SAME bytes,
+   * not in the page banner. This is the path most likely to fail — a phone at
+   * the far end of the shop, on the worst wifi in the building — and the person
+   * holding it has no portal account, no other way in, and no patience for
+   * filming a two-minute clip twice. */
+  const sendFile = useCallback(async (findingId: string, kind: 'photo' | 'video', file: File) => {
+    setUploads(u => ({ ...u, [findingId]: { kind, pct: 0 } }))
+    // The upload route refuses to mint a URL that is not destined for a note
+    // this tag owns, so the finding id travels with the request.
+    const res = await uploadMedia(kind, file, file.name || `${kind}.bin`, `${base}/upload-url`, {
+      extraBody: { finding_id: findingId },
+      onProgress: pct => setUploads(u => (u[findingId] ? { ...u, [findingId]: { ...u[findingId], pct } } : u)),
+    })
+    if (!res.ok) {
+      setUploads(u => ({
+        ...u,
+        [findingId]: { kind, pct: 0, error: res.error, retry: () => { void sendFile(findingId, kind, file) } },
+      }))
+      return
+    }
+    setUploads(u => { const { [findingId]: _gone, ...rest } = u; return rest })
+    if (res.previewUrl) freshUrls.current.set(res.media.path, res.previewUrl)
+    attach(findingId, res.media)
+  }, [base, attach])
+
   const onFile = async (file: File | undefined) => {
     const kind = pendingKindRef.current
     if (!file || !kind) return
-    setBusy(true); setError('')
+    setError('')
 
     let id = targetRef.current
     if (!id) {
+      setBusy(true)
       const created = await addFinding()
-      if (!created) { setBusy(false); return }
+      setBusy(false)
+      if (!created) return
       id = created.id
     }
-
-    // The upload route refuses to mint a URL that is not destined for a note
-    // this tag owns, so the finding id travels with the request.
-    const res = await uploadMedia(
-      kind, file, file.name || `${kind}.bin`,
-      `${base}/upload-url`,
-      { extraBody: { finding_id: id } },
-    )
-    setBusy(false)
-    if (!res.ok) { setError(res.error); return }
-    if (res.previewUrl) freshUrls.current.set(res.media.path, res.previewUrl)
-    attach(id, res.media)
+    await sendFile(id, kind, file)
   }
 
   const removeMedia = (findingId: string, path: string) => {
@@ -548,6 +568,7 @@ function Walking({
               transcriptionConfigured={transcriptionConfigured}
               uploadEndpoint={`${base}/upload-url`}
               mediaSrcFor={mediaSrcFor}
+              upload={uploads[f.id]}
               onNote={(note, source) => {
                 setFindings(cur => cur.map(x => (x.id === f.id ? { ...x, note, note_source: source } : x)))
                 queueSave(f.id, { note, note_source: source })

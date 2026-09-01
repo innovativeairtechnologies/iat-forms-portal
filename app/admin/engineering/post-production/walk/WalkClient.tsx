@@ -7,7 +7,7 @@ import {
   ArrowLeft, Camera, Video, Pencil, Plus, Check, Loader2, X,
   CircleAlert, CloudUpload, CheckCircle2,
 } from 'lucide-react'
-import FindingCard, { type Local } from '@/components/post-production/FindingCard'
+import FindingCard, { type Local, type UploadState } from '@/components/post-production/FindingCard'
 import { uploadMedia } from '@/components/post-production/upload'
 import {
   mediaSrc, normalizeJobNumber,
@@ -221,6 +221,8 @@ function Walking({
   const [error, setError] = useState('')
   const [handover, setHandover] = useState<{ submitted: number; grouped: number } | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  // findingId -> the upload in flight (or the one that failed, with its retry).
+  const [uploads, setUploads] = useState<Record<string, UploadState>>({})
 
   const photoRef = useRef<HTMLInputElement | null>(null)
   const videoRef = useRef<HTMLInputElement | null>(null)
@@ -297,23 +299,43 @@ function Walking({
     ;(kind === 'photo' ? photoRef : videoRef).current?.click()
   }
 
+  /* Send one file, reporting progress against its finding.
+   *
+   * ⚠️ Errors land on the FINDING, not in the page-level banner. A failure has
+   * to appear next to the thing it belongs to, with the retry that re-sends the
+   * SAME bytes — the file stays in memory precisely so nobody is asked to film
+   * a two-minute clip again because the wifi dropped at 90%. */
+  const send = useCallback(async (findingId: string, kind: 'photo' | 'video', file: File) => {
+    setUploads(u => ({ ...u, [findingId]: { kind, pct: 0 } }))
+    const res = await uploadMedia(kind, file, file.name || `${kind}.bin`, UPLOAD_URL, {
+      onProgress: pct => setUploads(u => (u[findingId] ? { ...u, [findingId]: { ...u[findingId], pct } } : u)),
+    })
+    if (!res.ok) {
+      setUploads(u => ({
+        ...u,
+        [findingId]: { kind, pct: 0, error: res.error, retry: () => { void send(findingId, kind, file) } },
+      }))
+      return
+    }
+    setUploads(u => { const { [findingId]: _gone, ...rest } = u; return rest })
+    freshUrls.current.set(res.media.path, res.previewUrl)
+    await attach(findingId, res.media)
+  }, [attach])
+
   const onFile = async (file: File | undefined) => {
     const kind = pendingKindRef.current
     if (!file || !kind) return
-    setBusy(true); setError('')
+    setError('')
 
     let id = targetRef.current
     if (!id) {
+      setBusy(true)
       const created = await addFinding()
-      if (!created) { setBusy(false); return }
+      setBusy(false)
+      if (!created) return
       id = created.id
     }
-
-    const res = await uploadMedia(kind, file, file.name || `${kind}.bin`, UPLOAD_URL)
-    setBusy(false)
-    if (!res.ok) { setError(res.error); return }
-    freshUrls.current.set(res.media.path, res.previewUrl)
-    await attach(id, res.media)
+    await send(id, kind, file)
   }
 
   const removeMedia = (findingId: string, path: string) => {
@@ -485,6 +507,7 @@ function Walking({
               transcriptionConfigured={transcriptionConfigured}
               uploadEndpoint={UPLOAD_URL}
               mediaSrcFor={mediaSrcFor}
+              upload={uploads[f.id]}
               onNote={(note, source) => {
                 setFindings(cur => cur.map(x => (x.id === f.id ? { ...x, note, note_source: source } : x)))
                 queueSave(f.id, { note, note_source: source })

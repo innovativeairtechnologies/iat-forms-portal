@@ -1,17 +1,35 @@
 'use client'
 
-import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { resizeImage } from '@/lib/image-resize'
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, humanBytes, type Media, type MediaKind } from '@/lib/post-production'
 
 /* Getting a photo, a clip or a voice note off a phone and into the private
    bucket.
 
-   Two steps, always: ask an admin-gated route for a one-shot signed upload URL,
-   then push the bytes STRAIGHT to Storage. The bytes never transit a Vercel
-   function — that request body is capped at ~4.5MB, enforced before route code
-   runs, so a size check inside the route would never even execute. One phone
-   photo clears it; a video is not close. */
+   Two steps, always: ask a gated route for a one-shot signed upload URL, then
+   push the bytes STRAIGHT to Storage. The bytes never transit a Vercel function
+   — that request body is capped at ~4.5MB, enforced before route code runs, so
+   a size check inside the route would never even execute. One phone photo
+   clears it; a 2-minute video is not close.
+
+   ── Why XHR rather than supabase-js uploadToSignedUrl ──────────────────────
+   PROGRESS. `fetch` cannot report upload progress; XMLHttpRequest can, via
+   `xhr.upload.onprogress`. At 50MB that was a nicety. At 135MB — a 2-minute
+   1080p clip — a silent two-minute wait on shop wifi is indistinguishable from
+   a hang, and the person gives up or reloads and loses the walk.
+
+   Verified 2026-09-01 that a plain PUT to the signed URL, carrying only the
+   anon key and the token already in the query string, returns 200. So dropping
+   the client library here costs nothing: the signed URL is just an endpoint.
+
+   ⚠️ Resumable (TUS) uploads were investigated and are NOT usable here. Probed
+   against the live project: the signed-upload token is refused by the resumable
+   endpoint with "new row violates row-level security policy", and the
+   post-production bucket carries no storage policies at all (service-role only,
+   deliberately). Making resumable work would mean either opening the bucket to
+   the anon key — which ships in every browser bundle — or proxying every chunk
+   through our own routes. Progress plus retry covers the real pain far more
+   cheaply. See docs/post-production.md. */
 
 export type UploadResult =
   | {
@@ -24,6 +42,51 @@ export type UploadResult =
     }
   | { ok: false; error: string }
 
+export type UploadOptions = {
+  duration_ms?: number
+  /** Merged into the upload-url request. The token route requires `finding_id`
+   *  so it can refuse to mint a URL for bytes that are not destined for a note
+   *  that sticker owns; the admin route ignores it. */
+  extraBody?: Record<string, unknown>
+  /** 0–1. Fires many times a second during the transfer. */
+  onProgress?: (fraction: number) => void
+}
+
+/** PUT the bytes with progress. Resolves to null on success, or a message.
+ *
+ *  Kept separate so the retry path re-runs ONLY this half — a retry must not
+ *  mint a second signed URL and leave the first one's half-written object
+ *  behind. */
+function putWithProgress(url: string, blob: Blob, onProgress?: (f: number) => void): Promise<string | null> {
+  return new Promise(resolve => {
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', url, true)
+    xhr.setRequestHeader('apikey', anon)
+    if (blob.type) xhr.setRequestHeader('Content-Type', blob.type)
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total)
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) { onProgress?.(1); resolve(null) }
+      // Storage answers with JSON; show its message when there is one, because
+      // "upload failed" tells somebody standing at a unit nothing.
+      else {
+        let msg = `The upload failed (HTTP ${xhr.status}).`
+        try { const j = JSON.parse(xhr.responseText); if (j?.message) msg = j.message } catch { /* keep the default */ }
+        resolve(msg)
+      }
+    }
+    // A dropped connection mid-transfer lands here, which on shop wifi is the
+    // common case rather than the exotic one.
+    xhr.onerror = () => resolve('The connection dropped before the upload finished.')
+    xhr.ontimeout = () => resolve('The upload timed out.')
+    xhr.onabort = () => resolve('The upload was cancelled.')
+    xhr.send(blob)
+  })
+}
+
 export async function uploadMedia(
   kind: MediaKind,
   file: Blob,
@@ -34,13 +97,7 @@ export async function uploadMedia(
    *  Passing the endpoint in is what lets the UI be shared without either page
    *  inheriting the other's gate. */
   endpoint: string,
-  extra: {
-    duration_ms?: number
-    /** Merged into the upload-url request. The token route requires
-     *  `finding_id` so it can refuse to mint a URL for bytes that are not
-     *  destined for a note that sticker owns; the admin route ignores it. */
-    extraBody?: Record<string, unknown>
-  } = {},
+  extra: UploadOptions = {},
 ): Promise<UploadResult> {
   let payload: Blob = file
   let name = filename
@@ -72,12 +129,7 @@ export async function uploadMedia(
      * one," which sent somebody looking for a fault after a SIX-SECOND clip.
      * The length was never the problem: a phone set to 4K/60 writes roughly as
      * much in ten seconds as 1080p/30 does in a minute, so "shoot a shorter one"
-     * is advice that cannot work and reads as the app being broken.
-     *
-     * The number is what makes it actionable — 220 MB on screen immediately
-     * explains itself, and the fix is a camera setting rather than a shorter
-     * take. iOS prints the per-minute size for each option on the very screen
-     * this points at, so the phone is its own reference. */
+     * is advice that cannot work and reads as the app being broken. */
     return {
       ok: false,
       error: kind === 'video'
@@ -85,6 +137,8 @@ export async function uploadMedia(
         : `That file is ${humanBytes(payload.size)} and the limit is ${MAX_UPLOAD_LABEL}.`,
     }
   }
+
+  extra.onProgress?.(0)
 
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -94,13 +148,15 @@ export async function uploadMedia(
   const json = await res.json().catch(() => ({}))
   if (!res.ok) return { ok: false, error: json.error || 'Could not start the upload.' }
 
-  const sb = createSupabaseBrowser()
-  const { error } = await sb.storage
-    .from('post-production')
-    .uploadToSignedUrl(json.path, json.token, payload, {
-      contentType: payload.type || undefined,
-    })
-  if (error) return { ok: false, error: error.message || 'The upload did not finish.' }
+  // The route hands back a signed URL. Absolute already in current supabase-js,
+  // but normalised here so a library change cannot silently produce a bad URL.
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '')
+  const signed: string = json.signedUrl?.startsWith('http')
+    ? json.signedUrl
+    : `${base}/storage/v1${json.signedUrl ?? ''}`
+
+  const failure = await putWithProgress(signed, payload, extra.onProgress)
+  if (failure) return { ok: false, error: failure }
 
   return {
     ok: true,

@@ -59,5 +59,6 @@ export async function POST(req: NextRequest) {
     console.error('[post-production/upload-url] signed-url error:', error)
     return NextResponse.json({ error: 'Could not start the upload.' }, { status: 500 })
   }
-  return NextResponse.json({ path, token: data.token })
+  // signedUrl too: the client PUTs to it with XHR so it can report progress.
+  return NextResponse.json({ path, token: data.token, signedUrl: data.signedUrl })
 }
