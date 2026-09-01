@@ -8,6 +8,7 @@ import {
   CircleAlert, CloudUpload, CheckCircle2,
 } from 'lucide-react'
 import FindingCard, { type Local, type UploadState } from '@/components/post-production/FindingCard'
+import MicBlockedBanner from '@/components/post-production/MicBlockedBanner'
 import { uploadMedia } from '@/components/post-production/upload'
 import {
   mediaSrc, normalizeJobNumber,
@@ -444,6 +445,7 @@ function Walking({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-canvas">
+      <MicBlockedBanner />
       <div className="flex-shrink-0 border-b border-hairline bg-surface">
         <div className="mx-auto w-full max-w-[720px] px-4 py-3 flex items-center gap-3">
           <button

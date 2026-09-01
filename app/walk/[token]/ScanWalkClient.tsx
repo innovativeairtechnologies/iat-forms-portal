@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import FindingCard, { type Local, type UploadState } from '@/components/post-production/FindingCard'
+import MicBlockedBanner from '@/components/post-production/MicBlockedBanner'
 import { uploadMedia } from '@/components/post-production/upload'
 import {
   WALK_ROLES, WALK_ROLE_LABELS, normalizeJobNumber,
@@ -533,6 +534,8 @@ function Walking({
             Send{usable.length > 0 ? ` (${usable.length})` : ''}
           </button>
         </div>
+
+        <MicBlockedBanner />
 
         {/* Add another one without scrolling to the bottom of a long walk. */}
         <div className="mx-auto w-full max-w-[720px] px-4 pb-3">

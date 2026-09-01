@@ -172,9 +172,32 @@ export default function VoiceNote({
     setError(''); setHeard('')
     let stream: MediaStream
     try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('unsupported', 'NotSupportedError')
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch {
-      setError('The microphone is not available. Type the note, or use the microphone key on your keyboard.')
+    } catch (err) {
+      /* ⚠️ SAY WHICH FAILURE IT IS.
+       *
+       * This used to catch without binding the error and print one sentence —
+       * "The microphone is not available" — for permission denied, no hardware,
+       * a mic held by another app, and an insecure context alike. On 2026-09-01
+       * somebody hit it on an iPhone and there was nothing to act on.
+       *
+       * It matters more than a nicer message: a denied microphone ALSO makes the
+       * camera record a SILENT video, because the page-initiated capture has no
+       * audio to record. Both of that day's reports — "no sound on the clip" and
+       * "microphone is not available" — were one permission, and the clips were
+       * confirmed to carry no audio track at all. Naming the cause here is what
+       * connects the two for the next person. */
+      const name = err instanceof DOMException ? err.name : ''
+      setError(
+        name === 'NotAllowedError' || name === 'SecurityError'
+          ? 'The microphone is blocked for this site — which also means video records with no sound. On an iPhone: tap “aA” in the address bar › Website Settings › Microphone › Allow, then check Settings › Safari › Microphone. On Android Chrome: the padlock in the address bar › Permissions.'
+          : name === 'NotFoundError' || name === 'OverconstrainedError'
+            ? 'No microphone was found on this device. Type the note instead.'
+            : name === 'NotReadableError' || name === 'AbortError'
+              ? 'Another app is using the microphone. Close it — a call or a voice memo will hold it — and tap record again.'
+              : 'This browser cannot record audio here. Type the note, or use the microphone key on your keyboard.',
+      )
       return
     }
     streamRef.current = stream
