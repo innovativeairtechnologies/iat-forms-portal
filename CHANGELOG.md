@@ -26,14 +26,23 @@ tell. It is discovered days later by an engineer opening the finding.
 **The recorder now says which failure it is.** It had been catching every microphone failure —
 permission denied, no hardware at all, a mic already held by another app, an insecure page —
 and printing the same sentence for all four. Nothing in it was actionable. It now names the
-cause, gives the iPhone and Android steps for a blocked microphone, and says plainly that
-video will be silent too.
+cause and says plainly that video will be silent too.
 
-**Better than a good error message is not needing one.** Both walk screens now check the
-microphone up front and warn *before* anybody films. The warning appears only when the browser
-gives a definite "blocked" — never on the ordinary "not asked yet" state, because a banner
-that cries wolf is one people stop reading. It also never triggers a permission prompt just
-for opening the page.
+**And it gives instructions for the browser actually in your hand.** The first version of this
+advice pointed at Safari's menus. The person who hit the bug was using DuckDuckGo, where that
+menu does not exist — so the instructions were worse than none, because they send somebody
+hunting for a setting that is not there and they conclude the app is broken. The steps are now
+built for Safari, Chrome, DuckDuckGo, Firefox, Edge, Samsung Internet and Brave, on iPhone,
+Android and desktop, and they name the app to open. Where a browser has no menu path worth
+stating outright, it says to reload and allow when asked, which is true everywhere.
+
+**Best of all is not needing the message.** Both walk screens warn *before* anybody films, and
+the clip itself is now checked for an audio track as it is picked — so a silent video is caught
+at the unit, while re-filming still costs a minute, rather than days later on a unit that has
+shipped. That check reads the file rather than asking the browser, which matters because the
+permission API the pre-emptive banner relies on is not supported in every browser people here
+actually use. Both stay quiet unless the answer is definite: a warning that cries wolf is one
+people stop reading.
 
 ## 2026-09-01 — Two dead buttons on the walkaround, and one that only looked dead
 

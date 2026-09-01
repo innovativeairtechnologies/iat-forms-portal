@@ -8,6 +8,8 @@ import {
 import Logo from '@/components/Logo'
 import FindingCard, { type Local, type UploadState } from '@/components/post-production/FindingCard'
 import MicBlockedBanner from '@/components/post-production/MicBlockedBanner'
+import { hasAudioTrack } from '@/lib/has-audio-track'
+import { micHelpLine } from '@/lib/mic-help'
 import { uploadMedia } from '@/components/post-production/upload'
 import {
   WALK_ROLES, WALK_ROLE_LABELS, normalizeJobNumber,
@@ -428,6 +430,23 @@ function Walking({
    * filming a two-minute clip twice. */
   const sendFile = useCallback(async (findingId: string, kind: 'photo' | 'video', file: File) => {
     setUploads(u => ({ ...u, [findingId]: { kind, pct: 0 } }))
+
+    /* 🔴 A blocked microphone makes the phone film with NO AUDIO TRACK, and
+       nothing about the clip looks wrong to whoever shot it. Say so here, at the
+       unit, while re-filming still costs a minute — not days later when an
+       engineer opens a silent finding on a unit that has shipped.
+       This matters more on THIS page than on the admin one: a scanner is an
+       electrician or a tester who opened the site once off a sticker, so a
+       blocked microphone is the likely default rather than the exception.
+       null means "cannot tell": stay quiet rather than accuse. */
+    let warning: string | undefined
+    if (kind === 'video') {
+      const audio = await hasAudioTrack(file)
+      if (audio === false) {
+        warning = `This clip has no sound — the microphone is blocked for this site. It is uploading anyway. ${micHelpLine(navigator.userAgent)}`
+      }
+    }
+
     // The upload route refuses to mint a URL that is not destined for a note
     // this tag owns, so the finding id travels with the request.
     const res = await uploadMedia(kind, file, file.name || `${kind}.bin`, `${base}/upload-url`, {
@@ -449,7 +468,10 @@ function Walking({
       }))
       return
     }
-    setUploads(u => { const { [findingId]: _gone, ...rest } = u; return rest })
+    // A silent clip keeps its warning on screen after a successful upload —
+    // that is the whole point, since nothing else signals the problem.
+    if (warning) setUploads(u => ({ ...u, [findingId]: { kind, pct: 1, warning } }))
+    else setUploads(u => { const { [findingId]: _gone, ...rest } = u; return rest })
     if (res.previewUrl) freshUrls.current.set(res.media.path, res.previewUrl)
     attach(findingId, res.media)
   }, [base, attach])

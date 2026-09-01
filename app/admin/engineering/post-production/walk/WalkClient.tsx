@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 import FindingCard, { type Local, type UploadState } from '@/components/post-production/FindingCard'
 import MicBlockedBanner from '@/components/post-production/MicBlockedBanner'
+import { hasAudioTrack } from '@/lib/has-audio-track'
+import { micHelpLine } from '@/lib/mic-help'
 import { uploadMedia } from '@/components/post-production/upload'
 import {
   mediaSrc, normalizeJobNumber,
@@ -320,6 +322,20 @@ function Walking({
    * a two-minute clip again because the wifi dropped at 90%. */
   const send = useCallback(async (findingId: string, kind: 'photo' | 'video', file: File) => {
     setUploads(u => ({ ...u, [findingId]: { kind, pct: 0 } }))
+
+    /* 🔴 A blocked microphone makes the phone film with NO AUDIO TRACK, and
+       nothing about the clip looks wrong to whoever shot it. Say so here, at the
+       unit, while re-filming still costs a minute — not days later when an
+       engineer opens a silent finding on a unit that has shipped.
+       null means "cannot tell": stay quiet rather than accuse. */
+    let warning: string | undefined
+    if (kind === 'video') {
+      const audio = await hasAudioTrack(file)
+      if (audio === false) {
+        warning = `This clip has no sound — the microphone is blocked for this site. It is uploading anyway. ${micHelpLine(navigator.userAgent)}`
+      }
+    }
+
     const res = await uploadMedia(kind, file, file.name || `${kind}.bin`, UPLOAD_URL, {
       onProgress: pct => setUploads(u => (u[findingId] ? { ...u, [findingId]: { ...u[findingId], pct } } : u)),
     })
@@ -338,7 +354,10 @@ function Walking({
       }))
       return
     }
-    setUploads(u => { const { [findingId]: _gone, ...rest } = u; return rest })
+    // A silent clip keeps its warning on screen after a successful upload —
+    // that is the whole point, since nothing else signals the problem.
+    if (warning) setUploads(u => ({ ...u, [findingId]: { kind, pct: 1, warning } }))
+    else setUploads(u => { const { [findingId]: _gone, ...rest } = u; return rest })
     freshUrls.current.set(res.media.path, res.previewUrl)
     await attach(findingId, res.media)
   }, [attach])

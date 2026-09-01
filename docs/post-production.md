@@ -392,6 +392,42 @@ Two rules for that banner, both deliberate:
 - **It must never call `getUserMedia`.** That would raise a permission prompt merely for opening
   the page, which is how people learn to hit Deny.
 
+### Write the instructions for the browser in their hand
+
+⛔ **The first version of this advice gave Safari's "aA › Website Settings" path to everyone.**
+The person who hit the bug was on **DuckDuckGo**, where that menu does not exist. Wrong
+instructions are worse than general ones: they send somebody hunting for a setting that is not
+there, and they conclude the app is broken rather than the advice.
+
+`lib/mic-help.ts` reads the real user agent and returns steps for Safari, Chrome, DuckDuckGo,
+Firefox, Edge, Opera, Samsung Internet and Brave across iPhone, Android and desktop. Two rules
+in it are load-bearing:
+
+- **Test the wrappers before Safari.** Every iOS browser carries `Safari` in its user agent, so
+  checking for Safari first reports every one of them as Safari. `CriOS`, `FxiOS`, `EdgiOS` and
+  `DuckDuckGo` are matched first, and a unit test asserts that Safari-only wording never reaches
+  another browser.
+- **Only state a menu path that is known to exist.** The OS step — Settings › *the app* ›
+  Microphone — is correct for any iOS app whatever it is, so it is always given. The in-browser
+  step is spelled out only for Safari and Android Chrome; everywhere else it says to reload and
+  allow when asked, which is true everywhere and cannot mislead.
+
+### Check the clip, not just the permission
+
+`lib/has-audio-track.ts` parses the uploaded file for a `soun` handler and warns at the unit
+when there is none. This is **not** redundant with the pre-emptive banner:
+`permissions.query({name:'microphone'})` is unsupported in several browsers in use here and
+throws on older WebKit, so the banner can be silent on exactly the device that has the problem.
+Reading the bytes asks about the file instead of the browser, and works everywhere.
+
+It returns **null for "cannot tell"** — a non-ISO-BMFF container, an unreadable file, or a
+parse that recognised nothing — and callers must stay quiet on null. Telling somebody a good
+clip is silent is how a warning gets ignored on the day it is right.
+
+⚠️ Verified against real uploads, with a **positive control**: the three known-silent clips
+return false, two real voice notes return true, and random bytes return null. Without the
+control, "everything is silent" would be indistinguishable from a detector that always says so.
+
 **Never catch a media error without binding it.** `VoiceNote` did — one `catch {}` printing
 "The microphone is not available" for permission-denied, no hardware, a mic held by another
 app, and an insecure context alike. Four causes, four different fixes, one useless sentence. It

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { MicOff } from 'lucide-react'
+import { micHelp } from '@/lib/mic-help'
 
 /* Warn BEFORE somebody films a silent walkaround.
  *
@@ -25,9 +26,14 @@ import { MicOff } from 'lucide-react'
  * prompt nobody asked for just by opening the page. */
 export default function MicBlockedBanner() {
   const [denied, setDenied] = useState(false)
+  // Read the UA in an effect: it does not exist during the server render, and
+  // reading it in useState's initialiser would make the first client render
+  // disagree with the HTML.
+  const [steps, setSteps] = useState<string[]>([])
 
   useEffect(() => {
     let cancelled = false
+    setSteps(micHelp(navigator.userAgent).steps)
     const perms = navigator.permissions
     if (!perms?.query) return
 
@@ -51,16 +57,19 @@ export default function MicBlockedBanner() {
   return (
     <div className="mx-auto w-full max-w-[720px] px-4 pt-3">
       <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2.5">
-        <p className="flex items-start gap-2 text-[12.5px] text-amber-800 dark:text-amber-200 leading-snug">
+        <div className="flex items-start gap-2 text-[12.5px] text-amber-800 dark:text-amber-200 leading-snug">
           <MicOff size={15} className="mt-0.5 flex-shrink-0" />
-          <span>
-            <strong className="font-semibold">The microphone is blocked for this site.</strong>{' '}
-            Voice notes will not record, and <strong className="font-semibold">video will film
-            without sound</strong>. On an iPhone: tap <strong className="font-semibold">aA</strong> in
-            the address bar › Website Settings › Microphone › Allow, and check Settings › Safari ›
-            Microphone. Photos and typed notes work either way.
-          </span>
-        </p>
+          <div>
+            <p>
+              <strong className="font-semibold">The microphone is blocked for this site.</strong>{' '}
+              Voice notes will not record, and{' '}
+              <strong className="font-semibold">video will film without sound.</strong>
+            </p>
+            <ol className="mt-1.5 space-y-0.5 list-decimal list-inside">
+              {steps.map(s => <li key={s}>{s}</li>)}
+            </ol>
+          </div>
+        </div>
       </div>
     </div>
   )

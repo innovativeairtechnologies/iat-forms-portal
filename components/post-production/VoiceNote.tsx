@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Square, Loader2 } from 'lucide-react'
 import { clock, type Media } from '@/lib/post-production'
+import { micHelpLine } from '@/lib/mic-help'
 import { extForMime, uploadMedia } from './upload'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -189,9 +190,13 @@ export default function VoiceNote({
        * confirmed to carry no audio track at all. Naming the cause here is what
        * connects the two for the next person. */
       const name = err instanceof DOMException ? err.name : ''
+      /* ⚠️ The steps come from micHelp(), which reads the ACTUAL browser. The
+       * first version of this message gave Safari's "aA › Website Settings"
+       * path to everyone; the person who hit it was on DuckDuckGo, where that
+       * menu does not exist, so the advice was worse than none. */
       setError(
         name === 'NotAllowedError' || name === 'SecurityError'
-          ? 'The microphone is blocked for this site — which also means video records with no sound. On an iPhone: tap “aA” in the address bar › Website Settings › Microphone › Allow, then check Settings › Safari › Microphone. On Android Chrome: the padlock in the address bar › Permissions.'
+          ? `The microphone is blocked for this site, which also means video records with no sound. ${micHelpLine(navigator.userAgent)}`
           : name === 'NotFoundError' || name === 'OverconstrainedError'
             ? 'No microphone was found on this device. Type the note instead.'
             : name === 'NotReadableError' || name === 'AbortError'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Camera, CircleAlert, Loader2, RotateCcw, Trash2, Video, X } from 'lucide-react'
+import { Camera, CircleAlert, Loader2, MicOff, RotateCcw, Trash2, Video, X } from 'lucide-react'
 import {
   CATEGORIES, CATEGORY_LABELS, CATEGORY_SHORT, SEVERITIES, SEVERITY_BLURB, SEVERITY_LABELS,
   clock, humanBytes,
@@ -42,6 +42,10 @@ export type UploadState = {
   /** Set when re-sending the same bytes cannot work (too big, wrong type). The
    *  strip then offers a fresh pick instead of a retry — see UploadStrip. */
   permanent?: boolean
+  /** A non-fatal problem with a file that uploaded FINE — today, a video with no
+   *  audio track. Unlike an error this persists after success, because the whole
+   *  point is that nothing else about the clip looks wrong. */
+  warning?: string
 }
 
 export default function FindingCard({
@@ -273,6 +277,20 @@ function UploadStrip({ upload, onPickAgain }: { upload?: UploadState; onPickAgai
             <RotateCcw size={14} /> Try that {noun} again
           </button>
         ) : null}
+      </div>
+    )
+  }
+
+  /* A clip that uploaded perfectly and has no sound in it. Deliberately NOT an
+     error — the file is fine and worth keeping — but it must be said now, at the
+     unit, while re-filming is still possible. */
+  if (upload.warning) {
+    return (
+      <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2.5">
+        <p className="flex items-start gap-2 text-[12.5px] text-amber-800 dark:text-amber-200 leading-snug">
+          <MicOff size={15} className="mt-0.5 flex-shrink-0" />
+          <span>{upload.warning}</span>
+        </p>
       </div>
     )
   }
