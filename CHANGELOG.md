@@ -10,6 +10,31 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-01 — A silent walkaround video, and the one setting behind it
+
+**A video filmed on the shop floor played back with no sound.** The clips were checked rather
+than guessed at: three of them pulled straight out of storage carry a video track and no audio
+track *at all* — no audio codec, nothing. The phone recorded silence. Nothing was lost in the
+upload or the playback, which is where the fault would normally be looked for first.
+
+The cause arrived with the second report, half an hour later: the voice note said the
+microphone was not available. **A blocked microphone does both.** It refuses the voice
+recorder, and it makes the phone's camera film without an audio track — so a walkaround looks
+completely normal while it records nothing anybody said. The person filming has no way to
+tell. It is discovered days later by an engineer opening the finding.
+
+**The recorder now says which failure it is.** It had been catching every microphone failure —
+permission denied, no hardware at all, a mic already held by another app, an insecure page —
+and printing the same sentence for all four. Nothing in it was actionable. It now names the
+cause, gives the iPhone and Android steps for a blocked microphone, and says plainly that
+video will be silent too.
+
+**Better than a good error message is not needing one.** Both walk screens now check the
+microphone up front and warn *before* anybody films. The warning appears only when the browser
+gives a definite "blocked" — never on the ordinary "not asked yet" state, because a banner
+that cries wolf is one people stop reading. It also never triggers a permission prompt just
+for opening the page.
+
 ## 2026-09-01 — Two dead buttons on the walkaround, and one that only looked dead
 
 **"Walk another unit" did nothing at all.** It navigated to the address the page was already

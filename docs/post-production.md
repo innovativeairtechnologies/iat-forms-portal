@@ -363,6 +363,42 @@ meeting was originally about — would need either the perm granted per person f
 `/admin/permissions`, or a token-based no-login capture page in the shape of `/board/<token>`.
 That was scoped and deferred.
 
+## 🔴 A blocked microphone films SILENT VIDEO
+
+The single highest-cost failure this feature has, because it destroys the recording without
+looking like anything is wrong.
+
+**Verified 2026-09-01, by pulling the files rather than reasoning about them.** Three `.mov`
+uploads carry a `vide` handler and `avc1` video and **no `soun` handler and no audio codec of
+any kind**. The phone recorded silence. Storage, the signed upload and playback were all
+innocent — the detail page already renders `<video controls>` with no `muted`.
+
+**One permission causes both symptoms.** A microphone blocked for the site denies
+`getUserMedia` (so voice notes fail) *and* makes a page-initiated camera capture record with no
+audio track. The two arrived as separate bug reports half an hour apart and were one setting.
+
+⚠️ **This is silent by construction.** Somebody walks a unit, talks the whole way round,
+uploads, and sees a normal-looking clip. Nothing tells them. It surfaces days later when an
+engineer opens the finding — by which time the unit has shipped and the walk cannot be redone.
+That is why the warning is *pre-emptive*, in `components/post-production/MicBlockedBanner.tsx`
+on both walk surfaces, rather than a better error afterwards.
+
+Two rules for that banner, both deliberate:
+
+- **Only on a definite `denied`.** `prompt` is the normal state before anyone has recorded, and
+  `permissions.query` for the microphone is unsupported in older Safari (it throws). Warning on
+  either would put a red banner in front of everyone whose setup is fine, and a banner that
+  cries wolf gets ignored — including on the day it is right.
+- **It must never call `getUserMedia`.** That would raise a permission prompt merely for opening
+  the page, which is how people learn to hit Deny.
+
+**Never catch a media error without binding it.** `VoiceNote` did — one `catch {}` printing
+"The microphone is not available" for permission-denied, no hardware, a mic held by another
+app, and an insecure context alike. Four causes, four different fixes, one useless sentence. It
+now branches on the `DOMException` name: `NotAllowedError`/`SecurityError` gets the unblock
+steps *and* the warning about silent video, `NotFoundError` says there is no microphone,
+`NotReadableError` says another app is holding it.
+
 ## A "dead" button is usually one of three things
 
 All three were reported together from a phone on 2026-09-01, and only two were real. Worth
