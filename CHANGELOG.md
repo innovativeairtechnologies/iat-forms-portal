@@ -10,6 +10,35 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-01 — Every storage bucket gets its own ceiling
+
+**Raising one limit had quietly raised them all.** Walkaround video needed more headroom than
+the old 50MB allowed, so the project-wide upload limit went to 150MB. That limit is a
+*fallback*: any bucket without a setting of its own simply inherits it. Three did — including
+`ticket-photos`, the bucket the public support form and the troubleshooting checklist write to.
+
+Those two forms are **open links**. No login, no MFA. They are the widest-open write surface
+the portal has, and they had just been handed a 150MB ceiling that nobody chose. Worse, the
+browser never shrinks what it sends: the resize step in the support form makes a *copy* to feed
+the nameplate scan, while the file that reaches storage is the original off the phone. There
+was no server-side size check on that bucket beyond the global, and three of its four writers
+had no check in the browser either.
+
+Every bucket now carries an explicit limit and nothing inherits the global. `ticket-photos` is
+held at 20MB — comfortably above any phone photo, far below what an open endpoint should
+accept — and the buckets behind the login match the caps their own code already applied.
+
+The limit is also now *explained*. `lib/photo-limits.ts` is one definition imported by all four
+uploaders, and it screens files at the moment they are **picked**, so an oversize photo is named
+right there — "IMG_0042.heic is over 20MB" — instead of failing at submit as a generic upload
+error the customer can only answer by retrying the same file forever.
+
+**Also in this release, from the walkaround work:** large uploads show a real progress bar and
+offer a one-tap retry that keeps the note and re-sends only the file. A silent two-minute wait
+on shop wifi is indistinguishable from a hang, and people reload and lose the walk. Resumable
+uploads were investigated first and ruled out — making them work would have meant granting the
+browser's own public key write access to a private bucket.
+
 ## 2026-08-28 — Overnight reminders stop drifting an hour every winter
 
 **The three overnight sweeps now run at 3am Eastern all year.** Quote-request, support-ticket and

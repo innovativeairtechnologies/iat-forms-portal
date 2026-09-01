@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Image as ImageIcon, Upload, Loader2, Trash2 } from 'lucide-react'
 import { Card, CardHead } from '@/components/admin/detail-ui'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { screenPhotos } from '@/lib/photo-limits'
 
 /* Build & QC photos for a unit. Admin uploads here; the same `equipment.photo_urls`
    array renders on the customer portal. Files go straight to Supabase Storage from
@@ -44,23 +45,22 @@ export default function EquipmentPhotos({
     setError('')
     const sb = createSupabaseBrowser()
     const added: string[] = []
-    const failed: string[] = []
+    // Screened up front so an oversize file is named as oversize. This bucket is
+    // shared with the public support forms and carries their tighter limit.
+    const { accepted, rejected } = screenPhotos(Array.from(files))
+    const failed: string[] = [...rejected]
     const safeSerial = serial.replace(/[^a-zA-Z0-9_-]/g, '') || 'unit'
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith('image/')) {
-        failed.push(file.name)
-        continue
-      }
+    for (const file of accepted) {
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
       const filename = `equipment/${safeSerial}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
       const { data, error: upErr } = await sb.storage.from('ticket-photos').upload(filename, file, { upsert: false })
       if (upErr || !data) {
-        failed.push(file.name)
+        failed.push(`${file.name} didn’t upload`)
         continue
       }
       const { data: pub } = sb.storage.from('ticket-photos').getPublicUrl(data.path)
       if (pub?.publicUrl) added.push(pub.publicUrl)
-      else failed.push(file.name)
+      else failed.push(`${file.name} didn’t upload`)
     }
     if (added.length) {
       const next = [...photos, ...added]
@@ -69,7 +69,7 @@ export default function EquipmentPhotos({
         router.refresh()
       }
     }
-    if (failed.length) setError(`Couldn't upload ${failed.length} file${failed.length === 1 ? '' : 's'} — images only.`)
+    if (failed.length) setError(`Skipped ${failed.join(', ')}.`)
     setBusy(false)
   }
 

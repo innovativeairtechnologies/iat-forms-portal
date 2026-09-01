@@ -12,6 +12,7 @@ import {
   RotateCcw, Upload, X, Loader2, ImageIcon, Info, Camera, ChevronDown, AlertTriangle, Home,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { screenPhotos } from '@/lib/photo-limits'
 import { getKbViews, clearKbViews } from '@/lib/kb-views'
 import { getRecaptchaToken } from '@/components/use-recaptcha'
 import { SampleLabelThumb } from './SampleLabelThumb'
@@ -715,8 +716,12 @@ export default function EquipmentTicketForm({
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return
-    const valid = Array.from(files).filter(f => f.type.startsWith('image/'))
-    setPhotos(prev => [...prev, ...valid].slice(0, 8))
+    // Screen at PICK time. The bucket refuses an oversize file too, but only at
+    // submit, as a generic "we couldn't upload that" the customer can do nothing
+    // with except retry the same file. Naming it here is the whole point.
+    const { accepted, rejected } = screenPhotos(Array.from(files))
+    setError(rejected.length ? `Skipped ${rejected.join(', ')}.` : null)
+    setPhotos(prev => [...prev, ...accepted].slice(0, 8))
   }
 
   const handleSubmit = async () => {

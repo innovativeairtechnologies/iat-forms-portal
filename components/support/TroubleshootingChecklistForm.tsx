@@ -9,6 +9,7 @@ import {
   RotateCcw, Upload, X, Loader2, ImageIcon, ChevronDown, Info,
 } from 'lucide-react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { screenPhotos } from '@/lib/photo-limits'
 import { SampleLabelThumb } from './SampleLabelThumb'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -359,8 +360,11 @@ export default function TroubleshootingChecklistForm() {
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return
-    const valid = Array.from(files).filter(f => f.type.startsWith('image/'))
-    setPhotos(prev => [...prev, ...valid].slice(0, 8))
+    // Same reasoning as the equipment ticket form: name the problem file while
+    // the customer is still looking at the picker, not at submit.
+    const { accepted, rejected } = screenPhotos(Array.from(files))
+    setError(rejected.length ? `Skipped ${rejected.join(', ')}.` : null)
+    setPhotos(prev => [...prev, ...accepted].slice(0, 8))
   }
 
   const handleSubmit = async () => {

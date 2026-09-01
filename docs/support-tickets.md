@@ -13,6 +13,18 @@ The Photos step of `/support/equipment-support` is optional and capped at 8 imag
    Vercel caps a function body at ~4.5MB, which a single phone photo clears easily.
    A failed upload blocks submission and names the files, so photos are never
    half-lost at this stage.
+
+   🔴 **This is an open link — no login, no MFA — so it is the widest-open write
+   surface in the portal**, and `ticket-photos` is held tighter than any
+   engineer-facing bucket for that reason alone. Two limits, both real:
+   `PHOTO_MAX_BYTES` in `lib/photo-limits.ts` screens at **pick** time so an
+   oversize file is named while the customer is still looking at the picker, and
+   the bucket's own `file_size_limit` (**20MB**) is the one that actually binds,
+   because a browser check is advisory to anyone posting directly. Keep them
+   equal — a test asserts they are. Note the browser does **not** shrink what it
+   uploads: `fileToResizedDataUrl` resizes a *copy* for the nameplate OCR scan
+   only. Until 2026-08-31 the bucket had no limit of its own and inherited the
+   project global, which had just been raised to 150MB for walkaround video.
 2. **Public URLs into the POST.** `getPublicUrl()` produces one link per file and
    they ride along in the `photo_urls` field of the `POST /api/tickets` body.
 3. **Server-side allow-list.** `validPhotoUrls()` keeps only https URLs whose
@@ -30,7 +42,7 @@ staff-managed reference photos (`lib/support-reference.ts`).
 
 ## Incident, 2026-08-13 — a trailing newline ate every customer photo
 
-**Symptom.** A customer (IAT-2026-2944, Norman S Wright) attached six photos to a
+**Symptom.** A customer (ticket IAT-2026-2944) attached six photos to a
 burner-alarm ticket. Staff opened the ticket and there were no photos — only the
 `image5.jpeg`-style filenames that came from pasting an Outlook email into the
 description box, which are just text and were never clickable.

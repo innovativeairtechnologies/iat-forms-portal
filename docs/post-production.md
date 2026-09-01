@@ -35,7 +35,10 @@ confirmed 2026-08-27 — then talk, photograph or film your way around the unit.
   is already typed, never substituted for it.
 - **Photo / video.** `capture="environment"` opens the rear camera on a phone and falls back
   to a file picker on a desktop. Photos are downscaled to 2000px before upload; video is
-  capped at 50MB with a message that says what that is in seconds of footage, not in bytes.
+  capped at 135MB — roughly two minutes at 1080p — with a message that blames the recording
+  quality rather than the length, because that is the setting the person can actually change.
+  Anything large enough to be worth waiting for shows a **real progress bar** and, if the
+  connection drops, a **one-tap retry** that keeps the note and re-sends only the file.
 - **Area and severity.** Nine areas, three severities. `Little thing` is load-bearing: most
   of what a walk produces is a small observation, and forcing every one to look like a defect
   is how the old spreadsheet reached hundreds of untriageable rows.
@@ -222,7 +225,7 @@ Every rule below is load-bearing, and `lib/pp-tag.ts` is the one place they live
   theme. A sticker on a machine must never be able to close its own finding.
 - **Upload URLs are not general-purpose.** No signed URL is minted unless the caller names
   a finding that hangs off a walkaround belonging to this tag. Server-generated path,
-  extension allowlist, 50MB cap.
+  extension allowlist, and the same `MAX_UPLOAD_BYTES` ceiling the admin route uses.
 - **Media reads are ownership-checked, not shape-checked.** Unlike the admin media route
   (where every viewer may see every object, so bucket membership *is* the authorization),
   this one proves the object is attached to a finding on one of this tag's walkarounds.
@@ -247,7 +250,7 @@ token shape; the anon key cannot read `pp_tags` or `pp_walkarounds`; unknown and
 tokens refused; missing name/perspective refused; an invented perspective refused; a unit
 tag ignores a posted job number in favour of its own; **tag B cannot add to, edit, delete or
 hand over tag A's walk**; no upload URL without an owned finding, or for another tag's
-finding; an SVG cannot be uploaded as a photo; an over-50MB clip refused; paths are
+finding; an SVG cannot be uploaded as a photo; an over-limit clip refused; paths are
 server-generated; an unowned media path 404s; status / assignee / due date / resolution /
 theme are all un-writable from a tag while the note itself writes; a retired tag is refused
 with the same message as an unknown one.
@@ -356,12 +359,67 @@ That was scoped and deferred.
 
 ## Storage
 
-Private bucket `post-production`, 50MB per object.
+Private bucket `post-production`, **135MB** per object.
 
-**50MB is not arbitrary.** Supabase's standard upload endpoint — the one `uploadToSignedUrl`
-uses — is capped by the *project's* global upload limit, which is 50MB unless it has been
-raised in the dashboard. Setting the bucket higher would silently do nothing and phone videos
-would fail at the network layer with no useful message.
+**Three limits sit in a line, and the smallest wins.** `MAX_UPLOAD_BYTES` in
+`lib/post-production.ts` (135MB), the bucket's own `file_size_limit` (135MB), and the
+*project's* global upload limit (150MB). The global was 50MB on the Free plan and was the
+real ceiling until 2026-08-31 — raising the bucket alone would have done nothing visible, and
+phone videos would have failed at the network layer with no useful message. Raise the global
+first, then the bucket, then the constant. Lower them in the opposite order.
+
+⚠️ **Resumable (TUS) uploads are not usable here, and this was settled by probing the live
+project, not by reading the docs.** The resumable endpoint refuses the signed-upload token
+with *"new row violates row-level security policy"*; service-role returns 201, the anon key
+403s, and the signed token 403s too. There is no signed-URL equivalent for resumable. Making
+it work would mean either granting the anon key — which ships in every browser bundle — write
+access to this bucket, or proxying every chunk through our own routes and back into the ~4.5MB
+function body cap. **A progress bar and a retry button buy nearly all of the benefit for none
+of that**, so that is what shipped: `components/post-production/upload.ts` uses `XMLHttpRequest`
+rather than `fetch` for exactly one reason — `fetch` cannot report upload progress and
+`xhr.upload.onprogress` can. At 50MB that was a nicety; at 135MB, a silent two-minute wait on
+shop wifi is indistinguishable from a hang, and people reload and lose the walk.
+
+### Every bucket now carries an explicit limit
+
+Nothing inherits the global any more. Raising it to 150MB for the walkaround videos had
+silently raised the ceiling on **every** bucket that had no setting of its own — including the
+one the public support forms write to.
+
+| Bucket | Public | Limit | Why |
+|---|---|---|---|
+| `post-production` | no | 135MB | two minutes of 1080p from a phone |
+| `kb-uploads` | no | 50MB | matches `KB_MAX_UPLOAD_BYTES` |
+| `ticket-attachments` | no | 25MB | matches the cap the attachments route already applied |
+| `ticket-photos` | **yes** | **20MB** | see below |
+| `soo-submittals` | no | 25MB | |
+| `admin-submittals`, `proposal-docs` | no | 20MB | |
+| `crib-photos`, `form-uploads`, `render-assets` | mixed | 10MB | |
+| `rfq-pdfs` | no | 5MB | generated server-side |
+| `presentation-assets` | yes | 5MB | |
+
+🔴 **`ticket-photos` is the one that matters.** It is public *and* anonymously writable,
+because the support form and the troubleshooting checklist are **open links with no login** —
+unlike the admin portal, which is behind an MFA sign-in. It is therefore the widest-open write
+surface the portal has, and it is held tighter than the engineer-facing buckets on that basis
+alone, not because the files are different.
+
+Two things make the number load-bearing rather than decorative:
+
+- **The browser does not shrink what it uploads.** `fileToResizedDataUrl` in
+  `EquipmentTicketForm` resizes a *copy* to feed the nameplate OCR scan; the file that reaches
+  storage is the original off the phone. (The post-production path *does* downscale — that is
+  `resizeImage` in `components/post-production/upload.ts`, a different code path.)
+- **Until 2026-08-31 there was no server-side size check on it at all** beyond the project
+  global. Three of its four writers had no client-side check either.
+
+`lib/photo-limits.ts` is now the single definition, imported by all four writers (both
+customer forms, the admin equipment gallery, and — already self-limiting at 10MB — the support
+reference manager). It screens at **pick** time so an oversize file is named while the person
+is still looking at the file picker. The bucket limit is the one that actually binds; the
+browser check exists so the customer gets *"IMG_0042.heic is over 20MB"* instead of a generic
+upload failure they can only respond to by retrying the same file forever. If the two drift,
+the bucket wins and the message goes generic — so raise the bucket first.
 
 Uploads go **directly** from the browser with a service-role-minted signed URL; reads go
 through `/api/admin/post-production/media`, which 307s to a five-minute signed URL so an
@@ -419,7 +477,8 @@ one returns 300/PGRST201.
 
 Verified on 2026-08-27, against the live database:
 
-- All five tables, the RPC and the bucket exist; the bucket's limit reads back as 52428800.
+- All five tables, the RPC and the bucket exist. The bucket's limit read back as 52428800 on
+  that date; it is **141557760 (135MB)** since 2026-08-31.
 - 17 assertions over seeded rows: the joined walker/customer/assignee names flatten correctly,
   `media` round-trips with its `duration_ms`, `match_pp_findings` shortlists a **paraphrase**
   that shares almost no wording, confirmed and suggested counts stay separate, three runs of
@@ -428,6 +487,20 @@ Verified on 2026-08-27, against the live database:
 - The permission matrix, asserted against compiled `lib/roles.ts`.
 - No service-role key and no `supabase-admin` reference in any of the 472 client chunks, with
   a positive control proving the scan can see a key.
+
+Verified on 2026-09-01, against live Storage:
+
+- Every bucket reads back an explicit `file_size_limit`; none inherits the global.
+- An **anonymous** upload to `ticket-photos` — apikey plus anon bearer, exactly as the support
+  form sends it — is accepted at 4MB and refused at 30MB with `413 EntityTooLarge`. The probe
+  objects were deleted afterwards. ⚠️ An earlier run of this probe omitted the `Authorization`
+  header, so *both* sizes failed identically with a 400 and the result proved nothing; the
+  header is what makes it a real test of the size rule rather than of the auth rule.
+- `screenPhotos` against real `File` objects: 4MB accepted, exactly 20MB accepted (the boundary
+  is `>`, not `>=`), one byte over rejected by name, a 60MB `.mov` rejected as not-an-image
+  before size is considered, and a mixed pick keeping the good files while naming only the bad
+  one. Plus an assertion that the client constant equals the bucket's limit, so the two cannot
+  drift silently.
 
 **Not verified:** nobody has driven the walkaround in a real browser, because signing in is not
 something this build process does. The camera, the microphone, live dictation, the upload path
