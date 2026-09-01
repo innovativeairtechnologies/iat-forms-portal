@@ -2,7 +2,7 @@
 
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { resizeImage } from '@/lib/image-resize'
-import { MAX_UPLOAD_BYTES, humanBytes, type Media, type MediaKind } from '@/lib/post-production'
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, humanBytes, type Media, type MediaKind } from '@/lib/post-production'
 
 /* Getting a photo, a clip or a voice note off a phone and into the private
    bucket.
@@ -60,7 +60,7 @@ export async function uploadMedia(
       name = 'photo.jpg'
     } catch {
       if (file.size > MAX_UPLOAD_BYTES) {
-        return { ok: false, error: 'That photo is too large and could not be resized here.' }
+        return { ok: false, error: `That photo is over ${MAX_UPLOAD_LABEL} and could not be resized here.` }
       }
     }
   }
@@ -81,8 +81,8 @@ export async function uploadMedia(
     return {
       ok: false,
       error: kind === 'video'
-        ? `That clip is ${humanBytes(payload.size)} and the limit is 50 MB. It is the recording quality, not the length — on an iPhone, Settings › Camera › Record Video › 1080p HD at 30 fps (that screen shows the size per minute). A photo and a voice note also work.`
-        : `That file is ${humanBytes(payload.size)} and the limit is 50 MB.`,
+        ? `That clip is ${humanBytes(payload.size)} and the limit is ${MAX_UPLOAD_LABEL}. It is the recording quality, not the length — on an iPhone, Settings › Camera › Record Video › 1080p HD at 30 fps (that screen shows the size per minute). A photo and a voice note also work.`
+        : `That file is ${humanBytes(payload.size)} and the limit is ${MAX_UPLOAD_LABEL}.`,
     }
   }
 

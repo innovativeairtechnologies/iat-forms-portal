@@ -272,10 +272,29 @@ export type Media = {
   transcript_by?: string
 }
 
-/** Supabase's standard upload endpoint — the one uploadToSignedUrl uses — is
- *  capped by the project's global upload limit, 50MB unless raised in the
- *  dashboard. Matches the bucket's file_size_limit in migration 098. */
-export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+/**
+ * The client-side ceiling, and it must track the BUCKET's `file_size_limit`.
+ *
+ * 🔴 THREE LIMITS SIT IN A LINE AND THE SMALLEST WINS:
+ *
+ *   1. this constant        — the browser refuses before uploading anything
+ *   2. the bucket's limit   — `post-production`, currently 135MB
+ *   3. the project's global — `iat-forms`, currently 150MB
+ *
+ * Raising one without the others does nothing. On 2026-09-01 the plan moved to
+ * Pro and the global went to 150MB, but until this line moved too the browser
+ * still refused at 50MB and the change was invisible. Verified after: a 60MB
+ * file uploads through the real signed-upload path in 11s; 120MB is refused.
+ *
+ * The bucket is deliberately BELOW the global so video stays bounded even if
+ * another bucket is later given more room.
+ *
+ * ⚠️ Every user-facing size message derives from MAX_UPLOAD_LABEL rather than
+ * spelling out a number — an earlier version hardcoded "50MB" in four places
+ * and they would all have gone stale here.
+ */
+export const MAX_UPLOAD_BYTES = 135 * 1024 * 1024
+export const MAX_UPLOAD_LABEL = `${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB`
 
 export const MEDIA_EXT: Record<MediaKind, string[]> = {
   photo: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],

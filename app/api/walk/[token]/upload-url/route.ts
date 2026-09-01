@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { findingForTag, resolveTag } from '@/lib/pp-tag'
-import { MAX_UPLOAD_BYTES, MEDIA_EXT, type MediaKind } from '@/lib/post-production'
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, MEDIA_EXT, type MediaKind } from '@/lib/post-production'
 
 /* POST /api/walk/<token>/upload-url — a one-shot signed upload URL, no login.
  *
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   if (size > MAX_UPLOAD_BYTES) {
     return NextResponse.json({
       error: kind === 'video'
-        ? 'That clip is over 50MB — about a minute of 1080p. Shoot a shorter one.'
-        : 'That file is over the 50MB limit.',
+        ? `That clip is over ${MAX_UPLOAD_LABEL}. It is the recording quality, not the length — drop the phone camera to 1080p.`
+        : `That file is over the ${MAX_UPLOAD_LABEL} limit.`,
     }, { status: 400 })
   }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireEngineeringAuth } from '@/lib/api-auth'
-import { MAX_UPLOAD_BYTES, MEDIA_EXT, type MediaKind } from '@/lib/post-production'
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, MEDIA_EXT, type MediaKind } from '@/lib/post-production'
 
 /* One-shot signed upload URL for a photo, video clip or voice note taken during
    a walkaround.
@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
     // is a dead end; a length is something a person can act on immediately.
     return NextResponse.json({
       error: kind === 'video'
-        ? 'That clip is over 50MB — about a minute of 1080p. Shoot a shorter one, or drop the phone camera to 1080p.'
-        : 'That file is over the 50MB limit.',
+        ? `That clip is over ${MAX_UPLOAD_LABEL}. It is the recording quality, not the length — drop the phone camera to 1080p.`
+        : `That file is over the ${MAX_UPLOAD_LABEL} limit.`,
     }, { status: 400 })
   }
 
