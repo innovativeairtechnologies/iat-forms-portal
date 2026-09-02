@@ -9,6 +9,10 @@
       "schedule": "0 8 * * 1"
     },
     {
+      "path": "/api/cron/accrue-pto",
+      "schedule": "0 9 * * 1"
+    },
+    {
       "path": "/api/cron/admin-digest",
       "schedule": "0 22 * * *"
     },

@@ -278,7 +278,7 @@ for the season. `vercel.json` as of 2026-08-17:
 
 | Job | UTC schedule | Local | Guard |
 |---|---|---|---|
-| `accrue-pto` | `0 8 * * 1` | Mon early am | none needed — hour is immaterial |
+| `accrue-pto` | `0 8 * * 1` + `0 9 * * 1` | **Mon 4am ET** | `isAccrualTime()` picks the right entry per season; a repeat run is a no-op per employee per week |
 | `admin-digest` | `30 20 * * *` + `30 21 * * *` | 4:30pm ET | `isDigestTime()` in `lib/admin-digest.ts` |
 | `leadership-update` | `0 16 * * 1` + `0 17 * * 1` | Mon noon ET | `isNoonEastern()` in the route |
 | `rfq-reminders` | `0 13 * * *` | 9am EDT / 8am EST | none — start of business either way |

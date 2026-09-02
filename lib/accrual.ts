@@ -1,6 +1,49 @@
 import { supabaseAdmin } from './supabase-admin'
 import type { AccrualTier, AccrualConfig } from './supabase'
 import { getCustomerIds } from './staff'
+import { currentNyWeekStart, nyDateOf, nyWeekStart } from './et-clock'
+
+/**
+ * Which employees have ALREADY been credited by a scheduled run this Eastern week.
+ *
+ * ⛔ Until 2026-09-02 this function did not exist and there was no guard of any
+ * kind: a second invocation added another week's hours to every balance and wrote
+ * a second set of ledger rows. The job was safe only because it had exactly one
+ * cron entry, which meant it could not be pinned to a fixed Eastern hour without
+ * first making a repeat run harmless. This is that.
+ *
+ * The check is derived from `accrual_log` — the ledger itself — rather than from a
+ * "last run" marker. A marker is a CLAIM written at one moment: if the run then
+ * dies halfway, the marker says done and nobody is ever credited, or it says not
+ * done and everyone is credited twice. Reading the ledger is per employee and
+ * self-healing, so a run that crashes after 6 of 14 people simply finishes the
+ * remaining 8 next time.
+ *
+ * Rows are matched by their EASTERN week, not by a UTC timestamp window: the job
+ * runs at 4am ET, which is the previous calendar day in UTC for part of the year.
+ */
+async function alreadyAccruedThisWeek(): Promise<Set<string>> {
+  const weekStart = currentNyWeekStart()
+  // 8 days is comfortably more than one week, so the window always contains the
+  // whole of the current Eastern week no matter which day or hour this runs.
+  const since = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabaseAdmin
+    .from('accrual_log')
+    .select('employee_id, created_at')
+    .eq('reason', 'scheduled')
+    .gte('created_at', since)
+
+  // Fail CLOSED: if the ledger cannot be read we cannot prove this week is
+  // unaccrued, and crediting twice is worse than crediting late. Money-adjacent.
+  if (error) throw new Error(`Cannot verify prior accrual, refusing to run: ${error.message}`)
+
+  const done = new Set<string>()
+  for (const row of data ?? []) {
+    if (nyWeekStart(nyDateOf(new Date(row.created_at))) === weekStart) done.add(row.employee_id)
+  }
+  return done
+}
 
 export interface AccrualEmployeeResult {
   employee_id: string
@@ -14,6 +57,10 @@ export interface AccrualEmployeeResult {
 export interface AccrualRunResult {
   processed: number
   skipped: number
+  /** Employees a scheduled run had already credited this Eastern week. */
+  already_accrued: number
+  /** The Monday (Eastern) of the week this run belongs to. */
+  week_start: string
   employees: AccrualEmployeeResult[]
   ran_at: string
 }
@@ -76,9 +123,12 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
   // trigger), so without this filter the weekly accrual writes phantom PTO/sick +
   // accrual_log rows to customer accounts. Fail-closed (money-adjacent).
   const staff = (employees ?? []).filter((e) => !customerIds.has(e.id))
+  const weekStart = currentNyWeekStart()
   if (!staff.length) {
-    return { processed: 0, skipped: 0, employees: [], ran_at: new Date().toISOString() }
+    return { processed: 0, skipped: 0, already_accrued: 0, week_start: weekStart, employees: [], ran_at: new Date().toISOString() }
   }
+
+  const alreadyDone = await alreadyAccruedThisWeek()
 
   const ptoCap      = Number(config.pto_cap_hours)
   const sickCap     = Number(config.sick_cap_hours)
@@ -93,8 +143,14 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
     note: string
   }[] = []
   let skipped = 0
+  let alreadyAccrued = 0
 
   for (const emp of staff) {
+    // Already credited by a scheduled run this Eastern week — the whole point of
+    // the guard. Counted separately from `skipped`, which means "nothing to accrue"
+    // (at the cap); conflating them would hide a repeat run inside a normal number.
+    if (alreadyDone.has(emp.id)) { alreadyAccrued++; continue }
+
     const rawPtoRate  = getPtoRate(emp.hire_date, (tiers ?? []) as AccrualTier[])
     const ptoBalance  = Number(emp.pto_balance)
     const sickBalance = Number(emp.sick_balance)
@@ -145,6 +201,8 @@ export async function runWeeklyAccrual(): Promise<AccrualRunResult> {
   return {
     processed: results.length,
     skipped,
+    already_accrued: alreadyAccrued,
+    week_start: weekStart,
     employees: results,
     ran_at: new Date().toISOString(),
   }

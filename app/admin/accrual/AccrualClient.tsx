@@ -178,8 +178,20 @@ export default function AccrualClient({
                       <p className="text-[13px] font-semibold text-ink-secondary">
                         Accrual complete — {result.processed} employee{result.processed !== 1 ? 's' : ''} updated
                         {result.skipped > 0 && <span className="text-ink-muted font-normal"> · {result.skipped} skipped (at cap or zero rate)</span>}
+                        {result.already_accrued > 0 && <span className="text-ink-muted font-normal"> · {result.already_accrued} already accrued this week</span>}
                       </p>
                     </div>
+
+                    {/* Without this, running it a second time in the same week shows
+                        "0 employees updated" and reads as a failure. It is the
+                        opposite: the guard that stops a double accrual is working. */}
+                    {result.processed === 0 && result.already_accrued > 0 && (
+                      <p className="text-[12px] text-ink-muted">
+                        Everyone was already credited for the week of {result.week_start}, so nothing
+                        was added. Accrual runs once per employee per week — running it again is safe
+                        and does nothing.
+                      </p>
+                    )}
 
                     {result.employees.length > 0 && (
                       <div className="rounded-xl border border-hairline overflow-hidden">

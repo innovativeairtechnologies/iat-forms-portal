@@ -55,7 +55,7 @@ failure being chased.
 |---|---|---|---|
 | 18 | Daily admin digest | Admin roster, minus `DIGEST_OPT_OUT_DEFAULT` | Daily **18:00 ET**, lands ~18:00–19:00 |
 | 19 | Leadership update | `LEADERSHIP_UPDATE_EMAIL` → Lee, Kacy, Crystal | **Mon/Wed/Fri 20:30 ET**, lands ~20:30–21:30 |
-| 20 | PTO accrual run | — (no mail; a scheduled data job) | Mondays 08:00 UTC |
+| 20 | PTO accrual run | — (no mail; a scheduled data job) | **Mondays 4am ET** |
 | 21 | Form submissions, PTO requests, approvals | Per-form recipients | Immediately |
 | 22 | A customer requests portal access | Support desk + the three approving admins, individually | Immediately |
 
@@ -409,13 +409,17 @@ is therefore a no-op on anything already chased, so **both entries are live in b
 each is the other's backstop. The digest needs three entries precisely because its window
 deliberately excludes one per season; nothing is excluded here.
 
-⚠️ In EST the first entry lands at 2:00am, so winter mail goes an hour earlier than summer.
-Deliberate — still early-AM of the correct ET day, and forcing exactly 3:00am would mean adding
-window machinery to a job whose idempotency already makes it unnecessary.
+⚠️ This passage previously said the winter drift to 2:00am was "deliberate" and that
+forcing 3:00am would mean "adding window machinery to a job whose idempotency already makes it
+unnecessary". Both halves were wrong, and were corrected on 2026-08-28: the drift was not chosen,
+and idempotency stops a *repeat* run — it does nothing about *which hour* the first one lands on.
+`isReminderTime()` now pins all three sweeps to 3am ET in both seasons.
 
-`accrue-pto` (Mon, 08:00Z) still has a single entry, and now shares that minute with the
-reminders' second entry on Mondays. Harmless: it sends no mail, and the reminders' 08:00 run is
-normally a no-op.
+`accrue-pto` was pinned the same way on 2026-09-02 and now has **two** entries
+(`0 8 * * 1` + `0 9 * * 1`), landing at 4am ET year-round. Its second entry shares a minute with
+the reminders' 08:00Z run on Mondays — harmless, as it sends no mail and one of the two is always a
+no-op. ⛔ The pair is only safe because the accrual is now idempotent per employee per week; before
+that a second run credited everyone twice.
 
 ⚠️ **What these reminders do NOT cover.** They chase things that have gone **stale** — a ticket
 assigned with no note in 24h, or one nobody has claimed — not everything that is assigned. And

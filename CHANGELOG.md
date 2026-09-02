@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-02 — PTO accrual can no longer pay the same week twice
+
+**Running the weekly accrual a second time now credits nobody.** Until today it had no guard of any
+kind: every invocation added another week's hours to every balance and wrote a second set of ledger
+rows. It was safe only because it had exactly one scheduled entry — which also meant it could not be
+pinned to a fixed hour, because pinning requires a second entry.
+
+The check reads the ledger rather than a "last run" marker. A marker is a claim written at one
+moment: if the run then dies halfway through, the marker either says done and nobody is credited, or
+says not done and everyone is credited twice. Asking `accrual_log` who already received this week's
+hours is per-employee and self-healing, so a run that fails after six of ten people simply finishes
+the other four next time.
+
+**And it now runs at 4am Eastern all year.** Like the reminder sweeps before it, its schedule was
+fixed-UTC, so it drifted to 3am every November. It now has the same pair-plus-clock-check the digest
+and leadership update use.
+
+**The admin "run accrual" button is covered by the same guard.** Pressing it twice in one week is
+harmless, and the second press now says so rather than reporting "0 employees updated", which read
+like a failure.
+
+Verified against live data before shipping: ten staff, ten already credited for the week, zero would
+be credited by a repeat run.
+
 ## 2026-09-02 — The greeters step off their stands
 
 **New art for five of the six hero bobbleheads, with the display base removed.** They now
