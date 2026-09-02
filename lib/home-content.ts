@@ -258,9 +258,9 @@ export function coreValueOfWeek(now: Date): { value: CoreValue; index: number; t
        .toFile('public/bobbleheads/<slug>.webp')
 
    They are SIZED BY HEIGHT in the hero, never width: the trimmed aspects run from
-   0.39 (Jerry, Kacy) to 0.60 (Jacob), so one width-driven box would make the
-   narrow ones tower over the hero and the wide ones shrink. 450px tall is a bit
-   over 2x the largest render, which is the resolution ceiling worth shipping.
+   0.39 (Jerry) to 0.63 (James), so one width-driven box would make the narrow ones
+   tower over the hero and the wide ones shrink. 450px tall is a bit over 2x the
+   largest render, which is the resolution ceiling worth shipping.
 
    Jerry's file is a byte copy of the original public/jerry-hero.webp, so his art
    is unchanged from when it was the only one. */

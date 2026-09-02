@@ -10,6 +10,24 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-02 — The greeters step off their stands
+
+**New art for five of the six hero bobbleheads, with the display base removed.** They now
+stand directly on the hero floor rather than on a moulded disc. Same people, same order,
+same rotation — only the images changed. Jerry never had a stand, so his art is untouched
+for the second day running; Crystal keeps her garden scene, which is part of her artwork
+rather than a stand.
+
+Re-cutting the art moved the trimmed aspect ratios, and the widest greeter is no longer
+the same person: the range is now 0.39 (Jerry) to 0.63 (James), where it was 0.39 to 0.60
+(Jacob). That matters because the figures are sized by height, so the widest one takes
+about 47px more of the hero row than the narrowest — up from 40px. The comments and docs
+carrying those numbers were corrected rather than left to go quietly stale.
+
+Checked against a magenta backdrop rather than the hero green, because a white box or a
+pale halo is invisible on a light background and obvious on magenta. All five have a real
+alpha channel, transparent corners, and no fringe.
+
 ## 2026-09-01 — Six of us take turns greeting the Hub
 
 **The Company Home hero now rotates through six bobbleheads, one a day.** Jerry had the

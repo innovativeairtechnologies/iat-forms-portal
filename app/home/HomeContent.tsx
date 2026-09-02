@@ -358,9 +358,9 @@ export function HomeContent({
                 what does that — not a magic offset.
 
                 Sized by HEIGHT with w-auto, so each figure keeps its own build: the
-                trimmed aspects run 0.39–0.60, meaning the widest greeter takes about
-                40px more of the row than the narrowest. The bubble is w-fit inside a
-                min-w-0 track, so it absorbs that rather than overflowing.
+                trimmed aspects run 0.39–0.63, meaning the widest greeter takes about
+                47px more of the row than the narrowest at lg. The bubble is w-fit
+                inside a min-w-0 track, so it absorbs that rather than overflowing.
 
                 Hidden below `sm`: at phone width the figure would eat the greeting,
                 and the greeting is the part that has to survive. */}

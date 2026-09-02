@@ -244,12 +244,18 @@ regeneration command lives in the comment above `BOBBLEHEADS`. `public/jerry-her
 is kept as the source of the byte-identical `public/bobbleheads/jerry.webp`, so Jerry's
 art is unchanged from when he was the only greeter.
 
-They are **sized by height, not width**. The trimmed aspects run from 0.39 (Jerry,
-Kacy) to 0.60 (Jacob), so one width-driven box would make the narrow ones tower over
-the hero and shrink the wide ones. The consequence of height-sizing is that the widest
-greeter takes about 40px more of the hero row than the narrowest; the bubble is
+They are **sized by height, not width**. The trimmed aspects run from 0.39 (Jerry) to
+0.63 (James), so one width-driven box would make the narrow ones tower over the hero
+and shrink the wide ones. The consequence of height-sizing is that the widest greeter
+takes about 47px more of the hero row than the narrowest at `lg`; the bubble is
 `w-fit` inside a `min-w-0` track and absorbs it. 450px tall is a little over 2× the
 largest render.
+
+**The art has no stand.** The five non-Jerry figures were re-cut on 2026-09-02 to remove
+the disc each bobblehead was standing on, so they stand directly on the hero floor.
+Jerry never had one. Crystal keeps her garden scene, which is part of her artwork rather
+than a stand. Verified against a magenta backdrop: transparent corners, no white box, no
+halo. Re-cut art changes the aspects — re-measure and update the numbers above.
 
 ⚠️ **A green build proves nothing here.** The prop is destructured, typed and passed —
 none of which means it is drawn. Check the compiled JSX (or the page) for an `<img>`
