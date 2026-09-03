@@ -1568,7 +1568,7 @@ export function estimateLoad(data: RfqData): LoadEstimate {
       key: 'doors',
       label: 'Doors and openings',
       grainsPerHour: doorLoad,
-      detail: `${openings} opening${openings === 1 ? '' : 's'}, open ${fmt(doorMinutes)} min per hour in total`,
+      detail: `${openings} opening${openings === 1 ? '' : 's'}, ${openDuration(doorMinutes)}`,
     })
   }
 
@@ -1756,6 +1756,23 @@ export function estimateProcess(data: RfqData): ProcessEstimate {
 }
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
+
+/**
+ * How long the openings stand open in an hour, in a unit that survives rounding.
+ *
+ * ⚠️ "open 0 min per hour in total" printed directly under "Doors and openings —
+ * 77%" on a real customer's quote (RFQ-2026-0021): five 5-second openings is 25
+ * seconds, which rounds to zero minutes and reads as a contradiction of the very
+ * number it sits beneath. Below a minute the honest unit is seconds.
+ *
+ * Not clamped at 60 — the figure is summed across every door and its quantity, so
+ * two continuously-open apertures really are 120 minutes per hour.
+ */
+export function openDuration(minutesPerHour: number): string {
+  if (minutesPerHour >= 1) return `open ${fmt(minutesPerHour)} min per hour in total`
+  const seconds = Math.round(minutesPerHour * 60)
+  return seconds > 0 ? `open ${seconds} sec per hour in total` : 'not recorded as open'
+}
 
 export function fmt(n: number, digits = 0): string {
   if (!Number.isFinite(n)) return '—'

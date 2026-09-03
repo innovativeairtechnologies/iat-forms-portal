@@ -1212,11 +1212,18 @@ function loadBars(ctx: Ctx, x: number, y: number, w: number, load: LoadEstimate,
   const pitch = 9.4
   const max = Math.max(...load.lines.map(l => l.grainsPerHour), 1)
   const totalRaw = load.lines.reduce((s, l) => s + l.grainsPerHour, 0) || 1
-  const labelW = 62
+  // 80, not 62: at 62 the infiltration detail clipped mid-word ("…of exterior
+  // wal…") on a real quote. The row PITCH is untouched, which is what matters —
+  // the estimated-breakdown ensure() reserve is honest with no slack, so a taller
+  // row would spill a whole continuation page. This only moves width off the bar,
+  // which still runs ~74mm of the 187.9mm content width.
+  const labelW = 80
   const valueW = 34
   const barW = w - labelW - valueW
   let ry = y
   const sorted = [...load.lines].sort((a, b) => b.grainsPerHour - a.grainsPerHour)
+  const pcts = pctSet(sorted.map(l => l.grainsPerHour), totalRaw)
+  let idx = 0
   for (const line of sorted) {
     if (ry + pitch > CONTENT_BOTTOM) {
       newPage(ctx, `${cont.title} (continued)`, cont.sub)
@@ -1233,7 +1240,8 @@ function loadBars(ctx: Ctx, x: number, y: number, w: number, load: LoadEstimate,
       doc.roundedRect(x + labelW, ry, bw, 5.4, 1.2, 1.2, 'F')
     }
     text(doc, `${fmt(line.grainsPerHour)} gr/hr`, x + w, ry + 3.9, { size: 7.4, weight: 'bold', color: C.ink, align: 'right' })
-    text(doc, pct(line.grainsPerHour, totalRaw), x + w, ry + 7.8, { size: 6.4, color: C.inkMuted, align: 'right' })
+    text(doc, pcts[idx], x + w, ry + 7.8, { size: 6.4, color: C.inkMuted, align: 'right' })
+    idx += 1
     ry += pitch
   }
   return ry
@@ -1251,6 +1259,8 @@ function miniBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
   const labelW = 58
   const barW = w - labelW - 26
   let ry = y
+  const pcts = pctSet(sorted.map(l => l.grainsPerHour), totalRaw)
+  let idx = 0
   for (const line of sorted) {
     const [tone, soft] = BAR_COLORS[line.key] ?? [C.inkMuted, C.paper]
     text(doc, truncate(doc, shortDriver(line.label), labelW - 4, 7.4), x, ry + 3.9, { size: 7.4, color: C.inkSoft })
@@ -1261,7 +1271,8 @@ function miniBars(doc: Doc, x: number, y: number, w: number, load: LoadEstimate)
       fill(doc, tone)
       doc.roundedRect(x + labelW, ry + 0.6, bw, 4.6, 1, 1, 'F')
     }
-    text(doc, pct(line.grainsPerHour, totalRaw), x + w, ry + 4.1, { size: 7.2, weight: 'bold', color: C.ink, align: 'right' })
+    text(doc, pcts[idx], x + w, ry + 4.1, { size: 7.2, weight: 'bold', color: C.ink, align: 'right' })
+    idx += 1
     ry += 5.0
   }
 }
@@ -1690,10 +1701,36 @@ function numOf(v: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function pct(part: number, whole: number): string {
-  if (!whole) return '—'
-  const p = (part / whole) * 100
-  return p < 1 ? '<1%' : `${Math.round(p)}%`
+/**
+ * Whole-number percentages that ACTUALLY SUM TO 100.
+ *
+ * ⚠️ Rounding each share on its own is what printed 77 + 12 + 9 + 3 = 101% on a
+ * customer's quote. Largest-remainder apportionment instead: floor every share,
+ * then hand the leftover points to the largest fractional parts.
+ *
+ * Takes the WHOLE set at once, which is the only way the total can be controlled,
+ * so both call sites pass every row they are about to draw. `whole` stays separate
+ * from the sum of `values` on purpose: the cover caps at five rows, and those five
+ * should still read as their true share of the full load rather than being
+ * inflated to fill 100%.
+ *
+ * A row that floors to nothing but is not actually zero prints '<1%' — a bare '0%'
+ * beside a drawn bar reads as a fault.
+ */
+function pctSet(values: number[], whole: number): string[] {
+  if (!whole) return values.map(() => '—')
+  const shares = values.map(v => (v / whole) * 100)
+  const out = shares.map(Math.floor)
+  let left = Math.round(shares.reduce((s, v) => s + v, 0)) - out.reduce((s, v) => s + v, 0)
+  const byFraction = shares
+    .map((s, i) => ({ i, frac: s - Math.floor(s) }))
+    .sort((a, b) => b.frac - a.frac)
+  for (const { i } of byFraction) {
+    if (left <= 0) break
+    out[i] += 1
+    left -= 1
+  }
+  return out.map((p, i) => (p === 0 && values[i] > 0 ? '<1%' : `${p}%`))
 }
 
 function shortDriver(label: string): string {

@@ -1519,6 +1519,17 @@ shelling out to `sharp`, which is already a dependency. Two details decide wheth
   process (`execFileSync`). Returning a promise from the shim silently embeds nothing.
 - **Shim `window` first.** Without it both loaders return `null` and you get a PDF with no logo
   and no render — which looks like a broken fetch and is really a missing global.
+- ⛔ **But `require('jspdf')` BEFORE you shim `window`.** jsPDF's Node build checks for a window
+  global and takes the browser path when it finds one, dying on `.bind` of undefined before a
+  single page is drawn. Require it up front so the dynamic `require('jspdf')` inside
+  `generateRfqPdf` gets the cached instance and never re-evaluates under the shim.
+
+**Prove the harness before you trust it.** Render the survey UNCHANGED first and diff
+`pdftotext -enc UTF-8 -layout` against a PDF the real browser produced — the stored bytes in
+`rfq-pdfs` are exactly that. If the text is identical the harness is faithful and a later diff
+means your change; if you skip this step a harness bug is indistinguishable from a layout bug.
+⚠️ `pdftotext` without `-enc UTF-8` renders `·`, `°` and `×` as `�`, which looks exactly like
+a font-encoding defect in the PDF and is not one.
 
 Test at least the volume/dimensions pair (they must differ **only** in the heading and the
 "ft assumed" suffix), one survey with a long looked-up design source (it is the note above the

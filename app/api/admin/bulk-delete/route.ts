@@ -56,10 +56,42 @@ export async function POST(req: NextRequest) {
         // with someone outside the company, and there is no undo — hence
         // full-admin only (the gate at the top of this route), while the RFQ page
         // itself is open to anyone holding `deals`.
+        //
+        // The stored PDF goes WITH the record (owner, 2026-09-03). Migration 095
+        // stores the exact bytes the customer's browser produced, and that file
+        // carries their contact details, site location and project economics on
+        // page one — so a deleted quote request must not leave it sitting in the
+        // bucket. `pdf_path` is the only pointer to the object, so it has to be
+        // read BEFORE the rows go.
+        //
+        // ⚠️ Deliberately UNLIKE the post_production case below, which keeps its
+        // storage objects on purpose. The difference is what the blob is: there,
+        // it is the only recording of what somebody said next to a unit and a
+        // mis-click would be unrecoverable. Here it is a document we generated and
+        // can regenerate from the survey answers — and the survey answers are
+        // being destroyed in the same breath anyway.
+        const { data: withPdfs } = await supabaseAdmin
+          .from('rfq_requests').select('pdf_path').in('id', ids)
+        const pdfPaths = (withPdfs ?? [])
+          .map((r) => r.pdf_path)
+          .filter((p): p is string => typeof p === 'string' && p.length > 0)
+
         await supabaseAdmin.from('rfq_notes').delete().in('rfq_id', ids)
         const { data, error } = await supabaseAdmin.from('rfq_requests').delete().in('id', ids).select('id')
         deleted = data?.length ?? 0
         errorMsg = error?.message ?? null
+
+        // Rows first, objects second, and never fatal. Removing the object first
+        // would leave a surviving row pointing at a missing file if the row delete
+        // then failed — a broken "Open the PDF" button on a record somebody still
+        // has. This ordering fails the other way: a leftover object nobody can
+        // reach, logged loudly, which is the cheaper mistake.
+        if (!error && pdfPaths.length) {
+          const { error: storageErr } = await supabaseAdmin.storage.from('rfq-pdfs').remove(pdfPaths)
+          if (storageErr) {
+            console.error('[bulk-delete] rfq rows deleted but their PDFs were left behind:', pdfPaths, storageErr)
+          }
+        }
         break
       }
       case 'post_production': {

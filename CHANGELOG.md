@@ -10,6 +10,37 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-03 — Three small lies on the quote PDF, and the file now goes with the record
+
+**"1 opening, open 0 min per hour in total" sat directly under "Doors and openings — 77%".** Five
+five-second openings is twenty-five seconds, which rounds to zero minutes, so the page contradicted
+the number it was explaining. Below a minute the unit is now seconds — "open 25 sec per hour in
+total". Not clamped at an hour, because the figure is summed across every door and its quantity, so
+two continuously-open apertures really are 120 minutes per hour.
+
+**The percentages added up to 101%.** Each share was rounded on its own, so 76.6 + 11.8 + 8.8 + 2.8
+printed as 77 + 12 + 9 + 3. They are now apportioned by largest remainder across the whole set at
+once, and sum to 100. The cover still caps at five rows and those five still read as their true
+share of the full load rather than being inflated to fill the page.
+
+**A line of the breakdown clipped mid-word** — "…0.1 cu.ft/hr per sq.ft of exterior wal…". The
+label column went from 62mm to 80mm, taking the width off the bar rather than the row height: the
+estimated-breakdown reserve is honest with no slack, so a taller row would have spilled a whole
+continuation page. Verified still four pages.
+
+**Deleting a quote request now deletes the PDF it generated.** Migration 095 stores the exact bytes
+the customer received, and that file carries their contact details, site location and project
+economics on page one; bulk delete removed the row and the notes and left the document in the
+bucket. Seven PDFs were being held for one surviving record. Rows are deleted first and the object
+second, never fatally — the other order would leave a live record pointing at a missing file, which
+is the worse failure. Deliberately unlike post-production findings, which keep their media on
+purpose: those are the only recording of what somebody said next to a unit, where this is a document
+we generated and could regenerate.
+
+All four were verified by regenerating this survey’s real PDF through the offline harness and
+reading the rendered pages — after first proving the harness reproduces the browser-built file
+exactly.
+
 ## 2026-09-02 — PTO accrual can no longer pay the same week twice
 
 **Running the weekly accrual a second time now credits nobody.** Until today it had no guard of any
