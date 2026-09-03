@@ -115,12 +115,25 @@ export async function materializeDealsFromProjectedSales(admin: Admin): Promise<
   }
 
   // Prune DryWare deals whose project fell off the feed — but only when the
-  // sync actually returned projects (never let an empty/short response wipe it).
+  // sync actually returned projects (never let an empty/short response wipe it),
+  // and NEVER a project that closed. A won project stops appearing in THIS feed
+  // (it's "projected"/open sales, not closed), so without this guard the very
+  // next sync after a deal closes would silently DELETE it — losing its stage
+  // history, notes and checklist — instead of transitioning it to stage='won'
+  // (that transition is materializeWonDeals's job, lib/dryware-closed-deals.ts,
+  // migration 100). closed_projects is upsert-only and never shrinks, so a key
+  // that ever appears there stays protected from pruning permanently.
   let pruned = 0
   if (byKey.size > 0) {
     const { data: current } = await admin.from('deals').select('id, dryware_key').not('dryware_key', 'is', null)
+    const { data: closedRows } = await admin.from('closed_projects').select('project_customer, project_name')
+    const closedKeys = new Set(
+      ((closedRows ?? []) as { project_customer: string | null; project_name: string | null }[])
+        .map((r) => drywareKey(r.project_customer, r.project_name))
+        .filter((k): k is string => !!k),
+    )
     const goneIds = (current ?? [])
-      .filter((d: { dryware_key: string }) => !byKey.has(d.dryware_key))
+      .filter((d: { dryware_key: string }) => !byKey.has(d.dryware_key) && !closedKeys.has(d.dryware_key))
       .map((d: { id: string }) => d.id)
     for (let i = 0; i < goneIds.length; i += 200) {
       const { error: delErr } = await admin.from('deals').delete().in('id', goneIds.slice(i, i + 200))
