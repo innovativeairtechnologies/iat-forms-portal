@@ -4,7 +4,9 @@ import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAudit } from '@/lib/audit'
 import { fetchProjectedSalesRaw, dedupeAndDeriveProjectedSales } from '@/lib/dryware'
+import { fetchClosedProjectsRaw, deriveClosedProjects } from '@/lib/dryware-closed'
 import { materializeDealsFromProjectedSales, type MaterializeStats } from '@/lib/dryware-deals'
+import { materializeWonDeals, type MaterializeWonStats } from '@/lib/dryware-closed-deals'
 
 export const runtime = 'nodejs'
 // Dryware responds in ~1s in practice, but raise the function ceiling so a slow
@@ -54,12 +56,38 @@ export async function POST() {
     })
     if (rpcErr) throw new Error(rpcErr.message)
 
+    // Also refresh the Closed Projects mirror (100) and transition any deal that
+    // won to stage='won' — BEFORE the open-feed prune below, so a project that
+    // just closed (and therefore vanished from THIS feed) is already protected
+    // in closed_projects when the prune step checks it. Both steps are
+    // best-effort: a failure here must not fail the sync that already succeeded.
+    let wonStats: MaterializeWonStats | null = null
+    try {
+      const { raw: closedRaw, durationMs: closedMs } = await fetchClosedProjectsRaw()
+      const { rows: closedRows, summary: closedSummary } = deriveClosedProjects(closedRaw)
+      const { error: closedRpcErr } = await supabaseAdmin.rpc('upsert_closed_projects', {
+        p_rows: closedRows,
+        p_meta: {
+          status: 'ok', error: null,
+          fetched_count: closedSummary.fetchedCount,
+          duration_ms: closedMs,
+          synced_by: syncedBy,
+        },
+      })
+      if (closedRpcErr) throw new Error(closedRpcErr.message)
+      wonStats = await materializeWonDeals(supabaseAdmin)
+    } catch (e) {
+      console.error('[projected-sales/sync] closed-projects refresh failed (sync itself succeeded):', e)
+    }
+
     // Mirror the fresh feed into `deals` so the CRM Board / Focused / Calendar
     // and the /admin dashboard all reflect this sync. DryWare owns the facts;
-    // portal workflow (stage / ★ / follow-ups / notes) is preserved. Best-effort:
-    // a materialization failure must NOT fail the sync (projected_sales already
-    // swapped successfully) — the Performance page is still correct, and the
-    // next sync retries the deals mirror.
+    // portal workflow (stage / ★ / follow-ups / notes) is preserved, and a
+    // project present in closed_projects is never pruned (see the comment above
+    // the prune step in lib/dryware-deals.ts). Best-effort: a materialization
+    // failure must NOT fail the sync (projected_sales already swapped
+    // successfully) — the Performance page is still correct, and the next sync
+    // retries the deals mirror.
     let dealStats: MaterializeStats | null = null
     try {
       dealStats = await materializeDealsFromProjectedSales(supabaseAdmin)
@@ -80,7 +108,10 @@ export async function POST() {
           : '') +
         (dealStats
           ? ` · deals mirror: +${dealStats.inserted} new / ${dealStats.updated} updated / ${dealStats.pruned} pruned`
-          : ' · deals mirror skipped (error)'),
+          : ' · deals mirror skipped (error)') +
+        (wonStats
+          ? ` · closed projects: ${wonStats.transitioned} won, ${wonStats.created} added directly`
+          : ' · closed-projects refresh skipped (error)'),
       metadata: {
         source_count: summary.sourceCount,
         unique_count: summary.uniqueCount,
@@ -88,6 +119,7 @@ export async function POST() {
         weighted_total: summary.weightedTotal,
         duration_ms: durationMs,
         deal_stats: dealStats,
+        won_stats: wonStats,
       },
     })
 

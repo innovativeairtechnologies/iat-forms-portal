@@ -107,8 +107,9 @@ export async function fetchProjectedSalesRaw(): Promise<{ raw: DrywareProject[];
   return { raw: raw as DrywareProject[], durationMs }
 }
 
-/** "M/D/YYYY" → "YYYY-MM-DD" (null/blank/unparseable → null). */
-function parseUsDate(s: string | null | undefined): string | null {
+/** "M/D/YYYY" → "YYYY-MM-DD" (null/blank/unparseable → null). Exported: shared
+ *  with lib/dryware-closed.ts, which parses the same upstream date formats. */
+export function parseUsDate(s: string | null | undefined): string | null {
   if (!s) return null
   const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
   if (!m) return null
@@ -116,14 +117,16 @@ function parseUsDate(s: string | null | undefined): string | null {
   return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`
 }
 
-/** "YYYY-MM-DDT00:00:00" (or "YYYY-MM-DD") → "YYYY-MM-DD" (else null). */
-function parseIsoDate(s: string | null | undefined): string | null {
+/** "YYYY-MM-DDT00:00:00" (or "YYYY-MM-DD") → "YYYY-MM-DD" (else null). Exported:
+ *  shared with lib/dryware-closed.ts. */
+export function parseIsoDate(s: string | null | undefined): string | null {
   if (!s) return null
   const m = s.trim().match(/^(\d{4}-\d{2}-\d{2})/)
   return m ? m[1] : null
 }
 
-function toNumber(n: unknown): number {
+/** Exported: shared with lib/dryware-closed.ts. */
+export function toNumber(n: unknown): number {
   const v = typeof n === 'number' ? n : Number(n)
   return Number.isFinite(v) ? v : 0
 }

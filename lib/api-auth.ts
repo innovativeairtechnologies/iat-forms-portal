@@ -114,6 +114,34 @@ export async function requireProjectedSalesAuth(): Promise<NextResponse | null> 
 }
 
 /**
+ * Read/sync guard for the Closed Projects page + its Dryware sync route
+ * (/admin/closed-projects, migration 100). Deliberately keyed on the SAME
+ * `deals` permission as Performance/CRM/Territories/Rep Scorecard: same
+ * sales-pipeline trust boundary and audience (Sales + admin), so there's no new
+ * permission to seed. Its own named guard per requireDealsAuth's note, so it can
+ * be split onto a dedicated `closed_projects` perm later by changing one line
+ * here plus the ADMIN_PATH_PERMS entry.
+ */
+export async function requireClosedProjectsAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'deals', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
+/**
  * Guard for the CRM companies/contacts API (migration 062) — the relational
  * account model behind the deals pipeline. Deliberately keyed on the SAME
  * `deals` permission (same trust boundary and audience: sales reps maintain

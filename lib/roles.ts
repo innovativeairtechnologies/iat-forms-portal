@@ -468,6 +468,10 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   // perm (Sales + admin) so it needs no new permission key or role_permissions
   // seed. Distinct prefix from /admin/deals, so longest-match keeps them separate.
   { prefix: '/admin/projected-sales', perm: 'deals' },
+  // Closed Projects (100) — read-only Dryware "won" mirror, sibling of
+  // projected-sales above. Shares `deals` for the same reason (Sales + admin,
+  // no new perm to seed). Distinct prefix, so longest-match keeps them separate.
+  { prefix: '/admin/closed-projects', perm: 'deals' },
   // Territory map (068) — rep firms, territories and pins. Shares `deals` like
   // projected-sales above (same Sales + admin audience, no new perm to seed);
   // writes are further restricted to admin/sales in requireTerritoryAuth.

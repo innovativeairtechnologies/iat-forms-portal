@@ -10,6 +10,31 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-03 — Closed Projects: a Dryware "won" mirror, and a data-loss bug caught before it fired
+
+Danny (Dryware's dev) shipped a second reporting endpoint — closed projects, won-only, with the
+authoritative closing dollar amount kept separate from the quote it was built from (they can
+legitimately differ; a unit can carry several quote revisions and the closed deal doesn't always use
+the newest one). Built the mirror the same way as Performance: `/admin/closed-projects`, upsert-only
+and never wiped, so a partial or failed sync can't lose a recorded win. Our own `imported_at` is
+stamped once per row and never touched again, so if Dryware ever needs to re-export, there's a clean
+cutoff point to work from.
+
+**Building it surfaced a real bug in the Performance sync that's been live since 2026-07-21.** The
+deals materializer deletes a CRM row the moment its project stops appearing on the open-projects
+feed — and Dryware stops listing a project the moment it closes. So the next Performance sync after
+any deal won would have silently deleted that deal, stage history and all, instead of marking it won.
+Fixed with one check: before pruning a vanished project, the sync now looks it up in the new closed
+mirror first and skips deleting anything that closed rather than disappeared. Proven against real
+production data, not just reasoned about — transitioned six real deals to won, ran the *unmodified*
+existing prune logic for real (it touched 422 other deals normally), and confirmed by direct read-back
+that all six survived with their history intact. Re-ran the transition twice more to confirm it's a
+clean no-op the second time — no duplicate writes, one stage-history row per deal.
+
+The fix and the new feature are two separate commits on purpose, so either can be reverted without
+the other. Full rollback mechanics — what a code revert does and doesn't undo — are in
+`docs/closed-projects.md`.
+
 ## 2026-09-03 — Three small lies on the quote PDF, and the file now goes with the record
 
 **"1 opening, open 0 min per hour in total" sat directly under "Doors and openings — 77%".** Five
