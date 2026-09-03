@@ -278,8 +278,8 @@ the scanner uses:
 |---|---|
 | none | scans |
 | **corner** (finder pattern), 1.4% of the label | **FAILS** |
-| centre (data), up to ~7.5% | scans |
-| centre (data), 12.5% | fails |
+| center (data), up to ~7.5% | scans |
+| center (data), 12.5% | fails |
 | bottom edge strip, 7.8% | **FAILS** (clips the bottom-left finder) |
 
 So "level M tolerates ~15% damage" is misleading — that budget is for **data

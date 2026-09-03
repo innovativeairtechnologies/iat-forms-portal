@@ -26,7 +26,7 @@ calls. There is exactly one definition of the retarder rule and one of the serie
 **Drawn, and feeds nothing.** The layer build-ups in `lib/rfq-envelope-art.ts` — brick veneer,
 foam core, granular base and so on — are an illustrator's guess at a plausible construction for
 each material. They are not specifications, have not been through engineering review, and no
-calculation reads them. Their thicknesses are relative and normalised at render time.
+calculation reads them. Their thicknesses are relative and normalized at render time.
 
 **The droplet rate is not a flux.** Real flux across these assemblies spans about 2,700:1. At the
 tight end that is one droplet every few minutes, which reads as broken rather than as tight, so
@@ -70,7 +70,7 @@ Both signed off by the owner on 2026-08-28, because here the motion *is* the con
 Both stop completely under `prefers-reduced-motion`, and the whole animation is suspended by an
 `IntersectionObserver` while the panels are scrolled out of view.
 
-The material patterns are **hex literals, not semantic tokens** — brick is brick-coloured, and
+The material patterns are **hex literals, not semantic tokens** — brick is brick-colored, and
 re-toning materials for dark mode would misrepresent them. The artwork keeps its own light
 ground in dark mode, exactly as the cut-away photos it replaced did. The chrome around the
 drawing (card, borders, type, pills) uses tokens like everything else.

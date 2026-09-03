@@ -43,7 +43,7 @@ Performance Review) to ~2–3 pages instead of ~7–9.
 - A rating's following "— Brief Explanation" / comment textarea is folded in as
   that row's comment line, so no comment is lost — just compacted.
 
-Everything else (text, date, checkbox, signature, long-text) renders as labelled
+Everything else (text, date, checkbox, signature, long-text) renders as labeled
 blanks/boxes sized for writing by hand.
 
 ## Annual Review — a bespoke fixed sheet

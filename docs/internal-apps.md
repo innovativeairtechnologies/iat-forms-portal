@@ -248,10 +248,10 @@ own open-position drop, which is a different and much smaller number.
    ±30%. Nothing in the UI calls SP or NP "certified"; the pill, the chart legend, the angle hint and
    the exported summary all say chart-read.
 
-4. **Everything off full open is modelled.** TAMCO publishes nothing for partly-closed blades — which
+4. **Everything off full open is modeled.** TAMCO publishes nothing for partly-closed blades — which
    is exactly why no manufacturer offers a universal partial-open K for rectangular dampers. Near
    closed the orifice term runs to infinity while a real damper simply leaks at its AMCA class, so
-   `crossoverAngle()` **solves for** the angle where the modelled path passes less than the seals
+   `crossoverAngle()` **solves for** the angle where the modeled path passes less than the seals
    leak (~11–13° on the shipped default) and marks everything below it as not physical.
 
 ### The calibration path is guarded
@@ -263,9 +263,9 @@ stand behind:
   and the fitted K is retired rather than silently relabelled to the new geometry — a K belongs to
   one blade position only, which is the whole premise of the method.
 - **The fit is judged on worst-point error (≤3%), not R².** For a fit forced through the origin the
-  centred R² does not decompose: a tap with a constant offset gives a beautifully straight line that
+  centered R² does not decompose: a tap with a constant offset gives a beautifully straight line that
   misses the origin, scoring R² 0.985 while the worst point is 12% out. Verified — that exact case is
-  now caught. R² is still shown, but in its uncentred through-origin form and labelled as such.
+  now caught. R² is still shown, but in its uncentred through-origin form and labeled as such.
 - **A shut damper exports no constant.** `K_FLOW := 0.0` would be a valid-looking number that reads
   zero CFM for ever, so the PLC card is replaced with an explanation instead.
 - **Air density reaches the exported K**, not just the displayed ΔP. At 200 °F reactivation air
@@ -276,7 +276,7 @@ stand behind:
 
 Every number *not* taken from TAMCO is exposed as an editable field at the bottom of the page, tagged
 **Measured** (certified test data), **Chart-read** (SP/NP full-open C, read by eye off the AMCA
-Fig. 5.3 curves because no table exists), or **Modelled** (blade thickness, free-area exponent, air
+Fig. 5.3 curves because no table exists), or **Modeled** (blade thickness, free-area exponent, air
 density). Editing any of them recalculates the page.
 
 The four coefficient fields are **overrides, not values**: left blank they resolve to the nearest
@@ -284,9 +284,9 @@ tested size and the placeholder shows what is in use, so clearing a field restor
 rather than pinning whatever was last typed. Pinning one raises a check saying how far it sits from
 the size-matched value.
 
-One coupling worth knowing: **the SP coefficient also drives WP's partly-closed behaviour.** WP's
+One coupling worth knowing: **the SP coefficient also drives WP's partly-closed behavior.** WP's
 published number is a plenum-entry loss that does not scale with blade angle, so the incremental
-throttling is modelled on the same 6″ air-foil blade at the same size — pin SP and WP moves too. The
+throttling is modeled on the same 6″ air-foil blade at the same size — pin SP and WP moves too. The
 exported summary states this.
 
 **Copy review summary** dumps the whole state — inputs, results, every assumption with its provenance
@@ -298,7 +298,7 @@ TAMCO *Series 1000 Submittal & Performance Data* (TA-1000-TECH-24, April 2017) a
 Damper Installation Guidelines* (TA-IOM-CD-24, 2020).
 
 Verified in headed Playwright runs against the `tools-preview` launch config: the free-area maths
-(drawn face free-area 0.8999 against 0.9000 modelled), the size-resolved coefficient at all five
+(drawn face free-area 0.8999 against 0.9000 modeled), the size-resolved coefficient at all five
 tested sizes, keyboard entry into the calibration table, the tap-offset case, stamp invalidation when
 the blades move, the crossover solve, density scaling of both ΔP and K, and a NaN/Infinity sweep from
 3×3 to 200×200.

@@ -625,7 +625,7 @@ Badge evaluation runs after every point award event via a `checkBadges(userId)` 
 ---
 
 ### Phase 3 — Gamification & Reports (Weeks 13–18)
-**Goal: Leadership buys in, Trainual subscription cancelled**
+**Goal: Leadership buys in, Trainual subscription canceled**
 
 | Week | Work |
 |---|---|

@@ -86,17 +86,17 @@ of posts is a run of adds, not one-and-done.
 Saving an event whose date is outside the visible month **moves the grid to that month**. A write
 you can't see reads as a write that didn't happen.
 
-## Chips are coloured by channel, not status
+## Chips are colored by channel, not status
 
 Channel is the axis you scan a content calendar on ("what's going out this week?"), so it owns the
-colour. Status only marks the chip where it changes how you read the row — `published` gets a ✓,
+color. Status only marks the chip where it changes how you read the row — `published` gets a ✓,
 `cancelled` goes struck-through and dimmed. Full status shows as a pill in the panel.
 
 Both taxonomies live in **`lib/marketing.ts`** and nowhere else:
 
 - **Channels:** social (violet) · email (sky) · blog (amber) · event (emerald) · ad (rose) ·
   pr (slate) · other (slate)
-- **Statuses:** planned → drafting → scheduled → published, plus cancelled
+- **Statuses:** planned → drafting → scheduled → published, plus canceled
 - **Platforms** (social only): LinkedIn · Facebook · Instagram · YouTube · X · Other
 
 ### Why there's no CHECK constraint on them
@@ -104,7 +104,7 @@ Both taxonomies live in **`lib/marketing.ts`** and nowhere else:
 The columns are plain `text`. Adding "TikTok" or "Podcast" should be a one-line TS edit, not a
 migration and a deploy. The trade is that **`app/api/admin/marketing/validate.ts` is the only
 enforcement** — it rejects anything outside the lists above, and it is the only writer (RLS denies
-everyone else). The UI falls back to the neutral slate tone for a value it doesn't recognise, so a
+everyone else). The UI falls back to the neutral slate tone for a value it doesn't recognize, so a
 row written by some future path still renders instead of going blank.
 
 ## Things that will bite you

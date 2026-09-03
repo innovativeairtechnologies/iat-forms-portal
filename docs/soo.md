@@ -18,7 +18,7 @@ states things outright instead of hedging.
 
 ## The three kinds of number
 
-| Kind | Owner | Example | Behaviour |
+| Kind | Owner | Example | Behavior |
 |---|---|---|---|
 | **Control constant** | `CONTROL_CONSTANTS` in `lib/soo.ts` | 120°F react permissive, 40°F freeze Stage 1, 300°F react ceiling | Identical on every project. Each carries a `rationale`. Editing a clause that renders one requires a note, enforced at approval. |
 | **Design condition** | The submittal | 3,000 CFM process, 240°F react heat-to | Printed on the document; **never** allowed to gate a clause (`validateLibrary` rejects it). |

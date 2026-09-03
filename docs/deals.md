@@ -215,7 +215,7 @@ deals don't need 440 routes). **Open it from any list view**: click a row in
 Pipeline or CRM (inline controls stopPropagation), a card on the Board, or the
 ⤢ icon in Focused (those rows are full of inline inputs, so no row-click there).
 
-**Presentation (2026-07-29):** a **floating right-hand drawer**, not a centre
+**Presentation (2026-07-29):** a **floating right-hand drawer**, not a center
 modal — built on the shared `components/ui/Drawer.tsx` + `Tabs.tsx` primitives.
 Inset from all four edges so the board stays visible beside it, and the content
 is split across **four tabs** instead of one ~88vh scroll:

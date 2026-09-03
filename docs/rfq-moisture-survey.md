@@ -51,7 +51,7 @@ design points for reference. `lib/ashrae.ts` owns it.
 
 | Step | Endpoint | Notes |
 |---|---|---|
-| lat/lon → 10 nearest stations | `request_places.php` | rejects any `number` but **10**; its `elev` is **metres** |
+| lat/lon → 10 nearest stations | `request_places.php` | rejects any `number` but **10**; its `elev` is **meters** |
 | WMO → design record | `request_meteo_parametres.php` | `si_ip=IP` for feet/°F; 599 fields; `elev` is **feet** here |
 
 Both need a `Referer` of the site itself or they return 500. Responses carry a UTF-8 BOM that
@@ -359,7 +359,7 @@ sling psychrometer gives a wet bulb — making a customer convert before they ca
 you get a wrong number typed confidently.
 
 `setCondition()` in `lib/rfq.ts` is the **only** place a condition changes, and every edit —
-temperature, number, or unit — routes through it. Two behaviours it exists to guarantee:
+temperature, number, or unit — routes through it. Two behaviors it exists to guarantee:
 
 - **The dry bulb is part of the moisture answer.** A 50°F dew point is 49%rh at 75°F and 70%rh
   at 60°F. Change the temperature and the canonical %rh is recomputed; leave that out and the
@@ -761,36 +761,36 @@ trade-off for a customer-facing estimate.
 `lib/rfq-pdf.ts`, generated client-side with jsPDF — vector throughout (no `html2canvas`), so
 the file is ~35 KB, prints crisply and stays text-searchable.
 
-### The header is a green→navy fade carrying the full-colour mark (2026-08-26)
+### The header is a green→navy fade carrying the full-color mark (2026-08-26)
 
-Owner: use the colour logo, "and use those colors across the top as well, kind of fade from one
-colour to the other within the header".
+Owner: use the color logo, "and use those colors across the top as well, kind of fade from one
+color to the other within the header".
 
 **`gradientBand()`** — jsPDF has no linear-gradient primitive, so the fade is laid down as
 interpolated strips, 0.6mm each, ~360 per band. ⚠️ **Each strip is drawn 0.15mm wider than its
 step.** Butt-jointed rectangles leave hairline gaps where the rasteriser rounds to device pixels,
 and those print as fine vertical lines across the band — visible on paper, easy to miss on screen.
 
-**`markTile()`** — the colour mark on a small white tile. ⚠️ **The tile is not decoration.** The
-mark is green → silver → blue; on a green-to-navy band its own colours sit within a few shades of
-the field behind it and it disappears. The tile is what makes the colour logo usable at all — the
+**`markTile()`** — the color mark on a small white tile. ⚠️ **The tile is not decoration.** The
+mark is green → silver → blue; on a green-to-navy band its own colors sit within a few shades of
+the field behind it and it disappears. The tile is what makes the color logo usable at all — the
 alternative is the white knockout (`iat-logo-white.png`), which is what this replaced.
 
-`iat-logo-transparent.png` is the colour mark with alpha (588KB source). It keeps its transparency
+`iat-logo-transparent.png` is the color mark with alpha (588KB source). It keeps its transparency
 through the canvas hop because `loadLogo` emits PNG, not JPEG.
 
-**Cost:** ~86KB → ~129KB per document. The colour mark is 27KB against the white one's 7KB, and the
+**Cost:** ~86KB → ~129KB per document. The color mark is 27KB against the white one's 7KB, and the
 strips add the rest. Still inside the ~200KB the file's header comment targets.
 
 Applied to all three header bands — takeaway, cover, continuation — so the document does not mix a
 gradient with a flat block.
 
-### The PDF uses the COMPANY's colours, not the portal's (2026-08-26)
+### The PDF uses the COMPANY's colors, not the portal's (2026-08-26)
 
 The dark bands were `C.pine` (#0a2e1e) — the portal's "Quiet Precision" emerald. The owner asked
-for "more of our traditional colour scheme versus the green", so they are now `C.brandNavy`.
+for "more of our traditional color scheme versus the green", so they are now `C.brandNavy`.
 
-⚠️ **The brand colours were SAMPLED FROM THE MARK, not picked.** Averaging the non-grey pixels of
+⚠️ **The brand colors were SAMPLED FROM THE MARK, not picked.** Averaging the non-gray pixels of
 `public/iat-logo.png` gives blue **#3b5fa8** and green **#56b043** over a silver **#c0c0c0** — the
 mark reads blue → silver → green, and blue is what IAT leads with on paper.
 
@@ -803,7 +803,7 @@ mark reads blue → silver → green, and blue is what IAT leads with on paper.
 | `onNavy` / `onNavyStrong` | | muted text on a navy band |
 
 🔴 **The portal's green is not the company's green.** DESIGN.md's `--brand` #089447 is a screen
-system; the mark's green is #56b043 and the letterhead colour is the blue. Do not "unify" the PDF
+system; the mark's green is #56b043 and the letterhead color is the blue. Do not "unify" the PDF
 back to the portal palette — they are answering different questions.
 
 Applied to every dark block so the document does not mix two schemes: both header bands, the
@@ -1382,7 +1382,7 @@ atomic**: if the room left could not hold all of it, `ensure()` sent the whole b
 header, carry on.
 
 🔴 **THE RESERVES HAD TO SHRINK WITH THEM.** A caller that still books the full table height
-reintroduces the exact behaviour this removes. Every reserve before a splitting block is now
+reintroduces the exact behavior this removes. Every reserve before a splitting block is now
 "is it worth starting here" — the overline plus a header and two rows.
 
 | Shape | Pages |
@@ -1403,12 +1403,12 @@ blank is 19mm, down from 53.
 previously be tied back to a job. The cover carries it in the reference chip, the takeaway in its
 subtitle, and continuation pages right-aligned under the reference.
 
-### ⚠️ The mark is centred on the TEXT BLOCK, not on the band
+### ⚠️ The mark is centered on the TEXT BLOCK, not on the band
 
 All three headers had it positioned against the top of the band, so it floated above the wording
 rather than sitting with it:
 
-| Header | Type runs | centres | Mark centred at | Now |
+| Header | Type runs | centers | Mark centered at | Now |
 |---|---|---|---|---|
 | Cover (40mm band) | 8.7 → 37.6 | 23.1 | **12.5** | 23.0 |
 | Continuation (30mm) | 11.1 → 24.3 | 17.7 | **14.0** | 17.7 |
@@ -1459,7 +1459,7 @@ Three levels, and each reserves differently:
 | `subhead()` | Hairline across `CW`, an 11mm `brandGreenDeep` bar over its left end, small-caps label below | `SUBHEAD_H` (8.6) + the first block after it |
 | `subheadAt()` | The same, **without** the reserve | caller's own `ensure()` must include `SUBHEAD_H` |
 
-These were bare `overline()` calls with a hand-written `y += 3..5` under them, which put a 6.6pt grey
+These were bare `overline()` calls with a hand-written `y += 3..5` under them, which put a 6.6pt gray
 label in open space between two tables — it read as a caption on the table *above* rather than a
 heading for the one below (owner, 2026-08-27: make each section look more separate).
 

@@ -345,7 +345,7 @@ button.
 
 ⚠️ **The no-reply wording and the write path have to ship together.** Telling a
 customer not to reply while giving them no way to write back leaves anyone with a
-question stranded — worse than the reply-to-a-mailbox behaviour it replaced. If you
+question stranded — worse than the reply-to-a-mailbox behavior it replaced. If you
 ever disable the message box, restore a monitored reply address in the same change.
 
 **`noreply@dehumidifiers.com` is a real alias forwarding to `iatsupport@`** (created

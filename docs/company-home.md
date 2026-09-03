@@ -137,7 +137,7 @@ renders one — go through it.
 
 The nine render as tiles under the ribbon; clicking one magnifies it in place (3× the tile size)
 rather than navigating away, which is what was asked for. Off-week tiles are dimmed with opacity
-rather than recoloured, because the artwork carries its own colour and a greyed crown still reads
+rather than recolored, because the artwork carries its own color and a grayed crown still reads
 as a crown.
 
 ### The `home_content` permission

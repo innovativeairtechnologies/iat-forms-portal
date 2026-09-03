@@ -92,7 +92,7 @@ leak of that file would mean.
 **3. The repo is PUBLIC.** `.env.local` is gitignored — verified, `.gitignore:30` matches
 `.env*.local` — so it will not be committed by accident. But on a public repo the cost of a
 `git add -f` or an over-broad `git add -A` is higher than usual, which is another point in
-favour of keeping the credential outside the repo folder entirely.
+favor of keeping the credential outside the repo folder entirely.
 
 **4. Rotation.** Resetting the database password in Supabase leaves this stale. The failure is
 loud and readable (`Could not connect: …`), never silent.

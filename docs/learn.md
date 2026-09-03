@@ -38,9 +38,9 @@ A gamified library dashboard, rebuilt 2026-07-31 from a reference design Jacob s
 - **Up next** — a 7-day activity strip plus the next lessons to open (subjects already underway
   first, then fresh ones).
 
-**Colour is the DESIGN.md §2.4 dashboard exception, not a departure.** Every wash is a Tone from
+**Color is the DESIGN.md §2.4 dashboard exception, not a departure.** Every wash is a Tone from
 the sanctioned table (emerald / sky / amber / violet / rose / slate) — no off-system pastels — and
-a subject inherits its *category's* tone, so the colour means "this part of the library" rather
+a subject inherits its *category's* tone, so the color means "this part of the library" rather
 than decoration. The map lives in `components/learn/learn-tones.ts`.
 
 ### Why the deck became shelves (2026-08-11)
@@ -52,7 +52,7 @@ become 32 cards of shuffled subject matter, about 4½ visible at a time, behind 
 sideways scrolls. The team's feedback was exactly that: sideways scrolling, and no sense of which
 part of the library you were in.
 
-Grouping by category is the fix, and it made the **colour work better, not worse** — a shelf is now
+Grouping by category is the fix, and it made the **color work better, not worse** — a shelf is now
 one Tone block instead of six tones shuffled together, so the §2.4 wash finally reads as "this part
 of the library". Notes for anyone changing it:
 
@@ -62,7 +62,7 @@ of the library". Notes for anyone changing it:
   22 of 63 lessons in Onboarding" is a fact about Onboarding; recomputing it per filter would make
   the number jump whenever someone clicked a tab.
 - Shelf progress is **lessons read**, deliberately *not* a completion claim — a subject with a
-  published quiz also needs a pass (`subjectIsComplete`). It's labelled "lessons read" for that
+  published quiz also needs a pass (`subjectIsComplete`). It's labeled "lessons read" for that
   reason. A tile showing 100% with an unpassed quiz says **"Quiz left"** rather than 100%.
 - The subject title is the **first** element in a tile. Anything optional above it (a due chip, a
   Done pill) knocks the titles in a row out of alignment, which is what you scan down a shelf.
@@ -79,7 +79,7 @@ of the library". Notes for anyone changing it:
 | Mandatory filter | ✅ **Real** as the **Required** tab (076). Hidden when nothing is required. |
 | Tests Passed · Average Test Score | ✅ **Real** — the Quizzes stat tile (074), shown once any attempt exists. |
 | Recommended filter | ❌ No recommendation signal exists, so there is no tab. |
-| "32 Hours Studied" | ❌ `learn_progress.time_spent_seconds` exists but **is never written**. The chart shows `estimated_minutes` of lessons *completed* per day, labelled "Content completed" so it can't be read as measured time. |
+| "32 Hours Studied" | ❌ `learn_progress.time_spent_seconds` exists but **is never written**. The chart shows `estimated_minutes` of lessons *completed* per day, labeled "Content completed" so it can't be read as measured time. |
 | Next Lessons w/ instructor + scheduled time | ❌ Lessons have no instructor and no schedule. "Up next" answers the same question from real ordering. |
 
 The four stat tiles adapt: Streak gives way to **Quizzes** once any quiz has been taken, and Library %
@@ -416,7 +416,7 @@ the theme.
 
 ### Blocked on the SOO + screen captures
 
-Unit schematic with real sensor positions, setpoint behaviour lessons, the rest of the IAT menu
+Unit schematic with real sensor positions, setpoint behavior lessons, the rest of the IAT menu
 tree (menu entries the procedure never shows are carried as `—` with `optional: true` — fill
 them from captures, don't invent), the password tiers, and the capstone quiz.
 
@@ -451,16 +451,16 @@ agreement that stops a certificate congratulating someone the compliance report 
 excludes `course-completion` from the requirement, and dates the award from the last thing that
 actually happened rather than `now()`, so it doesn't re-date itself on every page load.
 
-### Interactive blocks: the catalogue types the registry
+### Interactive blocks: the catalog types the registry
 
 `lib/learn-blocks.ts` is the single list of every block a lesson may embed — for **both** courses.
 It is consumed three ways, and the middle one is the load-bearing part:
 
 | Consumer | What it gets |
 |---|---|
-| `InteractiveBlockView.tsx` | types its registry `Record<InteractiveBlockName, …>` — a catalogued name with no component is a **compile error** |
+| `InteractiveBlockView.tsx` | types its registry `Record<InteractiveBlockName, …>` — a cataloged name with no component is a **compile error** |
 | `LessonEditor.tsx` | builds the author's insert menu, including per-block parameter pickers |
-| `gen-hvacr-course.mjs` | asserts every marker it writes is catalogued |
+| `gen-hvacr-course.mjs` | asserts every marker it writes is cataloged |
 
 Together those mean a marker in a seed can no longer ship as a silent "isn't available" note.
 
@@ -481,7 +481,7 @@ by the marker's `data-set`, so a new drill is a data entry rather than a new com
 - ⚠️ **`lib/hvacr/palette.ts` is a sanctioned token exception**, like `UnitScene.tsx` and the
   `.cpco-*` LCD hex. WebGL materials cannot read CSS variables, and blue-is-cold / orange-is-hot is
   physics rather than branding — re-toning it per theme would make the models teach the wrong thing.
-  It is the *only* place raw colour appears in this feature; all chrome is on semantic tokens.
+  It is the *only* place raw color appears in this feature; all chrome is on semantic tokens.
 
 ### Practice drills are ungraded on purpose
 
@@ -500,7 +500,7 @@ node --env-file=.env.local --import ./scripts/ts-resolve.mjs \
 ```
 
 The second script checks the certificate route's data logic *and* re-parses every seeded lesson body
-through `splitLessonHtml`, asserting all 55 markers resolve to a catalogued widget with valid
+through `splitLessonHtml`, asserting all 55 markers resolve to a cataloged widget with valid
 params. Learn pages are login-gated, so widgets were browser-verified through a temporary
 unauthenticated route (the middleware matcher is a prefix whitelist, so an unlisted top-level path
 renders without a session) — and **the Browser pane does not composite, so WebGL canvases never size
@@ -557,5 +557,5 @@ Verified clean through **@tiptap 3.29.2 / prosemirror-model 1.25.11** (PR #35, 2
 ### Known gap
 
 Pasting rich HTML copied from a web page still brings that page's `<img>` tags in as **external
-hotlinks**, which will rot when the source moves. Pre-existing TipTap behaviour, not introduced
+hotlinks**, which will rot when the source moves. Pre-existing TipTap behavior, not introduced
 by the upload work, but it's the one hole in "every image is one we host".

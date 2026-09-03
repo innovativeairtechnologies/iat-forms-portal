@@ -58,7 +58,7 @@ released"); ordering is not a role, and production_manager sits closest to it.
 
 **Sales is not seeded.** Sales generates engineering work — the workbook's "Sales Support" row is
 20% of a mechanical engineer's Monday-to-Wednesday — and a queue the requesters can also
-re-prioritise is not an accountability tool. Grant it per person from `/admin/permissions`.
+re-prioritize is not an accountability tool. Grant it per person from `/admin/permissions`.
 
 **Editing the playbook needs more.** `requireEngineeringAuth({ playbook: true })` requires `admin`
 or the `engineering` role — the same shape as SOO approval. A production manager works the board

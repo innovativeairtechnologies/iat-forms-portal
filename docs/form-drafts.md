@@ -20,7 +20,7 @@ banner ("Resumed your saved progress… · Start over") shows when a draft is re
 ## Resume
 The Employee Forms tab (`/employee/resources`, `/admin/employee-forms`) shows a
 **"Continue where you left off"** list of the user's in-progress account drafts —
-each labelled by the form + the "Employee Name" answer (if present) + when it was
+each labeled by the form + the "Employee Name" answer (if present) + when it was
 saved. Click **Resume** to reopen exactly where they left off, or **Discard**.
 **Multiple drafts per form** are allowed on purpose (a manager mid-way through several
 reviews at once).

@@ -254,7 +254,7 @@ adds a row to it. Listing it here would put customer names on a sticker-gated pa
 37 assertions against a locally-served production build and the live database, all passing:
 token shape; the anon key cannot read `pp_tags` or `pp_walkarounds`; unknown and malformed
 tokens refused; missing name/perspective refused; an invented perspective refused; a unit
-tag ignores a posted job number in favour of its own; **tag B cannot add to, edit, delete or
+tag ignores a posted job number in favor of its own; **tag B cannot add to, edit, delete or
 hand over tag A's walk**; no upload URL without an owned finding, or for another tag's
 finding; an SVG cannot be uploaded as a photo; an over-limit clip refused; paths are
 server-generated; an unowned media path 404s; status / assignee / due date / resolution /
@@ -307,7 +307,7 @@ reason. **Never drop the audio once text exists.**
 live.** The control is wired end to end and waiting on one environment variable.
 
 **Where it is:** the finding detail page, under each voice note. With no provider configured
-it renders **nothing** — no greyed-out button and no upgrade nag on a page engineers open
+it renders **nothing** — no grayed-out button and no upgrade nag on a page engineers open
 daily. Add a key and it appears on its own, including for recordings captured long before.
 
 **What it does:** transcribes that one recording and stores the text **on the media entry**,
@@ -366,7 +366,7 @@ That was scoped and deferred.
 ## ⛔ A token cannot take an opacity modifier
 
 `bg-ink/60`, `bg-ink/40`, `bg-surface/50`, `ring-brand/30` — **every one of these generates no
-CSS rule at all.** Each colour is `var(--ink)`, an opaque value, and Tailwind cannot inject an
+CSS rule at all.** Each color is `var(--ink)`, an opaque value, and Tailwind cannot inject an
 alpha channel into a var(). The element renders **fully transparent**, and nothing warns you:
 `tsc` passes, the build is green, the class name is right there in the source.
 
@@ -392,7 +392,7 @@ needed, use the solid token (`bg-ink`) — it cannot fail this way.
 
 ✅ **Swept 2026-09-03.** `ring-brand/30` is gone from all 11 live sites, replaced by
 `ring-focus` backed by a `--focus-ring` token. Two of the other dead classes turned out to be
-hiding real bugs rather than wrong colours:
+hiding real bugs rather than wrong colors:
 
 - **The task progress bar read backwards.** Filled segments were `bg-brand/70` — no rule, so no
   fill — while empty ones carried a solid `bg-surface-strong`. The filled part was the invisible
@@ -470,7 +470,7 @@ throws on older WebKit, so the banner can be silent on exactly the device that h
 Reading the bytes asks about the file instead of the browser, and works everywhere.
 
 It returns **null for "cannot tell"** — a non-ISO-BMFF container, an unreadable file, or a
-parse that recognised nothing — and callers must stay quiet on null. Telling somebody a good
+parse that recognized nothing — and callers must stay quiet on null. Telling somebody a good
 clip is silent is how a warning gets ignored on the day it is right.
 
 ⚠️ Verified against real uploads, with a **positive control**: the three known-silent clips
@@ -505,7 +505,7 @@ separating, because the diagnosis differs:
 🔎 **The method mattered more than any of the fixes.** The first guess — an invisible overlay
 swallowing taps, which `bg-ink/40` on a semantic token could plausibly have caused
 (see the token-opacity note) — was wrong. `document.elementFromPoint()` at each button's own
-centre returned the button itself, `pointer-events` was `auto`, nothing was disabled, and the
+center returned the button itself, `pointer-events` was `auto`, nothing was disabled, and the
 console was clean. Only then did clicking it in a real browser reproduce the failure in one
 press. **Reproduce before theorising**; the phone was never the variable.
 
@@ -577,7 +577,7 @@ Uploads go **directly** from the browser with a service-role-minted signed URL; 
 through `/api/admin/post-production/media`, which 307s to a five-minute signed URL so an
 `<img>`, a `<video>` and an `<audio>` all just work. That read route is gated on
 `engineering_jobs` — deliberately tighter than the tool-crib equivalent, because these are
-photographs of a customer's unit and recordings of people criticising each other's work.
+photographs of a customer's unit and recordings of people criticizing each other's work.
 
 ## Reminders
 
@@ -656,7 +656,7 @@ Verified on 2026-09-01, against live Storage:
 
 **Not verified:** nobody has driven the walkaround in a real browser, because signing in is not
 something this build process does. The camera, the microphone, live dictation, the upload path
-and the recorder's browser-specific behaviour are all **unclicked**. The first walk on a real
+and the recorder's browser-specific behavior are all **unclicked**. The first walk on a real
 phone is the test that matters.
 
 `eng_jobs` is currently **empty**, so the unit picker offers no suggestions yet — typing a job

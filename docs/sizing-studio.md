@@ -9,7 +9,7 @@ maths happens client-side and recalculates as you type.
 
 One server round trip exists, and only on request: **Verify with DryWare** runs the selection
 through DryWare's real wheel-performance model and returns the actual leaving condition, the
-optimised rotation speed and the pressure drop. See *Verifying against DryWare* below. It still
+optimized rotation speed and the pressure drop. See *Verifying against DryWare* below. It still
 writes nothing.
 
 ---
@@ -58,7 +58,7 @@ wheel removes closer to 90% than the 80% assumed. Practically, that means the St
 **over-sizing**, and it may have recommended a high-capacity wheel (a real cost adder) on jobs a
 standard wheel would meet, or flagged a reachable target as out of reach. Verify before quoting.
 
-`predictLeavingState()` in `lib/sizing.ts` is still the only place wheel behaviour is modelled
+`predictLeavingState()` in `lib/sizing.ts` is still the only place wheel behavior is modeled
 locally. It was deliberately **not** replaced by the DryWare call: the local engine has to stay
 synchronous and instant so the page recalculates as the rep types, and the upstream takes ~2 s per
 call. Verification reconciles against it instead of replacing it.
@@ -76,7 +76,7 @@ call. Verification reconciles against it instead of replacing it.
 3. **Pick the wheel.** On `Auto`, a high-capacity wheel is selected *only* when a standard wheel
    cannot reach the target — an HC wheel is a real cost adder, not a free safety margin.
 4. **Predict the leaving air.** Moisture drops per the coefficients above. Temperature is
-   modelled as **adiabatic**: the latent heat the air gives up reappears as sensible heat, so the
+   modeled as **adiabatic**: the latent heat the air gives up reappears as sensible heat, so the
    process runs up a line of constant enthalpy and the air leaves much drier *and much hotter*
    (typically 120 °F+). Real units run slightly warmer still, from reactivation heat carryover.
 5. **Size the airflow.** Two independent requirements, and the unit must satisfy both:
@@ -126,12 +126,12 @@ air too little residence time in the desiccant and raises pressure drop.
 
 DryWare's rotor catalog (`productTypeId=19`, 24 rotors) offers **100 / 200 / 400 mm** depths. A
 high-capacity wheel is physically a rotor of **twice the standard depth** — roughly double the
-air-to-desiccant contact time. That is why HC dries deeper; it was previously modelled here as an
+air-to-desiccant contact time. That is why HC dries deeper; it was previously modeled here as an
 abstract efficiency bump.
 
 ⚠️ **The base depth is per size, not a constant.** Most of the line is 200 mm (so HC = 400 mm), but
 **IAT-75REC and IAT-150REC ship a 100 mm rotor** (so HC = 200 mm). `selection.wheelDepthMm` used to
-return `WHEEL_SPECS[wheel].depthMm` — a flat 200/400 — which mis-labelled the two compacts on
+return `WHEEL_SPECS[wheel].depthMm` — a flat 200/400 — which mis-labeled the two compacts on
 screen and, once it started feeding DryWare's performance engine, produced confidently wrong
 verified numbers: a 100 CFM job came back ~2 gr/lb drier than reachable at double the true pressure
 drop, under a green **Verified** pill. It now reads the catalog row's own depth.
@@ -230,7 +230,7 @@ overwritten**: the gap between the two is itself useful, because it shows how mu
 planning coefficients were carrying on that job.
 
 What comes back that the Studio cannot compute at all: **pressure drop** (process and
-reactivation, in. w.g.) and a genuinely **optimised RPH** — the local engine only ever reported a
+reactivation, in. w.g.) and a genuinely **optimized RPH** — the local engine only ever reported a
 mid-range placeholder.
 
 **The client posts inputs only.** The selection is recomputed server-side against the live catalog,
@@ -261,7 +261,7 @@ echo. Never read an input back off the response — `pickResponse()` only ever r
 
 Unlike the product catalog, **there is no local fallback for the physics.** If DryWare puts this
 endpoint behind a login the feature dies rather than degrades — the page falls back to showing the
-preliminary estimate, which is the pre-2026-08-05 behaviour. This is why verification is an
+preliminary estimate, which is the pre-2026-08-05 behavior. This is why verification is an
 internal `/admin` action and not part of any customer-facing flow.
 
 `scripts/verify-desmod.mjs` pins the live response for a known payload, so upstream drift fails

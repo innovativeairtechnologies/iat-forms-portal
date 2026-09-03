@@ -82,7 +82,7 @@ A **firm's** tier and grade come from the same bands applied to its reps'
 
 The workbook's Total is `SUM` of whatever is filled in, always out of 20 — so a
 rep judged on three signals reads "Developing / At-risk" identically to one
-judged on all ten. That behaviour is kept (moving it would change every number),
+judged on all ten. That behavior is kept (moving it would change every number),
 but the UI now carries the **scored count** beside the total (`4/10`) and warns
 in the drawer header, so a low score that just means "we haven't looked yet" is
 legible instead of misleading.

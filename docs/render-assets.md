@@ -29,7 +29,7 @@ queue. A second library is a different `driveId` and is invisible to it. **Do no
 |---|---|---|---|
 | `rooms` | 39 | full render **with** a background | 1920×1080, no alpha |
 | `rooms-cutout` | 37 | the same rooms cut out | ~1600 wide, transparent |
-| `overlays` | 10 | labelled layers to composite over a cutout | 1600×1218, transparent |
+| `overlays` | 10 | labeled layers to composite over a cutout | 1600×1218, transparent |
 
 Sources were 275 MB of 4K JPEG/PNG; these are webp at **8.5 MB** total. That mattered —
 Supabase was already at 285 MB of a 1 GB cap, and raw would have left ~150 MB and

@@ -21,7 +21,7 @@ is a recirculating loop with no air handler at all. A battery dry room is a thre
 precool → desiccant → post-cool train. Switching applications genuinely redraws the figure, which
 is why it asks before discarding your edits.
 
-Inside a template a rep edits **content** — every value, title, label, colour, the photo, and
+Inside a template a rep edits **content** — every value, title, label, color, the photo, and
 where the cards sit. A rep does **not** re-plumb the equipment: block positions and airflow arrows
 are fixed by the template. That boundary is deliberate (see *Limits* below).
 
@@ -125,7 +125,7 @@ literal hex, and the artboard deliberately does **not** respond to dark mode. Wi
 `--canvas` / `--ink` would make an exported PNG come out dark for a rep working at night.
 
 **2. Everything the figure needs must live inside the `<svg>`.** Export works by serialising that
-element, so gradients go in `<defs>`, the photo is embedded as a data URL, and colours are
+element, so gradients go in `<defs>`, the photo is embedded as a data URL, and colors are
 literals — no CSS classes, no `currentColor`, no external references. Editing chrome (selection
 outlines, drag handles) is tagged `data-chrome` and stripped from the clone before serialising.
 

@@ -74,25 +74,25 @@ companion directory of every rep. Shipped 2026-07-27 (migration 068).
 - **Reps tab** — the flat Mapline-style directory (name, firm, title, email,
   phone) across all firms.
 
-## Theme swap (colours vs "black and white")
+## Theme swap (colors vs "black and white")
 
 The basemaps are deliberately near-monochrome — light is OpenFreeMap `positron`
-(pale grey), dark is `dark` (near-black). **All the colour comes from the
+(pale gray), dark is `dark` (near-black). **All the color comes from the
 translucent territory fills on top.** So when the page theme changes,
 `map.setStyle()` reloads the basemap and, for a few hundred ms while it loads,
-the fills are gone and you see just the grey/black basemap — then `style.load`
+the fills are gone and you see just the gray/black basemap — then `style.load`
 → `ensureLayers()` re-adds them. This is expected and self-healing (verified:
 fills return on every one of 6 back-to-back toggles).
 
 Two things reduce it:
 - **No init flash for dark-mode users.** `dark` is `false` until next-themes
   resolves (`mounted`), so mounting the map earlier boots it on the LIGHT
-  basemap and then swaps to dark — a "colours → black-and-white → colours"
+  basemap and then swaps to dark — a "colors → black-and-white → colors"
   flash on every load. `TerritoriesClient` now gates the map mount on `mounted`
   so it inits on the correct basemap the first time.
 - **Higher fill opacity on the dark basemap** (0.5 vs 0.35 light; hover 0.68 vs
   0.55), set in `ensureLayers` from the current theme, so territories stay
-  clearly coloured on the near-black map instead of washing out.
+  clearly colored on the near-black map instead of washing out.
 
 ## Panel scroll — the side panel MUST stay `absolute inset-0`
 
@@ -138,7 +138,7 @@ z-40 (so it stays visible over the full-bleed panel on phones) made it cover the
 panel-toggle button completely — the banner is ~460px wide, wider than a phone,
 and measured **0% of the toggle clickable** at 375/390/430px, stranding the user
 in paint mode. The banner is therefore also *positioned* clear of that corner:
-`left-3 right-14` below sm (leaving the 32px toggle plus a gap), centred only
+`left-3 right-14` below sm (leaving the 32px toggle plus a gap), centered only
 from sm up. Verified by hit-testing every pixel of the button in headless
 Chromium: 97.2% reachable at every width from 375→1440 (97.2% is the
 rounded-corner baseline). `onStartPaint` also collapses the panel below sm, the
@@ -160,7 +160,7 @@ The panel already floats, so the record inherits that treatment and the map
 stays live behind it. (The deals board still uses `components/ui/Drawer.tsx`,
 where a scrim is right — nothing behind it is worth keeping visible.) Both
 share `components/ui/Tabs.tsx`, whose strip scrolls horizontally because four
-labelled tabs don't fit a 380px panel.
+labeled tabs don't fit a 380px panel.
 
 Both rep lists open it: the flat **Reps** tab and the **Reps** section inside a
 firm's detail view.

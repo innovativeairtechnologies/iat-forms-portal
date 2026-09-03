@@ -59,7 +59,7 @@ off: rotate and re-print, don't re-plumb.
 
 ---
 
-## How the work is modelled
+## How the work is modeled
 
 Since **migration 056** a department contains **projects**, and tasks hang off them:
 

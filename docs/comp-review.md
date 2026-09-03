@@ -3,7 +3,7 @@
 The annual merit-increase sheet, ported from the **Sample Annual Review Spreadsheet**
 workbook that previously ran the review off a desktop copy. Migration `078`.
 
-**Read this before changing any formula.** Three of the workbook's behaviours look
+**Read this before changing any formula.** Three of the workbook's behaviors look
 like bugs and were deliberately kept — see [What we kept, and why](#what-we-kept-and-why).
 
 ---
