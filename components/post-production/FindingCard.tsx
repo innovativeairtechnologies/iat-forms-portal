@@ -150,7 +150,7 @@ export default function FindingCard({
           onChange={e => onNote(e.target.value, finding.note_source === 'dictated' ? 'mixed' : 'typed')}
           rows={2}
           placeholder="What would you have done differently?"
-          className="w-full resize-none rounded-lg bg-surface border border-hairline px-3 py-2.5 text-[16px] leading-relaxed text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+          className="w-full resize-none rounded-lg bg-surface border border-hairline px-3 py-2.5 text-[16px] leading-relaxed text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
         />
 
         <VoiceNote

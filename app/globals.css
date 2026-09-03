@@ -21,6 +21,10 @@
   /* Modal scrim. Alpha is BAKED IN because `bg-ink/40` compiles to nothing —
      Tailwind cannot add an alpha channel to an opaque var(). See DESIGN.md. */
   --scrim: rgba(31, 30, 27, 0.45);
+  /* Focus ring — brand green at 30%. Same reason: `ring-brand/30` generated NO
+     rule, so every focus ring in the portal fell back to Tailwind's default blue,
+     against DESIGN.md §2. Keep in step with --brand above. */
+  --focus-ring: rgba(8, 148, 71, 0.30);
   --ink-muted: #8a867c;
   --ink-faint: #b3afa5;
   --brand: #089447;
@@ -74,6 +78,9 @@
   /* Darker in dark mode: the surface ladder is already dim, so a light scrim
      would not separate the dialog from the page behind it. */
   --scrim: rgba(0, 0, 0, 0.62);
+  /* Slightly stronger than light mode — a 30% ring disappears against the dark
+     surface ladder. Matches --brand: #1fb668. */
+  --focus-ring: rgba(31, 182, 104, 0.38);
   --ink-muted: #7f858f;
   --ink-faint: #565c66;
   --brand: #1fb668;

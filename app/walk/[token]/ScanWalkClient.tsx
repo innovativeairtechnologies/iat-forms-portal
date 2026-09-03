@@ -273,7 +273,7 @@ function Intro({
                 autoComplete="name"
                 /* 16px: anything smaller and iOS Safari zooms the whole page in
                    on focus, which on a shop floor reads as the app breaking. */
-                className="mt-2 w-full h-12 px-3 rounded-lg bg-surface border border-hairline text-[16px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+                className="mt-2 w-full h-12 px-3 rounded-lg bg-surface border border-hairline text-[16px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
               />
             )}
 
@@ -309,7 +309,7 @@ function Intro({
                   onChange={e => setNumber(e.target.value)}
                   inputMode="numeric"
                   placeholder="4153"
-                  className="mt-2 w-full h-14 px-4 rounded-lg bg-surface border border-hairline text-[24px] font-medium text-ink tabular-nums placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+                  className="mt-2 w-full h-14 px-4 rounded-lg bg-surface border border-hairline text-[24px] font-medium text-ink tabular-nums placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
                 />
               </>
             )}
@@ -599,7 +599,7 @@ function Walking({
           )}
 
           {findings.length === 0 && (
-            <div className="rounded-xl border border-dashed border-hairline-strong bg-surface/50 px-5 py-10 text-center">
+            <div className="rounded-xl border border-dashed border-hairline-strong bg-surface-soft px-5 py-10 text-center">
               <p className="text-[14.5px] text-ink-secondary leading-relaxed">
                 Walk the unit. Talk into it, photograph it, film it.
               </p>

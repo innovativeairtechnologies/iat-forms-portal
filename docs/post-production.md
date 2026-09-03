@@ -390,8 +390,19 @@ confirm dialogs had no scrim for the same reason.
 mapped as `scrim: 'var(--scrim)'` and used as `bg-scrim`. Where no transparency is actually
 needed, use the solid token (`bg-ink`) — it cannot fail this way.
 
-⚠️ **`ring-brand/30` is still dead across the app**, so focus rings render in Tailwind's default
-colour rather than brand green, against DESIGN.md. That is a separate sweep.
+✅ **Swept 2026-09-03.** `ring-brand/30` is gone from all 11 live sites, replaced by
+`ring-focus` backed by a `--focus-ring` token. Two of the other dead classes turned out to be
+hiding real bugs rather than wrong colours:
+
+- **The task progress bar read backwards.** Filled segments were `bg-brand/70` — no rule, so no
+  fill — while empty ones carried a solid `bg-surface-strong`. The filled part was the invisible
+  part.
+- **The "expected % by now" marker never rendered at all.** A 1px line styled
+  `bg-ink/45 dark:bg-ink/60`, dead in both themes, so the indicator engineering was meant to
+  read progress against has never once been drawn.
+
+Both are the same lesson as the delete button: **an element styled only with a dead class does
+not look broken, it looks absent** — and nobody files a bug about something they have never seen.
 
 ### Removing an attachment is undoable
 

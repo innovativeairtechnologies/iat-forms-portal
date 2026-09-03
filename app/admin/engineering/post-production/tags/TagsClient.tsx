@@ -116,7 +116,7 @@ export default function TagsClient({ tags, jobs }: { tags: Row[]; jobs: Job[] })
                   value={label}
                   onChange={e => setLabel(e.target.value)}
                   placeholder="Test bay"
-                  className="h-9 w-56 px-2.5 rounded-lg bg-surface border border-hairline text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+                  className="h-9 w-56 px-2.5 rounded-lg bg-surface border border-hairline text-[13px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
                 />
               </label>
               <label className="block">
@@ -128,7 +128,7 @@ export default function TagsClient({ tags, jobs }: { tags: Row[]; jobs: Job[] })
                   onChange={e => setJob(e.target.value)}
                   inputMode="numeric"
                   placeholder="4153"
-                  className="h-9 w-28 px-2.5 rounded-lg bg-surface border border-hairline text-[13px] text-ink tabular-nums placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+                  className="h-9 w-28 px-2.5 rounded-lg bg-surface border border-hairline text-[13px] text-ink tabular-nums placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
                 />
               </label>
               <button type="button" onClick={create} disabled={busy} className={BTN}>

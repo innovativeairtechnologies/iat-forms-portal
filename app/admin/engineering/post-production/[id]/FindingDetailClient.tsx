@@ -25,7 +25,7 @@ const PRIMARY =
 
 const FIELD =
   'h-9 rounded-lg border border-hairline bg-surface px-2.5 text-[13px] text-ink ' +
-  'hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors'
+  'hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors'
 
 type Candidate = {
   finding_id: string; job_number: string; note: string
@@ -199,7 +199,7 @@ export default function FindingDetailClient({
                       controls
                       playsInline
                       preload="metadata"
-                      className="w-full rounded-lg border border-hairline bg-ink/5 max-h-[420px]"
+                      className="w-full rounded-lg border border-hairline bg-surface-strong max-h-[420px]"
                     />
                     <p className="mt-1 text-[11px] text-ink-faint tabular-nums">{humanBytes(m.bytes)}</p>
                   </div>
@@ -254,7 +254,7 @@ export default function FindingDetailClient({
                 onChange={e => setResolution(e.target.value)}
                 rows={4}
                 placeholder="Wheel section moved down 6 inches on the standard 4000-series layout; drawing revised."
-                className="w-full resize-y rounded-lg bg-surface border border-hairline px-3 py-2.5 text-[13.5px] leading-relaxed text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+                className="w-full resize-y rounded-lg bg-surface border border-hairline px-3 py-2.5 text-[13.5px] leading-relaxed text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
               />
               <div className="mt-3 flex items-center gap-2 flex-wrap">
                 <button

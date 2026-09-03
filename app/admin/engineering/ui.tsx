@@ -95,7 +95,7 @@ export function ProgressBar({
           <span
             aria-hidden="true"
             title={`Expected ${Math.round(expected)}% by now`}
-            className="absolute top-0 bottom-0 w-px bg-ink/45 dark:bg-ink/60"
+            className="absolute top-0 bottom-0 w-px bg-ink-secondary"
             style={{ left: `${Math.min(100, Math.round(expected))}%` }}
           />
         )}

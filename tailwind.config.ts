@@ -16,6 +16,9 @@ const config: Config = {
         // Pre-multiplied alpha — see --scrim in globals.css. Never write
         // `bg-ink/40` for this; it generates no rule.
         scrim: 'var(--scrim)',
+        // Focus rings: `ring-focus`, never `ring-brand/30` (which compiled to
+        // nothing and left every ring in Tailwind's default blue).
+        focus: 'var(--focus-ring)',
         surface: {
           DEFAULT: 'var(--surface)',
           soft: 'var(--surface-soft)',

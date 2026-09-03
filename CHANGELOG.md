@@ -107,6 +107,30 @@ canvas instead of the person — that is what once rendered Jerry 44px wide and 
 All six are now uniform 450px-tall trimmed derivatives in `public/bobbleheads/`, and
 Jerry's is a byte copy of the existing file, so his art did not change at all.
 
+## 2026-09-03 — Focus rings are brand green again, and two indicators start existing
+
+**Every focus ring in the portal was the wrong colour.** Tab into any field and the ring that
+appears was Tailwind's default blue, not IAT green — because the colour was written as an
+opacity modifier on a design token, and that combination silently produces no styling at all.
+Eleven places, every one of them a field somebody types into.
+
+Chasing that down turned up two things that were not merely the wrong colour. They were
+**missing entirely**, and had been since they were written:
+
+- **The task progress bar was inside out.** The filled part of the bar had no fill, while the
+  empty part was solid grey — so a task at 80% looked emptier than one at 20%.
+- **The "expected by now" marker on progress bars has never been drawn.** It is the thin line
+  showing where a job should have reached by today, which is the entire point of putting a
+  progress bar next to a due date. It has been invisible in both light and dark mode.
+
+Nobody reported either one, which is the whole problem with this class of bug: an element
+styled only with a dead class does not look broken, it looks absent, and people do not file
+bugs about things they have never seen. Both now draw.
+
+The underlying cause is fixed properly rather than patched at each site — a real token that
+carries its own transparency, checked against the compiled stylesheet rather than the source,
+because the source has always looked correct.
+
 ## 2026-09-01 — Deleting one photo or clip, without throwing away the note
 
 **You could always remove a single attachment mid-note. You just could not see the button.**

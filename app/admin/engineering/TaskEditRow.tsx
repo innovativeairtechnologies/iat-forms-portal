@@ -111,8 +111,8 @@ export default function TaskEditRow({
                 aria-label={`Set progress to ${p} percent`}
                 className={`h-4 w-[9px] rounded-[2px] transition-colors disabled:cursor-default ${
                   task.progress >= p && p > 0
-                    ? 'bg-brand/70'
-                    : 'bg-surface-strong hover:bg-brand/40'
+                    ? 'bg-brand'
+                    : 'bg-surface-strong hover:bg-brand-soft'
                 }`}
               />
             ))}

@@ -154,7 +154,7 @@ function UnitPicker({
             autoComplete="off"
             autoFocus
             placeholder="4153"
-            className="mt-1.5 w-full h-14 px-4 rounded-lg bg-surface border border-hairline text-[24px] font-medium text-ink tabular-nums tracking-wide placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+            className="mt-1.5 w-full h-14 px-4 rounded-lg bg-surface border border-hairline text-[24px] font-medium text-ink tabular-nums tracking-wide placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
           />
 
           {exact ? (
@@ -549,7 +549,7 @@ function Walking({
           )}
 
           {findings.length === 0 && (
-            <div className="rounded-xl border border-dashed border-hairline-strong bg-surface/50 px-5 py-10 text-center">
+            <div className="rounded-xl border border-dashed border-hairline-strong bg-surface-soft px-5 py-10 text-center">
               <p className="text-[14px] text-ink-secondary leading-relaxed">
                 Walk the unit. Talk, photograph or film anything you would have done differently.
               </p>

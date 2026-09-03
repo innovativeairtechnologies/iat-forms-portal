@@ -88,7 +88,7 @@ export default function PreflightListClient({
                 onChange={e => setNumber(e.target.value)}
                 inputMode="numeric"
                 placeholder="4160"
-                className="h-10 w-32 px-3 rounded-lg bg-surface border border-hairline text-[15px] font-medium text-ink tabular-nums placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+                className="h-10 w-32 px-3 rounded-lg bg-surface border border-hairline text-[15px] font-medium text-ink tabular-nums placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
               />
               <button
                 type="button"

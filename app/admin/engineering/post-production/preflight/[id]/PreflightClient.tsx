@@ -185,7 +185,7 @@ export default function PreflightClient({
                         placeholder={item.verdict === 'risk'
                           ? 'Why it is being accepted this time'
                           : 'How it was handled on this job'}
-                        className="mt-2.5 w-full h-9 px-3 rounded-lg bg-surface border border-hairline text-[12.5px] text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+                        className="mt-2.5 w-full h-9 px-3 rounded-lg bg-surface border border-hairline text-[12.5px] text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
                       />
                     )}
                   </div>
@@ -206,7 +206,7 @@ export default function PreflightClient({
               onBlur={() => patch({ notes })}
               rows={4}
               placeholder="Anything else agreed for this build."
-              className="w-full resize-y rounded-lg bg-surface border border-hairline px-3 py-2.5 text-[13.5px] leading-relaxed text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 transition-colors"
+              className="w-full resize-y rounded-lg bg-surface border border-hairline px-3 py-2.5 text-[13.5px] leading-relaxed text-ink placeholder:text-ink-faint hover:border-hairline-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
             />
           </div>
         </ListCard>
