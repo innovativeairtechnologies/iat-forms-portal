@@ -219,6 +219,7 @@ const NAV_PARENTS: NavParent[] = [
       // self-service punch screen is in SELF_SERVICE below — this is the admin
       // half only.
       { href: '/admin/time-clock', label: 'Time Clock', perm: 'time_clock' },
+      { href: '/admin/hr/notes',   label: 'Notes',      perm: 'pto' },
       // Annual compensation review (078). Its own `compensation` perm, held by
       // admin + hr only — narrower than the 'employees' grant beside it, so this
       // link stays hidden from every other scoped role.

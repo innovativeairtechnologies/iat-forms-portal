@@ -67,6 +67,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/schedule',        section: 'HR',      label: 'Scheduling' },
   { prefix: '/admin/scheduling',      section: 'HR',      label: 'Scheduling' },
   { prefix: '/admin/accrual',         section: 'HR',      label: 'Accrual' },
+  { prefix: '/admin/hr/notes',        section: 'HR',      label: 'Notes' },
   // Jerry
   { prefix: '/admin/customer-jerry',  section: 'Jerry',   label: 'Customer Jerry' },
   { prefix: '/admin/jerry',           section: 'Jerry',   label: 'Ask Jerry' },

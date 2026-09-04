@@ -204,12 +204,13 @@ export default function RequestsQueueClient({
                 <Row key={req.id} cols={COLS} selected={sel.has(req.id)}>
                   {/* Select */}
                   <SelectBox checked={sel.has(req.id)} onChange={() => sel.toggle(req.id)} />
-                  {/* Identity — employee over date range · hours (notes on hover) */}
-                  <div className="flex items-center gap-2.5 min-w-0" title={req.notes || undefined}>
+                  {/* Identity — employee over date range · hours · note */}
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <ToneAvatar name={name} />
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-ink truncate">{name}</p>
                       <p className="text-[11.5px] text-ink-muted truncate tabular-nums">{range} · {req.hours_requested}h</p>
+                      {req.notes && <p className="text-[11.5px] text-ink-secondary italic truncate mt-0.5">{req.notes}</p>}
                     </div>
                   </div>
                   {/* Type */}
