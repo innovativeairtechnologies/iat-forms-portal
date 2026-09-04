@@ -10,6 +10,15 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — PTO/sick balances corrected; HR time-off report live
+
+**Balances corrected to current remaining values.** The initial import used opening
+balances (start-of-year). The balances have been updated to reflect the current remaining
+balance ("Rem. Bal") from the week-ending 2026-09-06 HR export. All nine portal-registered
+employees now show the correct values they would see in the HR spreadsheet.
+
+---
+
 ## 2026-09-04 — PTO/sick balances imported; HR time-off report live
 
 **Opening balances are now in the portal.** Eighteen staff employees' PTO and sick
