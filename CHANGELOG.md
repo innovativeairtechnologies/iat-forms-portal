@@ -10,6 +10,30 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — PTO/sick balances imported; HR time-off report live
+
+**Opening balances are now in the portal.** Eighteen staff employees' PTO and sick
+balances from the HR spreadsheet have been loaded into the database. Employees can see
+their own numbers on their dashboard under Self-service → Profile; they no longer need
+to ask HR. Balances will accrue automatically every Monday and stop at the cap (240 hrs
+PTO, 160 hrs sick).
+
+**HR role promoted to full accrual managers.** Jo Evans, Crystal Hill, and Kacy now
+carry the `hr` role. HR users can see and manually edit any staff member's PTO and sick
+balance from the admin employee detail page; all other roles see balances as read-only.
+
+**Time-off report under Reports.** A new *Time Off* report at `/admin/reports/time-off`
+is available to anyone with the `accrual` permission (HR and admins). It shows every
+staff employee's current balances in hours and days, their tenure tier and weekly accrual
+rate, cap-fill bars, and a stat strip with fleet totals. Sortable by name, PTO balance,
+or sick balance; filterable by name; printable via the Export button.
+
+**Maintenance: perm-seed check repaired.** The pre-build guard that keeps
+`DEFAULT_ROLE_PERMS` in sync with migration seeds was silently matching a comment on
+line 97 rather than the actual declaration. Anchored to `export const` to fix it.
+
+---
+
 ## 2026-09-04 — A time clock hourly staff can use in five seconds
 
 **Clock in, out, lunch and break from a phone at the shop.** People → Time Clock for the
