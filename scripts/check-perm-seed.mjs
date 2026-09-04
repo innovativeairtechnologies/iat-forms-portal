@@ -34,7 +34,7 @@ const fail = (msg) => {
 
 // ── 1. the code list ────────────────────────────────────────────────────────
 const src = readFileSync(ROLES_TS, 'utf8')
-const block = src.match(/DEFAULT_ROLE_PERMS[^=]*=\s*\{([\s\S]*?)\n\}/)
+const block = src.match(/export const DEFAULT_ROLE_PERMS[^=]*=\s*\{([\s\S]*?)\n\}/)
 if (!block) fail(`Could not parse DEFAULT_ROLE_PERMS out of lib/roles.ts.\nThe checker's parser needs updating to match its new shape.`)
 
 const code = {}

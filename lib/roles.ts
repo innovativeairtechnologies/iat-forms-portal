@@ -268,7 +268,7 @@ export type PermMatrix = Partial<Record<StaffRole, Perm[]>>
 // whenever the DB matrix is unavailable (table missing / read error).
 export const DEFAULT_ROLE_PERMS: Record<Exclude<StaffRole, 'admin'>, Perm[]> = {
   sales: ['dashboard', 'tickets', 'equipment', 'customers', 'gantt', 'jerry', 'deals', 'tools', 'case_studies', 'diagrams', 'proposals', 'soo'],
-  hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools', 'compensation'],
+  hr: ['dashboard', 'org_chart', 'forms', 'employee_forms', 'pto', 'sick', 'scheduling', 'accrual', 'employees', 'jerry', 'tools', 'compensation', 'reports'],
   marketing: ['dashboard', 'presentations', 'jerry', 'tools', 'case_studies', 'marketing_calendar', 'diagrams'],
   engineering: ['dashboard', 'submissions', 'tickets', 'equipment', 'gantt', 'jerry', 'tools', 'diagrams', 'soo', 'engineering_jobs'],
   production_manager: ['dashboard', 'tickets', 'equipment', 'gantt', 'scheduling', 'jerry', 'tools', 'tool_crib', 'production_board', 'engineering_jobs'],

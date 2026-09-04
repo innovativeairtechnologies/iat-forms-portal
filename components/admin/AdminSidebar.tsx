@@ -267,6 +267,7 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/reports/warranty', label: 'Installed Base', perm: 'reports' },
       { href: '/admin/reports/tools', label: 'Tools & Inventory', perm: 'reports' },
       { href: '/admin/reports/adoption', label: 'Portal Adoption', perm: 'reports' },
+      { href: '/admin/reports/time-off', label: 'Time Off', perm: 'accrual' },
     ],
   },
   {
