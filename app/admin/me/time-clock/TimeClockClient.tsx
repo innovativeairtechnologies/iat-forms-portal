@@ -55,6 +55,8 @@ export default function TimeClockClient({ firstName, recentJobs }: { firstName: 
   const [job, setJob] = useState('')
   const [tick, setTick] = useState(0)
   const fixRef = useRef<Fix>(null)
+  const [clockOutStep, setClockOutStep] = useState<'idle' | 'ask' | 'note'>('idle')
+  const [clockOutNote, setClockOutNote] = useState('')
 
   // ── Location, started the instant the page exists ──
   useEffect(() => {
@@ -87,13 +89,16 @@ export default function TimeClockClient({ firstName, recentJobs }: { firstName: 
   // something somebody is watching while they decide whether to go to lunch.
   useEffect(() => { const t = setInterval(() => setTick(n => n + 1), 1000); return () => clearInterval(t) }, [])
 
-  const punch = async (action: PunchAction, jobNumber?: string | null) => {
+  const punch = async (action: PunchAction, jobNumber?: string | null, notes?: string) => {
     setBusy(action); setError(null)
     try {
       const res = await fetch('/api/time-clock/punch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, job_number: jobNumber ?? null, ...(fixRef.current ?? {}), source: 'qr' }),
+        body: JSON.stringify({
+          action, job_number: jobNumber ?? null, ...(fixRef.current ?? {}), source: 'qr',
+          ...(notes ? { notes } : {}),
+        }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -103,6 +108,7 @@ export default function TimeClockClient({ firstName, recentJobs }: { firstName: 
       }
       setFlash(body.offsite ? 'Clocked out — but you were away from the shop, so it is flagged.' : `${LABEL[action]} — done.`)
       setTimeout(() => setFlash(null), 3500)
+      if (action === 'clock_out') { setClockOutStep('idle'); setClockOutNote('') }
       if (action === 'switch_job' || action === 'clock_in') setJob('')
       await refresh()
     } catch {
@@ -175,8 +181,11 @@ export default function TimeClockClient({ firstName, recentJobs }: { firstName: 
 
       {/* THE button. */}
       <button
-        onClick={() => punch(primary, primary === 'clock_in' ? (job.trim() || null) : undefined)}
-        disabled={busy !== null}
+        onClick={() => {
+          if (primary === 'clock_out') { setClockOutStep('ask'); setError(null) }
+          else punch(primary, primary === 'clock_in' ? (job.trim() || null) : undefined)
+        }}
+        disabled={busy !== null || clockOutStep !== 'idle'}
         className={`flex w-full items-center justify-center gap-2.5 rounded-xl px-6 py-6 text-[19px] font-semibold tracking-tight transition-colors duration-150 disabled:opacity-60 ${
           primary === 'clock_out'
             ? 'border border-hairline-strong bg-surface text-ink hover:bg-surface-soft'
@@ -189,6 +198,58 @@ export default function TimeClockClient({ firstName, recentJobs }: { firstName: 
           : <Coffee size={20} />}
         {LABEL[primary]}
       </button>
+
+      {/* Clock-out notes prompt */}
+      {clockOutStep === 'ask' && (
+        <div className="rounded-xl border border-hairline bg-surface p-4 space-y-3">
+          <p className="text-[13.5px] font-medium text-ink">Add a note before clocking out?</p>
+          <p className="text-[12px] text-ink-secondary">Overtime, job details, anything worth recording.</p>
+          <div className="flex gap-2.5">
+            <button
+              onClick={() => { setClockOutNote(''); setClockOutStep('note') }}
+              className="flex-1 rounded-lg bg-brand px-4 py-2.5 text-[14px] font-medium text-white hover:bg-brand-hover transition-colors duration-150"
+            >
+              Yes, add a note
+            </button>
+            <button
+              onClick={() => punch('clock_out', undefined, undefined)}
+              disabled={busy !== null}
+              className="flex-1 rounded-lg border border-hairline bg-surface px-4 py-2.5 text-[14px] font-medium text-ink hover:bg-surface-soft transition-colors duration-150 disabled:opacity-60"
+            >
+              No, clock out
+            </button>
+          </div>
+          <button onClick={() => setClockOutStep('idle')} className="text-[12px] text-ink-muted hover:text-ink transition-colors">Cancel</button>
+        </div>
+      )}
+
+      {clockOutStep === 'note' && (
+        <div className="rounded-xl border border-hairline bg-surface p-4 space-y-3">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">Clock-out note</p>
+          <textarea
+            value={clockOutNote}
+            onChange={e => setClockOutNote(e.target.value)}
+            placeholder="e.g. Stayed 30 min for machine teardown — job 12347890"
+            rows={3}
+            autoFocus
+            className="w-full rounded-lg border border-hairline bg-surface px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none resize-none"
+          />
+          <div className="flex gap-2.5">
+            <button
+              onClick={() => punch('clock_out', undefined, clockOutNote.trim() || undefined)}
+              disabled={busy !== null}
+              className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-hairline-strong bg-surface px-4 py-2.5 text-[14px] font-medium text-ink hover:bg-surface-soft transition-colors duration-150 disabled:opacity-60"
+            >
+              {busy === 'clock_out' ? <RefreshCw size={15} className="animate-spin" /> : <LogOut size={15} />}
+              Clock out
+            </button>
+            <button onClick={() => setClockOutStep('ask')} disabled={busy !== null}
+              className="rounded-lg border border-hairline px-4 py-2.5 text-[14px] text-ink-secondary hover:bg-surface-soft transition-colors duration-150 disabled:opacity-60">
+              Back
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Secondary actions, only the ones that apply. */}
       {state !== 'off' && (

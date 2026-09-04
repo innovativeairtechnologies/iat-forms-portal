@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
   const { ctx } = r
 
   const body = await req.json().catch(() => null) as
-    | { action?: PunchAction; job_number?: string | null; lat?: number; lng?: number; accuracy_m?: number; source?: string }
+    | { action?: PunchAction; job_number?: string | null; lat?: number; lng?: number; accuracy_m?: number; source?: string; notes?: string }
     | null
   if (!body?.action) return NextResponse.json({ error: 'No action' }, { status: 400 })
 
@@ -154,10 +154,12 @@ export async function POST(req: NextRequest) {
 
   switch (action) {
     case 'clock_out': {
+      const notes = typeof body.notes === 'string' ? body.notes.trim().slice(0, 1000) || null : null
       await closeOpen()
       await supabaseAdmin.from('time_shifts').update({
         ended_at: now, end_lat: fix.lat ?? null, end_lng: fix.lng ?? null,
         end_accuracy_m: fix.accuracy_m ?? null, end_distance_m: verdict.distance_m,
+        notes,
       }).eq('id', ctx.shift.id)
       return NextResponse.json({ ok: true, offsite: !verdict.ok })
     }
