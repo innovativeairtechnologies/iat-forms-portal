@@ -319,6 +319,7 @@ function OrgChartCard({ people, depts }: { people: DirectoryPerson[]; depts: { n
   const unreported = people.filter((p) => !p.managerName)
   const mapped = people.length - unreported.length
   const top = unreported.slice(0, 3)
+  const unplaced = people.filter((p) => !p.department).length
   return (
     <Card className="h-full">
       <CardHead
@@ -341,15 +342,44 @@ function OrgChartCard({ people, depts }: { people: DirectoryPerson[]; depts: { n
           </div>
         </div>
 
+        {/* Department roll-up as bar rows rather than pills — it fills the card
+            beside the taller Directory card in the same grid row, and it reads
+            like the Engineering Load card above it on the admin dashboard.
+
+            ⚠️ The bar is a share of TOTAL HEADCOUNT, not of the largest
+            department. Scaling to the largest looked right in the abstract and
+            was wrong on the real roster: today every department holds exactly
+            one person, so every bar rendered 100% full — six identical solid
+            bars carrying no information at all. Against the total they render as
+            matching slivers, which is the truth, and they separate as the
+            company grows.
+
+            Neutral fill, not `bg-brand`: DESIGN.md keeps brand green for the one
+            primary action, focus rings and active indicators. A department size
+            bar is decoration by comparison, and six green bars shouted. */}
         {depts.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {depts.slice(0, 6).map((d) => (
-              <span key={d.name} className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-surface-soft px-2.5 py-1 text-[11px] text-ink-secondary">
-                {d.name}
-                <span className="text-ink-muted tabular-nums">{d.count}</span>
-              </span>
+          <div className="-mx-4 divide-y divide-hairline-soft border-y border-hairline-soft">
+            {depts.slice(0, 7).map((d) => (
+              <div key={d.name} className="flex items-center gap-3 px-4 py-1.5">
+                <span className="w-24 flex-shrink-0 truncate text-[12px] text-ink-secondary">{d.name}</span>
+                <span className="min-w-0 flex-1 h-[5px] rounded-full bg-surface-strong overflow-hidden">
+                  <span
+                    className="block h-full rounded-full bg-ink-faint"
+                    // Floor of 4% so a single person in a large company is still
+                    // a visible mark rather than an empty track.
+                    style={{ width: `${Math.max(4, Math.round((d.count / Math.max(1, people.length)) * 100))}%` }}
+                  />
+                </span>
+                <span className="w-5 flex-shrink-0 text-right text-[12px] tabular-nums text-ink-secondary">{d.count}</span>
+              </div>
             ))}
           </div>
+        )}
+
+        {unplaced > 0 && (
+          <p className="text-[11px] text-ink-muted leading-relaxed">
+            {unplaced} {unplaced === 1 ? 'person has' : 'people have'} no department set.
+          </p>
         )}
 
         {/* The honest read on how complete the chart is. A chart where almost
