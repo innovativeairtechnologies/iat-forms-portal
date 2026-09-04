@@ -10,6 +10,58 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — The same duplicate-email fault in the other three sweeps, and a roll-up that had no guard at all
+
+Follow-on from the escalation fix earlier today. The three sibling sweeps that ride the same pair of
+overnight cron entries carried the same `Date.now()` cutoffs, and checking them against Resend's send
+history turned up a second, larger fault underneath.
+
+**Quote requests (`rfq-reminders`) had more exposure, not less.** It is invoked **five times a
+calendar day**, not two: 07:00 and 08:00 UTC from its own cron entry, and again at 22:00, 23:00 and
+00:00 UTC from the daily digest, which calls it ahead of its own window guard so a skipped digest is
+never a skipped chase. Five invocations, five slightly different `Date.now()` cutoffs, five chances
+to split one email into two. Now anchored, with the repeat window moved 48h → 36h for the same reason
+as the tickets.
+
+That surfaced a trap in the anchor itself. The digest's 00:00 UTC call has already rolled onto the
+next UTC day, so flooring to "07:00 UTC today" would have put its anchor **seven hours into the
+future** — chasing quotes that had not yet been quiet for 24 hours, and disagreeing with its own
+22:00 and 23:00 siblings. The anchor now steps back a day when it would otherwise lead the caller, so
+it always means "the most recent 07:00 UTC at or before now". All five invocations of a day share one
+anchor.
+
+⚠️ **One deliberate behavior change:** a quote crossing 24 hours *during* the day used to be caught by
+that evening's digest call and now waits for the 3am sweep. Those evening calls are documented
+redundancy, a 9pm ET send is read the next morning regardless, and one email is worth a few hours.
+
+**The engineering and post-production sweeps were duplicating unconditionally — every night.** Their
+per-person nudges are held down by `nudged_at` stamps, so the night's second cron entry finds nobody
+left to nudge. The **lead roll-up has no per-row state at all** — it is a whole-board summary that
+sends whenever anything is outstanding — so nothing stopped the second entry sending it again. This
+was not a boundary case that fired occasionally; it fired every night the board had anything on it.
+Confirmed in the send history: "Post-production: what is still open" was delivered at 07:16 **and**
+08:31 UTC on 2, 3 and 4 September. The engineering roll-up shares the fault and had simply had an
+empty board on those nights.
+
+New `lib/nightly-rollup-claim.ts` claims the night in `audit_log` — the same no-DDL approach the
+waiting-on-customer ladder already uses, and "leadership was sent the board summary at T" belongs in
+the accountability trail on its own merits. The claim is keyed on the anchor rather than a UTC date,
+because in winter the 3am ET pass sits at 08:00 UTC and its sibling at 07:00 — still one night. It is
+written only after a send that reached somebody, so a wholly-failed roll-up stays unclaimed and the
+second entry still tries. It **fails open**: an unreadable trail sends the roll-up anyway, because a
+duplicate summary is a nuisance and a board nobody is told about is the failure the sweep exists to
+prevent.
+
+Their repeat windows moved 24h → 12h, which is not a loosening. These are *daily* chasers, and
+against a fixed anchor a 24-hour window puts the cutoff at last night's 07:00 — **earlier than last
+night's own send** — so a task chased yesterday would never come up again and the daily nudge would
+silently become every other day. 12 sits centrally between last night's send and tonight's anchor
+with about half a day of slack in both directions. Verified by simulation across both passes of three
+consecutive nights, including the 24-hour case that would have lost the nudge.
+
+Sweeps now covered: tickets, quote requests, engineering, post-production. Nothing else derives a
+send decision from `Date.now()`.
+
 ## 2026-09-04 — The stalled-ticket escalation was arriving as two emails a night
 
 Admins reported getting the overnight "Needs attention" escalation twice, each copy listing a single

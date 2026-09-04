@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase-admin'
 import { sendRfqAssigneeNudge, sendRfqUnclaimedReminder } from './resend-rfq-reminders'
 import { UNSTARTED_STATUS } from './rfq-status'
+import { nightlySweepAnchor } from './et-clock'
 
 // ─── Chasing quote requests that have stalled ────────────────────────────────
 //
@@ -21,18 +22,40 @@ import { UNSTARTED_STATUS } from './rfq-status'
 // serverless invocations.
 //
 // ── What calls this ─────────────────────────────────────────────────────────
-// Twice a day, deliberately. /api/cron/rfq-reminders owns the 13:00 UTC slot,
-// and the daily digest run calls it again in the afternoon. The stamps above
-// make the second call of the day a no-op, so the duplication costs two queries
-// and buys a sweep that still happens if either entry breaks.
+// FIVE times a calendar day, and the count matters. /api/cron/rfq-reminders is
+// registered at 07:00 and 08:00 UTC and both pass isReminderTime() in summer;
+// /api/cron/admin-digest calls it again at 22:00, 23:00 and 00:00 UTC, ahead of
+// its own window guard, so a day the digest skips is not a day nobody is chased.
+// The stamps above make every call after the first a no-op, so the duplication
+// costs a few queries and buys a sweep that survives any one entry breaking.
+//
+// ⚠️ THAT NO-OP IS NOT FREE — IT DEPENDS ON nightlySweepAnchor(). Every one of
+// those five invocations used to derive its cutoffs from Date.now(), so each
+// asked a slightly different question and a row sitting near a boundary could be
+// invisible to one and eligible to the next. That is how the ticket escalation
+// started arriving as two emails a night (see lib/ticket-reminders.ts, fixed
+// 2026-09-04); this sweep has the same shape and more chances to do it. Anchored,
+// all five compute the identical eligible set and only the first one to run has
+// anything to send.
+//
+// ⚠️ BEHAVIOUR CHANGE, 2026-09-04. A quote that crosses 24 hours DURING the day
+// used to be picked up by that evening's digest call. It now waits for the 3am
+// sweep, because the evening calls share the morning's anchor. Deliberate: those
+// calls are documented redundancy, a ~9pm ET send is read next morning anyway,
+// and one email beats a few hours.
 //
 // Until 2026-08-17 only the digest call existed, because vercel.json was
 // believed to be capped at two cron entries on this account tier. It is not.
 
 /** How long a survey may sit before we chase it. */
 const UNSTARTED_HOURS = 24
-/** How long before we chase the SAME survey again. */
-const REPEAT_HOURS = 48
+/** How long before we chase the SAME survey again — every other night. Measured
+ *  from the anchor, so it must NOT be a whole multiple of 24: stamps are real
+ *  send times and land after the anchor, so `anchor - 48h` would exclude
+ *  everything chased two nights ago and stretch this to every third night. 36
+ *  sits centrally between "one night ago" and "two nights ago", with a
+ *  twelve-hour margin either side. Same reasoning as lib/ticket-reminders.ts. */
+const REPEAT_HOURS = 36
 
 export type ReminderResult = {
   nudged: string[]
@@ -57,7 +80,9 @@ const SELECT =
   'id, reference, company, project_name, application_label, track, assignee_id, assignee_name, created_at, summary'
 
 export async function runRfqReminders(): Promise<ReminderResult> {
-  const now = Date.now()
+  // ⚠️ NOT Date.now() — see "What calls this" above. Row stamps below still use
+  // the real clock; only the cutoffs are anchored.
+  const now = nightlySweepAnchor()
   const staleBefore = new Date(now - UNSTARTED_HOURS * 3600e3).toISOString()
   const repeatBefore = new Date(now - REPEAT_HOURS * 3600e3).toISOString()
   const result: ReminderResult = { nudged: [], unclaimed: [], skipped: null }

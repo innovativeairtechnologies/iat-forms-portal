@@ -344,6 +344,52 @@ entry unconditionally and so costs the backstop. The anchor keeps both.
 *more* exposed — 24h against a forty-minute drift can both duplicate a night and skip one. They ride
 the same two cron entries and can split their mail the same way.
 
+#### Applied to all four sweeps — and the roll-up needed more than the anchor
+
+`ticket-reminders`, `rfq-reminders`, `eng-reminders` and `pp-reminders` all now take their cutoffs
+from `nightlySweepAnchor()`. Two things came out of doing the last three.
+
+**`rfq-reminders` runs FIVE times a calendar day, not two.** Its own entry at 07:00 and 08:00 UTC,
+plus three calls from `admin-digest` (22:00, 23:00, 00:00 UTC), which are made *before* the digest's
+own window guard so a skipped digest is never a skipped chase. Five invocations, five chances to
+split. Anchored, all five agree.
+
+⚠️ **The 00:00 UTC call is why the anchor steps back a day.** It has already rolled onto the next UTC
+day, so a bare "07:00 UTC today" floor would anchor it seven hours into the *future* — chasing rows
+not yet 24 hours quiet, and disagreeing with its own 22:00/23:00 siblings. `nightlySweepAnchor()`
+returns the most recent 07:00 UTC **at or before** `now`. Do not remove that step-back.
+
+⚠️ **Behavior change:** a quote crossing 24 hours during the day used to be caught by that evening's
+digest call; it now waits for the 3am sweep, because the evening calls share the morning's anchor.
+
+**The lead roll-ups had no guard at all, and duplicated every night.** The per-person nudges in
+`eng-reminders` / `pp-reminders` are held down by `nudged_at`, so the second cron entry finds nobody
+left. The roll-up is a whole-board summary with no per-row state, so nothing stopped the second entry
+repeating it — not a boundary case, *every night the board had anything on it*. Confirmed in Resend:
+"Post-production: what is still open" delivered at 07:16 and 08:31 UTC on 2, 3 and 4 September 2026.
+
+`lib/nightly-rollup-claim.ts` claims the night in `audit_log` (actions `eng.rollup_sent` /
+`pp.rollup_sent`), the same no-DDL approach as the waiting-on-customer ladder. Three properties, all
+load-bearing:
+
+- **Keyed on the anchor, not a UTC date.** In winter the 3am ET pass is at 08:00 UTC and its sibling
+  at 07:00 — still one night, and a date key would treat them as one only by luck.
+- **Claimed only after a send that reached somebody.** A wholly-failed roll-up stays unclaimed so the
+  night's second entry still tries. That is the entire reason two entries exist.
+- **Fails open.** An unreadable trail sends the roll-up anyway. A duplicate summary is a nuisance; a
+  board nobody is told about is the failure the sweep exists to prevent.
+
+**Repeat windows: 24h → 12h in the two board sweeps, and this is not a loosening.** They are *daily*
+chasers. Against a fixed 07:00 anchor a 24-hour window puts the cutoff at last night's 07:00 —
+earlier than last night's own send, around 07:15–08:45 — so a task chased yesterday would never be
+eligible again and the daily nudge would silently become every other day. 12 sits centrally between
+last night's send and tonight's anchor. **Do not "restore" 24 here.** The every-other-night sweeps
+(tickets, quotes) use 36h for the mirror-image reason.
+
+**Rule of thumb:** measured from the anchor, a repeat window is `24 × (nights to skip)` shifted to
+land clear of the sends on either side — 12h for daily, 36h for every other night. Never a whole
+multiple of 24.
+
 ### Daily digest opt-out — TEMPORARY, revisit
 
 Arming the digest meant six admins would receive an email none of them had ever seen. Three are

@@ -102,7 +102,18 @@ export function isReminderTime(): boolean {
  */
 export function nightlySweepAnchor(now: number = Date.now()): number {
   const DAY = 86_400_000
-  return Math.floor(now / DAY) * DAY + 7 * 3_600_000
+  const at = Math.floor(now / DAY) * DAY + 7 * 3_600_000
+
+  // ⚠️ NEVER AHEAD OF THE CALLER. /api/cron/admin-digest also runs the quote
+  // sweep, at 22:00, 23:00 and 00:00 UTC — and the 00:00 one has already rolled
+  // onto the next UTC day, so the bare floor above would put its anchor SEVEN
+  // HOURS INTO THE FUTURE. A future anchor chases rows that have not yet been
+  // quiet for 24 hours, and it disagrees with its own 22:00 and 23:00 siblings,
+  // which is the split this function exists to remove. Stepping back a day makes
+  // it "the most recent 07:00 UTC at or before now", so all five invocations of
+  // one calendar day — two in the sweep window, three from the digest — share
+  // one anchor, and the cutoff is always in the past.
+  return at <= now ? at : at - DAY
 }
 
 /**

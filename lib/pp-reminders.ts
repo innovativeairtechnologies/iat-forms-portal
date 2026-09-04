@@ -4,6 +4,8 @@ import { listFindings, listThemes } from './pp-data'
 import { engineeringLeadRecipients } from './resend-engineering'
 import { sendFindingNudge, sendPostProductionRollUp } from './resend-post-production'
 import { RECURRENCE_THRESHOLD, standingOf, type PpFinding } from './post-production'
+import { nightlySweepAnchor } from './et-clock'
+import { PP_ROLLUP_ACTION, rollUpSentTonight, markRollUpSent } from './nightly-rollup-claim'
 
 /* ────────────────────────────────────────────────────────────────────────────
    The morning sweep over post-production findings.
@@ -36,8 +38,13 @@ import { RECURRENCE_THRESHOLD, standingOf, type PpFinding } from './post-product
    prevent.
    ──────────────────────────────────────────────────────────────────────────── */
 
-/** How long before the SAME person is chased about the SAME finding again. */
-const REPEAT_HOURS = 24
+/** How long before the SAME person is chased about the SAME finding again. Daily
+ *  — but measured from nightlySweepAnchor(), not the wall clock, so it has to
+ *  land between "last night's send" and "tonight's anchor". Same reasoning and
+ *  the same ⚠️ as lib/eng-reminders.ts: putting 24 back turns the daily nudge
+ *  into every other day, because against the anchor the cutoff would fall
+ *  earlier than last night's own send. */
+const REPEAT_HOURS = 12
 
 /** How many days ahead of the answer date the first nudge goes out. Three, so
  *  there is a working day or two left to actually write something — a reminder
@@ -62,9 +69,14 @@ export async function runPostProductionReminders(now: Date = new Date()): Promis
   const open = await listFindings({ openOnly: true })
   if (!open.length) { result.skipped = 'nothing open'; return result }
 
+  // Tonight's shared reference point. `now` stays the real clock — it stamps the
+  // rows, orders the email and dates it — but the chase cutoff is anchored, so
+  // both cron entries of one night select the same findings and the second finds
+  // nobody left. See nightlySweepAnchor().
+  const anchor = nightlySweepAnchor(now.getTime())
   const today = now.toISOString().slice(0, 10)
   const soon = new Date(now.getTime() + LEAD_DAYS * 86_400_000).toISOString().slice(0, 10)
-  const repeatBefore = new Date(now.getTime() - REPEAT_HOURS * 3600e3).toISOString()
+  const repeatBefore = new Date(anchor - REPEAT_HOURS * 3600e3).toISOString()
 
   const overdue = open.filter(f => f.due_date && f.due_date < today)
   const unassigned = open.filter(f => !f.assignee_id)
@@ -147,8 +159,25 @@ export async function runPostProductionReminders(now: Date = new Date()): Promis
     return result
   }
 
+  // ⚠️ ONCE A NIGHT. This is the roll-up that was actually observed going out
+  // twice — "Post-production: what is still open" delivered at 07:16 and again
+  // at 08:31 UTC on 2, 3 and 4 September 2026, because both cron entries reach
+  // here and, unlike the nudges above, nothing per-row holds it down. See
+  // lib/nightly-rollup-claim.ts.
+  if (await rollUpSentTonight(PP_ROLLUP_ACTION, anchor)) {
+    console.log('[pp-reminders] roll-up already sent tonight — not repeating')
+    result.skipped = 'roll-up already sent tonight'
+    return result
+  }
+
   const sent = await sendPostProductionRollUp(leads, { overdue, unassigned, recurring }, now)
   for (const s of sent) (s.ok ? result.rollUpTo : result.rollUpFailed).push(s.to)
+
+  // Claim the night only once it reached somebody, so a wholly-failed roll-up is
+  // still retried by the night's second entry.
+  if (result.rollUpTo.length) {
+    await markRollUpSent(PP_ROLLUP_ACTION, 'Post-production', result.rollUpTo)
+  }
 
   return result
 }

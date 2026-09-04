@@ -3,6 +3,8 @@ import { supabaseAdmin } from './supabase-admin'
 import { getPlaybook, listTasks } from './eng-data'
 import { projectTask, type EngTaskRow } from './engineering'
 import { engineeringLeadRecipients, sendEngineerNudge, sendEngineeringRollUp } from './resend-engineering'
+import { nightlySweepAnchor } from './et-clock'
+import { ENG_ROLLUP_ACTION, rollUpSentTonight, markRollUpSent } from './nightly-rollup-claim'
 
 /* ────────────────────────────────────────────────────────────────────────────
    The morning sweep over the engineering board.
@@ -35,8 +37,20 @@ import { engineeringLeadRecipients, sendEngineerNudge, sendEngineeringRollUp } f
    at all is the failure the whole feature exists to prevent.
    ──────────────────────────────────────────────────────────────────────────── */
 
-/** How long before the SAME person is nudged about the SAME task again. */
-const REPEAT_HOURS = 24
+/** How long before the SAME person is nudged about the SAME task again. Daily —
+ *  but measured from nightlySweepAnchor(), not from the wall clock, so it must
+ *  land between "last night's send" and "tonight's anchor". Last night's stamps
+ *  are real send times around 07:15-08:45 UTC and tonight's anchor is 07:00 UTC,
+ *  so anything from 0 to ~22h works; 12 sits centrally, giving about half a day
+ *  of slack against cron lateness in both directions.
+ *
+ *  ⚠️ DO NOT PUT 24 BACK. Against the anchor, 24 makes the cutoff last night's
+ *  07:00 — earlier than last night's own send — so a task chased yesterday is
+ *  never eligible again and the daily nudge silently becomes every other day.
+ *  Against Date.now(), which is what this used to be, 24h landed within seconds
+ *  of the run-to-run drift and decided by coin flip which of the night's two
+ *  passes chased a task; see nightlySweepAnchor(). */
+const REPEAT_HOURS = 12
 
 export type EngReminderResult = {
   nudged: { to: string; tasks: number }[]
@@ -54,9 +68,14 @@ export async function runEngineeringReminders(now: Date = new Date()): Promise<E
   }
 
   const [playbook, open] = await Promise.all([getPlaybook(), listTasks({ openOnly: true })])
+  // Tonight's shared reference point. `now` stays the real clock — it stamps the
+  // rows, sizes the variance figures and dates the email — but the chase cutoff
+  // is anchored, so both cron entries of one night select the same tasks and the
+  // second finds nobody left. See nightlySweepAnchor().
+  const anchor = nightlySweepAnchor(now.getTime())
   const today = now.toISOString().slice(0, 10)
   const soon = new Date(now.getTime() + playbook.nudgeLeadDays * 86_400_000).toISOString().slice(0, 10)
-  const repeatBefore = new Date(now.getTime() - REPEAT_HOURS * 3600e3).toISOString()
+  const repeatBefore = new Date(anchor - REPEAT_HOURS * 3600e3).toISOString()
   const staleBefore = new Date(now.getTime() - playbook.staleAfterDays * 86_400_000).toISOString()
 
   const overdue = open.filter(t => t.due_date && t.due_date < today)
@@ -147,6 +166,17 @@ export async function runEngineeringReminders(now: Date = new Date()): Promise<E
     return result
   }
 
+  // ⚠️ ONCE A NIGHT. Both cron entries reach here, and unlike the nudges above
+  // this roll-up has no per-row stamp to hold it down — so before the claim it
+  // would send twice every night the board had anything on it. See
+  // lib/nightly-rollup-claim.ts, which carries the evidence and the fail-open
+  // reasoning. Checked AFTER `nothing`, so a quiet board costs no query.
+  if (await rollUpSentTonight(ENG_ROLLUP_ACTION, anchor)) {
+    console.log('[eng-reminders] roll-up already sent tonight — not repeating')
+    result.skipped = [result.skipped, 'roll-up already sent tonight'].filter(Boolean).join('; ')
+    return result
+  }
+
   const results = await sendEngineeringRollUp(
     recipients,
     { overdue, unassigned, stale, staleDays: playbook.staleAfterDays, unplannedJobs },
@@ -154,6 +184,13 @@ export async function runEngineeringReminders(now: Date = new Date()): Promise<E
   )
   result.rollUpTo = results.filter(r => r.ok).map(r => r.to)
   result.rollUpFailed = results.filter(r => !r.ok).map(r => r.to)
+
+  // Claim the night only once it actually reached somebody. A roll-up that
+  // failed for every recipient stays unclaimed, so the second cron entry of the
+  // night still tries — which is the whole reason there are two entries.
+  if (result.rollUpTo.length) {
+    await markRollUpSent(ENG_ROLLUP_ACTION, 'Engineering board', result.rollUpTo)
+  }
 
   // Stamp the escalated rows only once the roll-up actually reached somebody.
   // The stamp is not used to suppress the roll-up (which is a whole-board
