@@ -192,11 +192,21 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/marketing', label: 'Calendar', perm: 'marketing_calendar' },
     ],
   },
+  // Renamed 'People' → 'HR' 2026-09-04. The group already held nothing but HR
+  // work (roster, time off, scheduling, accrual, the clock, pay), so this is the
+  // label catching up to the contents rather than a regrouping — every href,
+  // perm and badge below is unchanged. Org Chart moved in at the same time; it
+  // had been reachable only from a button in the Employees page header.
   {
-    label: 'People',
+    label: 'HR',
     icon: Users,
     children: [
       { href: '/admin/employees', label: 'Employees', perm: 'employees' },
+      // The org chart / directory (migration 023). Sits directly under Employees:
+      // same roster, one row per person there and one node per person here.
+      // `org_chart` is held live by admin + hr, so no migration is needed to put
+      // it on the rail — see docs/roles-and-permissions.md.
+      { href: '/admin/org-chart', label: 'Org Chart', perm: 'org_chart' },
       // Employee Forms merged into Forms (route + employee portal stay live). Re-enable
       // by removing `hidden: true`.
       { href: '/admin/employee-forms', label: 'Employee Forms', badge: 'drafts', hidden: true, perm: 'employee_forms' },

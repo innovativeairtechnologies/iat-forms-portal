@@ -11,7 +11,7 @@ import {
   ArrowRight, Ticket, Boxes, Building2, Clock, Inbox, Sparkles,
   Calendar, Users, FileText, Presentation, CalendarRange, DollarSign, CalendarClock,
   MessageSquare, LayoutGrid, Compass, ClipboardList, CheckCircle2, AlertCircle,
-  DraftingCompass,
+  DraftingCompass, Network,
 } from 'lucide-react'
 import type { ExecData } from '@/lib/exec-dashboard-data'
 import { getMyRfqs, type MyRfqSummary } from '@/lib/rfq-mine'
@@ -22,6 +22,11 @@ import {
 import {
   EngStatusCard, EngRiskCard, EngMyWorkCard, EngLoadCard, getEngCardData,
 } from '@/components/dashboards/eng-cards'
+// Component-only import from a 'use client' module — never a value, or the
+// server tree 500s at runtime (see docs/roles-and-permissions.md and the
+// use-client import rule).
+import DirectoryCard from '@/components/dashboards/DirectoryCard'
+import { getDirectory, departmentCounts, type DirectoryPerson } from '@/lib/directory'
 
 /* ────────────────────────────────────────────────────────────────────────────
    Department-dashboard CARD REGISTRY — the catalog behind both the default
@@ -295,6 +300,69 @@ function QuickLinksCard({ links }: { links: QuickLink[] }) {
           )
         })}
       </div>
+    </Card>
+  )
+}
+
+/**
+ * Org Chart — the reporting structure at a glance, and the door to the chart.
+ *
+ * Deliberately NOT a miniature of the pan/zoom chart: a tree squeezed into a
+ * dashboard tile is unreadable at every size the grid offers. It answers the
+ * questions the tile CAN answer — how many of us, split how, who sits at the
+ * top — and hands off to /admin/org-chart for the structure itself.
+ */
+function OrgChartCard({ people, depts }: { people: DirectoryPerson[]; depts: { name: string; count: number }[] }) {
+  // "Leadership" here means nobody above them on the chart. With manager_id
+  // sparsely populated that can be most of the roster, so the count is shown
+  // rather than a list once it stops meaning anything.
+  const unreported = people.filter((p) => !p.managerName)
+  const mapped = people.length - unreported.length
+  const top = unreported.slice(0, 3)
+  return (
+    <Card className="h-full">
+      <CardHead
+        title="Org Chart"
+        hint={`${people.length} on the chart`}
+        icon={<Network size={13} />}
+        iconTone="violet"
+        action="Open"
+        href="/admin/org-chart"
+      />
+      <CardBody className="p-4 flex flex-col gap-3">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-hairline bg-surface-soft px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.055em] text-ink-muted">People</p>
+            <p className="text-[18px] font-semibold text-ink tabular-nums leading-tight">{people.length.toLocaleString()}</p>
+          </div>
+          <div className="rounded-lg border border-hairline bg-surface-soft px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.055em] text-ink-muted">Departments</p>
+            <p className="text-[18px] font-semibold text-ink tabular-nums leading-tight">{depts.length.toLocaleString()}</p>
+          </div>
+        </div>
+
+        {depts.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {depts.slice(0, 6).map((d) => (
+              <span key={d.name} className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-surface-soft px-2.5 py-1 text-[11px] text-ink-secondary">
+                {d.name}
+                <span className="text-ink-muted tabular-nums">{d.count}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* The honest read on how complete the chart is. A chart where almost
+            nobody has a manager set looks broken rather than flat, so say which
+            it is instead of drawing an empty tree. */}
+        {mapped < people.length && (
+          <p className="text-[11px] text-ink-muted leading-relaxed">
+            {mapped === 0
+              ? 'No reporting lines set yet — open the chart to drag people under their manager.'
+              : `${mapped} of ${people.length} have a manager set. ${top.map((p) => p.name).join(', ')}${unreported.length > top.length ? ` +${unreported.length - top.length} more` : ''} sit at the top.`}
+          </p>
+        )}
+      </CardBody>
     </Card>
   )
 }
@@ -575,6 +643,13 @@ function MyRfqCard({ d }: { d: MyRfqSummary }) {
  */
 const engData = cache(() => getEngCardData())
 
+/**
+ * The staff roster, memoized for the life of one render — same reasoning as
+ * `engData` above. The Org Chart and Company Directory cards read the identical
+ * rows, and a dashboard showing both should fire one query, not two.
+ */
+const directoryData = cache(() => getDirectory())
+
 export const CARD_REGISTRY: CardDef[] = [
   {
     id: 'metrics', title: 'Key Metrics', defaultSpan: 3, sizes: [2, 3],
@@ -639,6 +714,26 @@ export const CARD_REGISTRY: CardDef[] = [
     available: (ctx) => ctx.can('engineering_jobs'),
     Component: async () => <EngLoadCard d={await engData()} />,
   },
+  // ── People (HR rail group) ───────────────────────────────────────────────
+  // Two cards over one memoized read of the roster (directoryData above).
+  {
+    id: 'org_chart', title: 'Org Chart', perm: 'org_chart', defaultSpan: 1, sizes: [1, 2],
+    // `org_chart` is held live by admin + hr. Every other scoped role sees
+    // neither the card nor its row in the Add-card picker.
+    available: (ctx) => ctx.can('org_chart'),
+    Component: async () => {
+      const people = await directoryData()
+      return <OrgChartCard people={people} depts={departmentCounts(people)} />
+    },
+  },
+  {
+    id: 'directory', title: 'Company Directory', defaultSpan: 1, sizes: [1, 2, 3],
+    // No perm on purpose: /admin/me/directory is in OPEN_ADMIN_PREFIXES, so
+    // every admin-surface role can already reach the roster. Looking up a
+    // colleague's extension is not an HR privilege.
+    available: () => true,
+    Component: async () => <DirectoryCard people={await directoryData()} />,
+  },
   {
     id: 'quick_links', title: 'Quick Links', defaultSpan: 2, sizes: [1, 2, 3],
     available: () => true,
@@ -681,6 +776,11 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
       // late has to be visible before the ship date, and a card leadership has to
       // scroll to is a card that does that a week too late.
       { id: 'eng_status', span: 1 }, { id: 'eng_risk', span: 1 }, { id: 'eng_load', span: 1 },
+      // People, above the analysis block: "who works here and how do I reach
+      // them" is a lookup you make mid-task, so it has to be somewhere you can
+      // find without hunting. Below the alert cards, though — nothing here is
+      // asking for action.
+      { id: 'org_chart', span: 1 }, { id: 'directory', span: 1 },
       { id: 'exec_top_forms', span: 1 }, { id: 'exec_top_submitters', span: 1 }, { id: 'exec_needs_attention', span: 1 },
       { id: 'exec_activity', span: 2 }, { id: 'recent_submissions', span: 1 },
       { id: 'recent_tickets', span: 2 }, { id: 'exec_form_status', span: 1 },
@@ -709,6 +809,13 @@ export function defaultLayout(ctx: CardCtx): LayoutItem[] {
     { id: 'eng_my_work', span: 1 }, { id: 'eng_risk', span: 1 },
     { id: 'eng_status', span: 1 }, { id: 'eng_load', span: 1 },
   )
+
+  // People. `org_chart` drops out via the trailing .filter() for every role but
+  // HR, while the directory has no perm and therefore lands on every department
+  // dashboard — deliberately, since looking someone up is not an HR privilege.
+  // For HR this is the top of their board in practice: they hold no engineering
+  // or ticket cards, so the roster follows straight on from the KPI strip.
+  items.push({ id: 'org_chart', span: 1 }, { id: 'directory', span: 1 })
 
   if (ctx.can('tickets')) {
     // Engineering and production_manager work the queue daily, so their morning

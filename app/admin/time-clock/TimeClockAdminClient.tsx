@@ -85,7 +85,7 @@ export default function TimeClockAdminClient({
           <span>
             <strong className="font-semibold">{hourlyMissingNumber}</strong> hourly {hourlyMissingNumber === 1 ? 'employee has' : 'employees have'} no
             employee number. They can still punch — but the payroll export will have a blank in the column QuickBooks keys on.
-            Add it on their profile in <span className="font-semibold">People → Employees</span>.
+            Add it on their profile in <span className="font-semibold">HR → Employees</span>.
           </span>
         </div>
       )}

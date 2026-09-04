@@ -159,3 +159,26 @@ An earlier iteration scaffolded a separate universal `/dashboard` route (its own
 middleware gate) under a "one landing for everyone" plan. That was retired in favor of the
 per-department `/admin` approach above. If a universal post-login landing is wanted later, it
 would reintroduce a `/dashboard` route and point `landingForRole` at it.
+
+## People cards — Org Chart + Company Directory (2026-09-04)
+
+Two cards added with the **HR** nav group, sharing one memoized read of the roster
+(`directoryData()` in the registry, same `cache()` idiom as the engineering batch — a
+dashboard showing both fires one query, not two).
+
+| Card | id | Perm | Sizes | Shows |
+| --- | --- | --- | --- | --- |
+| Org Chart | `org_chart` | `org_chart` (admin + hr) | S, M | Headcount, department count, department pills, and how much of the chart actually has reporting lines set — plus who sits at the top. Links to `/admin/org-chart`. |
+| Company Directory | `directory` | *none* | S, M, L | Type-to-filter roster with click-to-call / click-to-mail per person. Links to `/admin/me/directory`. |
+
+**Why the Org Chart card is not a mini chart.** A reporting tree squeezed into a dashboard
+tile is unreadable at every span the grid offers. The card answers the questions a tile
+*can* answer and hands off to the real canvas for structure.
+
+**Why the directory card carries no perm.** `/admin/me/directory` is in
+`OPEN_ADMIN_PREFIXES`, so every admin-surface role can already reach the roster — looking
+up a colleague's extension is not an HR privilege. It therefore lands on every department
+dashboard's default layout, while `org_chart` drops out via `defaultLayout`'s trailing
+`.filter()` for roles that don't hold the perm.
+
+Both read `lib/directory.ts` — see [`company-directory.md`](company-directory.md).

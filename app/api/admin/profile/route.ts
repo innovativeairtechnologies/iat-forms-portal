@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminUser } from '@/lib/admin-auth'
+import { getAdminSurfaceUser } from '@/lib/admin-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
+/* Uses the LOOSE getAdminSurfaceUser(), not the strict getAdminUser().
+   /admin/profile is in OPEN_ADMIN_PREFIXES — every admin-surface role can reach
+   the page — but this route was full-admin only, so a scoped role (HR, sales,
+   engineering…) loaded their own profile and got a 401: blank name, blank email,
+   and a Save that silently did nothing. Both handlers only ever read and write
+   the CALLER'S OWN row (`.eq('id', …user.id)`), so widening the gate to match the
+   page grants nobody reach over anybody else. Fixed 2026-09-04. */
+
 export async function GET() {
-  const admin = await getAdminUser()
+  const admin = await getAdminSurfaceUser()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   return NextResponse.json({
@@ -16,7 +24,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const admin = await getAdminUser()
+  const admin = await getAdminSurfaceUser()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { display_name } = await req.json()

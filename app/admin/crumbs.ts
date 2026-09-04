@@ -8,7 +8,7 @@ export type Crumb = { label: string; href?: string }
    trail from the URL here, so the two never disagree.
 
    Longest matching prefix wins, so /admin/requests/pto beats /admin/requests
-   beats /admin. Mirrors the sidebar section names (Operations / Sales / People /
+   beats /admin. Mirrors the sidebar section names (Operations / Sales / HR /
    Jerry / System).
    ──────────────────────────────────────────────────────────────────────────── */
 
@@ -56,17 +56,17 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/presentations',   section: 'Sales',   label: 'Presentations' },
   // Marketing
   { prefix: '/admin/marketing',       section: 'Marketing', label: 'Calendar' },
-  // People
-  { prefix: '/admin/employees',       section: 'People',  label: 'Accounts' },
-  { prefix: '/admin/org-chart',       section: 'People',  label: 'Org Chart' },
-  { prefix: '/admin/employee-forms',  section: 'People',  label: 'Employee Forms' },
-  { prefix: '/admin/requests/pto',    section: 'People',  label: 'PTO' },
-  { prefix: '/admin/time-clock',      section: 'People',  label: 'Time Clock' },
-  { prefix: '/admin/requests/sick',   section: 'People',  label: 'Sick Time' },
-  { prefix: '/admin/requests',        section: 'People',  label: 'Requests' },
-  { prefix: '/admin/schedule',        section: 'People',  label: 'Scheduling' },
-  { prefix: '/admin/scheduling',      section: 'People',  label: 'Scheduling' },
-  { prefix: '/admin/accrual',         section: 'People',  label: 'Accrual' },
+  // HR (the rail group renamed from "People" 2026-09-04 — same pages)
+  { prefix: '/admin/employees',       section: 'HR',      label: 'Accounts' },
+  { prefix: '/admin/org-chart',       section: 'HR',      label: 'Org Chart' },
+  { prefix: '/admin/employee-forms',  section: 'HR',      label: 'Employee Forms' },
+  { prefix: '/admin/requests/pto',    section: 'HR',      label: 'PTO' },
+  { prefix: '/admin/time-clock',      section: 'HR',      label: 'Time Clock' },
+  { prefix: '/admin/requests/sick',   section: 'HR',      label: 'Sick Time' },
+  { prefix: '/admin/requests',        section: 'HR',      label: 'Requests' },
+  { prefix: '/admin/schedule',        section: 'HR',      label: 'Scheduling' },
+  { prefix: '/admin/scheduling',      section: 'HR',      label: 'Scheduling' },
+  { prefix: '/admin/accrual',         section: 'HR',      label: 'Accrual' },
   // Jerry
   { prefix: '/admin/customer-jerry',  section: 'Jerry',   label: 'Customer Jerry' },
   { prefix: '/admin/jerry',           section: 'Jerry',   label: 'Ask Jerry' },

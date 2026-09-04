@@ -139,7 +139,7 @@ export default function CompReviewClient({
     return (
       <ListCardPage>
         <ListCard>
-          <CardHead overline="People" title="Compensation Review" count="No review has been started yet." />
+          <CardHead overline="HR" title="Compensation Review" count="No review has been started yet." />
           <StartCycle canEdit={canEdit} rosterCount={roster.length} onStarted={() => router.refresh()} />
         </ListCard>
       </ListCardPage>
@@ -150,7 +150,7 @@ export default function CompReviewClient({
     <ListCardPage>
       <ListCard>
         <CardHead
-          overline="People"
+          overline="HR"
           title="Compensation Review"
           count={
             <>

@@ -4,7 +4,7 @@ Hourly staff punch in from their phone at the shop. Migration `101_time_clock.sq
 
 - **Employee screen** — `/admin/me/time-clock` (self-service, under `OPEN_ADMIN_PREFIXES`, no permission)
 - **QR target** — `/clock`, a redirect that exists only to keep the printed code short
-- **Admin screen** — `/admin/time-clock`, People group, permission `time_clock`
+- **Admin screen** — `/admin/time-clock`, HR group, permission `time_clock`
 - **Payroll export** — `/api/admin/time-clock/export?week=YYYY-MM-DD`
 
 ## 🔴 The job is not on the punch

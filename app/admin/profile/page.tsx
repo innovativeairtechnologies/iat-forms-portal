@@ -1,19 +1,41 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Save, LogOut, Check, Shield } from 'lucide-react'
+import { ArrowLeft, User, Save, LogOut, Check, Shield, Users } from 'lucide-react'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { DirectoryList } from '@/components/dashboards/DirectoryCard'
+import type { DirectoryPerson } from '@/lib/directory'
+import { ROLE_LABELS, type Role } from '@/lib/roles'
+
+/* Ported off the pre-DESIGN.md styling — raw gray/zinc palettes, the hard-coded
+   brand hex and resting shadows — onto semantic tokens 2026-09-04, when the
+   company directory section was added. A token-correct card dropped into a
+   legacy page would have read as a different app. Behaviour is unchanged: edit
+   display name, theme, sign out. */
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-hairline bg-surface overflow-hidden">
+      <div className="flex items-center h-9 px-4 border-b border-hairline-soft">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">{title}</h2>
+      </div>
+      {children}
+    </div>
+  )
+}
 
 export default function ProfilePage() {
   const router = useRouter()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState<Role | null>(null)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [people, setPeople] = useState<DirectoryPerson[] | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/profile')
@@ -21,8 +43,19 @@ export default function ProfilePage() {
       .then(data => {
         setDisplayName(data.display_name || '')
         setEmail(data.email || '')
+        setRole(data.role ?? null)
         setLoading(false)
       })
+      .catch(() => setLoading(false))
+  }, [])
+
+  // The directory loads separately so a slow or failed roster read never blocks
+  // the part of this page the person actually came here for.
+  useEffect(() => {
+    fetch('/api/admin/directory')
+      .then(r => (r.ok ? r.json() : { people: [] }))
+      .then(d => setPeople(d.people ?? []))
+      .catch(() => setPeople([]))
   }, [])
 
   const initials = displayName.trim()
@@ -52,121 +85,151 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-5 h-5 border-2 border-[#089447] border-t-transparent rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto bg-canvas">
 
       {/* Header */}
-      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6 border-b border-hairline bg-surface">
         <Link
           href="/admin"
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-5"
+          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-muted hover:text-ink transition-colors mb-5"
         >
           <ArrowLeft size={13} />
           Dashboard
         </Link>
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gray-800 dark:bg-zinc-700 flex items-center justify-center text-white text-[18px] font-bold flex-shrink-0 select-none">
+          <div className="w-14 h-14 rounded-xl bg-surface-strong text-ink flex items-center justify-center text-[18px] font-semibold flex-shrink-0 select-none">
             {initials}
           </div>
-          <div>
-            <h1 className="text-[22px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
-              {displayName || 'Admin'}
+          <div className="min-w-0">
+            <h1 className="text-[22px] font-semibold text-ink tracking-[-0.01em] leading-tight truncate">
+              {displayName || 'Your profile'}
             </h1>
-            <p className="text-[13px] text-gray-400 mt-0.5">{email} · Admin</p>
+            <p className="text-[13px] text-ink-muted mt-0.5 truncate">
+              {email}{role ? ` · ${ROLE_LABELS[role] ?? role}` : ''}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="p-4 sm:p-8 max-w-xl space-y-4">
+      <div className="p-4 sm:p-8 grid gap-4 lg:grid-cols-2 items-start max-w-5xl">
 
-        {/* Profile */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
-          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-4">Profile</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
-                Display Name
-              </label>
-              <div className="relative">
-                <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 pointer-events-none" />
-                <input
-                  value={displayName}
-                  onChange={e => { setDisplayName(e.target.value); setSaved(false) }}
-                  placeholder="Your name"
-                  className="w-full pl-9 pr-4 py-2.5 text-[13px] border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-[#089447] focus:ring-2 focus:ring-[#089447]/10 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 transition-all"
-                />
+        <div className="space-y-4 min-w-0">
+
+          {/* Profile */}
+          <Section title="Profile">
+            <div className="p-4 space-y-4">
+              <div>
+                <label htmlFor="display-name" className="block text-[11px] font-semibold text-ink-muted uppercase tracking-[0.06em] mb-1.5">
+                  Display name
+                </label>
+                <div className="relative">
+                  <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+                  <input
+                    id="display-name"
+                    value={displayName}
+                    onChange={e => { setDisplayName(e.target.value); setSaved(false) }}
+                    placeholder="Your name"
+                    className="w-full h-9 pl-9 pr-4 text-[13px] rounded-lg border border-hairline bg-surface text-ink placeholder:text-ink-faint outline-none focus:border-brand focus:ring-2 focus:ring-focus transition-colors"
+                  />
+                </div>
               </div>
+              <div>
+                <label htmlFor="profile-email" className="block text-[11px] font-semibold text-ink-muted uppercase tracking-[0.06em] mb-1.5">
+                  Email
+                </label>
+                <input
+                  id="profile-email"
+                  value={email}
+                  disabled
+                  className="w-full h-9 px-4 text-[13px] rounded-lg border border-hairline bg-surface-soft text-ink-muted cursor-not-allowed"
+                />
+                <p className="text-[11px] text-ink-faint mt-1.5">Email is managed by your sign-in account.</p>
+              </div>
+              <button
+                onClick={save}
+                disabled={saving || !displayName.trim()}
+                className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[13px] font-medium transition-colors disabled:opacity-40 ${
+                  saved ? 'bg-brand-soft text-brand-ink' : 'bg-brand hover:bg-brand-hover text-white'
+                }`}
+              >
+                {saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> {saving ? 'Saving…' : 'Save changes'}</>}
+              </button>
             </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
-                Email
-              </label>
-              <input
-                value={email}
-                disabled
-                className="w-full px-4 py-2.5 text-[13px] border border-gray-100 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800/50 text-gray-400 dark:text-gray-600 cursor-not-allowed"
-              />
-              <p className="text-[11px] text-gray-300 dark:text-gray-600 mt-1">Email is managed via Supabase Auth</p>
+          </Section>
+
+          {/* Appearance */}
+          <Section title="Appearance">
+            <div className="p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink">Theme</p>
+                <p className="text-[11px] text-ink-muted mt-0.5">Switch between light and dark mode.</p>
+              </div>
+              <ThemeToggle />
             </div>
-            <button
-              onClick={save}
-              disabled={saving || !displayName.trim()}
-              className={`inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-40 ${
-                saved
-                  ? 'bg-[#f0faf4] dark:bg-[#089447]/20 text-[#089447]'
-                  : 'bg-[#089447] hover:bg-[#077a3c] text-white shadow-sm'
-              }`}
-            >
-              {saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> {saving ? 'Saving…' : 'Save Changes'}</>}
-            </button>
-          </div>
+          </Section>
+
+          {/* Security */}
+          <Section title="Security">
+            <div className="p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-ink">Authentication</p>
+                <p className="text-[11px] text-ink-muted mt-0.5">
+                  Handled by your company sign-in. Password resets go through IT.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 flex-shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-medium text-brand-ink">
+                <Shield size={12} />
+                Protected
+              </span>
+            </div>
+          </Section>
+
+          {/* Session */}
+          <Section title="Session">
+            <div className="p-4">
+              <p className="text-[12px] text-ink-muted mb-3">You are signed in as {email}.</p>
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg text-[13px] font-medium text-ink-secondary border border-hairline hover:border-hairline-strong hover:bg-surface-strong hover:text-ink transition-colors"
+              >
+                <LogOut size={14} />
+                Sign out
+              </button>
+            </div>
+          </Section>
         </div>
 
-        {/* Appearance */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
-          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-4">Appearance</h2>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Theme</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Switch between light and dark mode</p>
-            </div>
-            <ThemeToggle />
+        {/* Company directory — the quick "who is that / what's their number"
+            lookup, next to your own details rather than a page away. */}
+        <div className="rounded-xl border border-hairline bg-surface overflow-hidden flex flex-col max-h-[560px] min-w-0">
+          <div className="flex items-center gap-2 h-9 px-4 border-b border-hairline-soft">
+            <Users size={13} className="text-ink-faint flex-shrink-0" />
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Company directory</h2>
+            {people && (
+              <span className="ml-auto text-[11px] text-ink-faint tabular-nums">
+                {people.length} {people.length === 1 ? 'person' : 'people'}
+              </span>
+            )}
           </div>
-        </div>
 
-        {/* Security */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
-          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-4">Security</h2>
-          <div className="flex items-center justify-between py-3 border border-gray-100 dark:border-zinc-800 rounded-xl px-4">
-            <div>
-              <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300">Authentication</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">
-                Managed via Supabase Auth — use the Dashboard to reset passwords
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield size={13} className="text-[#089447]" />
-              <span className="text-[11px] font-semibold text-[#089447]">Protected</span>
-            </div>
-          </div>
-        </div>
+          {people === null ? (
+            <p className="px-4 py-6 text-[12px] text-ink-muted text-center">Loading the directory…</p>
+          ) : (
+            <DirectoryList people={people} />
+          )}
 
-        {/* Session */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-card p-6">
-          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-1">Session</h2>
-          <p className="text-[12px] text-gray-400 mb-4">You are signed in as {email}.</p>
-          <button
-            onClick={logout}
-            className="inline-flex items-center gap-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 px-4 py-2.5 rounded-xl transition-all border border-gray-200 dark:border-zinc-700 hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/20"
+          <Link
+            href="/admin/me/directory"
+            className="flex-shrink-0 px-4 py-2 border-t border-hairline-soft text-[11px] font-medium text-ink-muted hover:text-ink transition-colors"
           >
-            <LogOut size={14} />
-            Sign Out
-          </button>
+            View full directory &amp; org chart →
+          </Link>
         </div>
 
       </div>

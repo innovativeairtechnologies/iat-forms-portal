@@ -9,7 +9,7 @@ import {
   Calendar, TrendingUp, FileText, Plus, Sparkles, ShieldCheck,
   FileCheck2, UserRound, LifeBuoy, Command as CommandIcon, Clock, Bot, DollarSign,
   MessageCircle, KeyRound, Wrench, Map as MapIcon, Gauge, Workflow, GraduationCap, Megaphone,
-  DraftingCompass,
+  DraftingCompass, Network,
 } from 'lucide-react'
 import { type Perm } from '@/lib/roles'
 import { useViewAs } from '@/components/admin/ViewAs'
@@ -53,7 +53,14 @@ const STATIC: Item[] = [
   // ever parked again, comment this back out — leaving it listed would make ⌘K
   // a back door into a tab we just greyed out.
   { id: 'nav-mktg',    label: 'Marketing Calendar', group: 'Go to', icon: Megaphone,     href: '/admin/marketing', keywords: 'marketing calendar social media post linkedin facebook instagram email campaign newsletter blog trade show content schedule', perm: 'marketing_calendar' },
-  { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster', perm: 'employees' },
+  { id: 'nav-emp',     label: 'Employees',        group: 'Go to', icon: Users,           href: '/admin/employees', keywords: 'people staff team roster hr', perm: 'employees' },
+  // Added 2026-09-04 with the HR rail group. `org_chart` is held by admin + hr,
+  // so this row is invisible to every other scoped role — same gate as the rail.
+  { id: 'nav-orgchart', label: 'Org Chart',       group: 'Go to', icon: Network,         href: '/admin/org-chart', keywords: 'org chart directory hierarchy reports to manager who works here phone extension contact team structure hr', perm: 'org_chart' },
+  // The read-only roster every admin-surface role can reach (no perm — it lives
+  // under OPEN_ADMIN_PREFIXES), so someone without `org_chart` can still look up
+  // a colleague's number from ⌘K.
+  { id: 'nav-directory', label: 'Company Directory', group: 'Go to', icon: Users,        href: '/admin/me/directory', keywords: 'directory contact phone email colleague lookup who is roster staff list' },
   { id: 'nav-timeoff', label: 'Time Off Requests', group: 'Go to', icon: Calendar,        href: '/admin/requests', keywords: 'pto sick time off vacation leave', perm: 'pto' },
   { id: 'nav-sched',   label: 'Scheduling',       group: 'Go to', icon: Calendar,        href: '/admin/schedule', keywords: 'calendar', perm: 'scheduling' },
   { id: 'nav-accrual', label: 'Accrual',          group: 'Go to', icon: TrendingUp,      href: '/admin/accrual', keywords: 'balances hours', perm: 'accrual' },

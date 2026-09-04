@@ -10,6 +10,42 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — HR nav group; org chart + company directory on the dashboard
+
+**The "People" rail group is now "HR."** Same pages, same permissions, same order — the label
+caught up to the contents (roster, time off, scheduling, accrual, the clock, pay). Breadcrumbs and
+the two page overlines that named the old group moved with it. If you had that group expanded, it
+will be collapsed once; open it again and it sticks.
+
+**Org Chart joined the HR group.** It was live all along but reachable only from a button in the
+header of the Employees page, so most people never found it. It is now a rail entry under
+Employees, and a ⌘K destination. Permission is unchanged — `org_chart`, held by admin + HR — so
+nobody gained or lost access.
+
+**Two new dashboard cards.**
+
+- **Org Chart** (admin + HR) — headcount, departments, and how much of the chart actually has
+  reporting lines set, with the people at the top named. Deliberately not a miniature tree: a
+  reporting chart squeezed into a dashboard tile is unreadable at every size the grid offers.
+- **Company Directory** (everyone on the admin surface) — type-to-filter roster with
+  click-to-call and click-to-mail per person.
+
+Both are ordinary catalog cards, so they can be resized, reordered or removed from **Edit
+dashboard** like any other. They share one read of the roster rather than querying it twice.
+
+**Company directory on your profile page too.** `/admin/profile` gained a searchable directory
+panel beside your own settings, for the mid-task "what is their extension" lookup.
+
+**Fixed: the profile page was blank for everyone except full admins.** `/admin/profile` is open to
+every admin-surface role, but the API behind it was full-admin only — so an HR, sales or
+engineering account opened their own profile to an empty name and email, and a Save that silently
+did nothing. Both handlers only ever touch that person's own row, so the gate now matches the
+page. The page was also ported off its pre-DESIGN.md styling onto semantic tokens in the same pass.
+
+Docs: `docs/company-directory.md` (new), `docs/dashboards.md`, `docs/07-sitemap.md`.
+
+---
+
 ## 2026-09-04 — PTO/sick balances corrected; HR time-off report live
 
 **Balances corrected to current remaining values.** The initial import used opening

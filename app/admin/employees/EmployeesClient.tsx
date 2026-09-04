@@ -131,7 +131,7 @@ export default function EmployeesClient({ employees, canOrgChart = false }: { em
       <ListCardPage>
         <ListCard>
           <CardHead
-            overline="People"
+            overline="HR"
             title="Employees"
             count={`${employees.length} ${employees.length === 1 ? 'employee' : 'employees'}`}
             actions={
