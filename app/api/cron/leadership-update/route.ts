@@ -3,6 +3,7 @@ import { buildLeadershipUpdate } from '@/lib/leadership-update'
 import { renderLeadershipDocx } from '@/lib/leadership-docx'
 import { sendLeadershipUpdate, leadershipRecipients } from '@/lib/resend-leadership'
 import { getNyWallClock } from '@/lib/admin-digest'
+import { isPushWindow, pushWindowReason } from '@/lib/et-clock'
 import { interimPeriod, parseEdition } from '@/lib/edition'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
@@ -264,6 +265,22 @@ export async function GET(req: NextRequest) {
 
   const dryRun = req.nextUrl.searchParams.get('dry') === '1'
   const force = req.nextUrl.searchParams.get('force') === '1'
+
+  // ⛔ Nothing scheduled may do work between 8:00am and 5:30pm Eastern — the
+  // window production pushes go out in. See lib/et-clock.ts.
+  //
+  // `dry` and `force` pass through, and that is the point of the exception: both
+  // are a person at a keyboard choosing to run this now, which is a decision they
+  // are allowed to make about their own deploy window. A CRON invocation has
+  // nobody making that call, so it is refused. The bypass is logged into the
+  // trace either way, so an in-window send is never invisible afterwards.
+  if (!dryRun && !force && isPushWindow()) {
+    await trace('skipped-push-window', { nyHour: clock.hour, nyDate: clock.dateISO })
+    return NextResponse.json({ skipped: true, reason: pushWindowReason() })
+  }
+  if ((dryRun || force) && isPushWindow()) {
+    console.warn(`[cron/leadership-update] running inside the push window on an explicit ${force ? 'force' : 'dry'} — ${pushWindowReason()}`)
+  }
 
   // Any date inside the wanted week resolves to that week's Monday, so a caller
   // never has to work out which day the edition is named after.

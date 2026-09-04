@@ -326,27 +326,47 @@ Vercel Cron is UTC and does not shift, so a fixed schedule drifts an hour twice 
 local time matters are registered **twice**, and the route discards whichever invocation is wrong
 for the season. `vercel.json` as of 2026-08-17:
 
-| Job | UTC schedule | Local | Guard |
+⚠️ **THIS TABLE WAS STALE FOR TEN DAYS AND OTHER SESSIONS QUOTED IT.** It still described the
+pre-2026-08-25 schedule — digest at 4:30pm, `rfq-reminders` on a single `0 13` entry at "9am EDT /
+8am EST", `leadership-update` at noon — all of which had moved. The mail move was written up in
+`docs/notifications.md` and the section above was added on 2026-09-04, but nobody deleted this,
+so the wrong version sat directly underneath the right one. Corrected 2026-09-04.
+
+| Job | Eastern | Registered as | Guard |
 |---|---|---|---|
-| `accrue-pto` | `0 8 * * 1` + `0 9 * * 1` | **Mon 4am ET** | `isAccrualTime()` picks the right entry per season; a repeat run is a no-op per employee per week |
-| `admin-digest` | `30 20 * * *` + `30 21 * * *` | 4:30pm ET | `isDigestTime()` in `lib/admin-digest.ts` |
-| `leadership-update` | `0 16 * * 1` + `0 17 * * 1` | Mon noon ET | `isNoonEastern()` in the route |
-| `rfq-reminders` | `0 13 * * *` | 9am EDT / 8am EST | none — start of business either way |
+| `ticket-` + `rfq-` + `eng-reminders` | **3:00am daily**, 4:00am backstop | `0 7` + `0 8` each | `isReminderTime()` — ET hours 3–5 |
+| `accrue-pto` | **Mon 4:00am** | `0 8 * * 1` + `0 9 * * 1` | `isAccrualTime()` — ET hours 4–6; a repeat run is a no-op per employee per week via `alreadyAccruedThisWeek()` |
+| `admin-digest` | **6:00pm daily**, 7:00pm + 8:00pm backstops | `0 22` + `0 23` + `0 0` | `isDigestTime()` — ET hours 18–20, plus the `digest_runs` day-claim |
+| `leadership-update` | **8:30pm Mon/Wed/Fri**, 9:30pm + 10:30pm backstops | `30 0` + `30 1` + `30 2` on days `2,4,6` | whole-hour check in the route |
+
+⚠️ **The leadership cron days are `2,4,6` (Tue/Thu/Sat) and that is CORRECT.** 8:30pm Eastern is past
+midnight UTC, so a Monday-evening send is Tuesday in UTC. The route derives the weekday from the
+Eastern date. Move the hour and the day-of-week may have to move with it.
+
+⛔ **Every route now also refuses to run inside 8:00am–5:30pm Eastern** (`isPushWindow()`), whatever
+the table says. That is the backstop for the case this table demonstrates: a schedule drifts, the
+documentation lags, and nobody notices until a job fires in the push window.
 
 ⚠️ **The "2-cron account tier limit" was never real.** Three comments asserted it and were the
 reason this was not done sooner. A third entry deployed fine, and Vercel documents multiple
 schedules for one path as the supported pattern. Do not reintroduce that claim.
 
-The digest's window is a **10-minute band** (`minute >= 25 && <= 34`); the leadership update's is
+⚠️ **Superseded — the digest's window is no longer a 10-minute band.** It is ET hours 18–20; the
+narrow band described below never let the digest through once in months. Kept for the reasoning
+about why a wide window beats a pinned hour.
+
+The digest's window was a **10-minute band** (`minute >= 25 && <= 34`); the leadership update's is
 the **whole noon hour**. The wide window is deliberate and is the better of the two: because the
 paired entries sit a full hour apart, a wide window can absorb a late invocation and still never
 let both through. The digest's narrow band means a delivery delayed past 4:34pm ET drops that
 day's digest entirely — pre-existing, not yet changed, and safe to widen to `hour === 16` if it
 ever bites.
 
-**`rfq-reminders` runs twice a day on purpose.** It owns the 13:00 UTC slot *and* is still called
-at the top of `admin-digest`. The reminder stamps from migration 088 make the second run a no-op,
-so redundancy costs two queries and buys chasing that survives either entry failing.
+**`rfq-reminders` runs five times an Eastern day on purpose.** Its own 3:00am and 4:00am entries,
+plus three calls from `admin-digest` at 6pm, 7pm and 8pm ET. The reminder stamps from migration 088
+make every call after the first a no-op, so the redundancy costs a few queries and buys chasing that
+survives any one entry failing. ⚠️ Since 2026-09-04 that call sits BELOW `isDigestTime()`, so it
+cannot send at 5:00pm in winter — see the push-window section above.
 
 `?force=1` sends the leadership update outside its window; `?dry=1` previews without sending.
 Neither bypasses the secret.

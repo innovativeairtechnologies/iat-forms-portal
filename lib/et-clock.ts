@@ -40,6 +40,46 @@ export function getNyWallClock(at: Date = new Date()): { hour: number; minute: n
   return { hour, minute, dateISO }
 }
 
+/* ⛔ THE PRODUCTION PUSH WINDOW — 8:00am to 5:30pm Eastern.
+ *
+ * NOTHING SCHEDULED MAY DO WORK IN THIS WINDOW. Production pushes go out through
+ * it, a deploy re-registers the project's crons, and a run that has not fired yet
+ * when the new deployment goes live is lost — ten deploys across one Friday
+ * evening killed four runs. The owner has stated this rule twice; it is enforced
+ * here rather than left to whoever writes the next vercel.json entry.
+ *
+ * ⚠️ IT IS A GUARD, NOT A SCHEDULE. Every job is already scheduled well clear of
+ * this window. What the guard buys is the case nobody checks: Vercel Cron is
+ * fixed-UTC, so an entry that clears the window in summer can slide an hour into
+ * it in winter. That is not hypothetical — /api/cron/admin-digest's earliest
+ * entry is 6:00pm ET in summer and 5:00pm in winter, and it ran the quote sweep
+ * there every winter day until 2026-09-04.
+ *
+ * The boundary is inclusive at 8:00am: commits start going live AT eight, so a
+ * job must be finished by then, not starting.
+ */
+export const PUSH_WINDOW_START_MIN = 8 * 60        // 8:00am ET
+export const PUSH_WINDOW_END_MIN = 17 * 60 + 30    // 5:30pm ET
+
+export function withinPushWindow(hour: number, minute: number): boolean {
+  const m = hour * 60 + minute
+  return m >= PUSH_WINDOW_START_MIN && m <= PUSH_WINDOW_END_MIN
+}
+
+/** True if right now is inside the window where nothing scheduled may run. */
+export function isPushWindow(): boolean {
+  const { hour, minute } = getNyWallClock()
+  return withinPushWindow(hour, minute)
+}
+
+/** The reason string a cron route returns when the guard stops it. */
+export function pushWindowReason(): string {
+  const { hour, minute } = getNyWallClock()
+  const h12 = ((hour + 11) % 12) + 1
+  const ampm = hour < 12 ? 'am' : 'pm'
+  return `inside the 8:00am-5:30pm ET production push window (${h12}:${String(minute).padStart(2, '0')}${ampm} ET)`
+}
+
 /**
  * Which Eastern hours the overnight reminder sweeps may run in.
  *

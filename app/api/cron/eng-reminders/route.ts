@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runEngineeringReminders } from '@/lib/eng-reminders'
 import { runPostProductionReminders } from '@/lib/pp-reminders'
-import { isReminderTime, getNyWallClock } from '@/lib/et-clock'
+import { isReminderTime, getNyWallClock, isPushWindow, pushWindowReason } from '@/lib/et-clock'
 
 /* The overnight sweep over the engineering board — see lib/eng-reminders.ts.
  *
@@ -30,6 +30,14 @@ export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ⛔ Nothing scheduled may do work between 8:00am and 5:30pm Eastern — that is
+  // the window production pushes go out in, and a deploy landing on a running
+  // job loses the run. Placed immediately after auth and before ANY work, so it
+  // holds no matter what a future vercel.json entry says. See lib/et-clock.ts.
+  if (isPushWindow()) {
+    return NextResponse.json({ skipped: true, reason: pushWindowReason() })
   }
 
   // Season guard runs AFTER auth: an unauthenticated caller must not be able to
