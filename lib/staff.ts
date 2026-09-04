@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { isSuppressed } from '@/lib/mail-suppression'
 import { getPermMatrix } from '@/lib/permissions'
 import { hasPermission, normalizeRole, type Perm } from '@/lib/roles'
 import type { Employee } from '@/lib/supabase'
@@ -171,5 +172,11 @@ export async function getAdminRecipients(): Promise<Employee[]> {
     .in('id', ids)
     .eq('is_active', true)
   if (rosterErr) throw rosterErr
-  return data ?? []
+
+  // ⚠️ A departed employee whose account must stay active still holds the admin
+  // role, so it is still returned here — and every admin fan-out would mail it.
+  // Filtered at this ONE point rather than at each caller, so an admin fan-out
+  // added later is covered without anybody remembering to. Lee Childers is on
+  // this list in his own right, so nothing is lost. See lib/mail-suppression.ts.
+  return (data ?? []).filter(e => !isSuppressed((e as { email?: string | null }).email))
 }

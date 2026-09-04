@@ -10,6 +10,57 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — A departed employee's mailbox goes quiet without touching his account
+
+Jacob Younker no longer works here, but his account has to stay active and keep the admin role: the
+portal was built under it, super-admin form approval is gated on it, and historic approvals and audit
+rows attribute to it. Lee Childers operates that account. So the account keeps working and the
+**mailbox** goes quiet.
+
+Checked first, rather than assumed. That account owns **nothing** — no tickets, quote requests,
+engineering tasks or post-production findings — so the only way mail reached it was the `admin` role.
+That left exactly one live leak and one waiting to happen:
+
+- **Live:** portal access requests (`app/api/requests/route.ts`) fan out over every admin with no
+  filter at all. He had been receiving those.
+- **Latent:** the daily digest, held off only by the opt-out list in `lib/admin-digest.ts` — which is
+  labelled *temporary, revisit*. Lifting it would have put a departed employee back on the digest,
+  and since Lee operates the account, given Lee two copies of it.
+
+New `lib/mail-suppression.ts` holds the address and is applied at the six points that turn an
+**identity** — a role, an owner id — into a delivery address: `getAdminRecipients()`,
+`ticketAlertRecipients()`, and the owner lookups in the four overnight sweeps. Applying it there
+rather than at the send sites means an admin fan-out added next month is covered without anybody
+remembering to. Overridable with `SUPPRESSED_EMAILS` without a deploy.
+
+**Suppression, not redirection, and that is deliberate.** Rewriting the address to Lee's would make a
+digest greet "Hi Jacob" over Lee's inbox and would double anything sent to both. Lee is on every one
+of these lists in his own right, so dropping the row loses nothing and duplicates nothing.
+
+In the sweeps a suppressed owner takes the existing "no reachable address" branch, which leaves the
+row to the oversight escalation — the same treatment an owner who has left already got, and the
+reason that escalation exists. Nothing goes unchased.
+
+**He was also removed from the digest opt-out list**, which reads backwards but is the point: two
+mechanisms holding one address off one email is how a "temporary" exclusion outlives its reason. That
+list is a format review somebody is meant to undo; his is a departure that must never be undone.
+Separating them means lifting the review cannot resurrect his mail.
+
+**And the other half — Lee gets the admin items.** `ADMIN_NOTIFICATION_EMAIL` was set to an empty
+string in production, so the backstop in the portal-access-request route did nothing: if the roster
+lookup had failed, *nobody* would have been told a colleague asked for access. It is now
+`lee.childers@dehumidifiers.com`, set with `--value` and verified by reading it back, because piping
+a value to `vercel env add` stores an empty string while printing "Added".
+
+⚠️ **Lee was deliberately NOT added to per-ticket or per-quote notification mail.** Those go to one
+desk address on purpose (`iatsupport@`), and the admin roster was removed from the tickets route in
+August as a considered decision. "All admin items" means the admin fan-outs, not a copy of every
+ticket that comes through the front door.
+
+Verified: with the filter applied the admin list resolves to Kacy, Crystal and Lee; matching is
+case- and whitespace-insensitive; and `jacob@dehumidifiers.com` — **Jacob Reagan, a different
+person** — is untouched.
+
 ## 2026-09-04 — Everything scheduled is stated in Eastern, and nothing runs in the push window
 
 Two standing rules, restated by the owner and now enforced in the code rather than only in the prose

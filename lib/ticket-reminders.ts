@@ -11,6 +11,7 @@ import { nightlySweepAnchor } from './et-clock'
 // ─── Chasing support tickets that have stalled ───────────────────────────────
 //
 // ⏰ RUNS AT 3:00am ET, twice, an hour apart (3am and 4am ET in summer; the
+import { isSuppressed } from './mail-suppression'
 // earlier entry falls to 2am in winter and is skipped by the window guard).
 // Moved off 9:00am on 2026-08-25: the owner deploys to production every day at
 // 9:00am, a deploy re-registers the project's crons, and a run that has not fired
@@ -208,8 +209,8 @@ export async function runTicketReminders(): Promise<TicketReminderResult> {
       // No active roster row means no address to chase. Logged loudly rather
       // than swallowed: a ticket assigned to someone who has left is chased by
       // nobody, because the unassigned sweeps only cover rows with no owner.
-      if (!employee?.email) {
-        console.warn(`[ticket-reminders] owner ${ownerId} has no active email — ${list.length} ticket(s) chased by nobody`)
+      if (!employee?.email || isSuppressed(employee.email)) {
+        console.warn(`[ticket-reminders] owner ${ownerId} has no reachable email — ${list.length} ticket(s) left to the oversight escalation`)
         note(`owner ${ownerId} unreachable`)
         continue
       }

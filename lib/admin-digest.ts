@@ -114,8 +114,13 @@ export function isDigestTime(): boolean {
  * to override the whole list without a deploy (empty string = nobody excluded).
  * This is a recipient filter only — nothing else about the digest changes.
  */
+// ⚠️ jacob.younker@ WAS ON THIS LIST AND HAS BEEN REMOVED — not because he is back
+// on the digest, but because he is now suppressed GLOBALLY in
+// lib/mail-suppression.ts. Two mechanisms holding one address off one email is
+// how a "temporary" exclusion outlives its reason: this list is a format review
+// that someone is meant to undo, and his is a departure that must never be
+// undone. Keeping them separate means lifting this list cannot resurrect his mail.
 const DIGEST_OPT_OUT_DEFAULT = [
-  'jacob.younker@dehumidifiers.com',
   'tyler@dehumidifiers.com',
   'jo.evans@dehumidifiers.com',
 ]

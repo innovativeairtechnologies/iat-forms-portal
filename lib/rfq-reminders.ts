@@ -1,4 +1,5 @@
 import { supabaseAdmin } from './supabase-admin'
+import { isSuppressed } from './mail-suppression'
 import { sendRfqAssigneeNudge, sendRfqUnclaimedReminder } from './resend-rfq-reminders'
 import { UNSTARTED_STATUS } from './rfq-status'
 import { nightlySweepAnchor } from './et-clock'
@@ -120,8 +121,8 @@ export async function runRfqReminders(): Promise<ReminderResult> {
       // No active roster row means no address to chase. Fall through to the
       // unclaimed sweep instead of dropping it: an assignment to someone who
       // has left is exactly the case that must not go quiet.
-      if (!employee?.email) {
-        console.warn(`[rfq-reminders] assignee ${ownerId} has no active email — leaving for the desk sweep`)
+      if (!employee?.email || isSuppressed(employee.email)) {
+        console.warn(`[rfq-reminders] assignee ${ownerId} has no reachable email — leaving for the desk sweep`)
         continue
       }
 

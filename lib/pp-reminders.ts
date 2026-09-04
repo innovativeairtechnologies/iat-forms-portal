@@ -1,4 +1,5 @@
 import 'server-only'
+import { isSuppressed } from './mail-suppression'
 import { supabaseAdmin } from './supabase-admin'
 import { listFindings, listThemes } from './pp-data'
 import { engineeringLeadRecipients } from './resend-engineering'
@@ -114,8 +115,8 @@ export async function runPostProductionReminders(now: Date = new Date()): Promis
     // No active roster row means no address. Leave it: the finding is already in
     // the overdue list the lead gets, and work assigned to somebody who has left
     // is exactly the case that must not go quiet.
-    if (!employee?.email) {
-      console.warn(`[pp-reminders] assignee ${ownerId} has no active email — leaving it for the roll-up`)
+    if (!employee?.email || isSuppressed(employee.email)) {
+      console.warn(`[pp-reminders] assignee ${ownerId} has no reachable email — leaving it for the roll-up`)
       continue
     }
 

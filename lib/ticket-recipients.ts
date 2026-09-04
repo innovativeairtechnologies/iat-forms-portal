@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { isSuppressed } from './mail-suppression'
 
 /* Who hears about activity on a ticket.
 
@@ -49,7 +50,11 @@ export async function ticketAlertRecipients(ownerId: string | null | undefined):
     if (error) {
       console.error('[ticket-recipients] owner lookup failed:', error.message)
     } else if (data?.is_active && typeof data.email === 'string' && data.email.trim()) {
-      ownerEmail = data.email.trim()
+      const addr = data.email.trim()
+      // A suppressed owner is treated exactly like an inactive one: the desk still
+      // gets it, so the ticket is never left with nobody told.
+      ownerEmail = isSuppressed(addr) ? null : addr
+      if (!ownerEmail) console.log('[ticket-recipients] owner ' + ownerId + ' is suppressed — desk only')
     }
   } catch (err) {
     console.error('[ticket-recipients] owner lookup threw:', err)

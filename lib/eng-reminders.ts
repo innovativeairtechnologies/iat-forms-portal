@@ -1,4 +1,5 @@
 import 'server-only'
+import { isSuppressed } from './mail-suppression'
 import { supabaseAdmin } from './supabase-admin'
 import { getPlaybook, listTasks } from './eng-data'
 import { projectTask, type EngTaskRow } from './engineering'
@@ -115,8 +116,8 @@ export async function runEngineeringReminders(now: Date = new Date()): Promise<E
     // No active roster row means no address. Leave it: the row is already in the
     // unassigned/overdue lists the lead gets, and work assigned to somebody who
     // has left is exactly the case that must not go quiet.
-    if (!employee?.email) {
-      console.warn(`[eng-reminders] assignee ${ownerId} has no active email — leaving it for the roll-up`)
+    if (!employee?.email || isSuppressed(employee.email)) {
+      console.warn(`[eng-reminders] assignee ${ownerId} has no reachable email — leaving it for the roll-up`)
       continue
     }
 
