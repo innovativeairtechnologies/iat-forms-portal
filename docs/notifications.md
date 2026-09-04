@@ -37,6 +37,11 @@ someone is working leaves a trail, even "waiting on parts". Keying on status
 would let a ticket sit in *In Progress* forever and count as alive — the exact
 failure being chased.
 
+⚠️ **"Daily 3am ET" is when the SWEEP runs, not how often one ticket is chased.** The sweep runs
+every night; rows 8–10 (and 15–17 below) fire on the first night a row qualifies, but a row already
+chased is skipped the next night and comes back the night after. The two are easy to conflate — see
+[Repeat cadence](#repeat-cadence--the-sweep-is-nightly-the-chase-on-one-row-is-not).
+
 ## Quote requests (RFQ)
 
 | # | Trigger | Who is told | When |
@@ -707,8 +712,45 @@ email exists to break.
 | Stalled ticket | **A note is written** — "waiting on parts" counts. A status change does **not** |
 | Stalled quote | Status moves off `new` — one click onto Reviewing says a human has it |
 
-**Repeat cadence: 48 hours.** Assigning an owner stops everything for that row.
-Nothing can go permanently quiet, and nothing arrives daily.
+### Repeat cadence — the sweep is nightly, the chase on one row is not
+
+⚠️ **This read "Repeat cadence: 48 hours" until 2026-09-04, and both halves of that were wrong.**
+The constants are no longer 48, and they were never a duration anybody measures.
+
+**Two different clocks get conflated here, so state them separately:**
+
+- **The sweep runs every night**, seven nights a week, at 3:00am ET. A row that has *just* crossed
+  its 24-hour threshold is chased the same night it qualifies — nothing waits for an "on" night.
+- **A row already chased is not chased again the following night.** How long it sits out is what
+  the constants below control. So the sweep mails somebody most nights; what it will not do is mail
+  about the *same* row two nights running.
+
+| Sweep | A given row is chased | Constant |
+|---|---|---|
+| Stalled / unassigned **tickets** — `lib/ticket-reminders.ts` | **Every other night** | `REPEAT_HOURS` = **36**, `ESCALATE_REPEAT_HOURS` = **36** |
+| Stalled / unassigned **quotes** — `lib/rfq-reminders.ts` | **Every other night** | `REPEAT_HOURS` = **36** |
+| **Engineering** tasks — `lib/eng-reminders.ts` | **Every night** | `REPEAT_HOURS` = **12** |
+| **Post-production** findings — `lib/pp-reminders.ts` | **Every night** | `REPEAT_HOURS` = **12** |
+
+Assigning an owner stops everything for that row. Nothing can go permanently quiet, and the
+escalation never arrives daily.
+
+🔴 **Read 36 and 12 as "how many nights must pass", not as durations.** They are compared against
+`nightlySweepAnchor()` — midnight Eastern — and the stamps they are compared *to* are real send
+times, which land hours **after** that anchor. The arithmetic is therefore not the intuitive one,
+and in both cases the tidier-looking number is the trap:
+
+- **36h means every other night.** A literal `48` puts the cutoff at midnight two days ago, which is
+  *older* than a stamp written at 3:51am the night before last — so that row survives the filter and
+  waits a **third** night. Anything strictly between 24h and 48h yields every-other-night; 36 sits
+  dead centre with twelve hours of margin on each side, enough to absorb any cron lateness this
+  project has shown.
+- **12h means nightly.** A literal `24` puts the cutoff at midnight *yesterday*, which is *earlier*
+  than last night's own send, so a task chased last night is never eligible again and the daily
+  nudge silently becomes every other night.
+
+⛔ **Do not "tidy" 36 into 48, or 12 into 24.** Both changes fail in the quiet direction — fewer
+emails, no error, nothing in a log — and both were live in this codebase.
 
 ## Idempotency — why timestamps, not flags
 
@@ -726,6 +768,43 @@ kind, stamped when mail goes out and checked before the next send:
 **Deliberately not stamped when a send throws**, so a failure is retried on the
 next run rather than silently swallowed. An in-memory flag would not outlive a
 serverless invocation.
+
+### 🔴 The cutoffs come from the ANCHOR, not `Date.now()` (2026-09-04)
+
+Stamps alone are not sufficient, and this page did not say so until the day it bit. Both registered
+cron entries fire on a summer night — 3:00am and 4:00am ET — and Vercel fires them late by a
+*different* amount each: measured at **3:51am and 4:31am**, a stable ~40-minute gap. Every cutoff
+derived from `Date.now()` therefore moved forty minutes between the two passes, so a row whose stamp
+sat inside that gap was **filtered out at 3:51 and eligible at 4:31**. It then got its own email.
+
+Live on 2026-09-04: three admins each received two *"Needs attention: 1 stalled"* emails instead of
+one listing both, because the second ticket missed its window by **0.7 seconds**.
+
+All four sweeps now take their cutoffs from **`nightlySweepAnchor()`** in `lib/et-clock.ts`, which
+returns **midnight Eastern of the current Eastern day** — identical for every invocation belonging
+to one Eastern day. Both passes ask the same question, the first to run answers it and stamps the
+rows, and the second finds nothing left. That is what the "a repeat run is a no-op" claim elsewhere
+on this page has always assumed and did not previously have.
+
+- ⚠️ **Midnight Eastern, not a fixed UTC hour.** `07:00 UTC` is 3am ET in summer and 2am in winter,
+  so a UTC anchor quietly drifts every November — and it has *zero* margin, because the earlier
+  cron entry is registered for exactly that minute. A fire one second early would put the anchor in
+  the future and re-send everything sent last night. Midnight ET sits a clear three hours before the
+  earliest possible run.
+- **The Eastern day is what makes the quote sweep's five daily runs agree** — its own two 3am
+  entries plus three calls from `admin-digest` at 6, 7 and 8pm ET. 8pm Monday is plainly the same
+  Eastern day as 3am Monday; under a UTC-day floor that last call had already rolled over and
+  anchored **seven hours into the future**.
+- **Row stamps still use the real clock.** Only the comparisons are anchored.
+- ⛔ **Do not "simplify" the anchor into a day-claim.** A `digest_runs`-style claim also stops the
+  duplicate, but it suppresses the second cron entry unconditionally and so **costs the backstop**.
+  The anchor keeps both.
+
+⚠️ **The engineering and post-production lead roll-ups are the exception and do need a claim.** They
+are whole-board summaries with no per-row state, so the stamps above hold nothing and both cron
+entries simply sent them every night. `lib/nightly-rollup-claim.ts` claims the night in `audit_log`
+— keyed on the anchor rather than a UTC date, failing open, and claimed only after a send that
+reached somebody.
 
 ## Closing a ticket
 
