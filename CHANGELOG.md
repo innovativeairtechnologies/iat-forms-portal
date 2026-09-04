@@ -10,6 +10,51 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — The stalled-ticket escalation was arriving as two emails a night
+
+Admins reported getting the overnight "Needs attention" escalation twice, each copy listing a single
+ticket, where one email listing both was the whole point of the design. The mail code was never at
+fault — it builds one message per recipient covering every outstanding ticket and quote request in
+the run. The split happened a layer down, in which nightly run each ticket qualified for.
+
+The reminder sweep is registered as two Vercel cron entries an hour apart, because Vercel Cron is
+fixed-UTC and does not shift for daylight saving; a window check no-ops whichever one is wrong for
+the season. In summer **both** are correct, so the sweep genuinely runs twice — and that was always
+understood to be safe, because each run stamps the rows it chases and the second pass should find
+nothing left. Vercel also fires these entries late, by a different amount each: measured against
+Resend's own send timestamps, 07:51 and 08:31 UTC, forty minutes apart. Every cutoff in the sweep was
+measured from `Date.now()`, so all of them moved forty minutes between the two passes, and a ticket
+whose last reminder stamp fell inside that gap was invisible to the first pass and eligible on the
+second. It then got an email to itself.
+
+On the night of 3–4 September the margin was **0.7 seconds** on a 48-hour window: one ticket had been
+stamped at 07:51:20 two nights earlier, which put it 0.7s the wrong side of the 07:51:19 cutoff, so it
+dropped out of the 3:51am run and came back at 4:31am on its own. Three admins each received two
+emails instead of one. The same mechanism had been quietly scattering tickets across the two runs
+since the pair of entries went in — visible in the send history as nights with two escalations, and
+nights where a ticket skipped a full cycle because it landed the wrong side of the boundary twice.
+
+Both nightly passes now measure from a shared anchor (`nightlySweepAnchor()` — 07:00 UTC on the
+current UTC day) rather than from the wall clock, so they compute the identical eligible set: the
+first pass to run sends one email covering everything and stamps the rows, and the second finds
+nothing, which is what the design always claimed happened. The anchor sits at or before the earliest
+possible run in both seasons, so anything chased has provably been quiet for *more* than 24 hours
+when the mail goes out, never less. The repeat window moved from 48 hours to 36 in the same change —
+against a fixed anchor a whole multiple of 24 excludes everything stamped two nights ago and stretches
+an every-other-night cadence to every third night; 36 reads as "one whole night must pass" and carries
+a twelve-hour margin against any cron lateness this project has ever shown.
+
+A day-claim like the digest's would also have stopped the duplicate, but at the cost of the backstop:
+the two entries exist so either can fail without taking the chase down with it. The shared anchor
+keeps both properties. Verified by replaying the real 3–4 September timestamps through the old and new
+cutoffs — the old logic reproduces the two observed emails exactly, the new logic produces one
+containing both tickets, and the every-other-night cadence is unchanged.
+
+⚠️ The sibling sweeps have NOT been changed. `lib/rfq-reminders.ts` carries the identical 48-hour
+`Date.now()` gate, and `lib/eng-reminders.ts` and `lib/pp-reminders.ts` carry a 24-hour one that is
+even more exposed to the same drift. They ride the same pair of cron entries and can split their mail
+the same way.
+
 ## 2026-09-03 — Closed Projects: a Dryware "won" mirror, and a data-loss bug caught before it fired
 
 Danny (Dryware's dev) shipped a second reporting endpoint — closed projects, won-only, with the

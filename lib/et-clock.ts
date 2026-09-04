@@ -54,6 +54,10 @@ export function getNyWallClock(): { hour: number; minute: number; dateISO: strin
  * Admitting 4am and 5am as well is deliberate and safe: the sweeps stamp each
  * record they touch, so a second pass the same night is a no-op. The window
  * exists to stop the *seasonal* hour drift, not to enforce a single firing.
+ *
+ * ⚠️ "A second pass is a no-op" is only true for a sweep whose cutoffs come from
+ * nightlySweepAnchor() below. A sweep measuring from `Date.now()` asks a slightly
+ * different question on each pass and mails twice — see that function.
  */
 export function withinReminderWindow(hour: number): boolean {
   return hour >= 3 && hour <= 5
@@ -62,6 +66,43 @@ export function withinReminderWindow(hour: number): boolean {
 /** True if this invocation may run tonight's reminder sweeps. */
 export function isReminderTime(): boolean {
   return withinReminderWindow(getNyWallClock().hour)
+}
+
+/**
+ * The instant a nightly sweep should measure its cutoffs FROM, instead of
+ * `Date.now()`. Fixed at 07:00 UTC on the current UTC day, so every invocation
+ * inside one night's window computes the identical value.
+ *
+ * ⚠️ THIS EXISTS BECAUSE `Date.now()` SPLIT THE ESCALATION INTO TWO EMAILS.
+ * Both registered entries pass withinReminderWindow() in summer (3am and 4am ET),
+ * and Vercel fires them late by a different amount each — 07:51 and 08:31 UTC in
+ * practice, forty minutes apart. Every cutoff derived from `Date.now()` therefore
+ * moved forty minutes between the two passes, and a row whose last stamp sat
+ * inside that gap was invisible to the first pass and eligible on the second. It
+ * then got its own email. Observed on 2026-09-04: IAT-2706-9005 escalated at
+ * 07:51:19Z, IAT-2026-2942 at 08:31:30Z, second by 0.7 seconds of drift on a
+ * 48-hour window — three admins each received two "Needs attention: 1 stalled"
+ * emails instead of one listing both.
+ *
+ * Anchoring removes the drift: both passes ask the same question, the first one
+ * to run answers it and stamps the rows, and the second finds nothing left —
+ * which is what the comment above withinReminderWindow always claimed happened.
+ *
+ * Why 07:00 UTC specifically. It is the earlier of the two registered cron
+ * minutes, so it is always at or before the run that uses it, in both seasons
+ * (3am EDT, 2am EST) — a cutoff of `anchor - 24h` therefore guarantees anything
+ * chased has been quiet for MORE than 24 hours by the time the mail goes out,
+ * never less. Both entries fall in the same UTC day at 07:xx and 08:xx, so the
+ * floor cannot disagree between them.
+ *
+ * ⚠️ A repeat window measured from here must NOT be a whole multiple of 24h. The
+ * stamps it is compared against are real send times, which land AFTER the anchor,
+ * so `anchor - 48h` excludes everything stamped two nights ago and silently turns
+ * an every-other-night cadence into every third night. Callers use 36h.
+ */
+export function nightlySweepAnchor(now: number = Date.now()): number {
+  const DAY = 86_400_000
+  return Math.floor(now / DAY) * DAY + 7 * 3_600_000
 }
 
 /**

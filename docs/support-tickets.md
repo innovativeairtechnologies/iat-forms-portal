@@ -301,6 +301,49 @@ so redundancy costs two queries and buys chasing that survives either entry fail
 `?force=1` sends the leadership update outside its window; `?dry=1` previews without sending.
 Neither bypasses the secret.
 
+### ⚠️ A nightly sweep must measure from `nightlySweepAnchor()`, not `Date.now()`
+
+**The schedules in the table above are stale — they predate the 2026-08-25 mail move.** As of
+`vercel.json` today the overnight sweeps (`ticket-reminders`, `rfq-reminders`, `eng-reminders`) are
+`0 7 * * *` + `0 8 * * *`, guarded by `isReminderTime()`, whose window is `hour >= 3 && hour <= 5` ET.
+
+That window admits **both** entries in summer: 07:00 UTC is 3am EDT and 08:00 UTC is 4am EDT. The
+sweep therefore genuinely runs twice a night, by design — each entry is the other's backstop, and a
+second pass is supposed to be a no-op because the first stamped every row it chased.
+
+**That only holds if the two passes ask the identical question.** Vercel fires these entries late by
+a different amount each — 07:51 and 08:31 UTC in practice, a consistent forty-minute gap measured
+from Resend send timestamps. A cutoff derived from `Date.now()` moves by that forty minutes between
+passes, so a row whose stamp sits inside the gap is filtered out at 3:51am and back in at 4:31am. It
+then gets its own email, and the recipient sees two half-lists instead of one.
+
+This was live in `lib/ticket-reminders.ts` until 2026-09-04. On the night of 3–4 September a ticket
+lost by **0.7 seconds** against a 48-hour window, and three admins each got two
+"Needs attention: 1 stalled" emails.
+
+The rule, now in `lib/et-clock.ts`:
+
+- **Cutoffs come from `nightlySweepAnchor()`** — 07:00 UTC on the current UTC day. Both entries land
+  at 07:xx and 08:xx UTC, so they floor to the same value and compute the same eligible set.
+- **The anchor is at or before the earliest possible run in both seasons** (3am EDT / 2am EST), so
+  `anchor - 24h` guarantees anything chased has been quiet for *more* than 24 hours when the mail
+  goes out. It can never chase early; it can at worst hold a row that went quiet mid-window until
+  the next night.
+- **A repeat window measured from the anchor must NOT be a multiple of 24h.** Stamps are real send
+  times, which land *after* the anchor, so `anchor - 48h` excludes everything stamped two nights ago
+  and silently turns every-other-night into every-third-night. `ticket-reminders` uses **36h**, which
+  reads as "one whole night must pass" and carries a twelve-hour margin either side.
+- **Row stamps still use the real clock.** They record when mail actually went out; only the
+  comparisons are anchored.
+
+A day-claim (the `digest_runs` pattern) would also stop the duplicate, but it suppresses the second
+entry unconditionally and so costs the backstop. The anchor keeps both.
+
+⚠️ **Not yet applied to the siblings.** `lib/rfq-reminders.ts` still has the same 48-hour
+`Date.now()` gate; `lib/eng-reminders.ts` and `lib/pp-reminders.ts` have a 24-hour one, which is
+*more* exposed — 24h against a forty-minute drift can both duplicate a night and skip one. They ride
+the same two cron entries and can split their mail the same way.
+
 ### Daily digest opt-out — TEMPORARY, revisit
 
 Arming the digest meant six admins would receive an email none of them had ever seen. Three are

@@ -6,6 +6,7 @@ import {
 } from './resend-ticket-reminders'
 import { sendOversightEscalation, type EscalationItem } from './resend-escalation'
 import { UNSTARTED_STATUS } from './rfq-status'
+import { nightlySweepAnchor } from './et-clock'
 
 // ─── Chasing support tickets that have stalled ───────────────────────────────
 //
@@ -21,6 +22,14 @@ import { UNSTARTED_STATUS } from './rfq-status'
 // repeat run a no-op on rows already chased, so both entries simply run and the
 // first one to succeed does the work. Nothing has to be excluded by season, so
 // both entries are live in both seasons and each is the other's backstop.
+//
+// ⚠️ THAT ONLY HOLDS BECAUSE THE CUTOFFS COME FROM nightlySweepAnchor(), NOT
+// Date.now(). Both entries fire, forty minutes apart and late by a different
+// amount each, so a `Date.now()` cutoff moved between them and a row could be
+// ineligible at 3:51am and eligible at 4:31am — one email each instead of one
+// email listing both. A day-claim would fix the duplicate but cost the backstop;
+// a shared anchor keeps both, because the second pass asks the identical
+// question and the first pass has already answered it.
 //
 // ⚠️ In EST the 07:00 entry lands at 2:00am, so winter mail goes out an hour
 // earlier than summer. Deliberate: still early-AM of the correct ET day, which is
@@ -68,10 +77,29 @@ import { UNSTARTED_STATUS } from './rfq-status'
 
 /** How long a ticket may sit quiet before we chase it. */
 const QUIET_HOURS = 24
-/** How long before we chase the SAME ticket again. */
-const REPEAT_HOURS = 48
-/** How long before leadership is told again about the same unassigned row. */
-const ESCALATE_REPEAT_HOURS = 48
+/** How long before we chase the SAME ticket again — see REPEAT below. */
+const REPEAT_HOURS = 36
+/** How long before leadership is told again about the same row — see REPEAT below. */
+const ESCALATE_REPEAT_HOURS = 36
+
+// ── REPEAT: why 36 hours means "every other night" ──────────────────────────
+// Both of these were 48 until 2026-09-04, read literally as "chase again after
+// two days". Measured against nightlySweepAnchor() that is wrong in one
+// direction and against a real send time it is fragile in the other:
+//
+//   • vs the anchor (07:00 UTC), a stamp written at 07:51 or 08:31 the night
+//     before last is NEWER than anchor-48h, so it survives the filter and the
+//     row waits a third night.
+//   • vs Date.now(), which is what it used to compare against, the answer came
+//     down to milliseconds of cron drift and the same night's two passes
+//     disagreed — which is the two-emails bug this pair of constants caused.
+//
+// The sweep only runs at night, so the cadence is quantized to nights whatever
+// number goes here. Anything strictly between "one night ago" (24h) and "two
+// nights ago" (48h) yields every-other-night, and 36 sits dead centre with a
+// twelve-hour margin on each side — enough to absorb any cron lateness Vercel
+// has ever shown on this project. Read it as "one whole night must pass", not
+// as a duration anybody measures.
 
 /** Statuses that still need someone. Resolved and closed are nobody's problem. */
 const LIVE_STATUSES = ['open', 'in_progress'] as const
@@ -116,7 +144,13 @@ async function lastActivityByTicket(ids: string[]): Promise<Map<string, string>>
 }
 
 export async function runTicketReminders(): Promise<TicketReminderResult> {
-  const now = Date.now()
+  // ⚠️ NOT Date.now(). Every cutoff below is measured from the shared nightly
+  // anchor so that both cron entries compute the SAME eligible set and only the
+  // first one to run has anything to send — see nightlySweepAnchor(), which
+  // carries the full account of the two-emails-per-night bug this fixes.
+  // Stamps written back to the rows still use the real clock: they record when
+  // the mail actually went out.
+  const now = nightlySweepAnchor()
   const quietBefore = new Date(now - QUIET_HOURS * 3600e3).toISOString()
   const repeatBefore = new Date(now - REPEAT_HOURS * 3600e3).toISOString()
   const escalateRepeatBefore = new Date(now - ESCALATE_REPEAT_HOURS * 3600e3).toISOString()
