@@ -62,6 +62,16 @@ export default async function TimeClockAdminPage({
     s => s.ended_at && typeof s.end_distance_m === 'number' && settings && s.end_distance_m > settings.radius_m,
   ).length
 
+  const shiftNotes = shifts
+    .filter(s => s.ended_at && s.notes)
+    .map(s => ({
+      id: s.id,
+      name: prettyName(empById.get(s.employee_id)?.name ?? 'Unknown'),
+      ended_at: s.ended_at!,
+      notes: s.notes!,
+    }))
+    .sort((a, b) => new Date(b.ended_at).getTime() - new Date(a.ended_at).getTime())
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
       <PageChrome record="Time Clock" />
@@ -75,6 +85,7 @@ export default async function TimeClockAdminPage({
           name: prettyName(empById.get(d.employee_id ?? '')?.name ?? 'Unknown'),
         }))}
         flaggedOut={flaggedOut}
+        shiftNotes={shiftNotes}
         hourlyMissingNumber={(emps ?? []).filter(e => e.is_active && e.is_hourly && !e.employee_number).length}
       />
     </div>

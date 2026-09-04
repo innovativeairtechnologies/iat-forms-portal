@@ -47,6 +47,7 @@ export type Employee = {
   birthday: string | null
   is_admin: boolean
   is_active: boolean
+  is_hourly: boolean
   created_at: string
 }
 

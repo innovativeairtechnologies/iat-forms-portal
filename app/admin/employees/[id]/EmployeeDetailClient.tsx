@@ -45,6 +45,7 @@ export default function EmployeeDetailClient({
     sick_balance: String(employee.sick_balance),
     hire_date:   employee.hire_date  || '',
     birthday:    employee.birthday   || '',
+    is_hourly:   employee.is_hourly  ?? false,
   })
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
@@ -73,6 +74,7 @@ export default function EmployeeDetailClient({
         sick_balance: parseFloat(form.sick_balance) || 0,
         hire_date:    form.hire_date || null,
         birthday:     form.birthday || null,
+        is_hourly:    form.is_hourly,
       }),
     })
     setSaving(false)
@@ -229,6 +231,24 @@ export default function EmployeeDetailClient({
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Hourly / Salary — affects payroll export and time-clock board */}
+                <div>
+                  <label className={lbl}>Pay type</label>
+                  <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-[13px] font-medium">
+                    {([['hourly', true], ['salary', false]] as [string, boolean][]).map(([label, val]) => (
+                      <button key={label} type="button"
+                        onClick={() => setForm(f => ({ ...f, is_hourly: val }))}
+                        className={`flex-1 py-2.5 capitalize transition-colors duration-150 ${
+                          form.is_hourly === val
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700'
+                        }`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {error && <p className="text-[13px] text-rose-500">{error}</p>}

@@ -49,6 +49,7 @@ export type Shift = {
   source: string
   edited_by: string | null
   edit_note: string | null
+  notes: string | null
 }
 
 /**

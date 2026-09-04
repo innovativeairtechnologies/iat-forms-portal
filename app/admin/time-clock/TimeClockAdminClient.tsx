@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { MapPin, Download, Printer, TriangleAlert, Users, Clock } from 'lucide-react'
+import { MapPin, Download, Printer, TriangleAlert, Users, Clock, FileText } from 'lucide-react'
 import { decimalHours, hhmm, type ClockSettings } from '@/lib/time-clock'
 
 type OnNow = { id: string; name: string; since: string; minutes: number; doing: string; offsiteStart: boolean }
@@ -11,6 +11,7 @@ type Total = {
   unallocatedMinutes: number; jobs: { job: string | null; minutes: number }[]
 }
 type Denial = { id: string; name: string; attempted_at: string; distance_m: number | null; reason: string }
+type ShiftNote = { id: string; name: string; ended_at: string; notes: string }
 
 /* The job bars. Six tones from the DESIGN.md set, cycled by position within a
    person's week — deliberately NOT hashed from the job number, because a stable
@@ -20,7 +21,7 @@ const BAR = ['bg-emerald-500', 'bg-sky-500', 'bg-violet-500', 'bg-amber-500', 'b
 const UNALLOCATED = 'bg-surface-strong'
 
 export default function TimeClockAdminClient({
-  settings, week, onNow, totals, denials, flaggedOut, hourlyMissingNumber,
+  settings, week, onNow, totals, denials, flaggedOut, shiftNotes, hourlyMissingNumber,
 }: {
   settings: ClockSettings
   week: { start: string; end: string }
@@ -28,6 +29,7 @@ export default function TimeClockAdminClient({
   totals: Total[]
   denials: Denial[]
   flaggedOut: number
+  shiftNotes: ShiftNote[]
   hourlyMissingNumber: number
 }) {
   const [saving, setSaving] = useState(false)
@@ -164,6 +166,29 @@ export default function TimeClockAdminClient({
           </ul>
         )}
       </section>
+
+      {/* Clock-out notes */}
+      {shiftNotes.length > 0 && (
+        <section className="rounded-xl border border-hairline bg-surface">
+          <header className="flex items-center gap-2 border-b border-hairline px-4 py-3">
+            <FileText size={14} className="text-ink-faint" />
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">Clock-out Notes this week</h2>
+          </header>
+          <ul className="divide-y divide-hairline">
+            {shiftNotes.map(n => (
+              <li key={n.id} className="px-4 py-3 text-[13px]">
+                <div className="flex items-baseline justify-between gap-3 mb-1">
+                  <span className="font-semibold text-ink">{n.name}</span>
+                  <span className="shrink-0 tabular-nums text-[12px] text-ink-faint">
+                    {new Date(n.ended_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  </span>
+                </div>
+                <p className="text-ink-secondary leading-relaxed">{n.notes}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* QR */}
