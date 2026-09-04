@@ -270,6 +270,56 @@ when the variable is missing. `/api/cron/rfq-reminders` shipped that way for abo
 2026-08-17 and an anonymous GET ran the sweep and sent real mail. A route whose only job is to
 send email must never be reachable by default. All four cron routes now fail closed.
 
+### Scheduled jobs — Eastern times and who receives them
+
+**⛔ NOTHING SCHEDULED MAY DO WORK BETWEEN 8:00am AND 5:30pm EASTERN.** That is the window production
+pushes go out in, and a deploy landing on a running job conflicts with it. Check any new or moved
+entry against this window in **both** seasons — a fixed-UTC entry that clears it in summer can land
+inside it in winter, which is exactly how the digest's earliest entry came to run the quote sweep at
+5:00pm every winter day (fixed 2026-09-04).
+
+Times below are Eastern and are what the job actually *does work* at. Vercel Cron only speaks UTC, so
+each job is registered as paired fixed-UTC entries an hour apart and a window guard drops whichever
+is wrong for the season — that is the one place a UTC time is unavoidable, and `vercel.json` is the
+only file that should contain one.
+
+⚠️ **Add 15–45 minutes.** Vercel fires crons on this project 14 to 42 minutes late. A job "at 3:00am"
+lands 3:15–3:45am. Every window here is hours wide for that reason.
+
+| Job | Eastern time | Who receives it |
+|---|---|---|
+| Ticket owner nudge | 3:00am daily, repeat every other night | The ticket's owner |
+| Unassigned tickets → desk | 3:00am daily, repeat every other night | `iatsupport@` |
+| Oversight escalation | 3:00am daily, repeat every other night | Kacy, Crystal, Lee — **plus** Mike Payton and Jacob Reagan when the email contains a quote request |
+| Waiting-on-customer ladder | 3:00am daily (day 7 / day 13 / day 14) | The customer; the owner (or `iatsupport@`) on auto-resolve |
+| Quote owner nudge | 3:00am daily, repeat every other night | The assigned rep |
+| Unassigned quotes → desk | 3:00am daily, repeat every other night | `iatsupport@` |
+| Engineering roll-up | 3:00am daily, once per night | Anyone holding the `engineering` role — currently **James Pope** |
+| Engineering task nudge | 3:00am daily | The task's owner |
+| Post-production roll-up | 3:00am daily, once per night | Same as above — currently **James Pope** |
+| Post-production finding nudge | 3:00am daily | The finding's owner |
+| PTO accrual | Mondays 4:00am | **Sends no email.** Writes balances and `accrual_log` only |
+| Daily admin digest | 6:00pm daily | Active admins minus the opt-out list — currently **Kacy, Crystal, Lee** (Jacob Younker held back) |
+| Weekly leadership update | 8:30pm Mon / Wed / Fri | `LEADERSHIP_UPDATE_EMAIL` — currently **Lee, Kacy, Crystal** |
+
+Recipient sources, so this table can be re-derived rather than trusted:
+
+- `iatsupport@` — `SUPPORT_NOTIFICATION_EMAIL` / `RFQ_NOTIFICATION_EMAIL`, both set to it in production.
+- Escalation — `LEADERSHIP_ESCALATION_EMAIL` is **not set**, so the code default applies (Kacy, Crystal,
+  Lee). Sales is `SALES_ESCALATION_EMAIL`, also unset → Mike Payton and Jacob Reagan. ⚠️ `jacob@` is
+  Jacob **Reagan**; `jacob.younker@` is a different person.
+- Engineering — `ENGINEERING_NOTIFICATION_EMAIL` is **not set**, so it resolves live from
+  `profiles.role = 'engineering'` joined to active employees. Add or remove an engineer and the
+  roll-up audience changes with no deploy.
+- Digest — active admins (`profiles.role = 'admin'`), minus `DIGEST_OPT_OUT_EMAILS` (unset, so the
+  code default holds back Jacob Younker, Tyler Bell and Jo Evans; only Jacob Younker is still an admin).
+- Leadership update — `LEADERSHIP_UPDATE_EMAIL`, with **no fallback**: clear the variable and the
+  report silently does not send, which is deliberate.
+
+Verified 2026-09-04 against both the code defaults and Resend's actual delivery history — neither
+alone is sufficient, since an env override makes the code lie and an empty queue makes the send
+history lie.
+
 ### Cron schedules and daylight saving — no seasonal maintenance
 
 Vercel Cron is UTC and does not shift, so a fixed schedule drifts an hour twice a year. Jobs whose
@@ -307,12 +357,12 @@ Neither bypasses the secret.
 `vercel.json` today the overnight sweeps (`ticket-reminders`, `rfq-reminders`, `eng-reminders`) are
 `0 7 * * *` + `0 8 * * *`, guarded by `isReminderTime()`, whose window is `hour >= 3 && hour <= 5` ET.
 
-That window admits **both** entries in summer: 07:00 UTC is 3am EDT and 08:00 UTC is 4am EDT. The
+That window admits **both** entries in summer: midnight Eastern is 3am EDT and 08:00 UTC is 4am EDT. The
 sweep therefore genuinely runs twice a night, by design — each entry is the other's backstop, and a
 second pass is supposed to be a no-op because the first stamped every row it chased.
 
 **That only holds if the two passes ask the identical question.** Vercel fires these entries late by
-a different amount each — 07:51 and 08:31 UTC in practice, a consistent forty-minute gap measured
+a different amount each — 3:51am and 4:31am ET in practice, a consistent forty-minute gap measured
 from Resend send timestamps. A cutoff derived from `Date.now()` moves by that forty minutes between
 passes, so a row whose stamp sits inside the gap is filtered out at 3:51am and back in at 4:31am. It
 then gets its own email, and the recipient sees two half-lists instead of one.
@@ -323,7 +373,7 @@ lost by **0.7 seconds** against a 48-hour window, and three admins each got two
 
 The rule, now in `lib/et-clock.ts`:
 
-- **Cutoffs come from `nightlySweepAnchor()`** — 07:00 UTC on the current UTC day. Both entries land
+- **Cutoffs come from `nightlySweepAnchor()`** — midnight Eastern of the current Eastern day. Both entries land
   at 07:xx and 08:xx UTC, so they floor to the same value and compute the same eligible set.
 - **The anchor is at or before the earliest possible run in both seasons** (3am EDT / 2am EST), so
   `anchor - 24h` guarantees anything chased has been quiet for *more* than 24 hours when the mail
@@ -349,15 +399,15 @@ the same two cron entries and can split their mail the same way.
 `ticket-reminders`, `rfq-reminders`, `eng-reminders` and `pp-reminders` all now take their cutoffs
 from `nightlySweepAnchor()`. Two things came out of doing the last three.
 
-**`rfq-reminders` runs FIVE times a calendar day, not two.** Its own entry at 07:00 and 08:00 UTC,
+**`rfq-reminders` runs FIVE times a calendar day, not two.** Its own entry at 3:00am and 4:00am ET,
 plus three calls from `admin-digest` (22:00, 23:00, 00:00 UTC), which are made *before* the digest's
 own window guard so a skipped digest is never a skipped chase. Five invocations, five chances to
 split. Anchored, all five agree.
 
 ⚠️ **The 00:00 UTC call is why the anchor steps back a day.** It has already rolled onto the next UTC
-day, so a bare "07:00 UTC today" floor would anchor it seven hours into the *future* — chasing rows
+day, so a bare "midnight Eastern today" floor would anchor it seven hours into the *future* — chasing rows
 not yet 24 hours quiet, and disagreeing with its own 22:00/23:00 siblings. `nightlySweepAnchor()`
-returns the most recent 07:00 UTC **at or before** `now`. Do not remove that step-back.
+returns the most recent midnight Eastern **at or before** `now`. Do not remove that step-back.
 
 ⚠️ **Behavior change:** a quote crossing 24 hours during the day used to be caught by that evening's
 digest call; it now waits for the 3am sweep, because the evening calls share the morning's anchor.
@@ -366,7 +416,7 @@ digest call; it now waits for the 3am sweep, because the evening calls share the
 `eng-reminders` / `pp-reminders` are held down by `nudged_at`, so the second cron entry finds nobody
 left. The roll-up is a whole-board summary with no per-row state, so nothing stopped the second entry
 repeating it — not a boundary case, *every night the board had anything on it*. Confirmed in Resend:
-"Post-production: what is still open" delivered at 07:16 and 08:31 UTC on 2, 3 and 4 September 2026.
+"Post-production: what is still open" delivered at 3:16am and 4:31am ET on 2, 3 and 4 September 2026.
 
 `lib/nightly-rollup-claim.ts` claims the night in `audit_log` (actions `eng.rollup_sent` /
 `pp.rollup_sent`), the same no-DDL approach as the waiting-on-customer ladder. Three properties, all
@@ -380,7 +430,7 @@ load-bearing:
   board nobody is told about is the failure the sweep exists to prevent.
 
 **Repeat windows: 24h → 12h in the two board sweeps, and this is not a loosening.** They are *daily*
-chasers. Against a fixed 07:00 anchor a 24-hour window puts the cutoff at last night's 07:00 —
+chasers. Against a fixed 07:00 anchor a 24-hour window puts the cutoff at midnight Eastern yesterday —
 earlier than last night's own send, around 07:15–08:45 — so a task chased yesterday would never be
 eligible again and the daily nudge would silently become every other day. 12 sits centrally between
 last night's send and tonight's anchor. **Do not "restore" 24 here.** The every-other-night sweeps

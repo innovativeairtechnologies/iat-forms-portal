@@ -5,14 +5,14 @@ import { logAudit } from './audit'
 /* ─── "Has tonight's roll-up already gone out?" ───────────────────────────────
  *
  * ⚠️ WITHOUT THIS, A ROLL-UP SENDS TWICE EVERY NIGHT — not occasionally, not on
- * a boundary, every night. /api/cron/eng-reminders is registered at 07:00 and
- * 08:00 UTC and BOTH pass isReminderTime() in summer (3am and 4am ET). The
+ * a boundary, every night. /api/cron/eng-reminders is registered for 3:00am and
+ * 4:00am ET and BOTH pass isReminderTime() in summer. The
  * per-row nudges in those sweeps are held down by their own `nudged_at` stamps,
  * so the second pass finds nobody left to nudge. The lead roll-up has no
  * per-row state at all — it is a whole-board summary that sends whenever
  * anything is outstanding — so nothing stopped the second pass repeating it.
  * Confirmed against Resend: "Post-production: what is still open" was delivered
- * at 07:16 and again at 08:31 UTC on 2 September, 3 September and 4 September
+ * at 3:16am and again at 4:31am ET on 2 September, 3 September and 4 September
  * 2026. The engineering roll-up shares the failure and had simply had an empty
  * board on those nights.
  *
@@ -24,9 +24,9 @@ import { logAudit } from './audit'
  *
  * ── The claim is per NIGHT, not per calendar day ───────────────────────────
  * Keyed on nightlySweepAnchor(), so both passes of one night ask about the same
- * instant. A UTC-date key would be nearly right and would break in winter, when
- * the 3am ET pass sits at 08:00 UTC and its EST sibling at 07:00 — still the
- * same night, and still the same anchor.
+ * instant. A UTC-date key would be nearly right and would break twice a year,
+ * because the fixed-UTC cron entries slide an hour against the Eastern clock at
+ * each changeover — the anchor is Eastern, so it does not.
  *
  * ── FAIL OPEN, deliberately ────────────────────────────────────────────────
  * An unreadable trail returns "not sent yet" and the roll-up goes out. Sending a

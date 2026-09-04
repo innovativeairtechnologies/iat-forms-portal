@@ -39,18 +39,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const { dateISO } = getNyWallClock()
+
+  if (!isDigestTime()) {
+    return NextResponse.json({ skipped: true, reason: 'not digest time (NY)' })
+  }
+
   // ── Quote-request reminders also run here ──
-  // The sweep has its own slot now (/api/cron/rfq-reminders at 13:00 UTC). This
-  // call is KEPT rather than removed: the reminder stamps from migration 088
-  // make a repeat run a no-op, so redundancy costs two queries and buys chasing
-  // that survives either entry failing. It began as a workaround for a cron
-  // limit that turned out not to exist; it stays because it is free.
-  // See lib/rfq-reminders.ts.
+  // The sweep owns its own 3:00am ET slot (/api/cron/rfq-reminders). This call is
+  // KEPT rather than removed: the reminder stamps from migration 088 make a
+  // repeat run a no-op, so redundancy costs a couple of queries and buys chasing
+  // that survives either entry failing. See lib/rfq-reminders.ts.
   //
-  // Placed BEFORE the digest-time and already-ran guards on purpose: those exist
-  // to stop the digest going out twice, while the sweep has its own idempotency
-  // (the reminder stamps from migration 088). Gating it behind them would mean a
-  // day the digest skipped was also a day nobody got chased.
+  // ⚠️ MOVED BELOW isDigestTime() ON 2026-09-04, AND IT MUST STAY THERE.
+  // Nothing may do work between 8:00am and 5:30pm Eastern — that is the window
+  // the owner pushes to production in, and a deploy landing on a running job
+  // conflicts with it. The 22:00 UTC entry is 6:00pm ET in summer but 5:00pm ET
+  // in winter, inside that window; the digest itself was already excluded there
+  // (withinDigestWindow starts at 18), but this sweep sat ABOVE the guard and so
+  // sent real mail at 5:00pm every winter day. It is now below it.
+  //
+  // Still ABOVE the digest_runs claim, which is what the original "placed before
+  // the guards" note actually cared about: the claim is what makes the digest
+  // skip a day, and a skipped digest must not mean a day nobody got chased. The
+  // window guard is a different thing and gating on it is correct.
   //
   // Never fails the digest — a reminder that could not send is logged and
   // retried tomorrow, because its rows are only stamped on success.
@@ -61,12 +73,6 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('[cron/admin-digest] rfq reminder sweep failed:', err)
-  }
-
-  const { dateISO } = getNyWallClock()
-
-  if (!isDigestTime()) {
-    return NextResponse.json({ skipped: true, reason: 'not digest time (NY)' })
   }
 
   // Claim today's run. ignoreDuplicates means a second concurrent/duplicate

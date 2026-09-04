@@ -73,7 +73,7 @@ export async function runPostProductionReminders(now: Date = new Date()): Promis
   // rows, orders the email and dates it — but the chase cutoff is anchored, so
   // both cron entries of one night select the same findings and the second finds
   // nobody left. See nightlySweepAnchor().
-  const anchor = nightlySweepAnchor(now.getTime())
+  const anchor = nightlySweepAnchor(now)
   const today = now.toISOString().slice(0, 10)
   const soon = new Date(now.getTime() + LEAD_DAYS * 86_400_000).toISOString().slice(0, 10)
   const repeatBefore = new Date(anchor - REPEAT_HOURS * 3600e3).toISOString()
@@ -160,8 +160,8 @@ export async function runPostProductionReminders(now: Date = new Date()): Promis
   }
 
   // ⚠️ ONCE A NIGHT. This is the roll-up that was actually observed going out
-  // twice — "Post-production: what is still open" delivered at 07:16 and again
-  // at 08:31 UTC on 2, 3 and 4 September 2026, because both cron entries reach
+  // twice — "Post-production: what is still open" delivered at 3:16am and again
+  // at 4:31am ET on 2, 3 and 4 September 2026, because both cron entries reach
   // here and, unlike the nudges above, nothing per-row holds it down. See
   // lib/nightly-rollup-claim.ts.
   if (await rollUpSentTonight(PP_ROLLUP_ACTION, anchor)) {

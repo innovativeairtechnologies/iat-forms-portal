@@ -10,7 +10,8 @@ import { nightlySweepAnchor } from './et-clock'
 
 // ─── Chasing support tickets that have stalled ───────────────────────────────
 //
-// ⏰ RUNS AT 3:00am ET (07:00 UTC in EDT, 08:00 in EST), twice, an hour apart.
+// ⏰ RUNS AT 3:00am ET, twice, an hour apart (3am and 4am ET in summer; the
+// earlier entry falls to 2am in winter and is skipped by the window guard).
 // Moved off 9:00am on 2026-08-25: the owner deploys to production every day at
 // 9:00am, a deploy re-registers the project's crons, and a run that has not fired
 // yet when the new deployment goes live is at risk — so this job was aimed
@@ -31,10 +32,11 @@ import { nightlySweepAnchor } from './et-clock'
 // a shared anchor keeps both, because the second pass asks the identical
 // question and the first pass has already answered it.
 //
-// ⚠️ In EST the 07:00 entry lands at 2:00am, so winter mail goes out an hour
-// earlier than summer. Deliberate: still early-AM of the correct ET day, which is
-// the actual requirement, and forcing exactly 3:00am would mean adding window
-// machinery to a job whose idempotency already makes it unnecessary.
+// ⚠️ Vercel Cron itself only speaks UTC, so the two entries are the ONE place in
+// this feature where a fixed-UTC time is unavoidable — everything downstream of
+// them, the window guard and the anchor included, is Eastern. In winter the
+// earlier entry slides to 2:00am ET and the window guard drops it, leaving the
+// later one at 3:00am. Net effect: 3:00am Eastern year-round, no seasonal edit.
 //
 // Four sweeps, all keyed on a ticket that is still live (open or in progress):
 //
@@ -87,7 +89,7 @@ const ESCALATE_REPEAT_HOURS = 36
 // two days". Measured against nightlySweepAnchor() that is wrong in one
 // direction and against a real send time it is fragile in the other:
 //
-//   • vs the anchor (07:00 UTC), a stamp written at 07:51 or 08:31 the night
+//   • vs the anchor (midnight ET), a stamp written at 3:51 or 4:31am the night
 //     before last is NEWER than anchor-48h, so it survives the filter and the
 //     row waits a third night.
 //   • vs Date.now(), which is what it used to compare against, the answer came

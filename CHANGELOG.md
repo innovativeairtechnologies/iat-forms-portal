@@ -10,6 +10,50 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — Everything scheduled is stated in Eastern, and nothing runs in the push window
+
+Two standing rules, restated by the owner and now enforced in the code rather than only in the prose
+around it.
+
+**Eastern, everywhere.** The sweep anchor introduced earlier today was a fixed hour of the UTC day.
+It worked, but it was wrong in the way that matters: a fixed UTC hour **is 3:00am Eastern in summer
+and 2:00am Eastern in winter**, so the anchor the documentation called "3am" quietly moved every
+November, and every comment describing it had to be read with an offset in hand. It is now **midnight
+Eastern of the current Eastern day** — the same clock everything else here is discussed in.
+
+That is not just a relabel; it removed two real hazards:
+
+- **The zero-margin edge.** The old anchor sat on the exact minute the earlier cron entry is
+  registered for. A fire even a second early would have put the anchor in the future, tripped the
+  step-back guard, moved every cutoff back 24 hours, and **re-sent everything the sweep sent the
+  night before**. Vercel has only ever fired these late — but "has only ever" is precisely the
+  reasoning that produced this morning's 0.7-second bug. Midnight Eastern sits a clear three hours
+  before the earliest possible run.
+- **The evening-call special case disappears.** The quote sweep's 8pm call needed a step-back guard
+  only because 8pm Eastern is already the next UTC day. On the Eastern day it is obviously the same
+  day as the 3am run, and all five of that day's invocations share one anchor with no special case.
+
+⚠️ On the two daylight-saving changeover days the anchor is an hour off true midnight, because it
+subtracts wall-clock hours from an elapsed-time instant and those days are 23 and 25 hours long. That
+was checked rather than assumed: **both passes of the night still compute the same value** — verified
+against 2026-03-08 and 2026-11-01 — so nothing can split, the repeat windows keep 8–15 hours of
+margin, and the quiet cutoff's worst case moves to 26 hours, still over its 24-hour promise. Fixing
+the hour would mean real timezone arithmetic for no behavioral gain.
+
+**Nothing scheduled may do work between 8:00am and 5:30pm Eastern.** That is the window production
+pushes go out in, and a deploy landing on a running job conflicts with it. Every entry in
+`vercel.json` was audited against that window in **both** seasons, and one violated it: the daily
+digest's earliest entry is 6:00pm ET in summer but **5:00pm ET in winter**. The digest itself was
+already excluded there (its window starts at 6:00pm) — but the quote-request sweep sat *above* that
+guard and so sent real mail at 5:00pm every winter day. It now runs below the window check, and above
+the day-claim, which is what the original "placed before the guards" note actually cared about: the
+claim is what makes the digest skip a day, and a skipped digest must not mean a day nobody got
+chased. Everything else clears the window in both seasons by hours.
+
+Reference for the whole set — every job, its Eastern time, and who receives it — is in
+`docs/support-tickets.md`, checked against both the code defaults and Resend's actual delivery
+history rather than either alone.
+
 ## 2026-09-04 — The same duplicate-email fault in the other three sweeps, and a roll-up that had no guard at all
 
 Follow-on from the escalation fix earlier today. The three sibling sweeps that ride the same pair of
@@ -17,18 +61,17 @@ overnight cron entries carried the same `Date.now()` cutoffs, and checking them 
 history turned up a second, larger fault underneath.
 
 **Quote requests (`rfq-reminders`) had more exposure, not less.** It is invoked **five times a
-calendar day**, not two: 07:00 and 08:00 UTC from its own cron entry, and again at 22:00, 23:00 and
-00:00 UTC from the daily digest, which calls it ahead of its own window guard so a skipped digest is
+calendar day**, not two: 3:00am and 4:00am ET from its own cron entry, and again at 6pm, 7pm and 8pm
+ET from the daily digest, which calls it ahead of its own window guard so a skipped digest is
 never a skipped chase. Five invocations, five slightly different `Date.now()` cutoffs, five chances
 to split one email into two. Now anchored, with the repeat window moved 48h → 36h for the same reason
 as the tickets.
 
-That surfaced a trap in the anchor itself. The digest's 00:00 UTC call has already rolled onto the
-next UTC day, so flooring to "07:00 UTC today" would have put its anchor **seven hours into the
-future** — chasing quotes that had not yet been quiet for 24 hours, and disagreeing with its own
-22:00 and 23:00 siblings. The anchor now steps back a day when it would otherwise lead the caller, so
-it always means "the most recent 07:00 UTC at or before now". All five invocations of a day share one
-anchor.
+That surfaced a trap in the anchor itself. As first written it floored to a fixed hour of the **UTC**
+day, and the digest's 8pm ET call has already rolled onto the next UTC day — so its anchor landed
+**seven hours in the future**, chasing quotes not yet quiet for 24 hours and disagreeing with its own
+6pm and 7pm siblings. Patched here with a step-back guard; replaced outright later the same day by an
+Eastern-day anchor, for which the problem does not arise at all (see the next entry).
 
 ⚠️ **One deliberate behavior change:** a quote crossing 24 hours *during* the day used to be caught by
 that evening's digest call and now waits for the 3am sweep. Those evening calls are documented
@@ -39,21 +82,22 @@ per-person nudges are held down by `nudged_at` stamps, so the night's second cro
 left to nudge. The **lead roll-up has no per-row state at all** — it is a whole-board summary that
 sends whenever anything is outstanding — so nothing stopped the second entry sending it again. This
 was not a boundary case that fired occasionally; it fired every night the board had anything on it.
-Confirmed in the send history: "Post-production: what is still open" was delivered at 07:16 **and**
-08:31 UTC on 2, 3 and 4 September. The engineering roll-up shares the fault and had simply had an
+Confirmed in the send history: "Post-production: what is still open" was delivered at 3:16am **and**
+4:31am ET on 2, 3 and 4 September. The engineering roll-up shares the fault and had simply had an
 empty board on those nights.
 
 New `lib/nightly-rollup-claim.ts` claims the night in `audit_log` — the same no-DDL approach the
 waiting-on-customer ladder already uses, and "leadership was sent the board summary at T" belongs in
-the accountability trail on its own merits. The claim is keyed on the anchor rather than a UTC date,
-because in winter the 3am ET pass sits at 08:00 UTC and its sibling at 07:00 — still one night. It is
+the accountability trail on its own merits. The claim is keyed on the anchor rather than a calendar
+date, because the fixed-UTC cron entries slide an hour against the Eastern clock at each daylight
+saving changeover and a date key would line up with the night only by luck. It is
 written only after a send that reached somebody, so a wholly-failed roll-up stays unclaimed and the
 second entry still tries. It **fails open**: an unreadable trail sends the roll-up anyway, because a
 duplicate summary is a nuisance and a board nobody is told about is the failure the sweep exists to
 prevent.
 
 Their repeat windows moved 24h → 12h, which is not a loosening. These are *daily* chasers, and
-against a fixed anchor a 24-hour window puts the cutoff at last night's 07:00 — **earlier than last
+against a fixed anchor a 24-hour window puts the cutoff at midnight Eastern yesterday — **earlier than last
 night's own send** — so a task chased yesterday would never come up again and the daily nudge would
 silently become every other day. 12 sits centrally between last night's send and tonight's anchor
 with about half a day of slack in both directions. Verified by simulation across both passes of three
@@ -74,20 +118,21 @@ fixed-UTC and does not shift for daylight saving; a window check no-ops whicheve
 the season. In summer **both** are correct, so the sweep genuinely runs twice — and that was always
 understood to be safe, because each run stamps the rows it chases and the second pass should find
 nothing left. Vercel also fires these entries late, by a different amount each: measured against
-Resend's own send timestamps, 07:51 and 08:31 UTC, forty minutes apart. Every cutoff in the sweep was
+Resend's own send timestamps, 3:51am and 4:31am ET, forty minutes apart. Every cutoff in the sweep was
 measured from `Date.now()`, so all of them moved forty minutes between the two passes, and a ticket
 whose last reminder stamp fell inside that gap was invisible to the first pass and eligible on the
 second. It then got an email to itself.
 
 On the night of 3–4 September the margin was **0.7 seconds** on a 48-hour window: one ticket had been
-stamped at 07:51:20 two nights earlier, which put it 0.7s the wrong side of the 07:51:19 cutoff, so it
+stamped at 3:51:20am two nights earlier, which put it 0.7s the wrong side of the 3:51:19am cutoff, so it
 dropped out of the 3:51am run and came back at 4:31am on its own. Three admins each received two
 emails instead of one. The same mechanism had been quietly scattering tickets across the two runs
 since the pair of entries went in — visible in the send history as nights with two escalations, and
 nights where a ticket skipped a full cycle because it landed the wrong side of the boundary twice.
 
-Both nightly passes now measure from a shared anchor (`nightlySweepAnchor()` — 07:00 UTC on the
-current UTC day) rather than from the wall clock, so they compute the identical eligible set: the
+Both nightly passes now measure from a shared anchor (`nightlySweepAnchor()`, at this point a fixed
+hour landing at 3:00am Eastern; moved to midnight Eastern later the same day) rather than from the
+wall clock, so they compute the identical eligible set: the
 first pass to run sends one email covering everything and stamps the rows, and the second finds
 nothing, which is what the design always claimed happened. The anchor sits at or before the earliest
 possible run in both seasons, so anything chased has provably been quiet for *more* than 24 hours

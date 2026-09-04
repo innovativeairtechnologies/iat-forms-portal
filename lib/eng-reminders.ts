@@ -40,12 +40,12 @@ import { ENG_ROLLUP_ACTION, rollUpSentTonight, markRollUpSent } from './nightly-
 /** How long before the SAME person is nudged about the SAME task again. Daily —
  *  but measured from nightlySweepAnchor(), not from the wall clock, so it must
  *  land between "last night's send" and "tonight's anchor". Last night's stamps
- *  are real send times around 07:15-08:45 UTC and tonight's anchor is 07:00 UTC,
- *  so anything from 0 to ~22h works; 12 sits centrally, giving about half a day
- *  of slack against cron lateness in both directions.
+ *  are real send times around 3:15-4:45am ET and tonight's anchor is midnight ET,
+ *  so anything from 0 to ~21h works; 12 sits centrally, giving roughly nine hours
+ *  of slack on one side and twelve on the other against cron lateness.
  *
- *  ⚠️ DO NOT PUT 24 BACK. Against the anchor, 24 makes the cutoff last night's
- *  07:00 — earlier than last night's own send — so a task chased yesterday is
+ *  ⚠️ DO NOT PUT 24 BACK. Against the anchor, 24 makes the cutoff midnight ET
+ *  yesterday — earlier than last night's own send — so a task chased yesterday is
  *  never eligible again and the daily nudge silently becomes every other day.
  *  Against Date.now(), which is what this used to be, 24h landed within seconds
  *  of the run-to-run drift and decided by coin flip which of the night's two
@@ -72,7 +72,7 @@ export async function runEngineeringReminders(now: Date = new Date()): Promise<E
   // rows, sizes the variance figures and dates the email — but the chase cutoff
   // is anchored, so both cron entries of one night select the same tasks and the
   // second finds nobody left. See nightlySweepAnchor().
-  const anchor = nightlySweepAnchor(now.getTime())
+  const anchor = nightlySweepAnchor(now)
   const today = now.toISOString().slice(0, 10)
   const soon = new Date(now.getTime() + playbook.nudgeLeadDays * 86_400_000).toISOString().slice(0, 10)
   const repeatBefore = new Date(anchor - REPEAT_HOURS * 3600e3).toISOString()

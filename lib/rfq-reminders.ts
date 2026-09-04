@@ -23,8 +23,8 @@ import { nightlySweepAnchor } from './et-clock'
 //
 // ── What calls this ─────────────────────────────────────────────────────────
 // FIVE times a calendar day, and the count matters. /api/cron/rfq-reminders is
-// registered at 07:00 and 08:00 UTC and both pass isReminderTime() in summer;
-// /api/cron/admin-digest calls it again at 22:00, 23:00 and 00:00 UTC, ahead of
+// registered for 3:00am and 4:00am ET and both pass isReminderTime() in summer;
+// /api/cron/admin-digest calls it again at 6pm, 7pm and 8pm ET, ahead of
 // its own window guard, so a day the digest skips is not a day nobody is chased.
 // The stamps above make every call after the first a no-op, so the duplication
 // costs a few queries and buys a sweep that survives any one entry breaking.
