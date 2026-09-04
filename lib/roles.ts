@@ -88,6 +88,18 @@ export type Perm =
   | 'customer_jerry' // admin preview of the customer-facing Jerry; admin-only
   | 'permissions' // the role-permission matrix editor itself; admin-only, non-delegatable
   | 'srv' // the SRV content editor (/admin/srv); admin-only by omission
+  // /admin/time-clock — the punch board, timesheets and the payroll export
+  // (migration 101). Admin-only BY OMISSION from the scoped-role defaults, the
+  // same shape as 'srv' and 'reports': hasPermission() is true for `admin` and no
+  // role_permissions row grants it to anyone else, so it needs no seed migration.
+  //
+  // ⚠️ Granting it to HR later needs a migration INSERT as well as a line here —
+  // DEFAULT_ROLE_PERMS is dead once role_permissions has rows for that role.
+  //
+  // The EMPLOYEE side (/admin/me/time-clock) is deliberately NOT behind this: it
+  // is self-service under OPEN_ADMIN_PREFIXES, because the people who punch are
+  // exactly the people who hold no admin permissions.
+  | 'time_clock'
   // /admin/reports — cross-cutting reporting (support tickets first, more to
   // follow). Admin-only BY OMISSION from the scoped-role defaults below, exactly
   // like 'srv' and 'sizing', so it needs no role_permissions seed and no
@@ -219,6 +231,7 @@ export const PERM_LABELS: Record<Perm, string> = {
   customer_jerry: 'Customer Jerry (preview)',
   permissions: 'Permissions',
   srv: 'SRV editor',
+  time_clock: 'Time Clock (payroll)',
   sizing: 'Sizing Studio',
   tools: 'Internal Apps',
   tool_crib: 'Tool Crib',
@@ -423,6 +436,7 @@ const ADMIN_PATH_PERMS: { prefix: string; perm: Perm }[] = [
   { prefix: '/admin/knowledge', perm: 'knowledge' },
   { prefix: '/admin/permissions', perm: 'permissions' },
   { prefix: '/admin/srv', perm: 'srv' },
+  { prefix: '/admin/time-clock', perm: 'time_clock' },
   // MUST be listed. An unmapped /admin/* path falls back to 'dashboard', which
   // all five scoped roles hold — omitting this would open every report to all of
   // them rather than failing closed.

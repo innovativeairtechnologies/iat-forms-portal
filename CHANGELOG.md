@@ -10,6 +10,47 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — A time clock hourly staff can use in five seconds
+
+**Clock in, out, lunch and break from a phone at the shop.** People → Time Clock for the
+payroll side; Self-service → Time Clock for the punch screen; a printable QR by the door goes
+straight there.
+
+The whole design is bent around one number: the walk from the door to the bench. Location is
+requested the instant the page exists rather than when the button is tapped — a GPS fix takes
+two to eight seconds, so asking on tap would have spent the entire budget watching a spinner.
+There is one large button and the current state decides which one it is, so an impossible
+action is never drawn and there is nothing to read.
+
+**The job number is deliberately NOT on the punch.** Putting it there is the obvious model and
+it fails quietly: somebody who touches four jobs before lunch gets all eight hours recorded
+against whichever job they named at 6:58am. Job time is a segment that tiles the shift instead —
+"Switch job" closes one and opens the next without clocking anybody out, as often as they like.
+Time nobody attributed shows as Unallocated rather than being folded into the last job named.
+
+**The geofence is enforced on clock-IN only, and that asymmetry is the point.** Refusing an
+off-site clock-out would strand somebody in a shift they cannot close — it lands on an admin
+either way and leaves a running shift inflating the board. Off-site clock-outs are recorded and
+flagged instead. Lunch and job switches are not fenced at all, because GPS drops behind roll-up
+doors and a button that fails inside a metal building is a button people stop using.
+
+Refused punches are recorded with their distance, on purpose: a badly-placed pin should be
+visible rather than endured. People refused while standing at the shop is the signal the fence
+is wrong, not that they were cheating. The seeded pin is a geocode of the address in
+lib/company.ts — accurate to the building, not the door — so there is a "Set from where I am
+standing" button, and the 300m radius can come down once somebody presses it on the shop floor.
+
+Two partial unique indexes hold the model up: one open shift per person, one open segment per
+shift. A double tap on a slow connection would otherwise open two shifts and double every hour
+after it.
+
+The payroll export is one row per employee per job per day, in decimal hours, with lunch
+excluded and open shifts left out and said so in the file header — a row reading 3.10 hours
+because somebody is still clocked in would be entered as a finished day.
+
+Verified with 27 assertions over the fence, the state machine, the Monday payroll week and the
+rollup — including that a 5km accuracy circle cannot "contain" the office from across town.
+
 ## 2026-09-04 — The engineering board lines up jobs instead of tasks
 
 The Status Board was listing every open task under every bucket. That was honest and it was

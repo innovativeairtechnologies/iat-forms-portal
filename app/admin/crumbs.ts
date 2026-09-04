@@ -61,6 +61,7 @@ const ROUTES: { prefix: string; section: string; label: string }[] = [
   { prefix: '/admin/org-chart',       section: 'People',  label: 'Org Chart' },
   { prefix: '/admin/employee-forms',  section: 'People',  label: 'Employee Forms' },
   { prefix: '/admin/requests/pto',    section: 'People',  label: 'PTO' },
+  { prefix: '/admin/time-clock',      section: 'People',  label: 'Time Clock' },
   { prefix: '/admin/requests/sick',   section: 'People',  label: 'Sick Time' },
   { prefix: '/admin/requests',        section: 'People',  label: 'Requests' },
   { prefix: '/admin/schedule',        section: 'People',  label: 'Scheduling' },

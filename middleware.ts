@@ -196,5 +196,8 @@ export const config = {
     '/t/:path*',
     '/login',
     '/home',
+    // The time-clock QR target. It only redirects, but an unlisted top-level path
+    // is not session-checked at all, so it is listed rather than assumed safe.
+    '/clock',
   ],
 }

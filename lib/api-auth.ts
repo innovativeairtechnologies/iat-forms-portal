@@ -122,6 +122,35 @@ export async function requireProjectedSalesAuth(): Promise<NextResponse | null> 
  * be split onto a dedicated `closed_projects` perm later by changing one line
  * here plus the ADMIN_PATH_PERMS entry.
  */
+/**
+ * Guard for the time-clock ADMIN surface (migration 101) — the punch board,
+ * timesheets and the payroll export. Keyed on `time_clock`, which is admin-only
+ * by omission from the scoped-role defaults, so it needs no seed migration.
+ *
+ * ⚠️ The EMPLOYEE punch route (/api/time-clock/punch) deliberately does NOT use
+ * this. The people who clock in hold no admin permission at all; that route
+ * authenticates the session and resolves the punch to the caller's own employee
+ * row, which is a different question from "may you see everyone's hours".
+ */
+export async function requireTimeClockAuth(): Promise<NextResponse | null> {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = normalizeRole(profile?.role)
+  const matrix = await getPermMatrix()
+  if (!hasPermission(role, 'time_clock', matrix)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
 export async function requireClosedProjectsAuth(): Promise<NextResponse | null> {
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()

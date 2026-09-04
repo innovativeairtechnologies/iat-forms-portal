@@ -205,6 +205,10 @@ const NAV_PARENTS: NavParent[] = [
       { href: '/admin/requests', label: 'Time Off', badge: 'timeoff', perm: 'pto' },
       { href: '/admin/schedule', label: 'Schedule', perm: 'scheduling' },
       { href: '/admin/accrual', label: 'Accrual', perm: 'accrual' },
+      // Punch board + timesheets + the payroll export (migration 101). The
+      // self-service punch screen is in SELF_SERVICE below — this is the admin
+      // half only.
+      { href: '/admin/time-clock', label: 'Time Clock', perm: 'time_clock' },
       // Annual compensation review (078). Its own `compensation` perm, held by
       // admin + hr only — narrower than the 'employees' grant beside it, so this
       // link stays hidden from every other scoped role.
@@ -284,6 +288,7 @@ const SELF_SERVICE: NavParent = {
   label: 'Self-service',
   icon: UserRound,
   children: [
+    { href: '/admin/me/time-clock', label: 'Time Clock' },
     { href: '/admin/me/time-off', label: 'Time Off' },
     { href: '/admin/me/forms', label: 'Submit a Form' },
     { href: '/admin/me/directory', label: 'Directory' },
