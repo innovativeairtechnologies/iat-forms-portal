@@ -72,7 +72,12 @@ const STATIC: Item[] = [
   // the name of the thing it replaced.
   { id: 'nav-eng',     label: 'Engineering Status Board', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering', keywords: 'engineering status board submittals long lead lli bom production electrical takt monday wall display', perm: 'engineering_jobs' },
   { id: 'nav-eng-jobs', label: 'Engineering Jobs', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/jobs', keywords: 'engineering jobs job number po ship date complexity plan', perm: 'engineering_jobs' },
-  { id: 'nav-eng-tasks', label: 'Engineering Task Queue', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/tasks', keywords: 'engineering tasks queue overdue late unassigned untouched behind', perm: 'engineering_jobs' },
+  // Task Queue was hidden from the rail 2026-09-04, so its ⌘K entry is commented
+  // out to match — the same treatment US Rotors Orders got above, and for the
+  // same reason: keep the line so re-enabling is one edit in each file rather
+  // than a rewrite. The route itself is still live and still linked to from the
+  // Engineering Risk card and the status board's standing-work rows.
+  // { id: 'nav-eng-tasks', label: 'Engineering Task Queue', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/tasks', keywords: 'engineering tasks queue overdue late unassigned untouched behind', perm: 'engineering_jobs' },
   { id: 'nav-eng-mine', label: 'My Engineering Work', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/my-work', keywords: 'my engineering work mine assigned tasks due', perm: 'engineering_jobs' },
   { id: 'nav-eng-load', label: 'Engineering Workload', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/capacity', keywords: 'engineering workload capacity hours per person week takt', perm: 'engineering_jobs' },
   { id: 'nav-eng-rules', label: 'Engineering Scheduling Rules', group: 'Go to', icon: DraftingCompass, href: '/admin/engineering/playbook', keywords: 'engineering scheduling rules playbook lead time cycle time takt target hours automation', perm: 'engineering_jobs' },

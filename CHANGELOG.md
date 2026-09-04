@@ -10,6 +10,37 @@ nothing can drift out of step. The weekly report covers exactly one edition. An
 occasional *interim* update can cover a few days between Mondays; it is labeled and
 filed as an interim, and never replaces the edition it sits inside.
 
+## 2026-09-04 — The engineering board lines up jobs instead of tasks
+
+The Status Board was listing every open task under every bucket. That was honest and it was
+unreadable: a single job puts nineteen rows across the six boxes, each with its own title, owner,
+date and bar, and by the time there are five jobs on it you have to *study* the board to find the
+one thing that is late. A board you have to study is not a status board.
+
+**Each box now lists jobs.** One row per job under each heading: the job number, the customer, how
+much of that bucket is still open on it, when the next piece is due, how far along it is, and
+whether it is going to land. The task-level detail is one click away on the job page — where it is
+also editable, which the board deliberately is not.
+
+Two details that matter more than they look. The ahead/behind pill on a row shows the **worst** piece
+in that bucket on that job, not the average — a job is as late as its latest part, and averaging
+would let one badly overdue drawing hide behind four comfortable tasks. And the progress bar now
+reads the finished work as well as the open work, because the electrical bands only mean something
+if a signed-off drawing still counts: without that, a job with its drawings done reads 0% instead of
+30%.
+
+Support & Other has no jobs behind it, so those rows line up by person instead — for standing work
+the person is the unit of accountability, because there is no job holding it. The box header says
+"3 people" rather than "3 jobs" when that is what it is showing.
+
+**Task Queue is hidden from the sidebar.** The Engineering group had grown to seven items and the
+Status Board plus Jobs cover the same ground day to day. The page itself is untouched and still
+live — the Engineering Risk card, the Past Due tile on the dashboard and the board's standing-work
+rows all still land on it, and it is still the only place that lists every task across every bucket
+in one filterable list, or shows another person's standing work. It is hidden, not gone, and turning
+it back on is two lines. The red past-due count moved to Status Board so it did not disappear off
+the rail with it.
+
 ## 2026-09-04 — A departed employee's mailbox goes quiet without touching his account
 
 Jacob Younker no longer works here, but his account has to stay active and keep the admin role: the

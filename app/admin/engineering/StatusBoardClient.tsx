@@ -21,9 +21,32 @@ const WALL_REFRESH_MS = 60_000
  *  rows that are cut are always the healthiest ones. */
 const ROWS_PER_TILE = 6
 
+/**
+ * One row per JOB, not per task.
+ *
+ * The board first shipped listing every open task under every bucket. One job
+ * alone put 19 rows across six tiles, each with its own title, owner, date and
+ * bar, and the whole thing read as a wall of text — you had to study it to find
+ * the late one, which is the opposite of what a status board is for. Changed at
+ * the owner's request 2026-09-04: each tile now lines its jobs up under the
+ * heading and says what that bucket owes on each.
+ *
+ * What a row keeps is what you can act on from across the room: which job, how
+ * much of this bucket is still open on it, when the next piece is due, how far
+ * along it is, and whether it is going to land. The task-level detail is one
+ * click away on the job page — where it is editable, which the board is not.
+ */
 function StreamTileCard({ tile, wall }: { tile: StreamTile; wall: boolean }) {
-  const rows = tile.rows.slice(0, ROWS_PER_TILE)
-  const more = tile.rows.length - rows.length
+  const groups = tile.groups.slice(0, ROWS_PER_TILE)
+  const more = tile.groups.length - groups.length
+
+  // Support & Other has no jobs behind it, so its rows are people. Read off the
+  // groups rather than hard-coding the stream: a job-linked support task groups
+  // by job like anything else, and the header should say so.
+  const allStanding = tile.groups.length > 0 && tile.groups.every(g => g.standing)
+  const unit = allStanding
+    ? (tile.groups.length === 1 ? 'person' : 'people')
+    : (tile.groups.length === 1 ? 'job' : 'jobs')
 
   return (
     <div className="rounded-xl border border-hairline bg-surface flex flex-col min-h-0">
@@ -32,7 +55,17 @@ function StreamTileCard({ tile, wall }: { tile: StreamTile; wall: boolean }) {
         <h3 className={`font-semibold text-ink tracking-[-0.006em] truncate ${wall ? 'text-[15px]' : 'text-[12.5px]'}`}>
           {STREAM_LABELS[tile.stream]}
         </h3>
-        <span className={`tabular-nums text-ink-muted ${wall ? 'text-[15px]' : 'text-[12px]'}`}>{tile.open}</span>
+        {/* Both numbers, because with job rows the bare one is ambiguous — is 7
+            seven tasks or seven jobs? The rows below are jobs; this says how
+            much work sits behind them. */}
+        <span className={`whitespace-nowrap tabular-nums text-ink-muted ${wall ? 'text-[15px]' : 'text-[12px]'}`}>
+          {tile.open}
+          {tile.groups.length > 0 && (
+            <span className={`text-ink-faint ${wall ? 'text-[12px]' : 'text-[10.5px]'}`}>
+              {' '}· {tile.groups.length} {unit}
+            </span>
+          )}
+        </span>
         <span className="ml-auto flex items-center gap-2">
           {tile.atRisk > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-[3px] rounded-md bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
@@ -45,55 +78,57 @@ function StreamTileCard({ tile, wall }: { tile: StreamTile; wall: boolean }) {
         </span>
       </div>
 
-      {rows.length === 0 ? (
+      {groups.length === 0 ? (
         <Nothing>
           Nothing open. <span className="text-ink-faint">{STREAM_BLURB[tile.stream]}</span>
         </Nothing>
       ) : (
         <div className="divide-y divide-hairline-soft">
-          {rows.map(r => {
-            const href = r.job_id ? `/admin/engineering/jobs/${r.job_id}` : '/admin/engineering/tasks'
-            // 84px for the job column, not 70. A shop job number is four digits
-            // and fits either way, but the column also carries the word
-            // "Standing" for a task with no job behind it — and a truncated
-            // "Standin…" on a wall board is the one cell nobody can widen from
-            // across the room.
-            return (
-              <Link
-                key={r.id}
-                href={href}
-                className="grid grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2.5 px-4 py-2 transition-colors hover:bg-surface-soft group"
-              >
-                <span className={`tabular-nums font-medium text-ink truncate ${wall ? 'text-[14px]' : 'text-[12.5px]'}`}>
-                  {r.job_number ?? <span className="text-ink-faint font-normal">Standing</span>}
+          {groups.map(g => (
+            <Link
+              key={g.key}
+              href={g.href}
+              className="grid grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-surface-soft group"
+            >
+              {/* 84px, not 70. A shop job number is four digits and fits either
+                  way, but this column also carries a person's name on the
+                  standing-work rows, and a truncated name on a wall board is the
+                  one cell nobody can widen from across the room. */}
+              <span className={`truncate font-medium text-ink ${g.standing ? '' : 'tabular-nums'} ${wall ? 'text-[14px]' : 'text-[12.5px]'}`}>
+                {g.label}
+              </span>
+
+              <span className="min-w-0">
+                <span className={`block truncate text-ink-secondary group-hover:text-brand-ink transition-colors ${wall ? 'text-[14px]' : 'text-[12.5px]'}`}>
+                  {g.sub ?? <span className="text-ink-faint">{g.standing ? 'Standing work' : 'No customer recorded'}</span>}
                 </span>
-                <span className="min-w-0">
-                  <span className={`block truncate text-ink-secondary group-hover:text-brand-ink transition-colors ${wall ? 'text-[14px]' : 'text-[12.5px]'}`}>
-                    {r.title}
-                  </span>
-                  <span className={`flex items-center gap-2 ${wall ? 'text-[12px]' : 'text-[11px]'} text-ink-muted`}>
-                    <span className="truncate">
-                      {r.assignee_name ?? <span className="text-amber-700 dark:text-amber-400">Unassigned</span>}
-                    </span>
-                    <span className="text-ink-faint">·</span>
-                    <span className="tabular-nums whitespace-nowrap">{shortDate(r.due_date)}</span>
-                    <span className="hidden sm:flex flex-1 min-w-[40px] max-w-[90px]">
-                      <ProgressBar
-                        value={r.progress}
-                        expected={r.projection.expectedPct}
-                        tone={STREAM_TONE[tile.stream]}
-                        height={4}
-                      />
-                    </span>
+                <span className={`flex items-center gap-2 ${wall ? 'text-[12px]' : 'text-[11px]'} text-ink-muted`}>
+                  <span className="tabular-nums whitespace-nowrap">{g.open} open</span>
+                  <span className="text-ink-faint">·</span>
+                  <span className="tabular-nums whitespace-nowrap">{shortDate(g.nextDue)}</span>
+                  {/* Only when there is something to say. An "0 unassigned" on
+                      every row is exactly the noise this rebuild removed. */}
+                  {g.unassigned > 0 && (
+                    <>
+                      <span className="text-ink-faint">·</span>
+                      <span className="whitespace-nowrap text-amber-700 dark:text-amber-400">{g.unassigned} unassigned</span>
+                    </>
+                  )}
+                  <span className="hidden sm:flex flex-1 min-w-[40px] max-w-[110px]">
+                    <ProgressBar value={g.progress} tone={STREAM_TONE[tile.stream]} height={4} showValue />
                   </span>
                 </span>
-                <span className="justify-self-end"><ProjectionPill projection={r.projection} compact /></span>
-              </Link>
-            )
-          })}
+              </span>
+
+              {/* The WORST piece in the group. A job is as late as its latest
+                  part, not as its average part — averaging would let one badly
+                  overdue drawing hide behind four comfortable tasks. */}
+              <span className="justify-self-end"><ProjectionPill projection={g.worst} compact /></span>
+            </Link>
+          ))}
           {more > 0 && (
-            <Link href="/admin/engineering/tasks" className="block px-4 py-2 text-[11.5px] text-ink-muted hover:text-ink transition-colors">
-              and {more} more →
+            <Link href="/admin/engineering/jobs" className="block px-4 py-2 text-[11.5px] text-ink-muted hover:text-ink transition-colors">
+              and {more} more {allStanding ? (more === 1 ? 'person' : 'people') : (more === 1 ? 'job' : 'jobs')} →
             </Link>
           )}
         </div>

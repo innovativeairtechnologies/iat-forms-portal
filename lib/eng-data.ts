@@ -219,6 +219,48 @@ export async function listAssignees(): Promise<{ id: string; name: string }[]> {
 
 export type BoardTaskRow = EngTaskRow & { projection: Projection }
 
+/**
+ * ONE ROW PER JOB, not one row per task.
+ *
+ * The board first shipped listing every open task under every bucket. With one
+ * job on it that was 19 rows across six tiles; with a real week's work it is
+ * unreadable, and a status board you have to read carefully is not a status
+ * board. Changed 2026-09-04 at the owner's request: each tile now lines its
+ * jobs up under the heading and says what that bucket owes on each one.
+ *
+ * Jobless work (the Support & Other bucket) has no job to group under, so it
+ * groups by OWNER instead. That is not a fudge — for standing work the person
+ * IS the unit of accountability, because there is no job holding it.
+ */
+export type BoardGroup = {
+  /** React key + dedup: the job id, or `person:<employeeId|__unassigned>`. */
+  key: string
+  href: string
+  /** Row heading — a job number, or a person's name for standing work. */
+  label: string
+  /** Second line — the customer, or null. */
+  sub: string | null
+  /** True when this is jobless work grouped by owner rather than by job. */
+  standing: boolean
+  open: number
+  atRisk: number
+  unassigned: number
+  /** Earliest due date across the group's OPEN work. */
+  nextDue: string | null
+  /**
+   * How far this bucket has got on this job, 0–100.
+   *
+   * ⚠️ Computed over the job's tasks in this bucket INCLUDING the finished ones
+   * — see the `done` read in buildStatusBoard. streamProgress() establishes its
+   * banded floor from `status === 'done'`, so handing it an open-only list would
+   * report an electrical job with its drawings signed off as 0% instead of 30%.
+   */
+  progress: number
+  /** The worst projection in the group. This is what the row's pill shows —
+   *  a job is as late as its latest piece, not as its average piece. */
+  worst: Projection
+}
+
 export type StreamTile = {
   stream: Stream
   open: number
@@ -229,7 +271,8 @@ export type StreamTile = {
   /** Completions per week over the trailing 8 weeks — the sparkline the
    *  whiteboard drew next to "trending". Oldest first. */
   trend: number[]
-  rows: BoardTaskRow[]
+  /** Jobs (or, for standing work, people) with open work in this bucket. */
+  groups: BoardGroup[]
 }
 
 export type StatusBoard = {
@@ -271,6 +314,27 @@ export async function buildStatusBoard(now: Date = new Date()): Promise<StatusBo
 
   const weekEnd = new Date(now.getTime() + 7 * 86_400_000).toISOString().slice(0, 10)
 
+  // ── The finished tasks on the jobs that still have open work ──────────────
+  //
+  // Needed ONLY for the per-job progress bar. streamProgress() reads its banded
+  // floor off `status === 'done'`, so a bar computed from the open-only list
+  // would report an electrical job whose drawings are signed off as 0% rather
+  // than 30% — the bands are the one thing on this board that comes from a real
+  // source, and showing them wrong is worse than not showing them.
+  //
+  // Bounded by the ACTIVE jobs, not by the table: a board that refreshes itself
+  // every minute on a wall must not grow a whole-table read as the years pass.
+  const openJobIds = [...new Set(open.map(t => t.job_id).filter(Boolean) as string[])]
+  const doneOnOpenJobs = openJobIds.length
+    ? ((await supabaseAdmin
+        .from('eng_tasks')
+        .select('job_id, stream, step, status, progress, progress_band')
+        .in('job_id', openJobIds)
+        .in('status', ['done', 'skipped'])
+      ).data ?? [])
+    : []
+  type ProgressRow = Pick<EngTask, 'stream' | 'step' | 'status' | 'progress' | 'progress_band'> & { job_id: string }
+
   const tiles: StreamTile[] = STREAMS.map(stream => {
     const rows = open
       .filter(t => tileMembership(t, stream))
@@ -282,6 +346,48 @@ export async function buildStatusBoard(now: Date = new Date()): Promise<StatusBo
         const bv = b.projection.varianceDays ?? 9999
         return av - bv || (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999')
       })
+
+    // ── Collapse to one row per job (or, jobless, per owner) ────────────────
+    // `rows` is already worst-first, so the first task seen for a group carries
+    // that group's worst projection and the Map preserves that order — the
+    // tile comes out worst-job-first without a second sort.
+    const grouped = new Map<string, BoardTaskRow[]>()
+    for (const r of rows) {
+      const key = r.job_id ?? `person:${r.assignee_id ?? '__unassigned'}`
+      grouped.set(key, [...(grouped.get(key) ?? []), r])
+    }
+
+    const groups: BoardGroup[] = [...grouped.entries()].map(([key, list]) => {
+      const first = list[0]
+      const standing = !first.job_id
+
+      // Progress spans the WHOLE bucket on this job — open work plus what is
+      // already finished. Standing work has no job, so there is nothing to roll
+      // up beyond the tasks themselves.
+      const finished = standing
+        ? []
+        : (doneOnOpenJobs as ProgressRow[])
+            .filter(d => d.job_id === first.job_id && tileMembership(d as unknown as EngTaskRow, stream))
+      const progress = streamProgress([...finished, ...list])
+
+      const dueDates = list.map(t => t.due_date).filter(Boolean).sort() as string[]
+      return {
+        key,
+        // Standing work has no job page to land on, so it goes to the queue —
+        // which is hidden from the rail but live, and is the only screen that
+        // shows another person's standing work. See docs/engineering.md.
+        href: first.job_id ? `/admin/engineering/jobs/${first.job_id}` : '/admin/engineering/tasks',
+        label: first.job_number ?? first.assignee_name ?? 'Unassigned',
+        sub: standing ? null : (first.customer_name || null),
+        standing,
+        open: list.length,
+        atRisk: list.filter(t => isAtRisk(t.projection)).length,
+        unassigned: list.filter(t => !t.assignee_id).length,
+        nextDue: dueDates[0] ?? null,
+        progress,
+        worst: first.projection,
+      }
+    })
 
     const trend = Array(8).fill(0) as number[]
     for (const r of (recent.data ?? []) as { stream: Stream; step: string; completed_at: string }[]) {
@@ -299,7 +405,7 @@ export async function buildStatusBoard(now: Date = new Date()): Promise<StatusBo
       unassigned: rows.filter(r => !r.assignee_id).length,
       dueThisWeek: rows.filter(r => r.due_date && r.due_date <= weekEnd).length,
       trend,
-      rows,
+      groups,
     }
   })
 

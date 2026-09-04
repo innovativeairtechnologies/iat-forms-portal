@@ -101,9 +101,24 @@ const NAV_PARENTS: NavParent[] = [
     label: 'Engineering',
     icon: DraftingCompass,
     children: [
-      { href: '/admin/engineering', label: 'Status Board', perm: 'engineering_jobs' },
+      // ⚠️ The past-due badge lives HERE, not on Task Queue where it started.
+      // Hiding a nav child removes it from the rail entirely (see the filter in
+      // renderGroup), badge and all — so leaving `engtasks` on the hidden Task
+      // Queue would have silently taken the only red count in this section off
+      // the sidebar. The Status Board is the right home for it anyway: it is the
+      // screen that exists to show what is late.
+      { href: '/admin/engineering', label: 'Status Board', badge: 'engtasks', perm: 'engineering_jobs' },
       { href: '/admin/engineering/jobs', label: 'Jobs', perm: 'engineering_jobs' },
-      { href: '/admin/engineering/tasks', label: 'Task Queue', badge: 'engtasks', perm: 'engineering_jobs' },
+      // HIDDEN 2026-09-04 at the owner's request — the rail was getting long and
+      // the Status Board plus Jobs cover the same ground for most people.
+      // Nothing else changed: the route, its perm gate, its middleware entry and
+      // every deep link into it are all still live. It is still the ONLY screen
+      // that shows every task across every bucket in one list, and the only one
+      // that shows another person's standing work — the Engineering Risk card,
+      // the status-board standing rows and My Work all still land on it.
+      // Re-enable by removing `hidden: true` (and un-commenting `nav-eng-tasks`
+      // in CommandPalette.tsx). See docs/engineering.md § "Task Queue is hidden".
+      { href: '/admin/engineering/tasks', label: 'Task Queue', hidden: true, perm: 'engineering_jobs' },
       { href: '/admin/engineering/my-work', label: 'My Work', perm: 'engineering_jobs' },
       { href: '/admin/engineering/capacity', label: 'Workload', perm: 'engineering_jobs' },
       // Post-Production (098) — the walkaround queue. Sits after the working

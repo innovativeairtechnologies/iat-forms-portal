@@ -82,6 +82,33 @@ carries it into the next kickoff. It shares the `engineering_jobs` perm by prefi
 permission, no seed — and its morning sweep rides this section's existing cron entry rather
 than adding one. See **[post-production.md](post-production.md)**.
 
+## ⚠️ Task Queue is HIDDEN from the rail (2026-09-04)
+
+`/admin/engineering/tasks` is **still live** — route, perm gate, `ADMIN_PATH_PERMS` entry, crumb
+entry and every deep link into it. Only the sidebar entry and the ⌘K entry are switched off, at the
+owner's request, because the Engineering group had grown to seven items and the Status Board plus
+Jobs cover the same ground for most people.
+
+**Re-enabling is two edits:** remove `hidden: true` from the Task Queue child in
+`components/admin/AdminSidebar.tsx`, and un-comment `nav-eng-tasks` in
+`components/admin/CommandPalette.tsx`. Both carry a comment pointing here. (Same treatment US Rotors
+Orders and Troubleshooting already have — the established idiom in this repo is to hide, never
+delete, so the plumbing stays warm.)
+
+**What is only reachable there.** Worth knowing before anyone proposes deleting it:
+
+- The only screen listing **every task across every bucket** in one filterable list.
+- The only screen showing **another person's standing work** (My Work is yours alone; the Status
+  Board's Support tile summarises but does not list).
+- The only home of the **"Untouched 5+ days"** and **"Nobody owns it"** filters.
+- The destination of the **Engineering Risk** dashboard card's rows, the **Engineering Tasks / Past
+  Due** KPI tiles, and the Status Board's standing-work rows. All of those still work.
+
+⚠️ **The past-due badge moved to Status Board.** Hiding a nav child removes it from the rail
+entirely, badge and all, so leaving `engtasks` on the hidden entry would have silently taken the only
+red count in this section off the sidebar. If Task Queue is ever un-hidden, decide deliberately which
+of the two carries it — do not end up with both.
+
 ## The buckets
 
 `Stream` in `lib/engineering.ts`, in whiteboard order:
@@ -236,6 +263,34 @@ save. (The RFQ intake's `coerce()` has the same shape and the same trap.)
   every other badge on the rail, because it counts a missed deadline rather than a queue.
 - **`/admin/reports/engineering`** — on-time rate, median finish, target vs actual per step, per
   person, month by month, and a full CSV.
+
+## The Status Board lists JOBS, not tasks (2026-09-04)
+
+It first shipped listing every open task under every bucket. One job alone put 19 rows across six
+tiles, each with its own title, owner, date and bar; a real week made the board something you had to
+*study* to find the late thing in, which is the opposite of what a status board is for. Changed at
+the owner's request: each tile now lines its **jobs** up under the heading.
+
+A row is: job number · customer · `N open · next due · progress` · the ahead/behind pill. The
+task-level detail is one click away on the job page, where it is also editable — which the board
+deliberately is not.
+
+Three things worth knowing about how the roll-up is computed (`BoardGroup` in `lib/eng-data.ts`):
+
+- **The pill shows the group's WORST piece, not its average.** A job is as late as its latest part;
+  averaging would let one badly overdue drawing hide behind four comfortable tasks. `rows` is
+  already sorted worst-first, so the first task seen for a group carries the group's verdict and the
+  `Map` preserves that order — the tile comes out worst-job-first with no second sort.
+- 🔴 **The progress bar needs the FINISHED tasks too.** `streamProgress()` establishes its banded
+  floor from `status === 'done'`, so a bar computed from the open-only list would report an
+  electrical job whose drawings are signed off as **0% instead of 30%**. `buildStatusBoard` therefore
+  makes one extra read — done/skipped tasks on the jobs that still have open work. It is scoped by
+  `.in('job_id', openJobIds)` rather than reading the table, because this board refreshes itself
+  every minute on a wall and must not grow a whole-table read as the years pass.
+- **Standing work groups by PERSON.** The Support & Other bucket has no job to group under, and for
+  standing work the person *is* the unit of accountability. The tile header says "3 people" rather
+  than "3 jobs" in that case, derived from the groups rather than hard-coded to the stream — a
+  job-linked support task groups by job like anything else.
 
 ## The wall display
 
